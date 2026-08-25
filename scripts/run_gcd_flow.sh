@@ -12,6 +12,7 @@ DESIGN_CONFIG="${DESIGN_CONFIG:-./designs/nangate45/gcd/config.mk}"
 cd "${FLOW}"
 exec make \
   DESIGN_CONFIG="${DESIGN_CONFIG}" \
+  CORE_UTILIZATION="${CORE_UTILIZATION:-35}" \
   OPENROAD_EXE="${OPENROAD_EXE:-$(command -v openroad)}" \
   OPENSTA_EXE="${OPENSTA_EXE:-$(command -v sta)}" \
   YOSYS_EXE="${YOSYS_EXE:-$(command -v yosys)}" \
