@@ -8,14 +8,24 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ORFS="${ROOT}/tools/OpenROAD-flow-scripts"
 YOSYS_PREFIX="${ROOT}/tools/yosys"
 JOBS="$(nproc)"
+OPENROAD_RELEASE="$(openroad -version | awk '{print $1}')"
+ORFS_TAG="${ORFS_TAG:-${OPENROAD_RELEASE%%-*}}"
 
 echo "==> Installo le dipendenze di build di yosys..."
 sudo apt-get install -y -qq build-essential cmake bison flex libreadline-dev \
   libffi-dev pkg-config python3-dev zlib1g-dev tcl-dev
 
 if [[ ! -d "${ORFS}" ]]; then
-  echo "==> Clono OpenROAD-flow-scripts..."
-  git clone --depth 1 https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git "${ORFS}"
+  echo "==> Clono OpenROAD-flow-scripts ${ORFS_TAG}..."
+  git clone --depth 1 --branch "${ORFS_TAG}" \
+    https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git "${ORFS}"
+else
+  echo "==> Allineo OpenROAD-flow-scripts al tag ${ORFS_TAG}..."
+  (
+    cd "${ORFS}"
+    git fetch --depth 1 --force origin "refs/tags/${ORFS_TAG}:refs/tags/${ORFS_TAG}"
+    git checkout --detach "${ORFS_TAG}"
+  )
 fi
 
 echo "==> Inizializzo il submodule yosys..."

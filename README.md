@@ -6,7 +6,7 @@ Ambiente locale completo per il physical design digitale (RTL → GDSII) basato 
 | --- | --- | --- |
 | [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) | 26Q2 (binari Precision Innovations) | pacchetto `.deb` da [VaultLink](https://vaultlink.precisioninno.com/) |
 | [OpenSTA](https://github.com/parallaxsw/OpenSTA) | 3.1.0 | compilato dai sorgenti (con CUDD) |
-| [OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) (ORFS) | master | clone git |
+| [OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) (ORFS) | 26Q2 | tag corrispondente a OpenROAD |
 | [yosys](https://github.com/YosysHQ/yosys) | submodule pinnato da ORFS | compilato dai sorgenti (CMake) |
 | [KLayout](https://www.klayout.de/) | 0.30.11 | pacchetto `.deb` ufficiale |
 
@@ -22,6 +22,10 @@ Gli script vanno eseguiti in ordine (richiedono `sudo` per i pacchetti apt):
 ./scripts/03_install_klayout.sh    # KLayout (per il GDS finale)
 ./scripts/04_setup_orfs.sh         # clone ORFS + build di yosys
 ```
+
+Lo script ORFS ricava automaticamente il tag trimestrale dalla versione di
+OpenROAD installata (per esempio `26Q2-...` → `26Q2`), così tool e flow restano
+allineati. Il tag può essere sovrascritto con `ORFS_TAG=...`.
 
 Tutto ciò che viene compilato o clonato finisce in `tools/` (ignorato da git):
 
