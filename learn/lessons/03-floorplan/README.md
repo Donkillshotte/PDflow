@@ -47,7 +47,7 @@ Metal1 followpin sulle rows + straps metal4/metal7 + via di connessione. Senza P
 - `gui_2_1_floorplan.odb`: Rows ON, Instances OFF
 - `gui_2_4_floorplan_pdn.odb`: Nets Power/Ground ON, metal4 ON
 
-Guida click: `gui-openroad.md`.
+Colori PDN e PNG: `gui-atlas.md` §5.4 (`03_pdn_labeled.png`, `win_pdn.png`).
 
 ## Esperimento
 

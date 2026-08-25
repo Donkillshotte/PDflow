@@ -56,7 +56,9 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 ## G
 
-**GDSII** — Formato binario layout per mask shop / fab.
+**GUI** — interfaccia Qt di OpenROAD. Non è Preview HTTP. Atlante: `gui-atlas.md`.
+
+**Guide (GRT)** — corridoi 2D per net, non wire mask-ready. File `route.guide`.
 
 **Global placement (GP)** — Posizionamento approssimato minimizzando wirelength + density.
 

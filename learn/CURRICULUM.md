@@ -183,8 +183,10 @@ gui_<stem>   # es. gui_3_place.odb, gui_final
 | LAB.md (8 sessioni) | 8–12 |
 | Reference + walkthrough Tcl | 3–4 |
 | Workbook + quiz + progetto finale | 3–4 |
-| GUI guidata | 2–3 |
+| GUI guidata (atlante pixel + 45 min) | 2–3 |
 | **Totale realistico** | **20–28** |
+
+Atlante: `learn/reference/gui-atlas.md` (PNG in `gui-shots/`). Senza quella sessione le lezioni 03–07 restano astratte.
 
 Il wrapper `--auto` dura minuti: **non** è il corso. Il corso è LAB + quaderno + GUI.
 

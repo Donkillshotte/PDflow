@@ -92,7 +92,7 @@ Util più alta → core area più piccola (a parità di cell count post-synth).
 ## Capitolo C — Placement (Lezione 04)
 
 ### C1 — Global vs Detailed
-**Consegna:** screenshot o descrizione differenza visiva tra gp e dp.
+**Consegna:** confronta `gui-shots/win_place_gp.png` e `win_place_dp.png` (o le due GUI). Elenca 2 differenze visive. Fit su entrambi.
 
 ### C2 — Conta buffer resizer
 **Consegna:** da `3_resizer.rpt`, quanti buffer/inverter inseriti?

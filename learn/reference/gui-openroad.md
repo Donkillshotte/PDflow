@@ -1,6 +1,9 @@
-# Guida GUI OpenROAD — dove cliccare (pixel / pannelli)
+# Guida GUI OpenROAD — pannelli, menu, Tcl
 
-OpenROAD Qt. Layout finestra dopo `gui_*.odb`:
+**Atlante con screenshot reali (obbligatorio):** [gui-atlas.md](./gui-atlas.md)  
+PNG in [gui-shots/](./gui-shots/) catturati da OpenROAD Qt 26Q2 sul GCD `learn`.
+
+OpenROAD Qt. Layout finestra dopo `gui_*.odb` (stessi rettangoli etichettati A–G nell’atlante):
 
 ```
 ┌──────────────┬────────────────────────────┬─────────────────┐
@@ -117,17 +120,17 @@ gui::clear_selections
 
 ## Sequenza didattica (una sessione GUI di 45 min)
 
-Apri in ordine (chiudi o File→Load tra uno e l'altro):
+Segui la tabella cronometrata in [gui-atlas.md](./gui-atlas.md) §6. In sintesi:
 
-1. `gui_1_synth.odb` — blob 0,0
-2. `gui_2_1_floorplan.odb` — rows
-3. `gui_2_4_floorplan_pdn.odb` — power
+1. `gui_1_synth.odb` — canvas nero (PNG `win_synth.png`)
+2. `gui_2_1_floorplan.odb` — die/core (`win_floorplan.png`)
+3. `gui_2_4_floorplan_pdn.odb` — power (`03_pdn_labeled.png`)
 4. `gui_3_3_place_gp.odb` vs `gui_3_5_place_dp.odb`
-5. `gui_4_cts.odb` — clock nets
-6. `gui_5_1_grt.odb` vs `gui_5_2_route.odb`
-7. `gui_final`
+5. `gui_4_cts.odb` — `select -name "clk" -type Net`
+6. `gui_5_1_grt.odb` vs `gui_5_2_route.odb` (isola metal2 / metal3)
+7. `gui_final` — Inspector `CTS_NDR_0`
 
-Per ciascuno: 5 minuti, una screenshot mentale, una riga nel quaderno.
+Per ciascuno: 5 minuti, confronto con il PNG dell’atlante, una riga nel quaderno.
 
 ---
 

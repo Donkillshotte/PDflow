@@ -95,7 +95,18 @@ Non cambiare cinque variabili insieme: non capirai mai quale ha causato l'effett
 | Antenna violations | routing su gate | diodi antenna (step finishing) |
 | Route non completa | guide mancanti | verifica `route.guide` size > 0 |
 
-**GUI:** heatmap Routing Congestion su `gui_5_1_grt.odb`
+### GUI
+
+| Sintomo | Causa probabile | Fix |
+|---|---|---|
+| Preview Cursor nera / “non disponibile” | Preview ≠ VNC | **Desktop** su cursor.com/agents |
+| Canvas nero su `1_synth` | nessun die | normale; vai a floorplan |
+| `GUI-0013` su `"Rows"` | nome controllo inesistente | non usare quella stringa; vedi atlante §5.2 |
+| `sta_error 563` su `report_checks -path_delay max` | flag non valido in questa STA | `report_checks -max_paths 3` |
+| Layer accesi ma “non vedo il clock” | i fili sono geometria layer | `select -name "clk" -type Net` |
+| `save_image` GUI-0078 su `2_1_floorplan` | poca geometria | usa `2_4` PDN o la finestra Qt |
+
+Vedi `gui-atlas.md`.
 
 ---
 

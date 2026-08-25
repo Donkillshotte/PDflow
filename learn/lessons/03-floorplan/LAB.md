@@ -92,29 +92,34 @@ Disegna a mano: M1 followpin → M4 → M7
 
 ## Parte 5 — GUI session (30 min)
 
+Atlante obbligatorio: `learn/reference/gui-atlas.md` §5.2–5.4 (PNG `win_floorplan.png`, `win_pdn.png`, `03_pdn_labeled.png`).
+
 ### Sessione A — Core init
 ```bash
-make ... gui_2_1_floorplan.odb
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn gui_2_1_floorplan.odb
 ```
 
 Checklist:
-- [ ] Zoom to fit
-- [ ] Display → Rows → ON
-- [ ] Display → Instances → OFF (meno rumore)
-- [ ] Misura visivamente aspect ratio (~1.0)
+- [ ] Fit (`F`) — due rettangoli concentrici (die / core)
+- [ ] Canvas quasi vuoto: **normale** (nessuna logica piazzata)
+- [ ] **Non** usare `gui::set_display_controls "Rows" visible true` → `GUI-0013` in questa build; cerca Rows nel tree se c’è, altrimenti passa al PDN
+- [ ] Aspect ratio visivo ~1.0
 
 ### Sessione B — PDN
 ```bash
-make ... gui_2_4_floorplan_pdn.odb
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn gui_2_4_floorplan_pdn.odb
 ```
 
-Checklist:
-- [ ] Nets → Power ON, Signal OFF
-- [ ] Layer metal4 ON
-- [ ] Trova strap VDD (di solito layer colorato orizzontale)
-- [ ] Tapcell visibile ai bordi (step 2_3)
+Checklist (colori Nangate45 in *questa* GUI):
+- [ ] Linee blu fitte = rail M1 followpin
+- [ ] Strap verdi verticali + rosa orizzontali
+- [ ] Display Control: spegni metal2/metal3 per “pulire” il segnale (non c’è ancora)
+- [ ] Tcl: `gui::set_display_controls "Nets/Power" visible true`
+- [ ] Tapcell: `gui_2_3_floorplan_tapcell.odb` o PNG `win_tapcell.png`
 
-**Scavenger hunt B3:** annota coordinate approssimative di un tapcell.
+**Scavenger hunt B3:** annota nel quaderno i colori strap vs rail; confronta con `03_pdn_labeled.png`.
 
 ---
 

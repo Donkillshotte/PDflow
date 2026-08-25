@@ -47,9 +47,11 @@ con materiali da leggere, esercizi da eseguire, GUI da ispezionare e workbook da
 learn/
 ├── README.md              ← questo file
 ├── CURRICULUM.md          ← syllabus dettagliato
+├── EVIDENCE.md            ← verifica pipeline + smoke
 ├── lib/                   ← ui, orfs, progress, validate
-├── reference/             ← glossario, debug, walkthrough Tcl, formati file
-├── workbook/              ← esercizi, soluzioni, template quaderno
+├── reference/             ← glossario, debug, walkthrough Tcl, atlante GUI
+│   └── gui-shots/         ← PNG Qt + canvas OpenROAD
+├── workbook/              ← esercizi, quiz, progetto finale
 ├── designs/               ← config e SDC del design didattico
 └── lessons/
     ├── 00-intro/
@@ -76,6 +78,9 @@ learn/
 
 Usa il pulsante **Desktop** nella pagina agente Cursor ([cursor.com/agents](https://cursor.com/agents)).
 Le card **Preview** nella chat non funzionano per applicazioni Qt/VNC.
+
+Guida pixel-level (screenshot Qt reali, anatomia A–G, galleria synth→GDS):
+[learn/reference/gui-atlas.md](./reference/gui-atlas.md).
 
 Poi, sul desktop remoto:
 

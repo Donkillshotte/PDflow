@@ -61,10 +61,10 @@ Confronta con `always @(posedge` nel RTL. Ogni registro RTL ≈ un DFF (più bit
 
 ## GUI
 
-`gui_1_synth.odb`: zoom out. Celle in un punto. Display → Instances ON, Nets OFF.  
+`gui_1_synth.odb`: zoom out. Celle in un punto **o canvas nero** (die 0×0). PNG: `gui-shots/win_synth.png`. Display → Instances ON, Nets OFF.  
 Seleziona una `DFF_X1` → Inspector → master.
 
-Non cercare un “chip”: il floorplan non è ancora esistito.
+Non cercare un “chip”: il floorplan non è ancora esistito. Atlante: `gui-atlas.md` §5.1.
 
 ## Timing a questo stadio
 

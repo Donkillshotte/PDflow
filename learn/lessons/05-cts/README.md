@@ -35,11 +35,21 @@ CTS costruisce un albero di `CLKBUF*` / inverter con **latenza simile** verso i 
 
 Se il passo 4 fallisce: `save_progress 4_1_error` → `gui_4_1_error.odb`.
 
+## Skew, latency, NDR (definizioni operative)
+
+- **Latency** di un sink: ritardo dal pin `clk` del blocco al pin `CK` del FF (attraverso l’albero).
+- **Skew**: differenza di latency tra due sink. Setup “mangia” lo skew *peggiorativo*; hold odia lo skew *invertito*.
+- **Ideal clock** (pre-CTS): STA assume latency 0 di rete. È una bugia utile.
+- **Propagated clock** (post-CTS): OpenSTA usa i delay dei `CLKBUF*`.
+- **NDR** (`CTS_NDR_0` in Inspector sulla net `clk`): regola di routing più larga/spazio sul clock, così il segnale è meno fragile. Non significa “clock ancora ideale”.
+
+Un albero batte uno stellare (un filo dal pin a tutti i FF) perché lo stellare ha RC e slew inaccettabili già a poche decine di sink.
+
 ## Relazione con lezione 01 e 04
 
 Clock stretto (01) + resizer (04) + core piccolo (03) = utilization effettiva > 100% al CTS.
 
-Non è un bug di OpenROAD. È fisica.
+Non è un bug di OpenROAD. È fisica. I buffer CTS **occupano site** come le `AND2`: il detailed placement post-CTS è lo stesso motore della lezione 04, con meno aria.
 
 ## Metriche
 
@@ -51,8 +61,8 @@ Non è un bug di OpenROAD. È fisica.
 
 ## GUI
 
-`gui_4_cts.odb`: Nets → Clock only. View → Clock Tree Viewer.  
-Dettagli: `gui-openroad.md`.
+`gui_4_cts.odb`: `select -name "clk" -type Net` (Inspector: Signal type CLOCK).  
+PNG: `gui-shots/win_cts.png`. Dettagli: `gui-atlas.md` §5.7.
 
 ## Durata
 

@@ -89,7 +89,7 @@ Sequenza obbligatoria (15 min ciascuna):
 
 Heatmap **Placement Density**: rosso = pieno. Se tutto rosso a util 55% + SDC tight, la lezione 05 fallirà.
 
-Dettagli click: `learn/reference/gui-openroad.md`.
+Pixel e PNG: `learn/reference/gui-atlas.md` §5.5–5.6. Menu: `gui-openroad.md`.
 
 ## Esperimento controllato
 

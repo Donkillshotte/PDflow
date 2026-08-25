@@ -57,7 +57,7 @@ WNS può **peggiorare** al finish: i fili reali sono più lenti del modello.
 - `gui_final` — worst path, IR drop se heatmap popolata
 - `klayout 6_final.gds` — layer, fit
 
-Guida: `gui-openroad.md`.
+Guida: `gui-atlas.md` (screenshot) e `gui-openroad.md` (menu).
 
 ## Progetto finale
 

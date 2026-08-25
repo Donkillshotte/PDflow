@@ -6,8 +6,9 @@ Tempo stimato **solo reference**: 3–4 ore di lettura attiva (non in diagonale)
 
 1. [glossary.md](./glossary.md) — tieni aperto per tutto il corso
 2. [file-formats.md](./file-formats.md) — lezione 00–01
-3. [gui-openroad.md](./gui-openroad.md) — prima di qualsiasi `gui_*`
-4. [debug-playbook.md](./debug-playbook.md) — da lezione 03; obbligatorio prima della 05
+3. [gui-atlas.md](./gui-atlas.md) — screenshot Qt reali, anatomia pixel, galleria per fase
+4. [gui-openroad.md](./gui-openroad.md) — menu, heatmap, troubleshooting Preview
+5. [debug-playbook.md](./debug-playbook.md) — da lezione 03; obbligatorio prima della 05
 
 ## Walkthrough script ORFS (leggi *mentre* esegui la fase)
 
@@ -28,4 +29,5 @@ Tempo stimato **solo reference**: 3–4 ore di lettura attiva (non in diagonale)
 
 ## GUI
 
-[gui-openroad.md](./gui-openroad.md) — pannelli, click, sequenza didattica 45 min
+- [gui-atlas.md](./gui-atlas.md) — guida pixel-level con PNG in `gui-shots/`
+- [gui-openroad.md](./gui-openroad.md) — pannelli, menu, sequenza 45 min

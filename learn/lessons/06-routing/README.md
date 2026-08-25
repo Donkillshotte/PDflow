@@ -44,10 +44,11 @@ Nota: GRT **ripara ancora il timing** (`repair_timing_helper`) perché i parassi
 
 ## GUI
 
-1. `gui_5_1_grt.odb` — heatmap congestion, guide
-2. `gui_5_2_route.odb` — metal1–10 visibili uno alla volta
+1. `gui_5_1_grt.odb` — heatmap congestion, guide (`win_grt.png`)
+2. `gui_5_2_route.odb` — isola metal2 (rosso) poi metal3 (verde)
 
-Esercizio: stessa net, confronta guida vs wire.
+Esercizio: stessa net, confronta guida vs wire. PNG annotato: `08_route_labeled.png`.
+Atlante: `gui-atlas.md` §2 e §5.8–5.9.
 
 ## Concetti
 

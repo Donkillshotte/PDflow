@@ -52,9 +52,15 @@ Fai i quiz **dopo** LAB della lezione. Soluzioni in fondo. Non scrollare.
 2. Fill cells cambiano la funzione logica?
 3. Elenca 4 deliverable di signoff.
 
----
+## Quiz GUI — atlante
 
-## Soluzioni
+1. In una finestra 1680×1000, il Display Control sta a sinistra o a destra?
+2. `metal2` in Nangate45 in *questa* GUI è rosso o verde?
+3. Perché `gui_1_synth.odb` ha il canvas nero?
+4. `gui::set_display_controls "Rows" visible true` su 26Q2: cosa succede?
+5. Inspector: `CTS_NDR_0` su net `clk` significa che il clock è ancora unideal?
+
+---
 
 **00:** (1) synth, floorplan, place, cts, route, finish. (2) FLOW_VARIANT. (3) Preview è HTTP iframe; OpenROAD è Qt/VNC → Desktop.
 
@@ -71,3 +77,5 @@ Fai i quiz **dopo** LAB della lezione. Soluzioni in fondo. Non scrollare.
 **06:** (1) No, sono guide. (2) `5_route_drc.rpt`. (3) DRT ha bisogno di guide/congestion map.
 
 **07:** (1) STA. (2) No. (3) GDS, DEF, SPEF, SDC (e netlist .v).
+
+**GUI:** (1) Sinistra (zona C). (2) Rosso. (3) Die 0×0, celle non piazzate. (4) `[ERROR GUI-0013]`. (5) No: è una non-default rule di routing clock, segno che CTS ha toccato quella net.
