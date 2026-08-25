@@ -11,7 +11,7 @@ JOBS="$(nproc)"
 
 echo "==> Installo le dipendenze di build di yosys..."
 sudo apt-get install -y -qq build-essential cmake bison flex libreadline-dev \
-  libffi-dev pkg-config python3-dev zlib1g-dev tcl8.6-dev
+  libffi-dev pkg-config python3-dev zlib1g-dev tcl-dev
 
 if [[ ! -d "${ORFS}" ]]; then
   echo "==> Clono OpenROAD-flow-scripts..."

@@ -93,8 +93,7 @@ sta
 - Il launcher `run_gcd_flow.sh` passa a ORFS i percorsi di `openroad`, `sta` e
   `yosys` trovati nel `PATH`. ORFS, fuori da un ambiente Nix, cerca altrimenti
   i binari nella propria directory `tools/install`.
-- La revisione corrente di ORFS usa ancora l'opzione yosys storica `-c`, che
-  yosys 0.68 ha sostituito con `-s`. Il launcher usa
-  `yosys-orfs-wrapper.sh` per tradurre esclusivamente questa opzione.
+- Lo script di setup installa `tcl-dev`: l'integrazione Tcl di yosys è
+  necessaria perché ORFS esegue gli script di sintesi con l'opzione `-c`.
 - La GUI di OpenROAD (`openroad -gui`) richiede Qt/X11: in ambiente headless
   usare `Xvfb` oppure lavorare da riga di comando.
