@@ -13,7 +13,7 @@ OPENROAD_RELEASE="$(openroad -version | awk '{print $1}')"
 ORFS_TAG="${ORFS_TAG:-${OPENROAD_RELEASE%%-*}}"
 
 echo "==> Installo le dipendenze di build di yosys..."
-sudo apt-get install -y -qq build-essential cmake bison flex libreadline-dev \
+sudo apt-get install -y -qq build-essential cmake bison flex time libreadline-dev \
   libffi-dev pkg-config python3-dev zlib1g-dev tcl-dev
 
 if [[ ! -d "${ORFS}" ]]; then
