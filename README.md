@@ -64,7 +64,7 @@ finishing (GDSII via KLayout). Output in
 `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/`:
 
 Il launcher usa una core utilization del 35% per lasciare spazio al repair
-timing richiesto dal vincolo aggressivo di 0,25 ns dell'esempio. È possibile
+timing richiesto dal vincolo aggressivo di 0,46 ns dell'esempio 26Q2. È possibile
 sovrascriverla, per esempio con `CORE_UTILIZATION=45`.
 
 - `6_final.gds` — layout finale
