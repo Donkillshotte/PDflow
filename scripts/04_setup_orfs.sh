@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Clona OpenROAD-flow-scripts (ORFS) e compila yosys dal submodule pinnato.
 # OpenROAD arriva dal pacchetto precompilato (script 01), quindi qui si
-# compila solo yosys. Installa in tools/yosys e crea /usr/local/bin/yosys.
+# compila solo yosys, usando CMake o Makefile secondo la revisione.
+# Installa in tools/yosys e crea /usr/local/bin/yosys.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -34,15 +35,20 @@ echo "==> Inizializzo il submodule yosys..."
   git submodule update --init --depth 1 --recursive tools/yosys
 )
 
-echo "==> Compilo yosys (CMake)..."
+echo "==> Compilo yosys..."
 (
   cd "${ORFS}/tools/yosys"
-  cmake -B build \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=gcc \
-    -DCMAKE_CXX_COMPILER=g++ \
-    -DCMAKE_INSTALL_PREFIX="${YOSYS_PREFIX}"
-  cmake --build build --target install -j"${JOBS}"
+  if [[ -f CMakeLists.txt ]]; then
+    cmake -B build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=gcc \
+      -DCMAKE_CXX_COMPILER=g++ \
+      -DCMAKE_INSTALL_PREFIX="${YOSYS_PREFIX}"
+    cmake --build build --target install -j"${JOBS}"
+  else
+    make config-gcc
+    make install -j"${JOBS}" PREFIX="${YOSYS_PREFIX}"
+  fi
 )
 
 sudo ln -sf "${YOSYS_PREFIX}/bin/yosys" /usr/local/bin/yosys
