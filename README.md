@@ -55,14 +55,15 @@ klayout -v
 ## Corso hands-on Physical Design (consigliato per imparare)
 
 Percorso guidato **fase per fase** (constraints → synth → floorplan → place → CTS → route → GDS)
-con teoria, esercizi, file da leggere e ispezione GUI. Durata stimata: **6–10 ore**.
+con teoria, LAB da 60–120 min, walkthrough Tcl, workbook e GUI.
+Studio attivo stimato: **20–28 ore** (il wrapper `--auto` non sostituisce lo studio).
 
 ```bash
 ./scripts/learn_physical_design.sh --check    # verifica prerequisiti
 ./scripts/learn_physical_design.sh --list     # indice 8 lezioni
-./scripts/learn_physical_design.sh --lesson 01-constraints
-./scripts/learn_physical_design.sh --all      # percorso completo
+./scripts/learn_physical_design.sh --deep --lesson 01-constraints
 ./scripts/learn_physical_design.sh --resume   # riprendi progresso
+./scripts/test_course.sh                     # smoke test struttura + lezione 00
 ```
 
 Documentazione: [learn/README.md](learn/README.md) e [learn/CURRICULUM.md](learn/CURRICULUM.md).

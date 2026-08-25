@@ -1,7 +1,8 @@
 # Corso Physical Design — OpenROAD + ORFS
 
 Percorso **hands-on completo** per imparare ogni fase del physical design digitale.
-Non è un tutorial da 10 minuti: è strutturato per **6–10 ore di studio attivo**,
+Non è un tutorial da 10 minuti: è strutturato per **20–28 ore di studio attivo**
+(LAB + reference + workbook + GUI). Il wrapper `--auto` verifica i tool, non sostituisce lo studio.
 con materiali da leggere, esercizi da eseguire, GUI da ispezionare e workbook da compilare.
 
 ## Livelli di contenuto

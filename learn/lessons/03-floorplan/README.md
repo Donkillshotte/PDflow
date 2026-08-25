@@ -1,39 +1,64 @@
 # Lezione 03 — Floorplanning
 
+Il floorplan è l'**immobile** del chip: muri (die), stanze (core), pavimento (rows), impianto elettrico (PDN). Le celle logiche non sono ancora posizionate.
+
 ## Obiettivi
 
-- Capire die, core, rows, sites
-- Configurare **utilization** e area
-- Generare **PDN** (Power Distribution Network)
-- Ispezionare tapcells e margini
+- Disegnare die vs core vs row vs site
+- Usare `CORE_UTILIZATION` sapendo che è mutuamente esclusivo con `DIE_AREA`
+- Generare e ispezionare PDN
+- Predire perché utilization alta uccide il CTS
 
-## Sottofasi floorplan in ORFS
+## Letture
 
-| Step | Output | Script |
+- Questo README
+- `walkthrough-floorplan.tcl.md` **per intero**
+- LAB 03
+- `grid_strategy-M1-M4-M7.tcl`
+
+## Quattro metodi, uno solo
+
+ORFS esce con errore se ne definisci due:
+
+1. `FLOORPLAN_DEF`
+2. `FOOTPRINT` (ICeWall)
+3. `DIE_AREA` + `CORE_AREA`
+4. `CORE_UTILIZATION` ← **corso**
+
+`initialize_floorplan -utilization 35 -aspect_ratio 1.0 -core_space 1.0 -site ...`
+
+Utilization **alta** = core **piccolo** a parità di area celle post-synth.
+
+## Sottofasi
+
+| Step | Output | Cosa impari |
 |---|---|---|
-| 2_1_floorplan | Die/core, rows | `floorplan.tcl` |
-| 2_2_floorplan_macro | Macro placement | `macro_place.tcl` |
-| 2_3_floorplan_tapcell | Tap/endcap | `tapcell.tcl` |
-| 2_4_floorplan_pdn | Power grid | `pdn.tcl` + `PDN_TCL` |
+| 2_1 | die/core/rows | geometria |
+| 2_2 | macro | GCD: no-op |
+| 2_3 | tapcell | well ties |
+| 2_4 | PDN | VDD/VSS straps |
 
-## Parametri chiave
+## PDN in una frase
 
-- `CORE_UTILIZATION` — % del die per il core (35% nel corso)
-- `DIE_AREA` / `CORE_AREA` — override manuale dimensioni
-- `PDN_TCL` — script straps VDD/VSS (metal1 followpin + metal4/7)
+Metal1 followpin sulle rows + straps metal4/metal7 + via di connessione. Senza PDN le celle non hanno alimentazione legale; IR drop al finish è cieco.
 
-## Cosa guardare in GUI
+## GUI
 
-1. **2_1_floorplan** — contorno die, core, rows orizzontali
-2. **2_4_floorplan_pdn** — strisce VDD/VSS, followpins M1
-3. Layer **Rows**, **PDN**, **Sites** nel Display Control
+- `gui_2_1_floorplan.odb`: Rows ON, Instances OFF
+- `gui_2_4_floorplan_pdn.odb`: Nets Power/Ground ON, metal4 ON
+
+Guida click: `gui-openroad.md`.
+
+## Esperimento
+
+`CORE_UTILIZATION=25` vs `50`, stessa synth. Tabella core area dal log `2_1_floorplan.log`.
 
 ## Errori comuni
 
-- Utilization troppo alta → CTS/placement falliscono dopo
-- Core troppo piccolo → DPL-0038 (utilization > 100%)
-- PDN incompleta → IR drop elevato (finish)
+- Util 55% + SDC 0.25 ns → DPL-0038 più tardi (non al floorplan)
+- DIE_AREA insieme a UTILIZATION → exit 1 immediato
+- PDN “invisibile” = layer spenti, non assente
 
-## Durata stimata
+## Durata
 
-60–90 minuti.
+README+walkthrough 50 min, LAB 90–120 min, **totale ~3 ore**.

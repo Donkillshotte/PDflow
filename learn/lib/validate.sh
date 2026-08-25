@@ -30,7 +30,8 @@ learn_check_prerequisites() {
   learn_require_cmd klayout || ok=1
   learn_orfs_env
   [[ -d "${FLOW}" ]] || { ui_fail "ORFS non trovato in ${FLOW}"; ok=1; }
-  [[ -f "${DESIGN_CONFIG}" ]] || { ui_fail "Config tutorial mancante"; ok=1; }
+  [[ -f "${TUTORIAL_SRC}/config.mk" ]] || { ui_fail "Config tutorial mancante in ${TUTORIAL_SRC}"; ok=1; }
+  [[ -e "${TUTORIAL_ORFS}/config.mk" ]] || { ui_fail "Symlink ORFS tutorial mancante: ${TUTORIAL_ORFS}"; ok=1; }
   return "${ok}"
 }
 

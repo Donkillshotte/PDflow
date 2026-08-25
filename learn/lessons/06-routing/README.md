@@ -1,40 +1,60 @@
 # Lezione 06 — Routing
 
+Routing è il passaggio da “celle con pin” a “fili che la fabbrica può stampare”.
+
 ## Obiettivi
 
-- Distinguere **global routing** (guide) vs **detailed routing** (wire reali)
-- Leggere route guide, report congestione, DRC
-- Ispezionare layer metal in GUI
-- Capire antenna, filler, spacing rules
+- Distinguere guide GRT da wire DRT
+- Leggere congestion e DRC
+- Capire perché il detailed router **non** parte senza GRT
+- Antenna rules a livello concettuale
 
-## Sottofasi routing ORFS
+## Letture
+
+- Questo README
+- `walkthrough-route.tcl.md`
+- LAB 06
+- `gui-openroad.md` layer metal
+
+## Due problemi diversi
+
+**Global routing:** assegnare fasce (risorse 2D) minimizzando overflow. Output: `route.guide`.
+
+**Detailed routing:** geometria: width, spacing, via, enclosure. Output: metal in ODB + `5_route_drc.rpt`.
+
+DRT senza guide è come asfaltare senza tracciato.
+
+## Sottofasi ORFS
 
 | Step | Output |
 |---|---|
-| 5_1_grt | Global route + `route.guide` |
-| 5_2_route | Detailed route (TritonRoute) |
-| 5_3_fillcell | Fill cells post-route |
+| 5_1_grt | GRT + repair incrementale timing |
+| 5_2_route | TritonRoute + antenna |
+| 5_3_fillcell | fill post-route |
 
-## File chiave
+Nota: GRT **ripara ancora il timing** (`repair_timing_helper`) perché i parassiti da guide sono meglio del placement.
 
-- `route.guide` — guida per il detailed router
-- `5_2_route.odb` — layout con wire su metal1–metal10
-- `reports/5_route_drc.rpt` — violazioni DRC (vuoto = OK)
-- `reports/5_global_route.rpt` — overflow/congestion
+## File
+
+| File | Significato se vuoto/non vuoto |
+|---|---|
+| `route.guide` | deve essere grande (>0) |
+| `5_route_drc.rpt` | vuoto = DRC clean (nel nostro GCD) |
+| `5_global_route.rpt` | overflow residue |
 
 ## GUI
 
-- `gui_5_1_grt.odb` — guide (non wire finali)
-- `gui_5_2_route.odb` — routing completo
-- Heatmap **Routing Congestion**
-- Layer visibility: metal1, via1, metal2, …
+1. `gui_5_1_grt.odb` — heatmap congestion, guide
+2. `gui_5_2_route.odb` — metal1–10 visibili uno alla volta
+
+Esercizio: stessa net, confronta guida vs wire.
 
 ## Concetti
 
-- **Congestion** — troppe net in una regione → router fatica
-- **DRC** — design rule check (spacing, width, via enclosure)
-- **Antenna** — accumulo carica su gate durante fab → fix con diode
+- **Congestion:** troppe net / troppi track in un gcell
+- **DRC:** regole geometriche PDK
+- **Antenna:** carica su gate in etch → diodi, poi ri-route
 
-## Durata stimata
+## Durata
 
-75–90 minuti.
+README+walkthrough 40 min, LAB 90 min, **totale ~2.5 ore**.

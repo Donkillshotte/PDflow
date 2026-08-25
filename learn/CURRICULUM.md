@@ -175,14 +175,18 @@ clean_synth | clean_floorplan | clean_place | clean_cts | clean_route | clean_fi
 gui_<stem>   # es. gui_3_place.odb, gui_final
 ```
 
-## Tempo totale stimato
+## Tempo totale stimato (studio attivo)
 
 | Componente | Ore |
 |---|---|
-| Lettura teoria | 2–3 |
-| Esercizi hands-on | 4–6 |
-| GUI e sperimentazione | 2–4 |
-| **Totale** | **6–10** |
+| README lezioni 00–07 | 4–5 |
+| LAB.md (8 sessioni) | 8–12 |
+| Reference + walkthrough Tcl | 3–4 |
+| Workbook + quiz + progetto finale | 3–4 |
+| GUI guidata | 2–3 |
+| **Totale realistico** | **20–28** |
+
+Il wrapper `--auto` dura minuti: **non** è il corso. Il corso è LAB + quaderno + GUI.
 
 ---
 

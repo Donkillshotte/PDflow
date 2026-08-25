@@ -1,23 +1,58 @@
 # Lezione 01 — Constraints e configurazione design
 
+Questa è la lezione più importante del corso. Se l'SDC è sbagliato, **tutto** il fisico è un ottimizzatore che insegue un obiettivo falso.
+
 ## Obiettivi
 
-- Leggere e scrivere un file **SDC** (Synopsys Design Constraints)
-- Capire `config.mk`: utilization, PDK, file RTL
-- Vedere l'effetto dei constraints sul timing finale
-- Collegare constraints → synthesis → timing analysis
+- Leggere e scrivere un file **SDC** capendo ogni riga
+- Capire `config.mk` come interfaccia verso ORFS (non come magia)
+- Vedere l'effetto dei constraints su **area** e **buffer count**, non solo su WNS
+- Collegare constraints → synthesis → placement → CTS (catena, non silos)
+
+## Letture obbligatorie
+
+1. Questo README
+2. `LAB.md` di questa lezione (90–120 min)
+3. `learn/workbook/README.md` capitolo A
+4. `learn/reference/gui-openroad.md` sezione Charts
 
 ## Cos'è l'SDC?
 
-L'SDC descrive le **regole temporali** del design:
+L'SDC è il **contratto temporale** tra chi ha scritto l'RTL e chi fa il fisico.
 
-| Comando | Significato |
-|---|---|
-| `create_clock` | Definisce il periodo del clock (target di frequenza) |
-| `set_input_delay` | Quanto tardano i segnali in ingresso rispetto al clock |
-| `set_output_delay` | Quanto presto devono uscire i segnali verso il mondo esterno |
-| `set_false_path` | Percorsi che il timing analyzer deve ignorare |
-| `set_multicycle_path` | Percorsi che possono usare più cicli |
+Static Timing Analysis **non simula** vettori. Propaga delay worst-case sui path. Senza clock, STA non sa cosa è “in tempo”.
+
+| Comando | Significato | Quando lo userai |
+|---|---|---|
+| `create_clock` | Periodo e pin del clock | Sempre |
+| `set_input_delay` | Arrivo dati dai pin vs clock | Quasi sempre |
+| `set_output_delay` | Budget verso il mondo esterno | Quasi sempre |
+| `set_false_path` | Path da ignorare | Reset asincroni, CDC |
+| `set_multicycle_path` | Path su N cicli | ALU lente, rare su GCD |
+| `set_clock_uncertainty` | Margine jitter/skew extra | Signoff, non in lezione 01 |
+| `set_clock_latency` | Latenza source/network | Pre-CTS vs post-CTS |
+
+GCD del corso usa solo clock + I/O delay. È intenzionale: impara questi tre comandi a memoria.
+
+## Anatomia del nostro SDC
+
+File: `learn/designs/nangate45/gcd-tutorial/constraint.sdc`
+
+```tcl
+set clk_period 0.46          ;# ns → ~2.17 GHz
+set clk_io_pct 0.2           ;# 20% del periodo ai pin
+create_clock -name core_clock -period $clk_period [get_ports clk]
+set_input_delay  [expr $clk_period * $clk_io_pct] -clock core_clock [all_inputs -no_clocks]
+set_output_delay [expr $clk_period * $clk_io_pct] -clock core_clock [all_outputs]
+```
+
+**Calcolo obbligatorio:** `0.46 * 0.2 = 0.092 ns` di input e output delay.
+
+Interpretazione setup su un path registro-registro:
+- Tempo disponibile ≈ `clk_period - setup_lib - uncertainty` (semplificato)
+- Se il combinatorio + wire > disponibile → WNS negativo
+
+I/O path: l'input delay **mangia** parte del periodo prima ancora della logica interna.
 
 ## File del corso
 
@@ -29,36 +64,62 @@ learn/designs/nangate45/gcd-tutorial/
 └── constraint_tight.sdc   # esercizio difficile (0.25 ns)
 ```
 
+Tre SDC = tre **ipotesi di prodotto**. Non tre “numeri a caso”.
+
+| File | Ipotesi | Cosa ti aspetti |
+|---|---|---|
+| relaxed 2.0 ns | chip lento, facile | pochi buffer, WNS comodo |
+| default 0.46 ns | target realistico GCD ORFS 26Q2 | qualche violazione pre-route |
+| tight 0.25 ns | overclock didattico | RSZ esplode, CTS può fallire |
+
 ## config.mk — parametri che influenzano il fisico
 
-| Variabile | Effetto |
-|---|---|
-| `CORE_UTILIZATION` | Percentuale del core occupata dalle celle |
-| `SDC_FILE` | Quale file di constraints usare |
-| `PDN_TCL` | Strategia power grid (floorplan) |
-| `PLACE_DENSITY_LB_ADDON` | Margine densità per il placement |
-| `FLOW_VARIANT` | Sottocartella risultati (`learn` vs `base`) |
+| Variabile | Effetto | Accoppiamento con SDC |
+|---|---|---|
+| `CORE_UTILIZATION` | % die per il core | Clock stretto richiede più spazio |
+| `SDC_FILE` | Quale constraints | Diretto |
+| `PDN_TCL` | Power grid | IR drop, poco timing diretto |
+| `PLACE_DENSITY_LB_ADDON` | Margine densità GP | Clock stretto + density alta = male |
+| `FLOW_VARIANT` | Cartella risultati | Sempre `learn` nel corso |
 
-## Concetto chiave: timing closure
+**Anti-pattern:** cambiare SDC *e* utilization nello stesso esperimento.
 
-- Clock **rilassato** (2 ns) → facile da chiudere, pochi buffer, area minore
-- Clock **stretto** (0.25 ns) → difficile, resizer inserisce buffer/upsize, area esplode
-- **Utilization alta** + clock stretto → rischio overflow (>100% area) al CTS
+## Concetto chiave: timing closure è un problema di area
 
-## Esercizi
+Catena causale da memorizzare:
 
-### 1-A — Leggi l'SDC default
-Apri `constraint.sdc` e identifica clock period e I/O delay.
+```
+clock più stretto
+  → slack più negativo
+    → resizer inserisce buffer e upsize
+      → area istanze cresce
+        → stessa CORE_UTILIZATION diventa “piena”
+          → detailed placement CTS: DPL-0038
+```
 
-### 1-B — Clock rilassato
-Copia `constraint_relaxed.sdc` → `constraint.sdc`, rilancia `place` e confronta slack.
+Quindi SDC **non è solo timing**. È un input di **floorplan**.
 
-### 1-C — Clock aggressivo
-Usa `constraint_tight.sdc`, osserva buffer al CTS e utilization.
+## OpenSTA vs OpenROAD
 
-### 1-D — GUI timing
-Apri `gui_3_place.odb` → pannello Charts → Endpoint Slack.
+- `sta` legge liberty + verilog + sdc → slack **senza** wire reali
+- OpenROAD dopo place stima RC da placement
+- Dopo route, SPEF è la stima migliore
+
+Non confrontare slack synth con slack finish come se fossero la stessa metrica.
+
+## Esercizi (sintesi — il dettaglio è nel LAB)
+
+- 1-A Lettura SDC
+- 1-B Clock rilassato + tabella
+- 1-C Clock aggressivo + debug
+- 1-D GUI Endpoint Slack
+- 1-E OpenSTA standalone (LAB)
+
+Quiz: `learn/workbook/quiz.md` sezione 01.
 
 ## Durata stimata
 
-60–90 minuti.
+- README: 30–40 min
+- LAB: 90–120 min
+- Workbook A: 45–60 min
+- **Totale: 3–3.5 ore**
