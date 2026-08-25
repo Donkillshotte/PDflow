@@ -16,7 +16,7 @@ Ogni fase del corso produce file diversi. Questa guida ti dice **come studiarli*
 
 **Cosa impari:** gerarchia RTL vs flat gate-level; nomi celle standard; connessioni clock/reset.
 
-**Esercizio:** conta `DFF` in RTL vs `1_2_yosys.v`. Perché differiscono?
+**Esercizio:** conta `DFF` in RTL vs `1_2_yosys.v`. Riferimento `learn`: 35 `DFF_X1` in `synth_stat.txt`.
 
 ---
 
@@ -79,6 +79,7 @@ Annota per ciascuno: numero istanze, presenza wire, presenza clock buffers.
 **Quando:** post-estrazione (finish). Timing **realistico**.
 
 **Esercizio:** confronta WNS in report pre-SPEF vs post-SPEF (`6_finish.rpt`).
+Riferimento `learn`: place **+0.01**, CTS **−0.04**, GRT **−0.05**, finish **−0.04** (TNS −0.60).
 
 ---
 

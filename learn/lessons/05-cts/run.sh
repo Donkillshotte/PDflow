@@ -31,9 +31,9 @@ lesson_main() {
   ui_section "Esercizio 5-D — GUI Clock Tree"
   cat <<'EOF'
   Con gui_4_1_cts.odb (o gui_4_cts.odb):
-  • Display Control → Nets → Clock only
-  • Instances → Clock tree buffers
-  • View → Clock Tree Viewer → seleziona clock core_clock
+  • Display Control → layer metal; Tcl `select -name "clkbuf*"`
+  • Clock tree: View → Clock Tree Viewer **oppure** PNG
+    learn/reference/gui-shots/orfs_cts_clock_tree.png
   • Confronta con gui_3_place.odb: quante celle in più?
 EOF
   if ui_confirm "Aprire gui_4_cts.odb?"; then learn_gui 4_cts.odb; fi

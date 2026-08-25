@@ -68,7 +68,19 @@ Non cercare un “chip”: il floorplan non è ancora esistito. Atlante: `gui-at
 
 ## Timing a questo stadio
 
-`sta` + liberty + netlist + SDC = delay **senza wire**. WNS ottimistico o comunque non confrontabile col finish.
+`sta` + liberty + netlist + SDC = delay **senza wire**. WNS ottimistico o comunque non confrontabile col finish (−0.04 ns SPEF sul run di riferimento).
+
+## Un run `learn` di riferimento (`synth_stat.txt`)
+
+| Voce | Valore |
+|---|---|
+| Celle | 496 |
+| Area | 628.824 |
+| `DFF_X1` | 35 (≈25% area sequenziale) |
+| `NAND2_X1` | 128 |
+| `CLKBUF_*` già in synth | 2 (non è CTS) |
+
+I tuoi numeri: stessa tabella nel quaderno. Se i DFF spariscono, Yosys ha ottimizzato via registri: **bug RTL** o `current_design` sbagliato.
 
 ## Durata stimata
 

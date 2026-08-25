@@ -1,100 +1,94 @@
 # Walkthrough annotato — synthesis (Yosys + synth_odb.tcl)
 
-La sintesi in ORFS è **due tool concatenati**:
+La sintesi in ORFS 26Q2 è **due tool concatenati**:
 
 ```
-gcd.v  --Yosys Tcl-->  1_2_yosys.v  --OpenROAD synth_odb.tcl-->  1_synth.odb
+gcd.v
+  -- synth_canonicalize.tcl --> 1_1_yosys_canonicalize.rtlil
+  -- synth.tcl              --> 1_2_yosys.v + 1_2_yosys.sdc
+  -- synth_odb.tcl          --> 1_synth.odb + 1_synth.sdc
 ```
 
-File Yosys: `flow/scripts/synth.tcl` (+ `synth_canonicalize.tcl`, `synth_preamble.tcl`)  
-File OpenROAD: `flow/scripts/synth_odb.tcl`
+Apri gli script in `flow/scripts/` mentre leggi. GUI: canvas nero, `gui-shots/win_synth.png`.
 
 ---
 
-## Perché due passi (canonicalize poi synth)
+## Statistiche di un run `learn` (tuo `synth_stat.txt`)
 
-ORFS 26Q2 divide:
+Riferimento:
 
-1. **Canonicalize** (`synth_canonicalize.tcl`) → `1_1_yosys_canonicalize.rtlil`  
-   Legge Verilog, normalizza, scrive RTLIL checkpoint.
-2. **Synth** (`synth.tcl`) → `1_2_yosys.v`  
-   Riparte dal checkpoint, ottimizza, mappa alla libreria.
+- **496** celle, area **628.824** (unità liberty)
+- **35** `DFF_X1` (25% dell’area è sequenziale)
+- tante `NAND2_X1` (128) — ABC ha mappato aggressivo su NAND
+- già **2** `CLKBUF_*` in synth (non è l’albero CTS)
 
-**Perché:** Bazel/ORFS può rieseguire synth senza rileggere Verilog se RTLIL è già valido. Per te: se `1_1_*.rtlil` esiste, `make synth` può saltare parse RTL.
+Se i tuoi DFF sono 34 o 36: bit-blast / opt. Se vedi `DLATCH`, stop: RTL combinatorio buggato.
 
 ---
 
-## Blocco 1 — gerarchia (synth.tcl ~35–51)
+## Perché canonicalize poi synth
+
+1. **Canonicalize** legge Verilog, normalizza, scrive RTLIL.  
+2. **Synth** riparte dal checkpoint, `synth -flatten`, ABC, `dfflegalize`.
+
+ORFS può saltare il parse Verilog se RTLIL è fresco. Per te: se `1_1_*.rtlil` esiste e `make synth` è “troppo veloce”, sta riusando il checkpoint.
+
+`ABC_AREA=1` nel `config.mk` tutorial: ABC ottimizza **area**, non delay. È una scelta didattica: il timing lo insegui dopo, non in synth.
+
+`ADDER_MAP_FILE :=` vuoto: niente techmap adder custom.
+
+---
+
+## Gerarchia (`synth.tcl`)
 
 ```tcl
 read_checkpoint $::env(RESULTS_DIR)/1_1_yosys_canonicalize.rtlil
 hierarchy -check -top $::env(DESIGN_NAME)
 ```
 
-- `hierarchy -check` verifica che `gcd` esista e che i moduli siano collegati
-- `DESIGN_NAME` deve coincidere con `current_design` nell'SDC
+`DESIGN_NAME` (`gcd`) = `current_design` nell’SDC. Se divergono, STA non trova il clock.
 
-**Errore tipico:** SDC `current_design foo` ma Verilog `module gcd` → STA non trova clock.
+Flatten: un solo `module gcd` in `1_2_yosys.v`. Hierarchical (`SYNTH_HIERARCHICAL=1`) terrebbe isole: sul GCD è inutile; su un SoC con SRAM è obbligatorio.
 
 ---
 
-## Blocco 2 — synth -flatten (righe 68–74)
+## Mapping Nangate45
 
-```tcl
-if { !$::env(SYNTH_HIERARCHICAL) } {
-  synth -flatten -run :fine {*}$synth_full_args
-}
+Liberty: `platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib`.
+
+Drive `X1/X2/X4`: stessa funzione, transistor più larghi, più area, migliore slew. Synth mette soprattutto X1; RSZ in place/CTS farà upsize.
+
+```bash
+rg -oE '[A-Z0-9]+_X[0-9]+' results/nangate45/gcd/learn/1_2_yosys.v \
+  | sort | uniq -c | sort -nr | head
 ```
 
-Per GCD: **flatten**. Tutti i moduli interni spariscono: un unico netlist gate-level.
-
-`synth` di Yosys internamente:
-1. elaborazione RTL (`proc`, `opt`)
-2. mapping tecnologia (`techmap`, `abc`/`abc9`)
-3. `dfflegalize` — flip-flop mappati a celle `DFF_X*` della libreria
-
-**Domanda:** se tenessi gerarchia (`SYNTH_HIERARCHICAL=1`), cosa cambierebbe nel placement? (macro/moduli come isole)
-
 ---
 
-## Blocco 3 — mapping libreria Nangate45
-
-Yosys usa `LIB_FILES` del platform (`NangateOpenCellLibrary_typical.lib`).  
-Output: istanze `AND2_X1`, `NAND2_X1`, `DFF_X1`, `BUF_X1`, …
-
-**Esercizio:** `rg -o ' [A-Z0-9_]+_X[0-9]+ ' 1_2_yosys.v | sort | uniq -c | sort -nr | head`
-
----
-
-## Blocco 4 — synth_odb.tcl (OpenROAD, 14 righe)
+## `synth_odb.tcl` (OpenROAD, ~14 righe)
 
 ```tcl
 load_design 1_2_yosys.v 1_2_yosys.sdc
-orfs_write_db $::env(RESULTS_DIR)/1_synth.odb
-orfs_write_sdc $::env(RESULTS_DIR)/1_synth.sdc
+orfs_write_db  .../1_synth.odb
+orfs_write_sdc .../1_synth.sdc
 ```
 
-`load_design` su Verilog:
-- legge LEF tech + LEF celle
-- `read_verilog` + `link_design gcd`
-- SDC canonicalizzato (niente `source util.tcl` residui)
+`load_design` su Verilog: LEF tech + LEF celle, `link_design gcd`.  
+L’SDC scritto è **canonicalizzato** (niente `source util.tcl`): confronta con `constraint.sdc`.
 
-**GUI:** `gui_1_synth.odb` — celle **non piazzate** (stack in 0,0). Se vedi un blob nel corner, è normale.
+Die 0×0: `save_image` headless spesso non scrive PNG. Normale.
 
 ---
 
-## Cosa NON fa la synthesis
+## Timing a questo stadio
 
-- Non piazza celle
-- Non crea clock tree
-- Non stima wire delay reali (STA ideale / zero wire o liberty delay only)
-
-Quindi WNS post-synth **non** è il WNS di signoff.
+`sta` + liberty + netlist + SDC = delay **senza wire**. Non confrontare quel WNS col finish (−0.04 ns SPEF) come se fossero la stessa metrica.
 
 ---
 
-## Checkpoint comprensione
+## Checkpoint
 
-1. Differenza RTLIL vs Verilog gate-level?
-2. Chi mappa `always @(posedge clk)` a `DFF_X1`?
-3. Perché `1_synth.sdc` può differire dal tuo `constraint.sdc`? (canonicalizzazione OpenSTA)
+1. RTLIL vs gate-level `.v`?
+2. Chi mappa `always @(posedge clk)` → `DFF_X1`?
+3. Perché `1_synth.sdc` ≠ `constraint.sdc` byte-per-byte?
+4. Cosa significa 25% area sequenziale per il CTS?

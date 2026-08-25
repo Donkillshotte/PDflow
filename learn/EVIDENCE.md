@@ -21,12 +21,9 @@ Eseguito sul design tutorial (`FLOW_VARIANT=learn`, `CORE_UTILIZATION=35`, SDC 0
 
 ## GUI pixel-level
 
-Screenshot reali in `learn/reference/gui-shots/` (OpenROAD Qt 26Q2, GCD learn):
+Screenshot Qt in `learn/reference/gui-shots/` più heatmap ORFS (`orfs_*.png`: clock tree, worst path, congestion, IR drop).
 
-- Finestra anatomia: `win_anatomy_labeled.png`
-- Fasi Qt: `win_synth.png` … `win_final.png`
-- Canvas `save_image`: `03_pdn.png` … `09_final.png` (synth/floorplan headless spesso vuoti: die 0 / GUI-0078)
-- Guida: `learn/reference/gui-atlas.md`
+Guida: `learn/reference/gui-atlas.md` (sezioni 1–9).
 
 ## Audit requisiti goal
 

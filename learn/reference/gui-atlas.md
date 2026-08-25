@@ -316,7 +316,35 @@ Cronometra. Per ogni step: 1 screenshot mentale + 1 riga nel quaderno.
 
 ---
 
-## 8. Catturare di nuovo gli screenshot (maintainer)
+## 8. Heatmap e Clock Tree Viewer (immagini ORFS `save_images`)
+
+Oltre alla finestra Qt, ORFS 26Q2 in `make finish` scrive PNG in `reports/nangate45/gcd/learn/*.webp.png`. Copie didattiche in `gui-shots/orfs_*.png`.
+
+### Clock tree (`orfs_cts_clock_tree.png`)
+
+È il **Clock Tree Viewer**: asse Y = tempo (ns), triangoli = buffer, quadratini = sink FF.
+
+Sul GCD `learn`: root → un buffer → fanout ~4 → foglie intorno a **0.07 ns**. Foglie allineate = skew piccolo (report setup skew ~0).
+
+Usa questo PNG se View → Clock Tree Viewer non si apre dal menu.
+
+### Worst path (`orfs_final_worst_path.png`)
+
+Overlay sul die: **launch** ciano, **signal** rosso, **inst** viola. È View → Show Worst Path / Timing, già calcolato a signoff.
+
+### Congestion (`orfs_final_congestion.png`)
+
+Griglia gcell: verde = aria, rosso = pieno. Centro caldo, bordi freddi: stesso blob del placement.
+
+### IR drop (`orfs_final_ir_drop.png`)
+
+Scala **mV** (sul GCD ~0–5 mV). Se fosse centinaia di mV, la PDN della lezione 03 non basta.
+
+Queste quattro immagini chiudono la sessione 45 min: dopo `gui_final`, confronta i PNG ORFS con ciò che vedi nel canvas.
+
+---
+
+## 9. Catturare di nuovo gli screenshot (maintainer)
 
 ```bash
 # Canvas save_image (headless): 03–09. Synth/floorplan possono fallire (die 0 / GUI-0078).
@@ -325,6 +353,7 @@ Cronometra. Per ogni step: 1 screenshot mentale + 1 riga nel quaderno.
 # Finestra Qt reale (serve DISPLAY=:1 e un desktop):
 python3 ./learn/scripts/capture_qt_gallery.py
 python3 ./learn/scripts/annotate_gui_shots.py
+# Heatmap/clock: copiare reports/nangate45/gcd/learn/*.webp.png → gui-shots/orfs_*.png
 ```
 
 Non cancellare i PNG con glob `*_pdn.png`: cancellerebbe anche `03_pdn.png`.

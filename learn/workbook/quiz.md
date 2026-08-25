@@ -39,6 +39,7 @@ Fai i quiz **dopo** LAB della lezione. Soluzioni in fondo. Non scrollare.
 1. Cos'è lo skew?
 2. Dove si salva lo snapshot se detailed placement CTS fallisce?
 3. Codice errore utilization > 100%?
+4. RSZ-0062 e DPL-0038 sono lo stesso problema?
 
 ## Quiz 06 — Route
 
@@ -51,6 +52,7 @@ Fai i quiz **dopo** LAB della lezione. Soluzioni in fondo. Non scrollare.
 1. SPEF serve a STA o a Yosys?
 2. Fill cells cambiano la funzione logica?
 3. Elenca 4 deliverable di signoff.
+4. Se SDC è 0.46 ns e `period_min` a finish è 0.50 ns, hai chiuso il target di frequenza?
 
 ## Quiz GUI — atlante
 
@@ -72,10 +74,10 @@ Fai i quiz **dopo** LAB della lezione. Soluzioni in fondo. Non scrollare.
 
 **04:** (1) GP approssima; DP legalizza sui site. (2) Buffer/upsize/clone per timing. (3) Buffer inserito per timing.
 
-**05:** (1) Differenza arrivo clock tra sink. (2) `4_1_error.odb`. (3) DPL-0038.
+**05:** (1) Differenza arrivo clock tra sink. (2) `4_1_error.odb`. (3) DPL-0038. (4) No: 0062 = timing non riparato; 0038 = util > 100% al DPL.
 
 **06:** (1) No, sono guide. (2) `5_route_drc.rpt`. (3) DRT ha bisogno di guide/congestion map.
 
-**07:** (1) STA. (2) No. (3) GDS, DEF, SPEF, SDC (e netlist .v).
+**07:** (1) STA. (2) No. (3) GDS, DEF, SPEF, SDC (e netlist .v). (4) No: fmax è 1/0.50 ≈ 2.01 GHz, il target 0.46 ns ≈ 2.17 GHz non è chiuso.
 
 **GUI:** (1) Sinistra (zona C). (2) Rosso. (3) Die 0×0, celle non piazzate. (4) `[ERROR GUI-0013]`. (5) No: è una non-default rule di routing clock, segno che CTS ha toccato quella net.

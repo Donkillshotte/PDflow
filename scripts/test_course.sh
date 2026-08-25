@@ -36,7 +36,7 @@ for id in 00-intro 01-constraints 02-synthesis 03-floorplan 04-placement 05-cts 
     p="${ROOT}/learn/lessons/${id}/${f}"
     [[ -f "${p}" ]] && ok "${id}/${f}" || bad "manca ${p}"
   done
-  min_lines "${ROOT}/learn/lessons/${id}/README.md" 50
+  min_lines "${ROOT}/learn/lessons/${id}/README.md" 60
   min_lines "${ROOT}/learn/lessons/${id}/LAB.md" 80
   min_lines "${ROOT}/learn/lessons/${id}/run.sh" 20
 done
@@ -81,7 +81,11 @@ for spec in \
   "07_grt.png:100000" \
   "08_route.png:200000" \
   "08_route_labeled.png:200000" \
-  "09_final.png:200000"; do
+  "09_final.png:200000" \
+  "orfs_cts_clock_tree.png:30000" \
+  "orfs_final_worst_path.png:80000" \
+  "orfs_final_congestion.png:80000" \
+  "orfs_final_ir_drop.png:80000"; do
   name="${spec%%:*}"
   bytes="${spec##*:}"
   p="${SHOT}/${name}"
@@ -95,6 +99,8 @@ done
 rg -q 'win_anatomy_labeled.png' "${ROOT}/learn/reference/gui-atlas.md" && ok "atlas embeds anatomy" || bad "atlas senza anatomy"
 rg -q '03_pdn_labeled.png' "${ROOT}/learn/reference/gui-atlas.md" && ok "atlas embeds pdn" || bad "atlas senza pdn"
 rg -q 'win_inspector_tab.png' "${ROOT}/learn/reference/gui-atlas.md" && ok "atlas embeds inspector" || bad "atlas senza inspector"
+rg -q 'orfs_cts_clock_tree.png' "${ROOT}/learn/reference/gui-atlas.md" && ok "atlas embeds clock tree" || bad "atlas senza clock tree"
+rg -q 'orfs_final_worst_path.png' "${ROOT}/learn/reference/gui-atlas.md" && ok "atlas embeds worst path" || bad "atlas senza worst path"
 rg -q 'gui-atlas.md' "${ROOT}/learn/README.md" && ok "learn README cita atlas" || bad "README senza atlas"
 rg -q 'gui-atlas.md' "${ROOT}/learn/CURRICULUM.md" && ok "curriculum cita atlas" || bad "CURRICULUM senza atlas"
 

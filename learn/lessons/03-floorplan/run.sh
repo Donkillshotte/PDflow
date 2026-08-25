@@ -33,9 +33,8 @@ CORE_UTILIZATION=25 ./scripts/learn_physical_design.sh --auto --lesson 03
   cat <<'EOF'
   Apri in sequenza:
   1. gui_2_1_floorplan.odb  → die + core + rows
-  2. gui_2_4_floorplan_pdn.odb → power stripes
-  In Display Control attiva/disattiva:
-  • Rows, PDN, Blockages
+  2. gui_2_4_floorplan_pdn.odb → power stripes (atlante 03_pdn_labeled.png)
+  In Display Control: metal1/4/7, non il nome "Rows" (GUI-0013).
 EOF
   if ui_confirm "Aprire gui_2_1_floorplan.odb?"; then learn_gui 2_1_floorplan.odb; fi
   ui_pause

@@ -1,12 +1,12 @@
-# Walkthrough annotato — finish (fill, report, GDS)
+# Walkthrough annotato — finish (`final_report.tcl` 26Q2)
 
-Fase 6 ORFS: da layout routato a **deliverable fab**.
+Da layout routato a **deliverable**. Script: `density_fill.tcl`, `final_report.tcl`, merge KLayout.
 
-Script: `density_fill.tcl`, `final_report.tcl` / `final_outputs.tcl`, merge KLayout.
+Numeri `learn`: WNS **−0.04**, TNS **−0.60**, `period_min=0.50` ns (fmax ~2011 MHz), setup skew ~0, IR drop heatmap ~0–5 mV.
 
 ---
 
-## 6_1 fill (`density_fill.tcl`)
+## 6_1 fill
 
 ```tcl
 load_design 5_route.odb 5_route.sdc
@@ -15,71 +15,90 @@ if { $::env(USE_FILL) } {
 }
 ```
 
-**Fill cells:** dummy metal/celle per densità di processo (CMP, etching uniforme).  
-Su Nangate45 spesso `USE_FILL` è on: vedrai centinaia di `FILLCELL*` in `report_cell_usage`.
-
-**Didattica:** fill **non** cambia funzione logica; cambia area/density e a volte parassiti.
-
-Output: `6_1_fill.odb`
+Dummy per densità di processo. **Non** cambia la funzione. Find `FILLCELL` in GUI. Output `6_1_fill.odb`.
 
 ---
 
-## 6_report (`final_report.tcl` + `final_outputs.tcl`)
+## `final_report.tcl` riga per riga (blocchi)
 
-Sequenza:
-
-1. `write_def` / `write_verilog` → `6_final.def`, `6_final.v`
-2. Se `RCX_RULES` esiste: **OpenRCX** `extract_parasitics` → `6_final.spef`
-3. `read_spef` + STA
-4. IR drop (`analyze_power_grid`) se voltaggi definiti
-5. `report_metrics 6 "finish"` → `6_finish.rpt`
-6. Screenshot GUI (`save_images.tcl`) — può fallire headless; **non** invalida il GDS
-
-**Mismatch versioni:** ORFS master + OpenROAD 26Q2 può crashare su `get_property default` in save_images. Il corso pinna ORFS 26Q2 per questo.
-
----
-
-## Merge GDS (KLayout)
-
-Makefile: `klayout.sh` + `util/def2stream.py`
-
-```
-6_final.def + NangateOpenCellLibrary.gds  →  6_1_merged.gds  →  6_final.gds
+```tcl
+load_design 6_1_fill.odb 6_1_fill.sdc
+set_propagated_clock [all_clocks]
+global_connect
+orfs_write_db .../6_final.odb
 ```
 
-KLayout stream-out: mappa celle LEF a geometrie GDS della libreria.
+`global_connect`: le istanze create da RSZ/CTS devono attaccarsi a VDD/VSS. Senza, LVS/IR piangono.
 
-**Warning tipico:** DEF UNITS vs DBU reader — informativo se il merge completa.
+```tcl
+deleteRoutingObstructions
+write_def  .../6_final.def
+write_verilog .../6_final.v -remove_cells [find_physical_only_masters]
+```
+
+Il `.v` di signoff **toglie** celle physical-only (fill, tap, …) perché LVS/sim non le vogliono come logica. Per questo `wc -l 6_final.v` ≠ `1_2_yosys.v` ma non “è un altro circuito”.
 
 ---
 
-## Pacchetto signoff (cosa consegneresti)
+## OpenRCX / SPEF
 
-| File | Destinatario |
+```tcl
+if { RCX_RULES && ! SKIP_DETAILED_ROUTE } {
+  define_process_corner -ext_model_index 0 X
+  extract_parasitics -ext_model_file $::env(RCX_RULES)
+  write_spef .../6_final.spef
+  read_spef .../6_final.spef
+  # IR drop se PWR_NETS_VOLTAGES / GND_NETS_VOLTAGES
+} else {
+  estimate_parasitics -global_routing   ;# fallback
+}
+```
+
+Nangate45 nel corso **ha** RCX: aspetta SPEF. `head` di `6_final.spef`: `*D_NET`.
+
+IR: `analyze_power_grid` → heatmap `orfs_final_ir_drop.png`. Sul GCD pochi mV: la PDN M1–M4–M7 basta. Su un die mm² no.
+
+Poi `report_cell_usage`, `report_metrics 6 "finish"` → `6_finish.rpt`.
+
+```tcl
+if { [ord::openroad_gui_compiled] } {
+  gui::show "source .../save_images.tcl" false
+}
+```
+
+Headless può fallire; le immagini in `reports/*.webp.png` se ci sono sono oro didattico (worst path, clocks, congestion). Copiate in `gui-shots/orfs_*.png`.
+
+Crash `STA-2204 get_property default`: ORFS **master** vs OpenROAD 26Q2. Tag pinnato 26Q2.
+
+---
+
+## Merge GDS
+
+```
+6_final.def + NangateOpenCellLibrary.gds → 6_1_merged.gds → 6_final.gds
+```
+
+KLayout stream-out, non OpenROAD. Warning UNITS/DBU: informativo se il file GDS ha size > 0 (`ls -lh 6_final.gds`).
+
+---
+
+## Come leggere `6_finish.rpt`
+
+| Sezione | Cosa copiare nel progetto |
 |---|---|
-| `6_final.gds` | mask shop / foundry |
-| `6_final.def` | backend / ECO |
-| `6_final.spef` | STA signoff |
-| `6_final.sdc` | STA signoff |
-| `6_final.v` | LVS / sim post-layout |
+| `report_wns` / `report_tns` | −0.04 / −0.60 |
+| `report_clock_min_period` | 0.50 ns vs SDC 0.46 |
+| `report_clock_skew` | source/target latency |
+| `setup_violation_count` | 38 |
+| worst path | start/end FF |
 
----
-
-## Timing: tre stime a confronto
-
-| Fase | Stima delay | Accuratezza |
-|---|---|---|
-| Synth | liberty only | bassa |
-| Place | `estimate_parasitics -placement` | media |
-| GRT | `estimate_parasitics -global_routing` | buona |
-| Finish | SPEF OpenRCX | migliore disponibile open-source |
-
-**Esercizio:** tabella WNS alle quattro stime sullo stesso SDC.
+Overlay path: `orfs_final_worst_path.png` (launch ciano, signal rosso).
 
 ---
 
 ## Checkpoint
 
-1. Fill cambia la logica? 
-2. SPEF senza routing dettagliato ha senso?
-3. Perché KLayout e non OpenROAD per il GDS merge?
+1. Fill cambia la logica?
+2. Perché `write_verilog -remove_cells`?
+3. SPEF senza DRT ha senso?
+4. Perché fmax 2.01 GHz con SDC 0.46 ns (~2.17 GHz)?
