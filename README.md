@@ -90,8 +90,8 @@ sta
 - I binari OpenROAD di Precision Innovations includono già OpenSTA al loro
   interno (comandi `report_checks`, `report_wns`, ecc.); l'installazione
   standalone di OpenSTA serve per usare lo STA da solo, fuori dal flusso.
-- ORFS di default cerca `openroad` e `yosys` nel `PATH`
-  (`command -v`), quindi i symlink creati dagli script bastano: non serve
-  ricompilare OpenROAD dentro ORFS.
+- Il launcher `run_gcd_flow.sh` passa a ORFS i percorsi di `openroad`, `sta` e
+  `yosys` trovati nel `PATH`. ORFS, fuori da un ambiente Nix, cerca altrimenti
+  i binari nella propria directory `tools/install`.
 - La GUI di OpenROAD (`openroad -gui`) richiede Qt/X11: in ambiente headless
   usare `Xvfb` oppure lavorare da riga di comando.
