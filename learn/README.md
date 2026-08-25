@@ -1,10 +1,19 @@
 # Corso Physical Design — OpenROAD + ORFS
 
-Percorso **hands-on completo** per imparare ogni fase del physical design digitale:
-constraints, synthesis, floorplan, placement, CTS, routing e signoff GDS.
+Percorso **hands-on completo** per imparare ogni fase del physical design digitale.
+Non è un tutorial da 10 minuti: è strutturato per **6–10 ore di studio attivo**,
+con materiali da leggere, esercizi da eseguire, GUI da ispezionare e workbook da compilare.
 
-Pensato per essere seguito **con calma** (6–10 ore totali), con teoria, esercizi,
-file da leggere e ispezione GUI ad ogni step.
+## Livelli di contenuto
+
+| Livello | Cosa | Tempo indicativo |
+|---|---|---|
+| `run.sh` | Guida interattiva rapida per fase | ~30–45 min/lezione |
+| `LAB.md` | Laboratorio esteso con esercizi misurabili | ~60–120 min/lezione |
+| `reference/` | Glossario, debug, walkthrough Tcl | ~2–3 ore totali |
+| `workbook/` | Esercizi con soluzioni e quaderno | ~3–4 ore totali |
+
+**Modalità consigliata:** `./scripts/learn_physical_design.sh --deep --lesson 01`
 
 ## Avvio rapido
 
@@ -18,8 +27,11 @@ file da leggere e ispezione GUI ad ogni step.
 # Una lezione (interattiva, con pause)
 ./scripts/learn_physical_design.sh --lesson 03-floorplan
 
+# Modalità approfondita (legge LAB.md, più pause)
+./scripts/learn_physical_design.sh --deep --lesson 03-floorplan
+
 # Percorso completo
-./scripts/learn_physical_design.sh --all
+./scripts/learn_physical_design.sh --deep --all
 
 # Riprendi dove avevi lasciato
 ./scripts/learn_physical_design.sh --resume
@@ -34,20 +46,16 @@ file da leggere e ispezione GUI ad ogni step.
 learn/
 ├── README.md              ← questo file
 ├── CURRICULUM.md          ← syllabus dettagliato
-├── lib/                   ← librerie wrapper (ui, orfs, progress, validate)
+├── lib/                   ← ui, orfs, progress, validate
+├── reference/             ← glossario, debug, walkthrough Tcl, formati file
+├── workbook/              ← esercizi, soluzioni, template quaderno
 ├── designs/               ← config e SDC del design didattico
-│   └── nangate45/gcd-tutorial/
 └── lessons/
     ├── 00-intro/
-    ├── 01-constraints/
-    ├── 02-synthesis/
-    ├── 03-floorplan/
-    ├── 04-placement/
-    ├── 05-cts/
-    ├── 06-routing/
-    └── 07-finish/
-        ├── README.md      ← teoria approfondita
-        └── run.sh         ← esercizi guidati interattivi
+    │   ├── README.md      ← teoria
+    │   ├── LAB.md         ← laboratorio 60–120 min
+    │   └── run.sh         ← guida rapida interattiva
+    ...
 ```
 
 ## Design didattico

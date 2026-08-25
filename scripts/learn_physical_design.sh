@@ -26,6 +26,7 @@ source "${LEARN_ROOT}/lib/progress.sh"
 source "${LEARN_ROOT}/lib/validate.sh"
 
 LEARN_AUTO=0
+LEARN_DEEP=0
 LESSON=""
 RUN_ALL=0
 RESUME=0
@@ -42,6 +43,7 @@ Opzioni:
   --status            Mostra progresso salvato
   --check             Verifica prerequisiti e toolchain
   --auto              Salta le pause interattive
+  --deep              Modalità approfondita: richiede lettura LAB.md per lezione
   --help              Questo messaggio
 
 Esempi:
@@ -94,6 +96,7 @@ run_one_lesson() {
   fi
   # shellcheck source=/dev/null
   source "${dir}/run.sh"
+  learn_prompt_lab "${id}"
   lesson_main
   learn_mark_complete "${id}"
 }
@@ -111,6 +114,7 @@ while [[ $# -gt 0 ]]; do
     --status) learn_show_progress; exit 0 ;;
     --check) learn_check_prerequisites; exit $? ;;
     --auto) LEARN_AUTO=1; export LEARN_AUTO; shift ;;
+    --deep) LEARN_DEEP=1; export LEARN_DEEP; shift ;;
     --help|-h) usage; exit 0 ;;
     *) ui_fail "Opzione sconosciuta: $1"; usage; exit 1 ;;
   esac

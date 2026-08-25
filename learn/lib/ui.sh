@@ -71,6 +71,24 @@ ui_pause() {
   read -r -p "$(echo -e "${C_MAGENTA}${msg}${C_RESET}") " _
 }
 
+learn_prompt_lab() {
+  local lesson_id="$1"
+  local lab="${LEARN_ROOT}/lessons/${lesson_id}/LAB.md"
+  if [[ ! -f "${lab}" ]]; then
+    return 0
+  fi
+  ui_section "Laboratorio esteso — LAB.md"
+  ui_note "File: ${lab}"
+  ui_note "Il run.sh è una guida rapida; il LAB contiene esercizi da 60–120 min."
+  if [[ "${LEARN_DEEP:-0}" == "1" ]]; then
+    ui_warn "Modalità --deep: leggi il LAB per intero prima di procedere."
+    ui_print_file "Anteprima LAB" "${lab}" 45
+    ui_pause "Premi INVIO dopo aver letto il LAB completo..."
+  else
+    ui_tip "Usa --deep per forzare la lettura guidata del LAB."
+  fi
+}
+
 ui_confirm() {
   local msg="${1:-Continuare?}"
   if [[ "${LEARN_AUTO:-0}" == "1" ]]; then
