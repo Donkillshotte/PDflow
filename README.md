@@ -52,6 +52,23 @@ klayout -v
 ./scripts/run_opensta_example.sh
 ```
 
+## Corso hands-on Physical Design (consigliato per imparare)
+
+Percorso guidato **fase per fase** (constraints → synth → floorplan → place → CTS → route → GDS)
+con teoria, esercizi, file da leggere e ispezione GUI. Durata stimata: **6–10 ore**.
+
+```bash
+./scripts/learn_physical_design.sh --check    # verifica prerequisiti
+./scripts/learn_physical_design.sh --list     # indice 8 lezioni
+./scripts/learn_physical_design.sh --lesson 01-constraints
+./scripts/learn_physical_design.sh --all      # percorso completo
+./scripts/learn_physical_design.sh --resume   # riprendi progresso
+```
+
+Documentazione: [learn/README.md](learn/README.md) e [learn/CURRICULUM.md](learn/CURRICULUM.md).
+
+Per la GUI usa il pulsante **Desktop** su [cursor.com/agents](https://cursor.com/agents) (non le card Preview).
+
 ## Flusso completo RTL → GDS (design di esempio `gcd`)
 
 ```bash
