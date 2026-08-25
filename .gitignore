@@ -1,0 +1,9 @@
+# Tool installs, sorgenti e build (ricreabili con gli script in scripts/)
+tools/
+
+# Output dei run ORFS
+flow-runs/
+
+# Artefatti temporanei
+*.log
+terminals/
