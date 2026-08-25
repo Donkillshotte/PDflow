@@ -55,5 +55,21 @@ Durata:
 | CORE_UTILIZATION | Core area (µm²) | CTS OK? | Note |
 |---|---|---|---|
 | 25 | | | |
-| 35 | | | |
+| 35 | | | riferimento golden: 1712.5 |
 | 50 | | | |
+
+---
+
+## Confronto con golden-metrics.md (ogni lezione)
+
+| Stadio | Metrica | Mio valore | Golden | Scarto % |
+|---|---|---|---|---|
+| Synth | celle | | 496 | |
+| Floorplan | core µm² | | 1712.5 | |
+| Place | WNS / period_min | | +0.01 / 0.45 | |
+| CTS | WNS / Inserted | | −0.04 / 45 | |
+| Route | DRC linee | | 0 | |
+| Finish | period_min / fmax | | 0.50 ns / ~2011 MHz | |
+
+Ho chiuso il target SDC 0.46 ns (~2.17 GHz)? ______
+(sul run d’oro: no, fmax ~2.01 GHz)

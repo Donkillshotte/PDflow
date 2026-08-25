@@ -69,9 +69,11 @@ rg -n 'clk' tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn/route.g
 ## Parte 4 — GUI GRT vs DRT (30 min)
 
 ```bash
+cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_5_1_grt.odb
-make ... gui_5_2_route.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_5_1_grt.odb
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_5_2_route.odb
 ```
 
 Procedura pixel (atlante §2 e §5.9):
@@ -117,7 +119,7 @@ Cos’è un’antenna (una frase): carica sul gate durante etch → diodi / ri-r
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn klayout_guides
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 klayout_guides
 ```
 
 Se il target manca in questa ORFS, apri comunque `6_final.gds` in KLayout e spegni/accendi layer: stesso gesto mentale del Display Control.

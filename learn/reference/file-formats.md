@@ -66,7 +66,22 @@ Annota per ciascuno: numero istanze, presenza wire, presenza clock buffers.
 
 **Contiene:** componenti con coordinate, nets, routing (post-route)
 
-**Esercizio:** apri `6_final.def`, cerca `( COMPONENTS` e `( NETS`. Quanto è grande vs `.v`?
+**Esercizio:** apri `6_final.def`, cerca `COMPONENTS` e `NETS`. Quanto è grande vs `.v`?
+
+---
+
+## Guide GRT (`route.guide`)
+
+**Tool:** editor testo; GUI `gui_5_1_grt.odb`
+
+**Contiene:** per ogni net, fasce (layer + bounding box) — **non** polilinee GDS.
+
+```bash
+head -40 results/nangate45/gcd/learn/route.guide
+wc -l   results/nangate45/gcd/learn/route.guide
+```
+
+Sul GCD sono **migliaia** di righe. Zero righe = GRT fallito.
 
 ---
 
@@ -74,12 +89,34 @@ Annota per ciascuno: numero istanze, presenza wire, presenza clock buffers.
 
 **Tool:** editor, OpenSTA con `read_spef`
 
-**Contiene:** RC parassiti per ogni net/node
+**Contiene:** RC parassiti per ogni net/node (resistenza, capacità). Unità nel header.
 
-**Quando:** post-estrazione (finish). Timing **realistico**.
+**Quando:** post-estrazione OpenRCX (finish). Timing **realistico**. Senza SPEF resti su `estimate_parasitics`.
 
-**Esercizio:** confronta WNS in report pre-SPEF vs post-SPEF (`6_finish.rpt`).
-Riferimento `learn`: place **+0.01**, CTS **−0.04**, GRT **−0.05**, finish **−0.04** (TNS −0.60).
+Header reale del run `learn` (`6_final.spef`, OpenROAD 26Q2):
+
+```
+*SPEF "ieee 1481-1999"
+*DESIGN "gcd"
+*VENDOR "The OpenROAD Project"
+*PROGRAM "OpenROAD"
+*VERSION "26Q2-1164-g08f67ee5ec"
+*T_UNIT 1 NS
+*C_UNIT 1 PF
+*R_UNIT 1 OHM
+*NAME_MAP
+*1 _000_
+...
+*D_NET *1 0.000304643
+```
+
+`*NAME_MAP` associa indici ai nomi net/pin. `*D_NET <id> <lumped_cap>` apre una net;
+i numeri dopo sono R/C del modello. Non serve decodificare ogni riga: serve sapere
+che **è RC**, e che STA dopo `read_spef` usa questi valori.
+
+**Esercizio:** `head -20 results/.../6_final.spef` — verifica `*SPEF` e `*DESIGN "gcd"`.
+Confronta WNS place **+0.01**, CTS **−0.04**, GRT **−0.05**, finish **−0.04** (TNS −0.60)
+in `golden-metrics.md`.
 
 ---
 

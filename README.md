@@ -68,6 +68,7 @@ Studio attivo stimato: **20–28 ore** (il wrapper `--auto` non sostituisce lo s
 
 Documentazione: [learn/README.md](learn/README.md) e [learn/CURRICULUM.md](learn/CURRICULUM.md).
 Atlante GUI (screenshot Qt): [learn/reference/gui-atlas.md](learn/reference/gui-atlas.md).
+Metriche del run tutorial: [learn/reference/golden-metrics.md](learn/reference/golden-metrics.md).
 Verifica pipeline: [learn/EVIDENCE.md](learn/EVIDENCE.md). Audit requisiti: [learn/AUDIT.md](learn/AUDIT.md).
 
 Per la GUI usa il pulsante **Desktop** su [cursor.com/agents](https://cursor.com/agents) (non le card Preview).

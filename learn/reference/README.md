@@ -23,9 +23,15 @@ Tempo stimato **solo reference**: 3–4 ore di lettura attiva (non in diagonale)
 
 ## Workbook e quiz
 
-- [../workbook/README.md](../workbook/README.md) — esercizi con soluzioni
+- [../workbook/README.md](../workbook/README.md) — esercizi
+- [../workbook/solutions.md](../workbook/solutions.md) — soluzioni (dopo aver provato)
 - [../workbook/quiz.md](../workbook/quiz.md) — autovalutazione per lezione
 - [../workbook/notes-template.md](../workbook/notes-template.md) — quaderno
+- [../workbook/progetto-finale-template.md](../workbook/progetto-finale-template.md) — consegna lezione 07
+
+## Metriche del run tutorial
+
+- [golden-metrics.md](./golden-metrics.md) — WNS/`period_min`/area/DRC misurati su `FLOW_VARIANT=learn`
 
 ## GUI
 

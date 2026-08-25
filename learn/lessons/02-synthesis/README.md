@@ -82,6 +82,21 @@ Non cercare un “chip”: il floorplan non è ancora esistito. Atlante: `gui-at
 
 I tuoi numeri: stessa tabella nel quaderno. Se i DFF spariscono, Yosys ha ottimizzato via registri: **bug RTL** o `current_design` sbagliato.
 
+## Come leggere `synth_stat.txt`
+
+Il file è un dump delle statistiche Yosys. Cerca:
+
+| Campo | Perché |
+|---|---|
+| `Number of cells` | 496 sul run d’oro — se è 0, synth non ha mappato |
+| `DFF_X1` | 35 — deve coincidere con `rg -c 'DFF_'` sul `.v` a meno di alias |
+| `Chip area` | 628.824 — unità liberty, non µm² del floorplan |
+| `CLKBUF_*` | 2 già in synth: **non** è l’albero CTS |
+
+`ABC_AREA=1` in `config.mk`: ABC minimizza **area**, non delay. Il timing lo insegui
+dal placement in poi. Non sorprenderti se lo slack liberty-only di `sta` è diverso
+dal finish SPEF (−0.04 ns). Tabella: `golden-metrics.md`.
+
 ## Durata stimata
 
 README + walkthrough 40 min, LAB 75 min, **totale ~2 ore**.

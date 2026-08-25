@@ -55,7 +55,7 @@ O:
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn place
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 place
 ls results/nangate45/gcd/learn/3_3_place_gp.odb \
    results/nangate45/gcd/learn/3_4_place_resized.odb \
    results/nangate45/gcd/learn/3_5_place_dp.odb
@@ -98,10 +98,12 @@ Workbook **C2**: stesso numero nel quaderno.
 Desktop. Due carichi (o due terminali):
 
 ```bash
+cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_3_3_place_gp.odb
-# altra shell:
-make ... gui_3_5_place_dp.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_3_place_gp.odb
+# altra shell, stesso cwd:
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_5_place_dp.odb
 ```
 
 Usa `learn/reference/gui-atlas.md`:

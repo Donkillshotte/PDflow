@@ -39,6 +39,7 @@ Il corso usa il design **GCD** perché:
 - Leggere/scrivere SDC
 - Capire `create_clock`, I/O delay
 - Modificare `config.mk`
+- Collegare SDC → area → CTS (catena, non silos)
 
 **Esercizi**
 - A: Analisi SDC default (0.46 ns)
@@ -112,7 +113,8 @@ Il corso usa il design **GCD** perché:
 
 **Obiettivi**
 - Clock tree, skew, buffer clock
-- Debug utilization overflow
+- Distinguere **RSZ-0062** (timing non riparato) da **DPL-0038** (util > 100%)
+- Debug utilization overflow (LAB parte 4)
 
 **Esercizi**
 - A–B: `make cts`
@@ -145,16 +147,21 @@ Il corso usa il design **GCD** perché:
 ## Lezione 07 — Finish
 
 **Obiettivi**
-- GDS, SPEF, signoff timing
-- Deliverables per fab
+- GDS, SPEF (OpenRCX), signoff timing
+- Distinguere `make finish` verde da **timing chiuso**
+- Deliverables per fab / STA / LVS
 
 **Esercizi**
 - A–B: `make finish`
-- C: Report 6_finish
+- C: Report `6_finish` + `period_min` vs SDC 0.46 ns
 - D: Deliverables checklist
-- E: GUI final + worst path
+- E: GUI final + worst path (`orfs_final_worst_path.png`)
 - F: Verifica GDS
-- G: Progetto finale (sfida)
+- G: Progetto finale (confronto `golden-metrics.md`)
+
+**Concetto d’esame:** sul run d’oro WNS finish **−0.04**, `period_min` **0.50 ns** (~2.01 GHz).
+Il periodo SDC 0.46 ns (~2.17 GHz) **non** è chiuso. **RSZ-0062** al CTS è un warning di timing,
+non **DPL-0038**.
 
 ---
 
@@ -167,7 +174,7 @@ Il corso usa il design **GCD** perché:
 # ORFS diretto (equivalente)
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn <target>
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 <target>
 
 # Target utili
 synth | floorplan | place | cts | route | finish
@@ -187,6 +194,9 @@ gui_<stem>   # es. gui_3_place.odb, gui_final
 | **Totale realistico** | **20–28** |
 
 Atlante: `learn/reference/gui-atlas.md` (PNG in `gui-shots/`). Senza quella sessione le lezioni 03–07 restano astratte.
+
+Metriche misurate sul tutorial: `learn/reference/golden-metrics.md` (WNS, `period_min`, area, DRC).
+Ogni LAB chiede di copiare i **tuoi** numeri accanto a quella tabella.
 
 Il wrapper `--auto` dura minuti: **non** è il corso. Il corso è LAB + quaderno + GUI.
 

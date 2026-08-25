@@ -38,11 +38,12 @@ for id in 00-intro 01-constraints 02-synthesis 03-floorplan 04-placement 05-cts 
   done
   min_lines "${ROOT}/learn/lessons/${id}/README.md" 60
   min_lines "${ROOT}/learn/lessons/${id}/LAB.md" 80
-  min_lines "${ROOT}/learn/lessons/${id}/run.sh" 20
+  min_lines "${ROOT}/learn/lessons/${id}/run.sh" 45
 done
 
 echo "== Reference =="
 for f in glossary.md file-formats.md debug-playbook.md gui-openroad.md gui-atlas.md \
+         golden-metrics.md \
          walkthrough-synth.tcl.md walkthrough-floorplan.tcl.md \
          walkthrough-global_place.tcl.md walkthrough-cts.tcl.md \
          walkthrough-route.tcl.md walkthrough-finish.tcl.md; do
@@ -53,6 +54,17 @@ min_lines "${ROOT}/learn/reference/walkthrough-global_place.tcl.md" 80
 min_lines "${ROOT}/learn/reference/walkthrough-cts.tcl.md" 80
 min_lines "${ROOT}/learn/reference/debug-playbook.md" 80
 min_lines "${ROOT}/learn/reference/glossary.md" 80
+min_lines "${ROOT}/learn/reference/golden-metrics.md" 70
+min_lines "${ROOT}/learn/reference/file-formats.md" 80
+
+rg -q 'RSZ-0062' "${ROOT}/learn/reference/glossary.md" && ok "glossary RSZ-0062" || bad "glossary senza RSZ-0062"
+rg -q 'period_min' "${ROOT}/learn/reference/glossary.md" && ok "glossary period_min" || bad "glossary senza period_min"
+rg -q 'IFP-0028' "${ROOT}/learn/reference/glossary.md" && ok "glossary IFP-0028" || bad "glossary senza IFP-0028"
+rg -q 'OpenRCX' "${ROOT}/learn/reference/glossary.md" && ok "glossary OpenRCX" || bad "glossary senza OpenRCX"
+rg -q 'NDR' "${ROOT}/learn/reference/glossary.md" && ok "glossary NDR" || bad "glossary senza NDR"
+rg -q 'gcell' "${ROOT}/learn/reference/glossary.md" && ok "glossary gcell" || bad "glossary senza gcell"
+rg -q '\*SPEF' "${ROOT}/learn/reference/file-formats.md" && ok "file-formats SPEF header" || bad "file-formats senza SPEF header"
+rg -q 'DPL-0038' "${ROOT}/learn/reference/debug-playbook.md" && ok "playbook DPL-0038" || bad "playbook senza DPL-0038"
 
 echo "== GUI shots (pixel-level) =="
 SHOT="${ROOT}/learn/reference/gui-shots"
@@ -103,13 +115,27 @@ rg -q 'orfs_cts_clock_tree.png' "${ROOT}/learn/reference/gui-atlas.md" && ok "at
 rg -q 'orfs_final_worst_path.png' "${ROOT}/learn/reference/gui-atlas.md" && ok "atlas embeds worst path" || bad "atlas senza worst path"
 rg -q 'gui-atlas.md' "${ROOT}/learn/README.md" && ok "learn README cita atlas" || bad "README senza atlas"
 rg -q 'gui-atlas.md' "${ROOT}/learn/CURRICULUM.md" && ok "curriculum cita atlas" || bad "CURRICULUM senza atlas"
+rg -q 'golden-metrics.md' "${ROOT}/learn/README.md" && ok "learn README cita golden-metrics" || bad "README senza golden-metrics"
+rg -q 'golden-metrics.md' "${ROOT}/learn/CURRICULUM.md" && ok "curriculum cita golden-metrics" || bad "CURRICULUM senza golden-metrics"
+rg -q 'golden-metrics.md' "${ROOT}/README.md" && ok "root README cita golden-metrics" || bad "root README senza golden-metrics"
+
+echo "== Nessun make con puntini nei LAB =="
+if rg -n --glob '*.md' 'make \.\.\. (clean_|gui_|synth|floorplan|place|cts|route|finish)' "${ROOT}/learn"; then
+  bad "LAB/reference contengono «make ...» incompleto"
+else
+  ok "nessun make-ellipsis nei comandi"
+fi
 
 echo "== Workbook =="
-for f in README.md notes-template.md quiz.md progetto-finale-template.md; do
+for f in README.md notes-template.md quiz.md progetto-finale-template.md solutions.md; do
   [[ -f "${ROOT}/learn/workbook/${f}" ]] && ok "workbook/${f}" || bad "manca workbook/${f}"
 done
 min_lines "${ROOT}/learn/workbook/quiz.md" 70
+min_lines "${ROOT}/learn/workbook/solutions.md" 80
+min_lines "${ROOT}/learn/workbook/progetto-finale-template.md" 50
 rg -q 'Quiz GUI' "${ROOT}/learn/workbook/quiz.md" && ok "quiz GUI" || bad "quiz senza GUI"
+rg -q 'golden-metrics.md' "${ROOT}/learn/workbook/progetto-finale-template.md" && ok "progetto cita golden-metrics" || bad "progetto senza golden-metrics"
+rg -q 'solutions.md' "${ROOT}/learn/workbook/README.md" && ok "workbook README cita solutions.md" || bad "workbook README senza solutions.md"
 
 echo "== Meta corso =="
 [[ -f "${ROOT}/learn/AUDIT.md" ]] && ok "AUDIT.md" || bad "manca AUDIT.md"

@@ -4,7 +4,9 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Teoria"
-  ui_note "Leggi: learn/lessons/06-routing/README.md"
+  ui_note "Leggi: learn/lessons/06-routing/README.md, walkthrough-route.tcl.md, golden-metrics.md (GRT/DRC)."
+  learn_atlas "win_grt.png, win_route.png, 08_route_labeled.png, orfs_final_congestion.png"
+  learn_make_hint route
   ui_pause
 
   ui_section "Esercizio 6-A — Prerequisiti CTS"
@@ -21,17 +23,21 @@ lesson_main() {
   ui_section "Esercizio 6-C — Guide e DRC"
   ui_note "Route guide (estratto):"
   head -30 "$(learn_artifact route.guide)" 2>/dev/null | sed 's/^/  /' || true
+  ui_note "Righe guide: $(wc -l < "$(learn_artifact route.guide)" 2>/dev/null || echo n/a)"
   ui_print_file "DRC report" "$(learn_report 5_route_drc.rpt)" 20
   ui_print_file "Global route report" "$(learn_report 5_global_route.rpt)" 30
+  learn_grep_metric "$(learn_report 5_global_route.rpt)" "worst slack|setup violation" || true
+  learn_golden
+  ui_note "Riferimento: DRC wc -l = 0, GRT WNS -0.05 ns / 43 viol."
   ui_pause
 
   ui_section "Esercizio 6-D — GUI routing"
   cat <<'EOF'
-  Sequenza GUI:
-  1. gui_5_1_grt.odb → routing guides (non wire finali)
-  2. gui_5_2_route.odb → wire reali su tutti i layer
-  Attiva/disattiva metal1..metal10 nel Display Control
-  Heatmap: Routing Congestion (View menu)
+  Sequenza GUI (atlante §5.8–5.9):
+  1. gui_5_1_grt.odb → routing guides (PNG win_grt.png)
+  2. gui_5_2_route.odb → wire M2 rosso / M3 verde
+  Tcl: gui::set_display_controls "Layers/metal2" visible true
+  Heatmap: orfs_final_congestion.png se View menu non apre
 EOF
   if ui_confirm "Aprire gui_5_1_grt.odb?"; then learn_gui 5_1_grt.odb; fi
   ui_pause

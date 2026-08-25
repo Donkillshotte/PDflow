@@ -14,7 +14,8 @@ Questa è la lezione più importante del corso. Se l'SDC è sbagliato, **tutto**
 1. Questo README
 2. `LAB.md` di questa lezione (90–120 min)
 3. `learn/workbook/README.md` capitolo A
-4. `learn/reference/gui-openroad.md` sezione Charts
+4. `learn/reference/golden-metrics.md` (tabella maestra)
+5. `learn/reference/gui-openroad.md` sezione Charts
 
 ## Cos'è l'SDC?
 
@@ -106,6 +107,15 @@ Quindi SDC **non è solo timing**. È un input di **floorplan**.
 - Dopo route, SPEF è la stima migliore
 
 Non confrontare slack synth con slack finish come se fossero la stessa metrica.
+
+## Run di riferimento (tabella d’oro)
+
+File: `learn/reference/golden-metrics.md`.
+
+Sul default del corso (util 35, 0.46 ns) a **place** worst slack è **+0.01 ns** e
+`period_min` **0.45 ns**; a **finish** WNS **−0.04**, `period_min` **0.50 ns** (~2.01 GHz).
+Il target SDC ~2.17 GHz **non** è chiuso. Lo sweep relaxed/tight della LAB misura
+quanto l’SDC sposta questi numeri, non “se make è verde”.
 
 ## Esercizi (sintesi — il dettaglio è nel LAB)
 

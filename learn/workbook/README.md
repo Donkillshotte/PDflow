@@ -2,15 +2,20 @@
 
 Quaderno di lavoro del corso. **Non guardare le soluzioni** finché non hai provato.
 
+Soluzioni (numeri del run d’oro): [solutions.md](./solutions.md).
+Tabella maestra: [golden-metrics.md](../reference/golden-metrics.md).
+
 ---
 
 ## Come usare questo workbook
 
 1. Crea `learn/workbook/mio-quaderno.md` (copia `notes-template.md`)
 2. Per ogni esercizio: scrivi ipotesi → esegui → annota risultati
-3. Confronta con `solutions/` solo dopo
+3. Confronta con `solutions.md` **solo dopo**
 
 Tempo consigliato totale workbook: **3–4 ore** aggiuntive alle lezioni.
+
+Non esiste una cartella `solutions/`: un solo file, per non spargere spoiler.
 
 ---
 

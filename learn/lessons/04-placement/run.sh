@@ -4,7 +4,9 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Teoria"
-  ui_note "Leggi: learn/lessons/04-placement/README.md"
+  ui_note "Leggi: learn/lessons/04-placement/README.md e golden-metrics.md (riga Place)."
+  learn_atlas "win_place_gp.png, win_place_dp.png, 04_place_gp_labeled.png"
+  learn_make_hint place
   ui_pause
 
   ui_section "Esercizio 4-A — Prerequisiti"
@@ -21,7 +23,10 @@ lesson_main() {
   ui_section "Esercizio 4-C — Report global place e resizer"
   ui_print_file "Global place report" "$(learn_report 3_global_place.rpt)" 35
   ui_print_file "Resizer report" "$(learn_report 3_resizer.rpt)" 35
-  learn_grep_metric "$(learn_report 3_resizer.rpt)" "slack|WNS|Buffer|Resize" || true
+  learn_grep_metric "$(learn_report 3_resizer.rpt)" "worst slack|wns max|period_min|setup violation" || true
+  learn_grep_metric "$(learn_log 3_4_place_resized.log)" "Design area" || true
+  learn_golden
+  ui_note "Riferimento: worst slack +0.01 ns, Design area 684 um^2 40%."
   ui_pause
 
   ui_section "Esercizio 4-D — Confronto GUI global vs detailed"

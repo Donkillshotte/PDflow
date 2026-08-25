@@ -53,7 +53,7 @@ Segna sul walkthrough (o quaderno) tre punti:
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn synth
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 synth
 ```
 
 Verifica:
@@ -109,7 +109,7 @@ Desktop Cursor →
 
 ```bash
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_1_synth.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_1_synth.odb
 ```
 
 Checklist atlante (`gui-atlas.md` §5.1):

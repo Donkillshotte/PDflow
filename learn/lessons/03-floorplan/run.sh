@@ -4,8 +4,10 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Teoria"
-  ui_note "Leggi: learn/lessons/03-floorplan/README.md"
+  ui_note "Leggi: learn/lessons/03-floorplan/README.md e golden-metrics.md (riga Floorplan)."
+  learn_atlas "win_floorplan.png, win_pdn.png, 03_pdn_labeled.png"
   ui_print_file "PDN Tcl" "${FLOW}/designs/nangate45/gcd/grid_strategy-M1-M4-M7.tcl" 25
+  learn_make_hint floorplan
   ui_pause
 
   ui_section "Esercizio 3-A — Assicurati di avere synth"
@@ -42,7 +44,9 @@ EOF
   ui_pause
 
   ui_section "Esercizio 3-E — Leggi metriche floorplan"
-  learn_grep_metric "$(learn_log 2_1_floorplan.log)" "Core area|utilization|Die area" || true
+  learn_grep_metric "$(learn_log 2_1_floorplan.log)" "Core area|Effective utilization|Design area" || true
+  learn_golden
+  ui_note "Riferimento: Core area 1712.5 um^2, effective util 0.367."
   ui_pause
 
   ui_section "Riepilogo"

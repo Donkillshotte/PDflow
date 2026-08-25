@@ -14,8 +14,20 @@ Il placement è il momento in cui il design **occupa spazio**. Prima: celle in u
 
 1. Questo README
 2. `walkthrough-global_place.tcl.md`
-3. `gui-openroad.md` (heatmap density)
-4. `LAB.md` lezione 04
+3. `golden-metrics.md` riga Place / CTS DPL
+4. Atlante §5.5–5.6 (`win_place_gp.png` vs `win_place_dp.png`)
+5. `LAB.md` lezione 04
+
+## Un run `learn` di riferimento
+
+| Istante | Area / util | Slack |
+|---|---|---|
+| Post-synth (nel core) | ~629 µm² / 37% | (liberty) |
+| Post-resizer `3_4` | **684 µm² / 40%** | worst slack **+0.01 ns**, 0 viol setup |
+| `period_min` place | **0.45 ns** (~2240 MHz) | ancora **ideal clock** |
+| CTS dopo (lezione 05) | 828 µm² / **48.3%** | −0.04 ns, clock **propagato** |
+
+Il resizer ha già mangiato ~55 µm² prima del CTS. I 45 buffer della lezione 05 partono da qui, non da zero.
 
 ## Il problema matematico (intuizione)
 

@@ -109,13 +109,14 @@ Oppure:
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
-make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk FLOW_VARIANT=learn synth
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 synth
 ls -lh results/nangate45/gcd/learn/1_synth.odb
 ```
 
 Se `1_synth.odb` manca: log `logs/nangate45/gcd/learn/1_2_yosys.log`. Playbook sezione synth.
 
-Apri `reports/nangate45/gcd/learn/synth_stat.txt` (o cerca `Printing statistics` nel log Yosys). Annota: numero di celle, area.
+Apri `reports/nangate45/gcd/learn/synth_stat.txt` (o cerca `Printing statistics` nel log Yosys). Annota: numero di celle, area. Confronta con `learn/reference/golden-metrics.md` riga Synth (496 / 628.824 / 35 DFF).
 
 ---
 

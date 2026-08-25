@@ -83,6 +83,10 @@ initialize_floorplan -utilization 35 -aspect_ratio 1.0 \
 
 **In GUI (`gui_2_1_floorplan.odb`):** zoom out → rettangolo core dentro die.
 
+Nel log compare spesso **IFP-0028**: l’origine è **snappata** alla site grid
+(`(1.000, 1.000)` → `(1.140, 1.400)` sul run d’oro). Non è un bug: senza snapping
+le rows non allineano ai site LEF. Annota i due punti nel quaderno (LAB 03).
+
 ---
 
 ## Blocco 5 — Pin placement, macro, tapcell (altri script)

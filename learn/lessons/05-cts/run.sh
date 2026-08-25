@@ -4,7 +4,9 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Teoria"
-  ui_note "Leggi: learn/lessons/05-cts/README.md"
+  ui_note "Leggi: learn/lessons/05-cts/README.md, walkthrough-cts.tcl.md, golden-metrics.md (righe CTS)."
+  learn_atlas "win_cts.png, orfs_cts_clock_tree.png"
+  learn_make_hint cts
   ui_pause
 
   ui_section "Esercizio 5-A — Prerequisiti placement"
@@ -25,7 +27,10 @@ lesson_main() {
 
   ui_section "Esercizio 5-C — Report CTS"
   ui_print_file "CTS final report" "$(learn_report 4_cts_final.rpt)" 40
-  learn_grep_metric "$(learn_log 4_1_cts.log)" "CTS|clock|skew|buffer" || true
+  learn_grep_metric "$(learn_log 4_1_cts.log)" "DPL-0006|Inserted|RSZ-0062" || true
+  learn_grep_metric "$(learn_report 4_cts_final.rpt)" "worst slack|setup violation|setup skew" || true
+  learn_golden
+  ui_note "Riferimento: util 40.5%→48.3%, Inserted 45, WNS -0.04, possibile RSZ-0062 (non è DPL-0038)."
   ui_pause
 
   ui_section "Esercizio 5-D — GUI Clock Tree"

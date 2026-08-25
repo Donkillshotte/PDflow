@@ -18,7 +18,8 @@ Questa lezione non è un riassunto da scorrere. È la **mappa mentale** che user
 2. `learn/reference/glossary.md` — sezioni C, F, P, S, T (~20 min)
 3. `learn/reference/file-formats.md` (~20 min)
 4. `learn/reference/gui-openroad.md` — solo sezione Avvio (~10 min)
-5. `learn/lessons/00-intro/LAB.md` (~60 min di pratica)
+5. `learn/reference/golden-metrics.md` — cos'è un run di riferimento (~10 min)
+6. `learn/lessons/00-intro/LAB.md` (~60 min di pratica)
 
 ## Cosa significa “physical design”
 
@@ -106,6 +107,7 @@ Entrambe sono obbligatorie. Solo file = non “vedi” congestion. Solo GUI = no
 - Modifichi SDC e utilization insieme e non sai chi ha rotto CTS
 - Guardi solo la GUI e ignori `DPL-0038` nel log
 - Usi Preview invece di Desktop e pensi che OpenROAD sia crashato
+- Credi che `make finish` verde = 2.17 GHz chiusi (guarda `period_min` in `golden-metrics.md`)
 
 Il playbook: `learn/reference/debug-playbook.md`.
 

@@ -38,7 +38,7 @@ Oppure manuale:
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn floorplan
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 floorplan
 ```
 
 Verifica output:
@@ -68,9 +68,12 @@ Compila tabella nel quaderno:
 **Esercizio B1 workbook:** ripeti con `CORE_UTILIZATION=25` e `50`.
 
 ```bash
-CORE_UTILIZATION=25 make ... clean_floorplan floorplan
-# annota core area
-CORE_UTILIZATION=50 make ... clean_floorplan floorplan
+cd tools/OpenROAD-flow-scripts/flow
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=25 clean_floorplan floorplan
+# annota Core area dal log 2_1_floorplan.log
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=50 clean_floorplan floorplan
 ```
 
 Domanda: core area scala linearmente con 1/utilization? (approssimativamente sì)
@@ -97,7 +100,7 @@ Atlante obbligatorio: `learn/reference/gui-atlas.md` §5.2–5.4 (PNG `win_floor
 ### Sessione A — Core init
 ```bash
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_2_1_floorplan.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_2_1_floorplan.odb
 ```
 
 Checklist:
@@ -109,7 +112,7 @@ Checklist:
 ### Sessione B — PDN
 ```bash
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_2_4_floorplan_pdn.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_2_4_floorplan_pdn.odb
 ```
 
 Checklist (colori Nangate45 in *questa* GUI):

@@ -2,8 +2,9 @@
 
 Percorso **hands-on completo** per imparare ogni fase del physical design digitale.
 Non è un tutorial da 10 minuti: è strutturato per **20–28 ore di studio attivo**
-(LAB + reference + workbook + GUI). Il wrapper `--auto` verifica i tool, non sostituisce lo studio.
-con materiali da leggere, esercizi da eseguire, GUI da ispezionare e workbook da compilare.
+(LAB + reference + workbook + GUI), con materiali da leggere, esercizi da eseguire,
+GUI da ispezionare e workbook da compilare. Il wrapper `--auto` verifica i tool,
+non sostituisce lo studio.
 
 ## Livelli di contenuto
 
@@ -11,7 +12,7 @@ con materiali da leggere, esercizi da eseguire, GUI da ispezionare e workbook da
 |---|---|---|
 | `run.sh` | Guida interattiva rapida per fase | ~30–45 min/lezione |
 | `LAB.md` | Laboratorio esteso con esercizi misurabili | ~60–120 min/lezione |
-| `reference/` | Glossario, debug, walkthrough Tcl | ~2–3 ore totali |
+| `reference/` | Glossario, debug, walkthrough Tcl, **golden-metrics** | ~3–4 ore totali |
 | `workbook/` | Esercizi con soluzioni e quaderno | ~3–4 ore totali |
 
 **Modalità consigliata:** `./scripts/learn_physical_design.sh --deep --lesson 01`
@@ -82,12 +83,15 @@ Le card **Preview** nella chat non funzionano per applicazioni Qt/VNC.
 Guida pixel-level (screenshot Qt reali, anatomia A–G, galleria synth→GDS):
 [learn/reference/gui-atlas.md](./reference/gui-atlas.md).
 
+Metriche del run tutorial (WNS, `period_min`, area, DRC): [golden-metrics.md](./reference/golden-metrics.md).
+`make finish` verde **non** significa 2.17 GHz chiusi: a signoff `period_min` è ~0.50 ns (~2.01 GHz).
+
 Poi, sul desktop remoto:
 
 ```bash
 cd /workspace/tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_3_place.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_place.odb
 ```
 
 ## Progresso
@@ -109,7 +113,7 @@ Il file `learn/.progress.json` traccia le lezioni completate.
 | 04 | Placement | 75–90 min | global/dp, resizer |
 | 05 | CTS | 60–90 min | clock tree, skew |
 | 06 | Routing | 75–90 min | guide, DRC, wire |
-| 07 | Finish | 60–90 min | GDS, SPEF, signoff |
+| 07 | Finish | 60–90 min | GDS, SPEF, signoff; fmax vs SDC |
 
 Dettaglio completo: [CURRICULUM.md](./CURRICULUM.md)
 
@@ -122,6 +126,7 @@ Dettaglio completo: [CURRICULUM.md](./CURRICULUM.md)
 
 ## Note
 
-- Gli esercizi con clock **molto stretto** possono fallire al CTS: è intenzionale per imparare il debug.
+- Gli esercizi con clock **molto stretto** possono fallire al CTS: è intenzionale per imparare il debug (**DPL-0038**). **RSZ-0062** sul run default è un warning di timing, non quel crash.
 - Usa `clean_*` per rifare una fase senza ricominciare da zero.
+- Consulta [golden-metrics.md](./reference/golden-metrics.md) prima di gridare al bug.
 - Consulta la [documentazione ORFS](https://openroad-flow-scripts.readthedocs.io/) per approfondire.

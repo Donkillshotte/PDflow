@@ -64,3 +64,20 @@ learn_show_tree() {
     ui_note "Nessun risultato ancora — verrà creato durante gli esercizi."
   fi
 }
+
+# One-liner che lo studente può copiare (mai "make ...").
+learn_make_hint() {
+  local tgt="${*:-<target>}"
+  ui_note "Comando equivalente da flow/ (copia intero — mai «make ...»):"
+  ui_code "cd tools/OpenROAD-flow-scripts/flow
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \\
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 ${tgt}"
+}
+
+learn_golden() {
+  ui_tip "Confronta i report con learn/reference/golden-metrics.md (util 35, SDC 0.46 ns)."
+}
+
+learn_atlas() {
+  ui_tip "Atlante GUI: learn/reference/gui-atlas.md — PNG: $*"
+}

@@ -42,6 +42,8 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **DFF / Flip-flop** — Elemento di memoria sincrono; endpoint tipico di timing path.
 
+**DPL-0038** — Detailed placement: utilization > 100% (area celle > area core). Fallimento legale, non “timing un po’ negativo”. LAB 05 parte 4. Non è **RSZ-0062**.
+
 ---
 
 ## F
@@ -57,6 +59,10 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 ## G
 
 **GUI** — interfaccia Qt di OpenROAD. Non è Preview HTTP. Atlante: `gui-atlas.md`.
+
+**GUI-0013** — Controllo Display Control inesistente. In 26Q2 `gui::set_display_controls "Rows"` fallisce: non esiste un controllo chiamato `Rows`.
+
+**gcell** — Cella della griglia di **global routing**: unità di capacità (quanti fili “ci stanno” in una regione). Heatmap congestion = domanda vs capacità per gcell. PNG `orfs_final_congestion.png`.
 
 **Guide (GRT)** — corridoi 2D per net, non wire mask-ready. File `route.guide`.
 
@@ -78,9 +84,13 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 ## I
 
+**IFP-0028** — Messaggio Init Floorplan: origine/core **snappati** alla site grid. Non è un errore; allinea il rettangolo alle piastrelle LEF. Nel log `2_1_floorplan.log` vedi `(1.000, 1.000)` → `(1.140, 1.400)` o simile.
+
 **IO delay** — Budget temporale tra pad/pin del mondo esterno e registri.
 
 **IR drop** — Caduta di tensione sulla power grid (finish stage).
+
+**ideal clock** — STA finge latency di rete = 0 (pre-CTS). Dopo CTS il clock è **propagato** (delay dei `CLKBUF*`).
 
 ---
 
@@ -102,9 +112,17 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 ---
 
+## N
+
+**NDR (Non-Default Rule)** — Regola di routing più larga/spazio rispetto al default tech. Su GCD post-CTS/route la net `clk` in Inspector mostra `CTS_NDR_0`: il clock non è più un filo “qualsiasi”.
+
+---
+
 ## O
 
 **ODB (OpenDB)** — Database binario OpenROAD; snapshot di ogni fase.
+
+**OpenRCX** — Estrattore parassiti OpenROAD (`extract_parasitics` + `RCX_RULES`). Produce SPEF a finish. Senza RCX, ORFS ricade su `estimate_parasitics -global_routing`.
 
 **OpenSTA** — Static Timing Analyzer (parte di OpenROAD e standalone).
 
@@ -116,6 +134,8 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **PDN (Power Distribution Network)** — Mesh/straps VDD/VSS nel core.
 
+**period_min** — Periodo minimo (ns) per cui lo STA, con *quel* modello RC, non vede WNS negativo. fmax ≈ `1000 / period_min` MHz. A finish sul run d’oro è **0.50 ns** (~2011 MHz) vs SDC **0.46 ns** (~2174 MHz): target non chiuso.
+
 **Placement** — Assegnazione posizione (x,y) a ogni cella.
 
 **Parasitics (SPEF)** — R/C estratti dal layout per STA post-route.
@@ -125,6 +145,8 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 ## R
 
 **Resizer (RSZ)** — Tool OpenROAD che inserisce buffer, upsize, clone per timing.
+
+**RSZ-0062** — Warning: il resizer **non** ha riparato tutte le setup. Sul GCD `learn` compare al CTS (`Inserted 45`) e il flow **continua**. Non è overflow di area: quello è **DPL-0038**.
 
 **RTL** — Register Transfer Level; Verilog comportamentale pre-synthesis.
 
@@ -145,6 +167,8 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 **SPEF** — Standard Parasitic Exchange Format.
 
 **STA** — Static Timing Analysis: verifica setup/hold senza simulazione.
+
+**STA-2204** — Errore tipico se ORFS **master** (26Q3) gira su OpenROAD **26Q2** (`get_property default` in save_images). Il repo pinna il tag ORFS **26Q2**.
 
 **Synthesis** — RTL → gate-level netlist mappato alla libreria.
 
@@ -192,4 +216,4 @@ RTL → yosys → 1_synth.odb
 | Place | Overflow zero? Quanti buffer ha aggiunto RSZ? |
 | CTS | Skew accettabile? Area post-CTS < 100%? |
 | Route | DRC clean? Congestion residua? |
-| Finish | WNS/TNS post-SPEF? GDS apre in KLayout? |
+| Finish | WNS/TNS post-SPEF? `period_min` vs SDC? GDS apre in KLayout? |

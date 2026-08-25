@@ -3,7 +3,8 @@ lesson_main() {
   ui_lesson_header "00" "Introduzione al flusso RTL→GDS" "45–60 min"
 
   ui_section "Teoria"
-  ui_note "Leggi learn/lessons/00-intro/README.md per la mappa completa."
+  ui_note "Leggi learn/lessons/00-intro/README.md, glossary.md e golden-metrics.md (cos'è un 'run di riferimento')."
+  learn_atlas "win_anatomy_labeled.png"
   ui_pause "Premi INVIO dopo aver letto il README (o subito se già letto)..."
 
   ui_section "Esercizio 0-A — Verifica toolchain"
@@ -15,6 +16,7 @@ lesson_main() {
   ui_print_file "RTL sorgente" "${FLOW}/designs/src/gcd/gcd.v" 25
   ui_print_file "Config tutorial" "${TUTORIAL_SRC}/config.mk" 30
   ui_print_file "Constraints" "${TUTORIAL_SRC}/constraint.sdc" 20
+  learn_make_hint synth
   ui_tip "Il RTL descrive *cosa* fa il chip; l'SDC dice *quanto deve essere veloce*."
   ui_pause
 

@@ -80,7 +80,10 @@ rg -n 'WNS|TNS|worst' \
 
 Domanda: se il finish è **peggio** del place, perché è onesto? (fili reali > modello placement)
 
-SPEF: `head -30 results/.../6_final.spef` — cerca `*D_NET`. Non serve capire ogni riga: serve sapere che **è RC**.
+`period_min` a finish: confronta con golden-metrics (**0.50 ns** ~2011 MHz vs SDC 0.46 ns).
+Nel progetto finale devi scrivere **esplicitamente** se hai chiuso 2.17 GHz (sul run d’oro: no).
+
+SPEF: `head -30 results/.../6_final.spef` — cerca `*SPEF` e `*D_NET`. Non serve capire ogni riga: serve sapere che **è RC**. Vedi `file-formats.md`.
 
 ---
 
@@ -88,7 +91,7 @@ SPEF: `head -30 results/.../6_final.spef` — cerca `*D_NET`. Non serve capire o
 
 ```bash
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_final
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_final
 ```
 
 Checklist (`gui-atlas.md` §4 e §5.10):

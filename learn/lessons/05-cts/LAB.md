@@ -45,7 +45,7 @@ O:
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn cts
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 cts
 ```
 
 Se fallisce → Parte 4. Se passa:
@@ -65,10 +65,12 @@ RSZ-0062 **non** è DPL-0038: il placement è legale, il timing no.
 
 ```bash
 # Pre
+cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_3_place.odb
-# Post
-make ... gui_4_cts.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_place.odb
+# Post (altra shell, stesso cwd):
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_4_cts.odb
 ```
 
 Tcl:
@@ -127,7 +129,7 @@ Se esiste `4_1_error.odb`:
 
 ```bash
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_4_1_error.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_4_1_error.odb
 ```
 
 **Fix (scegline UNO, documenta gli altri come ipotesi):**

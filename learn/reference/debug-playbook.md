@@ -135,6 +135,15 @@ Prima di ogni sessione di studio:
 
 ## Comandi di emergenza
 
+Da `tools/OpenROAD-flow-scripts/flow` il comando **canonico** (mai puntini):
+
+```bash
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 <target>
+```
+
+`<target>`: `synth` `floorplan` `place` `cts` `route` `finish` `clean_<fase>` `gui_<stem>.odb`
+
 ```bash
 # Stato artefatti
 ls -lh tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn/
@@ -145,10 +154,14 @@ rg -n 'ERROR|Error:' tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/learn/
 # GUI ultimo snapshot
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_4_1_error.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_4_1_error.odb
 
-# Reset solo una fase
-make ... clean_cts && make ... cts
+# Reset solo una fase (copia intero — mai «make ...»)
+cd tools/OpenROAD-flow-scripts/flow
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 clean_cts
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 cts
 ```
 
 ---

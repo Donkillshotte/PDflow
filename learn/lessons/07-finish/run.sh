@@ -4,7 +4,9 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Teoria"
-  ui_note "Leggi: learn/lessons/07-finish/README.md"
+  ui_note "Leggi: learn/lessons/07-finish/README.md, walkthrough-finish.tcl.md, golden-metrics.md (Finish)."
+  learn_atlas "win_final.png, orfs_final_worst_path.png, orfs_final_ir_drop.png"
+  learn_make_hint finish
   ui_pause
 
   ui_section "Esercizio 7-A — Prerequisiti route"
@@ -20,7 +22,10 @@ lesson_main() {
 
   ui_section "Esercizio 7-C — Report finale"
   ui_print_file "Finish report" "$(learn_report 6_finish.rpt)" 50
-  learn_grep_metric "$(learn_report 6_finish.rpt)" "slack|WNS|TNS|power|area" || true
+  learn_grep_metric "$(learn_report 6_finish.rpt)" "wns max|tns max|period_min|setup violation|setup skew" || true
+  learn_golden
+  ui_note "Riferimento: WNS -0.04, TNS -0.60, period_min 0.50 ns (~2.01 GHz) vs SDC 0.46 ns."
+  ui_warn "make finish verde non significa timing chiuso a 2.17 GHz."
   ui_pause
 
   ui_section "Esercizio 7-D — Ispeziona deliverables"
@@ -55,7 +60,7 @@ EOF
   1. Modifica constraint.sdc (clock ±30%)
   2. clean_all && percorso completo
   3. Confronta WNS, area, cell count in 6_finish.rpt
-  4. Documenta in learn/notes/mio-esperimento.md cosa hai osservato
+  4. Documenta in learn/workbook/mio-progetto-finale.md (non notes/)
 EOF
   ui_pause
 

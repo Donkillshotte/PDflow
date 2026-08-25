@@ -4,7 +4,9 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Teoria"
-  ui_note "Leggi: learn/lessons/02-synthesis/README.md"
+  ui_note "Leggi: learn/lessons/02-synthesis/README.md, walkthrough-synth.tcl.md, golden-metrics.md (riga Synth)."
+  learn_atlas "win_synth.png"
+  learn_make_hint synth
   ui_pause
 
   ui_section "Esercizio 2-A — Esegui synthesis"
@@ -17,7 +19,8 @@ lesson_main() {
   ui_section "Esercizio 2-B — Leggi il netlist"
   ui_print_file "Netlist post-synth" "$(learn_artifact 1_2_yosys.v)" 35
   ui_print_file "Statistiche synth" "$(learn_report synth_stat.txt)" 30
-  ui_tip "Cerca moduli *_reg, porte clk/rst, istanze di celle standard."
+  learn_golden
+  ui_note "Riferimento synth_stat: 496 celle, 35 DFF_X1, area 628.824."
   ui_pause
 
   ui_section "Esercizio 2-C — Analizza log Yosys"

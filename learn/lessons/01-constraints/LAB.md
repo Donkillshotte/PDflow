@@ -47,7 +47,8 @@ cp learn/designs/nangate45/gcd-tutorial/constraint.sdc learn/workbook/backup-sdc
 ./scripts/learn_physical_design.sh --lesson 01
 # oppure solo:
 cd tools/OpenROAD-flow-scripts/flow
-make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk FLOW_VARIANT=learn synth floorplan place
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 synth floorplan place
 ```
 
 Annota da `reports/.../learn/3_resizer.rpt`:
@@ -58,8 +59,12 @@ Annota da `reports/.../learn/3_resizer.rpt`:
 ```bash
 cp learn/designs/nangate45/gcd-tutorial/constraint_relaxed.sdc \
    learn/designs/nangate45/gcd-tutorial/constraint.sdc
-make ... clean_synth clean_floorplan clean_place
-make ... synth floorplan place
+cd tools/OpenROAD-flow-scripts/flow
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 \
+     clean_synth clean_floorplan clean_place
+make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 synth floorplan place
 ```
 
 **Domanda:** WNS migliorato? Area celle diminuita?
@@ -101,7 +106,7 @@ Prerequisito: Desktop Cursor aperto.
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT=learn gui_3_place.odb
+     FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_place.odb
 ```
 
 Checklist GUI:

@@ -10,7 +10,9 @@ Aggiornato durante il work goal autonomo. Non sostituisce lo studio: certifica c
 
 Esito atteso: `SMOKE PASSED`.
 
-Copre: 8 lezioni × (README, LAB, run.sh) con profondità minima, 6 walkthrough Tcl, atlante GUI + PNG Qt/canvas, workbook, design tutorial, `--list`, `--check`, `--auto --lesson 00`, versioni tool.
+Copre: 8 lezioni × (README, LAB, run.sh) con profondità minima, 6 walkthrough Tcl,
+atlante GUI + PNG Qt/canvas/heatmap, `golden-metrics.md`, workbook + `solutions.md`,
+design tutorial, `--list`, `--check`, `--auto --lesson 00`, versioni tool.
 
 ## Pipeline ORFS variante `learn`
 
@@ -18,6 +20,8 @@ Eseguito sul design tutorial (`FLOW_VARIANT=learn`, `CORE_UTILIZATION=35`, SDC 0
 
 - `make synth floorplan place cts route finish` → exit 0
 - Artefatto: `flow/results/nangate45/gcd/learn/6_final.gds`
+- Numeri: [golden-metrics.md](./reference/golden-metrics.md) — finish WNS −0.04,
+  `period_min` 0.50 ns (~2.01 GHz) vs SDC 0.46 ns (~2.17 GHz). Exit 0 ≠ timing chiuso.
 
 ## GUI pixel-level
 
