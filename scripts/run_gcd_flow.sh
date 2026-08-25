@@ -6,6 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
+YOSYS_ORFS="${ROOT}/scripts/yosys-orfs-wrapper.sh"
 
 DESIGN_CONFIG="${DESIGN_CONFIG:-./designs/nangate45/gcd/config.mk}"
 
@@ -14,5 +15,5 @@ exec make \
   DESIGN_CONFIG="${DESIGN_CONFIG}" \
   OPENROAD_EXE="${OPENROAD_EXE:-$(command -v openroad)}" \
   OPENSTA_EXE="${OPENSTA_EXE:-$(command -v sta)}" \
-  YOSYS_EXE="${YOSYS_EXE:-$(command -v yosys)}" \
+  YOSYS_EXE="${YOSYS_EXE:-${YOSYS_ORFS}}" \
   "$@"
