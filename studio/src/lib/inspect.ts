@@ -40,6 +40,7 @@ export type StageInspect = {
   sta: StaSummary | null;
   yosys: YosysStat | null;
   hooks: { id: string; label: string; detail: string }[];
+  variant?: string;
 };
 
 const STAGE_PRIMARY_ODB: Record<string, string> = {
@@ -75,8 +76,11 @@ function runCapture(
   });
 }
 
-export function inspectOdb(artifact: string): OdbStats | null {
-  const abs = path.join(resultsDir(), artifact);
+export function inspectOdb(
+  artifact: string,
+  variant = "learn",
+): OdbStats | null {
+  const abs = path.join(resultsDir(variant), artifact);
   if (!fs.existsSync(abs)) return null;
   const py = `
 import odb
@@ -113,12 +117,14 @@ export function inspectSta(opts: {
   verilog?: string;
   spef?: string;
   label: string;
+  variant?: string;
 }): StaSummary | null {
-  const v = opts.verilog ? path.join(resultsDir(), opts.verilog) : null;
+  const variant = opts.variant ?? "learn";
+  const v = opts.verilog ? path.join(resultsDir(variant), opts.verilog) : null;
   if (!v || !fs.existsSync(v)) return null;
   if (!fs.existsSync(LIB()) || !fs.existsSync(SDC())) return null;
 
-  const spefAbs = opts.spef ? path.join(resultsDir(), opts.spef) : null;
+  const spefAbs = opts.spef ? path.join(resultsDir(variant), opts.spef) : null;
   const spefLine =
     spefAbs && fs.existsSync(spefAbs) ? `read_spef ${spefAbs}` : "";
 
@@ -167,8 +173,11 @@ report_checks -format json -group_path_count 3 > /tmp/studio-sta-checks.json
   };
 }
 
-export function inspectYosys(verilogRel: string): YosysStat | null {
-  const abs = path.join(resultsDir(), verilogRel);
+export function inspectYosys(
+  verilogRel: string,
+  variant = "learn",
+): YosysStat | null {
+  const abs = path.join(resultsDir(variant), verilogRel);
   if (!fs.existsSync(abs)) return null;
   const r = runCapture(
     "yosys",
@@ -190,10 +199,13 @@ export function inspectYosys(verilogRel: string): YosysStat | null {
   };
 }
 
-export function inspectStage(stage: string): StageInspect {
+export function inspectStage(
+  stage: string,
+  variant = "learn",
+): StageInspect {
   const odbName = STAGE_PRIMARY_ODB[stage];
   const netlist = STAGE_NETLIST[stage] ?? null;
-  const odb = odbName ? inspectOdb(odbName) : null;
+  const odb = odbName ? inspectOdb(odbName, variant) : null;
 
   let sta: StaSummary | null = null;
   if (stage === "finish") {
@@ -201,17 +213,19 @@ export function inspectStage(stage: string): StageInspect {
       verilog: "6_final.v",
       spef: "6_final.spef",
       label: "OpenSTA · 6_final.v + SPEF",
+      variant,
     });
   } else if (netlist) {
     sta = inspectSta({
       verilog: netlist,
       label: `OpenSTA · ${netlist} (ideal / no parasitics)`,
+      variant,
     });
   }
 
   const yosys =
     stage === "synth" || stage === "floorplan"
-      ? inspectYosys("1_2_yosys.v")
+      ? inspectYosys("1_2_yosys.v", variant)
       : null;
 
   const hooks = [
@@ -267,5 +281,5 @@ export function inspectStage(stage: string): StageInspect {
     },
   ];
 
-  return { stage, odb, sta, yosys, hooks };
+  return { stage, odb, sta, yosys, hooks, variant };
 }

@@ -1342,40 +1342,130 @@ button.pipeline-node {
   font-size: 0.78rem !important;
 }
 
-/* —— FlowLab —— */
+/* —— FlowLab workbench —— */
 .flowlab { display: grid; gap: 1.1rem; }
-.flowlab-steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: 0.45rem;
+.flowlab-hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  align-items: end;
+  padding: 0.2rem 0 0.4rem;
 }
-.flowlab-step {
+.flowlab-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin: 0.15rem 0 0.35rem;
+}
+.flowlab-hero p { margin: 0; max-width: 42rem; color: var(--ink-soft); }
+.flowlab-progress {
   display: grid;
-  gap: 0.15rem;
+  gap: 0.2rem;
+  min-width: 140px;
+  text-align: right;
+}
+.flowlab-progress strong {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+.flowlab-progress span { font-size: 0.78rem; color: var(--ink-soft); }
+.flowlab-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(16, 24, 32, 0.08);
+  overflow: hidden;
+}
+.flowlab-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--trace-m3), var(--copper));
+  border-radius: inherit;
+}
+.flowlab-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 200px) minmax(0, 1.2fr) minmax(280px, 0.95fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .flowlab-grid {
+    grid-template-columns: 1fr;
+  }
+  .flowlab-rail {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+.flowlab-rail {
+  display: grid;
+  gap: 0.4rem;
+  position: sticky;
+  top: 0.75rem;
+}
+.flowlab-rail-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
   text-align: left;
-  padding: 0.65rem 0.7rem;
+  padding: 0.55rem 0.6rem;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   font: inherit;
   color: inherit;
-  transition: border-color 0.15s ease, transform 0.15s ease;
 }
-.flowlab-step:hover { border-color: var(--copper); transform: translateY(-1px); }
-.flowlab-step.active {
+.flowlab-rail-item:hover:not(:disabled) { border-color: var(--copper); }
+.flowlab-rail-item.active {
   border-color: var(--copper);
-  background: linear-gradient(160deg, rgba(195, 107, 46, 0.12), rgba(255,255,255,0.7));
-  box-shadow: 0 0 0 1px rgba(195, 107, 46, 0.25);
+  background: linear-gradient(160deg, rgba(195, 107, 46, 0.14), rgba(255,255,255,0.75));
 }
-.flowlab-step.done { border-color: rgba(31, 122, 76, 0.35); }
-.flowlab-step strong { font-size: 0.92rem; }
-.flowlab-step em {
+.flowlab-rail-item.done { border-color: rgba(31, 122, 76, 0.4); }
+.flowlab-rail-item.locked { opacity: 0.55; cursor: not-allowed; }
+.flowlab-rail-item strong { display: block; font-size: 0.88rem; }
+.flowlab-rail-item em {
+  display: block;
   font-style: normal;
+  font-size: 0.72rem;
   color: var(--ink-soft);
-  font-size: 0.74rem;
 }
-.flowlab-panel { display: grid; gap: 0.85rem; }
+.flowlab-rail-num {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(16, 24, 32, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.flowlab-main, .flowlab-side { display: grid; gap: 0.75rem; min-width: 0; }
+.flowlab-side-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.flowlab-params-rich {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.flowlab-param-summary {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+}
+.flowlab-next {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(31, 122, 76, 0.35);
+  background: rgba(31, 122, 76, 0.08);
+}
 .rtl-editor {
   width: 100%;
   min-height: 28rem;
@@ -1389,11 +1479,6 @@ button.pipeline-node {
   color: #e8eef2;
   resize: vertical;
   tab-size: 2;
-}
-.flowlab-params {
-  display: grid;
-  gap: 0.85rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 .flowlab-params label {
   display: grid;
@@ -1411,4 +1496,7 @@ button.pipeline-node {
   border-radius: 8px;
   border: 1px solid var(--line);
   background: #fff;
+}
+.flowlab-log-pane .run-log {
+  max-height: min(52vh, 520px);
 }

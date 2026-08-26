@@ -32,9 +32,11 @@ type Inspect = {
 export function InspectPanel({
   stage,
   refreshKey,
+  variant = "learn",
 }: {
   stage: string;
   refreshKey?: number;
+  variant?: string;
 }) {
   const { push } = useToast();
   const [data, setData] = useState<Inspect | null>(null);
@@ -47,7 +49,9 @@ export function InspectPanel({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/inspect?stage=${encodeURIComponent(stage)}`);
+      const res = await fetch(
+        `/api/inspect?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}`,
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
     } catch (e) {
@@ -55,7 +59,7 @@ export function InspectPanel({
     } finally {
       setLoading(false);
     }
-  }, [stage]);
+  }, [stage, variant]);
 
   useEffect(() => {
     void load();
@@ -76,7 +80,7 @@ export function InspectPanel({
       const res = await fetch("/api/viewer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start", stage }),
+        body: JSON.stringify({ action: "start", stage, variant }),
       });
       const body = await res.json();
       if (body.ok && body.url) {

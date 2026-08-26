@@ -83,7 +83,10 @@ export function stopViewer(): { ok: boolean; message: string } {
   return { ok: true, message: `viewer fermato (pid ${lock.pid})` };
 }
 
-export function startViewer(stage: string): {
+export function startViewer(
+  stage: string,
+  variant = "learn",
+): {
   ok: boolean;
   message: string;
   url?: string;
@@ -94,17 +97,20 @@ export function startViewer(stage: string): {
   if (!artifact) {
     return { ok: false, message: `stage sconosciuto: ${stage}` };
   }
-  const abs = path.join(/*turbopackIgnore: true*/ resultsDir(), artifact);
+  const abs = path.join(
+    /*turbopackIgnore: true*/ resultsDir(variant),
+    artifact,
+  );
   if (!fs.existsSync(abs)) {
     return {
       ok: false,
-      message: `Artefatto mancante: ${artifact} — esegui prima la fase ${stage}`,
+      message: `Artefatto mancante: ${artifact} — esegui prima la fase ${stage} (${variant})`,
     };
   }
 
   const existing = viewerStatus();
   if (existing.running) {
-    if (existing.artifact === artifact) {
+    if (existing.artifact === artifact && existing.stage === stage) {
       return {
         ok: true,
         message: "viewer già attivo su questo artefatto",
@@ -151,7 +157,7 @@ export function startViewer(stage: string): {
 
   return {
     ok: true,
-    message: `OpenROAD Web Viewer su ${artifact}`,
+    message: `OpenROAD Web Viewer su ${artifact} (${variant})`,
     url,
     port,
     artifact,

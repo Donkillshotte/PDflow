@@ -14,12 +14,14 @@ const STAGES = new Set([
 ]);
 
 export async function GET(req: Request) {
-  const stage = new URL(req.url).searchParams.get("stage") || "synth";
+  const url = new URL(req.url);
+  const stage = url.searchParams.get("stage") || "synth";
+  const variant = url.searchParams.get("variant") || "learn";
   if (!STAGES.has(stage)) {
     return NextResponse.json({ error: "stage non valido" }, { status: 400 });
   }
   try {
-    const data = inspectStage(stage);
+    const data = inspectStage(stage, variant);
     return NextResponse.json(data);
   } catch (e) {
     return NextResponse.json(

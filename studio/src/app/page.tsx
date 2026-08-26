@@ -42,26 +42,20 @@ export default function HomePage() {
             log live → ispezione artefatti → chiusura.
           </p>
           <div className="cta-row">
+            <Link href="/flusso" className="btn-primary">
+              Apri FlowLab interattivo
+            </Link>
             {next ? (
-              <Link href={`/lezioni/${next.id}`} className="btn-primary">
-                Continua · {next.title}
+              <Link href={`/lezioni/${next.id}`} className="btn-ghost">
+                Corso · {next.title}
               </Link>
             ) : (
-              <Link href="/lezioni" className="btn-primary">
+              <Link href="/lezioni" className="btn-ghost">
                 Apri lezioni
               </Link>
             )}
-            <Link href="/flusso" className="btn-primary">
-              Flusso RTL → GDS
-            </Link>
             <Link href="/strumenti" className="btn-ghost">
               Console live
-            </Link>
-            <Link href="/strumenti?stage=cts&tab=results" className="btn-ghost">
-              Dashboard CTS
-            </Link>
-            <Link href="/materiali?tab=gallery" className="btn-ghost">
-              Galleria GUI
             </Link>
           </div>
           <div className="progress-strip" aria-label={`Progresso ${completed} su 8`}>
