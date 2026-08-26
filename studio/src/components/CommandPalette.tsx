@@ -67,15 +67,21 @@ export function CommandPalette() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return targets.slice(0, 40);
+    const tokens = needle.split(/\s+/).filter(Boolean);
     return targets
-      .filter(
-        (t) =>
-          t.label.toLowerCase().includes(needle) ||
-          t.id.toLowerCase().includes(needle) ||
-          (t.stage ?? "").includes(needle) ||
-          t.kind.includes(needle) ||
-          (t.artifact ?? "").toLowerCase().includes(needle),
-      )
+      .filter((t) => {
+        const hay = [
+          t.label,
+          t.id,
+          t.kind,
+          t.stage ?? "",
+          t.artifact ?? "",
+          KIND_LABEL[t.kind] ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
+        return tokens.every((tok) => hay.includes(tok));
+      })
       .slice(0, 40);
   }, [targets, q]);
 
