@@ -18,6 +18,7 @@ import { useToast } from "@/components/ToastProvider";
 import { FlowLabMetricsBar } from "@/components/flowlab/FlowLabMetricsBar";
 import { FlowLabParamStudio } from "@/components/flowlab/FlowLabParamStudio";
 import { FlowLabPhaseHistory } from "@/components/flowlab/FlowLabPhaseHistory";
+import { FlowLabPhaseVisual } from "@/components/flowlab/FlowLabPhaseVisual";
 import { FlowLabPipeline } from "@/components/flowlab/FlowLabPipeline";
 import { FlowLabRtlEditor } from "@/components/flowlab/FlowLabRtlEditor";
 import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
@@ -604,7 +605,18 @@ export function FlowLab() {
       >
         <section className="fl-main-panel">
           {phase.id === "rtl" ? (
-            <div className="fl-editor-shell">
+            <>
+              <FlowLabPhaseVisual
+                phaseId={phaseId}
+                stage={resultsStage}
+                variant="flowlab"
+                params={params}
+                refreshKey={refreshKey}
+                rtlLines={lineCount}
+                sim={sim}
+                stageDone={Boolean(stages.find((s) => s.id === phaseId)?.done)}
+              />
+              <div className="fl-editor-shell">
               <div className="fl-editor-toolbar">
                 <span>
                   <code>learn/flowlab/gcd.v</code> · {lineCount} righe · Verilog-2001
@@ -625,21 +637,34 @@ export function FlowLab() {
                 readOnly={running}
               />
             </div>
-          ) : (
-            <>
-              <FlowLabParamStudio
-                params={params}
-                onChange={updateParam}
-                onApplyPreset={applyPreset}
-              />
-              {phase.id === "finish" && (
-                <FlowLabSignoff
-                  disabled={running}
-                  busy={signoffBusy}
-                  onRun={(a, long) => void runSignoff(a, long)}
-                />
-              )}
             </>
+          ) : (
+            <div className="fl-phase-workspace">
+              <FlowLabPhaseVisual
+                phaseId={phaseId}
+                stage={resultsStage}
+                variant="flowlab"
+                params={params}
+                refreshKey={refreshKey}
+                rtlLines={lineCount}
+                sim={sim}
+                stageDone={Boolean(stages.find((s) => s.id === phaseId)?.done)}
+              />
+              <div className="fl-phase-controls">
+                <FlowLabParamStudio
+                  params={params}
+                  onChange={updateParam}
+                  onApplyPreset={applyPreset}
+                />
+                {phase.id === "finish" && (
+                  <FlowLabSignoff
+                    disabled={running}
+                    busy={signoffBusy}
+                    onRun={(a, long) => void runSignoff(a, long)}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {offerNext && nextPhase && ok && (
