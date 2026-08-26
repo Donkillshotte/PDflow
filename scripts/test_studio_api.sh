@@ -163,6 +163,22 @@ rg -q 'tab=run&action=gridcheck' /tmp/studio-open-run.json && ok "run navigate d
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/strumenti?tab=run&action=rtl_sim")"
 [[ "${c}" == "200" ]] && ok "GET strumenti action deep-link" || bad "strumenti action → ${c}"
 
+# FlowLab API + page
+code="$(curl -s -o /tmp/studio-flowlab.json -w '%{http_code}' "${BASE}/api/flowlab")"
+[[ "${code}" == "200" ]] && ok "GET /api/flowlab → 200" || bad "flowlab → ${code}"
+rg -q '"rtl"' /tmp/studio-flowlab.json && ok "flowlab.rtl" || bad "flowlab senza rtl"
+rg -q '"params"' /tmp/studio-flowlab.json && ok "flowlab.params" || bad "flowlab senza params"
+rg -q '"coreUtilization"' /tmp/studio-flowlab.json && ok "flowlab.params.coreUtilization" || bad "params incompleti"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/flusso")"
+[[ "${c}" == "200" ]] && ok "GET /flusso" || bad "flusso → ${c}"
+rg -q '"id":"dash-flowlab"' /tmp/studio-open.json && ok "open dash-flowlab" || bad "open senza flowlab"
+
+# FlowLab rtl_sim (uses learn/flowlab/gcd.v)
+code="$(curl -s --max-time 60 -o /tmp/studio-fl-rtl.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=rtl_sim&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "flowlab rtl_sim → 200" || bad "flowlab rtl_sim → ${code}"
+rg -q 'RTL_SIM_PASS|"ok":true' /tmp/studio-fl-rtl.sse && ok "flowlab rtl_sim pass" || bad "flowlab rtl_sim fail"
+
 # Artifact preflight for missing finish artifact
 if [[ ! -f "${RES_DIR}/6_final.gds" ]]; then
   code="$(curl -s -o /tmp/studio-kldrc.json -w '%{http_code}' \

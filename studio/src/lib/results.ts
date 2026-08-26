@@ -21,15 +21,29 @@ export type StageResults = {
   artifacts: ArtifactInfo[];
   metrics: MetricHit[];
   goldenHints: { label: string; value: string }[];
+  variant?: string;
 };
 
-const VARIANT = "learn";
-const baseResults = () =>
-  path.join(REPO_ROOT, `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}`);
-const baseReports = () =>
-  path.join(REPO_ROOT, `tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/${VARIANT}`);
-const baseLogs = () =>
-  path.join(REPO_ROOT, `tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/${VARIANT}`);
+const DEFAULT_VARIANT = "learn";
+
+function baseResults(variant = DEFAULT_VARIANT) {
+  return path.join(
+    /*turbopackIgnore: true*/ REPO_ROOT,
+    `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${variant}`,
+  );
+}
+function baseReports(variant = DEFAULT_VARIANT) {
+  return path.join(
+    /*turbopackIgnore: true*/ REPO_ROOT,
+    `tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/${variant}`,
+  );
+}
+function baseLogs(variant = DEFAULT_VARIANT) {
+  return path.join(
+    /*turbopackIgnore: true*/ REPO_ROOT,
+    `tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/${variant}`,
+  );
+}
 
 const STAGE_ARTIFACTS: Record<string, string[]> = {
   synth: ["1_synth.odb", "1_2_yosys.v", "1_synth.sdc"],
@@ -122,20 +136,23 @@ function grepFile(abs: string, patterns: RegExp[], limit = 8): MetricHit[] {
   return hits;
 }
 
-export function collectStageResults(stage: string): StageResults {
+export function collectStageResults(
+  stage: string,
+  variant: string = DEFAULT_VARIANT,
+): StageResults {
   const names = STAGE_ARTIFACTS[stage] ?? [];
   const artifacts = names.map((n) => {
     // reports live under reports/ for some names
     if (n.endsWith(".rpt") || n === "synth_stat.txt") {
-      return statFile(path.join(baseReports(), n), n);
+      return statFile(path.join(baseReports(variant), n), n);
     }
-    return statFile(path.join(baseResults(), n), n);
+    return statFile(path.join(baseResults(variant), n), n);
   });
 
   const metrics: MetricHit[] = [];
   if (stage === "synth") {
     metrics.push(
-      ...grepFile(path.join(baseReports(), "synth_stat.txt"), [
+      ...grepFile(path.join(baseReports(variant), "synth_stat.txt"), [
         /Number of cells/i,
         /Chip area/i,
         /DFF_X1/,
@@ -144,7 +161,7 @@ export function collectStageResults(stage: string): StageResults {
   }
   if (stage === "floorplan") {
     metrics.push(
-      ...grepFile(path.join(baseLogs(), "2_1_floorplan.log"), [
+      ...grepFile(path.join(baseLogs(variant), "2_1_floorplan.log"), [
         /Core area/i,
         /Effective utilization/i,
         /Design area/i,
@@ -153,22 +170,24 @@ export function collectStageResults(stage: string): StageResults {
   }
   if (stage === "place") {
     metrics.push(
-      ...grepFile(path.join(baseReports(), "3_resizer.rpt"), [
+      ...grepFile(path.join(baseReports(variant), "3_resizer.rpt"), [
         /worst slack/i,
         /period_min/i,
         /setup violation/i,
       ]),
-      ...grepFile(path.join(baseLogs(), "3_4_place_resized.log"), [/Design area/i]),
+      ...grepFile(path.join(baseLogs(variant), "3_4_place_resized.log"), [
+        /Design area/i,
+      ]),
     );
   }
   if (stage === "cts") {
     metrics.push(
-      ...grepFile(path.join(baseReports(), "4_cts_final.rpt"), [
+      ...grepFile(path.join(baseReports(variant), "4_cts_final.rpt"), [
         /worst slack/i,
         /setup violation/i,
         /skew/i,
       ]),
-      ...grepFile(path.join(baseLogs(), "4_1_cts.log"), [
+      ...grepFile(path.join(baseLogs(variant), "4_1_cts.log"), [
         /Inserted/i,
         /DPL-0006/,
         /RSZ-0062/,
@@ -177,7 +196,7 @@ export function collectStageResults(stage: string): StageResults {
     );
   }
   if (stage === "route") {
-    const drc = path.join(baseReports(), "5_route_drc.rpt");
+    const drc = path.join(baseReports(variant), "5_route_drc.rpt");
     if (fs.existsSync(drc)) {
       const lines = fs.readFileSync(drc, "utf8").split("\n").filter(Boolean).length;
       metrics.push({
@@ -187,7 +206,7 @@ export function collectStageResults(stage: string): StageResults {
       });
     }
     metrics.push(
-      ...grepFile(path.join(baseReports(), "5_global_route.rpt"), [
+      ...grepFile(path.join(baseReports(variant), "5_global_route.rpt"), [
         /worst slack/i,
         /setup violation/i,
       ]),
@@ -195,7 +214,7 @@ export function collectStageResults(stage: string): StageResults {
   }
   if (stage === "finish") {
     metrics.push(
-      ...grepFile(path.join(baseReports(), "6_finish.rpt"), [
+      ...grepFile(path.join(baseReports(variant), "6_finish.rpt"), [
         /wns max/i,
         /tns max/i,
         /period_min/i,
@@ -210,5 +229,6 @@ export function collectStageResults(stage: string): StageResults {
     artifacts,
     metrics: metrics.slice(0, 12),
     goldenHints: STAGE_GOLDEN[stage] ?? [],
+    variant,
   };
 }

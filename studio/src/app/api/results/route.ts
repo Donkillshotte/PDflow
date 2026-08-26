@@ -4,6 +4,8 @@ import { collectStageResults } from "@/lib/results";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const stage = new URL(req.url).searchParams.get("stage") ?? "synth";
-  return NextResponse.json(collectStageResults(stage));
+  const url = new URL(req.url);
+  const stage = url.searchParams.get("stage") ?? "synth";
+  const variant = url.searchParams.get("variant") ?? "learn";
+  return NextResponse.json(collectStageResults(stage, variant));
 }

@@ -3,12 +3,12 @@ import path from "path";
 import { spawn } from "child_process";
 import { REPO_ROOT, LEARN_ROOT } from "./course";
 
-const VARIANT = "learn";
+const DEFAULT_VARIANT = "learn";
 
-export function resultsDir() {
+export function resultsDir(variant: string = DEFAULT_VARIANT) {
   return path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
-    `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}`,
+    `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${variant}`,
   );
 }
 
@@ -128,8 +128,8 @@ export function detectDisplay(): string | null {
   return null;
 }
 
-function absArtifact(name: string) {
-  return path.join(resultsDir(), name);
+function absArtifact(name: string, variant = DEFAULT_VARIANT) {
+  return path.join(resultsDir(variant), name);
 }
 
 function openroadCommand(abs: string): string {
@@ -190,6 +190,13 @@ export function listOpenTargets(): {
     label: "Suite collaborativa · stato hook",
     kind: "dashboard",
     href: "/strumenti#suite",
+    exists: true,
+  });
+  targets.push({
+    id: "dash-flowlab",
+    label: "FlowLab · RTL → GDSII",
+    kind: "dashboard",
+    href: "/flusso",
     exists: true,
   });
 
@@ -317,9 +324,10 @@ export function resolveOpenTarget(id: string): OpenTarget | null {
 
 export function resolveArtifactOpen(
   artifact: string,
+  variant = DEFAULT_VARIANT,
 ): OpenTarget | null {
   const name = path.basename(artifact);
-  const abs = absArtifact(name);
+  const abs = absArtifact(name, variant);
   if (!fs.existsSync(abs)) return null;
   if (name.endsWith(".gds") || name.endsWith(".oas")) {
     return {

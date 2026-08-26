@@ -187,10 +187,11 @@ export function forceReleaseLock() {
 
 export function stageReady(
   stage: string,
+  variant = "learn",
 ): { ready: boolean; missing: string[]; dep: string | null } {
   const dep = STAGE_DEPS[stage] ?? null;
   if (!dep) return { ready: true, missing: [], dep: null };
-  const results = collectStageResults(dep);
+  const results = collectStageResults(dep, variant);
   const missing = results.artifacts.filter((a) => !a.exists).map((a) => a.name);
   // Require the primary artifact (first listed — usually the stage .odb / GDS).
   const primary = results.artifacts[0];
@@ -316,7 +317,11 @@ export type PreflightResult =
       missing?: string[];
     };
 
-export function preflightAction(action: string): PreflightResult {
+export function preflightAction(
+  action: string,
+  opts: { variant?: string } = {},
+): PreflightResult {
+  const variant = opts.variant ?? "learn";
   // Artifact gates for extended / analysis actions
   const needFile: Record<string, { rel: string; hint: string }> = {
     gridcheck: {
@@ -334,7 +339,10 @@ export function preflightAction(action: string): PreflightResult {
   };
   const need = needFile[action];
   if (need) {
-    const abs = path.join(/*turbopackIgnore: true*/ resultsDir(), need.rel);
+    const abs = path.join(
+      /*turbopackIgnore: true*/ resultsDir(variant),
+      need.rel,
+    );
     if (!fs.existsSync(abs)) {
       return {
         ok: false,
@@ -345,11 +353,17 @@ export function preflightAction(action: string): PreflightResult {
     }
   }
   if (action === "rtl_sim") {
-    const rtl = path.join(
-      /*turbopackIgnore: true*/ REPO_ROOT,
-      "tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v",
+    const rtl =
+      variant === "flowlab"
+        ? path.join(/*turbopackIgnore: true*/ LEARN_ROOT, "flowlab/gcd.v")
+        : path.join(
+            /*turbopackIgnore: true*/ REPO_ROOT,
+            "tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v",
+          );
+    const tb = path.join(
+      /*turbopackIgnore: true*/ LEARN_ROOT,
+      "sim/gcd/tb_gcd.v",
     );
-    const tb = path.join(/*turbopackIgnore: true*/ LEARN_ROOT, "sim/gcd/tb_gcd.v");
     if (!fs.existsSync(rtl) || !fs.existsSync(tb)) {
       return {
         ok: false,
@@ -360,7 +374,7 @@ export function preflightAction(action: string): PreflightResult {
     }
   }
 
-  const dep = stageReady(action);
+  const dep = stageReady(action, variant);
   if (!dep.ready) {
     return {
       ok: false,

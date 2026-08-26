@@ -33,9 +33,11 @@ function canOpenExternally(name: string) {
 export function ResultsPanel({
   stage,
   refreshKey,
+  variant = "learn",
 }: {
   stage: string;
   refreshKey?: number;
+  variant?: string;
 }) {
   const { push } = useToast();
   const [data, setData] = useState<Results | null>(null);
@@ -47,7 +49,9 @@ export function ResultsPanel({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/results?stage=${encodeURIComponent(stage)}`);
+      const res = await fetch(
+        `/api/results?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}`,
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
     } catch (e) {
@@ -55,7 +59,7 @@ export function ResultsPanel({
     } finally {
       setLoading(false);
     }
-  }, [stage]);
+  }, [stage, variant]);
 
   useEffect(() => {
     void load();
@@ -67,7 +71,7 @@ export function ResultsPanel({
       const res = await fetch("/api/open", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artifact: name }),
+        body: JSON.stringify({ artifact: name, variant }),
       });
       const body = await res.json();
       if (body.launched) {

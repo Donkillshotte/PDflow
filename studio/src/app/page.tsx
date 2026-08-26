@@ -51,6 +51,9 @@ export default function HomePage() {
                 Apri lezioni
               </Link>
             )}
+            <Link href="/flusso" className="btn-primary">
+              Flusso RTL → GDS
+            </Link>
             <Link href="/strumenti" className="btn-ghost">
               Console live
             </Link>

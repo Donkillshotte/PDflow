@@ -1,5 +1,6 @@
-import { isAllowedAction, streamCourseAction } from "@/lib/run";
+import { isAllowedAction, streamCourseAction, type RunMode } from "@/lib/run";
 import { preflightAction } from "@/lib/jobs";
+import { FLOWLAB_VARIANT, normalizeParams, readParams } from "@/lib/flowlab";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 900;
@@ -14,7 +15,50 @@ export async function GET(req: Request) {
     );
   }
 
-  const pf = preflightAction(action);
+  const mode = (url.searchParams.get("mode") === "flowlab"
+    ? "flowlab"
+    : "learn") as RunMode;
+  const variant = mode === "flowlab" ? FLOWLAB_VARIANT : "learn";
+
+  // Optional query overrides (allowlisted) — merged with saved FlowLab params
+  const qParams =
+    mode === "flowlab"
+      ? normalizeParams({
+          ...readParams(),
+          ...(url.searchParams.has("coreUtilization")
+            ? {
+                coreUtilization: Number(
+                  url.searchParams.get("coreUtilization"),
+                ),
+              }
+            : {}),
+          ...(url.searchParams.has("placeDensityAddon")
+            ? {
+                placeDensityAddon: Number(
+                  url.searchParams.get("placeDensityAddon"),
+                ),
+              }
+            : {}),
+          ...(url.searchParams.has("abcArea")
+            ? { abcArea: Number(url.searchParams.get("abcArea")) as 0 | 1 }
+            : {}),
+          ...(url.searchParams.has("sdcPreset")
+            ? {
+                sdcPreset: url.searchParams.get("sdcPreset") as
+                  | "default"
+                  | "relaxed"
+                  | "tight",
+              }
+            : {}),
+          ...(url.searchParams.has("tnsEndPercent")
+            ? {
+                tnsEndPercent: Number(url.searchParams.get("tnsEndPercent")),
+              }
+            : {}),
+        })
+      : undefined;
+
+  const pf = preflightAction(action, { variant });
   if (!pf.ok) {
     return Response.json(
       {
@@ -38,6 +82,8 @@ export async function GET(req: Request) {
         for await (const ev of streamCourseAction(action, {
           signal: req.signal,
           skipPreflight: true,
+          mode,
+          params: qParams,
         })) {
           send(ev);
         }

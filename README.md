@@ -67,6 +67,7 @@ Studio attivo stimato: **20–28 ore** (il wrapper `--auto` non sostituisce lo s
 
 Interfaccia web enterprise: lezioni con gate di completamento, console SSE
 (confirm/cancel/retry/export), ops dashboard, **suite hub** (`/api/suite`),
+**FlowLab** (`/flusso`: RTL editabile → parametri → GDSII),
 **Ctrl+K** (dashboard / run / OpenROAD Qt / web viewer), materiali.
 Dettagli: [studio/README.md](studio/README.md).
 Smoke API: `./scripts/test_studio_api.sh`.

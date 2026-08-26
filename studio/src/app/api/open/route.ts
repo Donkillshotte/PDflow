@@ -18,11 +18,12 @@ export async function POST(req: Request) {
     id?: string;
     artifact?: string;
     dryRun?: boolean;
+    variant?: string;
   };
 
   let target = body.id ? resolveOpenTarget(body.id) : null;
   if (!target && body.artifact) {
-    target = resolveArtifactOpen(body.artifact);
+    target = resolveArtifactOpen(body.artifact, body.variant ?? "learn");
   }
   if (!target) {
     return NextResponse.json(

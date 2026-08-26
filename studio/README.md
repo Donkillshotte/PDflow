@@ -24,6 +24,7 @@ Produzione:
 | Area | Contenuto |
 |---|---|
 | Studio | Hero + progresso + **Suite hub** (hook live) + mappa del flusso guidato |
+| **Flusso** | **FlowLab** RTL→GDSII: editor Verilog, parametri per fase, run SSE, artefatti `flowlab` |
 | Lezioni | **Wizard 5 passi** con **gate hard** lato server (teoria, LAB ≥50%, run ok, artefatti, risultati) |
 | Strumenti | Toolchain + Suite hub + **Ops** + console SSE (confirm/cancel/retry/export) + inspect/viewer |
 | Materiali | Ricerca, documenti in-app, galleria GUI |
@@ -58,9 +59,12 @@ Produzione:
 | `GET /api/inspect?stage=` | ODB / STA / Yosys live |
 | `POST /api/viewer` `{ stage }` | avvia OpenROAD Web Viewer |
 | `GET /api/suite` | stato collaborativo di tutti gli hook |
+| `GET/PUT /api/flowlab` | RTL + parametri FlowLab |
+| `GET /api/run/stream?mode=flowlab&action=` | run con override allowlistati |
 
 Deep-link utili:
 
+- `/flusso` — laboratorio RTL → GDSII
 - `/strumenti?stage=place&tab=results`
 - `/strumenti?stage=cts&tab=results#inspect`
 - `/strumenti?tab=run&action=rtl_sim`

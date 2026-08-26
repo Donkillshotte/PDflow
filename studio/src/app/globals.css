@@ -1341,3 +1341,74 @@ button.pipeline-node {
   padding: 0.2rem 0.55rem !important;
   font-size: 0.78rem !important;
 }
+
+/* —— FlowLab —— */
+.flowlab { display: grid; gap: 1.1rem; }
+.flowlab-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 0.45rem;
+}
+.flowlab-step {
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.65rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.flowlab-step:hover { border-color: var(--copper); transform: translateY(-1px); }
+.flowlab-step.active {
+  border-color: var(--copper);
+  background: linear-gradient(160deg, rgba(195, 107, 46, 0.12), rgba(255,255,255,0.7));
+  box-shadow: 0 0 0 1px rgba(195, 107, 46, 0.25);
+}
+.flowlab-step.done { border-color: rgba(31, 122, 76, 0.35); }
+.flowlab-step strong { font-size: 0.92rem; }
+.flowlab-step em {
+  font-style: normal;
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+}
+.flowlab-panel { display: grid; gap: 0.85rem; }
+.rtl-editor {
+  width: 100%;
+  min-height: 28rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #0f161c;
+  color: #e8eef2;
+  resize: vertical;
+  tab-size: 2;
+}
+.flowlab-params {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.flowlab-params label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.flowlab-params select,
+.flowlab-params input[type="range"] {
+  width: 100%;
+  font: inherit;
+}
+.flowlab-params select {
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
