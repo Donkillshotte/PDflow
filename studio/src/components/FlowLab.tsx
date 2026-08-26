@@ -123,7 +123,11 @@ export function FlowLab() {
   const { push } = useToast();
   const router = useRouter();
   const search = useSearchParams();
-  const [phaseId, setPhaseId] = useState("rtl");
+  const initialPhase = (() => {
+    const q = search.get("phase");
+    return q && PHASE_IDS.includes(q) ? q : "rtl";
+  })();
+  const [phaseId, setPhaseId] = useState(initialPhase);
   const [rtl, setRtl] = useState("");
   const [params, setParams] = useState<FlowlabParams>({
     coreUtilization: 35,
@@ -154,6 +158,7 @@ export function FlowLab() {
   const saveTimer = useRef<number | null>(null);
   const rtlRef = useRef(rtl);
   const paramsRef = useRef(params);
+  const urlReady = useRef(false);
 
   const phase = PHASES.find((p) => p.id === phaseId) ?? PHASES[0];
   const resultsStage = phase.id === "rtl" ? "synth" : phase.id;
@@ -187,13 +192,19 @@ export function FlowLab() {
 
   useEffect(() => {
     const q = search.get("phase");
-    if (q && PHASE_IDS.includes(q)) setPhaseId(q);
+    if (q && PHASE_IDS.includes(q) && q !== phaseId) {
+      setPhaseId(q);
+    }
+    urlReady.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to URL
   }, [search]);
 
   useEffect(() => {
-    const url = `/flusso?phase=${phaseId}`;
-    router.replace(url, { scroll: false });
-  }, [phaseId, router]);
+    if (!urlReady.current) return;
+    const current = search.get("phase");
+    if (current === phaseId) return;
+    router.replace(`/flusso?phase=${phaseId}`, { scroll: false });
+  }, [phaseId, router, search]);
 
   useEffect(() => {
     if (logRef.current) {
