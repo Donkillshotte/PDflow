@@ -3,107 +3,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
+import {
+  CloudUpload,
+  Keyboard,
+  Play,
+  RotateCcw,
+  Save,
+  Square,
+} from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { InspectPanel } from "@/components/InspectPanel";
 import { useToast } from "@/components/ToastProvider";
-
-type FlowlabParams = {
-  coreUtilization: number;
-  placeDensityAddon: number;
-  abcArea: 0 | 1;
-  sdcPreset: "default" | "relaxed" | "tight";
-  tnsEndPercent: number;
-};
-
-type Phase = {
-  id: string;
-  label: string;
-  title: string;
-  action: string;
-  hint: string;
-  help: string;
-};
-
-type StageStatus = {
-  id: string;
-  label: string;
-  action: string;
-  done: boolean;
-  primary?: string;
-};
-
-const PHASES: Phase[] = [
-  {
-    id: "rtl",
-    label: "1 · RTL",
-    title: "Scrivi e simula RTL",
-    action: "rtl_sim",
-    hint: "Editor + Icarus",
-    help: "Modifica il Verilog, salva, poi simula. Serve per validare la logica prima della sintesi.",
-  },
-  {
-    id: "synth",
-    label: "2 · Sintesi",
-    title: "Sintesi logica (Yosys)",
-    action: "synth",
-    hint: "ABC · SDC",
-    help: "Scegli vincoli SDC e modalità ABC, poi lancia la sintesi. Produce netlist + ODB.",
-  },
-  {
-    id: "floorplan",
-    label: "3 · Floorplan",
-    title: "Floorplan e PDN",
-    action: "floorplan",
-    hint: "Utilizzo core",
-    help: "Imposta l’utilizzo del core: più alto = chip più piccolo, più rischio di congestione.",
-  },
-  {
-    id: "place",
-    label: "4 · Place",
-    title: "Placement",
-    action: "place",
-    hint: "Densità",
-    help: "Global + detailed placement. La densità addon regola lo spazio libero tra le celle.",
-  },
-  {
-    id: "cts",
-    label: "5 · CTS",
-    title: "Clock tree synthesis",
-    action: "cts",
-    hint: "TNS %",
-    help: "Costruisce l’albero di clock e ripara timing. TNS end % quanto recovery fare.",
-  },
-  {
-    id: "route",
-    label: "6 · Route",
-    title: "Routing",
-    action: "route",
-    hint: "Global + detail",
-    help: "Instrada i segnali. Può richiedere minuti: conferma prima di lanciare.",
-  },
-  {
-    id: "finish",
-    label: "7 · GDSII",
-    title: "Finish · GDS",
-    action: "finish",
-    hint: "SPEF · GDS",
-    help: "Genera GDS, SPEF, netlist finale. Apri KLayout o la GUI OpenROAD sui risultati.",
-  },
-];
-
-const LONG = new Set(["cts", "route", "finish"]);
-const PHASE_IDS = PHASES.map((p) => p.id);
-
-type StreamEvent =
-  | { type: "start"; jobId: string; command: string; action: string }
-  | { type: "stdout"; chunk: string }
-  | { type: "stderr"; chunk: string }
-  | { type: "done"; ok: boolean; code: number | null; ms: number }
-  | { type: "error"; message: string }
-  | { type: "blocked"; code: string; message: string };
-
-type RightTab = "log" | "artifacts" | "inspect";
+import { FlowLabMetricsBar } from "@/components/flowlab/FlowLabMetricsBar";
+import { FlowLabParamStudio } from "@/components/flowlab/FlowLabParamStudio";
+import { FlowLabPipeline } from "@/components/flowlab/FlowLabPipeline";
+import { FlowLabRtlEditor } from "@/components/flowlab/FlowLabRtlEditor";
+import { FlowLabTerminal } from "@/components/flowlab/FlowLabTerminal";
+import { LONG_ACTIONS, PHASE_IDS, PHASES } from "@/components/flowlab/phases";
+import type {
+  FlowlabParams,
+  RightTab,
+  StageStatus,
+  StreamEvent,
+} from "@/components/flowlab/types";
+import { PARAM_PRESETS } from "@/components/flowlab/types";
 
 function formatMs(ms: number) {
   if (ms < 1000) return `${ms} ms`;
@@ -119,6 +43,19 @@ function phaseUnlocked(id: string, stages: StageStatus[]) {
   return Boolean(stages.find((s) => s.id === prev.id)?.done);
 }
 
+function FlowLabSkeleton() {
+  return (
+    <div className="fl-pro fl-loading" aria-busy="true">
+      <div className="fl-skel fl-skel-hero" />
+      <div className="fl-skel fl-skel-pipeline" />
+      <div className="fl-workbench-grid">
+        <div className="fl-skel fl-skel-main" />
+        <div className="fl-skel fl-skel-side" />
+      </div>
+    </div>
+  );
+}
+
 export function FlowLab() {
   const { push } = useToast();
   const router = useRouter();
@@ -127,6 +64,7 @@ export function FlowLab() {
     const q = search.get("phase");
     return q && PHASE_IDS.includes(q) ? q : "rtl";
   })();
+
   const [phaseId, setPhaseId] = useState(initialPhase);
   const [rtl, setRtl] = useState("");
   const [params, setParams] = useState<FlowlabParams>({
@@ -152,13 +90,16 @@ export function FlowLab() {
   const [rightTab, setRightTab] = useState<RightTab>("log");
   const [guiBusy, setGuiBusy] = useState(false);
   const [offerNext, setOfferNext] = useState(false);
+  const [sideWidth, setSideWidth] = useState(420);
+
   const abortRef = useRef<AbortController | null>(null);
-  const logRef = useRef<HTMLPreElement | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
   const tickRef = useRef<number | null>(null);
   const saveTimer = useRef<number | null>(null);
   const rtlRef = useRef(rtl);
   const paramsRef = useRef(params);
   const urlReady = useRef(false);
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null);
 
   const phase = PHASES.find((p) => p.id === phaseId) ?? PHASES[0];
   const resultsStage = phase.id === "rtl" ? "synth" : phase.id;
@@ -166,6 +107,7 @@ export function FlowLab() {
   const progressPct = Math.round((doneCount / PHASES.length) * 100);
   const unlocked = phaseUnlocked(phaseId, stages);
   const nextPhase = PHASES[PHASE_IDS.indexOf(phaseId) + 1] ?? null;
+  const lineCount = useMemo(() => rtl.split("\n").length, [rtl]);
 
   const load = useCallback(async () => {
     try {
@@ -192,24 +134,19 @@ export function FlowLab() {
 
   useEffect(() => {
     const q = search.get("phase");
-    if (q && PHASE_IDS.includes(q) && q !== phaseId) {
-      setPhaseId(q);
-    }
+    if (q && PHASE_IDS.includes(q) && q !== phaseId) setPhaseId(q);
     urlReady.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to URL
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   useEffect(() => {
     if (!urlReady.current) return;
-    const current = search.get("phase");
-    if (current === phaseId) return;
+    if (search.get("phase") === phaseId) return;
     router.replace(`/flusso?phase=${phaseId}`, { scroll: false });
   }, [phaseId, router, search]);
 
   useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
-    }
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [log]);
 
   useEffect(() => {
@@ -258,7 +195,7 @@ export function FlowLab() {
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
       void saveAll(nextRtl, nextParams, true);
-    }, 900);
+    }, 800);
   }
 
   function onRtlChange(value: string) {
@@ -277,6 +214,15 @@ export function FlowLab() {
       scheduleAutosave(rtlRef.current, next);
       return next;
     });
+  }
+
+  function applyPreset(key: string) {
+    const preset = PARAM_PRESETS[key];
+    if (!preset) return;
+    setParams(preset.params);
+    paramsRef.current = preset.params;
+    scheduleAutosave(rtlRef.current, preset.params);
+    push(`Profilo «${preset.label}» applicato`, "info");
   }
 
   async function resetGolden() {
@@ -300,7 +246,7 @@ export function FlowLab() {
     }
   }
 
-  async function runAction() {
+  const runAction = useCallback(async () => {
     if (dirty) {
       const saved = await saveAll(rtlRef.current, paramsRef.current, true);
       if (!saved) return;
@@ -396,19 +342,35 @@ export function FlowLab() {
         tickRef.current = null;
       }
     }
-  }
+  }, [dirty, saveAll, phase, nextPhase, push, load]);
 
-  function requestRun() {
+  const requestRun = useCallback(() => {
     if (!unlocked) {
       push("Completa prima la fase precedente", "bad");
       return;
     }
-    if (LONG.has(phase.action)) {
+    if (LONG_ACTIONS.has(phase.action)) {
       setConfirmOpen(true);
       return;
     }
     void runAction();
-  }
+  }, [unlocked, phase.action, push, runAction]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "s") {
+        e.preventDefault();
+        void saveAll();
+      }
+      if (mod && e.key === "Enter") {
+        e.preventDefault();
+        requestRun();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [saveAll, requestRun]);
 
   async function cancel() {
     if (jobId) {
@@ -426,20 +388,6 @@ export function FlowLab() {
     if (phase.id === "rtl") return;
     setGuiBusy(true);
     try {
-      const catalog = await fetch("/api/open").then((r) => r.json());
-      const list = (catalog.targets ?? []) as {
-        id: string;
-        stage?: string;
-        kind: string;
-        exists: boolean;
-      }[];
-      const pick =
-        list.find(
-          (t) =>
-            t.stage === resultsStage && t.kind === "openroad" && t.exists,
-        ) ??
-        list.find((t) => t.stage === resultsStage && t.exists);
-      // Prefer opening by artifact in flowlab variant
       const artRes = await fetch("/api/open", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -467,16 +415,6 @@ export function FlowLab() {
       if (body.command) {
         await navigator.clipboard?.writeText(body.command).catch(() => undefined);
         push(body.message || "Comando GUI copiato — apri Desktop", "info");
-        return;
-      }
-      if (pick) {
-        const res = await fetch("/api/open", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: pick.id }),
-        });
-        const b = await res.json();
-        push(b.message || "Apertura GUI", b.launched ? "ok" : "info");
       } else {
         push(body.message || "Nessuna GUI pronta per questa fase", "bad");
       }
@@ -496,232 +434,180 @@ export function FlowLab() {
     push("Log esportato", "ok");
   }
 
-  const lineCount = useMemo(() => rtl.split("\n").length, [rtl]);
-
-  if (loading) {
-    return <div className="flowlab muted">Carico workbench FlowLab…</div>;
+  function selectPhase(id: string) {
+    setPhaseId(id);
+    setOfferNext(false);
+    setOk(null);
   }
 
+  function onResizeStart(e: React.PointerEvent) {
+    dragRef.current = { startX: e.clientX, startW: sideWidth };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function onResizeMove(e: React.PointerEvent) {
+    if (!dragRef.current) return;
+    const delta = dragRef.current.startX - e.clientX;
+    setSideWidth(Math.min(560, Math.max(300, dragRef.current.startW + delta)));
+  }
+
+  function onResizeEnd() {
+    dragRef.current = null;
+  }
+
+  if (loading) return <FlowLabSkeleton />;
+
   return (
-    <div className="flowlab flowlab-workbench">
-      <header className="flowlab-hero">
-        <div>
-          <p className="hero-brand" style={{ fontSize: "0.85rem", margin: 0 }}>
-            FlowLab
-          </p>
-          <h1>RTL → GDSII, interattivo</h1>
+    <div className="fl-pro">
+      <header className="fl-hero">
+        <div className="fl-hero-copy">
+          <p className="fl-eyebrow">OpenROAD Studio · FlowLab</p>
+          <h1>Da RTL a GDSII, fase per fase</h1>
           <p>
-            Ogni fase è un laboratorio: edita, regola i parametri, lancia, ispeziona
-            artefatti e GUI. Variante isolata{" "}
-            <code>results/…/gcd/flowlab</code>.
+            Workbench interattivo con editor Verilog, parametri ORFS live, log streaming
+            e ispezione artefatti. Variante isolata{" "}
+            <code>results/nangate45/gcd/flowlab</code>.
           </p>
         </div>
-        <div className="flowlab-progress" aria-label={`Progresso ${progressPct}%`}>
-          <strong>{doneCount}/{PHASES.length}</strong>
-          <span>fasi complete</span>
-          <div className="flowlab-bar">
-            <i style={{ width: `${progressPct}%` }} />
+        <div className="fl-hero-stats">
+          <div className="fl-progress-ring" style={{ "--pct": progressPct } as React.CSSProperties}>
+            <svg viewBox="0 0 36 36" aria-hidden>
+              <path
+                className="fl-ring-bg"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <path
+                className="fl-ring-fill"
+                strokeDasharray={`${progressPct}, 100`}
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+            </svg>
+            <span>{progressPct}%</span>
+          </div>
+          <div>
+            <strong>{doneCount} / {PHASES.length}</strong>
+            <span>fasi completate</span>
           </div>
         </div>
       </header>
 
-      <div className="flowlab-grid">
-        <aside className="flowlab-rail" aria-label="Fasi">
-          {PHASES.map((p, i) => {
-            const st = stages.find((s) => s.id === p.id);
-            const open = phaseUnlocked(p.id, stages);
-            return (
-              <button
-                key={p.id}
-                type="button"
-                disabled={!open && !st?.done}
-                className={clsx(
-                  "flowlab-rail-item",
-                  phaseId === p.id && "active",
-                  st?.done && "done",
-                  !open && "locked",
-                )}
-                onClick={() => {
-                  if (!open && !st?.done) {
-                    push(`Sblocca «${p.label}» completando la fase ${i}`, "info");
-                    return;
-                  }
-                  setPhaseId(p.id);
-                  setOfferNext(false);
-                  setOk(null);
-                }}
-              >
-                <span className="flowlab-rail-num">{i + 1}</span>
-                <span>
-                  <strong>{p.label.replace(/^\d+\s·\s/, "")}</strong>
-                  <em>{p.hint}</em>
-                </span>
-                {st?.done ? (
-                  <span className="pill ok">ok</span>
-                ) : open ? (
-                  <span className="pill">apri</span>
-                ) : (
-                  <span className="pill">lock</span>
-                )}
-              </button>
-            );
-          })}
-        </aside>
+      <FlowLabPipeline
+        phases={PHASES}
+        phaseId={phaseId}
+        stages={stages}
+        running={running}
+        onSelect={selectPhase}
+      />
 
-        <section className="panel flowlab-main">
-          <div className="ops-head">
-            <div>
-              <h2>{phase.title}</h2>
-              <p className="muted">{phase.help}</p>
-            </div>
-            <div className="lesson-actions">
-              <span className={clsx("pill", dirty ? "bad" : "ok")}>
-                {saving ? "autosave…" : dirty ? "non salvato" : "sincronizzato"}
-              </span>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={saving || running}
-                onClick={() => void saveAll()}
-              >
-                Salva ora
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={running || (!unlocked && !stages.find((s) => s.id === phaseId)?.done)}
-                onClick={requestRun}
-              >
-                {running
-                  ? `Eseguo… ${formatMs(elapsed)}`
-                  : `Esegui ${phase.label.replace(/^\d+\s·\s/, "")}`}
-              </button>
-              {running && (
-                <button type="button" className="btn-ghost" onClick={() => void cancel()}>
-                  Annulla
-                </button>
-              )}
-            </div>
-          </div>
-
-          {!unlocked && (
-            <p className="block-banner">
-              Fase bloccata: completa prima «{PHASES[PHASE_IDS.indexOf(phaseId) - 1]?.label}».
-            </p>
+      <div className="fl-toolbar">
+        <div className="fl-toolbar-left">
+          <h2>{phase.title}</h2>
+          <p>{phase.help}</p>
+        </div>
+        <div className="fl-toolbar-right">
+          <span className="fl-kbd-hint" title="Scorciatoie">
+            <Keyboard size={14} aria-hidden />
+            <kbd>Ctrl</kbd>+<kbd>S</kbd> · <kbd>Ctrl</kbd>+<kbd>Enter</kbd>
+          </span>
+          <span className={clsx("fl-sync-pill", dirty ? "dirty" : saving ? "saving" : "ok")}>
+            {saving ? (
+              <>
+                <CloudUpload size={14} className="fl-spin" aria-hidden /> Salvataggio…
+              </>
+            ) : dirty ? (
+              "Modifiche locali"
+            ) : (
+              <>
+                <Save size={14} aria-hidden /> Sincronizzato
+              </>
+            )}
+          </span>
+          <button
+            type="button"
+            className="fl-btn fl-btn-ghost"
+            disabled={saving || running}
+            onClick={() => void saveAll()}
+          >
+            <Save size={16} aria-hidden />
+            Salva
+          </button>
+          {running ? (
+            <button type="button" className="fl-btn fl-btn-danger" onClick={() => void cancel()}>
+              <Square size={16} aria-hidden />
+              Stop
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="fl-btn fl-btn-primary"
+              disabled={!unlocked && !stages.find((s) => s.id === phaseId)?.done}
+              onClick={requestRun}
+            >
+              <Play size={16} aria-hidden />
+              Esegui {phase.label}
+            </button>
           )}
+        </div>
+      </div>
 
+      {!unlocked && (
+        <div className="fl-lock-banner">
+          Fase bloccata — completa «{PHASES[PHASE_IDS.indexOf(phaseId) - 1]?.label}» per
+          sbloccare.
+        </div>
+      )}
+
+      <FlowLabMetricsBar
+        stage={resultsStage}
+        variant="flowlab"
+        refreshKey={refreshKey}
+        visible={phase.id !== "rtl"}
+      />
+
+      <div
+        className="fl-workbench-grid"
+        style={{ "--fl-side-w": `${sideWidth}px` } as React.CSSProperties}
+      >
+        <section className="fl-main-panel">
           {phase.id === "rtl" ? (
-            <div className="flowlab-rtl">
-              <div className="lesson-actions" style={{ marginBottom: "0.55rem" }}>
-                <span className="pill">learn/flowlab/gcd.v · {lineCount} righe</span>
+            <div className="fl-editor-shell">
+              <div className="fl-editor-toolbar">
+                <span>
+                  <code>learn/flowlab/gcd.v</code> · {lineCount} righe · Verilog-2001
+                </span>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="fl-btn fl-btn-ghost fl-btn-sm"
                   disabled={saving || running}
                   onClick={() => void resetGolden()}
                 >
+                  <RotateCcw size={14} aria-hidden />
                   Ripristina golden
                 </button>
               </div>
-              <textarea
-                className="rtl-editor"
-                spellCheck={false}
+              <FlowLabRtlEditor
                 value={rtl}
-                onChange={(e) => onRtlChange(e.target.value)}
-                aria-label="Editor RTL Verilog"
-                rows={24}
+                onChange={onRtlChange}
+                readOnly={running}
               />
             </div>
           ) : (
-            <div className="flowlab-params flowlab-params-rich">
-              <label>
-                SDC (periodo clock)
-                <select
-                  value={params.sdcPreset}
-                  onChange={(e) =>
-                    updateParam(
-                      "sdcPreset",
-                      e.target.value as FlowlabParams["sdcPreset"],
-                    )
-                  }
-                >
-                  <option value="default">default · 0.46 ns</option>
-                  <option value="relaxed">relaxed · 2.0 ns</option>
-                  <option value="tight">tight · 0.25 ns</option>
-                </select>
-              </label>
-              <label>
-                ABC area / delay
-                <select
-                  value={params.abcArea}
-                  onChange={(e) =>
-                    updateParam("abcArea", Number(e.target.value) as 0 | 1)
-                  }
-                >
-                  <option value={1}>area (ABC_AREA=1)</option>
-                  <option value={0}>delay (ABC_AREA=0)</option>
-                </select>
-              </label>
-              <label>
-                Core utilization · {params.coreUtilization}%
-                <input
-                  type="range"
-                  min={20}
-                  max={55}
-                  step={1}
-                  value={params.coreUtilization}
-                  onChange={(e) =>
-                    updateParam("coreUtilization", Number(e.target.value))
-                  }
-                />
-              </label>
-              <label>
-                Place density addon · {params.placeDensityAddon.toFixed(2)}
-                <input
-                  type="range"
-                  min={0.05}
-                  max={0.4}
-                  step={0.01}
-                  value={params.placeDensityAddon}
-                  onChange={(e) =>
-                    updateParam("placeDensityAddon", Number(e.target.value))
-                  }
-                />
-              </label>
-              <label>
-                TNS end percent · {params.tnsEndPercent}%
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={params.tnsEndPercent}
-                  onChange={(e) =>
-                    updateParam("tnsEndPercent", Number(e.target.value))
-                  }
-                />
-              </label>
-              <div className="flowlab-param-summary muted">
-                Override make:{" "}
-                <code>
-                  FLOW_VARIANT=flowlab CORE_UTILIZATION={params.coreUtilization}{" "}
-                  SDC={params.sdcPreset} ABC_AREA={params.abcArea}
-                </code>
-              </div>
-            </div>
+            <FlowLabParamStudio
+              params={params}
+              onChange={updateParam}
+              onApplyPreset={applyPreset}
+            />
           )}
 
           {offerNext && nextPhase && ok && (
-            <div className="flowlab-next">
+            <div className="fl-next-banner">
               <div>
-                <strong>{phase.label} ok</strong>
-                <p className="muted" style={{ margin: 0 }}>
-                  Continua con {nextPhase.title}
-                </p>
+                <strong>{phase.label} completata</strong>
+                <p>Prossimo passo: {nextPhase.title}</p>
               </div>
               <button
                 type="button"
-                className="btn-primary"
+                className="fl-btn fl-btn-primary"
                 onClick={() => {
                   setPhaseId(nextPhase.id);
                   setOfferNext(false);
@@ -729,17 +615,26 @@ export function FlowLab() {
                   setLog("");
                 }}
               >
-                Vai a {nextPhase.label.replace(/^\d+\s·\s/, "")} →
+                Continua → {nextPhase.label}
               </button>
             </div>
           )}
         </section>
 
-        <section className="panel flowlab-side">
-          <div className="flowlab-side-tabs" role="tablist">
+        <div
+          className="fl-resize-handle"
+          onPointerDown={onResizeStart}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeEnd}
+          onPointerCancel={onResizeEnd}
+          aria-hidden
+        />
+
+        <aside className="fl-side-panel">
+          <div className="fl-side-tabs" role="tablist">
             {(
               [
-                ["log", "Log live"],
+                ["log", "Console"],
                 ["artifacts", "Artefatti"],
                 ["inspect", "Ispeziona"],
               ] as const
@@ -749,7 +644,7 @@ export function FlowLab() {
                 type="button"
                 role="tab"
                 aria-selected={rightTab === id}
-                className={clsx("chip", rightTab === id && "chip-active")}
+                className={clsx("fl-tab", rightTab === id && "fl-tab-active")}
                 onClick={() => setRightTab(id)}
               >
                 {label}
@@ -757,85 +652,73 @@ export function FlowLab() {
             ))}
           </div>
 
-          {rightTab === "log" && (
-            <div className="flowlab-log-pane">
-              <div className="lesson-actions" style={{ marginBottom: "0.45rem" }}>
-                {ok !== null && (
-                  <span className={clsx("pill", ok ? "ok" : "bad")}>
-                    {ok ? "ok" : "errore"}
-                  </span>
-                )}
-                {running && <span className="pill">{formatMs(elapsed)}</span>}
-                <button type="button" className="btn-ghost btn-tiny" onClick={exportLog}>
-                  Export log
-                </button>
-              </div>
-              {blockMsg && <p className="block-banner">{blockMsg}</p>}
-              {command && (
-                <p className="muted" style={{ fontSize: "0.78rem" }}>
-                  <code>{command}</code>
-                </p>
-              )}
-              <pre className="run-log" ref={logRef} aria-live="polite">
-                {log ||
-                  (running
-                    ? "Streaming log…"
-                    : "Premi Esegui: qui vedrai il log live della fase.")}
-              </pre>
-            </div>
-          )}
+          <div className="fl-side-body">
+            {rightTab === "log" && (
+              <FlowLabTerminal
+                log={log}
+                running={running}
+                ok={ok}
+                elapsed={formatMs(elapsed)}
+                command={command}
+                blockMsg={blockMsg}
+                onExport={exportLog}
+                onClear={() => setLog("")}
+                logRef={logRef}
+              />
+            )}
 
-          {rightTab === "artifacts" && (
-            <div>
-              {phase.id === "rtl" ? (
-                <p className="muted">
-                  Dopo la sim, il VCD è in <code>learn/sim/gcd/</code>. Gli artefatti
-                  PD compaiono dalle fasi successive.
-                </p>
-              ) : (
-                <>
-                  <div className="lesson-actions" style={{ marginBottom: "0.6rem" }}>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      disabled={guiBusy || running}
-                      onClick={() => void openGui()}
-                    >
-                      {guiBusy ? "Apro…" : "Apri GUI Desktop"}
-                    </button>
+            {rightTab === "artifacts" && (
+              <div className="fl-artifacts-pane">
+                {phase.id === "rtl" ? (
+                  <div className="fl-empty-state">
+                    <p>Dopo la simulazione RTL trovi il VCD in <code>learn/sim/gcd/</code>.</p>
+                    <p className="muted">Gli artefatti fisici compaiono dalla sintesi in poi.</p>
                   </div>
-                  <ResultsPanel
+                ) : (
+                  <>
+                    <div className="fl-artifacts-actions">
+                      <button
+                        type="button"
+                        className="fl-btn fl-btn-primary fl-btn-sm"
+                        disabled={guiBusy || running}
+                        onClick={() => void openGui()}
+                      >
+                        {guiBusy ? "Apertura…" : "Apri GUI Desktop"}
+                      </button>
+                    </div>
+                    <ResultsPanel
+                      stage={resultsStage}
+                      variant="flowlab"
+                      refreshKey={refreshKey}
+                    />
+                  </>
+                )}
+              </div>
+            )}
+
+            {rightTab === "inspect" && (
+              <div className="fl-inspect-pane">
+                {phase.id === "rtl" ? (
+                  <div className="fl-empty-state">
+                    <p>Ispezione ODB, STA e report Yosys disponibile dalla sintesi.</p>
+                  </div>
+                ) : (
+                  <InspectPanel
                     stage={resultsStage}
                     variant="flowlab"
                     refreshKey={refreshKey}
                   />
-                </>
-              )}
-            </div>
-          )}
-
-          {rightTab === "inspect" && (
-            <div>
-              {phase.id === "rtl" ? (
-                <p className="muted">
-                  L’ispezione ODB/STA/Yosys è disponibile dalla sintesi in poi.
-                </p>
-              ) : (
-                <InspectPanel
-                  stage={resultsStage}
-                  variant="flowlab"
-                  refreshKey={refreshKey}
-                />
-              )}
-            </div>
-          )}
-        </section>
+                )}
+              </div>
+            )}
+          </div>
+        </aside>
       </div>
 
       <ConfirmDialog
         open={confirmOpen}
         title={`Confermi ${phase.label}?`}
-        body={`La fase ${phase.action} può richiedere diversi minuti. Un solo job alla volta.`}
+        body={`${phase.tool} — stima ${phase.estTime}. Un solo job alla volta nel runner.`}
         confirmLabel="Esegui"
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {
