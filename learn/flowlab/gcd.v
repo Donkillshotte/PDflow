@@ -17,7 +17,7 @@ module gcd
   input  wire reset,
   output wire [  15:0] resp_msg,
   input  wire resp_rdy,
-  output wire resp_val
+  output wire resp_val // flowlab ui test
 );
 
   // ctrl temporaries
