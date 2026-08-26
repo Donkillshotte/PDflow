@@ -181,10 +181,9 @@ export function stageReady(
   if (!dep) return { ready: true, missing: [], dep: null };
   const results = collectStageResults(dep);
   const missing = results.artifacts.filter((a) => !a.exists).map((a) => a.name);
-  const ready =
-    results.artifacts.length === 0
-      ? true
-      : results.artifacts.some((a) => a.exists);
+  // Require the primary artifact (first listed — usually the stage .odb / GDS).
+  const primary = results.artifacts[0];
+  const ready = primary ? primary.exists : true;
   return { ready, missing, dep };
 }
 
