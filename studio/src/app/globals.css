@@ -1141,3 +1141,108 @@ a.progress-dot {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* —— Command palette & open actions —— */
+.cmd-trigger {
+  position: fixed;
+  right: 1rem;
+  bottom: 4.5rem;
+  z-index: 60;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.cmd-trigger:hover { border-color: var(--copper); }
+.cmd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(10, 16, 22, 0.45);
+  display: grid;
+  place-items: start center;
+  padding: 12vh 1rem 1rem;
+}
+.cmd-palette {
+  width: min(640px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.cmd-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.cmd-head input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  background: transparent;
+}
+.cmd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  max-height: min(420px, 50vh);
+  overflow: auto;
+}
+.cmd-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.cmd-item:hover, .cmd-item.active {
+  background: rgba(47, 111, 237, 0.08);
+}
+.cmd-item.missing { opacity: 0.55; }
+.cmd-kind {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--copper);
+  text-transform: uppercase;
+}
+.cmd-label { font-weight: 600; font-size: 0.92rem; }
+.cmd-empty { padding: 1rem; }
+.cmd-foot {
+  padding: 0.55rem 1rem 0.75rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.78rem;
+}
+.stage-jump {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.45rem;
+  margin: 0.9rem 0 1.2rem;
+}
+button.pipeline-node {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.artifact-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+}

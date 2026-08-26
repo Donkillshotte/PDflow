@@ -63,11 +63,34 @@ code="$(curl -s -o /tmp/studio-bad.json -w '%{http_code}' \
   "${BASE}/api/run/stream?action=rm_rf")"
 [[ "${code}" == "400" ]] && ok "forbidden action → 400" || bad "forbidden → ${code}"
 
-# Pagine chiave
-for path in /lezioni /strumenti /materiali /lezioni/00-intro; do
+# Pagine chiave + deep-link
+for path in /lezioni /strumenti /materiali /lezioni/00-intro \
+  '/strumenti?stage=cts&tab=results' '/materiali?tab=gallery'; do
   c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}${path}")"
   [[ "${c}" == "200" ]] && ok "GET ${path}" || bad "GET ${path} → ${c}"
 done
+
+# Catalogo open + dry-run / launch
+code="$(curl -s -o /tmp/studio-open.json -w '%{http_code}' "${BASE}/api/open")"
+[[ "${code}" == "200" ]] && ok "GET /api/open → 200" || bad "open → ${code}"
+rg -q '"targets"' /tmp/studio-open.json && ok "open.targets" || bad "open senza targets"
+rg -q 'gui-synth|Dashboard risultati' /tmp/studio-open.json && ok "open catalog entries" || bad "open catalog vuoto"
+
+code="$(curl -s -o /tmp/studio-open-dry.json -w '%{http_code}' \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"id":"dash-cts"}' "${BASE}/api/open")"
+[[ "${code}" == "200" ]] && ok "POST open dash-cts → 200" || bad "open dash → ${code}"
+rg -q '"navigate"' /tmp/studio-open-dry.json && ok "open navigate" || bad "open senza navigate"
+
+if rg -q '"id":"gui-synth"[^}]*"exists":true' /tmp/studio-open.json \
+  || python3 -c 'import json;d=json.load(open("/tmp/studio-open.json"));print(any(t["id"]=="gui-synth" and t["exists"] for t in d["targets"]))' | rg -q True; then
+  code="$(curl -s -o /tmp/studio-open-gui.json -w '%{http_code}' \
+    -X POST -H 'Content-Type: application/json' \
+    -d '{"id":"gui-synth","dryRun":true}' "${BASE}/api/open")"
+  [[ "${code}" == "200" ]] && ok "POST open gui-synth dryRun" || bad "gui dryRun → ${code}"
+else
+  ok "skip gui-synth launch (odb assente)"
+fi
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "STUDIO API SMOKE FAILED"

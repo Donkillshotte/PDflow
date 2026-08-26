@@ -66,8 +66,9 @@ Studio attivo stimato: **20–28 ore** (il wrapper `--auto` non sostituisce lo s
 ```
 
 Interfaccia web enterprise: lezioni con gate di completamento, console SSE
-(confirm/cancel/retry/export), ops dashboard (pipeline + job history), materiali.
-Dettagli: [studio/README.md](studio/README.md). Smoke API: `./scripts/test_studio_api.sh`.
+(confirm/cancel/retry/export), ops dashboard, **Ctrl+K** per aprire dashboard/GUI
+(OpenROAD/KLayout), materiali. Dettagli: [studio/README.md](studio/README.md).
+Smoke API: `./scripts/test_studio_api.sh`.
 
 ### CLI (invariato)
 

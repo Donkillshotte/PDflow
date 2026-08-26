@@ -44,7 +44,13 @@ function formatMs(ms?: number) {
   return `${Math.floor(s / 60)}m ${s % 60}s`;
 }
 
-export function OpsDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
+export function OpsDashboard({
+  refreshKey = 0,
+  onOpenStage,
+}: {
+  refreshKey?: number;
+  onOpenStage?: (stage: string) => void;
+}) {
   const [data, setData] = useState<JobsPayload | null>(null);
   const [selected, setSelected] = useState<JobRow | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -115,30 +121,37 @@ export function OpsDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
 
       <ol className="pipeline-track" aria-label="Stato pipeline">
         {(data?.pipeline ?? []).map((row) => (
-          <li
-            key={row.stage}
-            className={clsx(
-              "pipeline-node",
-              row.ready && "ready",
-              !row.depsMet && "blocked",
-            )}
-          >
-            <strong>{row.stage}</strong>
-            <span>
-              {row.artifactReady}/{row.artifactCount} art.
-            </span>
-            <span className="muted">
-              {row.depsMet
-                ? row.ready
-                  ? "pronto"
-                  : "eseguibile"
-                : `attende ${row.dep}`}
-            </span>
-            {row.lastJob && (
-              <em className={clsx("pill", row.lastJob.status === "ok" ? "ok" : "bad")}>
-                {row.lastJob.status}
-              </em>
-            )}
+          <li key={row.stage}>
+            <button
+              type="button"
+              className={clsx(
+                "pipeline-node",
+                row.ready && "ready",
+                !row.depsMet && "blocked",
+              )}
+              onClick={() => {
+                if (onOpenStage) onOpenStage(row.stage);
+                else window.location.href = `/strumenti?stage=${row.stage}&tab=results`;
+              }}
+              title={`Apri dashboard ${row.stage}`}
+            >
+              <strong>{row.stage}</strong>
+              <span>
+                {row.artifactReady}/{row.artifactCount} art.
+              </span>
+              <span className="muted">
+                {row.depsMet
+                  ? row.ready
+                    ? "pronto"
+                    : "eseguibile"
+                  : `attende ${row.dep}`}
+              </span>
+              {row.lastJob && (
+                <em className={clsx("pill", row.lastJob.status === "ok" ? "ok" : "bad")}>
+                  {row.lastJob.status}
+                </em>
+              )}
+            </button>
           </li>
         ))}
       </ol>

@@ -36,6 +36,8 @@ Produzione:
 - **Cancel / retry / export log** dalla console e dallo storico
 - **Job history**: `GET /api/jobs` → `learn/.studio-jobs.json`
 - **Completamento lezione**: `POST /api/progress` → **422** se i gate falliscono
+- **Apri GUI / dashboard**: palette **Ctrl+K**, deep-link `/strumenti?stage=cts&tab=results`,
+  `POST /api/open` lancia OpenROAD/KLayout su Desktop (`DISPLAY`) o copia il comando
 
 ## API utili
 
@@ -46,6 +48,16 @@ Produzione:
 | `GET /api/jobs` | storico + pipeline + lock |
 | `DELETE /api/jobs?force=1` | unlock forzato (lock stale) |
 | `GET /api/progress?lessonId=` | progresso + gate |
+| `GET /api/open` | catalogo dashboard + GUI targets |
+| `POST /api/open` `{ id }` o `{ artifact }` | naviga o lancia OpenROAD/KLayout |
+
+Deep-link utili:
+
+- `/strumenti?stage=place&tab=results`
+- `/strumenti?stage=finish&tab=run`
+- `/materiali?tab=gallery`
+- `/materiali/reference/gui-atlas.md`
+
 
 Smoke API (server già avviato):
 

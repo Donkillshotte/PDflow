@@ -53,6 +53,12 @@ export default function HomePage() {
             <Link href="/strumenti" className="btn-ghost">
               Console live
             </Link>
+            <Link href="/strumenti?stage=cts&tab=results" className="btn-ghost">
+              Dashboard CTS
+            </Link>
+            <Link href="/materiali?tab=gallery" className="btn-ghost">
+              Galleria GUI
+            </Link>
           </div>
           <div className="progress-strip" aria-label={`Progresso ${completed} su 8`}>
             {lessons.map((l) => (

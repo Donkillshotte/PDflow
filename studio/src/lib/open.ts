@@ -1,0 +1,360 @@
+import fs from "fs";
+import path from "path";
+import { spawn } from "child_process";
+import { REPO_ROOT, LEARN_ROOT } from "./course";
+
+const VARIANT = "learn";
+
+export function resultsDir() {
+  return path.join(
+    REPO_ROOT,
+    `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}`,
+  );
+}
+
+export function flowDir() {
+  return path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow");
+}
+
+/** Default OpenROAD GUI targets per pipeline stage (ORFS make gui_*). */
+export const STAGE_GUI_TARGETS: Record<
+  string,
+  { id: string; label: string; artifact: string; kind: "openroad" | "klayout" }[]
+> = {
+  synth: [
+    {
+      id: "gui-synth",
+      label: "OpenROAD · 1_synth.odb",
+      artifact: "1_synth.odb",
+      kind: "openroad",
+    },
+  ],
+  floorplan: [
+    {
+      id: "gui-fp",
+      label: "OpenROAD · floorplan",
+      artifact: "2_1_floorplan.odb",
+      kind: "openroad",
+    },
+    {
+      id: "gui-pdn",
+      label: "OpenROAD · PDN",
+      artifact: "2_4_floorplan_pdn.odb",
+      kind: "openroad",
+    },
+  ],
+  place: [
+    {
+      id: "gui-gp",
+      label: "OpenROAD · global place",
+      artifact: "3_3_place_gp.odb",
+      kind: "openroad",
+    },
+    {
+      id: "gui-dp",
+      label: "OpenROAD · detailed place",
+      artifact: "3_5_place_dp.odb",
+      kind: "openroad",
+    },
+  ],
+  cts: [
+    {
+      id: "gui-cts",
+      label: "OpenROAD · CTS",
+      artifact: "4_cts.odb",
+      kind: "openroad",
+    },
+  ],
+  route: [
+    {
+      id: "gui-grt",
+      label: "OpenROAD · global route",
+      artifact: "5_1_grt.odb",
+      kind: "openroad",
+    },
+    {
+      id: "gui-drt",
+      label: "OpenROAD · detailed route",
+      artifact: "5_2_route.odb",
+      kind: "openroad",
+    },
+  ],
+  finish: [
+    {
+      id: "gui-final",
+      label: "OpenROAD · final",
+      artifact: "6_final.odb",
+      kind: "openroad",
+    },
+    {
+      id: "klayout-gds",
+      label: "KLayout · 6_final.gds",
+      artifact: "6_final.gds",
+      kind: "klayout",
+    },
+  ],
+};
+
+export type OpenTarget = {
+  id: string;
+  label: string;
+  kind: "openroad" | "klayout" | "dashboard" | "gallery" | "doc" | "lesson";
+  href?: string;
+  artifact?: string;
+  absPath?: string;
+  exists: boolean;
+  stage?: string;
+  command?: string;
+};
+
+export function detectDisplay(): string | null {
+  const d = process.env.DISPLAY || process.env.STUDIO_DISPLAY;
+  if (d) return d;
+  // Common cloud Desktop socket
+  if (fs.existsSync("/tmp/.X11-unix/X1")) return ":1";
+  if (fs.existsSync("/tmp/.X11-unix/X0")) return ":0";
+  return null;
+}
+
+function absArtifact(name: string) {
+  return path.join(resultsDir(), name);
+}
+
+function openroadCommand(abs: string): string {
+  const tcl = path.join(LEARN_ROOT, "scripts/gui_session.tcl");
+  if (fs.existsSync(tcl)) {
+    return `ODB_FILE=${abs} DISPLAY=\${DISPLAY:-:1} openroad -gui -no_splash -no_init ${tcl}`;
+  }
+  return `DISPLAY=\${DISPLAY:-:1} openroad -gui -no_splash ${abs}`;
+}
+
+function klayoutCommand(abs: string): string {
+  return `DISPLAY=\${DISPLAY:-:1} klayout ${abs}`;
+}
+
+export function listOpenTargets(): {
+  display: string | null;
+  targets: OpenTarget[];
+} {
+  const display = detectDisplay();
+  const targets: OpenTarget[] = [];
+
+  // In-app dashboards
+  for (const stage of Object.keys(STAGE_GUI_TARGETS)) {
+    targets.push({
+      id: `dash-${stage}`,
+      label: `Dashboard risultati · ${stage}`,
+      kind: "dashboard",
+      href: `/strumenti?stage=${stage}&tab=results`,
+      exists: true,
+      stage,
+    });
+    targets.push({
+      id: `run-${stage}`,
+      label: `Console run · ${stage}`,
+      kind: "dashboard",
+      href: `/strumenti?stage=${stage}&tab=run&action=${stage}`,
+      exists: true,
+      stage,
+    });
+  }
+
+  targets.push({
+    id: "dash-ops",
+    label: "Ops · pipeline & job",
+    kind: "dashboard",
+    href: "/strumenti?tab=ops",
+    exists: true,
+  });
+  targets.push({
+    id: "gallery",
+    label: "Galleria GUI (screenshot)",
+    kind: "gallery",
+    href: "/materiali?tab=gallery",
+    exists: true,
+  });
+  targets.push({
+    id: "golden",
+    label: "Golden metrics",
+    kind: "doc",
+    href: "/materiali/reference/golden-metrics.md",
+    exists: true,
+  });
+  targets.push({
+    id: "atlas",
+    label: "Atlante GUI",
+    kind: "doc",
+    href: "/materiali/reference/gui-atlas.md",
+    exists: true,
+  });
+
+  // Lessons
+  const lessons = [
+    "00-intro",
+    "01-constraints",
+    "02-synthesis",
+    "03-floorplan",
+    "04-placement",
+    "05-cts",
+    "06-routing",
+    "07-finish",
+  ];
+  for (const id of lessons) {
+    targets.push({
+      id: `lesson-${id}`,
+      label: `Lezione ${id}`,
+      kind: "lesson",
+      href: `/lezioni/${id}`,
+      exists: true,
+    });
+  }
+
+  // External viewers
+  for (const [stage, items] of Object.entries(STAGE_GUI_TARGETS)) {
+    for (const item of items) {
+      const abs = absArtifact(item.artifact);
+      const exists = fs.existsSync(abs);
+      targets.push({
+        id: item.id,
+        label: item.label,
+        kind: item.kind,
+        artifact: item.artifact,
+        absPath: abs,
+        exists,
+        stage,
+        command:
+          item.kind === "klayout" ? klayoutCommand(abs) : openroadCommand(abs),
+      });
+    }
+  }
+
+  return { display, targets };
+}
+
+export function resolveOpenTarget(id: string): OpenTarget | null {
+  return listOpenTargets().targets.find((t) => t.id === id) ?? null;
+}
+
+export function resolveArtifactOpen(
+  artifact: string,
+): OpenTarget | null {
+  const name = path.basename(artifact);
+  const abs = absArtifact(name);
+  if (!fs.existsSync(abs)) return null;
+  if (name.endsWith(".gds") || name.endsWith(".oas")) {
+    return {
+      id: `file-${name}`,
+      label: `KLayout · ${name}`,
+      kind: "klayout",
+      artifact: name,
+      absPath: abs,
+      exists: true,
+      command: klayoutCommand(abs),
+    };
+  }
+  if (name.endsWith(".odb")) {
+    return {
+      id: `file-${name}`,
+      label: `OpenROAD · ${name}`,
+      kind: "openroad",
+      artifact: name,
+      absPath: abs,
+      exists: true,
+      command: openroadCommand(abs),
+    };
+  }
+  return null;
+}
+
+export type LaunchResult = {
+  ok: boolean;
+  launched: boolean;
+  message: string;
+  command?: string;
+  display?: string | null;
+  pid?: number;
+};
+
+export function launchExternal(target: OpenTarget): LaunchResult {
+  const display = detectDisplay();
+  if (!target.absPath || !target.exists) {
+    return {
+      ok: false,
+      launched: false,
+      message: `Artefatto mancante: ${target.artifact ?? target.id}`,
+      command: target.command,
+      display,
+    };
+  }
+  if (!display) {
+    return {
+      ok: false,
+      launched: false,
+      message:
+        "Nessun DISPLAY (apri Desktop su cursor.com/agents). Comando pronto da copiare.",
+      command: target.command,
+      display: null,
+    };
+  }
+
+  try {
+    if (target.kind === "klayout") {
+      const child = spawn("klayout", [target.absPath], {
+        env: { ...process.env, DISPLAY: display },
+        detached: true,
+        stdio: "ignore",
+      });
+      child.unref();
+      return {
+        ok: true,
+        launched: true,
+        message: `KLayout avviato su ${target.artifact}`,
+        command: target.command,
+        display,
+        pid: child.pid,
+      };
+    }
+
+    if (target.kind === "openroad") {
+      const tcl = path.join(LEARN_ROOT, "scripts/gui_session.tcl");
+      const args = fs.existsSync(tcl)
+        ? ["-gui", "-no_splash", "-no_init", tcl]
+        : ["-gui", "-no_splash"];
+      const child = spawn("openroad", args, {
+        env: {
+          ...process.env,
+          DISPLAY: display,
+          ODB_FILE: target.absPath,
+          GUI_VIEW: "all",
+        },
+        detached: true,
+        stdio: "ignore",
+        cwd: flowDir(),
+      });
+      child.unref();
+      return {
+        ok: true,
+        launched: true,
+        message: `OpenROAD GUI avviata su ${target.artifact} (Desktop)`,
+        command: target.command,
+        display,
+        pid: child.pid,
+      };
+    }
+
+    return {
+      ok: false,
+      launched: false,
+      message: "Target non lanciabile esternamente",
+      display,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      launched: false,
+      message: e instanceof Error ? e.message : String(e),
+      command: target.command,
+      display,
+    };
+  }
+}

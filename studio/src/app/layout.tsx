@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Syne, Figtree, IBM_Plex_Mono } from "next/font/google";
 import { SiteNav } from "@/components/SiteNav";
 import { ToastProvider } from "@/components/ToastProvider";
+import { CommandPalette } from "@/components/CommandPalette";
 import "./globals.css";
 
 const display = Syne({
@@ -41,6 +42,7 @@ export default function RootLayout({
             <SiteNav />
             {children}
           </div>
+          <CommandPalette />
         </ToastProvider>
       </body>
     </html>

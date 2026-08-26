@@ -307,6 +307,53 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
               </p>
             </header>
             <ResultsPanel stage={lesson.makeTarget} refreshKey={refreshKey} />
+            <div className="lesson-actions" style={{ marginTop: "1rem" }}>
+              <a
+                className="btn-ghost"
+                href={`/strumenti?stage=${lesson.makeTarget}&tab=results`}
+              >
+                Apri dashboard · {lesson.makeTarget}
+              </a>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={async () => {
+                  const catalog = await fetch("/api/open").then((r) => r.json());
+                  const pick = (
+                    catalog.targets as {
+                      id: string;
+                      stage?: string;
+                      kind: string;
+                      exists: boolean;
+                    }[]
+                  ).find(
+                    (t) =>
+                      t.stage === lesson.makeTarget &&
+                      t.kind === "openroad" &&
+                      t.exists,
+                  );
+                  if (!pick) {
+                    push("Nessun ODB per questa fase", "bad");
+                    return;
+                  }
+                  const res = await fetch("/api/open", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: pick.id }),
+                  });
+                  const body = await res.json();
+                  if (body.launched) push(body.message, "ok");
+                  else if (body.command) {
+                    await navigator.clipboard
+                      ?.writeText(body.command)
+                      .catch(() => undefined);
+                    push(body.message || "Comando copiato", "info");
+                  } else push(body.message || "Apertura fallita", "bad");
+                }}
+              >
+                Apri OpenROAD GUI
+              </button>
+            </div>
           </div>
         )}
 

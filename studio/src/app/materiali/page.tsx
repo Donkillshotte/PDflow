@@ -17,6 +17,17 @@ export default function MaterialiPage() {
       .then((d) => setShots(d.shots ?? []));
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "gallery") {
+      window.setTimeout(() => {
+        document.getElementById("gallery")?.scrollIntoView({ behavior: "smooth" });
+      }, 120);
+    }
+    const qp = params.get("q");
+    if (qp) setQ(qp);
+  }, []);
+
   const all = useMemo(() => [...MATERIALS, ...WALKTHROUGHS], []);
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -42,6 +53,7 @@ export default function MaterialiPage() {
         <h1>Materiali</h1>
         <p>
           Cerca nel corso, apri i documenti in-app, sfoglia la galleria GUI.
+          Palette Ctrl+K per saltare a dashboard e viewer Desktop.
         </p>
       </header>
 
@@ -77,7 +89,7 @@ export default function MaterialiPage() {
         );
       })}
 
-      <section style={{ marginBottom: "2rem" }}>
+      <section style={{ marginBottom: "2rem" }} id="gallery">
         <h2 className="section-title">Galleria GUI</h2>
         <p className="muted" style={{ marginTop: 0 }}>
           Screenshot reali da <code>learn/reference/gui-shots/</code>. Clic per

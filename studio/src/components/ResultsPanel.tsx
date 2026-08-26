@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/ToastProvider";
 
 type Artifact = {
   name: string;
@@ -25,6 +26,10 @@ function fmtSize(n: number) {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+function canOpenExternally(name: string) {
+  return /\.(odb|gds|oas)$/i.test(name);
+}
+
 export function ResultsPanel({
   stage,
   refreshKey,
@@ -32,9 +37,11 @@ export function ResultsPanel({
   stage: string;
   refreshKey?: number;
 }) {
+  const { push } = useToast();
   const [data, setData] = useState<Results | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +60,28 @@ export function ResultsPanel({
   useEffect(() => {
     void load();
   }, [load, refreshKey]);
+
+  async function openArtifact(name: string) {
+    setBusy(name);
+    try {
+      const res = await fetch("/api/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artifact: name }),
+      });
+      const body = await res.json();
+      if (body.launched) {
+        push(body.message || `Aperto ${name}`, "ok");
+      } else if (body.command) {
+        await navigator.clipboard?.writeText(body.command).catch(() => undefined);
+        push(body.message || "Comando copiato — apri Desktop", "info");
+      } else {
+        push(body.message || body.error || "Apertura fallita", "bad");
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
 
   if (loading && !data) {
     return <div className="results-panel muted">Carico artefatti…</div>;
@@ -73,19 +102,24 @@ export function ResultsPanel({
   const total = data.artifacts.length;
 
   return (
-    <div className="results-panel">
+    <div className="results-panel" id="results-panel">
       <div className="results-head">
         <h3>Risultati · {stage}</h3>
-        <button type="button" className="btn-ghost" onClick={load}>
-          Aggiorna
-        </button>
+        <div className="lesson-actions">
+          <a className="btn-ghost btn-tiny" href={`/strumenti?stage=${stage}&tab=results`}>
+            Permalink
+          </a>
+          <button type="button" className="btn-ghost" onClick={load}>
+            Aggiorna
+          </button>
+        </div>
       </div>
 
       {total > 0 && (
         <>
           <p className="muted">
-            Artefatti: <strong>{ready}/{total}</strong> presenti in{" "}
-            <code>results/.../learn/</code>
+            Artefatti: <strong>{ready}/{total}</strong> — Apri ODB in OpenROAD o
+            GDS in KLayout (Desktop).
           </p>
           <ul className="artifact-list">
             {data.artifacts.map((a) => (
@@ -97,6 +131,16 @@ export function ResultsPanel({
                     ? `${fmtSize(a.size)}${a.mtime ? ` · ${new Date(a.mtime).toLocaleString()}` : ""}`
                     : "mancante"}
                 </em>
+                {a.exists && canOpenExternally(a.name) && (
+                  <button
+                    type="button"
+                    className="btn-ghost btn-tiny"
+                    disabled={busy === a.name}
+                    onClick={() => void openArtifact(a.name)}
+                  >
+                    {busy === a.name ? "…" : "Apri GUI"}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
