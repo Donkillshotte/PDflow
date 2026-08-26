@@ -59,7 +59,8 @@ Produzione:
 | `GET /api/inspect?stage=` | ODB / STA / Yosys live |
 | `POST /api/viewer` `{ stage }` | avvia OpenROAD Web Viewer |
 | `GET /api/suite` | stato collaborativo di tutti gli hook |
-| `GET/PUT /api/flowlab` | RTL + parametri FlowLab |
+| `GET/PUT /api/flowlab` | RTL + parametri FlowLab + sim + storico run |
+| `GET /api/flowlab/download?kind=vcd\|simlog` | download waveform / sim.log |
 | `GET /api/run/stream?mode=flowlab&action=` | run con override allowlistati |
 
 Deep-link utili:
@@ -80,7 +81,38 @@ Deep-link utili:
 Smoke API (server già avviato):
 
 ```bash
-./scripts/test_studio_api.sh
+./scripts/run_studio.sh          # http://127.0.0.1:43217
+./scripts/test_studio_api.sh     # include FlowLab + variant flowlab
+./scripts/test_course.sh         # pipeline learn
+cd studio && npm run build
 ```
 
 Il CLI del corso resta invariato.
+
+## FlowLab (`/flusso`)
+
+Workbench **RTL → GDSII** con variante isolata `results/nangate45/gcd/flowlab`:
+
+1. **RTL** — editor Monaco, autosave, sim Icarus, download VCD
+2. **Sintesi → GDSII** — parametri ORFS (util, SDC, ABC, TNS) con profili rapidi
+3. **Console** — log SSE, artefatti, ispezione ODB/STA/Yosys
+4. **Finish signoff** — gridcheck, activity→power, KLayout DRC
+5. **Storico** — ultimi job per fase da `/api/jobs`
+
+Scorciatoie: `Ctrl+S` salva, `Ctrl+Enter` esegue fase.
+
+Screenshot (UI corrente): `studio/docs/images/flowlab/`
+
+## Troubleshooting ORFS / Studio
+
+| Sintomo | Causa probabile | Azione |
+|---|---|---|
+| HTTP **412** su run | Artefatto fase precedente mancante | Completa la fase precedente o usa FlowLab in ordine |
+| HTTP **409** locked | Job già in corso | Attendi o `DELETE /api/jobs?force=1` se stale |
+| `iverilog` assente | Toolchain incompleta | `./scripts/learn_physical_design.sh --check` |
+| GUI non si apre | Headless / no DISPLAY | Usa Web Viewer o copia comando da toast |
+| FlowLab vs corso | Varianti diverse | Corso=`learn`, FlowLab=`flowlab` — non mischiare artefatti |
+| Congestion / timing fail | Parametri aggressivi | Profilo «Didattico» o SDC relaxed in FlowLab |
+| `make` lento su cts/route | Normale su GCD | Conferma dialog; un solo job alla volta |
+
+Log job: `learn/.studio-jobs.json` · lock: `learn/.studio-run.lock`

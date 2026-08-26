@@ -2211,10 +2211,45 @@ button.pipeline-node {
   border: 1px solid rgba(16, 24, 32, 0.1);
   background: linear-gradient(165deg, rgba(15, 20, 25, 0.04) 0%, rgba(240, 136, 62, 0.06) 100%);
   padding: 1.1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.home-rail-lessons {
+  background: linear-gradient(165deg, rgba(47, 111, 237, 0.05) 0%, rgba(255, 255, 255, 0.5) 100%);
+}
+.home-rail-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+.home-rail-cta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--copper-deep);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(195, 107, 46, 0.35);
+  background: rgba(195, 107, 46, 0.08);
+}
+.home-rail-cta:hover {
+  background: rgba(195, 107, 46, 0.14);
 }
 .home-rail .section-title {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
+  margin: 0;
+}
+.flow-step-link {
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.12s, background 0.15s;
+}
+.flow-step-link:hover {
+  border-color: var(--copper);
+  background: rgba(240, 136, 62, 0.1);
+  transform: translateY(-2px);
 }
 .flow-steps a {
   border-color: rgba(240, 136, 62, 0.25);
@@ -2222,6 +2257,90 @@ button.pipeline-node {
 .flow-steps a:hover {
   border-color: var(--copper);
   background: rgba(240, 136, 62, 0.08);
+}
+
+/* Studio Pro accents (Strumenti + Suite) */
+.studio-pro-page .page-head-compact {
+  margin-top: 0;
+  padding-top: 0;
+}
+.studio-pro-page .page-head-compact p {
+  margin: 0;
+  color: var(--ink-soft);
+  max-width: 42rem;
+}
+.studio-pro-banner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem 1.5rem;
+  padding: 1.25rem 1.35rem;
+  margin-bottom: 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(16, 24, 32, 0.1);
+  background:
+    radial-gradient(800px 320px at 0% 0%, rgba(88, 166, 255, 0.1), transparent 55%),
+    radial-gradient(600px 280px at 100% 0%, rgba(240, 136, 62, 0.12), transparent 50%),
+    linear-gradient(165deg, #121820 0%, #0f1419 100%);
+  color: #e6edf3;
+}
+.studio-pro-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f0883e;
+  font-weight: 600;
+}
+.studio-pro-banner h1 {
+  font-family: var(--font-display);
+  margin: 0.25rem 0 0.4rem;
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
+  letter-spacing: -0.03em;
+}
+.studio-pro-banner p {
+  margin: 0;
+  color: #8b949e;
+  max-width: 36rem;
+  font-size: 0.9rem;
+}
+.studio-pro-banner code {
+  color: #58a6ff;
+  font-size: 0.85em;
+}
+.studio-pro-banner .btn-primary {
+  background: linear-gradient(180deg, #f0984a 0%, #f0883e 100%);
+  border-color: rgba(240, 136, 62, 0.5);
+  color: #1a0f06;
+}
+.panel-pro {
+  border-color: rgba(16, 24, 32, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.55) 100%);
+  box-shadow: 0 8px 28px rgba(16, 24, 32, 0.06);
+}
+.suite-hub .ops-head h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+.suite-hooks li {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(16, 24, 32, 0.1);
+  transition: border-color 0.12s;
+}
+.suite-hooks li:hover {
+  border-color: rgba(195, 107, 46, 0.35);
+}
+.suite-hooks li.ok {
+  border-left: 3px solid var(--ok);
+}
+.suite-hooks li.bad {
+  border-left: 3px solid var(--bad);
+}
+.home-suite {
+  border: 1px solid rgba(16, 24, 32, 0.1);
+  background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(238,243,246,0.9));
+  box-shadow: 0 10px 32px rgba(16, 24, 32, 0.07);
 }
 
 /* Dark theme overrides inside FlowLab for nested panels */

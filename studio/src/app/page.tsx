@@ -76,7 +76,33 @@ export default function HomePage() {
       </section>
 
       <section className="home-rail">
-        <h2 className="section-title">Flusso interattivo</h2>
+        <div className="home-rail-head">
+          <h2 className="section-title">Flusso interattivo</h2>
+          <Link href="/flusso" className="home-rail-cta">
+            FlowLab · RTL → GDSII →
+          </Link>
+        </div>
+        <div className="flow-steps">
+          {[
+            { n: "RTL", t: "Verilog", d: "Editor Monaco + sim" },
+            { n: "SYN", t: "Sintesi", d: "Yosys · ABC · SDC" },
+            { n: "FP", t: "Floorplan", d: "Die · PDN" },
+            { n: "PL", t: "Place", d: "GP → DP" },
+            { n: "CTS", t: "Clock", d: "Skew · TNS" },
+            { n: "RT", t: "Route", d: "Global + detail" },
+            { n: "GDS", t: "Finish", d: "Signoff · SPEF" },
+          ].map((s) => (
+            <Link key={s.n} href={`/flusso?phase=${s.n === "RTL" ? "rtl" : s.n === "SYN" ? "synth" : s.n === "FP" ? "floorplan" : s.n === "PL" ? "place" : s.n === "CTS" ? "cts" : s.n === "RT" ? "route" : "finish"}`} className="flow-step flow-step-link">
+              <span>{s.n}</span>
+              <strong>{s.t}</strong>
+              <em>{s.d}</em>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="home-rail home-rail-lessons">
+        <h2 className="section-title">Corso per lezione</h2>
         <div className="flow-steps">
           {[
             { n: "01", t: "Teoria", d: "README della fase" },

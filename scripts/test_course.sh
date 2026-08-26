@@ -236,6 +236,11 @@ yosys -V >/dev/null && ok "yosys" || bad "yosys"
 sta -version >/dev/null && ok "sta" || bad "sta"
 klayout -v >/dev/null && ok "klayout" || bad "klayout"
 
+echo "== FlowLab workspace =="
+[[ -f "${ROOT}/learn/flowlab/gcd.v" ]] && ok "flowlab/gcd.v" || bad "manca flowlab/gcd.v"
+[[ -f "${ROOT}/learn/flowlab/params.json" ]] && ok "flowlab/params.json" || bad "manca flowlab params"
+rg -q 'FLOWLAB_VARIANT|flowlab' "${ROOT}/studio/src/lib/flowlab.ts" && ok "flowlab variant" || bad "flowlab variant"
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "SMOKE FAILED"
   exit 1

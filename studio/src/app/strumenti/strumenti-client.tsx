@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
@@ -136,9 +137,22 @@ export default function StrumentiClient() {
   }
 
   return (
-    <main>
-      <header className="page-head">
-        <h1>Strumenti</h1>
+    <main className="studio-pro-page">
+      <header className="studio-pro-banner">
+        <div>
+          <p className="studio-pro-eyebrow">OpenROAD Studio · Strumenti</p>
+          <h1>Console, suite e ispezione</h1>
+          <p>
+            Variant <code>learn</code> per il corso · variant <code>flowlab</code> nel
+            laboratorio interattivo.
+          </p>
+        </div>
+        <Link href="/flusso" className="btn-primary">
+          Apri FlowLab →
+        </Link>
+      </header>
+
+      <header className="page-head page-head-compact">
         <p>
           Suite collaborativa: deep-link, palette Ctrl+K, run/inspect/viewer e
           Apri GUI (OpenROAD / KLayout) sul variant learn.
@@ -213,7 +227,7 @@ export default function StrumentiClient() {
       </div>
 
       <section
-        className="panel"
+        className="panel panel-pro"
         style={{ marginBottom: "1.2rem" }}
         ref={suiteRef}
         id="suite"
@@ -221,14 +235,14 @@ export default function StrumentiClient() {
         <SuiteHub />
       </section>
 
-      <section className="panel" style={{ marginBottom: "1.2rem" }} ref={opsRef} id="ops">
+      <section className="panel panel-pro" style={{ marginBottom: "1.2rem" }} ref={opsRef} id="ops">
         <OpsDashboard
           refreshKey={opsKey}
           onOpenStage={(s) => goStage(s, "results")}
         />
       </section>
 
-      <section className="panel" style={{ marginBottom: "1.2rem" }} ref={runRef} id="run">
+      <section className="panel panel-pro" style={{ marginBottom: "1.2rem" }} ref={runRef} id="run">
         <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>
           Console live · {runAction}
         </h2>
@@ -245,11 +259,11 @@ export default function StrumentiClient() {
         />
       </section>
 
-      <section className="panel" ref={resultsRef} id="results">
+      <section className="panel panel-pro" ref={resultsRef} id="results">
         <ResultsPanel stage={stage} refreshKey={refreshKey} />
       </section>
 
-      <section className="panel" style={{ marginTop: "1.2rem" }} id="inspect">
+      <section className="panel panel-pro" style={{ marginTop: "1.2rem" }} id="inspect">
         <InspectPanel stage={stage} refreshKey={refreshKey} />
       </section>
     </main>

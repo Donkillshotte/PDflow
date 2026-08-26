@@ -69,8 +69,18 @@ Interfaccia web enterprise: lezioni con gate di completamento, console SSE
 (confirm/cancel/retry/export), ops dashboard, **suite hub** (`/api/suite`),
 **FlowLab** (`/flusso`: RTL editabile → parametri → GDSII),
 **Ctrl+K** (dashboard / run / OpenROAD Qt / web viewer), materiali.
-Dettagli: [studio/README.md](studio/README.md).
-Smoke API: `./scripts/test_studio_api.sh`.
+Dettagli: [studio/README.md](studio/README.md) (FlowLab, API, troubleshooting).
+Smoke: `./scripts/test_studio_api.sh` e `./scripts/test_course.sh`.
+
+### FlowLab — laboratorio RTL → GDSII
+
+Workbench interattivo su **http://127.0.0.1:43217/flusso**:
+
+- Editor Verilog (Monaco), parametri ORFS live, pipeline visiva 7 fasi
+- Variante isolata `flowlab` (non sovrascrive il corso `learn`)
+- Signoff finish: gridcheck, activity, DRC · download VCD post sim
+
+Screenshot: `studio/docs/images/flowlab/`
 
 ### CLI (invariato)
 
@@ -144,3 +154,13 @@ sta
   necessaria perché ORFS esegue gli script di sintesi con l'opzione `-c`.
 - La GUI di OpenROAD (`openroad -gui`) richiede Qt/X11: in ambiente headless
   usare `Xvfb` oppure lavorare da riga di comando.
+
+## Troubleshooting ORFS
+
+| Problema | Fix |
+|---|---|
+| `1_synth.odb` mancante | `make synth` o FlowLab fase Sintesi |
+| Floorplan 412 in Studio | Esegui synth prima; verifica `results/.../learn/` |
+| Timing fail @ 0.46 ns | Normale su GCD tutorial aggressivo; usa SDC relaxed in FlowLab |
+| Lock `.studio-run.lock` | `./scripts/test_studio_api.sh` lo pulisce; o rimuovi manualmente se stale |
+| ORFS tag mismatch | `ORFS_TAG` allineato a `openroad -version` (26Q2) |
