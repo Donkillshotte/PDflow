@@ -128,6 +128,50 @@ code="$(curl -s --max-time 60 -o /tmp/studio-gc.sse -w '%{http_code}' \
 [[ "${code}" == "200" ]] && ok "gridcheck stream → 200" || bad "gridcheck → ${code}"
 rg -q 'GRIDCHECK_DONE|PSM-0040' /tmp/studio-gc.sse && ok "gridcheck ok" || bad "gridcheck fallita"
 
+# Suite hub + palette run/webviewer entries
+code="$(curl -s -o /tmp/studio-suite.json -w '%{http_code}' "${BASE}/api/suite")"
+[[ "${code}" == "200" ]] && ok "GET /api/suite → 200" || bad "suite → ${code}"
+rg -q '"hooks"' /tmp/studio-suite.json && ok "suite.hooks" || bad "suite senza hooks"
+rg -q '"ready"' /tmp/studio-suite.json && ok "suite.ready" || bad "suite senza ready"
+if python3 - <<'PY'
+import json,sys
+d=json.load(open("/tmp/studio-suite.json"))
+ids={h["id"] for h in d["hooks"]}
+need={"toolchain","rtl_sim","gridcheck","activity","klayout_drc","inspect","or-web","docs"}
+miss=sorted(need-ids)
+if miss:
+    print("missing", miss)
+    sys.exit(1)
+sys.exit(0)
+PY
+then
+  ok "suite hook ids"
+else
+  bad "suite core hooks mancanti"
+fi
+
+rg -q '"id":"run-rtl-sim"' /tmp/studio-open.json && ok "open run-rtl-sim" || bad "open senza run-rtl-sim"
+rg -q '"kind":"webviewer"' /tmp/studio-open.json && ok "open webviewer kind" || bad "open senza webviewer"
+rg -q '"id":"dash-suite"' /tmp/studio-open.json && ok "open dash-suite" || bad "open senza dash-suite"
+
+code="$(curl -s -o /tmp/studio-open-run.json -w '%{http_code}' \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"id":"run-gridcheck"}' "${BASE}/api/open")"
+[[ "${code}" == "200" ]] && ok "POST open run-gridcheck" || bad "open run → ${code}"
+rg -q 'tab=run&action=gridcheck' /tmp/studio-open-run.json && ok "run navigate deep-link" || bad "run navigate errato"
+
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/strumenti?tab=run&action=rtl_sim")"
+[[ "${c}" == "200" ]] && ok "GET strumenti action deep-link" || bad "strumenti action → ${c}"
+
+# Artifact preflight for missing finish artifact
+if [[ ! -f "${RES_DIR}/6_final.gds" ]]; then
+  code="$(curl -s -o /tmp/studio-kldrc.json -w '%{http_code}' \
+    "${BASE}/api/run/stream?action=klayout_drc")"
+  [[ "${code}" == "412" ]] && ok "klayout_drc deps → 412" || bad "klayout_drc atteso 412, got ${code}"
+else
+  ok "skip klayout_drc deps (gds presente)"
+fi
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "STUDIO API SMOKE FAILED"
   exit 1

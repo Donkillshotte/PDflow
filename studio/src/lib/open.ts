@@ -98,13 +98,22 @@ export const STAGE_GUI_TARGETS: Record<
 export type OpenTarget = {
   id: string;
   label: string;
-  kind: "openroad" | "klayout" | "dashboard" | "gallery" | "doc" | "lesson";
+  kind:
+    | "openroad"
+    | "klayout"
+    | "dashboard"
+    | "gallery"
+    | "doc"
+    | "lesson"
+    | "run"
+    | "webviewer";
   href?: string;
   artifact?: string;
   absPath?: string;
   exists: boolean;
   stage?: string;
   command?: string;
+  action?: string;
 };
 
 export function detectDisplay(): string | null {
@@ -173,14 +182,51 @@ export function listOpenTargets(): {
     href: "/strumenti?stage=synth&tab=results#inspect",
     exists: true,
   });
+  targets.push({
+    id: "dash-suite",
+    label: "Suite collaborativa · stato hook",
+    kind: "dashboard",
+    href: "/strumenti#suite",
+    exists: true,
+  });
+
+  // Extended / analysis run actions (deep-link to LiveRunConsole)
+  const runActions: { id: string; label: string; action: string }[] = [
+    { id: "run-check", label: "Run · verifica toolchain", action: "check" },
+    { id: "run-rtl-sim", label: "Run · sim RTL (Icarus)", action: "rtl_sim" },
+    { id: "run-gridcheck", label: "Run · gridcheck PDN", action: "gridcheck" },
+    {
+      id: "run-activity",
+      label: "Run · activity → power",
+      action: "activity_power",
+    },
+    { id: "run-klayout-drc", label: "Run · KLayout DRC", action: "klayout_drc" },
+    { id: "run-test-course", label: "Run · smoke corso", action: "test_course" },
+  ];
+  for (const r of runActions) {
+    targets.push({
+      id: r.id,
+      label: r.label,
+      kind: "run",
+      href: `/strumenti?tab=run&action=${r.action}`,
+      exists: true,
+      action: r.action,
+    });
+  }
+
   for (const stage of Object.keys(STAGE_GUI_TARGETS)) {
+    const primary = STAGE_GUI_TARGETS[stage].find((t) => t.kind === "openroad");
+    const exists = primary
+      ? fs.existsSync(absArtifact(primary.artifact))
+      : false;
     targets.push({
       id: `web-${stage}`,
       label: `OpenROAD Web Viewer · ${stage}`,
-      kind: "dashboard",
+      kind: "webviewer",
       href: `/strumenti?stage=${stage}&tab=results#inspect`,
-      exists: true,
+      exists,
       stage,
+      artifact: primary?.artifact,
     });
   }
   targets.push({
@@ -209,6 +255,13 @@ export function listOpenTargets(): {
     label: "Tool hooks (OpenROAD/STA/Yosys)",
     kind: "doc",
     href: "/materiali/reference/tool-hooks.md",
+    exists: true,
+  });
+  targets.push({
+    id: "extended-flow",
+    label: "Extended flow map",
+    kind: "doc",
+    href: "/materiali/reference/extended-flow.md",
     exists: true,
   });
 

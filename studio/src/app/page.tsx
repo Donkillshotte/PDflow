@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SuiteHub } from "@/components/SuiteHub";
 
 type Lesson = {
   id: string;
@@ -94,6 +95,10 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="panel home-suite" id="suite">
+        <SuiteHub compact />
       </section>
     </main>
   );

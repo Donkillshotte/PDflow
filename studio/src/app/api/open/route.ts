@@ -5,6 +5,7 @@ import {
   resolveArtifactOpen,
   resolveOpenTarget,
 } from "@/lib/open";
+import { startViewer } from "@/lib/webviewer";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // In-app targets: just return href
+  // In-app navigation targets
   if (
     target.kind === "dashboard" ||
     target.kind === "gallery" ||
     target.kind === "doc" ||
-    target.kind === "lesson"
+    target.kind === "lesson" ||
+    target.kind === "run"
   ) {
     return NextResponse.json({
       ok: true,
@@ -44,6 +46,41 @@ export async function POST(req: Request) {
       target,
       message: `Apri ${target.label}`,
     });
+  }
+
+  if (target.kind === "webviewer") {
+    if (body.dryRun) {
+      return NextResponse.json({
+        ok: target.exists,
+        launched: false,
+        target,
+        message: target.exists
+          ? "dry-run webviewer ok"
+          : `Artefatto mancante: ${target.artifact}`,
+      });
+    }
+    if (!target.exists || !target.stage) {
+      return NextResponse.json(
+        {
+          ok: false,
+          launched: false,
+          message: `ODB mancante per web viewer (${target.stage ?? "?"})`,
+          target,
+        },
+        { status: 412 },
+      );
+    }
+    const started = startViewer({ stage: target.stage });
+    return NextResponse.json(
+      {
+        ...started,
+        launched: Boolean(started.ok && started.url),
+        navigate: target.href,
+        url: started.url,
+        target,
+      },
+      { status: started.ok ? 200 : 412 },
+    );
   }
 
   if (body.dryRun) {

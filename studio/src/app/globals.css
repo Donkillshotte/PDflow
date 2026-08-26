@@ -1291,3 +1291,53 @@ button.pipeline-node {
   font-size: 0.88rem;
 }
 .hook-list span { color: var(--ink-soft); }
+
+/* —— Suite hub —— */
+.home-suite { margin: 1.5rem auto 2.5rem; width: min(1180px, calc(100% - 2rem)); }
+.suite-hub { display: grid; gap: 1rem; }
+.suite-hub-compact .suite-group:nth-child(n+4) { display: none; }
+.suite-group h3 {
+  margin: 0.2rem 0 0.45rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+.suite-hooks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.suite-hooks li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.55rem 0.9rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+}
+.suite-hooks li > div:first-child {
+  display: grid;
+  gap: 0.12rem;
+  min-width: min(100%, 280px);
+}
+.suite-hooks li strong { font-size: 0.9rem; }
+.suite-hooks li em {
+  font-style: normal;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+.suite-hook-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+.btn-tiny {
+  padding: 0.2rem 0.55rem !important;
+  font-size: 0.78rem !important;
+}

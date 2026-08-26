@@ -14,6 +14,7 @@ type OpenTarget = {
   exists: boolean;
   stage?: string;
   command?: string;
+  action?: string;
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -23,6 +24,8 @@ const KIND_LABEL: Record<string, string> = {
   lesson: "Lezione",
   openroad: "OpenROAD GUI",
   klayout: "KLayout",
+  run: "Esegui",
+  webviewer: "Web Viewer",
 };
 
 export function CommandPalette() {
@@ -76,6 +79,7 @@ export function CommandPalette() {
           t.kind,
           t.stage ?? "",
           t.artifact ?? "",
+          t.action ?? "",
           KIND_LABEL[t.kind] ?? "",
         ]
           .join(" ")
@@ -94,10 +98,35 @@ export function CommandPalette() {
       t.kind === "dashboard" ||
       t.kind === "gallery" ||
       t.kind === "doc" ||
-      t.kind === "lesson"
+      t.kind === "lesson" ||
+      t.kind === "run"
     ) {
       if (t.href) router.push(t.href);
       setOpen(false);
+      return;
+    }
+
+    if (t.kind === "webviewer") {
+      if (!t.exists) {
+        push(`Manca ODB per ${t.stage ?? t.label}`, "bad");
+        return;
+      }
+      const res = await fetch("/api/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: t.id }),
+      });
+      const data = await res.json();
+      if (data.ok && data.url) {
+        push(data.message || "Web viewer avviato", "ok");
+        if (data.navigate) router.push(data.navigate);
+        window.setTimeout(() => {
+          window.open(data.url, "_blank", "noopener,noreferrer");
+        }, 600);
+        setOpen(false);
+        return;
+      }
+      push(data.message || "Web viewer non avviato", "bad");
       return;
     }
 
@@ -163,7 +192,7 @@ export function CommandPalette() {
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Apri dashboard, lezione, OpenROAD, KLayout…"
+            placeholder="Apri dashboard, run, lezione, OpenROAD, web viewer…"
             aria-label="Cerca comando"
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {
@@ -192,16 +221,24 @@ export function CommandPalette() {
                 type="button"
                 role="option"
                 aria-selected={i === active}
-                className={clsx("cmd-item", i === active && "active", !t.exists && "missing")}
+                className={clsx(
+                  "cmd-item",
+                  i === active && "active",
+                  !t.exists && "missing",
+                )}
                 onMouseEnter={() => setActive(i)}
                 onClick={() => void run(t)}
               >
                 <span className="cmd-kind">{KIND_LABEL[t.kind] ?? t.kind}</span>
                 <span className="cmd-label">{t.label}</span>
                 {!t.exists && <em className="pill bad">manca</em>}
-                {t.exists && (t.kind === "openroad" || t.kind === "klayout") && (
-                  <em className="pill ok">apri</em>
-                )}
+                {t.exists &&
+                  (t.kind === "openroad" ||
+                    t.kind === "klayout" ||
+                    t.kind === "webviewer") && (
+                    <em className="pill ok">apri</em>
+                  )}
+                {t.kind === "run" && <em className="pill ok">run</em>}
               </button>
             </li>
           ))}

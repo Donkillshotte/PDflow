@@ -6,6 +6,7 @@ import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { OpsDashboard } from "@/components/OpsDashboard";
 import { InspectPanel } from "@/components/InspectPanel";
+import { SuiteHub } from "@/components/SuiteHub";
 import { useToast } from "@/components/ToastProvider";
 
 type Tool = { name: string; ok: boolean; detail: string };
@@ -17,6 +18,17 @@ type Status = {
 };
 
 const STAGES = ["synth", "floorplan", "place", "cts", "route", "finish"] as const;
+const RUN_ACTIONS = new Set([
+  "check",
+  "status",
+  "list",
+  "test_course",
+  "rtl_sim",
+  "gridcheck",
+  "activity_power",
+  "klayout_drc",
+  ...STAGES,
+]);
 
 export default function StrumentiClient() {
   const search = useSearchParams();
@@ -24,6 +36,7 @@ export default function StrumentiClient() {
   const { push } = useToast();
   const [status, setStatus] = useState<Status | null>(null);
   const [stage, setStage] = useState("synth");
+  const [runAction, setRunAction] = useState("check");
   const [tab, setTab] = useState<"ops" | "run" | "results">("ops");
   const [refreshKey, setRefreshKey] = useState(0);
   const [opsKey, setOpsKey] = useState(0);
@@ -32,6 +45,7 @@ export default function StrumentiClient() {
   const resultsRef = useRef<HTMLElement | null>(null);
   const runRef = useRef<HTMLElement | null>(null);
   const opsRef = useRef<HTMLElement | null>(null);
+  const suiteRef = useRef<HTMLElement | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -50,11 +64,25 @@ export default function StrumentiClient() {
   useEffect(() => {
     const s = search.get("stage");
     const t = search.get("tab") as "ops" | "run" | "results" | null;
+    const a = search.get("action");
     if (s && (STAGES as readonly string[]).includes(s)) setStage(s);
+    if (a && RUN_ACTIONS.has(a)) {
+      setRunAction(a);
+      if ((STAGES as readonly string[]).includes(a)) setStage(a);
+      if (!t) setTab("run");
+    } else if (s && (STAGES as readonly string[]).includes(s)) {
+      setRunAction(s);
+    }
     if (t === "ops" || t === "run" || t === "results") setTab(t);
   }, [search]);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#suite") {
+      window.setTimeout(() => {
+        suiteRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+      return;
+    }
     const map = { ops: opsRef, run: runRef, results: resultsRef } as const;
     const el = map[tab]?.current;
     if (el) {
@@ -62,12 +90,16 @@ export default function StrumentiClient() {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 80);
     }
-  }, [tab, stage]);
+  }, [tab, stage, runAction]);
 
   function goStage(next: string, nextTab: "ops" | "run" | "results" = "results") {
     setStage(next);
+    setRunAction(next);
     setTab(nextTab);
-    router.replace(`/strumenti?stage=${next}&tab=${nextTab}`, { scroll: false });
+    router.replace(
+      `/strumenti?stage=${next}&tab=${nextTab}&action=${next}`,
+      { scroll: false },
+    );
   }
 
   async function openDefaultGui() {
@@ -108,8 +140,8 @@ export default function StrumentiClient() {
       <header className="page-head">
         <h1>Strumenti</h1>
         <p>
-          Deep-link alle dashboard di fase, palette Ctrl+K, e Apri GUI
-          (OpenROAD / KLayout) con i dati del run learn.
+          Suite collaborativa: deep-link, palette Ctrl+K, run/inspect/viewer e
+          Apri GUI (OpenROAD / KLayout) sul variant learn.
         </p>
       </header>
 
@@ -180,6 +212,15 @@ export default function StrumentiClient() {
         </div>
       </div>
 
+      <section
+        className="panel"
+        style={{ marginBottom: "1.2rem" }}
+        ref={suiteRef}
+        id="suite"
+      >
+        <SuiteHub />
+      </section>
+
       <section className="panel" style={{ marginBottom: "1.2rem" }} ref={opsRef} id="ops">
         <OpsDashboard
           refreshKey={opsKey}
@@ -189,11 +230,11 @@ export default function StrumentiClient() {
 
       <section className="panel" style={{ marginBottom: "1.2rem" }} ref={runRef} id="run">
         <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>
-          Console live · {stage}
+          Console live · {runAction}
         </h2>
         <LiveRunConsole
-          defaultAction={stage}
-          key={stage}
+          defaultAction={runAction}
+          key={runAction}
           onFinished={(_ok, action) => {
             if ((STAGES as readonly string[]).includes(action)) {
               goStage(action, "results");

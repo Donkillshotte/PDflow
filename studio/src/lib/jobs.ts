@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { LEARN_ROOT } from "./course";
+import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { collectStageResults } from "./results";
+import { resultsDir } from "./open";
 
 export const PIPELINE_STAGES = [
   "synth",
@@ -316,6 +317,49 @@ export type PreflightResult =
     };
 
 export function preflightAction(action: string): PreflightResult {
+  // Artifact gates for extended / analysis actions
+  const needFile: Record<string, { rel: string; hint: string }> = {
+    gridcheck: {
+      rel: "2_4_floorplan_pdn.odb",
+      hint: "esegui prima floorplan (PDN)",
+    },
+    activity_power: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish",
+    },
+    klayout_drc: {
+      rel: "6_final.gds",
+      hint: "esegui prima finish (GDS)",
+    },
+  };
+  const need = needFile[action];
+  if (need) {
+    const abs = path.join(resultsDir(), need.rel);
+    if (!fs.existsSync(abs)) {
+      return {
+        ok: false,
+        code: "deps",
+        message: `Artefatto mancante «${need.rel}»: ${need.hint}.`,
+        missing: [need.rel],
+      };
+    }
+  }
+  if (action === "rtl_sim") {
+    const rtl = path.join(
+      REPO_ROOT,
+      "tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v",
+    );
+    const tb = path.join(LEARN_ROOT, "sim/gcd/tb_gcd.v");
+    if (!fs.existsSync(rtl) || !fs.existsSync(tb)) {
+      return {
+        ok: false,
+        code: "deps",
+        message: "Manca RTL o testbench GCD.",
+        missing: ["gcd.v", "tb_gcd.v"],
+      };
+    }
+  }
+
   const dep = stageReady(action);
   if (!dep.ready) {
     return {
