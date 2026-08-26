@@ -23,9 +23,9 @@ Produzione:
 
 | Area | Contenuto |
 |---|---|
-| Studio | Hero + progresso cliccabile + mappa del flusso guidato |
+| Studio | Hero + progresso + **Suite hub** (hook live) + mappa del flusso guidato |
 | Lezioni | **Wizard 5 passi** con **gate hard** lato server (teoria, LAB ≥50%, run ok, artefatti, risultati) |
-| Strumenti | Toolchain + **Ops dashboard** (pipeline, storico, lock) + console SSE (confirm/cancel/retry/export) |
+| Strumenti | Toolchain + Suite hub + **Ops** + console SSE (confirm/cancel/retry/export) + inspect/viewer |
 | Materiali | Ricerca, documenti in-app, galleria GUI |
 
 ## Contratto operativo (enterprise)
@@ -37,9 +37,12 @@ Produzione:
 - **Job history**: `GET /api/jobs` → `learn/.studio-jobs.json`
 - **Completamento lezione**: `POST /api/progress` → **422** se i gate falliscono
 - **Apri GUI / dashboard**: palette **Ctrl+K**, deep-link `/strumenti?stage=cts&tab=results`,
-  `POST /api/open` lancia OpenROAD/KLayout su Desktop (`DISPLAY`) o copia il comando
+  `POST /api/open` lancia OpenROAD/KLayout su Desktop (`DISPLAY`) o copia il comando;
+  kind `run` → console; kind `webviewer` → `POST /api/viewer`
 - **Ispezione tool**: `GET /api/inspect` (ODB via `-python`, OpenSTA JSON, Yosys `stat`)
 - **Web Viewer**: `POST /api/viewer` → OpenROAD `-web` su porta `43190`
+- **Suite hub**: `GET /api/suite` → matrice hook (ambiente → signoff) su `/` e `/strumenti#suite`
+- **Azioni estese**: `rtl_sim`, `gridcheck`, `activity_power`, `klayout_drc` (+ preflight artefatti)
 
 ## API utili
 
@@ -54,14 +57,19 @@ Produzione:
 | `POST /api/open` `{ id }` o `{ artifact }` | naviga o lancia OpenROAD/KLayout |
 | `GET /api/inspect?stage=` | ODB / STA / Yosys live |
 | `POST /api/viewer` `{ stage }` | avvia OpenROAD Web Viewer |
+| `GET /api/suite` | stato collaborativo di tutti gli hook |
 
 Deep-link utili:
 
 - `/strumenti?stage=place&tab=results`
 - `/strumenti?stage=cts&tab=results#inspect`
+- `/strumenti?tab=run&action=rtl_sim`
+- `/strumenti?tab=run&action=gridcheck`
+- `/strumenti#suite`
 - `/strumenti?stage=finish&tab=run`
 - `/materiali?tab=gallery`
 - `/materiali/reference/tool-hooks.md`
+- `/materiali/reference/extended-flow.md`
 - `/materiali/reference/gui-atlas.md`
 
 
