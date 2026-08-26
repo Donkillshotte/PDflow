@@ -1,14 +1,32 @@
-import Link from "next/link";
-import { LESSONS, readProgress } from "@/lib/course";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
+type Lesson = {
+  id: string;
+  num: string;
+  title: string;
+  completed: boolean;
+  makeTarget: string;
+};
 
 export default function HomePage() {
-  const progress = readProgress();
-  const done = new Set(progress.completed_lessons ?? []);
-  const completed = done.size;
-  const next =
-    LESSONS.find((l) => !done.has(l.id)) ?? LESSONS[LESSONS.length - 1];
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [ready, setReady] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void Promise.all([
+      fetch("/api/lessons").then((r) => r.json()),
+      fetch("/api/toolchain").then((r) => r.json()),
+    ]).then(([L, T]) => {
+      setLessons(L.lessons ?? []);
+      setReady(Boolean(T.ready));
+    });
+  }, []);
+
+  const completed = lessons.filter((l) => l.completed).length;
+  const next = lessons.find((l) => !l.completed) ?? lessons[lessons.length - 1];
 
   return (
     <main>
@@ -17,31 +35,58 @@ export default function HomePage() {
         <div className="hero-glow" aria-hidden />
         <div className="hero-copy">
           <p className="hero-brand">OpenROAD</p>
-          <h1 className="hero-title">Physical Design, senza script da ricordare</h1>
+          <h1 className="hero-title">Physical Design, interattivo</h1>
           <p className="hero-lead">
-            Studio interattivo sul flusso RTL→GDS: lezioni, materiali e comandi ORFS
-            da un’unica interfaccia.
+            Percorso guidato per lezione: teoria → LAB con checklist → run con
+            log live → ispezione artefatti → chiusura.
           </p>
           <div className="cta-row">
-            <Link href={`/lezioni/${next.id}`} className="btn-primary">
-              Continua · {next.title}
-            </Link>
+            {next ? (
+              <Link href={`/lezioni/${next.id}`} className="btn-primary">
+                Continua · {next.title}
+              </Link>
+            ) : (
+              <Link href="/lezioni" className="btn-primary">
+                Apri lezioni
+              </Link>
+            )}
             <Link href="/strumenti" className="btn-ghost">
-              Controlla toolchain
+              Console live
             </Link>
           </div>
           <div className="progress-strip" aria-label={`Progresso ${completed} su 8`}>
-            {LESSONS.map((l) => (
-              <span
+            {lessons.map((l) => (
+              <Link
                 key={l.id}
-                className={`progress-dot${done.has(l.id) ? " on" : ""}`}
+                href={`/lezioni/${l.id}`}
+                className={`progress-dot${l.completed ? " on" : ""}`}
                 title={l.title}
               />
             ))}
           </div>
           <p className="footer-note">
-            {completed}/8 lezioni segnate · ultima: {progress.last_lesson ?? "—"}
+            {completed}/8 lezioni · toolchain{" "}
+            {ready === null ? "…" : ready ? "pronta" : "da sistemare"}
           </p>
+        </div>
+      </section>
+
+      <section className="home-rail">
+        <h2 className="section-title">Flusso interattivo</h2>
+        <div className="flow-steps">
+          {[
+            { n: "01", t: "Teoria", d: "README della fase" },
+            { n: "02", t: "LAB", d: "Checklist spuntabile" },
+            { n: "03", t: "Esegui", d: "Log in streaming" },
+            { n: "04", t: "Risultati", d: "Artefatti + golden" },
+            { n: "05", t: "Chiudi", d: "Progresso salvato" },
+          ].map((s) => (
+            <div key={s.n} className="flow-step">
+              <span>{s.n}</span>
+              <strong>{s.t}</strong>
+              <em>{s.d}</em>
+            </div>
+          ))}
         </div>
       </section>
     </main>

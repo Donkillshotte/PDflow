@@ -148,7 +148,12 @@ echo "== Studio UI =="
 [[ -f "${ROOT}/studio/src/app/lezioni/page.tsx" ]] && ok "studio lezioni" || bad "manca lezioni"
 [[ -f "${ROOT}/studio/src/app/strumenti/page.tsx" ]] && ok "studio strumenti" || bad "manca strumenti"
 [[ -f "${ROOT}/studio/src/app/api/run/route.ts" ]] && ok "studio api/run" || bad "manca api/run"
+[[ -f "${ROOT}/studio/src/app/api/run/stream/route.ts" ]] && ok "studio api/run/stream" || bad "manca stream"
+[[ -f "${ROOT}/studio/src/components/LessonWizard.tsx" ]] && ok "LessonWizard" || bad "manca LessonWizard"
+[[ -f "${ROOT}/studio/src/components/LiveRunConsole.tsx" ]] && ok "LiveRunConsole" || bad "manca LiveRunConsole"
+[[ -f "${ROOT}/studio/src/components/ResultsPanel.tsx" ]] && ok "ResultsPanel" || bad "manca ResultsPanel"
 rg -q 'Physical Design Studio' "${ROOT}/studio/src/app/layout.tsx" && ok "studio brand" || bad "studio senza brand"
+rg -q 'streamCourseAction|LiveRunConsole|LessonWizard' "${ROOT}/studio/src/components/LessonWizard.tsx" && ok "wizard uses interactive flow" || bad "wizard non interattivo"
 if [[ -d "${ROOT}/studio/node_modules" ]]; then
   (cd "${ROOT}/studio" && npm run build >/tmp/studio-build-smoke.log 2>&1) \
     && ok "studio build" \

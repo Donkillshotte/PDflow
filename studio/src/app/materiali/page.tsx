@@ -1,35 +1,69 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { MATERIALS, WALKTHROUGHS } from "@/lib/course";
+import { MATERIALS, WALKTHROUGHS } from "@/lib/materials-client";
+
+type Shot = { name: string; href: string; label: string };
 
 export default function MaterialiPage() {
-  const groups = ["Corso", "Riferimento", "GUI", "Workbook", "Tcl"] as const;
+  const [q, setQ] = useState("");
+  const [shots, setShots] = useState<Shot[]>([]);
+  const [lightbox, setLightbox] = useState<Shot | null>(null);
 
-  const all = [...MATERIALS, ...WALKTHROUGHS];
+  useEffect(() => {
+    void fetch("/api/gallery")
+      .then((r) => r.json())
+      .then((d) => setShots(d.shots ?? []));
+  }, []);
+
+  const all = useMemo(() => [...MATERIALS, ...WALKTHROUGHS], []);
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return all;
+    return all.filter(
+      (m) =>
+        m.title.toLowerCase().includes(needle) ||
+        m.description.toLowerCase().includes(needle) ||
+        m.group.toLowerCase().includes(needle),
+    );
+  }, [all, q]);
+
+  const groups = ["Corso", "Riferimento", "GUI", "Workbook", "Tcl"] as const;
+  const shotFiltered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return shots;
+    return shots.filter((s) => s.label.toLowerCase().includes(needle) || s.name.includes(needle));
+  }, [shots, q]);
 
   return (
     <main>
       <header className="page-head">
         <h1>Materiali</h1>
         <p>
-          Glossario, atlante GUI, metriche d’oro, walkthrough Tcl e workbook —
-          leggibili in studio senza aprire il terminale.
+          Cerca nel corso, apri i documenti in-app, sfoglia la galleria GUI.
         </p>
       </header>
 
+      <div className="search-bar">
+        <input
+          type="search"
+          placeholder="Cerca: golden, CTS, SPEF, atlas…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          aria-label="Cerca materiali"
+        />
+        <span className="muted">
+          {filtered.length} documenti · {shotFiltered.length} PNG
+        </span>
+      </div>
+
       {groups.map((g) => {
-        const items = all.filter((m) => m.group === g);
+        const items = filtered.filter((m) => m.group === g);
         if (!items.length) return null;
         return (
           <section key={g} style={{ marginBottom: "1.6rem" }}>
-            <h2
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "1.15rem",
-                margin: "0 0 0.6rem",
-              }}
-            >
-              {g}
-            </h2>
+            <h2 className="section-title">{g}</h2>
             <div className="material-list">
               {items.map((m) => (
                 <Link key={m.href} href={m.href} className="material-row">
@@ -42,6 +76,52 @@ export default function MaterialiPage() {
           </section>
         );
       })}
+
+      <section style={{ marginBottom: "2rem" }}>
+        <h2 className="section-title">Galleria GUI</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Screenshot reali da <code>learn/reference/gui-shots/</code>. Clic per
+          ingrandire.
+        </p>
+        {shotFiltered.length === 0 ? (
+          <p className="empty-hint">Nessuna immagine (o filtro vuoto).</p>
+        ) : (
+          <div className="gallery-grid">
+            {shotFiltered.map((s) => (
+              <button
+                key={s.name}
+                type="button"
+                className="gallery-tile"
+                onClick={() => setLightbox(s)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={s.href} alt={s.label} loading="lazy" />
+                <span>{s.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {lightbox && (
+        <div
+          className="lightbox"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setLightbox(null)}
+        >
+          <div className="lightbox-inner" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={lightbox.href} alt={lightbox.label} />
+            <div className="lightbox-bar">
+              <strong>{lightbox.label}</strong>
+              <button type="button" className="btn-ghost" onClick={() => setLightbox(null)}>
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

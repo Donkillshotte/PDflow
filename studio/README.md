@@ -31,17 +31,10 @@ npm run dev -- -H 127.0.0.1 -p 43217
 
 | Area | Contenuto |
 |---|---|
-| Studio | Hero + progresso lezioni |
-| Lezioni | Teoria / LAB / Esegui fase per 00–07 |
-| Strumenti | Stato openroad/yosys/sta/klayout + console azioni |
-| Materiali | golden-metrics, atlante GUI, glossario, workbook, walkthrough Tcl |
+| Studio | Hero + progresso cliccabile + mappa del flusso guidato |
+| Lezioni | **Wizard 5 passi**: teoria → LAB checklist → run live → risultati → chiusura |
+| Strumenti | Toolchain + **console SSE** (log in diretta, annulla) + pannello artefatti |
+| Materiali | Ricerca, documenti in-app, **galleria GUI** con lightbox |
 
 Le azioni lunghe (`route`, `finish`) possono richiedere diversi minuti; l’output
-appare nella console della pagina Strumenti / tab Esegui.
-
-## CLI invariato
-
-```bash
-./scripts/learn_physical_design.sh --deep --lesson 01
-./scripts/test_course.sh
-```
+appare in streaming. Il CLI resta invariato.

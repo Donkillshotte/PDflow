@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RunConsole } from "@/components/RunConsole";
+import { LiveRunConsole } from "@/components/LiveRunConsole";
+import { ResultsPanel } from "@/components/ResultsPanel";
 
 type Tool = { name: string; ok: boolean; detail: string };
 type Status = {
@@ -13,10 +14,18 @@ type Status = {
 
 export default function StrumentiPage() {
   const [status, setStatus] = useState<Status | null>(null);
+  const [stage, setStage] = useState("synth");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   async function refresh() {
-    const res = await fetch("/api/toolchain");
-    setStatus(await res.json());
+    setLoading(true);
+    try {
+      const res = await fetch("/api/toolchain");
+      setStatus(await res.json());
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -28,19 +37,22 @@ export default function StrumentiPage() {
       <header className="page-head">
         <h1>Strumenti</h1>
         <p>
-          Stato della toolchain e azioni sicure sul wrapper del corso. Non serve
-          memorizzare i path: scegli un’azione e leggi l’output qui sotto.
+          Stato live della toolchain e console con log in streaming. Scegli
+          un’azione, guarda l’output arrivare, annulla se serve, poi ispeziona
+          gli artefatti.
         </p>
       </header>
 
       <div className="lesson-actions">
-        <button type="button" className="btn-ghost" onClick={refresh}>
-          Aggiorna stato
+        <button type="button" className="btn-ghost" onClick={refresh} disabled={loading}>
+          {loading ? "Aggiorno…" : "Aggiorna stato"}
         </button>
         {status?.ready ? (
           <span className="pill ok">ambiente pronto</span>
-        ) : (
+        ) : status ? (
           <span className="pill bad">manca qualcosa</span>
+        ) : (
+          <span className="pill">…</span>
         )}
       </div>
 
@@ -76,11 +88,22 @@ export default function StrumentiPage() {
         </div>
       </div>
 
-      <section className="panel">
+      <section className="panel" style={{ marginBottom: "1.2rem" }}>
         <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>
-          Console azioni
+          Console live
         </h2>
-        <RunConsole />
+        <LiveRunConsole
+          onFinished={(_ok, action) => {
+            if (["synth", "floorplan", "place", "cts", "route", "finish"].includes(action)) {
+              setStage(action);
+              setRefreshKey((k) => k + 1);
+            }
+          }}
+        />
+      </section>
+
+      <section className="panel">
+        <ResultsPanel stage={stage} refreshKey={refreshKey} />
       </section>
     </main>
   );
