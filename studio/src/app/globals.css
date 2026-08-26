@@ -1351,6 +1351,11 @@ button.pipeline-node {
   margin-left: -50vw;
   margin-right: -50vw;
   padding: 0 clamp(0.75rem, 2.5vw, 2rem) 3rem;
+  background:
+    radial-gradient(1200px 500px at 15% -5%, rgba(88, 166, 255, 0.08), transparent 55%),
+    radial-gradient(900px 450px at 90% 0%, rgba(240, 136, 62, 0.1), transparent 50%),
+    linear-gradient(180deg, #060a0f 0%, #0a1018 40%, #070b10 100%);
+  min-height: calc(100vh - 4rem);
 }
 
 /* —— FlowLab Pro workbench —— */
@@ -2099,17 +2104,54 @@ button.pipeline-node {
 .fl-pro .panel,
 .fl-pro .results-panel,
 .fl-pro .inspect-panel {
-  background: var(--fl-surface-2);
+  background: transparent;
+  border: none;
+  color: var(--fl-text);
+}
+.fl-pro .results-head h3,
+.fl-pro .results-panel h4,
+.fl-pro .inspect-panel h4 {
+  color: var(--fl-text);
+  font-size: 0.95rem;
+}
+.fl-pro .muted { color: var(--fl-muted) !important; }
+.fl-pro .pill { background: rgba(255, 255, 255, 0.06); border-color: var(--fl-border); color: var(--fl-text); }
+.fl-pro .pill.ok { color: var(--fl-ok); }
+.fl-pro .pill.bad { color: var(--fl-bad); }
+.fl-pro .chip { background: var(--fl-surface-2); color: var(--fl-muted); border-color: var(--fl-border); }
+.fl-pro .chip-active { background: rgba(240, 136, 62, 0.15); color: var(--fl-text); border-color: rgba(240, 136, 62, 0.4); }
+.fl-pro .artifact-list li {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--fl-border);
+}
+.fl-pro .artifact-list em { color: var(--fl-muted); }
+.fl-pro .metric-block {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--fl-border);
+}
+.fl-pro .metric-block.golden { border-color: rgba(240, 136, 62, 0.25); }
+.fl-pro .metric-list li span { color: var(--fl-accent-2); font-family: var(--font-mono); }
+.fl-pro .path-list li { border-color: var(--fl-border); }
+.fl-pro .btn-ghost {
+  background: rgba(255, 255, 255, 0.05);
   border-color: var(--fl-border);
   color: var(--fl-text);
 }
-.fl-pro .muted { color: var(--fl-muted) !important; }
-.fl-pro .pill { background: rgba(255, 255, 255, 0.06); border-color: var(--fl-border); }
-.fl-pro .chip { background: var(--fl-surface-2); color: var(--fl-muted); border-color: var(--fl-border); }
-.fl-pro .chip-active { background: rgba(240, 136, 62, 0.15); color: var(--fl-text); border-color: rgba(240, 136, 62, 0.4); }
-.fl-pro .btn-ghost,
 .fl-pro .btn-primary {
-  /* keep nested components readable */
+  background: linear-gradient(180deg, #f0984a 0%, var(--fl-accent) 100%);
+  border-color: rgba(240, 136, 62, 0.5);
+  color: #1a0f06;
+}
+.fl-pro a { color: var(--fl-accent-2); }
+.fl-pro .block-banner {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: rgba(248, 81, 73, 0.35);
+  color: #ffaba8;
+}
+.fl-pro .empty-hint { color: var(--fl-muted); }
+.fl-pro .hooks-details {
+  border-color: var(--fl-border);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* Loading skeleton */
