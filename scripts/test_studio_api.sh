@@ -38,6 +38,20 @@ code="$(curl -s -o /tmp/studio-dep.json -w '%{http_code}' \
 [[ "${code}" == "409" ]] && ok "locked stream → 409" || bad "lock atteso 409, got ${code}"
 rm -f "${LOCK_FILE}"
 
+# Dipendenza fase: senza artefatto primario di synth → floorplan 412
+RES_DIR="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn"
+PRIMARY="${RES_DIR}/1_synth.odb"
+if [[ -f "${PRIMARY}" ]]; then
+  mv "${PRIMARY}" "${PRIMARY}.smoke-bak"
+  code="$(curl -s -o /tmp/studio-deps.json -w '%{http_code}' \
+    "${BASE}/api/run/stream?action=floorplan")"
+  mv "${PRIMARY}.smoke-bak" "${PRIMARY}"
+  [[ "${code}" == "412" ]] && ok "floorplan deps → 412" || bad "deps atteso 412, got ${code}"
+  rg -q '"code":"deps"' /tmp/studio-deps.json && ok "deps payload" || bad "412 senza code deps"
+else
+  ok "skip deps test (no 1_synth.odb yet)"
+fi
+
 # Stream breve permesso (check)
 code="$(curl -s --max-time 45 -o /tmp/studio-check.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=check")"
