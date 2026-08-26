@@ -3,6 +3,17 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { SCRIPTS_ROOT, REPO_ROOT, LEARN_ROOT } from "./course";
+import {
+  acquireLock,
+  bufferJobLog,
+  clearJobLogBuffer,
+  flushJobLog,
+  getJob,
+  preflightAction,
+  releaseLock,
+  upsertJob,
+  type JobRecord,
+} from "./jobs";
 
 export type RunResult = {
   ok: boolean;
@@ -16,8 +27,9 @@ export type StreamEvent =
   | { type: "start"; jobId: string; command: string; action: string }
   | { type: "stdout"; chunk: string }
   | { type: "stderr"; chunk: string }
-  | { type: "done"; ok: boolean; code: number | null; ms: number }
-  | { type: "error"; message: string };
+  | { type: "done"; ok: boolean; code: number | null; ms: number; status: JobRecord["status"] }
+  | { type: "error"; message: string }
+  | { type: "blocked"; code: "locked" | "deps" | "forbidden"; message: string; detail?: unknown };
 
 const ALLOWED_ACTIONS = new Set([
   "check",
@@ -36,6 +48,7 @@ type Job = {
   id: string;
   child: ChildProcess;
   startedAt: number;
+  cancelled: boolean;
 };
 
 const jobs = new Map<string, Job>();
@@ -66,7 +79,12 @@ function ensureTutorialSymlink() {
   fs.symlinkSync(src, dest);
 }
 
-function resolveCommand(action: string): { cmd: string; args: string[]; cwd: string; command: string } {
+function resolveCommand(action: string): {
+  cmd: string;
+  args: string[];
+  cwd: string;
+  command: string;
+} {
   if (action === "test_course") {
     const cmd = path.join(SCRIPTS_ROOT, "test_course.sh");
     return { cmd, args: [], cwd: REPO_ROOT, command: cmd };
@@ -107,6 +125,7 @@ function defaultTimeout(action: string) {
 export function cancelJob(jobId: string): boolean {
   const job = jobs.get(jobId);
   if (!job) return false;
+  job.cancelled = true;
   try {
     job.child.kill("SIGTERM");
     setTimeout(() => {
@@ -124,23 +143,68 @@ export function cancelJob(jobId: string): boolean {
 
 export async function* streamCourseAction(
   action: string,
-  opts: { timeoutMs?: number; signal?: AbortSignal } = {},
+  opts: { timeoutMs?: number; signal?: AbortSignal; skipPreflight?: boolean } = {},
 ): AsyncGenerator<StreamEvent> {
   if (!isAllowedAction(action)) {
-    yield { type: "error", message: `Azione non consentita: ${action}` };
+    yield {
+      type: "blocked",
+      code: "forbidden",
+      message: `Azione non consentita: ${action}`,
+    };
     return;
+  }
+
+  if (!opts.skipPreflight) {
+    const pf = preflightAction(action);
+    if (!pf.ok) {
+      yield {
+        type: "blocked",
+        code: pf.code,
+        message: pf.message,
+        detail: pf,
+      };
+      return;
+    }
   }
 
   const { cmd, args, cwd, command } = resolveCommand(action);
   const jobId = randomUUID();
   const startedAt = Date.now();
+  const startedIso = new Date(startedAt).toISOString();
   const timeoutMs = opts.timeoutMs ?? defaultTimeout(action);
+
+  const lock = acquireLock({
+    jobId,
+    action,
+    startedAt: startedIso,
+    pid: process.pid,
+  });
+  if (!lock.ok) {
+    yield {
+      type: "blocked",
+      code: "locked",
+      message: `Un job è già in corso (${lock.lock.action}).`,
+      detail: lock.lock,
+    };
+    return;
+  }
+
+  const record: JobRecord = {
+    id: jobId,
+    action,
+    command,
+    status: "running",
+    startedAt: startedIso,
+    logTail: `$ ${command}\n`,
+  };
+  upsertJob(record);
+  bufferJobLog(jobId, `$ ${command}\n`);
 
   const child = spawn(/*turbopackIgnore: true*/ cmd, args, {
     cwd,
     env: { ...process.env, LEARN_AUTO: "1", FORCE_COLOR: "0" },
   });
-  jobs.set(jobId, { id: jobId, child, startedAt });
+  jobs.set(jobId, { id: jobId, child, startedAt, cancelled: false });
 
   yield { type: "start", jobId, command, action };
 
@@ -161,9 +225,15 @@ export async function* streamCourseAction(
     wake();
   };
 
-  child.stdout.on("data", (d) => push({ type: "stdout", chunk: d.toString() }));
-  child.stderr.on("data", (d) => push({ type: "stderr", chunk: d.toString() }));
+  const onChunk = (stream: "stdout" | "stderr", chunk: string) => {
+    bufferJobLog(jobId, chunk);
+    push({ type: stream, chunk });
+  };
+
+  child.stdout.on("data", (d) => onChunk("stdout", d.toString()));
+  child.stderr.on("data", (d) => onChunk("stderr", d.toString()));
   child.on("error", (err) => {
+    bufferJobLog(jobId, `\n[error] ${err.message}\n`);
     push({ type: "error", message: err.message });
     closed = true;
     wake();
@@ -176,14 +246,22 @@ export async function* streamCourseAction(
 
   const timer = setTimeout(() => {
     child.kill("SIGTERM");
-    push({ type: "stderr", chunk: "\n[timeout] processo interrotto\n" });
+    const msg = "\n[timeout] processo interrotto\n";
+    bufferJobLog(jobId, msg);
+    push({ type: "stderr", chunk: msg });
   }, timeoutMs);
 
   const onAbort = () => {
+    const j = jobs.get(jobId);
+    if (j) j.cancelled = true;
     child.kill("SIGTERM");
-    push({ type: "stderr", chunk: "\n[annullato]\n" });
+    const msg = "\n[annullato]\n";
+    bufferJobLog(jobId, msg);
+    push({ type: "stderr", chunk: msg });
   };
   opts.signal?.addEventListener("abort", onAbort);
+
+  const flushTimer = setInterval(() => flushJobLog(jobId), 1500);
 
   try {
     while (!closed || queue.length > 0) {
@@ -195,16 +273,40 @@ export async function* streamCourseAction(
       }
       yield queue.shift()!;
     }
+
+    const ms = Date.now() - startedAt;
+    const cancelled = jobs.get(jobId)?.cancelled ?? false;
+    const status: JobRecord["status"] = cancelled
+      ? "cancelled"
+      : exitCode === 0
+        ? "ok"
+        : "error";
+    flushJobLog(jobId);
+    const existing = getJob(jobId);
+    upsertJob({
+      ...record,
+      status,
+      finishedAt: new Date().toISOString(),
+      ms,
+      code: exitCode,
+      logTail: (existing?.logTail || record.logTail).slice(-16000),
+    });
+
     yield {
       type: "done",
-      ok: exitCode === 0,
+      ok: status === "ok",
       code: exitCode,
-      ms: Date.now() - startedAt,
+      ms,
+      status,
     };
   } finally {
+    clearInterval(flushTimer);
+    flushJobLog(jobId);
+    clearJobLogBuffer(jobId);
     clearTimeout(timer);
     opts.signal?.removeEventListener("abort", onAbort);
     jobs.delete(jobId);
+    releaseLock(jobId);
   }
 }
 
@@ -224,6 +326,7 @@ export function runCourseAction(
         if (ev.type === "stdout") stdout += ev.chunk;
         if (ev.type === "stderr") stderr += ev.chunk;
         if (ev.type === "error") stderr += `\n${ev.message}`;
+        if (ev.type === "blocked") stderr += `\n${ev.message}`;
         if (ev.type === "done") {
           ok = ev.ok;
           code = ev.code;

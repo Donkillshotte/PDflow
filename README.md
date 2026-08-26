@@ -65,8 +65,9 @@ Studio attivo stimato: **20–28 ore** (il wrapper `--auto` non sostituisce lo s
 # apri http://127.0.0.1:43217
 ```
 
-Interfaccia web: lezioni, materiali, stato toolchain e avvio fasi ORFS senza
-ricordare i comandi `make`. Dettagli: [studio/README.md](studio/README.md).
+Interfaccia web enterprise: lezioni con gate di completamento, console SSE
+(confirm/cancel/retry/export), ops dashboard (pipeline + job history), materiali.
+Dettagli: [studio/README.md](studio/README.md). Smoke API: `./scripts/test_studio_api.sh`.
 
 ### CLI (invariato)
 

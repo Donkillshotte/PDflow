@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/ToastProvider";
 
 type StreamEvent =
   | { type: "start"; jobId: string; command: string; action: string }
   | { type: "stdout"; chunk: string }
   | { type: "stderr"; chunk: string }
-  | { type: "done"; ok: boolean; code: number | null; ms: number }
-  | { type: "error"; message: string };
+  | { type: "done"; ok: boolean; code: number | null; ms: number; status?: string }
+  | { type: "error"; message: string }
+  | { type: "blocked"; code: string; message: string };
 
 const STAGE_ACTIONS = [
   { id: "check", label: "Verifica toolchain", hint: "openroad · yosys · sta · klayout" },
@@ -16,10 +19,12 @@ const STAGE_ACTIONS = [
   { id: "synth", label: "Esegui synth", hint: "~30s" },
   { id: "floorplan", label: "Esegui floorplan", hint: "die / PDN" },
   { id: "place", label: "Esegui place", hint: "GP → DP" },
-  { id: "cts", label: "Esegui CTS", hint: "minuti" },
-  { id: "route", label: "Esegui route", hint: "lungo" },
-  { id: "finish", label: "Esegui finish", hint: "GDS + SPEF" },
+  { id: "cts", label: "Esegui CTS", hint: "minuti · conferma" },
+  { id: "route", label: "Esegui route", hint: "lungo · conferma" },
+  { id: "finish", label: "Esegui finish", hint: "GDS · conferma" },
 ] as const;
+
+const LONG_ACTIONS = new Set(["cts", "route", "finish", "test_course"]);
 
 function formatMs(ms: number) {
   if (ms < 1000) return `${ms} ms`;
@@ -37,6 +42,7 @@ export function LiveRunConsole({
   compact?: boolean;
   onFinished?: (ok: boolean, action: string) => void;
 }) {
+  const { push } = useToast();
   const [action, setAction] = useState(defaultAction ?? "check");
   const [running, setRunning] = useState(false);
   const [ok, setOk] = useState<boolean | null>(null);
@@ -44,9 +50,13 @@ export function LiveRunConsole({
   const [jobId, setJobId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [command, setCommand] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [blockMsg, setBlockMsg] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const logRef = useRef<HTMLPreElement | null>(null);
   const tickRef = useRef<number | null>(null);
+  const lastActionRef = useRef(action);
 
   useEffect(() => {
     if (defaultAction) setAction(defaultAction);
@@ -65,6 +75,17 @@ export function LiveRunConsole({
     };
   }, []);
 
+  function exportLog() {
+    const blob = new Blob([log || "(vuoto)"], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `run-${lastActionRef.current}-${Date.now()}.log`;
+    a.click();
+    URL.revokeObjectURL(url);
+    push("Log esportato", "ok");
+  }
+
   async function cancel() {
     if (jobId) {
       await fetch("/api/run/cancel", {
@@ -74,9 +95,21 @@ export function LiveRunConsole({
       }).catch(() => undefined);
     }
     abortRef.current?.abort();
+    push("Job annullato", "info");
+  }
+
+  function requestRun(a = action) {
+    if (running) return;
+    if (LONG_ACTIONS.has(a)) {
+      setPendingAction(a);
+      setConfirmOpen(true);
+      return;
+    }
+    void run(a);
   }
 
   async function run(a = action) {
+    lastActionRef.current = a;
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -85,6 +118,7 @@ export function LiveRunConsole({
     setLog("");
     setJobId(null);
     setCommand("");
+    setBlockMsg(null);
     setElapsed(0);
     const t0 = Date.now();
     if (tickRef.current) window.clearInterval(tickRef.current);
@@ -94,9 +128,26 @@ export function LiveRunConsole({
       const res = await fetch(`/api/run/stream?action=${encodeURIComponent(a)}`, {
         signal: ac.signal,
       });
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const body = await res.json();
+          msg = body.error || msg;
+        } catch {
+          /* ignore */
+        }
         setOk(false);
-        setLog(`HTTP ${res.status}`);
+        setBlockMsg(msg);
+        setLog(msg);
+        setRunning(false);
+        push(msg, "bad");
+        if (tickRef.current) window.clearInterval(tickRef.current);
+        onFinished?.(false, a);
+        return;
+      }
+      if (!res.body) {
+        setOk(false);
+        setLog("Nessun body SSE");
         setRunning(false);
         return;
       }
@@ -122,13 +173,21 @@ export function LiveRunConsole({
             setLog((prev) => prev + ev.chunk);
           } else if (ev.type === "error") {
             setLog((prev) => prev + `\n[error] ${ev.message}\n`);
+          } else if (ev.type === "blocked") {
+            setBlockMsg(ev.message);
+            setLog((prev) => prev + `\n[blocked] ${ev.message}\n`);
+            push(ev.message, "bad");
           } else if (ev.type === "done") {
             finalOk = ev.ok;
             setOk(ev.ok);
             setLog(
               (prev) =>
                 prev +
-                `\n—— fine · exit ${ev.code ?? "?"} · ${formatMs(ev.ms)} ——\n`,
+                `\n—— fine · ${ev.status ?? (ev.ok ? "ok" : "error")} · exit ${ev.code ?? "?"} · ${formatMs(ev.ms)} ——\n`,
+            );
+            push(
+              ev.ok ? `${a} completato` : `${a} fallito (exit ${ev.code})`,
+              ev.ok ? "ok" : "bad",
             );
           }
         }
@@ -139,19 +198,22 @@ export function LiveRunConsole({
     } catch (e) {
       if ((e as Error).name === "AbortError") {
         setLog((prev) => prev + "\n[sessione chiusa]\n");
+        setOk(false);
       } else {
         setOk(false);
         setLog((prev) => prev + `\n${e instanceof Error ? e.message : String(e)}\n`);
+        push("Errore di rete sul run", "bad");
       }
       setRunning(false);
       if (tickRef.current) window.clearInterval(tickRef.current);
+      onFinished?.(false, a);
     }
   }
 
   return (
     <div className={clsx("run-console", compact && "run-console-compact")}>
       {!compact && (
-        <div className="run-actions">
+        <div className="run-actions" role="group" aria-label="Azioni pipeline">
           {STAGE_ACTIONS.map((s) => (
             <button
               key={s.id}
@@ -159,6 +221,7 @@ export function LiveRunConsole({
               className={clsx("chip", action === s.id && "chip-active")}
               onClick={() => setAction(s.id)}
               disabled={running}
+              aria-pressed={action === s.id}
             >
               <span>{s.label}</span>
               <em>{s.hint}</em>
@@ -168,9 +231,25 @@ export function LiveRunConsole({
       )}
       <div className="run-bar">
         {!running ? (
-          <button type="button" className="btn-primary" onClick={() => run()}>
-            {compact ? `Lancia ${action}` : "Esegui"}
-          </button>
+          <>
+            <button type="button" className="btn-primary" onClick={() => requestRun()}>
+              {compact ? `Lancia ${action}` : "Esegui"}
+            </button>
+            {ok === false && (
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => requestRun(lastActionRef.current)}
+              >
+                Riprova
+              </button>
+            )}
+            {log && (
+              <button type="button" className="btn-ghost" onClick={exportLog}>
+                Export log
+              </button>
+            )}
+          </>
         ) : (
           <button type="button" className="btn-danger" onClick={cancel}>
             Annulla
@@ -181,12 +260,35 @@ export function LiveRunConsole({
         {ok === false && <span className="pill bad">Errore</span>}
         {command && !running && <span className="mono-hint">{command}</span>}
       </div>
+      {blockMsg && (
+        <p className="block-banner" role="alert">
+          {blockMsg}
+        </p>
+      )}
       {(log || running) && (
-        <pre className="run-log" ref={logRef} aria-live="polite">
+        <pre className="run-log" ref={logRef} aria-live="polite" tabIndex={0}>
           {log || "In attesa del primo output…"}
           {running && <span className="cursor-blink">▍</span>}
         </pre>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={`Confermare ${pendingAction}?`}
+        body="Questa fase può richiedere diversi minuti e tiene il lock della pipeline. Continua solo se le dipendenze precedenti sono complete."
+        confirmLabel="Avvia comunque"
+        danger
+        onCancel={() => {
+          setConfirmOpen(false);
+          setPendingAction(null);
+        }}
+        onConfirm={() => {
+          const a = pendingAction;
+          setConfirmOpen(false);
+          setPendingAction(null);
+          if (a) void run(a);
+        }}
+      />
     </div>
   );
 }

@@ -152,8 +152,16 @@ echo "== Studio UI =="
 [[ -f "${ROOT}/studio/src/components/LessonWizard.tsx" ]] && ok "LessonWizard" || bad "manca LessonWizard"
 [[ -f "${ROOT}/studio/src/components/LiveRunConsole.tsx" ]] && ok "LiveRunConsole" || bad "manca LiveRunConsole"
 [[ -f "${ROOT}/studio/src/components/ResultsPanel.tsx" ]] && ok "ResultsPanel" || bad "manca ResultsPanel"
+[[ -f "${ROOT}/studio/src/components/OpsDashboard.tsx" ]] && ok "OpsDashboard" || bad "manca OpsDashboard"
+[[ -f "${ROOT}/studio/src/lib/jobs.ts" ]] && ok "jobs.ts" || bad "manca jobs.ts"
+[[ -f "${ROOT}/scripts/test_studio_api.sh" ]] && ok "test_studio_api.sh" || bad "manca test_studio_api.sh"
 rg -q 'Physical Design Studio' "${ROOT}/studio/src/app/layout.tsx" && ok "studio brand" || bad "studio senza brand"
 rg -q 'streamCourseAction|LiveRunConsole|LessonWizard' "${ROOT}/studio/src/components/LessonWizard.tsx" && ok "wizard uses interactive flow" || bad "wizard non interattivo"
+rg -q 'evaluateLessonGates|gates' "${ROOT}/studio/src/app/api/progress/route.ts" && ok "progress gates" || bad "progress senza gates"
+rg -q 'acquireLock|preflightAction' "${ROOT}/studio/src/lib/run.ts" && ok "run lock/preflight" || bad "run senza lock"
+rg -q 'OpsDashboard' "${ROOT}/studio/src/app/strumenti/page.tsx" && ok "OpsDashboard wired" || bad "OpsDashboard non collegata"
+rg -q 'ToastProvider' "${ROOT}/studio/src/app/layout.tsx" && ok "ToastProvider wired" || bad "ToastProvider non collegata"
+rg -q 'ConfirmDialog' "${ROOT}/studio/src/components/LiveRunConsole.tsx" && ok "ConfirmDialog wired" || bad "ConfirmDialog non collegata"
 if [[ -d "${ROOT}/studio/node_modules" ]]; then
   (cd "${ROOT}/studio" && npm run build >/tmp/studio-build-smoke.log 2>&1) \
     && ok "studio build" \
@@ -162,6 +170,7 @@ else
   bad "studio/node_modules assente — esegui npm install in studio/"
 fi
 rg -q 'run_studio.sh' "${ROOT}/README.md" && ok "root README cita Studio" || bad "README senza Studio"
+rg -q 'gate|single-flight|Ops' "${ROOT}/studio/README.md" && ok "studio README enterprise" || bad "studio README senza enterprise"
 
 echo "== Design tutorial =="
 for f in config.mk constraint.sdc constraint_relaxed.sdc constraint_tight.sdc; do

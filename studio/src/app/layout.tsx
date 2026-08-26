@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Syne, Figtree, IBM_Plex_Mono } from "next/font/google";
 import { SiteNav } from "@/components/SiteNav";
+import { ToastProvider } from "@/components/ToastProvider";
 import "./globals.css";
 
 const display = Syne({
@@ -35,10 +36,12 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body className={`${display.variable} ${body.variable} ${mono.variable}`}>
-        <div className="shell">
-          <SiteNav />
-          {children}
-        </div>
+        <ToastProvider>
+          <div className="shell">
+            <SiteNav />
+            {children}
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );

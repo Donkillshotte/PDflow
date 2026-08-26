@@ -1,3 +1,5 @@
 .progress.json
+.studio-jobs.json
+.studio-run.lock
 designs/**/constraint.sdc.bak
 notes/

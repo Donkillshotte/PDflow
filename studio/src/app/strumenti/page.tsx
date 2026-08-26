@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
+import { OpsDashboard } from "@/components/OpsDashboard";
 
 type Tool = { name: string; ok: boolean; detail: string };
 type Status = {
@@ -16,6 +17,7 @@ export default function StrumentiPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [stage, setStage] = useState("synth");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [opsKey, setOpsKey] = useState(0);
   const [loading, setLoading] = useState(true);
 
   async function refresh() {
@@ -37,15 +39,14 @@ export default function StrumentiPage() {
       <header className="page-head">
         <h1>Strumenti</h1>
         <p>
-          Stato live della toolchain e console con log in streaming. Scegli
-          un’azione, guarda l’output arrivare, annulla se serve, poi ispeziona
-          gli artefatti.
+          Console operativa enterprise: single-flight lock, dipendenze di fase,
+          conferma per job lunghi, storico, export log e pipeline live.
         </p>
       </header>
 
       <div className="lesson-actions">
         <button type="button" className="btn-ghost" onClick={refresh} disabled={loading}>
-          {loading ? "Aggiorno…" : "Aggiorna stato"}
+          {loading ? "Aggiorno…" : "Aggiorna toolchain"}
         </button>
         {status?.ready ? (
           <span className="pill ok">ambiente pronto</span>
@@ -89,15 +90,24 @@ export default function StrumentiPage() {
       </div>
 
       <section className="panel" style={{ marginBottom: "1.2rem" }}>
+        <OpsDashboard refreshKey={opsKey} />
+      </section>
+
+      <section className="panel" style={{ marginBottom: "1.2rem" }}>
         <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>
           Console live
         </h2>
         <LiveRunConsole
           onFinished={(_ok, action) => {
-            if (["synth", "floorplan", "place", "cts", "route", "finish"].includes(action)) {
+            if (
+              ["synth", "floorplan", "place", "cts", "route", "finish"].includes(
+                action,
+              )
+            ) {
               setStage(action);
               setRefreshKey((k) => k + 1);
             }
+            setOpsKey((k) => k + 1);
           }}
         />
       </section>

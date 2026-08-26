@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { MarkdownView } from "@/components/MarkdownView";
 import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
+import { useToast } from "@/components/ToastProvider";
 
 type LessonPayload = {
   id: string;
@@ -20,6 +21,8 @@ type LessonPayload = {
 };
 
 type CheckItem = { id: string; label: string };
+
+type Gate = { id: string; label: string; ok: boolean; detail?: string };
 
 const STEPS = [
   { id: "teoria", label: "1 · Teoria", short: "Teoria" },
@@ -41,7 +44,7 @@ function extractChecks(lab: string): CheckItem[] {
     if (!label || label.length < 4) continue;
     const id = label
       .toLowerCase()
-      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/[^a-z0-9àèéìòù]+/gi, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 64);
     if (seen.has(id)) continue;
@@ -53,27 +56,46 @@ function extractChecks(lab: string): CheckItem[] {
 }
 
 export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
+  const { push } = useToast();
   const [step, setStep] = useState<StepId>("teoria");
   const [doneSteps, setDoneSteps] = useState<string[]>([]);
   const [checks, setChecks] = useState<string[]>([]);
   const [completed, setCompleted] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [gates, setGates] = useState<Gate[]>([]);
+  const [gatesOk, setGatesOk] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
   const checklist = useMemo(
     () => (lesson.lab ? extractChecks(lesson.lab) : []),
     [lesson.lab],
   );
 
+  async function refreshGates() {
+    const res = await fetch(`/api/progress?lessonId=${encodeURIComponent(lesson.id)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.gates) {
+      setGates(data.gates.gates ?? []);
+      setGatesOk(Boolean(data.gates.ok));
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await fetch("/api/progress");
-      const p = await res.json();
+      const res = await fetch(`/api/progress?lessonId=${encodeURIComponent(lesson.id)}`);
+      const data = await res.json();
       if (cancelled) return;
+      const p = data.progress ?? data;
       setDoneSteps(p.lesson_steps?.[lesson.id] ?? []);
       setChecks(p.lab_checks?.[lesson.id] ?? []);
       setCompleted((p.completed_lessons ?? []).includes(lesson.id));
+      if (data.gates) {
+        setGates(data.gates.gates ?? []);
+        setGatesOk(Boolean(data.gates.ok));
+      }
       const saved = p.lesson_steps?.[lesson.id] as string[] | undefined;
       if (saved?.length) {
         const last = STEPS.map((s) => s.id).filter((id) => saved.includes(id)).pop();
@@ -98,6 +120,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
       }),
     });
     setSaving(false);
+    await refreshGates();
   }
 
   async function persistChecks(next: string[]) {
@@ -111,6 +134,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
         checks: next,
       }),
     });
+    await refreshGates();
   }
 
   function markStep(id: StepId) {
@@ -134,13 +158,27 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
   }
 
   async function completeLesson() {
+    setCompleteError(null);
     markStep("chiudi");
     const res = await fetch("/api/progress", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lessonId: lesson.id }),
     });
-    if (res.ok) setCompleted(true);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setCompleted(true);
+      push("Lezione segnata come completata", "ok");
+      await refreshGates();
+      return;
+    }
+    if (data.gates) {
+      setGates(data.gates);
+      setGatesOk(false);
+    }
+    const msg = data.error || "Impossibile completare: gate non soddisfatti";
+    setCompleteError(msg);
+    push(msg, "bad");
   }
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
@@ -158,12 +196,9 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
             <li key={s.id}>
               <button
                 type="button"
-                className={clsx(
-                  "wizard-step",
-                  active && "active",
-                  done && "done",
-                )}
+                className={clsx("wizard-step", active && "active", done && "done")}
                 onClick={() => go(s.id)}
+                aria-current={active ? "step" : undefined}
               >
                 <span className="wizard-idx">{i + 1}</span>
                 <span className="wizard-label">{s.short}</span>
@@ -178,9 +213,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
           <div className="wizard-pane">
             <header className="wizard-pane-head">
               <h2>Leggi la teoria</h2>
-              <p>
-                Quando hai chiaro il contratto di questa fase, passa al LAB.
-              </p>
+              <p>Quando hai chiaro il contratto di questa fase, passa al LAB.</p>
             </header>
             {lesson.readme ? (
               <MarkdownView
@@ -199,7 +232,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
               <h2>Laboratorio interattivo</h2>
               <p>
                 Spunta le parti mentre le fai ({checksDone}/
-                {checklist.length || "—"}). Il testo completo resta sotto.
+                {checklist.length || "—"}). Serve almeno metà checklist per chiudere.
               </p>
             </header>
             {checklist.length > 0 && (
@@ -245,8 +278,8 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
             <header className="wizard-pane-head">
               <h2>Esegui · {lesson.makeTarget}</h2>
               <p>
-                Output in diretta. Puoi annullare. Al termine i risultati si
-                aggiornano al passo successivo.
+                Single-flight: un solo job alla volta. Dipendenze di fase
+                bloccate lato server. Export log e retry disponibili.
               </p>
             </header>
             <LiveRunConsole
@@ -255,6 +288,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
               onFinished={(ok) => {
                 setRefreshKey((k) => k + 1);
                 if (ok) markStep("run");
+                void refreshGates();
               }}
             />
           </div>
@@ -281,28 +315,49 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
             <header className="wizard-pane-head">
               <h2>Chiudi la lezione</h2>
               <p>
-                Segna completata solo se hai letto, fatto il LAB e ispezionato
-                i risultati — non basta un click a vuoto.
+                Il server rifiuta il completamento se i gate non sono verdi —
+                non basta un click a vuoto.
               </p>
             </header>
-            <ul className="close-summary">
-              {STEPS.slice(0, 4).map((s) => (
-                <li key={s.id} className={doneSteps.includes(s.id) ? "ok" : ""}>
-                  {doneSteps.includes(s.id) ? "✓" : "○"} {s.label}
+            <ul className="gate-list" aria-label="Gate di completamento">
+              {gates.map((g) => (
+                <li key={g.id} className={g.ok ? "ok" : "bad"}>
+                  <span>{g.ok ? "✓" : "○"}</span>
+                  <div>
+                    <strong>{g.label}</strong>
+                    {g.detail && <em>{g.detail}</em>}
+                  </div>
                 </li>
               ))}
-              <li>
-                Checklist LAB: {checksDone}/{checklist.length || 0}
-              </li>
+              {gates.length === 0 && (
+                <li className="muted">Caricamento gate…</li>
+              )}
             </ul>
+            {completeError && (
+              <p className="block-banner" role="alert">
+                {completeError}
+              </p>
+            )}
             <div className="lesson-actions">
               <button
                 type="button"
                 className="btn-primary"
                 onClick={completeLesson}
-                disabled={completed}
+                disabled={completed || !gatesOk}
+                title={
+                  gatesOk
+                    ? "Segna lezione completata"
+                    : "Completa prima tutti i gate"
+                }
               >
-                {completed ? "Già nel progresso" : "Segna lezione completata"}
+                {completed
+                  ? "Già nel progresso"
+                  : gatesOk
+                    ? "Segna lezione completata"
+                    : "Gate incompleti"}
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => void refreshGates()}>
+                Ricalcola gate
               </button>
               {completed && <span className="pill ok">salvata</span>}
             </div>

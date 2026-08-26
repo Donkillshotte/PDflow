@@ -1,4 +1,5 @@
 import { isAllowedAction, streamCourseAction } from "@/lib/run";
+import { preflightAction } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 900;
@@ -7,7 +8,24 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const action = url.searchParams.get("action") ?? "";
   if (!isAllowedAction(action)) {
-    return new Response(`Azione non consentita: ${action}`, { status: 400 });
+    return Response.json(
+      { error: `Azione non consentita: ${action}`, code: "forbidden" },
+      { status: 400 },
+    );
+  }
+
+  const pf = preflightAction(action);
+  if (!pf.ok) {
+    return Response.json(
+      {
+        error: pf.message,
+        code: pf.code,
+        lock: "lock" in pf ? pf.lock : undefined,
+        dep: "dep" in pf ? pf.dep : undefined,
+        missing: "missing" in pf ? pf.missing : undefined,
+      },
+      { status: pf.code === "locked" ? 409 : 412 },
+    );
   }
 
   const encoder = new TextEncoder();
@@ -19,6 +37,7 @@ export async function GET(req: Request) {
       try {
         for await (const ev of streamCourseAction(action, {
           signal: req.signal,
+          skipPreflight: true,
         })) {
           send(ev);
         }
