@@ -2100,6 +2100,130 @@ button.pipeline-node {
 }
 .fl-next-banner p { margin: 0.15rem 0 0; color: var(--fl-muted); font-size: 0.85rem; }
 
+.fl-phase-history {
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--fl-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+.fl-phase-history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--fl-muted);
+}
+.fl-phase-history-head strong { color: var(--fl-text); font-size: 0.82rem; }
+.fl-phase-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.fl-phase-history-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.15);
+}
+.fl-run-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fl-muted);
+}
+.fl-run-dot.ok { background: var(--fl-ok); }
+.fl-run-dot.bad { background: var(--fl-bad); }
+.fl-run-dot.run { background: var(--fl-accent-2); }
+.fl-phase-history-list em {
+  display: block;
+  font-style: normal;
+  color: var(--fl-muted);
+  font-size: 0.68rem;
+}
+.fl-run-status {
+  font-family: var(--font-mono);
+  color: var(--fl-muted);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+.fl-phase-history-empty,
+.fl-phase-history-loading {
+  font-size: 0.78rem;
+  color: var(--fl-muted);
+  text-align: center;
+}
+
+.fl-signoff {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  background: rgba(88, 166, 255, 0.06);
+  display: grid;
+  gap: 0.65rem;
+}
+.fl-signoff-head p {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--fl-muted);
+}
+.fl-signoff-grid {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.fl-signoff-card {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.fl-signoff-card:hover:not(:disabled) {
+  border-color: var(--fl-accent-2);
+  background: rgba(88, 166, 255, 0.08);
+}
+.fl-signoff-card:disabled { opacity: 0.5; cursor: not-allowed; }
+.fl-signoff-card strong { display: block; font-size: 0.85rem; }
+.fl-signoff-card span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--fl-muted);
+  margin-top: 0.15rem;
+}
+.fl-signoff-card svg { color: var(--fl-accent-2); flex-shrink: 0; margin-top: 0.1rem; }
+
+/* Home FlowLab Pro accents */
+.home-rail {
+  border-radius: 16px;
+  border: 1px solid rgba(16, 24, 32, 0.1);
+  background: linear-gradient(165deg, rgba(15, 20, 25, 0.04) 0%, rgba(240, 136, 62, 0.06) 100%);
+  padding: 1.1rem 1.25rem;
+}
+.home-rail .section-title {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+.flow-steps a {
+  border-color: rgba(240, 136, 62, 0.25);
+}
+.flow-steps a:hover {
+  border-color: var(--copper);
+  background: rgba(240, 136, 62, 0.08);
+}
+
 /* Dark theme overrides inside FlowLab for nested panels */
 .fl-pro .panel,
 .fl-pro .results-panel,

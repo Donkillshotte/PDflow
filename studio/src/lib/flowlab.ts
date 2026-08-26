@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
+import { listJobs } from "./jobs";
 
 export const FLOWLAB_VARIANT = "flowlab";
 export const FLOWLAB_DIR = path.join(LEARN_ROOT, "flowlab");
@@ -197,6 +198,37 @@ export function flowlabResultsDir() {
   );
 }
 
+export function flowlabSimArtifacts() {
+  const simDir = path.join(/*turbopackIgnore: true*/ LEARN_ROOT, "sim/gcd");
+  const logPath = path.join(simDir, "sim.log");
+  const vcdPath = path.join(simDir, "gcd.vcd");
+  return {
+    logPath: "learn/sim/gcd/sim.log",
+    vcdPath: "learn/sim/gcd/gcd.vcd",
+    logExists: fs.existsSync(logPath),
+    vcdExists: fs.existsSync(vcdPath),
+    vcdBytes: fs.existsSync(vcdPath) ? fs.statSync(vcdPath).size : 0,
+  };
+}
+
+export function flowlabPhaseHistory(limitPerPhase = 3) {
+  const jobs = listJobs(80);
+  const byAction = new Map<string, typeof jobs>();
+  for (const ph of FLOW_PHASES) {
+    byAction.set(
+      ph.action,
+      jobs.filter((j) => j.action === ph.action).slice(0, limitPerPhase),
+    );
+  }
+  for (const extra of ["gridcheck", "activity_power", "klayout_drc"]) {
+    byAction.set(
+      extra,
+      jobs.filter((j) => j.action === extra).slice(0, limitPerPhase),
+    );
+  }
+  return Object.fromEntries(byAction);
+}
+
 export function getFlowlabStatus() {
   ensureFlowlabWorkspace();
   const params = readParams();
@@ -241,6 +273,8 @@ export function getFlowlabStatus() {
     rtlLines: rtl.split("\n").length,
     params,
     stages,
+    sim: flowlabSimArtifacts(),
+    phaseHistory: flowlabPhaseHistory(),
     resultsDir: `results/nangate45/gcd/${FLOWLAB_VARIANT}`,
   };
 }

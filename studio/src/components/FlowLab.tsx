@@ -17,8 +17,10 @@ import { InspectPanel } from "@/components/InspectPanel";
 import { useToast } from "@/components/ToastProvider";
 import { FlowLabMetricsBar } from "@/components/flowlab/FlowLabMetricsBar";
 import { FlowLabParamStudio } from "@/components/flowlab/FlowLabParamStudio";
+import { FlowLabPhaseHistory } from "@/components/flowlab/FlowLabPhaseHistory";
 import { FlowLabPipeline } from "@/components/flowlab/FlowLabPipeline";
 import { FlowLabRtlEditor } from "@/components/flowlab/FlowLabRtlEditor";
+import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
 import { FlowLabTerminal } from "@/components/flowlab/FlowLabTerminal";
 import { LONG_ACTIONS, PHASE_IDS, PHASES } from "@/components/flowlab/phases";
 import type {
@@ -91,6 +93,16 @@ export function FlowLab() {
   const [guiBusy, setGuiBusy] = useState(false);
   const [offerNext, setOfferNext] = useState(false);
   const [sideWidth, setSideWidth] = useState(420);
+  const [sim, setSim] = useState<{
+    vcdExists: boolean;
+    logExists: boolean;
+    vcdBytes: number;
+  }>({ vcdExists: false, logExists: false, vcdBytes: 0 });
+  const [phaseHistory, setPhaseHistory] = useState<
+    Record<string, { id: string; action: string; status: string; startedAt: string; ms?: number }[]>
+  >({});
+  const [signoffBusy, setSignoffBusy] = useState<string | null>(null);
+  const [pendingSignoff, setPendingSignoff] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
@@ -119,6 +131,8 @@ export function FlowLab() {
       setParams(data.params);
       paramsRef.current = data.params;
       setStages(data.stages ?? []);
+      setSim(data.sim ?? { vcdExists: false, logExists: false, vcdBytes: 0 });
+      setPhaseHistory(data.phaseHistory ?? {});
       setDirty(false);
       return data;
     } catch (e) {
@@ -246,8 +260,9 @@ export function FlowLab() {
     }
   }
 
-  const runAction = useCallback(async () => {
-    if (dirty) {
+  const runAction = useCallback(async (overrideAction?: string) => {
+    const action = overrideAction ?? phase.action;
+    if (dirty && !overrideAction) {
       const saved = await saveAll(rtlRef.current, paramsRef.current, true);
       if (!saved) return;
     }
@@ -267,7 +282,7 @@ export function FlowLab() {
 
     const p = paramsRef.current;
     const q = new URLSearchParams({
-      action: phase.action,
+      action,
       mode: "flowlab",
       coreUtilization: String(p.coreUtilization),
       placeDensityAddon: String(p.placeDensityAddon),
@@ -316,8 +331,8 @@ export function FlowLab() {
             setOk(ev.ok);
             push(
               ev.ok
-                ? `${phase.label} completata · ${formatMs(ev.ms)}`
-                : `${phase.label} fallita`,
+                ? `${action} completata · ${formatMs(ev.ms)}`
+                : `${action} fallita`,
               ev.ok ? "ok" : "bad",
             );
             if (ev.ok) {
@@ -336,6 +351,7 @@ export function FlowLab() {
       }
     } finally {
       setRunning(false);
+      setSignoffBusy(null);
       abortRef.current = null;
       if (tickRef.current) {
         window.clearInterval(tickRef.current);
@@ -343,6 +359,22 @@ export function FlowLab() {
       }
     }
   }, [dirty, saveAll, phase, nextPhase, push, load]);
+
+  async function runSignoff(action: string, long: boolean) {
+    if (running) return;
+    if (long) {
+      setPendingSignoff(action);
+      setConfirmOpen(true);
+      return;
+    }
+    setSignoffBusy(action);
+    await runAction(action);
+  }
+
+  const phaseRuns =
+    phaseHistory[phase.action] ??
+    (phase.id === "finish" ? phaseHistory.klayout_drc : undefined) ??
+    [];
 
   const requestRun = useCallback(() => {
     if (!unlocked) {
@@ -564,6 +596,8 @@ export function FlowLab() {
         visible={phase.id !== "rtl"}
       />
 
+      <FlowLabPhaseHistory phaseLabel={phase.label} runs={phaseRuns} />
+
       <div
         className="fl-workbench-grid"
         style={{ "--fl-side-w": `${sideWidth}px` } as React.CSSProperties}
@@ -592,11 +626,20 @@ export function FlowLab() {
               />
             </div>
           ) : (
-            <FlowLabParamStudio
-              params={params}
-              onChange={updateParam}
-              onApplyPreset={applyPreset}
-            />
+            <>
+              <FlowLabParamStudio
+                params={params}
+                onChange={updateParam}
+                onApplyPreset={applyPreset}
+              />
+              {phase.id === "finish" && (
+                <FlowLabSignoff
+                  disabled={running}
+                  busy={signoffBusy}
+                  onRun={(a, long) => void runSignoff(a, long)}
+                />
+              )}
+            </>
           )}
 
           {offerNext && nextPhase && ok && (
@@ -671,8 +714,34 @@ export function FlowLab() {
               <div className="fl-artifacts-pane">
                 {phase.id === "rtl" ? (
                   <div className="fl-empty-state">
-                    <p>Dopo la simulazione RTL trovi il VCD in <code>learn/sim/gcd/</code>.</p>
-                    <p className="muted">Gli artefatti fisici compaiono dalla sintesi in poi.</p>
+                    {sim.vcdExists ? (
+                      <>
+                        <p>Simulazione completata — waveform disponibile.</p>
+                        <div className="fl-artifacts-actions">
+                          <a
+                            className="fl-btn fl-btn-primary fl-btn-sm"
+                            href="/api/flowlab/download?kind=vcd"
+                          >
+                            Scarica VCD ({Math.round(sim.vcdBytes / 1024)} KB)
+                          </a>
+                          {sim.logExists && (
+                            <a
+                              className="fl-btn fl-btn-ghost fl-btn-sm"
+                              href="/api/flowlab/download?kind=simlog"
+                            >
+                              sim.log
+                            </a>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p>Esegui la simulazione RTL per generare il VCD.</p>
+                        <p className="muted">
+                          Output atteso: <code>learn/sim/gcd/gcd.vcd</code>
+                        </p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -717,12 +786,30 @@ export function FlowLab() {
 
       <ConfirmDialog
         open={confirmOpen}
-        title={`Confermi ${phase.label}?`}
-        body={`${phase.tool} — stima ${phase.estTime}. Un solo job alla volta nel runner.`}
+        title={
+          pendingSignoff
+            ? `Confermi ${pendingSignoff}?`
+            : `Confermi ${phase.label}?`
+        }
+        body={
+          pendingSignoff
+            ? `Signoff ${pendingSignoff} può richiedere diversi minuti.`
+            : `${phase.tool} — stima ${phase.estTime}. Un solo job alla volta nel runner.`
+        }
         confirmLabel="Esegui"
-        onCancel={() => setConfirmOpen(false)}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setPendingSignoff(null);
+        }}
         onConfirm={() => {
           setConfirmOpen(false);
+          if (pendingSignoff) {
+            const a = pendingSignoff;
+            setPendingSignoff(null);
+            setSignoffBusy(a);
+            void runAction(a);
+            return;
+          }
           void runAction();
         }}
       />
