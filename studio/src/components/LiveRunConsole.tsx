@@ -15,16 +15,20 @@ type StreamEvent =
 
 const STAGE_ACTIONS = [
   { id: "check", label: "Verifica toolchain", hint: "openroad · yosys · sta · klayout" },
+  { id: "rtl_sim", label: "Sim RTL (Icarus)", hint: "GCD + VCD" },
   { id: "status", label: "Progresso corso", hint: "lezioni completate" },
   { id: "synth", label: "Esegui synth", hint: "~30s" },
   { id: "floorplan", label: "Esegui floorplan", hint: "die / PDN" },
+  { id: "gridcheck", label: "Gridcheck PDN", hint: "check_power_grid" },
   { id: "place", label: "Esegui place", hint: "GP → DP" },
   { id: "cts", label: "Esegui CTS", hint: "minuti · conferma" },
   { id: "route", label: "Esegui route", hint: "lungo · conferma" },
   { id: "finish", label: "Esegui finish", hint: "GDS · conferma" },
+  { id: "activity_power", label: "Activity → power", hint: "set_power_activity" },
+  { id: "klayout_drc", label: "KLayout DRC", hint: "GDS · lungo · conferma" },
 ] as const;
 
-const LONG_ACTIONS = new Set(["cts", "route", "finish", "test_course"]);
+const LONG_ACTIONS = new Set(["cts", "route", "finish", "test_course", "klayout_drc"]);
 
 function formatMs(ms: number) {
   if (ms < 1000) return `${ms} ms`;

@@ -20,6 +20,10 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   status: null,
   list: null,
   test_course: null,
+  rtl_sim: null,
+  gridcheck: null,
+  activity_power: null,
+  klayout_drc: null,
   synth: null,
   floorplan: "synth",
   place: "floorplan",
@@ -28,7 +32,13 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   finish: "route",
 };
 
-export const LONG_ACTIONS = new Set(["cts", "route", "finish", "test_course"]);
+export const LONG_ACTIONS = new Set([
+  "cts",
+  "route",
+  "finish",
+  "test_course",
+  "klayout_drc",
+]);
 
 export type JobRecord = {
   id: string;

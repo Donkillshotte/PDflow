@@ -38,6 +38,9 @@ PY
 
 Documentazione GUI Tcl: [OpenROAD GUI README](https://openroad.readthedocs.io/en/latest/main/src/gui/README.html).
 
+**Mappa flusso esteso** (RTL sim, activity, DRC, gridcheck, bump/RDL, thermal):
+[extended-flow.md](./extended-flow.md).
+
 ## OpenSTA (`sta`)
 
 | Hook | Cosa fa | Uso |

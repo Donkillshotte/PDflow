@@ -236,6 +236,16 @@ export function inspectStage(stage: string): StageInspect {
       detail: "Metriche di flusso in JSON",
     },
     {
+      id: "gridcheck",
+      label: "check_power_grid",
+      detail: "learn/scripts/run_gridcheck.sh · azione Studio gridcheck",
+    },
+    {
+      id: "activity",
+      label: "set_power_activity / VCD",
+      detail: "run_activity_power.sh · VCD da rtl_sim",
+    },
+    {
       id: "sta-json",
       label: "OpenSTA report_checks -format json",
       detail: "Path timing strutturati",
@@ -246,9 +256,14 @@ export function inspectStage(stage: string): StageInspect {
       detail: "Celle/area sul netlist",
     },
     {
+      id: "rtl-sim",
+      label: "Icarus RTL sim",
+      detail: "learn/scripts/run_rtl_sim.sh",
+    },
+    {
       id: "klayout",
-      label: "KLayout GDS",
-      detail: "Viewer layout post-finish",
+      label: "KLayout GDS / DRC",
+      detail: "Viewer + run_klayout_drc.sh",
     },
   ];
 

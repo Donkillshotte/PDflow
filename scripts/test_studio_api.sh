@@ -114,6 +114,19 @@ ok "viewer stop"
 
 code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/tool-hooks.md")"
 [[ "${code}" == "200" ]] && ok "tool-hooks.md page" || bad "tool-hooks page → ${code}"
+code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/extended-flow.md")"
+[[ "${code}" == "200" ]] && ok "extended-flow.md page" || bad "extended-flow page → ${code}"
+
+# Extended actions (short)
+code="$(curl -s --max-time 60 -o /tmp/studio-rtl.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=rtl_sim")"
+[[ "${code}" == "200" ]] && ok "rtl_sim stream → 200" || bad "rtl_sim → ${code}"
+rg -q 'RTL_SIM_PASS|"ok":true' /tmp/studio-rtl.sse && ok "rtl_sim pass event" || bad "rtl_sim senza PASS"
+
+code="$(curl -s --max-time 60 -o /tmp/studio-gc.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=gridcheck")"
+[[ "${code}" == "200" ]] && ok "gridcheck stream → 200" || bad "gridcheck → ${code}"
+rg -q 'GRIDCHECK_DONE|PSM-0040' /tmp/studio-gc.sse && ok "gridcheck ok" || bad "gridcheck fallita"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "STUDIO API SMOKE FAILED"

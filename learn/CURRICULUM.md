@@ -209,3 +209,16 @@ Il wrapper `--auto` dura minuti: **non** è il corso. Il corso è LAB + quaderno
 3. **Tcl scripting** — automatizza sweep clock/utilization
 4. **OpenSTA standalone** — timing analysis fuori dal flusso
 5. **KLayout DRC/LVS** — verifica geometrica avanzata
+
+### Moduli opzionali già agganciati (Studio + script)
+
+Mappa completa: [`learn/reference/extended-flow.md`](./reference/extended-flow.md).
+
+| Modulo | Script / azione Studio | Stato |
+|---|---|---|
+| Sim RTL (Icarus) + VCD | `learn/scripts/run_rtl_sim.sh` · `rtl_sim` | READY |
+| Gridcheck PDN | `run_gridcheck.sh` · `gridcheck` | READY |
+| Activity → power | `run_activity_power.sh` · `activity_power` | READY (sintetica) |
+| KLayout GDS DRC | `run_klayout_drc.sh` · `klayout_drc` | READY (dopo finish) |
+| Bump / RDL / system PDN | solo API OpenROAD | MISSING nel flow GCD |
+| Thermal | nessun tool in VM | MISSING (teoria) |

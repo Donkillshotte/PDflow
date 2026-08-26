@@ -43,15 +43,32 @@ done
 
 echo "== Reference =="
 for f in glossary.md file-formats.md debug-playbook.md gui-openroad.md gui-atlas.md \
-         golden-metrics.md tool-hooks.md \
+         golden-metrics.md tool-hooks.md extended-flow.md \
          walkthrough-synth.tcl.md walkthrough-floorplan.tcl.md \
          walkthrough-global_place.tcl.md walkthrough-cts.tcl.md \
          walkthrough-route.tcl.md walkthrough-finish.tcl.md; do
   [[ -f "${ROOT}/learn/reference/${f}" ]] && ok "reference/${f}" || bad "manca reference/${f}"
 done
 min_lines "${ROOT}/learn/reference/tool-hooks.md" 80
+min_lines "${ROOT}/learn/reference/extended-flow.md" 100
 rg -q 'OpenROAD -web' "${ROOT}/learn/reference/tool-hooks.md" && ok "hooks -web" || bad "hooks senza -web"
 rg -q 'report_checks -format json' "${ROOT}/learn/reference/tool-hooks.md" && ok "hooks sta json" || bad "hooks senza sta json"
+rg -q 'run_rtl_sim|gridcheck|activity_power|bump|thermal' "${ROOT}/learn/reference/extended-flow.md" \
+  && ok "extended-flow topics" || bad "extended-flow incompleto"
+[[ -f "${ROOT}/learn/sim/gcd/tb_gcd.v" ]] && ok "tb_gcd.v" || bad "manca tb"
+[[ -x "${ROOT}/learn/scripts/run_rtl_sim.sh" ]] || chmod +x "${ROOT}/learn/scripts/run_rtl_sim.sh"
+[[ -x "${ROOT}/learn/scripts/run_gridcheck.sh" ]] || chmod +x "${ROOT}/learn/scripts/run_gridcheck.sh"
+if command -v iverilog >/dev/null; then
+  "${ROOT}/learn/scripts/run_rtl_sim.sh" >/tmp/rtl-sim-smoke.log 2>&1 \
+    && ok "rtl_sim smoke" \
+    || { bad "rtl_sim fallita"; tail -20 /tmp/rtl-sim-smoke.log; }
+else
+  bad "iverilog assente"
+fi
+"${ROOT}/learn/scripts/run_gridcheck.sh" pdn >/tmp/gridcheck-smoke.log 2>&1 \
+  && ok "gridcheck smoke" \
+  || { bad "gridcheck fallita"; tail -20 /tmp/gridcheck-smoke.log; }
+
 min_lines "${ROOT}/learn/reference/gui-atlas.md" 150
 min_lines "${ROOT}/learn/reference/walkthrough-global_place.tcl.md" 80
 min_lines "${ROOT}/learn/reference/walkthrough-cts.tcl.md" 80
@@ -171,7 +188,8 @@ rg -q 'CommandPalette' "${ROOT}/studio/src/app/layout.tsx" && ok "palette wired"
 rg -q 'streamCourseAction|LiveRunConsole|LessonWizard' "${ROOT}/studio/src/components/LessonWizard.tsx" && ok "wizard uses interactive flow" || bad "wizard non interattivo"
 rg -q 'evaluateLessonGates|gates' "${ROOT}/studio/src/app/api/progress/route.ts" && ok "progress gates" || bad "progress senza gates"
 rg -q 'acquireLock|preflightAction' "${ROOT}/studio/src/lib/run.ts" && ok "run lock/preflight" || bad "run senza lock"
-rg -q 'launchExternal|STAGE_GUI_TARGETS' "${ROOT}/studio/src/lib/open.ts" && ok "open targets" || bad "open senza launch"
+rg -q 'rtl_sim|gridcheck|activity_power' "${ROOT}/studio/src/lib/run.ts" && ok "studio extended actions" || bad "studio senza rtl_sim/gridcheck"
+rg -q 'Sim RTL|Gridcheck|Activity' "${ROOT}/studio/src/components/LiveRunConsole.tsx" && ok "console extended chips" || bad "console senza chip estesi"
 rg -q 'OpsDashboard' "${ROOT}/studio/src/app/strumenti/strumenti-client.tsx" && ok "OpsDashboard wired" || bad "OpsDashboard non collegata"
 rg -q 'ToastProvider' "${ROOT}/studio/src/app/layout.tsx" && ok "ToastProvider wired" || bad "ToastProvider non collegata"
 rg -q 'ConfirmDialog' "${ROOT}/studio/src/components/LiveRunConsole.tsx" && ok "ConfirmDialog wired" || bad "ConfirmDialog non collegata"

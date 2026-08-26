@@ -42,6 +42,10 @@ const ALLOWED_ACTIONS = new Set([
   "route",
   "finish",
   "test_course",
+  "rtl_sim",
+  "gridcheck",
+  "activity_power",
+  "klayout_drc",
 ]);
 
 type Job = {
@@ -89,6 +93,22 @@ function resolveCommand(action: string): {
     const cmd = path.join(SCRIPTS_ROOT, "test_course.sh");
     return { cmd, args: [], cwd: REPO_ROOT, command: cmd };
   }
+  if (action === "rtl_sim") {
+    const cmd = path.join(LEARN_ROOT, "scripts/run_rtl_sim.sh");
+    return { cmd, args: [], cwd: REPO_ROOT, command: cmd };
+  }
+  if (action === "gridcheck") {
+    const cmd = path.join(LEARN_ROOT, "scripts/run_gridcheck.sh");
+    return { cmd, args: ["pdn"], cwd: REPO_ROOT, command: `${cmd} pdn` };
+  }
+  if (action === "activity_power") {
+    const cmd = path.join(LEARN_ROOT, "scripts/run_activity_power.sh");
+    return { cmd, args: [], cwd: REPO_ROOT, command: cmd };
+  }
+  if (action === "klayout_drc") {
+    const cmd = path.join(LEARN_ROOT, "scripts/run_klayout_drc.sh");
+    return { cmd, args: [], cwd: REPO_ROOT, command: cmd };
+  }
   if (action === "check" || action === "status" || action === "list") {
     const cmd = path.join(SCRIPTS_ROOT, "learn_physical_design.sh");
     return {
@@ -117,9 +137,10 @@ function resolveCommand(action: string): {
 }
 
 function defaultTimeout(action: string) {
-  return action === "finish" || action === "route" || action === "test_course"
-    ? 900_000
-    : 300_000;
+  if (action === "finish" || action === "route" || action === "test_course" || action === "klayout_drc") {
+    return 900_000;
+  }
+  return 300_000;
 }
 
 export function cancelJob(jobId: string): boolean {
@@ -379,6 +400,7 @@ export async function probeToolchain(): Promise<{
     ver("yosys", ["-V"]),
     ver("sta", ["-version"]),
     ver("klayout", ["-v"]),
+    ver("iverilog", ["-V"]),
   ]);
 
   return {

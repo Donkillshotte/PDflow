@@ -45,6 +45,12 @@ export const MATERIALS: MaterialLink[] = [
     description: "OpenROAD -web/-python/-metrics, OpenSTA JSON, Yosys, KLayout.",
   },
   {
+    href: "/materiali/reference/extended-flow.md",
+    title: "Flusso esteso",
+    group: "Riferimento",
+    description: "RTL sim, activity, DRC, gridcheck, PDN, bump/RDL, thermal — mappa READY/MISSING.",
+  },
+  {
     href: "/materiali/workbook/quiz.md",
     title: "Quiz",
     group: "Workbook",
