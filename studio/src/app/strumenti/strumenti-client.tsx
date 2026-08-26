@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { OpsDashboard } from "@/components/OpsDashboard";
+import { InspectPanel } from "@/components/InspectPanel";
 import { useToast } from "@/components/ToastProvider";
 
 type Tool = { name: string; ok: boolean; detail: string };
@@ -205,6 +206,10 @@ export default function StrumentiClient() {
 
       <section className="panel" ref={resultsRef} id="results">
         <ResultsPanel stage={stage} refreshKey={refreshKey} />
+      </section>
+
+      <section className="panel" style={{ marginTop: "1.2rem" }} id="inspect">
+        <InspectPanel stage={stage} refreshKey={refreshKey} />
       </section>
     </main>
   );

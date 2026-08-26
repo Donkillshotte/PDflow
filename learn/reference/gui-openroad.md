@@ -17,6 +17,10 @@ OpenROAD Qt. Layout finestra dopo `gui_*.odb` (stessi rettangoli etichettati A�
 
 **Come aprire:** pulsante **Desktop** su cursor.com/agents (non Preview chat).
 
+**Anche da Studio:** Ctrl+K → «OpenROAD · …», oppure **Apri GUI** sui `.odb`.
+Per il **Web Viewer** (browser, senza Qt): Strumenti → **Apri Web Viewer**
+(`openroad -web`, vedi [tool-hooks.md](./tool-hooks.md)).
+
 ---
 
 ## Avvio

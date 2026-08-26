@@ -43,12 +43,15 @@ done
 
 echo "== Reference =="
 for f in glossary.md file-formats.md debug-playbook.md gui-openroad.md gui-atlas.md \
-         golden-metrics.md \
+         golden-metrics.md tool-hooks.md \
          walkthrough-synth.tcl.md walkthrough-floorplan.tcl.md \
          walkthrough-global_place.tcl.md walkthrough-cts.tcl.md \
          walkthrough-route.tcl.md walkthrough-finish.tcl.md; do
   [[ -f "${ROOT}/learn/reference/${f}" ]] && ok "reference/${f}" || bad "manca reference/${f}"
 done
+min_lines "${ROOT}/learn/reference/tool-hooks.md" 80
+rg -q 'OpenROAD -web' "${ROOT}/learn/reference/tool-hooks.md" && ok "hooks -web" || bad "hooks senza -web"
+rg -q 'report_checks -format json' "${ROOT}/learn/reference/tool-hooks.md" && ok "hooks sta json" || bad "hooks senza sta json"
 min_lines "${ROOT}/learn/reference/gui-atlas.md" 150
 min_lines "${ROOT}/learn/reference/walkthrough-global_place.tcl.md" 80
 min_lines "${ROOT}/learn/reference/walkthrough-cts.tcl.md" 80
@@ -155,6 +158,11 @@ echo "== Studio UI =="
 [[ -f "${ROOT}/studio/src/components/OpsDashboard.tsx" ]] && ok "OpsDashboard" || bad "manca OpsDashboard"
 [[ -f "${ROOT}/studio/src/lib/jobs.ts" ]] && ok "jobs.ts" || bad "manca jobs.ts"
 [[ -f "${ROOT}/studio/src/lib/open.ts" ]] && ok "open.ts" || bad "manca open.ts"
+[[ -f "${ROOT}/studio/src/lib/inspect.ts" ]] && ok "inspect.ts" || bad "manca inspect.ts"
+[[ -f "${ROOT}/studio/src/lib/webviewer.ts" ]] && ok "webviewer.ts" || bad "manca webviewer.ts"
+[[ -f "${ROOT}/studio/src/components/InspectPanel.tsx" ]] && ok "InspectPanel" || bad "manca InspectPanel"
+[[ -f "${ROOT}/studio/src/app/api/inspect/route.ts" ]] && ok "api/inspect" || bad "manca api/inspect"
+[[ -f "${ROOT}/studio/src/app/api/viewer/route.ts" ]] && ok "api/viewer" || bad "manca api/viewer"
 [[ -f "${ROOT}/studio/src/components/CommandPalette.tsx" ]] && ok "CommandPalette" || bad "manca CommandPalette"
 [[ -f "${ROOT}/studio/src/app/api/open/route.ts" ]] && ok "api/open" || bad "manca api/open"
 [[ -f "${ROOT}/scripts/test_studio_api.sh" ]] && ok "test_studio_api.sh" || bad "manca test_studio_api.sh"

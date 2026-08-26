@@ -38,6 +38,8 @@ Produzione:
 - **Completamento lezione**: `POST /api/progress` → **422** se i gate falliscono
 - **Apri GUI / dashboard**: palette **Ctrl+K**, deep-link `/strumenti?stage=cts&tab=results`,
   `POST /api/open` lancia OpenROAD/KLayout su Desktop (`DISPLAY`) o copia il comando
+- **Ispezione tool**: `GET /api/inspect` (ODB via `-python`, OpenSTA JSON, Yosys `stat`)
+- **Web Viewer**: `POST /api/viewer` → OpenROAD `-web` su porta `43190`
 
 ## API utili
 
@@ -50,12 +52,16 @@ Produzione:
 | `GET /api/progress?lessonId=` | progresso + gate |
 | `GET /api/open` | catalogo dashboard + GUI targets |
 | `POST /api/open` `{ id }` o `{ artifact }` | naviga o lancia OpenROAD/KLayout |
+| `GET /api/inspect?stage=` | ODB / STA / Yosys live |
+| `POST /api/viewer` `{ stage }` | avvia OpenROAD Web Viewer |
 
 Deep-link utili:
 
 - `/strumenti?stage=place&tab=results`
+- `/strumenti?stage=cts&tab=results#inspect`
 - `/strumenti?stage=finish&tab=run`
 - `/materiali?tab=gallery`
+- `/materiali/reference/tool-hooks.md`
 - `/materiali/reference/gui-atlas.md`
 
 

@@ -167,6 +167,23 @@ export function listOpenTargets(): {
     exists: true,
   });
   targets.push({
+    id: "dash-inspect",
+    label: "Ispezione tool (STA / ODB / Yosys)",
+    kind: "dashboard",
+    href: "/strumenti?stage=synth&tab=results#inspect",
+    exists: true,
+  });
+  for (const stage of Object.keys(STAGE_GUI_TARGETS)) {
+    targets.push({
+      id: `web-${stage}`,
+      label: `OpenROAD Web Viewer · ${stage}`,
+      kind: "dashboard",
+      href: `/strumenti?stage=${stage}&tab=results#inspect`,
+      exists: true,
+      stage,
+    });
+  }
+  targets.push({
     id: "gallery",
     label: "Galleria GUI (screenshot)",
     kind: "gallery",
@@ -185,6 +202,13 @@ export function listOpenTargets(): {
     label: "Atlante GUI",
     kind: "doc",
     href: "/materiali/reference/gui-atlas.md",
+    exists: true,
+  });
+  targets.push({
+    id: "hooks",
+    label: "Tool hooks (OpenROAD/STA/Yosys)",
+    kind: "doc",
+    href: "/materiali/reference/tool-hooks.md",
     exists: true,
   });
 

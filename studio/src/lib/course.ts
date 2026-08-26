@@ -240,6 +240,12 @@ export const MATERIALS: MaterialLink[] = [
     description: "ODB, SPEF, DEF, GDS, route.guide — cosa aprire e perché.",
   },
   {
+    href: "/materiali/reference/tool-hooks.md",
+    title: "Tool hooks",
+    group: "Riferimento",
+    description: "OpenROAD -web/-python/-metrics, OpenSTA JSON, Yosys, KLayout.",
+  },
+  {
     href: "/materiali/workbook/quiz.md",
     title: "Quiz",
     group: "Workbook",

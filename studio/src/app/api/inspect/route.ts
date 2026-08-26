@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+import { inspectStage } from "@/lib/inspect";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 120;
+
+const STAGES = new Set([
+  "synth",
+  "floorplan",
+  "place",
+  "cts",
+  "route",
+  "finish",
+]);
+
+export async function GET(req: Request) {
+  const stage = new URL(req.url).searchParams.get("stage") || "synth";
+  if (!STAGES.has(stage)) {
+    return NextResponse.json({ error: "stage non valido" }, { status: 400 });
+  }
+  try {
+    const data = inspectStage(stage);
+    return NextResponse.json(data);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
+}

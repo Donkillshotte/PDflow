@@ -1246,3 +1246,48 @@ button.pipeline-node {
   align-items: center;
   gap: 0.45rem 0.7rem;
 }
+
+/* —— Inspect / hooks —— */
+.inspect-panel { display: grid; gap: 0.85rem; }
+.path-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.path-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.55);
+  font-size: 0.82rem;
+}
+.path-list code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hooks-details {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  background: rgba(255,255,255,0.5);
+}
+.hook-list {
+  list-style: none;
+  margin: 0.6rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.hook-list li {
+  display: grid;
+  gap: 0.1rem;
+  font-size: 0.88rem;
+}
+.hook-list span { color: var(--ink-soft); }

@@ -92,6 +92,29 @@ else
   ok "skip gui-synth launch (odb assente)"
 fi
 
+# Inspect + web viewer
+code="$(curl -s -o /tmp/studio-inspect.json -w '%{http_code}' \
+  "${BASE}/api/inspect?stage=synth")"
+[[ "${code}" == "200" ]] && ok "GET inspect synth → 200" || bad "inspect → ${code}"
+rg -q '"odb"|"sta"|"yosys"|"hooks"' /tmp/studio-inspect.json && ok "inspect payload" || bad "inspect payload debole"
+
+code="$(curl -s -o /tmp/studio-viewer.json -w '%{http_code}' \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"action":"start","stage":"cts"}' "${BASE}/api/viewer")"
+[[ "${code}" == "200" ]] && ok "POST viewer start → 200" || bad "viewer start → ${code}"
+URL="$(python3 -c 'import json;print(json.load(open("/tmp/studio-viewer.json")).get("url",""))')"
+if [[ -n "${URL}" ]]; then
+  sleep 1
+  c="$(curl -s -o /dev/null -w '%{http_code}' "${URL}")"
+  [[ "${c}" == "200" ]] && ok "web viewer HTTP 200" || bad "web viewer → ${c}"
+fi
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"action":"stop"}' "${BASE}/api/viewer" >/dev/null
+ok "viewer stop"
+
+code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/tool-hooks.md")"
+[[ "${code}" == "200" ]] && ok "tool-hooks.md page" || bad "tool-hooks page → ${code}"
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "STUDIO API SMOKE FAILED"
   exit 1

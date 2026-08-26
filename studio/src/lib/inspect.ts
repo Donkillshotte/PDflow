@@ -1,0 +1,256 @@
+import { spawnSync } from "child_process";
+import fs from "fs";
+import path from "path";
+import { REPO_ROOT } from "./course";
+import { resultsDir } from "./open";
+
+const FLOW = () => path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow");
+const LIB = () =>
+  path.join(FLOW(), "platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib");
+const SDC = () =>
+  path.join(FLOW(), "designs/nangate45/gcd-tutorial/constraint.sdc");
+
+export type OdbStats = {
+  design: string;
+  instances: number;
+  nets: number;
+  dieDbu: { dx: number; dy: number };
+  artifact: string;
+};
+
+export type StaSummary = {
+  source: string;
+  wns?: string;
+  tns?: string;
+  worstSlack?: string;
+  paths: { endpoint: string; slack: string; status: string }[];
+  jsonPaths?: number;
+};
+
+export type YosysStat = {
+  cells?: string;
+  area?: string;
+  dff?: string;
+  rawHits: string[];
+};
+
+export type StageInspect = {
+  stage: string;
+  odb: OdbStats | null;
+  sta: StaSummary | null;
+  yosys: YosysStat | null;
+  hooks: { id: string; label: string; detail: string }[];
+};
+
+const STAGE_PRIMARY_ODB: Record<string, string> = {
+  synth: "1_synth.odb",
+  floorplan: "2_floorplan.odb",
+  place: "3_place.odb",
+  cts: "4_cts.odb",
+  route: "5_route.odb",
+  finish: "6_final.odb",
+};
+
+const STAGE_NETLIST: Record<string, string | null> = {
+  synth: "1_2_yosys.v",
+  floorplan: "1_2_yosys.v",
+  place: "1_2_yosys.v",
+  cts: null,
+  route: null,
+  finish: "6_final.v",
+};
+
+function runCapture(
+  cmd: string,
+  args: string[],
+  opts: { cwd?: string; env?: NodeJS.ProcessEnv; input?: string; timeoutMs?: number },
+) {
+  return spawnSync(cmd, args, {
+    cwd: opts.cwd,
+    env: opts.env ?? process.env,
+    input: opts.input,
+    encoding: "utf8",
+    timeout: opts.timeoutMs ?? 60_000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+}
+
+export function inspectOdb(artifact: string): OdbStats | null {
+  const abs = path.join(resultsDir(), artifact);
+  if (!fs.existsSync(abs)) return null;
+  const py = `
+import odb
+db = odb.dbDatabase.create()
+odb.read_db(db, ${JSON.stringify(abs)})
+chip = db.getChip()
+block = chip.getBlock()
+die = block.getDieArea()
+print("DESIGN", block.getName())
+print("INSTS", len(block.getInsts()))
+print("NETS", len(block.getNets()))
+print("DIE", die.dx(), die.dy())
+`;
+  const r = runCapture("openroad", ["-python", "-no_init", "-exit"], {
+    input: py,
+    timeoutMs: 45_000,
+  });
+  const out = `${r.stdout || ""}\n${r.stderr || ""}`;
+  const design = out.match(/DESIGN\s+(\S+)/)?.[1];
+  const insts = Number(out.match(/INSTS\s+(\d+)/)?.[1]);
+  const nets = Number(out.match(/NETS\s+(\d+)/)?.[1]);
+  const die = out.match(/DIE\s+(\d+)\s+(\d+)/);
+  if (!design || !Number.isFinite(insts)) return null;
+  return {
+    design,
+    instances: insts,
+    nets: Number.isFinite(nets) ? nets : 0,
+    dieDbu: { dx: Number(die?.[1] || 0), dy: Number(die?.[2] || 0) },
+    artifact,
+  };
+}
+
+export function inspectSta(opts: {
+  verilog?: string;
+  spef?: string;
+  label: string;
+}): StaSummary | null {
+  const v = opts.verilog ? path.join(resultsDir(), opts.verilog) : null;
+  if (!v || !fs.existsSync(v)) return null;
+  if (!fs.existsSync(LIB()) || !fs.existsSync(SDC())) return null;
+
+  const spefAbs = opts.spef ? path.join(resultsDir(), opts.spef) : null;
+  const spefLine =
+    spefAbs && fs.existsSync(spefAbs) ? `read_spef ${spefAbs}` : "";
+
+  const script = `
+read_liberty ${LIB()}
+read_verilog ${v}
+link_design gcd
+read_sdc ${SDC()}
+${spefLine}
+report_wns
+report_tns
+report_worst_slack -max
+report_checks -format end -group_path_count 5
+report_checks -format json -group_path_count 3 > /tmp/studio-sta-checks.json
+`;
+  const r = runCapture("sta", ["-no_init", "-exit"], {
+    cwd: FLOW(),
+    input: script,
+    timeoutMs: 90_000,
+  });
+  const out = `${r.stdout || ""}\n${r.stderr || ""}`;
+  const wns = out.match(/wns max\s+([-\d.]+)/)?.[1];
+  const tns = out.match(/tns max\s+([-\d.]+)/)?.[1];
+  const worstSlack = out.match(/worst slack max\s+([-\d.]+)/)?.[1];
+  const paths: StaSummary["paths"] = [];
+  for (const line of out.split("\n")) {
+    const m = line.match(
+      /^(\S+)\s+\([^)]+\)\s+[\d.]+\s+[\d.]+\s+([-\d.]+)\s+\((MET|VIOLATED)\)/,
+    );
+    if (m) paths.push({ endpoint: m[1], slack: m[2], status: m[3] });
+  }
+  let jsonPaths: number | undefined;
+  try {
+    const j = JSON.parse(fs.readFileSync("/tmp/studio-sta-checks.json", "utf8"));
+    jsonPaths = Array.isArray(j.checks) ? j.checks.length : undefined;
+  } catch {
+    /* ignore */
+  }
+  return {
+    source: opts.label,
+    wns,
+    tns,
+    worstSlack,
+    paths: paths.slice(0, 5),
+    jsonPaths,
+  };
+}
+
+export function inspectYosys(verilogRel: string): YosysStat | null {
+  const abs = path.join(resultsDir(), verilogRel);
+  if (!fs.existsSync(abs)) return null;
+  const r = runCapture(
+    "yosys",
+    ["-Q", "-p", `read_verilog ${abs}; hierarchy -top gcd; stat`],
+    { timeoutMs: 45_000 },
+  );
+  const out = `${r.stdout || ""}\n${r.stderr || ""}`;
+  const hits: string[] = [];
+  for (const line of out.split("\n")) {
+    if (/Number of cells|Chip area|DFF_X1|NAND2_X1|AND2_X1|\d+\s+cells/i.test(line)) {
+      hits.push(line.trim().slice(0, 160));
+    }
+  }
+  return {
+    cells: out.match(/^\s*(\d+)\s+cells\s*$/m)?.[1] ?? out.match(/Number of cells:\s*(\d+)/i)?.[1],
+    area: out.match(/Chip area[^:]*:\s*([\d.]+)/i)?.[1],
+    dff: out.match(/^\s*(\d+)\s+DFF_X1/m)?.[1],
+    rawHits: hits.slice(0, 12),
+  };
+}
+
+export function inspectStage(stage: string): StageInspect {
+  const odbName = STAGE_PRIMARY_ODB[stage];
+  const netlist = STAGE_NETLIST[stage] ?? null;
+  const odb = odbName ? inspectOdb(odbName) : null;
+
+  let sta: StaSummary | null = null;
+  if (stage === "finish") {
+    sta = inspectSta({
+      verilog: "6_final.v",
+      spef: "6_final.spef",
+      label: "OpenSTA · 6_final.v + SPEF",
+    });
+  } else if (netlist) {
+    sta = inspectSta({
+      verilog: netlist,
+      label: `OpenSTA · ${netlist} (ideal / no parasitics)`,
+    });
+  }
+
+  const yosys =
+    stage === "synth" || stage === "floorplan"
+      ? inspectYosys("1_2_yosys.v")
+      : null;
+
+  const hooks = [
+    {
+      id: "or-web",
+      label: "OpenROAD -web",
+      detail: "Viewer HTML+WebSocket (Studio /viewer)",
+    },
+    {
+      id: "or-gui",
+      label: "OpenROAD -gui",
+      detail: "Qt Desktop via /api/open",
+    },
+    {
+      id: "or-python",
+      label: "OpenROAD -python + odb",
+      detail: "Conteggio inst/net/die da .odb",
+    },
+    {
+      id: "or-metrics",
+      label: "OpenROAD -metrics JSON",
+      detail: "Metriche di flusso in JSON",
+    },
+    {
+      id: "sta-json",
+      label: "OpenSTA report_checks -format json",
+      detail: "Path timing strutturati",
+    },
+    {
+      id: "yosys-stat",
+      label: "Yosys stat",
+      detail: "Celle/area sul netlist",
+    },
+    {
+      id: "klayout",
+      label: "KLayout GDS",
+      detail: "Viewer layout post-finish",
+    },
+  ];
+
+  return { stage, odb, sta, yosys, hooks };
+}
