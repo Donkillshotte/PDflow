@@ -141,6 +141,23 @@ echo "== Meta corso =="
 [[ -f "${ROOT}/learn/AUDIT.md" ]] && ok "AUDIT.md" || bad "manca AUDIT.md"
 [[ -f "${ROOT}/learn/EVIDENCE.md" ]] && ok "EVIDENCE.md" || bad "manca EVIDENCE.md"
 
+echo "== Studio UI =="
+[[ -f "${ROOT}/studio/package.json" ]] && ok "studio/package.json" || bad "manca studio"
+[[ -f "${ROOT}/scripts/run_studio.sh" ]] && ok "run_studio.sh" || bad "manca run_studio.sh"
+[[ -f "${ROOT}/studio/src/app/page.tsx" ]] && ok "studio home" || bad "manca studio home"
+[[ -f "${ROOT}/studio/src/app/lezioni/page.tsx" ]] && ok "studio lezioni" || bad "manca lezioni"
+[[ -f "${ROOT}/studio/src/app/strumenti/page.tsx" ]] && ok "studio strumenti" || bad "manca strumenti"
+[[ -f "${ROOT}/studio/src/app/api/run/route.ts" ]] && ok "studio api/run" || bad "manca api/run"
+rg -q 'Physical Design Studio' "${ROOT}/studio/src/app/layout.tsx" && ok "studio brand" || bad "studio senza brand"
+if [[ -d "${ROOT}/studio/node_modules" ]]; then
+  (cd "${ROOT}/studio" && npm run build >/tmp/studio-build-smoke.log 2>&1) \
+    && ok "studio build" \
+    || { bad "studio build fallita"; tail -20 /tmp/studio-build-smoke.log; }
+else
+  bad "studio/node_modules assente — esegui npm install in studio/"
+fi
+rg -q 'run_studio.sh' "${ROOT}/README.md" && ok "root README cita Studio" || bad "README senza Studio"
+
 echo "== Design tutorial =="
 for f in config.mk constraint.sdc constraint_relaxed.sdc constraint_tight.sdc; do
   [[ -f "${ROOT}/learn/designs/nangate45/gcd-tutorial/${f}" ]] && ok "design/${f}" || bad "manca ${f}"

@@ -4,6 +4,11 @@ tools/
 # Output dei run ORFS
 flow-runs/
 
+# Studio (Next.js)
+studio/node_modules/
+studio/.next/
+studio/out/
+
 # Artefatti temporanei
 *.log
 terminals/

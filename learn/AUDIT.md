@@ -13,6 +13,7 @@ Questo file elenca **dove** sta l’evidenza; lo smoke test è l’evidenza auto
 | 5 | Debug playbook, glossario, formati file | `debug-playbook.md`, `glossary.md` (RSZ-0062, DPL-0038, period_min, NDR, gcell, OpenRCX, IFP-0028), `file-formats.md` (header SPEF) | smoke: `rg` termini + `*SPEF` |
 | 6 | Smoke test wrapper + toolchain | `scripts/test_course.sh` → `SMOKE PASSED` (`--list`, `--check`, `--auto --lesson 00`, versioni tool) | questo comando |
 | 7 | README/curriculum allineati ai materiali | `learn/README.md`, `CURRICULUM.md`, `README.md` root citano atlante, LAB, variant `learn`, `golden-metrics.md`, finish verde ≠ 2.17 GHz | smoke: `rg golden-metrics` + `gui-atlas` |
+| 8 | Studio UI grafica (goal wrapper) | `studio/` Next.js + `scripts/run_studio.sh` — lezioni, materiali, toolchain, `/api/run` | smoke Studio + `http://127.0.0.1:43217` |
 
 ## Comandi di verifica
 

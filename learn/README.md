@@ -20,7 +20,11 @@ non sostituisce lo studio.
 ## Avvio rapido
 
 ```bash
-# Verifica toolchain
+# UI grafica (consigliata)
+./scripts/run_studio.sh
+# → http://127.0.0.1:43217
+
+# Verifica toolchain (CLI)
 ./scripts/learn_physical_design.sh --check
 
 # Indice lezioni
@@ -41,6 +45,9 @@ non sostituisce lo studio.
 # Modalità automatica (senza pause — utile per test)
 ./scripts/learn_physical_design.sh --auto --lesson 00
 ```
+
+Lo **Studio** web (`studio/`) espone lezioni, materiali e azioni ORFS senza
+dover ricordare i one-liner `make`. Il CLI resta disponibile e invariato.
 
 ## Struttura
 

@@ -58,6 +58,18 @@ Percorso guidato **fase per fase** (constraints → synth → floorplan → plac
 con teoria, LAB da 60–120 min, walkthrough Tcl, workbook e GUI.
 Studio attivo stimato: **20–28 ore** (il wrapper `--auto` non sostituisce lo studio).
 
+### UI grafica (Studio)
+
+```bash
+./scripts/run_studio.sh
+# apri http://127.0.0.1:43217
+```
+
+Interfaccia web: lezioni, materiali, stato toolchain e avvio fasi ORFS senza
+ricordare i comandi `make`. Dettagli: [studio/README.md](studio/README.md).
+
+### CLI (invariato)
+
 ```bash
 ./scripts/learn_physical_design.sh --check    # verifica prerequisiti
 ./scripts/learn_physical_design.sh --list     # indice 8 lezioni

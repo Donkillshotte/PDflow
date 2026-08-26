@@ -29,6 +29,16 @@ Screenshot Qt in `learn/reference/gui-shots/` più heatmap ORFS (`orfs_*.png`: c
 
 Guida: `learn/reference/gui-atlas.md` (sezioni 1–9).
 
+## Studio UI (wrapper grafico)
+
+```bash
+./scripts/run_studio.sh
+# http://127.0.0.1:43217
+```
+
+Smoke: sezione `== Studio UI ==` in `./scripts/test_course.sh` (build Next.js).
+API verificate: `/api/toolchain`, `/api/lessons`, `/api/run` action `check`.
+
 ## Audit requisiti goal
 
 Vedi [AUDIT.md](./AUDIT.md).
