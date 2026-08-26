@@ -171,6 +171,10 @@ rg -q '"params"' /tmp/studio-flowlab.json && ok "flowlab.params" || bad "flowlab
 rg -q '"coreUtilization"' /tmp/studio-flowlab.json && ok "flowlab.params.coreUtilization" || bad "params incompleti"
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/flusso")"
 [[ "${c}" == "200" ]] && ok "GET /flusso" || bad "flusso → ${c}"
+rg -q '"sim"' /tmp/studio-flowlab.json && ok "flowlab.sim" || bad "flowlab senza sim"
+rg -q '"phaseHistory"' /tmp/studio-flowlab.json && ok "flowlab.phaseHistory" || bad "flowlab senza phaseHistory"
+code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/api/flowlab/download?kind=vcd")"
+[[ "${code}" == "200" || "${code}" == "404" ]] && ok "flowlab vcd download (${code})" || bad "flowlab download → ${code}"
 rg -q '"id":"dash-flowlab"' /tmp/studio-open.json && ok "open dash-flowlab" || bad "open senza flowlab"
 
 # FlowLab rtl_sim (uses learn/flowlab/gcd.v)

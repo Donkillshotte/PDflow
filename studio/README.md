@@ -24,7 +24,7 @@ Produzione:
 | Area | Contenuto |
 |---|---|
 | Studio | Hero + progresso + **Suite hub** (hook live) + mappa del flusso guidato |
-| **Flusso** | **FlowLab** RTL→GDSII: editor Verilog, parametri per fase, run SSE, artefatti `flowlab` |
+| **Flusso** | **FlowLab** RTL→GDSII: editor Monaco, parametri, signoff finish, storico run, VCD download |
 | Lezioni | **Wizard 5 passi** con **gate hard** lato server (teoria, LAB ≥50%, run ok, artefatti, risultati) |
 | Strumenti | Toolchain + Suite hub + **Ops** + console SSE (confirm/cancel/retry/export) + inspect/viewer |
 | Materiali | Ricerca, documenti in-app, galleria GUI |
