@@ -1,0 +1,4 @@
+*.vvp
+*.vcd
+sim.log
+reports/

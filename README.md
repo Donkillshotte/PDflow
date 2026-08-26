@@ -81,6 +81,8 @@ Smoke API: `./scripts/test_studio_api.sh`.
 ```
 
 Documentazione: [learn/README.md](learn/README.md) e [learn/CURRICULUM.md](learn/CURRICULUM.md).
+Flusso esteso (RTL sim, activity, DRC, gridcheck, bump/RDL, thermal):
+[learn/reference/extended-flow.md](learn/reference/extended-flow.md).
 Atlante GUI (screenshot Qt): [learn/reference/gui-atlas.md](learn/reference/gui-atlas.md).
 Metriche del run tutorial: [learn/reference/golden-metrics.md](learn/reference/golden-metrics.md).
 Verifica pipeline: [learn/EVIDENCE.md](learn/EVIDENCE.md). Audit requisiti: [learn/AUDIT.md](learn/AUDIT.md).
