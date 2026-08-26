@@ -7,13 +7,16 @@ const VARIANT = "learn";
 
 export function resultsDir() {
   return path.join(
-    REPO_ROOT,
+    /*turbopackIgnore: true*/ REPO_ROOT,
     `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}`,
   );
 }
 
 export function flowDir() {
-  return path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow");
+  return path.join(
+    /*turbopackIgnore: true*/ REPO_ROOT,
+    "tools/OpenROAD-flow-scripts/flow",
+  );
 }
 
 /** Default OpenROAD GUI targets per pipeline stage (ORFS make gui_*). */

@@ -38,6 +38,8 @@ PY
 
 Documentazione GUI Tcl: [OpenROAD GUI README](https://openroad.readthedocs.io/en/latest/main/src/gui/README.html).
 
+**OpenROAD -web** (viewer HTML) è il hook primario per ispezione layout senza Desktop Qt.
+
 **Mappa flusso esteso** (RTL sim, activity, DRC, gridcheck, bump/RDL, thermal):
 [extended-flow.md](./extended-flow.md).
 

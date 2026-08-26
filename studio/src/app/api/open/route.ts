@@ -70,7 +70,7 @@ export async function POST(req: Request) {
         { status: 412 },
       );
     }
-    const started = startViewer({ stage: target.stage });
+    const started = startViewer(target.stage);
     return NextResponse.json(
       {
         ...started,

@@ -334,7 +334,7 @@ export function preflightAction(action: string): PreflightResult {
   };
   const need = needFile[action];
   if (need) {
-    const abs = path.join(resultsDir(), need.rel);
+    const abs = path.join(/*turbopackIgnore: true*/ resultsDir(), need.rel);
     if (!fs.existsSync(abs)) {
       return {
         ok: false,
@@ -346,10 +346,10 @@ export function preflightAction(action: string): PreflightResult {
   }
   if (action === "rtl_sim") {
     const rtl = path.join(
-      REPO_ROOT,
+      /*turbopackIgnore: true*/ REPO_ROOT,
       "tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v",
     );
-    const tb = path.join(LEARN_ROOT, "sim/gcd/tb_gcd.v");
+    const tb = path.join(/*turbopackIgnore: true*/ LEARN_ROOT, "sim/gcd/tb_gcd.v");
     if (!fs.existsSync(rtl) || !fs.existsSync(tb)) {
       return {
         ok: false,
