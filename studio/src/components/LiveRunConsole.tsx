@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/ToastProvider";
 import { digestOrfsLog } from "@/lib/orfsLog";
+import { isLongAction } from "@/lib/actions";
 
 type StreamEvent =
   | { type: "start"; jobId: string; command: string; action: string }
@@ -24,6 +25,7 @@ const STAGE_ACTIONS = [
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
   { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
   { id: "power_chain", label: "Catena SPICE", hint: "activity→IR→system" },
+  { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },
   { id: "place", label: "Esegui place", hint: "GP → DP" },
   { id: "cts", label: "Esegui CTS", hint: "minuti · conferma" },
   { id: "route", label: "Esegui route", hint: "lungo · conferma" },
@@ -31,8 +33,6 @@ const STAGE_ACTIONS = [
   { id: "activity_power", label: "Activity → power", hint: "set_power_activity" },
   { id: "klayout_drc", label: "KLayout DRC", hint: "GDS · lungo · conferma" },
 ] as const;
-
-const LONG_ACTIONS = new Set(["cts", "route", "finish", "test_course", "klayout_drc", "power_chain"]);
 
 function formatMs(ms: number) {
   if (ms < 1000) return `${ms} ms`;
@@ -109,7 +109,7 @@ export function LiveRunConsole({
 
   function requestRun(a = action) {
     if (running) return;
-    if (LONG_ACTIONS.has(a)) {
+    if (isLongAction(a)) {
       setPendingAction(a);
       setConfirmOpen(true);
       return;

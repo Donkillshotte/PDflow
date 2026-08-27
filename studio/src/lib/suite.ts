@@ -30,6 +30,25 @@ function which(bin: string) {
   }
 }
 
+function powerReportOk(variant: string, name: string) {
+  return fs.existsSync(path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.log`));
+}
+
+function powerChainOk() {
+  for (const v of ["flowlab", "learn"]) {
+    const log = path.join(LEARN_ROOT, `sim/reports/power_chain_${v}.log`);
+    if (fs.existsSync(log)) {
+      try {
+        const text = fs.readFileSync(log, "utf8");
+        if (text.includes("POWER_CHAIN_DONE")) return true;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return false;
+}
+
 export async function getSuiteStatus() {
   const tools = await probeToolchain();
   const display = detectDisplay();
@@ -48,6 +67,14 @@ export async function getSuiteStatus() {
       ok: tools.tools.filter((t) => ["openroad", "yosys", "sta", "klayout"].includes(t.name)).every((t) => t.ok) && tools.orfs,
       detail: tools.tools.map((t) => `${t.name}:${t.ok ? "ok" : "no"}`).join(" · "),
       href: "/strumenti",
+    },
+    {
+      id: "ngspice",
+      label: "ngspice (System PDN)",
+      group: "Ambiente",
+      ok: which("ngspice"),
+      detail: which("ngspice") ? "ngspice presente" : "apt install ngspice",
+      action: "system_pdn",
     },
     {
       id: "iverilog",
@@ -136,8 +163,10 @@ export async function getSuiteStatus() {
       id: "activity",
       label: "Activity → power",
       group: "Power",
-      ok: has("6_final.odb"),
-      detail: "set_power_activity · I_avg per System PDN",
+      ok:
+        powerReportOk("flowlab", "activity_power") ||
+        powerReportOk("learn", "activity_power"),
+      detail: "VCD se rtl_sim · report_power → I_avg System PDN",
       action: "activity_power",
       href: "/strumenti?tab=run&action=activity_power",
     },
@@ -156,12 +185,19 @@ export async function getSuiteStatus() {
       id: "power_chain",
       label: "Catena SPICE",
       group: "Power",
-      ok: fs.existsSync(
-        path.join(LEARN_ROOT, "sim/reports/power_chain_flowlab.log"),
-      ),
+      ok: powerChainOk(),
       detail: "activity → chip IR → system → export",
       action: "power_chain",
       href: "/strumenti?tab=run&action=power_chain",
+    },
+    {
+      id: "spice_lab",
+      label: "SPICE lab export",
+      group: "Power",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/spice/INDEX_flowlab.md")),
+      detail: "export_spice_lab · mesh_stats + netlist",
+      action: "export_spice_lab",
+      href: "/strumenti?tab=run&action=export_spice_lab",
     },
     {
       id: "klayout_drc",

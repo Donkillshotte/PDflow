@@ -57,7 +57,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     spiceOutputs: ["learn/sim/spice/nangate_inverter_demo.sp"],
     docs: [
       { href: "/materiali/reference/spice-power-chain.md#lezione-02-synthesis", label: "§02 Liberty" },
-      { href: "/materiali/sim/spice/nangate_inverter_demo.sp", label: "Inverter SPICE demo" },
+      { href: "/materiali/file/sim/spice/nangate_inverter_demo.sp", label: "Inverter SPICE demo" },
     ],
     flowlabHref: "/flusso?phase=synth",
   },

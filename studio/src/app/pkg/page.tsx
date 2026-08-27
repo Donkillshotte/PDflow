@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PkgHubPanel } from "@/components/PkgHubPanel";
 
 export const metadata = {
   title: "PKG · Design package · OpenROAD Studio",
@@ -18,6 +19,8 @@ export default function PkgPage() {
           <strong>mesh SPICE on-die</strong> → <strong>System PDN ngspice</strong>.
         </p>
       </header>
+
+      <PkgHubPanel />
 
       <section className="pkg-hero-stack" aria-label="Stack die to board">
         <div className="pkg-layer board">VRM · regolatore + Cout</div>
@@ -67,6 +70,11 @@ export default function PkgPage() {
             </li>
             <li>
               <Link href="/materiali/sim/spice/README.md">Lab netlist</Link>
+            </li>
+            <li>
+              <Link href="/materiali/file/sim/spice/nangate_inverter_demo.sp">
+                Demo inverter SPICE
+              </Link>
             </li>
           </ul>
         </article>

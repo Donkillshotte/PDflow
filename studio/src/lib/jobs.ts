@@ -23,7 +23,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   test_course: null,
   rtl_sim: null,
   gridcheck: "floorplan",
-  system_pdn: null,
+  system_pdn: "finish",
   chip_pdn_ir: "finish",
   power_chain: "finish",
   activity_power: "finish",
@@ -36,14 +36,9 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   finish: "route",
 };
 
-export const LONG_ACTIONS = new Set([
-  "cts",
-  "route",
-  "finish",
-  "test_course",
-  "klayout_drc",
-  "power_chain",
-]);
+import { LONG_ACTIONS } from "./actions";
+
+export { LONG_ACTIONS };
 
 export type JobRecord = {
   id: string;
@@ -343,6 +338,10 @@ export function preflightAction(
     power_chain: {
       rel: "6_final.odb",
       hint: "esegui prima finish (catena power completa)",
+    },
+    export_spice_lab: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (export mesh SPICE)",
     },
     klayout_drc: {
       rel: "6_final.gds",

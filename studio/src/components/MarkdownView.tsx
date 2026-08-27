@@ -1,7 +1,36 @@
 "use client";
 
+import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
+function headingText(children: ReactNode): string {
+  if (typeof children === "string") return children;
+  if (Array.isArray(children)) return children.map(headingText).join("");
+  if (children && typeof children === "object" && "props" in children) {
+    return headingText((children as { props: { children?: ReactNode } }).props.children);
+  }
+  return "";
+}
+
+function makeHeading(level: 1 | 2 | 3 | 4) {
+  return ({ children }: { children?: ReactNode }) => {
+    const text = headingText(children);
+    const id = slugifyHeading(text);
+    if (level === 1) return <h1 id={id}>{children}</h1>;
+    if (level === 2) return <h2 id={id}>{children}</h2>;
+    if (level === 3) return <h3 id={id}>{children}</h3>;
+    return <h4 id={id}>{children}</h4>;
+  };
+}
 
 function rewriteImageSrc(src?: string) {
   if (!src) return src;
@@ -31,6 +60,10 @@ export function MarkdownView({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          h1: makeHeading(1),
+          h2: makeHeading(2),
+          h3: makeHeading(3),
+          h4: makeHeading(4),
           img: ({ src, alt }) => {
             const srcStr = typeof src === "string" ? src : undefined;
             let resolved = rewriteImageSrc(srcStr);
@@ -55,6 +88,12 @@ export function MarkdownView({
                 <a href={`/materiali/${basePath ? basePath + "/" : ""}${path}`}>
                   {children}
                 </a>
+              );
+            }
+            if (href?.endsWith(".sp") && !href.startsWith("http")) {
+              const cleaned = href.replace(/^\.\//, "").replace(/^learn\//, "");
+              return (
+                <a href={`/materiali/file/${cleaned}`}>{children}</a>
               );
             }
             return (

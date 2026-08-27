@@ -234,7 +234,15 @@ export function flowlabPhaseHistory(limitPerPhase = 3) {
       jobs.filter((j) => j.action === ph.action).slice(0, limitPerPhase),
     );
   }
-  for (const extra of ["gridcheck", "activity_power", "klayout_drc", "system_pdn"]) {
+  for (const extra of [
+    "gridcheck",
+    "activity_power",
+    "chip_pdn_ir",
+    "power_chain",
+    "export_spice_lab",
+    "klayout_drc",
+    "system_pdn",
+  ]) {
     byAction.set(
       extra,
       jobs.filter((j) => j.action === extra).slice(0, limitPerPhase),

@@ -216,6 +216,11 @@ export function listOpenTargets(): {
     { id: "run-chip-ir", label: "Run · chip IR mesh", action: "chip_pdn_ir" },
     { id: "run-power-chain", label: "Run · catena SPICE", action: "power_chain" },
     {
+      id: "run-export-spice",
+      label: "Run · export SPICE lab",
+      action: "export_spice_lab",
+    },
+    {
       id: "run-activity",
       label: "Run · activity → power",
       action: "activity_power",

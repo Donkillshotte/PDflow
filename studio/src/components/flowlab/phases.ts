@@ -103,5 +103,7 @@ export const PHASES: Phase[] = [
 ];
 
 export const PHASE_IDS = PHASES.map((p) => p.id);
-export const LONG_ACTIONS = new Set(["cts", "route", "finish", "klayout_drc", "power_chain"]);
+import { LONG_ACTIONS } from "@/lib/actions";
+
+export { LONG_ACTIONS };
 export const ANALYSIS_PHASES = new Set(["pdn", "pkg"]);

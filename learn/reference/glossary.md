@@ -116,6 +116,8 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **NDR (Non-Default Rule)** — Regola di routing più larga/spazio rispetto al default tech. Su GCD post-CTS/route la net `clk` in Inspector mostra `CTS_NDR_0`: il clock non è più un filo “qualsiasi”.
 
+**ngspice** — Simulatore SPICE open-source per System PDN in Studio (AC + TRAN). Vedi [spice-ngspice-primer.md](./spice-ngspice-primer.md).
+
 ---
 
 ## O

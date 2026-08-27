@@ -19,7 +19,10 @@
 #   PEAK_FACTOR=8       # simultaneous-switch peak vs average current
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VARIANT="${FLOW_VARIANT:-learn}"
+# shellcheck source=learn/lib/power_vcd.sh
+source "${ROOT}/learn/lib/power_vcd.sh"
+VARIANT="${FLOW_VARIANT:-flowlab}"
+ACTIVITY_TCL="$(power_activity_tcl "${ROOT}")"
 PKG_R="${PKG_R:-0.05}"
 PKG_L="${PKG_L:-2e-10}"
 C_DECAP="${C_DECAP:-50e-15}"
@@ -51,7 +54,7 @@ openroad -no_init -no_splash -exit <<EOF | tee "${LOG}"
 read_liberty ${LIB}
 read_db ${ODB}
 read_sdc ${SDC}
-set_power_activity -global -activity 0.2 -duty 0.5
+${ACTIVITY_TCL}
 report_power
 
 # Package-aware static source model (OpenROAD PDNSim) — still chip-centric

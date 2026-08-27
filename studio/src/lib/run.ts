@@ -14,6 +14,7 @@ import {
   upsertJob,
   type JobRecord,
 } from "./jobs";
+import { defaultActionTimeoutMs } from "./actions";
 import {
   FLOWLAB_RTL,
   FLOWLAB_VARIANT,
@@ -77,6 +78,7 @@ const ALLOWED_ACTIONS = new Set([
   "chip_pdn_ir",
   "power_chain",
   "activity_power",
+  "export_spice_lab",
   "klayout_drc",
 ]);
 
@@ -205,6 +207,17 @@ function resolveCommand(
       },
     };
   }
+  if (action === "export_spice_lab") {
+    const cmd = path.join(LEARN_ROOT, "scripts/export_spice_lab.sh");
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    return {
+      cmd,
+      args: [],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      env: { FLOW_VARIANT: variant },
+    };
+  }
   if (action === "activity_power") {
     const cmd = path.join(LEARN_ROOT, "scripts/run_activity_power.sh");
     const variant = flowlab ? FLOWLAB_VARIANT : "learn";
@@ -252,15 +265,7 @@ function resolveCommand(
 }
 
 function defaultTimeout(action: string) {
-  if (
-    action === "finish" ||
-    action === "route" ||
-    action === "test_course" ||
-    action === "klayout_drc"
-  ) {
-    return 900_000;
-  }
-  return 300_000;
+  return defaultActionTimeoutMs(action);
 }
 
 export function cancelJob(jobId: string): boolean {
@@ -529,6 +534,7 @@ export async function probeToolchain(): Promise<{
     ver("sta", ["-version"]),
     ver("klayout", ["-v"]),
     ver("iverilog", ["-V"]),
+    ver("ngspice", ["-v"]),
   ]);
 
   return {

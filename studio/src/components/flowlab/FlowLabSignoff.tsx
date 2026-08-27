@@ -1,12 +1,12 @@
 "use client";
 
-import { Activity, Grid3X3, Layers, ShieldCheck, Zap } from "lucide-react";
+import { Activity, Download, Grid3X3, Layers, ShieldCheck, Zap } from "lucide-react";
 
 const SIGNOFF = [
   {
     id: "activity_power",
     label: "Activity → power",
-    hint: "I_avg · input System PDN",
+    hint: "VCD o synthetic · I_avg",
     icon: Activity,
     long: false,
   },
@@ -15,13 +15,20 @@ const SIGNOFF = [
     label: "Chip IR mesh",
     hint: "write_pg_spice · pdn_transient",
     icon: Zap,
-    long: false,
+    long: true,
   },
   {
     id: "system_pdn",
     label: "System PDN",
     hint: "Z(f) · die droop · ngspice",
     icon: Layers,
+    long: false,
+  },
+  {
+    id: "export_spice_lab",
+    label: "Export SPICE lab",
+    hint: "sim/spice/ netlist + stats",
+    icon: Download,
     long: false,
   },
   {
@@ -59,9 +66,9 @@ export function FlowLabSignoff({
   return (
     <div className="fl-signoff">
       <div className="fl-signoff-head">
-        <strong>Signoff post-finish · power &amp; SPICE</strong>
+        <strong>Signoff power &amp; SPICE</strong>
         <p>
-          Catena: activity → chip mesh → System PDN. Docs{" "}
+          Catena: VCD/activity → chip mesh → System PDN → export lab. Docs{" "}
           <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>.
         </p>
       </div>

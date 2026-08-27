@@ -684,6 +684,13 @@ export function FlowLab() {
                     </p>
                   )}
                 </div>
+                {phase.id === "pkg" && (
+                  <FlowLabSignoff
+                    disabled={running}
+                    busy={signoffBusy}
+                    onRun={(a, long) => void runSignoff(a, long)}
+                  />
+                )}
               </div>
             </div>
           ) : (

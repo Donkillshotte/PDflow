@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Demo attività di switching (senza VCD): set_power_activity + report_power su final.
-# Env: FLOW_VARIANT=learn|flowlab (default learn)
+# Activity → report_power on final ODB.
+# Uses VCD from rtl_sim when present (read_power_activities), else synthetic global.
+#
+# Env: FLOW_VARIANT=learn|flowlab (default flowlab — aligned with power_chain)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VARIANT="${FLOW_VARIANT:-learn}"
+# shellcheck source=learn/lib/power_vcd.sh
+source "${ROOT}/learn/lib/power_vcd.sh"
+
+VARIANT="${FLOW_VARIANT:-flowlab}"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
 LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
@@ -14,16 +19,21 @@ SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
 OUT="${ROOT}/learn/sim/reports/activity_power_${VARIANT}.log"
 mkdir -p "$(dirname "${OUT}")"
 
+ACTIVITY_TCL="$(power_activity_tcl "${ROOT}")"
+
 cd "${FLOW}"
 openroad -no_init -no_splash -exit <<EOF | tee "${OUT}"
 read_liberty ${LIB}
 read_db ${ODB}
 read_sdc ${SDC}
-# Attività globale sintetica (proxy finché non hai VCD da sim RTL)
-set_power_activity -global -activity 0.2 -duty 0.5
+${ACTIVITY_TCL}
 report_power
 puts "ACTIVITY_POWER_DONE ${VARIANT}"
 EOF
 rg -q 'ACTIVITY_POWER_DONE' "${OUT}"
 echo "OK activity power ${VARIANT} → ${OUT}"
-echo "Nota: per vettori reali, genera VCD con learn/scripts/run_rtl_sim.sh e usa read_power_activities -vcd …"
+if power_vcd_path "${ROOT}" >/dev/null 2>&1; then
+  echo "  source: VCD $(power_vcd_path "${ROOT}")"
+else
+  echo "  source: synthetic (run rtl_sim for VCD-driven activity)"
+fi

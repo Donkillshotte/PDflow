@@ -227,10 +227,18 @@ else
   ok "skip chip pdn transient (no spice/report yet)"
 fi
 rg -q 'system_pdn_hier|ngspice' "${ROOT}/learn/scripts/run_system_pdn.sh" && ok "system_pdn uses hier ngspice" || bad "system_pdn non gerarchico"
-rg -q 'chip_pdn_ir|power_chain' "${ROOT}/studio/src/lib/run.ts" && ok "run chip_pdn_ir/power_chain" || bad "run senza chip chain"
+rg -q 'export_spice_lab' "${ROOT}/studio/src/lib/run.ts" && ok "run export_spice_lab" || bad "run senza export_spice_lab"
+rg -q 'read_power_activities|power_vcd' "${ROOT}/learn/scripts/run_activity_power.sh" && ok "VCD activity wiring" || bad "activity senza VCD"
+[[ -f "${ROOT}/learn/lib/power_vcd.sh" ]] && ok "power_vcd.sh shared" || bad "manca power_vcd.sh"
+[[ -f "${ROOT}/studio/src/lib/actions.ts" ]] && ok "actions.ts single source" || bad "manca actions.ts"
+[[ -f "${ROOT}/studio/src/lib/materials-data.ts" ]] && ok "materials-data.ts" || bad "manca materials-data"
+[[ -f "${ROOT}/studio/src/app/materiali/file/[...slug]/page.tsx" ]] && ok "spice file viewer" || bad "manca file viewer"
+rg -q 'PkgHubPanel' "${ROOT}/studio/src/app/pkg/page.tsx" && ok "pkg hub live panel" || bad "pkg static only"
 [[ -f "${ROOT}/learn/scripts/export_spice_lab.sh" ]] && ok "export_spice_lab.sh" || bad "manca export_spice_lab"
 [[ -f "${ROOT}/learn/scripts/run_power_chain.sh" ]] && ok "run_power_chain.sh" || bad "manca power_chain"
-[[ -f "${ROOT}/learn/reference/spice-power-chain.md" ]] && ok "spice-power-chain.md" || bad "manca spice-power-chain"
+[[ -f "${ROOT}/studio/src/lib/powerChainLessons.ts" ]] && ok "powerChainLessons map" || bad "manca powerChainLessons"
+rg -q 'LessonPowerChainPanel' "${ROOT}/studio/src/components/LessonWizard.tsx" && ok "lesson power panel" || bad "wizard senza power panel"
+rg -q 'Catena power' "${ROOT}/learn/lessons/07-finish/README.md" && ok "L07 power chain section" || bad "L07 senza catena power"
 [[ -f "${ROOT}/learn/sim/spice/system_pdn_tran_demo.sp" ]] && ok "spice demo netlist" || bad "manca demo sp"
 if command -v ngspice >/dev/null 2>&1; then
   ngspice -b -o /tmp/ngspice-demo.log "${ROOT}/learn/sim/spice/system_pdn_tran_demo.sp" >/dev/null 2>&1 \

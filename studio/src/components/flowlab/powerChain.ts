@@ -130,6 +130,14 @@ export const SPICE_ANALYSES = [
     action: "system_pdn",
   },
   {
+    id: "export_spice_lab",
+    label: "Export SPICE lab",
+    produces: ["sim/spice/*", "mesh_stats_*.json"],
+    spice: "netlist + stats bundle",
+    doc: "/materiali/sim/spice/README.md",
+    action: "export_spice_lab",
+  },
+  {
     id: "power_chain",
     label: "Catena completa",
     produces: ["tutti report", "sim/spice/"],
