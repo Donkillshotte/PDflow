@@ -266,6 +266,11 @@ export function FlowLabPhaseVisual({
   const [inspect, setInspect] = useState<Inspect | null>(null);
   const [results, setResults] = useState<Results | null>(null);
   const [loading, setLoading] = useState(false);
+  const [meshStats, setMeshStats] = useState<{
+    resistors?: number;
+    current_sources?: number;
+    voltage_sources?: number;
+  } | null>(null);
   const [pdnReport, setPdnReport] = useState<{
     summary?: string;
     kind?: string;
@@ -316,6 +321,21 @@ export function FlowLabPhaseVisual({
           }
         }
         setPdnReport(loaded);
+      }
+      if (phaseId === "pdn") {
+        const rm = await fetch(
+          `/api/content?path=${encodeURIComponent(`sim/spice/mesh_stats_${variant}.json`)}`,
+        );
+        if (rm.ok) {
+          const body = await rm.json();
+          try {
+            setMeshStats(JSON.parse(body.content));
+          } catch {
+            setMeshStats(null);
+          }
+        } else {
+          setMeshStats(null);
+        }
       }
     } finally {
       setLoading(false);
@@ -518,7 +538,24 @@ export function FlowLabPhaseVisual({
                 {stageDone ? "PSM-0040" : "Esegui"}
               </strong>
             </div>
+            {meshStats && (
+              <div className="fl-vis-stat">
+                <span>Mesh SPICE</span>
+                <strong>
+                  {meshStats.resistors?.toLocaleString()} R · {meshStats.current_sources} I
+                </strong>
+              </div>
+            )}
           </div>
+          {meshStats ? (
+            <p className="fl-vis-meta">
+              Mesh export · <code>learn/sim/spice/</code> · chip IR post-finish
+            </p>
+          ) : (
+            <p className="fl-vis-meta">
+              Dopo finish: chip IR → <code>write_pg_spice</code> · docs mesh SPICE
+            </p>
+          )}
         </div>
       )}
 

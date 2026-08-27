@@ -19,6 +19,7 @@ import { FlowLabMetricsBar } from "@/components/flowlab/FlowLabMetricsBar";
 import { FlowLabParamStudio } from "@/components/flowlab/FlowLabParamStudio";
 import { FlowLabPhaseHistory } from "@/components/flowlab/FlowLabPhaseHistory";
 import { FlowLabPhaseVisual } from "@/components/flowlab/FlowLabPhaseVisual";
+import { FlowLabPowerChain } from "@/components/flowlab/FlowLabPowerChain";
 import { FlowLabPipeline } from "@/components/flowlab/FlowLabPipeline";
 import { FlowLabRtlEditor } from "@/components/flowlab/FlowLabRtlEditor";
 import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
@@ -539,6 +540,8 @@ export function FlowLab() {
         onSelect={selectPhase}
       />
 
+      <FlowLabPowerChain phaseId={phaseId} compact={false} />
+
       <div className="fl-toolbar">
         <div className="fl-toolbar-left">
           <h2>{phase.title}</h2>
@@ -665,17 +668,19 @@ export function FlowLab() {
                   <p>{phase.help}</p>
                   {phase.id === "pkg" && (
                     <p>
-                      Teoria e checklist:{" "}
-                      <a href="/pkg">sezione PKG</a> ·{" "}
-                      <a href="/materiali/reference/system-pdn.md">System PDN</a>
+                      Teoria:{" "}
+                      <a href="/pkg">PKG hub</a> ·{" "}
+                      <a href="/materiali/reference/spice-power-chain.md">Catena SPICE</a> ·{" "}
+                      <a href="/materiali/reference/spice-ngspice-primer.md">ngspice</a> ·{" "}
+                      <a href="/materiali/sim/spice/README.md">Lab netlist</a>
                     </p>
                   )}
                   {phase.id === "pdn" && (
                     <p>
                       Docs:{" "}
-                      <a href="/materiali/reference/extended-flow.md">
-                        Flusso esteso § PDN
-                      </a>
+                      <a href="/materiali/reference/spice-chip-mesh.md">Mesh SPICE</a> ·{" "}
+                      <a href="/materiali/reference/spice-power-chain.md">Catena fasi</a> ·{" "}
+                      chip IR post-finish in signoff
                     </p>
                   )}
                 </div>

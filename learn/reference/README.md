@@ -33,6 +33,17 @@ Tempo stimato **solo reference**: 3–4 ore di lettura attiva (non in diagonale)
 
 - [golden-metrics.md](./golden-metrics.md) — WNS/`period_min`/area/DRC misurati su `FLOW_VARIANT=learn`
 
+## Power · SPICE · collegamento fasi
+
+Dopo le lezioni 00–07, per integrità di alimentazione end-to-end:
+
+1. [spice-power-chain.md](./spice-power-chain.md) — **catena RTL→PKG** (leggi per primo)
+2. [spice-chip-mesh.md](./spice-chip-mesh.md) — mesh on-die `write_pg_spice`
+3. [spice-ngspice-primer.md](./spice-ngspice-primer.md) — System PDN ngspice
+4. [system-pdn.md](./system-pdn.md) — landscape tool
+5. [pkg-design-package.md](./pkg-design-package.md) — packaging
+6. [../sim/spice/README.md](../sim/spice/README.md) — lab netlist locali
+
 ## GUI
 
 - [gui-atlas.md](./gui-atlas.md) — guida pixel-level con PNG in `gui-shots/`

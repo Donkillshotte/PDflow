@@ -184,6 +184,7 @@ const ALLOWED_CONTENT_PREFIXES = [
   "reference/",
   "workbook/",
   "sim/reports/",
+  "sim/spice/",
   "README.md",
   "CURRICULUM.md",
   "AUDIT.md",
@@ -257,6 +258,30 @@ export const MATERIALS: MaterialLink[] = [
     title: "System PDN",
     group: "Packaging",
     description: "ngspice hierarchical: VRM → board → package → die · Z(f) + load-step.",
+  },
+  {
+    href: "/materiali/reference/spice-power-chain.md",
+    title: "Catena SPICE RTL→PKG",
+    group: "Packaging",
+    description: "Collegamento tutte le fasi: VCD, liberty, mesh, ngspice ladder.",
+  },
+  {
+    href: "/materiali/reference/spice-ngspice-primer.md",
+    title: "ngspice · System PDN",
+    group: "Packaging",
+    description: "Leggere netlist TRAN/AC, interpretare Z(f) e droop.",
+  },
+  {
+    href: "/materiali/reference/spice-chip-mesh.md",
+    title: "SPICE chip mesh",
+    group: "Packaging",
+    description: "write_pg_spice, nodi ITerm, correnti celle, pdn_transient.",
+  },
+  {
+    href: "/materiali/sim/spice/README.md",
+    title: "Lab netlist SPICE",
+    group: "Packaging",
+    description: "Netlist demo e export pg_vdd_bumps / system_pdn.",
   },
   {
     href: "/materiali/reference/pkg-design-package.md",

@@ -40,7 +40,7 @@ export const PHASES: Phase[] = [
     title: "Analisi chip PDN",
     action: "gridcheck",
     hint: "check_power_grid",
-    help: "Verifica connettività della power grid (VDD/VSS) sull'ODB post-PDN. Usa gli artefatti già generati dal floorplan.",
+    help: "Verifica connettività VDD/VSS (PSM-0040). Dopo finish: chip IR opzionale su mesh SPICE (write_pg_spice). Vedi catena power.",
     tool: "OpenROAD check_power_grid",
     icon: "zap",
     estTime: "~5 s",
@@ -95,7 +95,7 @@ export const PHASES: Phase[] = [
     title: "Package · System PDN",
     action: "system_pdn",
     hint: "VRM → board → pkg → die",
-    help: "System PDN gerarchico con ngspice: Z(f) e load-step (VRM/board/package/die). Non è chip PDNSim. Docs in /pkg.",
+    help: "System PDN ngspice: Z(f) e load-step VRM→board→pkg→die. Usa I_die da activity_power. Catena completa: power_chain.",
     tool: "ngspice · system_pdn_hier",
     icon: "package",
     estTime: "~5 s",
@@ -103,5 +103,5 @@ export const PHASES: Phase[] = [
 ];
 
 export const PHASE_IDS = PHASES.map((p) => p.id);
-export const LONG_ACTIONS = new Set(["cts", "route", "finish", "klayout_drc"]);
+export const LONG_ACTIONS = new Set(["cts", "route", "finish", "klayout_drc", "power_chain"]);
 export const ANALYSIS_PHASES = new Set(["pdn", "pkg"]);

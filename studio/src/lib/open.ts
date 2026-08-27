@@ -213,6 +213,8 @@ export function listOpenTargets(): {
     { id: "run-rtl-sim", label: "Run · sim RTL (Icarus)", action: "rtl_sim" },
     { id: "run-gridcheck", label: "Run · gridcheck PDN", action: "gridcheck" },
     { id: "run-system-pdn", label: "Run · System PDN (hier)", action: "system_pdn" },
+    { id: "run-chip-ir", label: "Run · chip IR mesh", action: "chip_pdn_ir" },
+    { id: "run-power-chain", label: "Run · catena SPICE", action: "power_chain" },
     {
       id: "run-activity",
       label: "Run · activity → power",

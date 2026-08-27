@@ -1,0 +1,109 @@
+"use client";
+
+import clsx from "clsx";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { POWER_CHAIN, SPICE_ANALYSES, chainForPhase } from "./powerChain";
+import { PHASE_IDS } from "./phases";
+
+export function FlowLabPowerChain({
+  phaseId,
+  compact,
+}: {
+  phaseId: string;
+  compact?: boolean;
+}) {
+  const current = chainForPhase(phaseId);
+  const idx = PHASE_IDS.indexOf(phaseId);
+
+  return (
+    <section
+      className={clsx("fl-power-chain", compact && "fl-power-chain-compact")}
+      aria-label="Catena power e SPICE"
+    >
+      <div className="fl-power-chain-head">
+        <strong>Catena RTL → PKG</strong>
+        <Link href="/materiali/reference/spice-power-chain.md">
+          Guida SPICE completa
+        </Link>
+      </div>
+
+      {!compact && (
+        <div className="fl-power-chain-track" aria-hidden>
+          {POWER_CHAIN.map((node, i) => (
+            <span key={node.phaseId} className="fl-power-chain-step-wrap">
+              <span
+                className={clsx(
+                  "fl-power-chain-step",
+                  node.phaseId === phaseId && "active",
+                  i < idx && "done",
+                )}
+              >
+                {node.label}
+              </span>
+              {i < POWER_CHAIN.length - 1 && (
+                <ChevronRight size={12} className="fl-power-chain-arrow" />
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {current && (
+        <div className="fl-power-chain-detail">
+          <div className="fl-power-chain-col">
+            <span className="fl-power-chain-k">Produce</span>
+            <ul>
+              {current.produces.map((p) => (
+                <li key={p}>
+                  <code>{p}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="fl-power-chain-col">
+            <span className="fl-power-chain-k">Consuma</span>
+            <ul>
+              {current.consumes.map((c) => (
+                <li key={c}>
+                  <code>{c}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {current.spice && (
+            <div className="fl-power-chain-col fl-power-chain-spice">
+              <span className="fl-power-chain-k">SPICE</span>
+              <p>{current.spice}</p>
+              {current.doc && (
+                <Link href={current.doc}>Approfondisci</Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(phaseId === "finish" || phaseId === "pdn" || phaseId === "pkg") && (
+        <div className="fl-power-chain-extra">
+          <span className="fl-power-chain-k">Analisi SPICE collegate</span>
+          <ul className="fl-power-chain-analyses">
+            {SPICE_ANALYSES.map((a) => (
+              <li key={a.id}>
+                <strong>{a.label}</strong>
+                <span>{a.spice}</span>
+                {"doc" in a && a.doc ? (
+                  <Link href={a.doc}>mesh</Link>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <p className="fl-power-chain-note">
+            Lab netlist: <code>learn/sim/spice/</code> · export con{" "}
+            <code>export_spice_lab.sh</code> · catena con{" "}
+            <code>run_power_chain.sh</code>
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}

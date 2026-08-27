@@ -2260,6 +2260,102 @@ button.pipeline-node {
 }
 .fl-signoff-card svg { color: var(--fl-accent-2); flex-shrink: 0; margin-top: 0.1rem; }
 
+.fl-power-chain {
+  border: 1px solid var(--fl-border);
+  border-radius: 12px;
+  background: var(--fl-surface);
+  padding: 0.85rem 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+.fl-power-chain-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.fl-power-chain-head a {
+  color: var(--fl-accent-2);
+  font-size: 0.8rem;
+}
+.fl-power-chain-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.68rem;
+}
+.fl-power-chain-step-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+.fl-power-chain-step {
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--fl-border);
+  color: var(--fl-muted);
+  white-space: nowrap;
+}
+.fl-power-chain-step.active {
+  border-color: var(--fl-accent);
+  color: var(--fl-accent);
+  background: rgba(240, 136, 62, 0.12);
+}
+.fl-power-chain-step.done {
+  border-color: rgba(63, 185, 80, 0.35);
+  color: var(--fl-ok);
+}
+.fl-power-chain-arrow { color: var(--fl-muted); opacity: 0.6; }
+.fl-power-chain-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+  font-size: 0.78rem;
+}
+.fl-power-chain-k {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fl-muted);
+  margin-bottom: 0.25rem;
+}
+.fl-power-chain-col ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--fl-text);
+}
+.fl-power-chain-col code { font-size: 0.72rem; }
+.fl-power-chain-spice p { margin: 0; color: var(--fl-text); }
+.fl-power-chain-extra {
+  border-top: 1px dashed var(--fl-border);
+  padding-top: 0.55rem;
+  font-size: 0.78rem;
+}
+.fl-power-chain-analyses {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+.fl-power-chain-analyses li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+.fl-power-chain-analyses span { color: var(--fl-muted); font-size: 0.72rem; }
+.fl-power-chain-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  color: var(--fl-muted);
+}
+.fl-power-chain-compact .fl-power-chain-track { display: none; }
+
 /* Home FlowLab Pro accents */
 .home-rail {
   border-radius: 16px;

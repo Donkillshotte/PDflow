@@ -22,6 +22,8 @@ const STAGE_ACTIONS = [
   { id: "floorplan", label: "Esegui floorplan", hint: "die / PDN" },
   { id: "gridcheck", label: "Gridcheck PDN", hint: "check_power_grid" },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
+  { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
+  { id: "power_chain", label: "Catena SPICE", hint: "activity→IR→system" },
   { id: "place", label: "Esegui place", hint: "GP → DP" },
   { id: "cts", label: "Esegui CTS", hint: "minuti · conferma" },
   { id: "route", label: "Esegui route", hint: "lungo · conferma" },
@@ -30,7 +32,7 @@ const STAGE_ACTIONS = [
   { id: "klayout_drc", label: "KLayout DRC", hint: "GDS · lungo · conferma" },
 ] as const;
 
-const LONG_ACTIONS = new Set(["cts", "route", "finish", "test_course", "klayout_drc"]);
+const LONG_ACTIONS = new Set(["cts", "route", "finish", "test_course", "klayout_drc", "power_chain"]);
 
 function formatMs(ms: number) {
   if (ms < 1000) return `${ms} ms`;

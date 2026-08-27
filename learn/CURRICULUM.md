@@ -218,8 +218,10 @@ Mappa completa: [`learn/reference/extended-flow.md`](./reference/extended-flow.m
 |---|---|---|
 | Sim RTL (Icarus) + VCD | `learn/scripts/run_rtl_sim.sh` · `rtl_sim` | READY |
 | Gridcheck PDN | `run_gridcheck.sh` · `gridcheck` · FlowLab fase PDN | READY |
-| System PDN (hier) | `run_system_pdn.sh` · `system_pdn` · FlowLab fase PKG · ngspice | READY (demo) |
-| Chip PDN IR (opt) | `run_chip_pdn_ir.sh` · PDNSim + transient | READY (demo) |
+| System PDN (hier) | `run_system_pdn.sh` · FlowLab PKG · ngspice | READY |
+| Chip IR mesh | `run_chip_pdn_ir.sh` · write_pg_spice | READY |
+| Catena SPICE | `run_power_chain.sh` · signoff FlowLab | READY |
+| Docs catena fasi | `spice-power-chain.md` + lab `sim/spice/` | READY |
 | Activity → power | `run_activity_power.sh` · `activity_power` | READY (sintetica) |
 | KLayout GDS DRC | `run_klayout_drc.sh` · `klayout_drc` | READY (dopo finish) |
 | Bump / RDL / design package | `/pkg` · docs Packaging | PARTIAL (teoria + demo BUMPS) |

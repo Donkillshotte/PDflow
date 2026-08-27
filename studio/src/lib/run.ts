@@ -74,6 +74,8 @@ const ALLOWED_ACTIONS = new Set([
   "rtl_sim",
   "gridcheck",
   "system_pdn",
+  "chip_pdn_ir",
+  "power_chain",
   "activity_power",
   "klayout_drc",
 ]);
@@ -157,6 +159,38 @@ function resolveCommand(
   }
   if (action === "system_pdn") {
     const cmd = path.join(LEARN_ROOT, "scripts/run_system_pdn.sh");
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    return {
+      cmd,
+      args: [],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      env: {
+        FLOW_VARIANT: variant,
+        PYTHONPATH: `/usr/lib/python3/dist-packages${
+          process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ""
+        }`,
+      },
+    };
+  }
+  if (action === "chip_pdn_ir") {
+    const cmd = path.join(LEARN_ROOT, "scripts/run_chip_pdn_ir.sh");
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    return {
+      cmd,
+      args: [],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      env: {
+        FLOW_VARIANT: variant,
+        PYTHONPATH: `/usr/lib/python3/dist-packages${
+          process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ""
+        }`,
+      },
+    };
+  }
+  if (action === "power_chain") {
+    const cmd = path.join(LEARN_ROOT, "scripts/run_power_chain.sh");
     const variant = flowlab ? FLOWLAB_VARIANT : "learn";
     return {
       cmd,

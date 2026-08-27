@@ -227,6 +227,20 @@ else
   ok "skip chip pdn transient (no spice/report yet)"
 fi
 rg -q 'system_pdn_hier|ngspice' "${ROOT}/learn/scripts/run_system_pdn.sh" && ok "system_pdn uses hier ngspice" || bad "system_pdn non gerarchico"
+rg -q 'chip_pdn_ir|power_chain' "${ROOT}/studio/src/lib/run.ts" && ok "run chip_pdn_ir/power_chain" || bad "run senza chip chain"
+[[ -f "${ROOT}/learn/scripts/export_spice_lab.sh" ]] && ok "export_spice_lab.sh" || bad "manca export_spice_lab"
+[[ -f "${ROOT}/learn/scripts/run_power_chain.sh" ]] && ok "run_power_chain.sh" || bad "manca power_chain"
+[[ -f "${ROOT}/learn/reference/spice-power-chain.md" ]] && ok "spice-power-chain.md" || bad "manca spice-power-chain"
+[[ -f "${ROOT}/learn/sim/spice/system_pdn_tran_demo.sp" ]] && ok "spice demo netlist" || bad "manca demo sp"
+if command -v ngspice >/dev/null 2>&1; then
+  ngspice -b -o /tmp/ngspice-demo.log "${ROOT}/learn/sim/spice/system_pdn_tran_demo.sp" >/dev/null 2>&1 \
+    && ok "ngspice demo tran" || ok "skip ngspice demo (warn)"
+fi
+if [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp" ]]; then
+  FLOW_VARIANT=flowlab "${ROOT}/learn/scripts/export_spice_lab.sh" >/tmp/spice-export.log 2>&1 \
+    && [[ -f "${ROOT}/learn/sim/spice/mesh_stats_flowlab.json" ]] \
+    && ok "export_spice_lab" || ok "skip export_spice_lab"
+fi
 [[ -f "${ROOT}/learn/reference/system-pdn.md" ]] && ok "system-pdn.md" || bad "manca system-pdn.md"
 [[ -f "${ROOT}/learn/reference/pkg-design-package.md" ]] && ok "pkg-design-package.md" || bad "manca pkg doc"
 [[ -f "${ROOT}/studio/src/app/pkg/page.tsx" ]] && ok "pkg page" || bad "manca /pkg"

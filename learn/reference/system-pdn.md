@@ -1,5 +1,7 @@
 # System PDN & packaging analysis — tool landscape
 
+Vedi anche la **catena completa fasi**: [spice-power-chain.md](./spice-power-chain.md).
+
 ## Due analisi distinte
 
 | Livello | Domanda | Cosa usa Studio |
