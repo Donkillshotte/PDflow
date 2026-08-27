@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { MarkdownView } from "@/components/MarkdownView";
+import { LessonPowerChainPanel } from "@/components/LessonPowerChainPanel";
 import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { useToast } from "@/components/ToastProvider";
@@ -208,6 +209,8 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
         })}
       </ol>
 
+      <LessonPowerChainPanel lessonId={lesson.id} />
+
       <div className="wizard-body panel">
         {step === "teoria" && (
           <div className="wizard-pane">
@@ -303,6 +306,30 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                 <Link href="/materiali/reference/golden-metrics.md">
                   golden-metrics
                 </Link>
+                {lesson.id === "07-finish" && (
+                  <>
+                    {" "}
+                    · catena SPICE:{" "}
+                    <Link href="/materiali/reference/spice-power-chain.md#lezione-07-finish">
+                      finish → PKG
+                    </Link>
+                    {" "}
+                    ·{" "}
+                    <Link href="/flusso?phase=pkg">FlowLab PKG</Link>
+                  </>
+                )}
+                {lesson.id === "03-floorplan" && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <Link href="/flusso?phase=pdn">FlowLab PDN</Link>
+                    {" "}
+                    ·{" "}
+                    <Link href="/materiali/reference/spice-power-chain.md#lezione-03-floorplan">
+                      griglia → mesh
+                    </Link>
+                  </>
+                )}
                 .
               </p>
             </header>

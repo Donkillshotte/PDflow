@@ -104,6 +104,15 @@ Predizione: 50% → core ≈ metà di 25% (non esatto: snapping, margins, aspect
 - PDN “invisibile” = layer spenti
 - Confrontare core area tra run senza `clean_floorplan`
 
+## Catena power & SPICE
+
+Il floorplan genera la **griglia PDN** (`2_4_floorplan_pdn.odb`); FlowLab verifica con [gridcheck](/flusso?phase=pdn). La netlist SPICE nasce post-finish — vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-03-floorplan) e [`spice-chip-mesh.md`](../../reference/spice-chip-mesh.md).
+
+| Collegamento | Dove |
+|---|---|
+| FlowLab | [floorplan](/flusso?phase=floorplan) · [PDN](/flusso?phase=pdn) |
+| Script | `run_gridcheck.sh` |
+
 ## Durata
 
 README+walkthrough 50–70 min, LAB 90–120 min, **totale ~3 ore**.

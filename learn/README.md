@@ -75,6 +75,17 @@ learn/
 - **PDK**: Nangate45 (open)
 - **Variante flusso**: `FLOW_VARIANT=learn` → risultati in `results/.../gcd/learn/` (non tocca i run `base`)
 
+## Dopo le lezioni 00–07: power & SPICE
+
+Modulo **consigliato** (non obbligatorio per completare il corso):
+
+1. Leggi [`reference/spice-power-chain.md`](reference/spice-power-chain.md) — mappa esaustiva lezioni ↔ FlowLab ↔ netlist
+2. Apri FlowLab [RTL → PKG](http://127.0.0.1:43217/flusso) e la catena sotto la pipeline
+3. Post-`make finish`: `./learn/scripts/run_power_chain.sh` (variante `learn` o `flowlab`)
+4. Esplora netlist in `learn/sim/spice/` · hub [/pkg](http://127.0.0.1:43217/pkg)
+
+Ogni lezione README ha sezione **«Catena power & SPICE»** con link alla sezione corrispondente.
+
 ## Due modalità di studio
 
 | Modalità | Strumenti |

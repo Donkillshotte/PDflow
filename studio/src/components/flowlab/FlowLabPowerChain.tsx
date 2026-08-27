@@ -71,13 +71,22 @@ export function FlowLabPowerChain({
               ))}
             </ul>
           </div>
-          {current.spice && (
+          <div className="fl-power-chain-col fl-power-chain-spice">
+            <span className="fl-power-chain-k">Lezione corso</span>
+            <p>
+              {current.lessonIds.map((id, i) => (
+                <span key={id}>
+                  {i > 0 && ", "}
+                  <Link href={`/lezioni/${id}`}>{id}</Link>
+                </span>
+              ))}
+            </p>
+          </div>
+          {(current.spice || current.doc) && (
             <div className="fl-power-chain-col fl-power-chain-spice">
-              <span className="fl-power-chain-k">SPICE</span>
-              <p>{current.spice}</p>
-              {current.doc && (
-                <Link href={current.doc}>Approfondisci</Link>
-              )}
+              <span className="fl-power-chain-k">SPICE / doc</span>
+              {current.spice && <p>{current.spice}</p>}
+              {current.doc && <Link href={current.doc}>Approfondisci</Link>}
             </div>
           )}
         </div>
@@ -89,10 +98,12 @@ export function FlowLabPowerChain({
           <ul className="fl-power-chain-analyses">
             {SPICE_ANALYSES.map((a) => (
               <li key={a.id}>
-                <strong>{a.label}</strong>
+                <strong>
+                  <Link href={`/strumenti?tab=run&action=${a.action}`}>{a.label}</Link>
+                </strong>
                 <span>{a.spice}</span>
                 {"doc" in a && a.doc ? (
-                  <Link href={a.doc}>mesh</Link>
+                  <Link href={a.doc}>doc</Link>
                 ) : null}
               </li>
             ))}

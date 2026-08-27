@@ -120,7 +120,7 @@ Se ti servono Magic/Netgen, installali a parte e documenta i path in note person
 | `/api/inspect` | OpenROAD `-python`, OpenSTA, Yosys |
 | `/api/suite` | matrice hook collaborativa (toolchain → signoff) |
 | `/api/results` | File results/reports/logs ORFS |
-| `/api/run/stream` | ORFS make + `rtl_sim` / `gridcheck` / `activity_power` / `klayout_drc` |
+| `/api/run/stream` | ORFS make + `rtl_sim` / `gridcheck` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `klayout_drc` |
 | Ctrl+K | dashboard, run extended, Qt GUI, web viewer |
 | Suite hub (`/` · `/strumenti#suite`) | stato hook live + Apri/Run |
 
@@ -129,4 +129,7 @@ Deep-link utili:
 - `/strumenti?stage=cts&tab=results#inspect`
 - `/strumenti?tab=run&action=rtl_sim`
 - `/strumenti?tab=run&action=gridcheck`
+- `/strumenti?tab=run&action=chip_pdn_ir`
+- `/strumenti?tab=run&action=system_pdn`
+- `/strumenti?tab=run&action=power_chain`
 - `/strumenti#suite`

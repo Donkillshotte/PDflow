@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import clsx from "clsx";
 import type { FlowlabParams } from "./types";
 import { PHASES } from "./phases";
@@ -549,11 +550,17 @@ export function FlowLabPhaseVisual({
           </div>
           {meshStats ? (
             <p className="fl-vis-meta">
-              Mesh export · <code>learn/sim/spice/</code> · chip IR post-finish
+              Mesh export · <code>learn/sim/spice/</code> ·{" "}
+              <Link href="/materiali/reference/spice-chip-mesh.md">docs mesh</Link>
             </p>
           ) : (
             <p className="fl-vis-meta">
-              Dopo finish: chip IR → <code>write_pg_spice</code> · docs mesh SPICE
+              Dopo finish: chip IR → <code>write_pg_spice</code> ·{" "}
+              <Link href="/materiali/reference/spice-chip-mesh.md">mesh SPICE</Link>
+              {" · "}
+              <Link href="/materiali/reference/spice-power-chain.md#lezione-03-floorplan">
+                catena L03
+              </Link>
             </p>
           )}
         </div>

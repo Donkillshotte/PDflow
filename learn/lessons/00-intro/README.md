@@ -111,6 +111,16 @@ Entrambe sono obbligatorie. Solo file = non “vedi” congestion. Solo GUI = no
 
 Il playbook: `learn/reference/debug-playbook.md`.
 
+## Catena power & SPICE
+
+Questa lezione è il **primo anello** della catena integrità di alimentazione documentata in [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-00-intro).
+
+| Collegamento | Dove |
+|---|---|
+| FlowLab | [fase RTL](/flusso?phase=rtl) · azione `rtl_sim` |
+| Output | `learn/sim/gcd/gcd.vcd` (toggle → activity futura) |
+| Lezione seguente power | 02 synthesis (liberty) → 07 finish (`report_power`) |
+
 ## Durata stimata
 
 - README + glossario: 45–60 min

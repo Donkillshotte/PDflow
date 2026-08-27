@@ -131,6 +131,25 @@ Vincoli:
 
 ---
 
+## Parte 6 — Catena SPICE (opzionale, 45–60 min)
+
+Dopo `make finish` verde, collega integrità di alimentazione end-to-end:
+
+- [ ] Leggi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-07-finish)
+- [ ] In Studio: signoff post-finish → **Catena SPICE** (o CLI):
+
+```bash
+FLOW_VARIANT=learn ./learn/scripts/run_power_chain.sh
+```
+
+- [ ] Confronta heatmap `orfs_final_ir_drop.png` con `pdn_chip_ir_*.json` (chip mesh)
+- [ ] Apri `learn/sim/spice/` e conta R/I in `mesh_stats_*.json`
+- [ ] FlowLab fase [PKG](/flusso?phase=pkg): droop e Zmax System PDN
+
+Checklist opzionale — non blocca il completamento lezione se saltata.
+
+---
+
 ## Superamento del corso (non solo della lezione)
 
 - [ ] `--status` : lezioni 00–07

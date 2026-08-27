@@ -113,6 +113,15 @@ Un parametro per run:
 
 Tabella nel quaderno: density addon | overflow | buffer | WNS.
 
+## Catena power & SPICE
+
+Il placement fissa **dove** ogni cella alimenta la mesh (`ITermNode_*` in `write_pg_spice`). Vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-04-placement).
+
+| Collegamento | Dove |
+|---|---|
+| FlowLab | [place](/flusso?phase=place) |
+| Mesh (post L07) | `pdn/pg_vdd_bumps.sp` |
+
 ## Durata stimata
 
 - README + walkthrough: 45 min

@@ -82,6 +82,14 @@ Durante etch, un filo lungo su un gate è un condensatore che si carica. `repair
 1. `gui_5_1_grt.odb` — `win_grt.png`, `07_grt.png`
 2. `gui_5_2_route.odb` — `08_route_labeled.png`, isola M2/M3
 
+## Catena power & SPICE
+
+Il routing completa la geometria per IR/SPEF. PDNSim usa il design **post-route/finish**. Vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-06-routing).
+
+| Collegamento | Dove |
+|---|---|
+| FlowLab | [route](/flusso?phase=route) |
+
 ## Durata
 
 README+walkthrough 50–70 min, LAB 90–120 min, **totale ~3 ore**.

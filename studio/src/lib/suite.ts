@@ -137,9 +137,31 @@ export async function getSuiteStatus() {
       label: "Activity → power",
       group: "Power",
       ok: has("6_final.odb"),
-      detail: "set_power_activity · action activity_power",
+      detail: "set_power_activity · I_avg per System PDN",
       action: "activity_power",
       href: "/strumenti?tab=run&action=activity_power",
+    },
+    {
+      id: "chip_pdn_ir",
+      label: "Chip IR mesh",
+      group: "Power",
+      ok:
+        fs.existsSync(path.join(resultsDir("flowlab"), ".chip_pdn_ir.ok")) ||
+        fs.existsSync(path.join(resultsDir("learn"), ".chip_pdn_ir.ok")),
+      detail: "write_pg_spice · pdn_transient",
+      action: "chip_pdn_ir",
+      href: "/strumenti?tab=run&action=chip_pdn_ir",
+    },
+    {
+      id: "power_chain",
+      label: "Catena SPICE",
+      group: "Power",
+      ok: fs.existsSync(
+        path.join(LEARN_ROOT, "sim/reports/power_chain_flowlab.log"),
+      ),
+      detail: "activity → chip IR → system → export",
+      action: "power_chain",
+      href: "/strumenti?tab=run&action=power_chain",
     },
     {
       id: "klayout_drc",

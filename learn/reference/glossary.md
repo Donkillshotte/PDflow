@@ -132,7 +132,11 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **PDK (Process Design Kit)** — Pacchetto tech: LEF, LIB, regole (Nangate45, sky130, …).
 
-**PDN (Power Distribution Network)** — Mesh/straps VDD/VSS nel core.
+**PDN (Power Distribution Network)** — Mesh/straps VDD/VSS nel core. In Studio: gridcheck (L03) + mesh SPICE post-finish ([spice-chip-mesh.md](./spice-chip-mesh.md)).
+
+**PDNSim** — OpenROAD `analyze_power_grid`: IR statico on-die; esporta `write_pg_spice`.
+
+**Power chain** — Sequenza Studio: `activity_power` → `chip_pdn_ir` → `system_pdn` → export (`run_power_chain.sh`). Guida: [spice-power-chain.md](./spice-power-chain.md).
 
 **period_min** — Periodo minimo (ns) per cui lo STA, con *quel* modello RC, non vede WNS negativo. fmax ≈ `1000 / period_min` MHz. A finish sul run d’oro è **0.50 ns** (~2011 MHz) vs SDC **0.46 ns** (~2174 MHz): target non chiuso.
 
@@ -160,11 +164,17 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **Setup time** — Tempo richiesto per dati stabili prima del clock edge.
 
+**SPICE** — Simulazione circuitale. In Studio: (1) mesh resistiva chip da `write_pg_spice`; (2) ladder System PDN con **ngspice**.
+
+**System PDN** — Catena VRM → board → package → die (ngspice). Distinta da chip PDN on-die. FlowLab fase PKG.
+
 **Site** — Slot fisico minimo per una cella (es. `FreePDK45_38x28_...`).
 
 **Skew** — Differenza di arrivo clock tra sink diversi.
 
 **SPEF** — Standard Parasitic Exchange Format.
+
+**write_pg_spice** — Export OpenROAD PDNSim: rete R + correnti I per pin cella → input `pdn_transient.py`.
 
 **STA** — Static Timing Analysis: verifica setup/hold senza simulazione.
 

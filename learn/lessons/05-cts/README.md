@@ -96,6 +96,14 @@ select -name "clkbuf*" -type Inst
 PNG finestra: `win_cts.png`. Viewer: `orfs_cts_clock_tree.png`.  
 View → Clock Tree Viewer se il menu risponde; altrimenti il PNG ORFS è la stessa informazione.
 
+## Catena power & SPICE
+
+CTS inserisce buffer clock → aumenta **gruppo Clock** in `report_power`. Vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-05-cts).
+
+| Collegamento | Dove |
+|---|---|
+| FlowLab | [cts](/flusso?phase=cts) |
+
 ## Durata
 
 README+walkthrough 50–70 min, LAB 90–120 min (include debug intenzionale), **totale ~3 ore**.

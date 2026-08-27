@@ -40,7 +40,7 @@ package**. Questa sezione documenta i concetti e collega le due demo PDN.
 | **System PDN** VRM→board→pkg→die · Z(f) + load-step | FlowLab fase **PKG** · `run_system_pdn.sh` · ngspice |
 | Chip IR static+transient (opzionale) | `run_chip_pdn_ir.sh` · PDNSim + `pdn_transient.py` |
 | Heatmap IR finish | Galleria `orfs_final_ir_drop.png` · L07 |
-| Teoria + landscape tool | [system-pdn.md](./system-pdn.md) |
+| Teoria + landscape tool | [system-pdn.md](./system-pdn.md) · [spice-power-chain.md](./spice-power-chain.md) |
 
 ## Design package (consegna)
 

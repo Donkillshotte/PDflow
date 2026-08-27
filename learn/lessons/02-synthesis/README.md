@@ -97,6 +97,15 @@ Il file è un dump delle statistiche Yosys. Cerca:
 dal placement in poi. Non sorprenderti se lo slack liberty-only di `sta` è diverso
 dal finish SPEF (−0.04 ns). Tabella: `golden-metrics.md`.
 
+## Catena power & SPICE
+
+La synthesis istanzia **celle .lib** con modelli leakage/switching/internal → base di `report_power` e sink mesh SPICE. Approfondimento: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-02-synthesis) · demo [`nangate_inverter_demo.sp`](../../sim/spice/nangate_inverter_demo.sp).
+
+| Collegamento | Dove |
+|---|---|
+| FlowLab | [synth](/flusso?phase=synth) |
+| Liberty | `platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib` |
+
 ## Durata stimata
 
 README + walkthrough 40 min, LAB 75 min, **totale ~2 ore**.

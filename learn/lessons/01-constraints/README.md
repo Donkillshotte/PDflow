@@ -127,6 +127,15 @@ quanto l’SDC sposta questi numeri, non “se make è verde”.
 
 Quiz: `learn/workbook/quiz.md` sezione 01.
 
+## Catena power & SPICE
+
+SDC e `config.mk` definiscono **frequenza e margine** → influenzano switching power a finish. Vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-01-constraints).
+
+| Collegamento | Dove |
+|---|---|
+| FlowLab | [synth](/flusso?phase=synth) (preset SDC) |
+| Downstream | `report_power` a lezione 07 |
+
 ## Durata stimata
 
 - README: 30–40 min

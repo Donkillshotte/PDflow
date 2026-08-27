@@ -81,6 +81,22 @@ Fill **non** cambia la funzione. Cambia densità CMP e un po’ i parassiti. Fin
 
 Senza `learn/workbook/mio-progetto-finale.md` il corso **non è finito**, anche se `make finish` è verde.
 
+## Catena power & SPICE (modulo post-corso consigliato)
+
+Finish produce `6_final.odb`, heatmap IR e abilita la **catena SPICE** completa:
+
+1. `activity_power` → I_avg  
+2. `chip_pdn_ir` → mesh `write_pg_spice`  
+3. `system_pdn` → ngspice ladder  
+4. `power_chain` → tutto + export lab  
+
+Guida master: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-07-finish) · Hub [PKG](/pkg) · FlowLab [finish](/flusso?phase=finish) · [PKG phase](/flusso?phase=pkg).
+
+```bash
+FLOW_VARIANT=learn ./learn/scripts/run_power_chain.sh   # dopo make finish
+FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh # variante FlowLab
+```
+
 ## Durata
 
 README+walkthrough 50 min, LAB 90 min, progetto 60 min, **totale ~3 ore**.
