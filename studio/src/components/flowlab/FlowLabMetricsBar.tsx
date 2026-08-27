@@ -120,12 +120,12 @@ export function FlowLabMetricsBar({
           </div>
         </div>
       )}
-      {metrics.map((m) => {
+      {metrics.map((m, i) => {
         const scary =
           !m.expected &&
           (m.value.startsWith("-") || /violation count\s+[1-9]/i.test(m.value));
         return (
-          <div key={`${m.label}-${m.source}`} className="fl-metric-card">
+          <div key={`${m.source}-${m.label}-${i}`} className="fl-metric-card">
             <Activity size={16} aria-hidden />
             <div>
               <span>
