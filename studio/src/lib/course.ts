@@ -183,6 +183,7 @@ const ALLOWED_CONTENT_PREFIXES = [
   "lessons/",
   "reference/",
   "workbook/",
+  "sim/reports/",
   "README.md",
   "CURRICULUM.md",
   "AUDIT.md",
