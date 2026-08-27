@@ -9,22 +9,22 @@ Tapeout reale richiede anche:
 
 1. **Bump / pad array** — C4, μbump, copper pillar
 2. **RDL** — redistribuzione I/O verso i bump
-3. **Package PDN** — planes, vias, decoupling dal die al board
+3. **Package / System PDN** — VRM → board → package → die
 4. **Signoff package** — SI, PI, thermal, warpage (tool esterni)
 
 OpenROAD espone API (`assign_io_bump`, `make_io_bump_array`, `rdl_route`,
 `analyze_power_grid -source_type BUMPS`) ma **ORFS GCD non ha LEF/tech di
-package**. Questa sezione documenta i concetti e collega la demo System PDN.
+package**. Questa sezione documenta i concetti e collega le due demo PDN.
 
 ## Stack tipico (die → board)
 
 ```
 ┌─────────────────────────────┐
-│  Board PDN / VRMs           │  ← system PDN (SI/PI tools)
+│  Board PDN / VRMs           │  ← System PDN (ngspice ladder · fase PKG)
 ├─────────────────────────────┤
-│  Package planes + balls     │  ← BGA / LGA
+│  Package planes + balls     │  ← BGA / LGA (lumped in System PDN)
 ├─────────────────────────────┤
-│  Bumps (C4 / μbump)         │  ← analyze_power_grid -source_type BUMPS
+│  Bumps (C4 / μbump)         │  ← chip IR opzionale: source_type BUMPS
 ├─────────────────────────────┤
 │  RDL / AP layers            │  ← rdl_route (API only qui)
 ├─────────────────────────────┤
@@ -37,8 +37,8 @@ package**. Questa sezione documenta i concetti e collega la demo System PDN.
 | Azione | Dove |
 |---|---|
 | Chip PDN + `check_power_grid` | FlowLab fase **PDN** |
-| Static IR STRAPS/FULL/BUMPS + package R | FlowLab fase **PKG** · OpenROAD PDNSim |
-| Transient IR su `write_pg_spice` | stesso run · `pdn_transient.py` (VoltSpot/vyges-style) |
+| **System PDN** VRM→board→pkg→die · Z(f) + load-step | FlowLab fase **PKG** · `run_system_pdn.sh` · ngspice |
+| Chip IR static+transient (opzionale) | `run_chip_pdn_ir.sh` · PDNSim + `pdn_transient.py` |
 | Heatmap IR finish | Galleria `orfs_final_ir_drop.png` · L07 |
 | Teoria + landscape tool | [system-pdn.md](./system-pdn.md) |
 
@@ -49,7 +49,7 @@ Un **design package** tipico per review include:
 - Netlist + SDC + liberty corner
 - DEF/ODB floorplan e PDN strategy
 - Report WNS/TNS, DRC, LVS, antenna
-- IR drop / EM summary (chip + package se disponibile)
+- IR drop / EM summary (chip + system PDN se disponibile)
 - GDS/OAS + manifest layer
 - BOM package / bump map (se tapeout)
 
@@ -58,8 +58,9 @@ Template corso: [progetto-finale-template.md](../workbook/progetto-finale-templa
 ## Limiti onesti su Nangate45 GCD
 
 - Nessun LEF bump/RDL nella platform tutorial
-- `source_type BUMPS` usa un **pattern sintetico** OpenROAD (PSM-0073)
-- Thermal / board SI non installati in VM
+- System PDN = ladder *lumped* educativo (non board S-parameter)
+- `source_type BUMPS` (chip IR) usa un **pattern sintetico** OpenROAD (PSM-0073)
+- Thermal / full-wave board SI non installati in VM
 
 Per un lab packaging reale serve un design ORFS con bump LEF oppure un
 flusso vendor — fuori scope del percorso 00–07 obbligatorio.

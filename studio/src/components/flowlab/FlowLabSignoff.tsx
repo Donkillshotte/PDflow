@@ -13,7 +13,7 @@ const SIGNOFF = [
   {
     id: "system_pdn",
     label: "System PDN",
-    hint: "IR STRAPS · FULL · BUMPS",
+    hint: "Z(f) · die droop · ngspice",
     icon: Activity,
     long: false,
   },

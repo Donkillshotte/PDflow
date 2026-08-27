@@ -1,50 +1,55 @@
 # System PDN & packaging analysis — tool landscape
 
-## Cosa serve per analisi «vere»
+## Due analisi distinte
 
-| Livello | Domanda | Open-source maturo? |
+| Livello | Domanda | Cosa usa Studio |
 |---|---|---|
-| Chip PDN static IR | Griglia on-die regge la corrente media? | **Sì** — OpenROAD **PDNSim** (`analyze_power_grid`) |
-| Package / bump model | Come entrano le alimentazioni (C4, strap)? | **Parziale** — `set_pdnsim_source_settings` + `source_type BUMPS\|STRAPS\|FULL` + `external_resistance` |
-| Transient / dynamic IR | Droop al switching (IR + Ldi/dt)? | **Parziale** — PDNSim è **static-only**; servono engine esterni |
-| Board SI/PI | Plane, VRM, S-parameter | Quasi solo tool commerciali (ADS, SIwave, …) |
+| **Chip PDN** | Griglia on-die regge IR statico / droop mesh? | OpenROAD **PDNSim** + `write_pg_spice` + `pdn_transient.py` → `run_chip_pdn_ir.sh` |
+| **System PDN** | Catena VRM → board → package → die: Z(f) e load-step? | **ngspice** ladder gerarchico → `run_system_pdn.sh` / FlowLab **PKG** |
 
-## Tool open / academic rilevanti
+Non sono la stessa cosa: package R su PDNSim è ancora un modello *chip-centric*.
+System PDN simula la catena di alimentazione fuori dal die.
 
-1. **OpenROAD PDNSim** (integrato) — static IR, EM density base, `write_pg_spice`
-2. **VoltSpot** (UVa) — transient PDN pre-RTL (IR + Ldi/dt + LC), SuperLU
-3. **vyges-em-ir** — static + backward-Euler dynamic IR su rete resistiva / DEF
-4. **Raptor / EMSpice** (research) — transient Krylov / multiphysics EM+IR (più pesanti da installare)
-5. **ngspice** — può simulare netlist SPICE esportate (lente su mesh grandi)
+## System PDN (fase PKG)
 
-## Cosa fa Studio adesso
+`run_system_pdn.sh` / azione `system_pdn`:
 
-`run_system_pdn.sh` / azione FlowLab **PKG** (`system_pdn`):
+1. Legge `learn/system_pdn/default.json` (VRM, board plane/decap, package RLC/bumps, C_die)
+2. Stima `I_die` da `activity_power` / report, oppure `I_DIE_AVG=`
+3. **ngspice TRAN** — load-step al die → droop su VRM / board / pkg / die
+4. **ngspice AC** — \|Z(f)\| visto al die (Iac=1A)
 
-1. **Statico OpenROAD** con bump pitch, `external_resistance` (package R),
-   STRAPS / FULL / BUMPS + mappa tensioni
-2. **`write_pg_spice -source_type BUMPS`** → mesh reale del chip
-3. **`pdn_transient.py`** — solve sparse diretto (SciPy) statico + **backward-Euler
-   transient** con package R/L e decap, peak switching (upper bound)
+Report: `learn/sim/reports/system_pdn_<variant>.json`  
+Work: `results/.../system_pdn/` (netlist + wrdata)
 
-Validazione sul GCD flowlab: static IR engine ≈ **4.56 mV** vs OpenROAD
-≈ **4.47 mV** (accordo ~2%). Transient droop tipicamente **più alto** del static
-(peak×N simultaneous switch) — comportamento atteso.
+```bash
+FLOW_VARIANT=flowlab ./learn/scripts/run_system_pdn.sh
+# oppure
+I_DIE_AVG=0.002 FLOW_VARIANT=flowlab ./learn/scripts/run_system_pdn.sh
+```
 
-## Limiti onesti
-
-- Nessun LEF bump/RDL reale su nangate45 GCD
-- Transient = worst-case simultaneous switching, non VCD-accurate
-- Board planes / VRM restano fuori scope
-- Non sostituisce Voltus / RedHawk per tapeout
-
-## Come rilanciare
+## Chip PDN IR (opzionale)
 
 ```bash
 FLOW_VARIANT=flowlab PKG_R=0.05 PKG_L=2e-10 PEAK_FACTOR=8 \
-  ./learn/scripts/run_system_pdn.sh
+  ./learn/scripts/run_chip_pdn_ir.sh
 ```
 
-Report: `learn/sim/reports/pdn_transient_<variant>.json`  
-Wave: `learn/sim/reports/pdn_transient_<variant>.wave.csv`  
-Spice: `results/.../pdn/pg_vdd_bumps.sp`
+Report: `learn/sim/reports/pdn_chip_ir_<variant>.json`  
+(e copia legacy `pdn_transient_<variant>.json`)
+
+Validazione GCD flowlab: static IR engine ≈ **4.56 mV** vs OpenROAD ≈ **4.47 mV**.
+
+## Tool open / academic rilevanti
+
+1. **OpenROAD PDNSim** — static IR on-die, `write_pg_spice`
+2. **ngspice** — System PDN AC/TRAN sul ladder (quello usato in PKG)
+3. **VoltSpot** / **vyges-em-ir** — transient IR su mesh (ispirazione per `pdn_transient.py`)
+4. Board SI/PI full-wave — tipicamente tool commerciali (ADS, SIwave, …)
+
+## Limiti onesti
+
+- System PDN = modello *lumped* educativo (non S-parameter board reale)
+- Chip PDN transient = worst-case simultaneous switching, non VCD-accurate
+- Nessun LEF bump/RDL reale su nangate45 GCD
+- Non sostituisce Voltus / RedHawk per tapeout

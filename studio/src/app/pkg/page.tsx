@@ -3,7 +3,7 @@ import Link from "next/link";
 export const metadata = {
   title: "PKG · Design package · OpenROAD Studio",
   description:
-    "System PDN static+transient, bump/package models e checklist design package.",
+    "System PDN gerarchico (VRM→board→package→die), chip PDN e checklist design package.",
 };
 
 export default function PkgPage() {
@@ -13,18 +13,17 @@ export default function PkgPage() {
         <p className="eyebrow">Design package</p>
         <h1>PKG · Packaging &amp; System PDN</h1>
         <p>
-          Analisi power integrity a due livelli: <strong>static IR</strong> con
-          OpenROAD PDNSim (bump/strap + package R) e <strong>transient droop</strong>{" "}
-          sul mesh <code>write_pg_spice</code> (engine Studio ispirato a VoltSpot /
-          vyges-em-ir).
+          Due analisi separate: <strong>System PDN</strong> (VRM → board → package
+          → die, Z(f) + load-step con ngspice) e <strong>Chip PDN</strong> (griglia
+          on-die, gridcheck / PDNSim opzionale).
         </p>
       </header>
 
       <section className="pkg-hero-stack" aria-label="Stack die to board">
-        <div className="pkg-layer board">Board / VRM · fuori scope (SI/PI commerciali)</div>
-        <div className="pkg-layer pkg">Package R/L · external_resistance + Lpkg</div>
-        <div className="pkg-layer bumps">Bumps C4 proxy · source_type BUMPS</div>
-        <div className="pkg-layer chip">Chip PDN mesh · PDNSim + transient</div>
+        <div className="pkg-layer board">VRM · regolatore + Cout</div>
+        <div className="pkg-layer pkg">Board · plane / bulk / HF decap</div>
+        <div className="pkg-layer bumps">Package · RLC + bumps</div>
+        <div className="pkg-layer chip">Die · C_die + corrente di carico</div>
       </section>
 
       <div className="pkg-grid">
@@ -32,16 +31,17 @@ export default function PkgPage() {
           <h2>1. Chip PDN</h2>
           <p>
             Connettività VDD/VSS con <code>check_power_grid</code> dopo floorplan.
+            IR on-die opzionale: <code>run_chip_pdn_ir.sh</code>.
           </p>
           <Link className="btn-primary" href="/flusso?phase=pdn">
             Fase PDN
           </Link>
         </article>
         <article className="pkg-card">
-          <h2>2. System PDN + transient</h2>
+          <h2>2. System PDN</h2>
           <p>
-            Static STRAPS/FULL/BUMPS + solve transient IR (peak switching, package
-            R/L, decap). Report JSON e waveform CSV.
+            Ladder gerarchico ngspice: impedance Z(f) al die e transient droop al
+            load-step. Config in <code>learn/system_pdn/default.json</code>.
           </p>
           <Link className="btn-primary" href="/flusso?phase=pkg">
             Esegui in FlowLab
@@ -70,11 +70,10 @@ export default function PkgPage() {
         <article className="pkg-card">
           <h2>4. Stack open usato</h2>
           <ul className="pkg-check">
-            <li>OpenROAD PDNSim · static IR</li>
-            <li>write_pg_spice · mesh R + sink I</li>
-            <li>pdn_transient.py · backward-Euler</li>
-            <li>ngspice installato (opzionale / futuro)</li>
-            <li>Validato: static ≈ OpenROAD (±2%)</li>
+            <li>ngspice · System PDN AC + TRAN</li>
+            <li>system_pdn_hier.py · report JSON</li>
+            <li>OpenROAD gridcheck · Chip PDN</li>
+            <li>PDNSim + pdn_transient · chip IR opzionale</li>
           </ul>
         </article>
       </div>

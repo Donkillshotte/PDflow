@@ -94,11 +94,11 @@ export const PHASES: Phase[] = [
     label: "PKG",
     title: "Package · System PDN",
     action: "system_pdn",
-    hint: "BUMPS · STRAPS · FULL",
-    help: "Analisi IR con modelli di alimentazione package/board (STRAPS, FULL, BUMPS). Teoria design package in /pkg.",
-    tool: "OpenROAD analyze_power_grid",
+    hint: "VRM → board → pkg → die",
+    help: "System PDN gerarchico con ngspice: Z(f) e load-step (VRM/board/package/die). Non è chip PDNSim. Docs in /pkg.",
+    tool: "ngspice · system_pdn_hier",
     icon: "package",
-    estTime: "~15 s",
+    estTime: "~5 s",
   },
 ];
 

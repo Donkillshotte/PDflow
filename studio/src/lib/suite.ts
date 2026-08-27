@@ -119,7 +119,7 @@ export async function getSuiteStatus() {
       ok:
         fs.existsSync(path.join(resultsDir("flowlab"), ".system_pdn.ok")) ||
         fs.existsSync(path.join(resultsDir("learn"), ".system_pdn.ok")),
-      detail: "analyze_power_grid STRAPS/FULL/BUMPS · fase PKG",
+      detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · fase PKG",
       action: "system_pdn",
       href: "/flusso?phase=pkg",
     },

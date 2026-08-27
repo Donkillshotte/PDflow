@@ -1,110 +1,74 @@
 #!/usr/bin/env bash
-# System / package PDN analysis — static (OpenROAD PDNSim) + transient IR.
+# Hierarchical *System* PDN — VRM → board → package → die (ngspice).
 #
-# Stack (open ecosystem):
-#   1. OpenROAD psm: set_pdnsim_source_settings + analyze_power_grid
-#      + write_pg_spice  (static IR, package R, bump/strap sources)
-#   2. learn/scripts/pdn_transient.py — backward-Euler dynamic IR on that
-#      SPICE mesh (VoltSpot / vyges-em-ir style), with package R/L + decap
+# This is NOT chip PDNSim. For on-die IR (OpenROAD + write_pg_spice +
+# pdn_transient.py) use: learn/scripts/run_chip_pdn_ir.sh
 #
 # Uso: run_system_pdn.sh
 # Env:
 #   FLOW_VARIANT=learn|flowlab
-#   PKG_R=0.05          # package series resistance (ohm)
-#   PKG_L=2e-10         # package series inductance (H)
-#   C_DECAP=50e-15      # decap per load node (F)
-#   PEAK_FACTOR=8       # simultaneous-switch peak vs average current
+#   SYSTEM_PDN_CONFIG=learn/system_pdn/default.json
+#   I_DIE_AVG=0          # 0 = auto from activity_power / reports
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VARIANT="${FLOW_VARIANT:-learn}"
-PKG_R="${PKG_R:-0.05}"
-PKG_L="${PKG_L:-2e-10}"
-C_DECAP="${C_DECAP:-50e-15}"
-PEAK_FACTOR="${PEAK_FACTOR:-8}"
+CFG="${SYSTEM_PDN_CONFIG:-${ROOT}/learn/system_pdn/default.json}"
+I_DIE_AVG="${I_DIE_AVG:-0}"
 
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
-LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
-ODB="${RES}/6_final.odb"
-SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
-
-[[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB} — esegui finish (variant=${VARIANT})"; exit 1; }
-[[ -f "${LIB}" ]] || { echo "FAIL manca liberty"; exit 1; }
-[[ -f "${SDC}" ]] || { echo "FAIL manca SDC"; exit 1; }
-
 OUT_DIR="${ROOT}/learn/sim/reports"
-mkdir -p "${OUT_DIR}" "${RES}/pdn"
+WORK="${RES}/system_pdn"
 LOG="${OUT_DIR}/system_pdn_${VARIANT}.log"
+REPORT="${OUT_DIR}/system_pdn_${VARIANT}.json"
 STAMP="${RES}/.system_pdn.ok"
-SPICE_BUMPS="${RES}/pdn/pg_vdd_bumps.sp"
-VOLT_BUMPS="${RES}/pdn/ir_bumps.csv"
-TRANSIENT_JSON="${OUT_DIR}/pdn_transient_${VARIANT}.json"
-TRANSIENT_WAVE="${OUT_DIR}/pdn_transient_${VARIANT}.wave.csv"
 
-cd "${FLOW}"
-openroad -no_init -no_splash -exit <<EOF | tee "${LOG}"
-read_liberty ${LIB}
-read_db ${ODB}
-read_sdc ${SDC}
-set_power_activity -global -activity 0.2 -duty 0.5
-report_power
+mkdir -p "${OUT_DIR}" "${WORK}"
+: > "${LOG}"
 
-# Package-aware static source model (OpenROAD PDNSim)
-# bump_* in microns per OpenROAD docs; external_resistance = package R
-set_pdnsim_source_settings -bump_dx 140 -bump_dy 140 -bump_size 70 -bump_interval 3 -external_resistance ${PKG_R}
+[[ -f "${CFG}" ]] || { echo "FAIL manca config ${CFG}"; exit 1; }
 
-puts "=== STATIC STRAPS (board strap proxy) ==="
-analyze_power_grid -net VDD -source_type STRAPS
-analyze_power_grid -net VSS -source_type STRAPS
+# Prefer finished design if present (for current estimate); not strictly required
+if [[ -f "${RES}/6_final.odb" ]]; then
+  echo "=== System PDN · finish ODB presente (${VARIANT}) ===" | tee -a "${LOG}"
+else
+  echo "=== System PDN · ODB assente — uso I_DIE default/config ===" | tee -a "${LOG}"
+fi
 
-puts "=== STATIC FULL ==="
-analyze_power_grid -net VDD -source_type FULL
-analyze_power_grid -net VSS -source_type FULL
+echo "=== Hierarchical System PDN (ngspice) · VRM→board→pkg→die ===" | tee -a "${LOG}"
+EXTRA=()
+if [[ "${I_DIE_AVG}" != "0" && -n "${I_DIE_AVG}" ]]; then
+  EXTRA+=(--i-die "${I_DIE_AVG}")
+fi
 
-puts "=== STATIC BUMPS (C4-like package bumps) + voltage map ==="
-analyze_power_grid -net VDD -source_type BUMPS -voltage_file ${VOLT_BUMPS}
-analyze_power_grid -net VSS -source_type BUMPS
-
-puts "=== EXPORT write_pg_spice (BUMPS) for transient engine ==="
-write_pg_spice -net VDD -source_type BUMPS ${SPICE_BUMPS}
-
-puts "SYSTEM_PDN_STATIC_DONE ${VARIANT}"
-EOF
-
-rg -q 'SYSTEM_PDN_STATIC_DONE' "${LOG}"
-rg -q 'Worstcase IR drop' "${LOG}"
-[[ -f "${SPICE_BUMPS}" ]] || { echo "FAIL manca spice ${SPICE_BUMPS}"; exit 1; }
-
-echo "=== TRANSIENT IR (pdn_transient.py · VoltSpot/vyges-style) ===" | tee -a "${LOG}"
-export PYTHONPATH="/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
-python3 "${ROOT}/learn/scripts/pdn_transient.py" \
-  --spice "${SPICE_BUMPS}" \
-  --out "${TRANSIENT_JSON}" \
-  --wave "${TRANSIENT_WAVE}" \
-  --mode BUMPS \
-  --pkg-r "${PKG_R}" \
-  --pkg-l "${PKG_L}" \
-  --c-decap "${C_DECAP}" \
-  --peak-factor "${PEAK_FACTOR}" \
+python3 "${ROOT}/learn/scripts/system_pdn_hier.py" \
+  --config "${CFG}" \
+  --out-dir "${WORK}" \
+  --report "${REPORT}" \
+  --repo "${ROOT}" \
+  --variant "${VARIANT}" \
+  "${EXTRA[@]}" \
   2>&1 | tee -a "${LOG}"
 
-rg -q 'PDN_TRANSIENT_DONE' "${LOG}"
-[[ -f "${TRANSIENT_JSON}" ]] || { echo "FAIL manca ${TRANSIENT_JSON}"; exit 1; }
+rg -q 'SYSTEM_PDN_HIER_DONE' "${LOG}"
+[[ -f "${REPORT}" ]] || { echo "FAIL manca ${REPORT}"; exit 1; }
 
 python3 - <<PY | tee -a "${LOG}"
 import json
-r=json.load(open("${TRANSIENT_JSON}"))
+r=json.load(open("${REPORT}"))
+assert r.get("kind")=="system_pdn", r.get("kind")
+assert r.get("engine")=="ngspice-hierarchical"
 print("SUMMARY", r["summary"])
-print("STATIC_IR_mV", round(r["static"]["worst_ir"]*1e3, 4))
-print("TRANSIENT_DROOP_mV", round(r["transient"]["worst_droop"]*1e3, 4))
-print("TRANSIENT_DROOP_PCT", round(r["transient"]["worst_droop_pct"], 4))
+print("DIE_DROOP_mV", round(r["transient"]["droop_mv"], 4))
+print("ZMAX_mOhm", round(r["impedance"]["z_max_mohm"], 4))
+print("F_ZMAX_Hz", r["impedance"]["f_at_zmax_hz"])
+print("DOMAINS", ",".join(r["domains"]))
 PY
 
 date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
 echo "SYSTEM_PDN_DONE ${VARIANT}" | tee -a "${LOG}"
-echo "OK system PDN+transient ${VARIANT}"
-echo "  static log: ${LOG}"
-echo "  spice:      ${SPICE_BUMPS}"
-echo "  transient:  ${TRANSIENT_JSON}"
-echo "  waveform:   ${TRANSIENT_WAVE}"
-echo "Nota: OpenROAD PDNSim=static; transient=studio engine su write_pg_spice (non LEF package reale)."
+echo "OK System PDN hierarchical ${VARIANT}"
+echo "  log:    ${LOG}"
+echo "  report: ${REPORT}"
+echo "  work:   ${WORK}"
+echo "Nota: chip on-die IR → ./learn/scripts/run_chip_pdn_ir.sh"

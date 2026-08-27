@@ -212,7 +212,7 @@ export function listOpenTargets(): {
     { id: "run-check", label: "Run · verifica toolchain", action: "check" },
     { id: "run-rtl-sim", label: "Run · sim RTL (Icarus)", action: "rtl_sim" },
     { id: "run-gridcheck", label: "Run · gridcheck PDN", action: "gridcheck" },
-    { id: "run-system-pdn", label: "Run · System PDN IR", action: "system_pdn" },
+    { id: "run-system-pdn", label: "Run · System PDN (hier)", action: "system_pdn" },
     {
       id: "run-activity",
       label: "Run · activity → power",

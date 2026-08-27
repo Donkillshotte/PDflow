@@ -99,7 +99,7 @@ export const FLOW_PHASES = [
     label: "PKG",
     title: "Package · System PDN",
     action: "system_pdn" as const,
-    hint: "BUMPS · STRAPS · FULL",
+    hint: "VRM → board → pkg → die",
   },
 ] as const;
 

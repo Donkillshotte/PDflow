@@ -118,6 +118,6 @@ Screenshot (UI corrente): `studio/docs/images/flowlab/`
 | Badge rosso «N Issues» in basso | **Next.js DevTools** (solo `next dev`), non ORFS | Disabilitato in `next.config.ts`; in produzione (`next start`) non compare. ORFS = digest terminale |
 | WNS −0.04 / setup violations | Golden nangate45 GCD | Atteso (vedi `golden-metrics.md`); non è un crash del wrapper |
 | `RSZ-0062` Unable to repair | Timing residuale post-CTS/GRT | Atteso sul tutorial; rivedi solo se WNS << −0.15 |
-| Fase PDN / PKG | Analisi power | FlowLab stepper: **PDN** = gridcheck; **PKG** = system PDN · hub `/pkg` |
+| Fase PDN / PKG | Analisi power | **PDN** = chip gridcheck; **PKG** = System PDN gerarchico (ngspice VRM→board→pkg→die) · hub `/pkg` |
 
 Log job: `learn/.studio-jobs.json` · lock: `learn/.studio-run.lock`

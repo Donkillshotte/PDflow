@@ -143,10 +143,11 @@ OpenROAD espone:
 | Pezzo | Dove |
 |---|---|
 | Chip PDN gridcheck | FlowLab fase **PDN** · `FLOW_VARIANT=… ./learn/scripts/run_gridcheck.sh` |
-| System PDN IR | FlowLab fase **PKG** · azione `system_pdn` · `run_system_pdn.sh` |
+| System PDN (VRM→board→pkg→die) | FlowLab fase **PKG** · `system_pdn` · `run_system_pdn.sh` · ngspice |
+| Chip IR static+transient (opzionale) | `run_chip_pdn_ir.sh` · PDNSim + `pdn_transient.py` |
 | Hub packaging | [`/pkg`](/pkg) · docs `system-pdn.md` + `pkg-design-package.md` |
 
-**Limite onesto:** Nangate45 GCD non ha LEF/tech di packaging; `BUMPS` usa un
+**Limite onesto:** System PDN è un ladder *lumped* educativo; Nangate45 GCD non ha LEF/tech di packaging. Chip IR `BUMPS` usa un
 pattern sintetico OpenROAD (PSM-0073), non un package tapeout-ready.
 
 **Estensioni future:**
@@ -175,7 +176,7 @@ Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 |---|---|
 | `rtl_sim` | Sim RTL Icarus |
 | `gridcheck` | `check_power_grid` |
-| `system_pdn` | `analyze_power_grid` STRAPS/FULL/BUMPS |
+| `system_pdn` | ngspice System PDN · VRM→board→pkg→die |
 | `activity_power` | `set_power_activity` + `report_power` |
 | `klayout_drc` | GDS DRC (lungo) |
 | `/api/inspect` | ODB / STA / Yosys (+ note hook) |

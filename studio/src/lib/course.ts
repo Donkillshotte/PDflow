@@ -255,7 +255,7 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materiali/reference/system-pdn.md",
     title: "System PDN",
     group: "Packaging",
-    description: "analyze_power_grid STRAPS · FULL · BUMPS — IR package/board proxy.",
+    description: "ngspice hierarchical: VRM → board → package → die · Z(f) + load-step.",
   },
   {
     href: "/materiali/reference/pkg-design-package.md",

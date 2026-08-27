@@ -23,7 +23,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   test_course: null,
   rtl_sim: null,
   gridcheck: "floorplan",
-  system_pdn: "finish",
+  system_pdn: null,
   activity_power: "finish",
   klayout_drc: "finish",
   synth: null,
@@ -328,10 +328,6 @@ export function preflightAction(
     gridcheck: {
       rel: "2_4_floorplan_pdn.odb",
       hint: "esegui prima floorplan (PDN)",
-    },
-    system_pdn: {
-      rel: "6_final.odb",
-      hint: "esegui prima finish",
     },
     activity_power: {
       rel: "6_final.odb",

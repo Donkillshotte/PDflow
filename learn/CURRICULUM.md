@@ -218,7 +218,8 @@ Mappa completa: [`learn/reference/extended-flow.md`](./reference/extended-flow.m
 |---|---|---|
 | Sim RTL (Icarus) + VCD | `learn/scripts/run_rtl_sim.sh` · `rtl_sim` | READY |
 | Gridcheck PDN | `run_gridcheck.sh` · `gridcheck` · FlowLab fase PDN | READY |
-| System PDN (IR) | `run_system_pdn.sh` · `system_pdn` · FlowLab fase PKG | READY (demo) |
+| System PDN (hier) | `run_system_pdn.sh` · `system_pdn` · FlowLab fase PKG · ngspice | READY (demo) |
+| Chip PDN IR (opt) | `run_chip_pdn_ir.sh` · PDNSim + transient | READY (demo) |
 | Activity → power | `run_activity_power.sh` · `activity_power` | READY (sintetica) |
 | KLayout GDS DRC | `run_klayout_drc.sh` · `klayout_drc` | READY (dopo finish) |
 | Bump / RDL / design package | `/pkg` · docs Packaging | PARTIAL (teoria + demo BUMPS) |

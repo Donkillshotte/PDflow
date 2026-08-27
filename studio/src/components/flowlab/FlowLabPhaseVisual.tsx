@@ -268,8 +268,20 @@ export function FlowLabPhaseVisual({
   const [loading, setLoading] = useState(false);
   const [pdnReport, setPdnReport] = useState<{
     summary?: string;
-    static?: { worst_ir?: number; worst_ir_pct?: number };
-    transient?: { worst_droop?: number; worst_droop_pct?: number; worst_time_s?: number };
+    kind?: string;
+    engine?: string;
+    transient?: {
+      droop_mv?: number;
+      droop_pct?: number;
+      worst_droop?: number;
+      worst_droop_pct?: number;
+    };
+    impedance?: {
+      z_max_mohm?: number;
+      f_at_zmax_hz?: number;
+      z_target_mohm?: number;
+      pass_target?: boolean | null;
+    };
   } | null>(null);
 
   const load = useCallback(async () => {
@@ -283,19 +295,27 @@ export function FlowLabPhaseVisual({
       setInspect(ri.ok ? await ri.json() : null);
       setResults(rr.ok ? await rr.json() : null);
       if (phaseId === "pkg") {
-        const rp = await fetch(
-          `/api/content?path=${encodeURIComponent(`sim/reports/pdn_transient_${variant}.json`)}`,
-        );
-        if (rp.ok) {
+        const paths = [
+          `sim/reports/system_pdn_${variant}.json`,
+          `sim/reports/pdn_chip_ir_${variant}.json`,
+          `sim/reports/pdn_transient_${variant}.json`,
+        ];
+        let loaded = null as typeof pdnReport;
+        for (const p of paths) {
+          const rp = await fetch(`/api/content?path=${encodeURIComponent(p)}`);
+          if (!rp.ok) continue;
           const body = await rp.json();
           try {
-            setPdnReport(JSON.parse(body.content));
+            const parsed = JSON.parse(body.content);
+            loaded = parsed;
+            if (parsed?.kind === "system_pdn" || parsed?.engine === "ngspice-hierarchical") {
+              break;
+            }
           } catch {
-            setPdnReport(null);
+            /* try next */
           }
-        } else {
-          setPdnReport(null);
         }
+        setPdnReport(loaded);
       }
     } finally {
       setLoading(false);
@@ -504,58 +524,50 @@ export function FlowLabPhaseVisual({
 
       {phaseId === "pkg" && (
         <div className="fl-vis-body fl-vis-pkg">
-          <svg viewBox="0 0 320 150" className="fl-vis-pkg-svg" aria-label="Package stack">
+          <svg viewBox="0 0 320 150" className="fl-vis-pkg-svg" aria-label="System PDN stack">
             <rect width="320" height="150" rx="8" fill="#0a0e14" />
-            <rect x="40" y="20" width="240" height="22" rx="4" fill="rgba(88,166,255,0.35)" stroke="#58a6ff" />
-            <text x="160" y="35" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Board / VRM
+            <rect x="40" y="16" width="240" height="22" rx="4" fill="rgba(88,166,255,0.35)" stroke="#58a6ff" />
+            <text x="160" y="31" textAnchor="middle" fill="#e6edf3" fontSize="9">
+              VRM
             </text>
-            <rect x="55" y="48" width="210" height="22" rx="4" fill="rgba(63,185,80,0.3)" stroke="#3fb950" />
-            <text x="160" y="63" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Package R/L
+            <rect x="55" y="44" width="210" height="22" rx="4" fill="rgba(63,185,80,0.3)" stroke="#3fb950" />
+            <text x="160" y="59" textAnchor="middle" fill="#e6edf3" fontSize="9">
+              Board plane / decap
             </text>
-            <rect x="70" y="76" width="180" height="22" rx="4" fill="rgba(240,136,62,0.35)" stroke="#f0883e" />
-            <text x="160" y="91" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Bumps · write_pg_spice
+            <rect x="70" y="72" width="180" height="22" rx="4" fill="rgba(240,136,62,0.35)" stroke="#f0883e" />
+            <text x="160" y="87" textAnchor="middle" fill="#e6edf3" fontSize="9">
+              Package RLC + bumps
             </text>
-            <rect x="90" y="104" width="140" height="22" rx="4" fill="rgba(210,153,34,0.3)" stroke="#d29922" />
-            <text x="160" y="119" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Chip PDN mesh
+            <rect x="90" y="100" width="140" height="22" rx="4" fill="rgba(210,153,34,0.3)" stroke="#d29922" />
+            <text x="160" y="115" textAnchor="middle" fill="#e6edf3" fontSize="9">
+              Die load
             </text>
-            <text x="160" y="142" textAnchor="middle" fill="#8b949e" fontSize="8">
-              Static PDNSim + transient IR
+            <text x="160" y="140" textAnchor="middle" fill="#8b949e" fontSize="8">
+              ngspice · Z(f) + load-step
             </text>
           </svg>
-          {pdnReport ? (
+          {pdnReport?.impedance || pdnReport?.kind === "system_pdn" ? (
             <>
               <div className="fl-vis-gauge-row">
                 <Gauge
-                  label="Static IR"
-                  value={
-                    pdnReport.static?.worst_ir != null
-                      ? pdnReport.static.worst_ir * 1000
-                      : null
-                  }
-                  min={0}
-                  max={50}
-                  unit=" mV"
-                  good="low"
-                />
-                <Gauge
-                  label="Transient droop"
-                  value={
-                    pdnReport.transient?.worst_droop != null
-                      ? pdnReport.transient.worst_droop * 1000
-                      : null
-                  }
+                  label="Die droop"
+                  value={pdnReport.transient?.droop_mv ?? null}
                   min={0}
                   max={100}
                   unit=" mV"
                   good="low"
                 />
                 <Gauge
+                  label="Zmax"
+                  value={pdnReport.impedance?.z_max_mohm ?? null}
+                  min={0}
+                  max={Math.max(100, (pdnReport.impedance?.z_target_mohm ?? 50) * 4)}
+                  unit=" mΩ"
+                  good="low"
+                />
+                <Gauge
                   label="Droop %"
-                  value={pdnReport.transient?.worst_droop_pct ?? null}
+                  value={pdnReport.transient?.droop_pct ?? null}
                   min={0}
                   max={10}
                   unit="%"
@@ -564,11 +576,27 @@ export function FlowLabPhaseVisual({
               </div>
               <p className="fl-vis-meta">{pdnReport.summary}</p>
             </>
+          ) : pdnReport?.transient?.worst_droop != null ? (
+            <>
+              <div className="fl-vis-gauge-row">
+                <Gauge
+                  label="Chip IR droop"
+                  value={pdnReport.transient.worst_droop * 1000}
+                  min={0}
+                  max={100}
+                  unit=" mV"
+                  good="low"
+                />
+              </div>
+              <p className="fl-vis-meta">
+                Report chip IR legacy — rilancia PKG per System PDN gerarchico
+              </p>
+            </>
           ) : (
             <p className="fl-vis-meta">
               {stageDone
-                ? "Report transient assente — rilancia System PDN"
-                : "Esegui PKG: OpenROAD static + transient su write_pg_spice"}
+                ? "Report System PDN assente — rilancia PKG"
+                : "Esegui PKG: System PDN VRM→board→pkg→die (ngspice)"}
             </p>
           )}
         </div>
