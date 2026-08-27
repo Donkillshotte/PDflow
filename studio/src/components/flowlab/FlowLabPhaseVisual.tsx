@@ -266,6 +266,11 @@ export function FlowLabPhaseVisual({
   const [inspect, setInspect] = useState<Inspect | null>(null);
   const [results, setResults] = useState<Results | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pdnReport, setPdnReport] = useState<{
+    summary?: string;
+    static?: { worst_ir?: number; worst_ir_pct?: number };
+    transient?: { worst_droop?: number; worst_droop_pct?: number; worst_time_s?: number };
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (phaseId === "rtl") return;
@@ -277,6 +282,21 @@ export function FlowLabPhaseVisual({
       ]);
       setInspect(ri.ok ? await ri.json() : null);
       setResults(rr.ok ? await rr.json() : null);
+      if (phaseId === "pkg") {
+        const rp = await fetch(
+          `/api/content?path=${encodeURIComponent(`sim/reports/pdn_transient_${variant}.json`)}`,
+        );
+        if (rp.ok) {
+          const body = await rp.json();
+          try {
+            setPdnReport(JSON.parse(body.content));
+          } catch {
+            setPdnReport(null);
+          }
+        } else {
+          setPdnReport(null);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -492,25 +512,65 @@ export function FlowLabPhaseVisual({
             </text>
             <rect x="55" y="48" width="210" height="22" rx="4" fill="rgba(63,185,80,0.3)" stroke="#3fb950" />
             <text x="160" y="63" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Package planes
+              Package R/L
             </text>
             <rect x="70" y="76" width="180" height="22" rx="4" fill="rgba(240,136,62,0.35)" stroke="#f0883e" />
             <text x="160" y="91" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Bumps · RDL
+              Bumps · write_pg_spice
             </text>
             <rect x="90" y="104" width="140" height="22" rx="4" fill="rgba(210,153,34,0.3)" stroke="#d29922" />
             <text x="160" y="119" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Chip PDN
+              Chip PDN mesh
             </text>
             <text x="160" y="142" textAnchor="middle" fill="#8b949e" fontSize="8">
-              System PDN · STRAPS / FULL / BUMPS
+              Static PDNSim + transient IR
             </text>
           </svg>
-          <p className="fl-vis-meta">
-            {stageDone
-              ? "Analisi system PDN completata — vedi log IR drop"
-              : "Esegui per confrontare IR con sorgenti package"}
-          </p>
+          {pdnReport ? (
+            <>
+              <div className="fl-vis-gauge-row">
+                <Gauge
+                  label="Static IR"
+                  value={
+                    pdnReport.static?.worst_ir != null
+                      ? pdnReport.static.worst_ir * 1000
+                      : null
+                  }
+                  min={0}
+                  max={50}
+                  unit=" mV"
+                  good="low"
+                />
+                <Gauge
+                  label="Transient droop"
+                  value={
+                    pdnReport.transient?.worst_droop != null
+                      ? pdnReport.transient.worst_droop * 1000
+                      : null
+                  }
+                  min={0}
+                  max={100}
+                  unit=" mV"
+                  good="low"
+                />
+                <Gauge
+                  label="Droop %"
+                  value={pdnReport.transient?.worst_droop_pct ?? null}
+                  min={0}
+                  max={10}
+                  unit="%"
+                  good="low"
+                />
+              </div>
+              <p className="fl-vis-meta">{pdnReport.summary}</p>
+            </>
+          ) : (
+            <p className="fl-vis-meta">
+              {stageDone
+                ? "Report transient assente — rilancia System PDN"
+                : "Esegui PKG: OpenROAD static + transient su write_pg_spice"}
+            </p>
+          )}
         </div>
       )}
     </div>

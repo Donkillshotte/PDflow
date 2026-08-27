@@ -1,40 +1,50 @@
-# System PDN — analisi IR con modelli di alimentazione package/board
+# System PDN & packaging analysis — tool landscape
 
-Stato: **PARTIAL → READY (demo Studio)** su GCD nangate45 tramite
-`analyze_power_grid -source_type STRAPS|FULL|BUMPS`.
+## Cosa serve per analisi «vere»
 
-## Cosa misura
-
-| Mode | Significato OpenROAD | Uso didattico |
+| Livello | Domanda | Open-source maturo? |
 |---|---|---|
-| **STRAPS** | Sorgenti come strap su metal alto | Proxy alimentazione da board/package strap |
-| **FULL** | Tutti i nodi metal come sorgenti | Limite inferiore IR (griglia “ideale”) |
-| **BUMPS** | Pattern bump C4 sintetico (pitch/size) | Proxy package bump — **non** LEF bump reale |
+| Chip PDN static IR | Griglia on-die regge la corrente media? | **Sì** — OpenROAD **PDNSim** (`analyze_power_grid`) |
+| Package / bump model | Come entrano le alimentazioni (C4, strap)? | **Parziale** — `set_pdnsim_source_settings` + `source_type BUMPS\|STRAPS\|FULL` + `external_resistance` |
+| Transient / dynamic IR | Droop al switching (IR + Ldi/dt)? | **Parziale** — PDNSim è **static-only**; servono engine esterni |
+| Board SI/PI | Plane, VRM, S-parameter | Quasi solo tool commerciali (ADS, SIwave, …) |
 
-Sul GCD tutorial i tre mode danno IR drop tipicamente **~10 mV** (~1% su 1.1 V):
-la PDN M1–M4–M7 basta. Su die mm² i numeri divergono e i bump contano.
+## Tool open / academic rilevanti
 
-## Come eseguirlo
+1. **OpenROAD PDNSim** (integrato) — static IR, EM density base, `write_pg_spice`
+2. **VoltSpot** (UVa) — transient PDN pre-RTL (IR + Ldi/dt + LC), SuperLU
+3. **vyges-em-ir** — static + backward-Euler dynamic IR su rete resistiva / DEF
+4. **Raptor / EMSpice** (research) — transient Krylov / multiphysics EM+IR (più pesanti da installare)
+5. **ngspice** — può simulare netlist SPICE esportate (lente su mesh grandi)
+
+## Cosa fa Studio adesso
+
+`run_system_pdn.sh` / azione FlowLab **PKG** (`system_pdn`):
+
+1. **Statico OpenROAD** con bump pitch, `external_resistance` (package R),
+   STRAPS / FULL / BUMPS + mappa tensioni
+2. **`write_pg_spice -source_type BUMPS`** → mesh reale del chip
+3. **`pdn_transient.py`** — solve sparse diretto (SciPy) statico + **backward-Euler
+   transient** con package R/L e decap, peak switching (upper bound)
+
+Validazione sul GCD flowlab: static IR engine ≈ **4.56 mV** vs OpenROAD
+≈ **4.47 mV** (accordo ~2%). Transient droop tipicamente **più alto** del static
+(peak×N simultaneous switch) — comportamento atteso.
+
+## Limiti onesti
+
+- Nessun LEF bump/RDL reale su nangate45 GCD
+- Transient = worst-case simultaneous switching, non VCD-accurate
+- Board planes / VRM restano fuori scope
+- Non sostituisce Voltus / RedHawk per tapeout
+
+## Come rilanciare
 
 ```bash
-FLOW_VARIANT=flowlab ./learn/scripts/run_system_pdn.sh
-# oppure da Studio: azione system_pdn / fase PKG
+FLOW_VARIANT=flowlab PKG_R=0.05 PKG_L=2e-10 PEAK_FACTOR=8 \
+  ./learn/scripts/run_system_pdn.sh
 ```
 
-Artefatti:
-
-- Log: `learn/sim/reports/system_pdn_<variant>.log`
-- Stamp: `results/nangate45/gcd/<variant>/.system_pdn.ok`
-- Richiede: `6_final.odb` (finish)
-
-## Cosa non è
-
-- Non è un modello board SI/PI (S-parameter / IBIS).
-- Non usa LEF di packaging reale (RDL, C4, μbump).
-- Heatmap IR del finish (`orfs_final_ir_drop.png`) resta il riferimento GUI.
-
-## Collegamenti
-
-- Chip PDN + gridcheck: fase **PDN** in FlowLab / `run_gridcheck.sh`
-- Packaging teorico: [pkg-design-package.md](./pkg-design-package.md)
-- Mappa flusso: [extended-flow.md](./extended-flow.md)
+Report: `learn/sim/reports/pdn_transient_<variant>.json`  
+Wave: `learn/sim/reports/pdn_transient_<variant>.wave.csv`  
+Spice: `results/.../pdn/pg_vdd_bumps.sp`

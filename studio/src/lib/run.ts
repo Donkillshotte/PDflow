@@ -163,7 +163,12 @@ function resolveCommand(
       args: [],
       cwd: REPO_ROOT,
       command: `FLOW_VARIANT=${variant} ${cmd}`,
-      env: { FLOW_VARIANT: variant },
+      env: {
+        FLOW_VARIANT: variant,
+        PYTHONPATH: `/usr/lib/python3/dist-packages${
+          process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ""
+        }`,
+      },
     };
   }
   if (action === "activity_power") {

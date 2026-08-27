@@ -37,9 +37,10 @@ package**. Questa sezione documenta i concetti e collega la demo System PDN.
 | Azione | Dove |
 |---|---|
 | Chip PDN + `check_power_grid` | FlowLab fase **PDN** |
-| IR STRAPS / FULL / BUMPS | FlowLab fase **PKG** · azione `system_pdn` |
+| Static IR STRAPS/FULL/BUMPS + package R | FlowLab fase **PKG** · OpenROAD PDNSim |
+| Transient IR su `write_pg_spice` | stesso run · `pdn_transient.py` (VoltSpot/vyges-style) |
 | Heatmap IR finish | Galleria `orfs_final_ir_drop.png` · L07 |
-| Teoria bump/RDL | questo documento + [extended-flow.md](./extended-flow.md) §8 |
+| Teoria + landscape tool | [system-pdn.md](./system-pdn.md) |
 
 ## Design package (consegna)
 

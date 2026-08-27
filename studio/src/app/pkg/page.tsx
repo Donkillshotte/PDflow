@@ -3,7 +3,7 @@ import Link from "next/link";
 export const metadata = {
   title: "PKG · Design package · OpenROAD Studio",
   description:
-    "Packaging, bump/RDL, system PDN e checklist design package per il corso Physical Design.",
+    "System PDN static+transient, bump/package models e checklist design package.",
 };
 
 export default function PkgPage() {
@@ -13,35 +13,35 @@ export default function PkgPage() {
         <p className="eyebrow">Design package</p>
         <h1>PKG · Packaging &amp; System PDN</h1>
         <p>
-          Dal chip PDN al package: bump, RDL, modelli IR STRAPS/FULL/BUMPS e
-          checklist di consegna. Su GCD nangate45 la parte eseguibile è la demo
-          System PDN; la teoria resta onesta sui limiti LEF.
+          Analisi power integrity a due livelli: <strong>static IR</strong> con
+          OpenROAD PDNSim (bump/strap + package R) e <strong>transient droop</strong>{" "}
+          sul mesh <code>write_pg_spice</code> (engine Studio ispirato a VoltSpot /
+          vyges-em-ir).
         </p>
       </header>
 
       <section className="pkg-hero-stack" aria-label="Stack die to board">
-        <div className="pkg-layer board">Board / VRM · SI/PI esterni</div>
-        <div className="pkg-layer pkg">Package planes · BGA/LGA</div>
-        <div className="pkg-layer bumps">Bumps · RDL</div>
-        <div className="pkg-layer chip">Chip PDN · ORFS READY</div>
+        <div className="pkg-layer board">Board / VRM · fuori scope (SI/PI commerciali)</div>
+        <div className="pkg-layer pkg">Package R/L · external_resistance + Lpkg</div>
+        <div className="pkg-layer bumps">Bumps C4 proxy · source_type BUMPS</div>
+        <div className="pkg-layer chip">Chip PDN mesh · PDNSim + transient</div>
       </section>
 
       <div className="pkg-grid">
         <article className="pkg-card">
           <h2>1. Chip PDN</h2>
           <p>
-            Già nel flusso: <code>pdngen</code> in floorplan + fase{" "}
-            <strong>PDN</strong> (<code>check_power_grid</code>).
+            Connettività VDD/VSS con <code>check_power_grid</code> dopo floorplan.
           </p>
           <Link className="btn-primary" href="/flusso?phase=pdn">
-            Apri fase PDN
+            Fase PDN
           </Link>
         </article>
         <article className="pkg-card">
-          <h2>2. System PDN</h2>
+          <h2>2. System PDN + transient</h2>
           <p>
-            IR drop con <code>-source_type STRAPS|FULL|BUMPS</code> su{" "}
-            <code>6_final.odb</code>.
+            Static STRAPS/FULL/BUMPS + solve transient IR (peak switching, package
+            R/L, decap). Report JSON e waveform CSV.
           </p>
           <Link className="btn-primary" href="/flusso?phase=pkg">
             Esegui in FlowLab
@@ -51,12 +51,14 @@ export default function PkgPage() {
           <h2>3. Documentazione</h2>
           <ul>
             <li>
-              <Link href="/materiali/reference/pkg-design-package.md">
-                PKG · design package
+              <Link href="/materiali/reference/system-pdn.md">
+                System PDN · tool landscape
               </Link>
             </li>
             <li>
-              <Link href="/materiali/reference/system-pdn.md">System PDN</Link>
+              <Link href="/materiali/reference/pkg-design-package.md">
+                PKG · design package
+              </Link>
             </li>
             <li>
               <Link href="/materiali/reference/extended-flow.md">
@@ -66,21 +68,14 @@ export default function PkgPage() {
           </ul>
         </article>
         <article className="pkg-card">
-          <h2>4. Design package checklist</h2>
+          <h2>4. Stack open usato</h2>
           <ul className="pkg-check">
-            <li>Netlist + SDC + liberty</li>
-            <li>ODB/DEF + PDN strategy</li>
-            <li>WNS/TNS · DRC · antenna</li>
-            <li>IR drop chip + system PDN log</li>
-            <li>GDS + layer manifest</li>
-            <li>Bump map / BOM (se tapeout)</li>
+            <li>OpenROAD PDNSim · static IR</li>
+            <li>write_pg_spice · mesh R + sink I</li>
+            <li>pdn_transient.py · backward-Euler</li>
+            <li>ngspice installato (opzionale / futuro)</li>
+            <li>Validato: static ≈ OpenROAD (±2%)</li>
           </ul>
-          <Link
-            className="btn-ghost"
-            href="/materiali/workbook/progetto-finale-template.md"
-          >
-            Template consegna
-          </Link>
         </article>
       </div>
     </main>

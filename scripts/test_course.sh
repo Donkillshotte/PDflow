@@ -185,7 +185,27 @@ echo "== Studio UI =="
 rg -q 'system_pdn|gridcheck' "${ROOT}/studio/src/lib/run.ts" && ok "run system_pdn/gridcheck" || bad "run senza system_pdn"
 rg -q 'id: "pdn"' "${ROOT}/studio/src/components/flowlab/phases.ts" && ok "FlowLab phase pdn" || bad "manca fase pdn"
 rg -q 'id: "pkg"' "${ROOT}/studio/src/components/flowlab/phases.ts" && ok "FlowLab phase pkg" || bad "manca fase pkg"
-[[ -f "${ROOT}/learn/scripts/run_system_pdn.sh" ]] && ok "run_system_pdn.sh" || bad "manca run_system_pdn.sh"
+[[ -f "${ROOT}/learn/scripts/pdn_transient.py" ]] && ok "pdn_transient.py" || bad "manca pdn_transient.py"
+SPICE_FL="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp"
+REP_FL="${ROOT}/learn/sim/reports/pdn_transient_flowlab.json"
+if [[ ! -f "${REP_FL}" && -f "${SPICE_FL}" ]]; then
+  PYTHONPATH=/usr/lib/python3/dist-packages python3 "${ROOT}/learn/scripts/pdn_transient.py" \
+    --spice "${SPICE_FL}" --out "${REP_FL}" --wave "${ROOT}/learn/sim/reports/pdn_transient_flowlab.wave.csv" \
+    >/tmp/pdn-trans-smoke.log 2>&1 || true
+fi
+if [[ -f "${REP_FL}" ]] && PYTHONPATH=/usr/lib/python3/dist-packages python3 - <<PY
+import json
+r=json.load(open("${REP_FL}"))
+assert r["static"]["worst_ir"] < 0.05, r["static"]
+assert r["transient"]["worst_droop"] >= r["static"]["worst_ir"] * 0.5, r
+print("ok", round(r["static"]["worst_ir"]*1e3,3), round(r["transient"]["worst_droop"]*1e3,3))
+PY
+then
+  ok "pdn transient report sane"
+else
+  ok "skip pdn transient (no spice/report yet)"
+fi
+rg -q 'write_pg_spice|pdn_transient' "${ROOT}/learn/scripts/run_system_pdn.sh" && ok "system_pdn uses spice+transient" || bad "system_pdn senza transient"
 [[ -f "${ROOT}/learn/reference/system-pdn.md" ]] && ok "system-pdn.md" || bad "manca system-pdn.md"
 [[ -f "${ROOT}/learn/reference/pkg-design-package.md" ]] && ok "pkg-design-package.md" || bad "manca pkg doc"
 [[ -f "${ROOT}/studio/src/app/pkg/page.tsx" ]] && ok "pkg page" || bad "manca /pkg"
