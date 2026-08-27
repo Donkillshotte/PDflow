@@ -199,12 +199,20 @@ export function listOpenTargets(): {
     href: "/flusso",
     exists: true,
   });
+  targets.push({
+    id: "dash-pkg",
+    label: "PKG · design package & System PDN",
+    kind: "dashboard",
+    href: "/pkg",
+    exists: true,
+  });
 
   // Extended / analysis run actions (deep-link to LiveRunConsole)
   const runActions: { id: string; label: string; action: string }[] = [
     { id: "run-check", label: "Run · verifica toolchain", action: "check" },
     { id: "run-rtl-sim", label: "Run · sim RTL (Icarus)", action: "rtl_sim" },
     { id: "run-gridcheck", label: "Run · gridcheck PDN", action: "gridcheck" },
+    { id: "run-system-pdn", label: "Run · System PDN IR", action: "system_pdn" },
     {
       id: "run-activity",
       label: "Run · activity → power",

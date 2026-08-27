@@ -73,6 +73,7 @@ const ALLOWED_ACTIONS = new Set([
   "test_course",
   "rtl_sim",
   "gridcheck",
+  "system_pdn",
   "activity_power",
   "klayout_drc",
 ]);
@@ -145,11 +146,36 @@ function resolveCommand(
   }
   if (action === "gridcheck") {
     const cmd = path.join(LEARN_ROOT, "scripts/run_gridcheck.sh");
-    return { cmd, args: ["pdn"], cwd: REPO_ROOT, command: `${cmd} pdn` };
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    return {
+      cmd,
+      args: ["pdn"],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd} pdn`,
+      env: { FLOW_VARIANT: variant },
+    };
+  }
+  if (action === "system_pdn") {
+    const cmd = path.join(LEARN_ROOT, "scripts/run_system_pdn.sh");
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    return {
+      cmd,
+      args: [],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      env: { FLOW_VARIANT: variant },
+    };
   }
   if (action === "activity_power") {
     const cmd = path.join(LEARN_ROOT, "scripts/run_activity_power.sh");
-    return { cmd, args: [], cwd: REPO_ROOT, command: cmd };
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    return {
+      cmd,
+      args: [],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      env: { FLOW_VARIANT: variant },
+    };
   }
   if (action === "klayout_drc") {
     const cmd = path.join(LEARN_ROOT, "scripts/run_klayout_drc.sh");

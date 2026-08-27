@@ -21,6 +21,7 @@ const STAGE_ACTIONS = [
   { id: "synth", label: "Esegui synth", hint: "~30s" },
   { id: "floorplan", label: "Esegui floorplan", hint: "die / PDN" },
   { id: "gridcheck", label: "Gridcheck PDN", hint: "check_power_grid" },
+  { id: "system_pdn", label: "System PDN", hint: "STRAPS · FULL · BUMPS" },
   { id: "place", label: "Esegui place", hint: "GP → DP" },
   { id: "cts", label: "Esegui CTS", hint: "minuti · conferma" },
   { id: "route", label: "Esegui route", hint: "lungo · conferma" },

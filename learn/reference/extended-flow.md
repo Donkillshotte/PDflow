@@ -130,23 +130,30 @@ Atteso: `PSM-0040 All shapes on net VDD/VSS are connected`.
 
 ---
 
-## 8. Bump · RDL · system PDN — MISSING (API only)
+## 8. Bump · RDL · system PDN — PARTIAL (demo Studio)
 
-OpenROAD espone (non usati da ORFS GCD):
+OpenROAD espone:
 
 - `assign_io_bump`, `make_io_bump_array`
 - `rdl_route`
 - `analyze_power_grid -source_type BUMPS|STRAPS|FULL`
 
-**Perché non nel corso base:** Nangate45 GCD è un blocco digitale flat senza
-package/RDL reale; bump/RDL richiedono LEF/tech di packaging e un design I/O.
+**Studio (READY demo):**
 
-**Come aggiungerli in futuro (trattazione teorica + lab opzionale):**
+| Pezzo | Dove |
+|---|---|
+| Chip PDN gridcheck | FlowLab fase **PDN** · `FLOW_VARIANT=… ./learn/scripts/run_gridcheck.sh` |
+| System PDN IR | FlowLab fase **PKG** · azione `system_pdn` · `run_system_pdn.sh` |
+| Hub packaging | [`/pkg`](/pkg) · docs `system-pdn.md` + `pkg-design-package.md` |
 
-1. Modulo “Advanced packaging” (teoria): bump pitch, RDL layers, C4 vs μbump
-2. Lab su design ORFS che già usa bumps (se disponibile upstream) **oppure**
-   demo Tcl minimale su griglia fittizia (non tapeout-ready)
-3. System PDN: board/package models → fuori OpenROAD (necessita tool SI/PI)
+**Limite onesto:** Nangate45 GCD non ha LEF/tech di packaging; `BUMPS` usa un
+pattern sintetico OpenROAD (PSM-0073), non un package tapeout-ready.
+
+**Estensioni future:**
+
+1. Lab su design ORFS con bump LEF reale
+2. Board SI/PI models fuori OpenROAD
+3. Thermal (HotSpot / 3D-ICE) — ancora MISSING
 
 ---
 
@@ -168,6 +175,7 @@ Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 |---|---|
 | `rtl_sim` | Sim RTL Icarus |
 | `gridcheck` | `check_power_grid` |
+| `system_pdn` | `analyze_power_grid` STRAPS/FULL/BUMPS |
 | `activity_power` | `set_power_activity` + `report_power` |
 | `klayout_drc` | GDS DRC (lungo) |
 | `/api/inspect` | ODB / STA / Yosys (+ note hook) |

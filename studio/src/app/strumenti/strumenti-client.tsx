@@ -26,6 +26,7 @@ const RUN_ACTIONS = new Set([
   "test_course",
   "rtl_sim",
   "gridcheck",
+  "system_pdn",
   "activity_power",
   "klayout_drc",
   ...STAGES,

@@ -252,6 +252,24 @@ export const MATERIALS: MaterialLink[] = [
     description: "RTL sim, activity, DRC, gridcheck, PDN, bump/RDL, thermal — mappa READY/MISSING.",
   },
   {
+    href: "/materiali/reference/system-pdn.md",
+    title: "System PDN",
+    group: "Packaging",
+    description: "analyze_power_grid STRAPS · FULL · BUMPS — IR package/board proxy.",
+  },
+  {
+    href: "/materiali/reference/pkg-design-package.md",
+    title: "PKG · design package",
+    group: "Packaging",
+    description: "Bump, RDL, C4, checklist design package e limiti Nangate45.",
+  },
+  {
+    href: "/pkg",
+    title: "Sezione PKG (hub)",
+    group: "Packaging",
+    description: "Hub UI: fasi PDN/PKG, docs e checklist consegna.",
+  },
+  {
     href: "/materiali/workbook/quiz.md",
     title: "Quiz",
     group: "Workbook",

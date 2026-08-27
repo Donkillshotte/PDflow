@@ -2934,3 +2934,78 @@ button.pipeline-node {
 .flowlab-log-pane .run-log {
   max-height: min(52vh, 520px);
 }
+
+.fl-analysis-card {
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface);
+  display: grid;
+  gap: 0.55rem;
+}
+.fl-analysis-card strong { font-size: 1rem; }
+.fl-analysis-card p {
+  margin: 0;
+  color: var(--fl-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.fl-analysis-card a { color: var(--fl-accent-2); }
+.fl-vis-pdn-svg,
+.fl-vis-pkg-svg {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  display: block;
+  border-radius: 10px;
+  border: 1px solid var(--fl-border);
+}
+
+.pkg-page { display: grid; gap: 1.4rem; }
+.pkg-page .eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.pkg-hero-stack {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 36rem;
+}
+.pkg-layer {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(16, 24, 32, 0.1);
+}
+.pkg-layer.board { background: rgba(88, 166, 255, 0.15); }
+.pkg-layer.pkg { background: rgba(63, 185, 80, 0.14); }
+.pkg-layer.bumps { background: rgba(240, 136, 62, 0.16); }
+.pkg-layer.chip { background: rgba(210, 153, 34, 0.16); }
+.pkg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.pkg-card {
+  padding: 1.1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(16, 24, 32, 0.1);
+  background: rgba(255, 255, 255, 0.55);
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+}
+.pkg-card h2 { margin: 0; font-size: 1.1rem; }
+.pkg-card p { margin: 0; color: var(--ink-soft); }
+.pkg-card ul { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); }
+.pkg-check { display: grid; gap: 0.25rem; }
+
+/* Next DevTools badge — backup hide if config not yet reloaded */
+nextjs-portal,
+[data-next-badge-root],
+[data-nextjs-dev-overlay] {
+  display: none !important;
+}

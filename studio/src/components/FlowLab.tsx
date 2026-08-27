@@ -115,7 +115,14 @@ export function FlowLab() {
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
 
   const phase = PHASES.find((p) => p.id === phaseId) ?? PHASES[0];
-  const resultsStage = phase.id === "rtl" ? "synth" : phase.id;
+  const resultsStage =
+    phase.id === "rtl"
+      ? "synth"
+      : phase.id === "pdn"
+        ? "floorplan"
+        : phase.id === "pkg"
+          ? "finish"
+          : phase.id;
   const doneCount = stages.filter((s) => s.done).length;
   const progressPct = Math.round((doneCount / PHASES.length) * 100);
   const unlocked = phaseUnlocked(phaseId, stages);
@@ -638,6 +645,42 @@ export function FlowLab() {
               />
             </div>
             </>
+          ) : phase.id === "pdn" || phase.id === "pkg" ? (
+            <div className="fl-phase-workspace">
+              <FlowLabPhaseVisual
+                phaseId={phaseId}
+                stage={resultsStage}
+                variant="flowlab"
+                params={params}
+                refreshKey={refreshKey}
+                rtlLines={lineCount}
+                sim={sim}
+                stageDone={Boolean(stages.find((s) => s.id === phaseId)?.done)}
+              />
+              <div className="fl-phase-controls">
+                <div className="fl-analysis-card">
+                  <strong>
+                    {phase.id === "pdn" ? "Chip PDN" : "Design package"}
+                  </strong>
+                  <p>{phase.help}</p>
+                  {phase.id === "pkg" && (
+                    <p>
+                      Teoria e checklist:{" "}
+                      <a href="/pkg">sezione PKG</a> ·{" "}
+                      <a href="/materiali/reference/system-pdn.md">System PDN</a>
+                    </p>
+                  )}
+                  {phase.id === "pdn" && (
+                    <p>
+                      Docs:{" "}
+                      <a href="/materiali/reference/extended-flow.md">
+                        Flusso esteso § PDN
+                      </a>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="fl-phase-workspace">
               <FlowLabPhaseVisual

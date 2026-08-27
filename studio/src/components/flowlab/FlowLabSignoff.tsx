@@ -11,6 +11,13 @@ const SIGNOFF = [
     long: false,
   },
   {
+    id: "system_pdn",
+    label: "System PDN",
+    hint: "IR STRAPS · FULL · BUMPS",
+    icon: Activity,
+    long: false,
+  },
+  {
     id: "activity_power",
     label: "Activity → power",
     hint: "set_power_activity + report",

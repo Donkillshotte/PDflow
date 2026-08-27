@@ -40,7 +40,7 @@ export default function MaterialiPage() {
     );
   }, [all, q]);
 
-  const groups = ["Corso", "Riferimento", "GUI", "Workbook", "Tcl"] as const;
+  const groups = ["Corso", "Riferimento", "Packaging", "GUI", "Workbook", "Tcl"] as const;
   const shotFiltered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return shots;

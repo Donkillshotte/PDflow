@@ -176,6 +176,15 @@ rg -q '"phaseHistory"' /tmp/studio-flowlab.json && ok "flowlab.phaseHistory" || 
 code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/api/flowlab/download?kind=vcd")"
 [[ "${code}" == "200" || "${code}" == "404" ]] && ok "flowlab vcd download (${code})" || bad "flowlab download → ${code}"
 rg -q '"id":"dash-flowlab"' /tmp/studio-open.json && ok "open dash-flowlab" || bad "open senza flowlab"
+rg -q '"id":"dash-pkg"' /tmp/studio-open.json && ok "open dash-pkg" || bad "open senza dash-pkg"
+rg -q '"id":"run-system-pdn"' /tmp/studio-open.json && ok "open run-system-pdn" || bad "open senza system_pdn"
+
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/pkg")"
+[[ "${c}" == "200" ]] && ok "GET /pkg" || bad "pkg → ${c}"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/system-pdn.md")"
+[[ "${c}" == "200" ]] && ok "system-pdn.md page" || bad "system-pdn page → ${c}"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/pkg-design-package.md")"
+[[ "${c}" == "200" ]] && ok "pkg-design-package.md page" || bad "pkg doc page → ${c}"
 
 # ORFS log digest (wrapper must classify WARN vs ERROR, not treat Failure:0 as error)
 code="$(curl -s -o /tmp/studio-results-finish.json -w '%{http_code}' \
@@ -191,6 +200,11 @@ assert dig.get("healthy") is True, dig
 print("OK digest", dig.get("summary","")[:80])
 PY
 ok "logDigest.healthy (0 ERROR)"
+
+code="$(curl -s --max-time 60 -o /tmp/studio-syspdn.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=system_pdn&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "system_pdn stream → 200" || bad "system_pdn → ${code}"
+rg -q 'SYSTEM_PDN_DONE|"ok":true' /tmp/studio-syspdn.sse && ok "system_pdn pass" || bad "system_pdn fail"
 
 # FlowLab rtl_sim (uses learn/flowlab/gcd.v)
 code="$(curl -s --max-time 60 -o /tmp/studio-fl-rtl.sse -w '%{http_code}' \

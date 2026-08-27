@@ -12,7 +12,9 @@ import {
   LayoutGrid,
   Lock,
   Loader2,
+  Package,
   Route,
+  Zap,
 } from "lucide-react";
 import type { Phase, StageStatus } from "./types";
 import { PHASES, PHASE_IDS } from "./phases";
@@ -25,6 +27,8 @@ const ICONS = {
   branch: GitBranch,
   route: Route,
   layers: Layers,
+  zap: Zap,
+  package: Package,
 } as const;
 
 function phaseUnlocked(id: string, stages: StageStatus[]) {

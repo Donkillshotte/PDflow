@@ -104,10 +104,24 @@ export async function getSuiteStatus() {
       id: "gridcheck",
       label: "Gridcheck",
       group: "Power",
-      ok: has("2_4_floorplan_pdn.odb"),
-      detail: "check_power_grid · azione gridcheck",
+      ok:
+        fs.existsSync(path.join(resultsDir("flowlab"), ".gridcheck_pdn.ok")) ||
+        fs.existsSync(path.join(resultsDir("learn"), ".gridcheck_pdn.ok")) ||
+        has("2_4_floorplan_pdn.odb"),
+      detail: "check_power_grid · azione gridcheck / fase PDN",
       action: "gridcheck",
-      href: "/strumenti?tab=run&action=gridcheck",
+      href: "/flusso?phase=pdn",
+    },
+    {
+      id: "system_pdn",
+      label: "System PDN",
+      group: "Power",
+      ok:
+        fs.existsSync(path.join(resultsDir("flowlab"), ".system_pdn.ok")) ||
+        fs.existsSync(path.join(resultsDir("learn"), ".system_pdn.ok")),
+      detail: "analyze_power_grid STRAPS/FULL/BUMPS · fase PKG",
+      action: "system_pdn",
+      href: "/flusso?phase=pkg",
     },
     {
       id: "finish",

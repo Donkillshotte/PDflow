@@ -26,13 +26,24 @@ export const PHASES: Phase[] = [
   {
     id: "floorplan",
     label: "Floorplan",
-    title: "Floorplan e PDN",
+    title: "Floorplan e die",
     action: "floorplan",
-    hint: "Die · PDN",
-    help: "Definisce il die, i margini IO e la power delivery network. L'utilizzo del core influenza l'area finale del chip.",
-    tool: "OpenROAD init_floorplan",
+    hint: "Die · IO · tap",
+    help: "Definisce il die, i margini IO e genera la PDN (pdngen). L'utilizzo del core influenza l'area finale del chip.",
+    tool: "OpenROAD init_floorplan + pdngen",
     icon: "grid",
     estTime: "~20 s",
+  },
+  {
+    id: "pdn",
+    label: "PDN",
+    title: "Analisi chip PDN",
+    action: "gridcheck",
+    hint: "check_power_grid",
+    help: "Verifica connettività della power grid (VDD/VSS) sull'ODB post-PDN. Usa gli artefatti già generati dal floorplan.",
+    tool: "OpenROAD check_power_grid",
+    icon: "zap",
+    estTime: "~5 s",
   },
   {
     id: "place",
@@ -78,7 +89,19 @@ export const PHASES: Phase[] = [
     icon: "layers",
     estTime: "1–3 min",
   },
+  {
+    id: "pkg",
+    label: "PKG",
+    title: "Package · System PDN",
+    action: "system_pdn",
+    hint: "BUMPS · STRAPS · FULL",
+    help: "Analisi IR con modelli di alimentazione package/board (STRAPS, FULL, BUMPS). Teoria design package in /pkg.",
+    tool: "OpenROAD analyze_power_grid",
+    icon: "package",
+    estTime: "~15 s",
+  },
 ];
 
 export const PHASE_IDS = PHASES.map((p) => p.id);
-export const LONG_ACTIONS = new Set(["cts", "route", "finish"]);
+export const LONG_ACTIONS = new Set(["cts", "route", "finish", "klayout_drc"]);
+export const ANALYSIS_PHASES = new Set(["pdn", "pkg"]);

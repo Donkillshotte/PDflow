@@ -55,9 +55,16 @@ export const FLOW_PHASES = [
   {
     id: "floorplan",
     label: "Floorplan",
-    title: "Floorplan e PDN",
+    title: "Floorplan e die",
     action: "floorplan" as const,
     hint: "Utilizzo core",
+  },
+  {
+    id: "pdn",
+    label: "PDN",
+    title: "Analisi chip PDN",
+    action: "gridcheck" as const,
+    hint: "check_power_grid",
   },
   {
     id: "place",
@@ -86,6 +93,13 @@ export const FLOW_PHASES = [
     title: "Finish · GDS",
     action: "finish" as const,
     hint: "SPEF · GDS · signoff",
+  },
+  {
+    id: "pkg",
+    label: "PKG",
+    title: "Package · System PDN",
+    action: "system_pdn" as const,
+    hint: "BUMPS · STRAPS · FULL",
   },
 ] as const;
 
@@ -220,7 +234,7 @@ export function flowlabPhaseHistory(limitPerPhase = 3) {
       jobs.filter((j) => j.action === ph.action).slice(0, limitPerPhase),
     );
   }
-  for (const extra of ["gridcheck", "activity_power", "klayout_drc"]) {
+  for (const extra of ["gridcheck", "activity_power", "klayout_drc", "system_pdn"]) {
     byAction.set(
       extra,
       jobs.filter((j) => j.action === extra).slice(0, limitPerPhase),
@@ -242,6 +256,30 @@ export function getFlowlabStatus() {
         action: ph.action,
         ready: true,
         done: fs.existsSync(path.join(LEARN_ROOT, "sim/gcd/sim.log")),
+      };
+    }
+    if (ph.id === "pdn") {
+      const stamp = path.join(resultsRoot, ".gridcheck_pdn.ok");
+      const odb = path.join(resultsRoot, "2_4_floorplan_pdn.odb");
+      return {
+        id: ph.id,
+        label: ph.label,
+        action: ph.action,
+        ready: fs.existsSync(odb),
+        done: fs.existsSync(stamp),
+        primary: ".gridcheck_pdn.ok",
+      };
+    }
+    if (ph.id === "pkg") {
+      const stamp = path.join(resultsRoot, ".system_pdn.ok");
+      const odb = path.join(resultsRoot, "6_final.odb");
+      return {
+        id: ph.id,
+        label: ph.label,
+        action: ph.action,
+        ready: fs.existsSync(odb),
+        done: fs.existsSync(stamp),
+        primary: ".system_pdn.ok",
       };
     }
     const primary =

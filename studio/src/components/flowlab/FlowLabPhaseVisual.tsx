@@ -430,6 +430,89 @@ export function FlowLabPhaseVisual({
           </ul>
         </div>
       )}
+
+      {phaseId === "pdn" && (
+        <div className="fl-vis-body fl-vis-pdn">
+          <svg viewBox="0 0 320 160" className="fl-vis-pdn-svg" aria-label="Chip PDN straps">
+            <rect width="320" height="160" rx="8" fill="#0a0e14" />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <rect
+                key={`h${i}`}
+                x="16"
+                y={20 + i * 16}
+                width="288"
+                height="4"
+                fill={i % 2 === 0 ? "rgba(248,81,73,0.55)" : "rgba(88,166,255,0.45)"}
+                rx="1"
+              />
+            ))}
+            {Array.from({ length: 10 }).map((_, i) => (
+              <rect
+                key={`v${i}`}
+                x={24 + i * 28}
+                y="16"
+                width="5"
+                height="128"
+                fill={i % 2 === 0 ? "rgba(248,81,73,0.35)" : "rgba(88,166,255,0.3)"}
+                rx="1"
+              />
+            ))}
+            <text x="160" y="150" textAnchor="middle" fill="#8b949e" fontSize="9">
+              VDD / VSS straps · check_power_grid
+            </text>
+          </svg>
+          <div className="fl-vis-stat-grid">
+            <div className="fl-vis-stat">
+              <span>ODB PDN</span>
+              <strong className={stageDone ? "ok" : ""}>
+                {inspect?.odb ? "OK" : stageDone ? "verificato" : "—"}
+              </strong>
+            </div>
+            <div className="fl-vis-stat">
+              <span>Istanze</span>
+              <strong>{inspect?.odb?.instances ?? "—"}</strong>
+            </div>
+            <div className="fl-vis-stat">
+              <span>Gridcheck</span>
+              <strong className={stageDone ? "ok" : ""}>
+                {stageDone ? "PSM-0040" : "Esegui"}
+              </strong>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {phaseId === "pkg" && (
+        <div className="fl-vis-body fl-vis-pkg">
+          <svg viewBox="0 0 320 150" className="fl-vis-pkg-svg" aria-label="Package stack">
+            <rect width="320" height="150" rx="8" fill="#0a0e14" />
+            <rect x="40" y="20" width="240" height="22" rx="4" fill="rgba(88,166,255,0.35)" stroke="#58a6ff" />
+            <text x="160" y="35" textAnchor="middle" fill="#e6edf3" fontSize="9">
+              Board / VRM
+            </text>
+            <rect x="55" y="48" width="210" height="22" rx="4" fill="rgba(63,185,80,0.3)" stroke="#3fb950" />
+            <text x="160" y="63" textAnchor="middle" fill="#e6edf3" fontSize="9">
+              Package planes
+            </text>
+            <rect x="70" y="76" width="180" height="22" rx="4" fill="rgba(240,136,62,0.35)" stroke="#f0883e" />
+            <text x="160" y="91" textAnchor="middle" fill="#e6edf3" fontSize="9">
+              Bumps · RDL
+            </text>
+            <rect x="90" y="104" width="140" height="22" rx="4" fill="rgba(210,153,34,0.3)" stroke="#d29922" />
+            <text x="160" y="119" textAnchor="middle" fill="#e6edf3" fontSize="9">
+              Chip PDN
+            </text>
+            <text x="160" y="142" textAnchor="middle" fill="#8b949e" fontSize="8">
+              System PDN · STRAPS / FULL / BUMPS
+            </text>
+          </svg>
+          <p className="fl-vis-meta">
+            {stageDone
+              ? "Analisi system PDN completata — vedi log IR drop"
+              : "Esegui per confrontare IR con sorgenti package"}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
