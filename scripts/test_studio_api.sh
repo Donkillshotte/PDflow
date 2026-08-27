@@ -177,6 +177,21 @@ code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/api/flowlab/download?kin
 [[ "${code}" == "200" || "${code}" == "404" ]] && ok "flowlab vcd download (${code})" || bad "flowlab download → ${code}"
 rg -q '"id":"dash-flowlab"' /tmp/studio-open.json && ok "open dash-flowlab" || bad "open senza flowlab"
 
+# ORFS log digest (wrapper must classify WARN vs ERROR, not treat Failure:0 as error)
+code="$(curl -s -o /tmp/studio-results-finish.json -w '%{http_code}' \
+  "${BASE}/api/results?stage=finish&variant=flowlab")"
+[[ "${code}" == "200" ]] && ok "GET /api/results finish flowlab → 200" || bad "results finish → ${code}"
+rg -q '"logDigest"' /tmp/studio-results-finish.json && ok "results.logDigest" || bad "results senza logDigest"
+python3 - <<'PY' || bad "logDigest.errors deve essere 0"
+import json
+d=json.load(open("/tmp/studio-results-finish.json"))
+dig=d.get("logDigest") or {}
+assert dig.get("errors", 1) == 0, dig
+assert dig.get("healthy") is True, dig
+print("OK digest", dig.get("summary","")[:80])
+PY
+ok "logDigest.healthy (0 ERROR)"
+
 # FlowLab rtl_sim (uses learn/flowlab/gcd.v)
 code="$(curl -s --max-time 60 -o /tmp/studio-fl-rtl.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=rtl_sim&mode=flowlab")"

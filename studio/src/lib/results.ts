@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { REPO_ROOT } from "./course";
+import { digestOrfsLog, type LogDigest } from "./orfsLog";
 
 export type ArtifactInfo = {
   name: string;
@@ -14,6 +15,8 @@ export type MetricHit = {
   label: string;
   value: string;
   source: string;
+  /** true when value matches course-expected mild timing (e.g. WNS −0.04) */
+  expected?: boolean;
 };
 
 export type StageResults = {
@@ -22,6 +25,16 @@ export type StageResults = {
   metrics: MetricHit[];
   goldenHints: { label: string; value: string }[];
   variant?: string;
+  logDigest?: LogDigest | null;
+};
+
+const STAGE_LOG_GLOBS: Record<string, RegExp> = {
+  synth: /^1_.*\.log$/,
+  floorplan: /^2_.*\.log$/,
+  place: /^3_.*\.log$/,
+  cts: /^4_.*\.log$/,
+  route: /^5_.*\.log$/,
+  finish: /^6_.*\.log$/,
 };
 
 const DEFAULT_VARIANT = "learn";
@@ -117,6 +130,21 @@ function statFile(abs: string, name: string): ArtifactInfo {
   };
 }
 
+function markExpected(hit: MetricHit): MetricHit {
+  const v = hit.value;
+  // Course golden: mild negative WNS/TNS and non-zero setup counts are expected on nangate45 GCD.
+  if (
+    /wns|worst slack|tns/i.test(v) &&
+    /-\s*0\.0[0-9]|−0\.0/.test(v)
+  ) {
+    return { ...hit, expected: true };
+  }
+  if (/setup violation count\s+[1-9]/i.test(v)) {
+    return { ...hit, expected: true };
+  }
+  return hit;
+}
+
 function grepFile(abs: string, patterns: RegExp[], limit = 8): MetricHit[] {
   if (!fs.existsSync(abs)) return [];
   const text = fs.readFileSync(abs, "utf8");
@@ -124,16 +152,42 @@ function grepFile(abs: string, patterns: RegExp[], limit = 8): MetricHit[] {
   for (const line of text.split("\n")) {
     for (const re of patterns) {
       if (re.test(line)) {
-        hits.push({
-          label: re.source.slice(0, 40),
-          value: line.trim().slice(0, 160),
-          source: path.basename(abs),
-        });
+        hits.push(
+          markExpected({
+            label: re.source.slice(0, 40),
+            value: line.trim().slice(0, 160),
+            source: path.basename(abs),
+          }),
+        );
       }
     }
     if (hits.length >= limit) break;
   }
   return hits;
+}
+
+function collectStageLogDigest(
+  stage: string,
+  variant: string,
+): LogDigest | null {
+  const re = STAGE_LOG_GLOBS[stage];
+  if (!re) return null;
+  const dir = baseLogs(variant);
+  if (!fs.existsSync(dir)) return null;
+  const files = fs
+    .readdirSync(dir)
+    .filter((f) => re.test(f))
+    .sort();
+  if (files.length === 0) return null;
+  const chunks: string[] = [];
+  for (const f of files) {
+    try {
+      chunks.push(fs.readFileSync(path.join(dir, f), "utf8"));
+    } catch {
+      /* ignore */
+    }
+  }
+  return digestOrfsLog(chunks.join("\n"));
 }
 
 export function collectStageResults(
@@ -230,5 +284,6 @@ export function collectStageResults(
     metrics: metrics.slice(0, 12),
     goldenHints: STAGE_GOLDEN[stage] ?? [],
     variant,
+    logDigest: collectStageLogDigest(stage, variant),
   };
 }

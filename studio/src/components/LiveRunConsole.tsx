@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/ToastProvider";
+import { digestOrfsLog } from "@/lib/orfsLog";
 
 type StreamEvent =
   | { type: "start"; jobId: string; command: string; action: string }
@@ -61,6 +62,7 @@ export function LiveRunConsole({
   const logRef = useRef<HTMLPreElement | null>(null);
   const tickRef = useRef<number | null>(null);
   const lastActionRef = useRef(action);
+  const digest = useMemo(() => (log ? digestOrfsLog(log) : null), [log]);
 
   useEffect(() => {
     if (defaultAction) setAction(defaultAction);
@@ -267,6 +269,14 @@ export function LiveRunConsole({
       {blockMsg && (
         <p className="block-banner" role="alert">
           {blockMsg}
+        </p>
+      )}
+      {digest && log && (
+        <p
+          className={clsx("run-digest", digest.healthy ? "ok" : "bad")}
+          role="status"
+        >
+          {digest.summary}
         </p>
       )}
       {(log || running) && (

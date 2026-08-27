@@ -114,5 +114,8 @@ Screenshot (UI corrente): `studio/docs/images/flowlab/`
 | FlowLab vs corso | Varianti diverse | Corso=`learn`, FlowLab=`flowlab` — non mischiare artefatti |
 | Congestion / timing fail | Parametri aggressivi | Profilo «Didattico» o SDC relaxed in FlowLab |
 | `make` lento su cts/route | Normale su GCD | Conferma dialog; un solo job alla volta |
+| Terminale pieno di giallo/rosso | WARNING ORFS + false positive su `Failure: 0` | Digest in console: **0 ERROR** = flusso OK. Rumore tipico: `RSZ-0104`, `IFP-0028`, `GUI-0010`, `GRT-0246` |
+| WNS −0.04 / setup violations | Golden nangate45 GCD | Atteso (vedi `golden-metrics.md`); non è un crash del wrapper |
+| `RSZ-0062` Unable to repair | Timing residuale post-CTS/GRT | Atteso sul tutorial; rivedi solo se WNS << −0.15 |
 
 Log job: `learn/.studio-jobs.json` · lock: `learn/.studio-run.lock`

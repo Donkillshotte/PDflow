@@ -4,19 +4,54 @@ import clsx from "clsx";
 import { Copy, Download, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useToast } from "@/components/ToastProvider";
+import {
+  collapseOrfsLines,
+  digestOrfsLog,
+  type DisplayLine,
+} from "@/lib/orfsLog";
 
-function highlightLog(text: string) {
-  const lines = text.split("\n");
-  return lines.map((line, i) => {
-    let cls = "fl-log-line";
-    if (/error|fail|fatal/i.test(line)) cls += " fl-log-err";
-    else if (/warn/i.test(line)) cls += " fl-log-warn";
-    else if (/^\s*\[\d/.test(line) || /INFO|Done|Success/i.test(line))
-      cls += " fl-log-ok";
+function severityClass(sev: string, noise?: boolean) {
+  if (sev === "error") return "fl-log-err";
+  if (sev === "warn") return noise ? "fl-log-noise" : "fl-log-warn";
+  if (sev === "ok") return "fl-log-ok";
+  if (sev === "info") return "fl-log-info";
+  return "";
+}
+
+function renderDisplay(items: DisplayLine[]) {
+  return items.map((item) => {
+    if (item.kind === "collapse") {
+      return (
+        <div
+          key={`c-${item.index}`}
+          className={clsx(
+            "fl-log-line fl-log-collapse",
+            severityClass(item.severity, item.noise),
+          )}
+          title={item.sample}
+        >
+          <span className="fl-log-ln">⋯</span>
+          <span className="fl-log-txt">
+            [{item.code}] ×{item.count}
+            {item.noise ? " · rumore atteso nangate45/ORFS" : ""}
+            {" — "}
+            {item.sample.slice(0, 90)}
+            {item.sample.length > 90 ? "…" : ""}
+          </span>
+        </div>
+      );
+    }
+    const { line, index } = item;
     return (
-      <div key={i} className={cls}>
-        <span className="fl-log-ln">{i + 1}</span>
-        <span className="fl-log-txt">{line || " "}</span>
+      <div
+        key={index}
+        className={clsx(
+          "fl-log-line",
+          severityClass(line.severity, line.noise),
+        )}
+      >
+        <span className="fl-log-ln">{index + 1}</span>
+        <span className="fl-log-txt">{line.text || " "}</span>
       </div>
     );
   });
@@ -44,7 +79,8 @@ export function FlowLabTerminal({
   logRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const { push } = useToast();
-  const lines = useMemo(() => highlightLog(log), [log]);
+  const display = useMemo(() => collapseOrfsLines(log), [log]);
+  const digest = useMemo(() => (log ? digestOrfsLog(log) : null), [log]);
   const empty = !log && !running;
 
   async function copyLog() {
@@ -90,6 +126,32 @@ export function FlowLabTerminal({
         </div>
       )}
       {blockMsg && <p className="fl-block-msg">{blockMsg}</p>}
+      {digest && log && (
+        <div
+          className={clsx(
+            "fl-log-digest",
+            digest.healthy ? "ok" : "bad",
+          )}
+          role="status"
+        >
+          <strong>
+            {digest.errors} ERROR · {digest.warnings} WARNING
+            {digest.noiseWarnings > 0
+              ? ` (${digest.noiseWarnings} rumore)`
+              : ""}
+          </strong>
+          <span>{digest.summary}</span>
+          {digest.noteworthy.length > 0 && (
+            <ul>
+              {digest.noteworthy.map((n) => (
+                <li key={n.code}>
+                  <code>{n.code}</code> ×{n.count} — atteso su GCD nangate45 se WNS≈−0.04
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <div
         className="fl-terminal-body"
         ref={logRef}
@@ -98,15 +160,20 @@ export function FlowLabTerminal({
       >
         {empty ? (
           <div className="fl-terminal-empty">
-            <p>Premi <kbd>Ctrl</kbd>+<kbd>Enter</kbd> o «Esegui fase» per avviare.</p>
-            <p className="muted">Lo stream stdout/stderr apparirà qui in tempo reale.</p>
+            <p>
+              Premi <kbd>Ctrl</kbd>+<kbd>Enter</kbd> o «Esegui fase» per avviare.
+            </p>
+            <p className="muted">
+              Lo stream stdout/stderr apparirà qui. I WARNING ORFS attesi non sono più
+              evidenziati come errori.
+            </p>
           </div>
         ) : running && !log ? (
           <div className="fl-terminal-empty">
             <p className="fl-pulse">Connessione allo stream…</p>
           </div>
         ) : (
-          lines
+          renderDisplay(display)
         )}
       </div>
     </div>

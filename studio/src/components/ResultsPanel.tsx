@@ -10,14 +10,29 @@ type Artifact = {
   mtime: string | null;
 };
 
-type Metric = { label: string; value: string; source: string };
+type Metric = {
+  label: string;
+  value: string;
+  source: string;
+  expected?: boolean;
+};
 type Golden = { label: string; value: string };
+type LogDigest = {
+  errors: number;
+  warnings: number;
+  noiseWarnings: number;
+  healthy: boolean;
+  summary: string;
+  noteworthy: { code: string; message: string; count: number }[];
+  topCodes: { code: string; count: number; noise: boolean }[];
+};
 
 type Results = {
   stage: string;
   artifacts: Artifact[];
   metrics: Metric[];
   goldenHints: Golden[];
+  logDigest?: LogDigest | null;
 };
 
 function fmtSize(n: number) {
@@ -151,6 +166,35 @@ export function ResultsPanel({
         </>
       )}
 
+      {data.logDigest && (
+        <div
+          className={`metric-block ${data.logDigest.healthy ? "digest-ok" : "digest-bad"}`}
+        >
+          <h4>Diagnosi log ORFS</h4>
+          <p className="muted">{data.logDigest.summary}</p>
+          {data.logDigest.topCodes.length > 0 && (
+            <ul className="metric-list">
+              {data.logDigest.topCodes.map((c) => (
+                <li key={c.code}>
+                  <code>{c.code}</code>
+                  <span>
+                    ×{c.count}
+                    {c.noise ? " · rumore atteso" : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {data.logDigest.noteworthy.length > 0 && (
+            <p className="muted">
+              Note: {data.logDigest.noteworthy.map((n) => n.code).join(", ")} —
+              su GCD nangate45 un WNS≈−0.04 con qualche setup violation è il
+              golden del corso, non un bug del wrapper.
+            </p>
+          )}
+        </div>
+      )}
+
       {data.metrics.length > 0 && (
         <div className="metric-block">
           <h4>Metriche dai tuoi report</h4>
@@ -158,7 +202,10 @@ export function ResultsPanel({
             {data.metrics.map((m, i) => (
               <li key={`${m.source}-${i}`}>
                 <code>{m.source}</code>
-                <span>{m.value}</span>
+                <span>
+                  {m.value}
+                  {m.expected ? " · atteso (golden)" : ""}
+                </span>
               </li>
             ))}
           </ul>

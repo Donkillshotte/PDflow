@@ -200,16 +200,22 @@ export function InspectPanel({
             )}
           </ul>
           {data.sta.paths.length > 0 && (
-            <ul className="path-list">
-              {data.sta.paths.map((p) => (
-                <li key={p.endpoint}>
-                  <code>{p.endpoint}</code>
-                  <em className={p.status === "MET" ? "pill ok" : "pill bad"}>
-                    {p.slack} · {p.status}
-                  </em>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p className="muted">
+                Path VIOLATED con WNS≈−0.04 ns sul GCD nangate45 sono allineati al
+                golden del corso — non indicano un crash del wrapper.
+              </p>
+              <ul className="path-list">
+                {data.sta.paths.map((p) => (
+                  <li key={p.endpoint}>
+                    <code>{p.endpoint}</code>
+                    <em className={p.status === "MET" ? "pill ok" : "pill warn"}>
+                      {p.slack} · {p.status}
+                    </em>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       )}

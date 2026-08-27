@@ -183,6 +183,16 @@ echo "== Studio UI =="
 [[ -f "${ROOT}/studio/src/components/CommandPalette.tsx" ]] && ok "CommandPalette" || bad "manca CommandPalette"
 [[ -f "${ROOT}/studio/src/app/api/open/route.ts" ]] && ok "api/open" || bad "manca api/open"
 [[ -f "${ROOT}/scripts/test_studio_api.sh" ]] && ok "test_studio_api.sh" || bad "manca test_studio_api.sh"
+[[ -f "${ROOT}/scripts/test_orfs_log.mjs" ]] && ok "test_orfs_log.mjs" || bad "manca test_orfs_log.mjs"
+[[ -f "${ROOT}/studio/src/lib/orfsLog.ts" ]] && ok "orfsLog.ts" || bad "manca orfsLog.ts"
+if node "${ROOT}/scripts/test_orfs_log.mjs" >/tmp/orfs-log-smoke.log 2>&1; then
+  ok "orfs log classify"
+else
+  bad "orfs log classify fallita"
+  tail -15 /tmp/orfs-log-smoke.log
+fi
+rg -q 'digestOrfsLog|logDigest' "${ROOT}/studio/src/components/flowlab/FlowLabTerminal.tsx" && ok "FlowLabTerminal digest" || bad "terminal senza digest"
+rg -q 'logDigest' "${ROOT}/studio/src/lib/results.ts" && ok "results.logDigest" || bad "results senza logDigest"
 rg -q 'Physical Design Studio' "${ROOT}/studio/src/app/layout.tsx" && ok "studio brand" || bad "studio senza brand"
 rg -q 'CommandPalette' "${ROOT}/studio/src/app/layout.tsx" && ok "palette wired" || bad "palette non collegata"
 rg -q 'streamCourseAction|LiveRunConsole|LessonWizard' "${ROOT}/studio/src/components/LessonWizard.tsx" && ok "wizard uses interactive flow" || bad "wizard non interattivo"

@@ -366,6 +366,11 @@ a {
   color: var(--bad);
 }
 
+.pill.warn {
+  background: rgba(210, 153, 34, 0.14);
+  color: #a67c16;
+}
+
 .tabs {
   display: flex;
   gap: 0.4rem;
@@ -439,6 +444,22 @@ a {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.run-digest {
+  margin: 0.4rem 0 0;
+  padding: 0.45rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  border: 1px solid rgba(16, 24, 32, 0.12);
+}
+.run-digest.ok {
+  background: rgba(31, 122, 76, 0.1);
+  color: var(--ok);
+}
+.run-digest.bad {
+  background: rgba(180, 35, 24, 0.1);
+  color: var(--bad);
 }
 
 .md-body code {
@@ -2085,7 +2106,41 @@ button.pipeline-node {
 .fl-log-txt { white-space: pre-wrap; word-break: break-word; color: #c9d1d9; }
 .fl-log-err .fl-log-txt { color: #ff7b72; }
 .fl-log-warn .fl-log-txt { color: #d29922; }
+.fl-log-noise .fl-log-txt { color: #8b949e; }
 .fl-log-ok .fl-log-txt { color: #7ee787; }
+.fl-log-info .fl-log-txt { color: #79c0ff; }
+.fl-log-collapse {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(139, 148, 158, 0.5);
+}
+.fl-log-digest {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--fl-border);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  background: rgba(255, 255, 255, 0.03);
+}
+.fl-log-digest.ok { border-left: 3px solid var(--fl-ok); }
+.fl-log-digest.bad { border-left: 3px solid var(--fl-bad); background: rgba(248, 81, 73, 0.08); }
+.fl-log-digest strong { color: var(--fl-text); }
+.fl-log-digest span { color: var(--fl-muted); }
+.fl-log-digest ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--fl-muted);
+}
+.fl-log-digest code { color: var(--fl-accent-2); }
+.fl-metric-card.warn-card { border-color: rgba(248, 81, 73, 0.35); }
+.metric-block.digest-ok {
+  border-color: rgba(63, 185, 80, 0.35);
+  background: rgba(63, 185, 80, 0.06);
+}
+.metric-block.digest-bad {
+  border-color: rgba(248, 81, 73, 0.35);
+  background: rgba(248, 81, 73, 0.06);
+}
 
 .fl-next-banner {
   display: flex;
@@ -2361,6 +2416,7 @@ button.pipeline-node {
 .fl-pro .pill { background: rgba(255, 255, 255, 0.06); border-color: var(--fl-border); color: var(--fl-text); }
 .fl-pro .pill.ok { color: var(--fl-ok); }
 .fl-pro .pill.bad { color: var(--fl-bad); }
+.fl-pro .pill.warn { color: #d29922; }
 .fl-pro .chip { background: var(--fl-surface-2); color: var(--fl-muted); border-color: var(--fl-border); }
 .fl-pro .chip-active { background: rgba(240, 136, 62, 0.15); color: var(--fl-text); border-color: rgba(240, 136, 62, 0.4); }
 .fl-pro .artifact-list li {
