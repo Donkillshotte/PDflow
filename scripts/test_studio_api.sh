@@ -340,7 +340,7 @@ if python3 - <<'PY'
 import json, sys
 d = json.load(open("/tmp/studio-suite.json"))
 ids = {h["id"] for h in d["hooks"]}
-need = {"sta_signoff", "drc_signoff", "lvs_signoff", "power_signoff", "signoff_all"}
+need = {"sta_signoff", "drc_signoff", "lvs_signoff", "power_signoff", "signoff_all", "thermal_signoff", "pkg_signoff", "signoff_phase2"}
 miss = sorted(need - ids)
 if miss:
     print("missing", miss)

@@ -29,6 +29,58 @@ Screenshot Qt in `learn/reference/gui-shots/` più heatmap ORFS (`orfs_*.png`: c
 
 Guida: `learn/reference/gui-atlas.md` (sezioni 1–9).
 
+## Signoff enterprise (Fase 1 + Fase 2)
+
+Varianti `flowlab` (FlowLab) e `learn` (corso ORFS) condividono gli script in `learn/scripts/`.
+
+```bash
+# Dopo make finish sulla variante scelta
+export FLOW_VARIANT=learn   # o flowlab
+
+./learn/scripts/run_signoff_all.sh
+SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh   # include thermal + PKG
+
+# Valutazione gate vs golden-gcd.json
+python3 learn/scripts/signoff_eval.py --variant "${FLOW_VARIANT}"
+```
+
+Report attesi in `learn/sim/reports/`:
+
+| Report | Pilastro |
+|---|---|
+| `sta_signoff_{v}.json` | Timing |
+| `drc_signoff_{v}.json` | Geometria |
+| `lvs_signoff_{v}.json` | Equivalenza |
+| `power_signoff_{v}.json` | Power / PKG |
+| `signoff_all_{v}.json` | Orchestrator |
+| `thermal_signoff_{v}.json` | Thermal proxy |
+| `pkg_signoff_{v}.json` | Packaging |
+| `signoff_phase2_{v}.json` | Fase 2 |
+
+Matrice e DoD: [signoff-matrix.md](./reference/signoff-matrix.md).  
+UI Studio: FlowLab fase **finish**, hub [/pkg](http://127.0.0.1:43217/pkg), `GET /api/signoff?variant=flowlab`.
+
+Smoke automatico: `./scripts/test_all_phases.sh` (include hook signoff in `test_studio_api.sh`).
+
+### Evidenza run `learn` (2026-08-28)
+
+Dopo `6_final.*` presente in `flow/results/.../gcd/learn/`:
+
+```bash
+FLOW_VARIANT=learn SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
+```
+
+| Pilastro | Esito | Summary |
+|---|---|---|
+| Timing | **PASS** | WNS −0.02 ns · TNS −0.14 · viol 3 |
+| Geometria | **PASS** | Route DRC 0 · GDS DRC 0 |
+| Equivalenza | **PASS** | LVS PASS · errors 0 |
+| Power | **PASS** | Chip IR 6.34 mV · Sys droop 10.16 mV |
+| Thermal proxy | **FAIL** (educational) | 62.86 mV > soglia 50 mV — interpretare proxy |
+| PKG | **PASS** | bump + RDL + system_pdn ok |
+
+Report: `learn/sim/reports/signoff_all_learn.json`. Fase 1 completa; thermal proxy segnala droop transient elevato sul run learn (valore didattico).
+
 ## Studio UI (wrapper grafico)
 
 ```bash

@@ -124,7 +124,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   },
 ];
 
-/** Fase 2 — registry predisposto, script in arrivo (extended-flow §8–9). */
+/** Fase 2 — packaging + thermal proxy (extended-flow §8–9). */
 export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
   {
     id: "pkg",
@@ -350,7 +350,41 @@ export function evaluateSignoffGates(variant = "flowlab"): {
     action: SIGNOFF_ORCHESTRATOR.action,
   });
 
-  const pillarGates = gates.filter((g) => SIGNOFF_PILLARS.some((p) => p.id === g.id));
+  for (const pillar of SIGNOFF_PLANNED_PILLARS) {
+    const abs = pillarReportPath(pillar.id, variant);
+    const orchReport = abs ? readJsonReport(abs) : null;
+    const pillarOk = orchReport?.ok === true;
+    pillars[pillar.id] = {
+      ok: pillarOk,
+      report: orchReport ? abs.replace(LEARN_ROOT + path.sep, "").replace(/\\/g, "/") : undefined,
+    };
+    gates.push({
+      id: pillar.id,
+      pillar: pillar.id,
+      label: pillar.label,
+      ok: pillarOk,
+      detail: orchReport
+        ? (orchReport.summary as string) || (pillarOk ? "report ok" : "soglie / proxy")
+        : "report assente — esegui signoff Fase 2",
+      action: pillar.orchestratorAction,
+    });
+  }
+
+  const ph2Report = readJsonReport(
+    path.join(LEARN_ROOT, `sim/reports/signoff_phase2_${variant}.json`),
+  );
+  gates.push({
+    id: "signoff_phase2",
+    pillar: "thermal",
+    label: "Signoff Fase 2",
+    ok: ph2Report?.ok === true,
+    detail: ph2Report ? String(ph2Report.summary ?? "signoff_phase2") : "non eseguito",
+    action: SIGNOFF_PHASE2_ORCHESTRATOR.action,
+  });
+
+  const pillarGates = gates.filter((g) =>
+    [...SIGNOFF_PILLARS, ...SIGNOFF_PLANNED_PILLARS].some((p) => p.id === g.id),
+  );
   return {
     ok: pillarGates.every((g) => g.ok) && allReport?.ok !== false,
     gates,

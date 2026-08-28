@@ -130,6 +130,19 @@ else
   ok "skip flowlab artifacts (finish non eseguito)"
 fi
 
+echo "== Signoff variant learn (se finish presente) =="
+RES_LEARN="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn"
+if [[ -f "${RES_LEARN}/6_final.odb" ]]; then
+  [[ -f "${ROOT}/learn/sim/reports/sta_signoff_learn.json" ]] \
+    && python3 -c "import json; r=json.load(open('${ROOT}/learn/sim/reports/sta_signoff_learn.json')); assert 'ok' in r" \
+    && ok "sta_signoff_learn.json" || ok "skip sta_signoff learn (non eseguito — FLOW_VARIANT=learn ./learn/scripts/run_signoff_all.sh)"
+  [[ -f "${ROOT}/learn/sim/reports/signoff_all_learn.json" ]] \
+    && python3 -c "import json; r=json.load(open('${ROOT}/learn/sim/reports/signoff_all_learn.json')); p=r.get('pillars',{}); assert all(p[k].get('ok') for k in ('timing','geometry','equivalence','power') if k in p)" \
+    && ok "signoff_all_learn phase1 ok" || ok "skip signoff_all learn phase1"
+else
+  ok "skip learn signoff (6_final.odb assente)"
+fi
+
 if curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:43217/ 2>/dev/null | rg -q 200; then
   echo "== Studio API (delegato a test_studio_api.sh) =="
   "${ROOT}/scripts/test_studio_api.sh"

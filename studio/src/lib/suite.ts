@@ -290,6 +290,15 @@ export async function getSuiteStatus() {
       href: "/pkg",
     },
     {
+      id: "signoff_phase2",
+      label: "Signoff Fase 2",
+      group: "Signoff",
+      ok: signoffReportPass("flowlab", "signoff_phase2") || signoffReportPass("learn", "signoff_phase2"),
+      detail: "Thermal proxy + PKG orchestrator",
+      action: "signoff_phase2",
+      href: "/pkg",
+    },
+    {
       id: "or-web",
       label: "OpenROAD Web Viewer",
       group: "GUI",
