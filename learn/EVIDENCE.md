@@ -62,18 +62,18 @@ UI Studio: FlowLab fase **finish**, hub [/pkg](http://127.0.0.1:43217/pkg), `GET
 
 Smoke automatico: `./scripts/test_all_phases.sh` (include hook signoff in `test_studio_api.sh`).
 
-## Laboratorio visuale (FlowLab + lezioni)
+## Laboratorio visuale (FlowLab)
 
-Ogni fase PD mostra **layout reale**, non mockup decorativi:
+Il canvas **sopra la piega** su `/flusso` mostra screenshot Qt reali (`learn/reference/gui-shots/`), non mockup CSS:
 
-| Superficie | Cosa vedi |
+| Fase | Cosa si vede |
 |---|---|
-| `/flusso` (FlowLab) | Canvas centrale: ORFS PNG (`final_routing`, …) + **OpenROAD Web Viewer** iframe |
-| `/flusso?phase=rtl` | Waveform **VCD reale** (`clk`, `reset`, handshake) da `GET /api/vcd-waveform` |
-| `/lezioni/*/risultati` | Stesso canvas layout (variante `learn`) |
-| `/strumenti?tab=results` | Layout preview sopra artefatti |
+| Floorplan / PDN | Die + strap VDD/VSS (`03_pdn*.png`) |
+| Place | Celle sulle row + PDN (`05_place_dp.png`) |
+| Route | Metal M2/M3 «spaghetti» (`08_route_labeled.png`) |
+| Finish | Layout finale (`09_final.png`) |
 
-API: `GET /api/layout-preview?phase=route&variant=flowlab` · mapping ODB in `studio/src/lib/layoutPreview.ts`.
+Web Viewer OpenROAD è **opt-in** (non copre lo screenshot). Synth non ha die: messaggio esplicito.
 
 ### Evidenza run `learn` (2026-08-28)
 
