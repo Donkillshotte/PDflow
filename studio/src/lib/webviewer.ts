@@ -86,6 +86,7 @@ export function stopViewer(): { ok: boolean; message: string } {
 export function startViewer(
   stage: string,
   variant = "learn",
+  opts?: { artifact?: string },
 ): {
   ok: boolean;
   message: string;
@@ -93,7 +94,7 @@ export function startViewer(
   port?: number;
   artifact?: string;
 } {
-  const artifact = primaryArtifactForStage(stage);
+  const artifact = opts?.artifact ?? primaryArtifactForStage(stage);
   if (!artifact) {
     return { ok: false, message: `stage sconosciuto: ${stage}` };
   }

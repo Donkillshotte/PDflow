@@ -5,6 +5,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import type { FlowlabParams } from "./types";
 import { PHASES } from "./phases";
+import { FlowLabLayoutCanvas } from "./FlowLabLayoutCanvas";
 
 type Inspect = {
   odb: {
@@ -366,8 +367,24 @@ export function FlowLabPhaseVisual({
 
       {phaseId === "rtl" && <RtlVisual rtlLines={rtlLines} sim={sim} />}
 
+      {(phaseId === "synth" ||
+        phaseId === "floorplan" ||
+        phaseId === "pdn" ||
+        phaseId === "place" ||
+        phaseId === "cts" ||
+        phaseId === "route" ||
+        phaseId === "finish" ||
+        phaseId === "pkg") && (
+        <FlowLabLayoutCanvas
+          phaseId={phaseId as "synth" | "floorplan" | "pdn" | "place" | "cts" | "route" | "finish" | "pkg"}
+          variant={variant}
+          refreshKey={refreshKey}
+          stageDone={stageDone}
+        />
+      )}
+
       {phaseId === "synth" && (
-        <div className="fl-vis-body fl-vis-synth">
+        <div className="fl-vis-body fl-vis-synth fl-vis-stats-only">
           <StatBar label="Celle Yosys" value={cells} golden={golden.celle ?? golden.cells ?? undefined} max={600} />
           <StatBar label="Area" value={area} golden={golden.area ?? undefined} max={700} />
           <StatBar label="DFF_X1" value={parseNum(inspect?.yosys?.dff)} golden={golden.dff ?? undefined} max={50} />
@@ -380,13 +397,8 @@ export function FlowLabPhaseVisual({
       )}
 
       {phaseId === "floorplan" && (
-        <div className="fl-vis-body fl-vis-floorplan">
-          <DieCanvas
-            util={params.coreUtilization}
-            dieDbu={inspect?.odb?.dieDbu}
-            label={`Floorplan · util ${params.coreUtilization}%`}
-          />
-          <div className="fl-vis-side-stats">
+        <div className="fl-vis-body fl-vis-stats-only">
+          <div className="fl-vis-side-stats fl-vis-side-stats-row">
             <Gauge label="Core util (param)" value={params.coreUtilization} min={20} max={55} unit="%" />
             {inspect?.odb && (
               <>
@@ -405,17 +417,7 @@ export function FlowLabPhaseVisual({
       )}
 
       {phaseId === "place" && (
-        <div className="fl-vis-body fl-vis-place">
-          <DieCanvas util={params.coreUtilization + params.placeDensityAddon * 40} dieDbu={inspect?.odb?.dieDbu} label="Placement density" />
-          <div className="fl-vis-place-grid" aria-hidden>
-            {Array.from({ length: 48 }).map((_, i) => (
-              <span
-                key={i}
-                className={clsx("fl-vis-cell", i % 7 === 0 && "macro")}
-                style={{ opacity: 0.35 + (i % 5) * 0.12 }}
-              />
-            ))}
-          </div>
+        <div className="fl-vis-body fl-vis-stats-only">
           <p className="fl-vis-meta">
             Density addon {params.placeDensityAddon.toFixed(2)} ·{" "}
             {inspect?.odb ? `${inspect.odb.instances} celle piazzate` : "Run placement"}
@@ -424,7 +426,7 @@ export function FlowLabPhaseVisual({
       )}
 
       {phaseId === "cts" && (
-        <div className="fl-vis-body fl-vis-cts">
+        <div className="fl-vis-body fl-vis-cts fl-vis-stats-only">
           <ClockTreeViz paths={inspect?.sta?.paths ?? []} />
           <div className="fl-vis-gauge-row">
             <Gauge label="WNS" value={wns} min={-0.5} max={0.1} unit=" ns" good="high" />
@@ -435,15 +437,7 @@ export function FlowLabPhaseVisual({
       )}
 
       {phaseId === "route" && (
-        <div className="fl-vis-body fl-vis-route">
-          <div className="fl-vis-layer-stack">
-            {["M1", "M2", "M3", "M4", "M5", "M6"].map((layer, i) => (
-              <div key={layer} className="fl-vis-layer" style={{ "--i": i } as React.CSSProperties}>
-                <span>{layer}</span>
-                <i />
-              </div>
-            ))}
-          </div>
+        <div className="fl-vis-body fl-vis-stats-only">
           <div className="fl-vis-stat-grid">
             <div className="fl-vis-stat">
               <span>Nets</span>
@@ -460,24 +454,7 @@ export function FlowLabPhaseVisual({
       )}
 
       {phaseId === "finish" && (
-        <div className="fl-vis-body fl-vis-finish">
-          <div className="fl-vis-chip">
-            <svg viewBox="0 0 120 120" aria-hidden>
-              <rect x="8" y="8" width="104" height="104" rx="8" fill="#0a0e14" stroke="#f0883e" strokeWidth="2" />
-              <rect x="24" y="24" width="72" height="72" rx="4" fill="rgba(240,136,62,0.2)" stroke="rgba(240,136,62,0.5)" />
-              {Array.from({ length: 8 }).map((_, i) => (
-                <rect key={i} x={12 + (i % 4) * 28} y={i < 4 ? 2 : 108} width="8" height="8" fill="#58a6ff" rx="1" />
-              ))}
-            </svg>
-            <div>
-              <strong>GDSII ready</strong>
-              <p>
-                {results?.artifacts.find((a) => a.name === "6_final.gds" && a.exists)
-                  ? `${(results.artifacts.find((a) => a.name === "6_final.gds")!.size / (1024 * 1024)).toFixed(2)} MB`
-                  : "Esegui finish"}
-              </p>
-            </div>
-          </div>
+        <div className="fl-vis-body fl-vis-finish fl-vis-stats-only">
           <ul className="fl-vis-checklist">
             {["6_final.gds", "6_final.spef", "6_final.def", "6_final.v"].map((name) => {
               const a = results?.artifacts.find((x) => x.name === name);
@@ -493,35 +470,7 @@ export function FlowLabPhaseVisual({
       )}
 
       {phaseId === "pdn" && (
-        <div className="fl-vis-body fl-vis-pdn">
-          <svg viewBox="0 0 320 160" className="fl-vis-pdn-svg" aria-label="Chip PDN straps">
-            <rect width="320" height="160" rx="8" fill="#0a0e14" />
-            {Array.from({ length: 8 }).map((_, i) => (
-              <rect
-                key={`h${i}`}
-                x="16"
-                y={20 + i * 16}
-                width="288"
-                height="4"
-                fill={i % 2 === 0 ? "rgba(248,81,73,0.55)" : "rgba(88,166,255,0.45)"}
-                rx="1"
-              />
-            ))}
-            {Array.from({ length: 10 }).map((_, i) => (
-              <rect
-                key={`v${i}`}
-                x={24 + i * 28}
-                y="16"
-                width="5"
-                height="128"
-                fill={i % 2 === 0 ? "rgba(248,81,73,0.35)" : "rgba(88,166,255,0.3)"}
-                rx="1"
-              />
-            ))}
-            <text x="160" y="150" textAnchor="middle" fill="#8b949e" fontSize="9">
-              VDD / VSS straps · check_power_grid
-            </text>
-          </svg>
+        <div className="fl-vis-body fl-vis-pdn fl-vis-stats-only">
           <div className="fl-vis-stat-grid">
             <div className="fl-vis-stat">
               <span>ODB PDN</span>
@@ -557,39 +506,13 @@ export function FlowLabPhaseVisual({
             <p className="fl-vis-meta">
               Dopo finish: chip IR → <code>write_pg_spice</code> ·{" "}
               <Link href="/materiali/reference/spice-chip-mesh.md">mesh SPICE</Link>
-              {" · "}
-              <Link href="/materiali/reference/spice-power-chain.md#lezione-03-floorplan">
-                catena L03
-              </Link>
             </p>
           )}
         </div>
       )}
 
       {phaseId === "pkg" && (
-        <div className="fl-vis-body fl-vis-pkg">
-          <svg viewBox="0 0 320 150" className="fl-vis-pkg-svg" aria-label="System PDN stack">
-            <rect width="320" height="150" rx="8" fill="#0a0e14" />
-            <rect x="40" y="16" width="240" height="22" rx="4" fill="rgba(88,166,255,0.35)" stroke="#58a6ff" />
-            <text x="160" y="31" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              VRM
-            </text>
-            <rect x="55" y="44" width="210" height="22" rx="4" fill="rgba(63,185,80,0.3)" stroke="#3fb950" />
-            <text x="160" y="59" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Board plane / decap
-            </text>
-            <rect x="70" y="72" width="180" height="22" rx="4" fill="rgba(240,136,62,0.35)" stroke="#f0883e" />
-            <text x="160" y="87" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Package RLC + bumps
-            </text>
-            <rect x="90" y="100" width="140" height="22" rx="4" fill="rgba(210,153,34,0.3)" stroke="#d29922" />
-            <text x="160" y="115" textAnchor="middle" fill="#e6edf3" fontSize="9">
-              Die load
-            </text>
-            <text x="160" y="140" textAnchor="middle" fill="#8b949e" fontSize="8">
-              ngspice · Z(f) + load-step
-            </text>
-          </svg>
+        <div className="fl-vis-body fl-vis-pkg fl-vis-stats-only">
           {pdnReport?.impedance || pdnReport?.kind === "system_pdn" ? (
             <>
               <div className="fl-vis-gauge-row">
@@ -619,22 +542,6 @@ export function FlowLabPhaseVisual({
                 />
               </div>
               <p className="fl-vis-meta">{pdnReport.summary}</p>
-            </>
-          ) : pdnReport?.transient?.worst_droop != null ? (
-            <>
-              <div className="fl-vis-gauge-row">
-                <Gauge
-                  label="Chip IR droop"
-                  value={pdnReport.transient.worst_droop * 1000}
-                  min={0}
-                  max={100}
-                  unit=" mV"
-                  good="low"
-                />
-              </div>
-              <p className="fl-vis-meta">
-                Report chip IR legacy — rilancia PKG per System PDN gerarchico
-              </p>
             </>
           ) : (
             <p className="fl-vis-meta">

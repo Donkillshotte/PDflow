@@ -2976,6 +2976,106 @@ button.pipeline-node {
   border: 1px solid var(--fl-border);
 }
 
+/* Real layout canvas (ODB / ORFS PNG / Web Viewer) */
+.fl-layout-canvas {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+.fl-layout-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.fl-layout-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.fl-layout-title strong {
+  font-size: 0.88rem;
+}
+.fl-layout-hint,
+.fl-layout-src {
+  font-size: 0.72rem;
+  color: var(--fl-muted);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--fl-border);
+}
+.fl-layout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.fl-layout-stage {
+  min-height: 22rem;
+  border-radius: 12px;
+  border: 1px solid var(--fl-border);
+  background: #05080d;
+  overflow: hidden;
+  position: relative;
+}
+.fl-layout-stage.pending {
+  border-style: dashed;
+  opacity: 0.92;
+}
+.fl-layout-iframe {
+  width: 100%;
+  height: min(520px, 62vh);
+  min-height: 22rem;
+  border: 0;
+  display: block;
+  background: #0a0e14;
+}
+.fl-layout-img {
+  width: 100%;
+  height: auto;
+  max-height: min(520px, 62vh);
+  object-fit: contain;
+  display: block;
+  background: #0a0e14;
+}
+.fl-layout-empty {
+  display: grid;
+  place-content: center;
+  gap: 0.5rem;
+  min-height: 22rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--fl-muted);
+  font-size: 0.88rem;
+}
+.fl-layout-empty code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--fl-text);
+}
+.fl-layout-warn {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #ffa657;
+}
+.fl-layout-meta {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--fl-muted);
+}
+.fl-layout-meta code {
+  font-family: var(--font-mono);
+}
+.fl-vis-stats-only {
+  min-height: unset !important;
+  padding-top: 0 !important;
+}
+.fl-vis-side-stats-row {
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  width: 100%;
+}
+
 /* Loading skeleton */
 .fl-loading .fl-skel {
   border-radius: 14px;

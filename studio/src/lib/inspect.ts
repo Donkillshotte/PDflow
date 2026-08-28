@@ -46,6 +46,7 @@ export type StageInspect = {
 const STAGE_PRIMARY_ODB: Record<string, string> = {
   synth: "1_synth.odb",
   floorplan: "2_floorplan.odb",
+  pdn: "2_4_floorplan_pdn.odb",
   place: "3_place.odb",
   cts: "4_cts.odb",
   route: "5_route.odb",
@@ -55,6 +56,7 @@ const STAGE_PRIMARY_ODB: Record<string, string> = {
 const STAGE_NETLIST: Record<string, string | null> = {
   synth: "1_2_yosys.v",
   floorplan: "1_2_yosys.v",
+  pdn: "1_2_yosys.v",
   place: "1_2_yosys.v",
   cts: null,
   route: null,

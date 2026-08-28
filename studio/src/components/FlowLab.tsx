@@ -120,7 +120,7 @@ export function FlowLab() {
     phase.id === "rtl"
       ? "synth"
       : phase.id === "pdn"
-        ? "floorplan"
+        ? "pdn"
         : phase.id === "pkg"
           ? "finish"
           : phase.id;

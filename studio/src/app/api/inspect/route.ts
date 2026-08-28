@@ -7,6 +7,7 @@ export const maxDuration = 120;
 const STAGES = new Set([
   "synth",
   "floorplan",
+  "pdn",
   "place",
   "cts",
   "route",

@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     action?: string;
     stage?: string;
     variant?: string;
+    artifact?: string;
   };
   const action = body.action || "start";
   if (action === "stop") {
@@ -20,7 +21,9 @@ export async function POST(req: Request) {
   if (action === "start") {
     const stage = body.stage || "cts";
     const variant = body.variant || "learn";
-    const result = startViewer(stage, variant);
+    const result = startViewer(stage, variant, {
+      artifact: body.artifact,
+    });
     return NextResponse.json(result, { status: result.ok ? 200 : 422 });
   }
   return NextResponse.json({ error: "action non valida" }, { status: 400 });
