@@ -371,8 +371,8 @@ rg -q 'SIGNOFF_PHASE2_DONE|"ok":true' /tmp/studio-ph2.sse && ok "signoff_phase2 
 code="$(curl -s -o /tmp/studio-layout-meta.json -w '%{http_code}' \
   "${BASE}/api/layout-preview?phase=route&variant=flowlab")"
 [[ "${code}" == "200" ]] && ok "layout-preview route → 200" || bad "layout-preview → ${code}"
-python3 -c "import json; d=json.load(open('/tmp/studio-layout-meta.json')); assert d.get('imageUrl')" \
-  && ok "layout-preview imageUrl" || bad "layout-preview senza image"
+python3 -c "import json; d=json.load(open('/tmp/studio-layout-meta.json')); assert d.get('imageUrl'); assert '08_route' in (d.get('image') or {}).get('rel','')" \
+  && ok "layout-preview route = 08_route_labeled" || bad "route preview non è 08_route_labeled"
 code="$(curl -s -o /tmp/studio-layout-route.png -w '%{http_code}' \
   "${BASE}/api/layout-preview/image?phase=route&variant=flowlab")"
 [[ "${code}" == "200" ]] && ok "layout-preview PNG route" || bad "layout image → ${code}"

@@ -51,10 +51,11 @@ export const PHASE_LAYOUT: Record<LayoutPhaseId, LayoutPreviewConfig> = {
   floorplan: {
     phaseId: "floorplan",
     inspectStage: "floorplan",
-    odb: "2_1_floorplan.odb",
+    odb: "2_4_floorplan_pdn.odb",
     orfsReportPng: null,
     guiShot: "03_pdn.png",
-    label: "Floorplan · die / core / rows",
+    label: "Floorplan · die + PDN straps",
+    layerHint: "Rows + VDD/VSS — le celle arrivano al place",
   },
   pdn: {
     phaseId: "pdn",
@@ -72,6 +73,7 @@ export const PHASE_LAYOUT: Record<LayoutPhaseId, LayoutPreviewConfig> = {
     orfsReportPng: "final_placement.webp.png",
     guiShot: "05_place_dp.png",
     label: "Placement · standard cells",
+    layerHint: "Celle legalizzate sulle row",
   },
   cts: {
     phaseId: "cts",
@@ -88,7 +90,7 @@ export const PHASE_LAYOUT: Record<LayoutPhaseId, LayoutPreviewConfig> = {
     orfsReportPng: "final_routing.webp.png",
     guiShot: "08_route_labeled.png",
     label: "Detailed route · metal layers",
-    layerHint: "M2/M3 signal · toggle layer in viewer",
+    layerHint: "Rosso ≈ M2 · verde ≈ M3",
   },
   finish: {
     phaseId: "finish",
@@ -103,8 +105,9 @@ export const PHASE_LAYOUT: Record<LayoutPhaseId, LayoutPreviewConfig> = {
     inspectStage: "finish",
     odb: "6_final.odb",
     orfsReportPng: "final_ir_drop.webp.png",
-    guiShot: "09_final.png",
+    guiShot: "orfs_final_ir_drop.png",
     label: "PKG · IR drop / system PDN",
+    layerHint: "Heatmap IR post-finish",
   },
 };
 
@@ -136,9 +139,12 @@ export function resolveLayoutImageAbs(
   variant: string,
 ): { abs: string; source: "cache" | "orfs" | "gui_shot" | "odb" } | null {
   const cfg = PHASE_LAYOUT[phaseId];
-  const cached = cacheAbs(variant, phaseId);
-  if (fs.existsSync(cached)) {
-    return { abs: cached, source: "cache" };
+  // Pedagogical shots first: route must show metal spaghetti, not a blank iframe.
+  if (cfg.guiShot) {
+    const shot = guiShotAbs(cfg.guiShot);
+    if (fs.existsSync(shot)) {
+      return { abs: shot, source: "gui_shot" };
+    }
   }
   if (cfg.orfsReportPng) {
     const orfs = path.join(reportsDir(variant), cfg.orfsReportPng);
@@ -146,22 +152,18 @@ export function resolveLayoutImageAbs(
       return { abs: orfs, source: "orfs" };
     }
   }
-  if (cfg.guiShot) {
-    const shot = guiShotAbs(cfg.guiShot);
-    if (fs.existsSync(shot)) {
-      return { abs: shot, source: "gui_shot" };
-    }
+  const cached = cacheAbs(variant, phaseId);
+  if (fs.existsSync(cached)) {
+    return { abs: cached, source: "cache" };
   }
+  // Synth ODB has die 0×0 — inst-map looks like overlapping squares. Skip.
+  if (phaseId === "synth") return null;
   if (cfg.odb) {
     const odbAbs = path.join(resultsDir(variant), cfg.odb);
     if (fs.existsSync(odbAbs)) {
       const generated = generateLayoutFromOdb(phaseId, variant, cfg.odb);
       if (generated && fs.existsSync(generated)) {
         return { abs: generated, source: "odb" };
-      }
-      const instMap = generateInstMapSvg(phaseId, variant, cfg.odb);
-      if (instMap && fs.existsSync(instMap)) {
-        return { abs: instMap, source: "odb" };
       }
     }
   }

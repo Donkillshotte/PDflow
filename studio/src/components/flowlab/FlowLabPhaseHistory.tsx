@@ -28,11 +28,7 @@ export function FlowLabPhaseHistory({
   }
 
   if (runs.length === 0) {
-    return (
-      <div className="fl-phase-history fl-phase-history-empty">
-        <span>Nessuna run registrata per {phaseLabel}</span>
-      </div>
-    );
+    return null;
   }
 
   return (

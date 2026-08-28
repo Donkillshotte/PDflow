@@ -24,6 +24,10 @@ type PreviewMeta = {
   physical: boolean;
 };
 
+/**
+ * Lab canvas: screenshot of real layout is the default.
+ * OpenROAD -web is opt-in — auto-start hid the PNG behind a blank iframe.
+ */
 export function FlowLabLayoutCanvas({
   phaseId,
   variant,
@@ -39,12 +43,14 @@ export function FlowLabLayoutCanvas({
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerBusy, setViewerBusy] = useState(false);
   const [viewerErr, setViewerErr] = useState<string | null>(null);
-  const [mode, setMode] = useState<"viewer" | "image">("image");
+  const [mode, setMode] = useState<"image" | "viewer">("image");
   const [imgErr, setImgErr] = useState(false);
   const [regenBusy, setRegenBusy] = useState(false);
 
   const loadMeta = useCallback(async () => {
     setImgErr(false);
+    setMode("image");
+    setViewerUrl(null);
     const res = await fetch(
       `/api/layout-preview?phase=${encodeURIComponent(phaseId)}&variant=${encodeURIComponent(variant)}`,
     );
@@ -72,13 +78,16 @@ export function FlowLabLayoutCanvas({
       });
       const data = await res.json();
       if (data.url) {
+        await new Promise((r) => setTimeout(r, 1800));
         setViewerUrl(data.url);
         setMode("viewer");
       } else {
-        setViewerErr(data.message || data.error || "Viewer non avviato");
+        setViewerErr(data.message || data.error || "Viewer non avviato — resta lo screenshot");
+        setMode("image");
       }
     } catch (e) {
       setViewerErr(e instanceof Error ? e.message : "Errore viewer");
+      setMode("image");
     } finally {
       setViewerBusy(false);
     }
@@ -95,7 +104,6 @@ export function FlowLabLayoutCanvas({
       });
       if (res.ok) {
         await loadMeta();
-        setMode("image");
       }
     } finally {
       setRegenBusy(false);
@@ -106,18 +114,12 @@ export function FlowLabLayoutCanvas({
     void loadMeta();
   }, [loadMeta, refreshKey]);
 
-  useEffect(() => {
-    setViewerUrl(null);
-    setViewerErr(null);
-    if (meta?.odbExists && meta.physical) {
-      void startViewer();
-    }
-  }, [meta?.odbExists, meta?.physical, phaseId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const imageSrc =
     meta?.imageUrl && !imgErr
       ? `${meta.imageUrl}${meta.imageUrl.includes("?") ? "&" : "?"}k=${refreshKey}`
       : null;
+
+  const showViewer = mode === "viewer" && viewerUrl;
 
   return (
     <div className="fl-layout-canvas">
@@ -130,25 +132,23 @@ export function FlowLabLayoutCanvas({
           )}
         </div>
         <div className="fl-layout-actions">
+          <button
+            type="button"
+            className={clsx("btn-ghost btn-sm", mode === "image" && "chip-active")}
+            disabled={!imageSrc}
+            onClick={() => setMode("image")}
+          >
+            Layout
+          </button>
           {meta?.odbExists && (
-            <>
-              <button
-                type="button"
-                className={clsx("btn-ghost btn-sm", mode === "viewer" && "chip-active")}
-                disabled={viewerBusy}
-                onClick={() => void startViewer()}
-              >
-                {viewerBusy ? "Viewer…" : "Web Viewer"}
-              </button>
-              <button
-                type="button"
-                className={clsx("btn-ghost btn-sm", mode === "image" && "chip-active")}
-                disabled={!imageSrc}
-                onClick={() => setMode("image")}
-              >
-                Screenshot
-              </button>
-            </>
+            <button
+              type="button"
+              className={clsx("btn-ghost btn-sm", mode === "viewer" && "chip-active")}
+              disabled={viewerBusy}
+              onClick={() => void startViewer()}
+            >
+              {viewerBusy ? "Avvio viewer…" : "Apri Web Viewer"}
+            </button>
           )}
           {meta?.odbExists && (
             <button
@@ -157,14 +157,14 @@ export function FlowLabLayoutCanvas({
               disabled={regenBusy}
               onClick={() => void regenImage()}
             >
-              {regenBusy ? "Genero…" : "Rigenera PNG"}
+              {regenBusy ? "Genero…" : "PNG da ODB"}
             </button>
           )}
         </div>
       </div>
 
       <div className={clsx("fl-layout-stage", !stageDone && "pending")}>
-        {mode === "viewer" && viewerUrl ? (
+        {showViewer ? (
           <iframe
             title={`OpenROAD layout ${phaseId}`}
             src={viewerUrl}
@@ -181,12 +181,26 @@ export function FlowLabLayoutCanvas({
           />
         ) : (
           <div className="fl-layout-empty">
-            <p>
-              {stageDone || meta?.odbExists
-                ? "Preview in caricamento…"
-                : "Esegui la fase ORFS per vedere placement, PDN e routing reali."}
-            </p>
-            {meta?.odb && <code>{meta.odb}</code>}
+            {phaseId === "synth" ? (
+              <>
+                <p>
+                  La sintesi produce il <strong>netlist</strong>, non un layout nel die
+                  (area 0×0). Le celle compaiono al <strong>floorplan / place</strong>.
+                </p>
+                <p className="fl-layout-empty-hint">
+                  Esegui floorplan, poi place e route per vedere PDN, celle e metal.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>
+                  {stageDone || meta?.odbExists
+                    ? "Screenshot assente per questa fase."
+                    : "Esegui la fase ORFS per vedere placement, PDN e routing reali."}
+                </p>
+                {meta?.odb && <code>{meta.odb}</code>}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -194,8 +208,7 @@ export function FlowLabLayoutCanvas({
       {(viewerErr || imgErr) && (
         <p className="fl-layout-warn" role="status">
           {viewerErr}
-          {viewerErr && imgErr ? " · " : ""}
-          {imgErr ? "Screenshot non disponibile — usa Web Viewer o rigenera PNG." : ""}
+          {imgErr ? " Screenshot non caricato." : ""}
         </p>
       )}
 
@@ -203,8 +216,14 @@ export function FlowLabLayoutCanvas({
         <p className="fl-layout-meta">
           ODB: <code>{meta.odb}</code>
           {meta.odbExists ? " · presente" : " · mancante"}
-          {" · "}
-          Pan/zoom nel Web Viewer · layer M2/M3/M4 in toolbar OpenROAD
+          {showViewer && (
+            <>
+              {" · "}
+              <a href={viewerUrl!} target="_blank" rel="noreferrer">
+                apri viewer in tab
+              </a>
+            </>
+          )}
         </p>
       )}
     </div>

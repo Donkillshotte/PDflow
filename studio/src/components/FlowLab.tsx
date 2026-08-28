@@ -540,8 +540,6 @@ export function FlowLab() {
         onSelect={selectPhase}
       />
 
-      <FlowLabPowerChain phaseId={phaseId} compact={false} />
-
       <div className="fl-toolbar">
         <div className="fl-toolbar-left">
           <h2>{phase.title}</h2>
@@ -599,15 +597,6 @@ export function FlowLab() {
           sbloccare.
         </div>
       )}
-
-      <FlowLabMetricsBar
-        stage={resultsStage}
-        variant="flowlab"
-        refreshKey={refreshKey}
-        visible={phase.id !== "rtl"}
-      />
-
-      <FlowLabPhaseHistory phaseLabel={phase.label} runs={phaseRuns} />
 
       <div
         className="fl-workbench-grid"
@@ -865,6 +854,15 @@ export function FlowLab() {
           </div>
         </aside>
       </div>
+
+      <FlowLabMetricsBar
+        stage={resultsStage}
+        variant="flowlab"
+        refreshKey={refreshKey}
+        visible={phase.id !== "rtl"}
+      />
+      <FlowLabPowerChain phaseId={phaseId} compact />
+      <FlowLabPhaseHistory phaseLabel={phase.label} runs={phaseRuns} />
 
       <ConfirmDialog
         open={confirmOpen}
