@@ -2301,6 +2301,44 @@ button.pipeline-node {
 .sig-summary { margin: 0; font-size: 0.78rem; }
 .sig-ok-text { color: #3fb950; }
 .sig-fail-text { color: #f85149; }
+.sig-expand-btn {
+  margin-top: 0.35rem;
+  font: inherit;
+  font-size: 0.72rem;
+  background: none;
+  border: none;
+  color: var(--fl-accent-2);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.sig-check-table {
+  width: 100%;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  border-collapse: collapse;
+}
+.sig-check-table th,
+.sig-check-table td { padding: 0.2rem 0.35rem; text-align: left; border-bottom: 1px solid var(--fl-border); }
+.sig-check-ok td:last-child { color: #3fb950; }
+.sig-check-fail td:last-child { color: #f85149; }
+.sig-planned {
+  font-size: 0.78rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px dashed var(--fl-border);
+  color: var(--fl-muted);
+}
+.sig-planned ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+.sig-planned-badge {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(210, 153, 34, 0.15);
+  color: #d29922;
+}
 
 .fl-power-chain {
   border: 1px solid var(--fl-border);

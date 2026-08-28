@@ -3,7 +3,9 @@ import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { resultsDir } from "./open";
 
-export type SignoffPillarId = "timing" | "geometry" | "equivalence" | "power";
+export type SignoffPillarId = "timing" | "geometry" | "equivalence" | "power" | "pkg" | "thermal";
+
+export type SignoffPillarStatus = "active" | "planned";
 
 export type SignoffCheckDef = {
   id: string;
@@ -20,6 +22,7 @@ export type SignoffPillarDef = {
   id: SignoffPillarId;
   label: string;
   description: string;
+  status: SignoffPillarStatus;
   orchestratorAction: string;
   checks: SignoffCheckDef[];
 };
@@ -29,6 +32,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
     id: "timing",
     label: "Timing (STA)",
     description: "WNS/TNS/period_min vs golden-metrics post-SPEF",
+    status: "active",
     orchestratorAction: "sta_signoff",
     checks: [
       {
@@ -45,6 +49,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
     id: "geometry",
     label: "Geometria (DRC)",
     description: "Route DRC + KLayout GDS DRC",
+    status: "active",
     orchestratorAction: "drc_signoff",
     checks: [
       {
@@ -62,6 +67,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
     id: "equivalence",
     label: "Equivalenza (LVS)",
     description: "GDS vs CDL via ORFS make lvs",
+    status: "active",
     orchestratorAction: "klayout_lvs",
     checks: [
       {
@@ -80,6 +86,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
     id: "power",
     label: "Power / PKG",
     description: "Activity → chip IR → System PDN → export lab",
+    status: "active",
     orchestratorAction: "power_signoff",
     checks: [
       {
@@ -116,6 +123,51 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
     ],
   },
 ];
+
+/** Fase 2 — registry predisposto, script in arrivo (extended-flow §8–9). */
+export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
+  {
+    id: "pkg",
+    label: "Packaging (bump/RDL)",
+    description: "assign_io_bump · rdl_route · System PDN profondo",
+    status: "planned",
+    orchestratorAction: "pkg_signoff",
+    checks: [
+      {
+        id: "bump_assign",
+        label: "IO bump assignment",
+        action: "pkg_bump",
+        script: "learn/scripts/run_pkg_bump.sh",
+        reportRel: "sim/reports/pkg_bump_{variant}.json",
+      },
+      {
+        id: "rdl_route",
+        label: "RDL routing",
+        action: "pkg_rdl",
+        script: "learn/scripts/run_pkg_rdl.sh",
+        reportRel: "sim/reports/pkg_rdl_{variant}.json",
+      },
+    ],
+  },
+  {
+    id: "thermal",
+    label: "Thermal (proxy)",
+    description: "Power map + IR → hotspot proxy · HotSpot future",
+    status: "planned",
+    orchestratorAction: "thermal_signoff",
+    checks: [
+      {
+        id: "thermal_proxy",
+        label: "Thermal proxy signoff",
+        action: "thermal_signoff",
+        script: "learn/scripts/run_thermal_signoff.sh",
+        reportRel: "sim/reports/thermal_signoff_{variant}.json",
+      },
+    ],
+  },
+];
+
+export const ALL_SIGNOFF_PILLARS = [...SIGNOFF_PILLARS, ...SIGNOFF_PLANNED_PILLARS];
 
 export const SIGNOFF_ORCHESTRATOR = {
   id: "signoff_all",
@@ -168,6 +220,42 @@ export type SignoffGate = {
   detail?: string;
   action?: string;
 };
+
+function pillarReportPath(pillarId: SignoffPillarId, variant: string): string {
+  const map: Partial<Record<SignoffPillarId, string>> = {
+    timing: `sim/reports/sta_signoff_${variant}.json`,
+    geometry: `sim/reports/drc_signoff_${variant}.json`,
+    equivalence: `sim/reports/lvs_signoff_${variant}.json`,
+    power: `sim/reports/power_signoff_${variant}.json`,
+  };
+  const rel = map[pillarId];
+  return rel ? path.join(LEARN_ROOT, rel) : "";
+}
+
+export type SignoffCheckEval = {
+  id: string;
+  label: string;
+  actual: unknown;
+  target: unknown;
+  ok: boolean;
+  note?: string;
+};
+
+export function readPillarReportEval(
+  pillarId: SignoffPillarId,
+  variant: string,
+): { ok?: boolean; summary?: string; checks: SignoffCheckEval[] } | null {
+  const abs = pillarReportPath(pillarId, variant);
+  if (!abs) return null;
+  const report = readJsonReport(abs);
+  if (!report) return null;
+  const evaluation = (report.evaluation ?? {}) as { checks?: SignoffCheckEval[] };
+  return {
+    ok: report.ok as boolean | undefined,
+    summary: report.summary as string | undefined,
+    checks: evaluation.checks ?? [],
+  };
+}
 
 function readJsonReport(abs: string): Record<string, unknown> | null {
   try {
@@ -263,12 +351,14 @@ export function signoffMatrixForUi(variant = "flowlab") {
     golden: readGoldenGcd(),
     pillars: SIGNOFF_PILLARS.map((p) => ({
       ...p,
+      reportEval: readPillarReportEval(p.id, variant),
       checks: p.checks.map((c) => ({
         ...c,
         reportPath: c.reportRel.replace("{variant}", variant),
         reportExists: fs.existsSync(reportPathForCheck(c, variant)),
       })),
     })),
+    plannedPillars: SIGNOFF_PLANNED_PILLARS,
     orchestrator: {
       ...SIGNOFF_ORCHESTRATOR,
       reportPath: SIGNOFF_ORCHESTRATOR.reportRel.replace("{variant}", variant),

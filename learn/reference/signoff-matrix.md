@@ -103,4 +103,15 @@ Cross-ref: [extended-flow.md](./extended-flow.md) · [spice-power-chain.md](./sp
 
 ## Fase 2 (planned in registry)
 
-Pilastri `pkg` (bump/RDL profondo) e `thermal` (HotSpot proxy) restano **planned** — vedi extended-flow §8–9.
+Pilastri predisposti in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
+
+| Pilastro | Action (future) | Script | Stato |
+|---|---|---|---|
+| **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | planned |
+| **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (proxy IR+droop) | proxy READY |
+
+Il proxy thermal legge chip IR + heatmap ORFS; HotSpot/3D-ICE restano future (extended-flow §9).
+
+```bash
+FLOW_VARIANT=flowlab ./learn/scripts/run_thermal_signoff.sh
+```
