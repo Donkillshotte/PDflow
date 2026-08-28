@@ -311,6 +311,48 @@ else
   ok "skip klayout_drc deps (gds presente)"
 fi
 
+# Signoff API + docs
+code="$(curl -s -o /tmp/studio-signoff.json -w '%{http_code}' "${BASE}/api/signoff?variant=flowlab")"
+[[ "${code}" == "200" ]] && ok "GET /api/signoff → 200" || bad "signoff API → ${code}"
+rg -q '"pillars"' /tmp/studio-signoff.json && ok "signoff.pillars" || bad "signoff senza pillars"
+rg -q '"evaluation"' /tmp/studio-signoff.json && ok "signoff.evaluation" || bad "signoff senza evaluation"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/signoff-matrix.md")"
+[[ "${c}" == "200" ]] && ok "signoff-matrix.md page" || bad "signoff-matrix page → ${c}"
+
+code="$(curl -s --max-time 120 -o /tmp/studio-sta.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=sta_signoff&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "sta_signoff stream → 200" || bad "sta_signoff → ${code}"
+rg -q 'STA_SIGNOFF_DONE|"ok":true' /tmp/studio-sta.sse && ok "sta_signoff pass" || bad "sta_signoff fail"
+
+# sta_signoff preflight without 6_final.v
+FINAL_V="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.v"
+if [[ -f "${FINAL_V}" ]]; then
+  mv "${FINAL_V}" "${FINAL_V}.smoke-bak"
+  code="$(curl -s -o /tmp/studio-sta-dep.json -w '%{http_code}' \
+    "${BASE}/api/run/stream?action=sta_signoff&mode=flowlab")"
+  mv "${FINAL_V}.smoke-bak" "${FINAL_V}"
+  [[ "${code}" == "412" ]] && ok "sta_signoff deps → 412" || bad "sta_signoff atteso 412, got ${code}"
+else
+  ok "skip sta_signoff deps (no 6_final.v)"
+fi
+
+if python3 - <<'PY'
+import json, sys
+d = json.load(open("/tmp/studio-suite.json"))
+ids = {h["id"] for h in d["hooks"]}
+need = {"sta_signoff", "drc_signoff", "lvs_signoff", "power_signoff", "signoff_all"}
+miss = sorted(need - ids)
+if miss:
+    print("missing", miss)
+    sys.exit(1)
+sys.exit(0)
+PY
+then
+  ok "suite signoff hook ids"
+else
+  bad "suite signoff hooks mancanti"
+fi
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "STUDIO API SMOKE FAILED"
   exit 1

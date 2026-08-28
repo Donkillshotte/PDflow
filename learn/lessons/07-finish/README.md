@@ -81,6 +81,20 @@ Fill **non** cambia la funzione. Cambia densità CMP e un po’ i parassiti. Fin
 
 Senza `learn/workbook/mio-progetto-finale.md` il corso **non è finito**, anche se `make finish` è verde.
 
+## Signoff 4 pilastri (Fase 1)
+
+Registry e matrice: [`signoff-matrix.md`](../../reference/signoff-matrix.md).
+
+| Pilastro | Action Studio | Script |
+|---|---|---|
+| Timing (STA) | `sta_signoff` | `run_sta_signoff.sh` |
+| Geometria (DRC) | `drc_signoff` | `run_drc_signoff.sh` |
+| Equivalenza (LVS) | `klayout_lvs` | `run_klayout_lvs.sh` |
+| Power / PKG | `power_signoff` | `run_power_signoff.sh` |
+| Tutti | `signoff_all` | `run_signoff_all.sh` |
+
+FlowLab fase **finish** mostra la matrice con gate vs `golden-gcd.json`. LVS su FreePDK45 può FAIL — interpretare il report.
+
 ## Catena power & SPICE (modulo post-corso consigliato)
 
 Finish produce `6_final.odb`, heatmap IR e abilita la **catena SPICE** completa:

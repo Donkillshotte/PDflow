@@ -9,6 +9,12 @@ export type MaterialLink = {
 
 export const MATERIALS: MaterialLink[] = [
   {
+    href: "/materiali/reference/signoff-matrix.md",
+    title: "Matrice signoff",
+    group: "Riferimento",
+    description: "4 pilastri STA/DRC/LVS/power · golden-gcd · gate PASS/FAIL.",
+  },
+  {
     href: "/materiali/reference/golden-metrics.md",
     title: "Metriche d’oro",
     group: "Riferimento",

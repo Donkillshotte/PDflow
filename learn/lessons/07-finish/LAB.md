@@ -150,6 +150,22 @@ Checklist opzionale — non blocca il completamento lezione se saltata.
 
 ---
 
+## Parte 7 — Signoff 4 pilastri (30–45 min)
+
+Dopo `finish`, esegui il signoff enterprise (matrice in Studio fase **finish** o [`/pkg`](/pkg)):
+
+- [ ] Leggi [`signoff-matrix.md`](../../reference/signoff-matrix.md) e [`golden-gcd.json`](../../signoff/golden-gcd.json)
+- [ ] **STA:** `FLOW_VARIANT=learn ./learn/scripts/run_sta_signoff.sh` — confronta WNS/TNS con golden-metrics
+- [ ] **DRC:** `./learn/scripts/run_drc_signoff.sh` — route DRC lines + GDS violations separate nel JSON
+- [ ] **LVS:** `./learn/scripts/run_klayout_lvs.sh` — interpreta `.lvsdb` anche se FAIL (FreePDK45 educativo)
+- [ ] **Power:** `./learn/scripts/run_power_signoff.sh` — catena activity → chip IR → system → export + gate IR/droop
+- [ ] **Orchestrator:** `./learn/scripts/run_signoff_all.sh` — report aggregato `signoff_all_{v}.json`
+- [ ] In Studio: badge PASS/FAIL su matrice vs golden; API `GET /api/signoff?variant=learn`
+
+Checklist signoff — consigliata per chiudere il discorso “contratto foundry”, non obbligatoria per `--status` se salti LVS lungo.
+
+---
+
 ## Superamento del corso (non solo della lezione)
 
 - [ ] `--status` : lezioni 00–07

@@ -85,18 +85,51 @@ default vs attività sintetica vs (opz.) VCD annotato.
 
 ---
 
-## 5. DRC — READY (route) / PARTIAL→script (KLayout GDS)
+## 5. DRC — READY (route + signoff unificato)
 
 | Tipo | Come |
 |---|---|
 | Detailed-route DRC | `make … route` → `reports/.../5_route_drc.rpt` (L06) |
-| KLayout GDS DRC | `make … drc` / `learn/scripts/run_klayout_drc.sh` → `6_drc.lyrdb` |
+| **DRC signoff** | `learn/scripts/run_drc_signoff.sh` → route lines + `make drc` → `drc_signoff_{v}.json` |
+| KLayout GDS DRC (legacy) | `learn/scripts/run_klayout_drc.sh` → `6_drc.lyrdb` |
 | Magic | tech presente, **non** nel path corso |
 
 ```bash
-# dopo finish
-./learn/scripts/run_klayout_drc.sh
+# dopo finish — signoff unificato (preferito)
+FLOW_VARIANT=learn ./learn/scripts/run_drc_signoff.sh
 ```
+
+**Studio:** azione `drc_signoff` · matrice in FlowLab finish / [`/pkg`](/pkg).  
+Vedi [signoff-matrix.md](./signoff-matrix.md).
+
+---
+
+## 5b. STA signoff — READY
+
+| Componente | Path |
+|---|---|
+| Finish report | `reports/.../6_finish.rpt` |
+| OpenSTA + SPEF | `run_sta_signoff.sh` |
+| Report | `learn/sim/reports/sta_signoff_{v}.json` |
+| Gate | vs `learn/signoff/golden-gcd.json` |
+
+**Studio:** azione `sta_signoff` · `GET /api/signoff`.
+
+---
+
+## 5c. LVS signoff — READY (educational)
+
+ORFS: `make lvs` → CDL concat + KLayout LVS → `6_lvs.lvsdb`.
+
+| Componente | Path |
+|---|---|
+| Wrapper | `learn/scripts/run_klayout_lvs.sh` |
+| Report | `learn/sim/reports/lvs_signoff_{v}.json` |
+| Stamp | `results/.../.lvs.ok` |
+
+**Nota onesta:** su GCD FreePDK45, LVS può non essere tapeout-clean; interpretare il report.
+
+**Studio:** azione `klayout_lvs`.
 
 ---
 
@@ -182,7 +215,13 @@ Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 | `chip_pdn_ir` | PDNSim + write_pg_spice + pdn_transient |
 | `power_chain` | activity → chip IR → system → export lab |
 | `activity_power` | `set_power_activity` + `report_power` |
-| `klayout_drc` | GDS DRC (lungo) |
+| `klayout_drc` | GDS DRC (legacy, solo GDS) |
+| `sta_signoff` | STA vs golden-metrics |
+| `drc_signoff` | Route DRC + KLayout GDS unificato |
+| `klayout_lvs` | LVS GDS vs CDL |
+| `power_signoff` | Catena power + gate golden |
+| `signoff_all` | Orchestrator 4 pilastri |
+| `/api/signoff` | Matrice signoff + gate |
 | `/api/inspect` | ODB / STA / Yosys (+ note hook) |
 | `/api/viewer` | OpenROAD `-web` |
 | `/api/open` | Qt GUI / KLayout |

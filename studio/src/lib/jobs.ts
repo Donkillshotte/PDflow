@@ -32,6 +32,11 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   activity_power: "finish",
   export_spice_lab: "finish",
   klayout_drc: "finish",
+  sta_signoff: "finish",
+  drc_signoff: "finish",
+  klayout_lvs: "finish",
+  power_signoff: "finish",
+  signoff_all: "finish",
   synth: null,
   floorplan: "synth",
   place: "floorplan",
@@ -234,6 +239,8 @@ export type CompletionGate = {
   detail?: string;
 };
 
+export { evaluateSignoffGates } from "./signoff";
+
 export function evaluateLessonGates(input: {
   lessonId: string;
   makeTarget: string;
@@ -350,6 +357,26 @@ export function preflightAction(
     klayout_drc: {
       rel: "6_final.gds",
       hint: "esegui prima finish (GDS)",
+    },
+    sta_signoff: {
+      rel: "6_final.v",
+      hint: "esegui prima finish (netlist SPEF)",
+    },
+    drc_signoff: {
+      rel: "6_final.gds",
+      hint: "esegui prima finish (GDS DRC)",
+    },
+    klayout_lvs: {
+      rel: "6_final.gds",
+      hint: "esegui prima finish (LVS GDS vs CDL)",
+    },
+    power_signoff: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (catena power)",
+    },
+    signoff_all: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (signoff completo)",
     },
   };
   const need = needFile[action];

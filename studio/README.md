@@ -59,6 +59,7 @@ Produzione:
 | `GET /api/inspect?stage=` | ODB / STA / Yosys live |
 | `POST /api/viewer` `{ stage }` | avvia OpenROAD Web Viewer |
 | `GET /api/suite` | stato collaborativo di tutti gli hook |
+| `GET /api/signoff?variant=` | matrice 4 pilastri + gate vs golden-gcd |
 | `GET/PUT /api/flowlab` | RTL + parametri FlowLab + sim + storico run |
 | `GET /api/flowlab/download?kind=vcd\|simlog` | download waveform / sim.log |
 | `GET /api/run/stream?mode=flowlab&action=` | run con override allowlistati |
@@ -97,7 +98,7 @@ Workbench **RTL → GDSII** con variante isolata `results/nangate45/gcd/flowlab`
 1. **RTL** — editor Monaco, autosave, sim Icarus, download VCD
 2. **Sintesi → GDSII** — parametri ORFS (util, SDC, ABC, TNS) con profili rapidi
 3. **Console** — log SSE, artefatti, ispezione ODB/STA/Yosys
-4. **Finish signoff** — gridcheck, activity→power, KLayout DRC
+4. **Finish signoff** — matrice STA/DRC/LVS/power, `signoff_all`, catena SPICE
 5. **Storico** — ultimi job per fase da `/api/jobs`
 
 Scorciatoie: `Ctrl+S` salva, `Ctrl+Enter` esegue fase.

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
+import { SignoffMatrixPanel } from "@/components/flowlab/SignoffMatrixPanel";
 import { useToast } from "@/components/ToastProvider";
 
 type HookRow = { id: string; label: string; ok: boolean; detail: string };
@@ -31,9 +32,19 @@ export function PkgHubPanel() {
       ),
     ]);
     const powerHooks = (suite.hooks ?? []).filter((h: HookRow) =>
-      ["activity", "chip_pdn_ir", "system_pdn", "power_chain", "spice_lab", "ngspice"].includes(
-        h.id,
-      ),
+      [
+        "activity",
+        "chip_pdn_ir",
+        "system_pdn",
+        "power_chain",
+        "spice_lab",
+        "ngspice",
+        "sta_signoff",
+        "drc_signoff",
+        "lvs_signoff",
+        "power_signoff",
+        "signoff_all",
+      ].includes(h.id),
     );
     setHooks(powerHooks);
     if (sys?.content) {
@@ -141,6 +152,8 @@ export function PkgHubPanel() {
           )}
         </article>
       </div>
+
+      <SignoffMatrixPanel busy={busy} onRun={(a, l) => void runSignoff(a, l)} />
 
       <FlowLabSignoff disabled={Boolean(busy)} busy={busy} onRun={(a, l) => void runSignoff(a, l)} />
     </section>

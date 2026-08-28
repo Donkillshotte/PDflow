@@ -30,6 +30,21 @@ function which(bin: string) {
   }
 }
 
+function signoffReportOk(variant: string, name: string) {
+  return fs.existsSync(path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.json`));
+}
+
+function signoffReportPass(variant: string, name: string) {
+  const p = path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.json`);
+  if (!fs.existsSync(p)) return false;
+  try {
+    const j = JSON.parse(fs.readFileSync(p, "utf8")) as { ok?: boolean };
+    return j.ok === true;
+  } catch {
+    return false;
+  }
+}
+
 function powerReportOk(variant: string, name: string) {
   return fs.existsSync(path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.log`));
 }
@@ -207,6 +222,54 @@ export async function getSuiteStatus() {
       detail: "run_klayout_drc.sh",
       action: "klayout_drc",
       href: "/strumenti?tab=run&action=klayout_drc",
+    },
+    {
+      id: "sta_signoff",
+      label: "STA signoff",
+      group: "Signoff",
+      ok: signoffReportPass("flowlab", "sta_signoff") || signoffReportPass("learn", "sta_signoff"),
+      detail: "WNS/TNS vs golden-gcd · run_sta_signoff.sh",
+      action: "sta_signoff",
+      href: "/flusso?phase=finish",
+    },
+    {
+      id: "drc_signoff",
+      label: "DRC signoff",
+      group: "Signoff",
+      ok: signoffReportPass("flowlab", "drc_signoff") || signoffReportPass("learn", "drc_signoff"),
+      detail: "Route DRC + KLayout GDS · run_drc_signoff.sh",
+      action: "drc_signoff",
+      href: "/flusso?phase=finish",
+    },
+    {
+      id: "lvs_signoff",
+      label: "LVS signoff",
+      group: "Signoff",
+      ok:
+        signoffReportOk("flowlab", "lvs_signoff") ||
+        signoffReportOk("learn", "lvs_signoff") ||
+        fs.existsSync(path.join(resultsDir("flowlab"), ".lvs.ok")),
+      detail: "ORFS make lvs · educational PASS optional",
+      action: "klayout_lvs",
+      href: "/flusso?phase=finish",
+    },
+    {
+      id: "power_signoff",
+      label: "Power signoff",
+      group: "Signoff",
+      ok: signoffReportPass("flowlab", "power_signoff") || signoffReportPass("learn", "power_signoff"),
+      detail: "Catena power + gate golden",
+      action: "power_signoff",
+      href: "/pkg",
+    },
+    {
+      id: "signoff_all",
+      label: "Signoff completo",
+      group: "Signoff",
+      ok: signoffReportPass("flowlab", "signoff_all") || signoffReportPass("learn", "signoff_all"),
+      detail: "STA → DRC → LVS → power",
+      action: "signoff_all",
+      href: "/pkg",
     },
     {
       id: "or-web",

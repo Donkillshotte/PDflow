@@ -38,6 +38,33 @@ for action in rtl_sim synth floorplan gridcheck place cts route finish \
     && ok "action ${action}" || bad "run.ts senza ${action}"
 done
 
+echo "== Script signoff =="
+for s in run_sta_signoff.sh run_drc_signoff.sh run_klayout_lvs.sh run_power_signoff.sh run_signoff_all.sh; do
+  f="${ROOT}/learn/scripts/${s}"
+  [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
+done
+python3 -m py_compile "${ROOT}/learn/scripts/signoff_eval.py" && ok "signoff_eval.py" || bad "signoff_eval.py"
+[[ -f "${ROOT}/learn/signoff/golden-gcd.json" ]] && ok "golden-gcd.json" || bad "golden-gcd.json"
+[[ -f "${ROOT}/learn/reference/signoff-matrix.md" ]] && ok "signoff-matrix.md" || bad "signoff-matrix.md"
+rg -q 'SIGNOFF_PILLARS' "${ROOT}/studio/src/lib/signoff.ts" && ok "signoff.ts registry" || bad "signoff.ts"
+
+echo "== Azioni signoff in run.ts =="
+for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all; do
+  rg -q "\"${action}\"" "${ROOT}/studio/src/lib/run.ts" \
+    && ok "action ${action}" || bad "run.ts senza ${action}"
+done
+
+echo "== STAGE_DEPS signoff =="
+python3 - <<PY || bad "STAGE_DEPS signoff incompleti"
+import re
+text = open("${ROOT}/studio/src/lib/jobs.ts").read()
+for a in ["sta_signoff", "drc_signoff", "klayout_lvs", "power_signoff", "signoff_all"]:
+    m = re.search(rf'{a}:\s*"(\w+)"', text)
+    assert m and m.group(1) == "finish", f"{a} dep {m.group(1) if m else 'missing'}"
+print("signoff deps ok")
+PY
+ok "STAGE_DEPS signoff"
+
 echo "== Script catena power =="
 for s in run_rtl_sim.sh run_activity_power.sh run_chip_pdn_ir.sh run_system_pdn.sh \
   run_power_chain.sh export_spice_lab.sh run_gridcheck.sh; do
@@ -69,6 +96,7 @@ if [[ -f "${RES}/6_final.odb" ]]; then
     && rg -q 'POWER_CHAIN_DONE' "${ROOT}/learn/sim/reports/power_chain_flowlab.log" \
     && ok "power_chain log complete" || bad "power_chain non completata"
   [[ -f "${ROOT}/learn/sim/spice/mesh_stats_flowlab.json" ]] && ok "mesh_stats export" || bad "mesh_stats assente"
+  [[ -f "${ROOT}/learn/sim/reports/sta_signoff_flowlab.json" ]] && ok "sta_signoff report" || ok "skip sta_signoff (non eseguito)"
 else
   ok "skip flowlab artifacts (finish non eseguito)"
 fi

@@ -66,7 +66,7 @@ read_power_activities -vcd gcd.vcd
 report_power
 ```
 
-Studio oggi usa activity globale sintetica finché il VCD non è collegato automaticamente — ma il VCD resta il **primo anello** della catena.
+Studio oggi usa **VCD automatico** quando `run_rtl_sim.sh` ha prodotto `gcd.vcd` — vedi `learn/lib/power_vcd.sh` e `run_activity_power.sh`. Activity globale sintetica resta fallback se il VCD manca.
 
 **Prossimo passo catena:** 02 synth (celle) → 07 finish (`report_power`).
 
@@ -272,7 +272,7 @@ ngspice -b learn/sim/spice/system_pdn_tran_demo.sp
 ## Limiti onesti
 
 - Nessun SPICE transistor-level Nangate45 in ORFS GCD
-- VCD → `read_power_activities` non automatizzato in FlowLab
+- VCD → `read_power_activities` via `power_vcd.sh` in `run_activity_power.sh` (FlowLab `rtl_sim` → activity)
 - System PDN = ladder lumped educativo
 - Chip `BUMPS` = pattern sintetico OpenROAD (PSM-0073)
 - Lezioni 00–07 **non richiedono** SPICE per completamento — modulo **post-corso** consigliato

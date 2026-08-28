@@ -80,6 +80,11 @@ const ALLOWED_ACTIONS = new Set([
   "activity_power",
   "export_spice_lab",
   "klayout_drc",
+  "sta_signoff",
+  "drc_signoff",
+  "klayout_lvs",
+  "power_signoff",
+  "signoff_all",
 ]);
 
 type Job = {
@@ -231,7 +236,38 @@ function resolveCommand(
   }
   if (action === "klayout_drc") {
     const cmd = path.join(LEARN_ROOT, "scripts/run_klayout_drc.sh");
-    return { cmd, args: [], cwd: REPO_ROOT, command: cmd };
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    return {
+      cmd,
+      args: [],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      env: { FLOW_VARIANT: variant },
+    };
+  }
+  const signoffScripts: Record<string, string> = {
+    sta_signoff: "run_sta_signoff.sh",
+    drc_signoff: "run_drc_signoff.sh",
+    klayout_lvs: "run_klayout_lvs.sh",
+    power_signoff: "run_power_signoff.sh",
+    signoff_all: "run_signoff_all.sh",
+  };
+  if (action in signoffScripts) {
+    const cmd = path.join(LEARN_ROOT, "scripts", signoffScripts[action]!);
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    const env: Record<string, string> = { FLOW_VARIANT: variant };
+    if (action === "power_signoff" || action === "signoff_all") {
+      env.PYTHONPATH = `/usr/lib/python3/dist-packages${
+        process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ""
+      }`;
+    }
+    return {
+      cmd,
+      args: [],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      env,
+    };
   }
   if (action === "check" || action === "status" || action === "list") {
     const cmd = path.join(SCRIPTS_ROOT, "learn_physical_design.sh");

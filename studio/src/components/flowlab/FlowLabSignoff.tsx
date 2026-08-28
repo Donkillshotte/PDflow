@@ -1,8 +1,25 @@
 "use client";
 
-import { Activity, Download, Grid3X3, Layers, ShieldCheck, Zap } from "lucide-react";
+import {
+  Activity,
+  Clock,
+  Download,
+  Grid3X3,
+  Layers,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
+import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
 
-const SIGNOFF = [
+type SignoffAction = {
+  id: string;
+  label: string;
+  hint: string;
+  icon: typeof Activity;
+  long: boolean;
+};
+
+const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "activity_power",
     label: "Activity → power",
@@ -39,59 +56,140 @@ const SIGNOFF = [
     long: true,
   },
   {
+    id: "power_signoff",
+    label: "Power signoff",
+    hint: "4 step + gate golden",
+    icon: Zap,
+    long: true,
+  },
+  {
     id: "gridcheck",
     label: "Gridcheck PDN",
     hint: "check_power_grid su floorplan PDN",
     icon: Grid3X3,
     long: false,
   },
+];
+
+const FINISH_ACTIONS: SignoffAction[] = [
   {
-    id: "klayout_drc",
-    label: "KLayout DRC",
-    hint: "DRC su GDS finale · può richiedere minuti",
+    id: "sta_signoff",
+    label: "STA signoff",
+    hint: "WNS/TNS vs golden-metrics",
+    icon: Clock,
+    long: false,
+  },
+  {
+    id: "drc_signoff",
+    label: "DRC signoff",
+    hint: "Route DRC + KLayout GDS",
     icon: ShieldCheck,
     long: true,
   },
-] as const;
+  {
+    id: "klayout_lvs",
+    label: "LVS signoff",
+    hint: "GDS vs CDL · ORFS make lvs",
+    icon: ShieldCheck,
+    long: true,
+  },
+  {
+    id: "klayout_drc",
+    label: "KLayout DRC (solo GDS)",
+    hint: "Legacy · usa drc_signoff per unificato",
+    icon: ShieldCheck,
+    long: true,
+  },
+];
 
-export function FlowLabSignoff({
+function ActionGrid({
+  actions,
   disabled,
   busy,
   onRun,
 }: {
+  actions: SignoffAction[];
   disabled?: boolean;
   busy?: string | null;
   onRun: (action: string, long: boolean) => void;
 }) {
   return (
+    <div className="fl-signoff-grid">
+      {actions.map((s) => {
+        const Icon = s.icon;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            className="fl-signoff-card"
+            disabled={disabled || busy === s.id}
+            onClick={() => onRun(s.id, s.long)}
+          >
+            <Icon size={18} aria-hidden />
+            <div>
+              <strong>{busy === s.id ? "Eseguo…" : s.label}</strong>
+              <span>{s.hint}</span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function FlowLabSignoff({
+  mode = "power",
+  disabled,
+  busy,
+  onRun,
+}: {
+  mode?: "power" | "finish" | "full";
+  disabled?: boolean;
+  busy?: string | null;
+  onRun: (action: string, long: boolean) => void;
+}) {
+  const isFinish = mode === "finish" || mode === "full";
+  const isPower = mode === "power" || mode === "full";
+
+  return (
     <div className="fl-signoff">
-      <div className="fl-signoff-head">
-        <strong>Signoff power &amp; SPICE</strong>
-        <p>
-          Catena: VCD/activity → chip mesh → System PDN → export lab. Docs{" "}
-          <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>.
-        </p>
-      </div>
-      <div className="fl-signoff-grid">
-        {SIGNOFF.map((s) => {
-          const Icon = s.icon;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              className="fl-signoff-card"
-              disabled={disabled || busy === s.id}
-              onClick={() => onRun(s.id, s.long)}
-            >
-              <Icon size={18} aria-hidden />
-              <div>
-                <strong>{busy === s.id ? "Eseguo…" : s.label}</strong>
-                <span>{s.hint}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {isFinish && (
+        <>
+          <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
+          <div className="fl-signoff-head">
+            <strong>Azioni signoff timing / geometria / LVS</strong>
+            <p>
+              Docs{" "}
+              <a href="/materiali/reference/signoff-matrix.md">signoff-matrix</a> ·{" "}
+              <a href="/materiali/reference/golden-metrics.md">golden-metrics</a>
+            </p>
+          </div>
+          <ActionGrid
+            actions={FINISH_ACTIONS}
+            disabled={disabled}
+            busy={busy}
+            onRun={onRun}
+          />
+        </>
+      )}
+
+      {isPower && (
+        <>
+          <div className="fl-signoff-head">
+            <strong>Signoff power &amp; SPICE</strong>
+            <p>
+              Catena: VCD/activity → chip mesh → System PDN → export lab. Docs{" "}
+              <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>.
+            </p>
+          </div>
+          <ActionGrid
+            actions={POWER_ACTIONS}
+            disabled={disabled}
+            busy={busy}
+            onRun={onRun}
+          />
+        </>
+      )}
     </div>
   );
 }

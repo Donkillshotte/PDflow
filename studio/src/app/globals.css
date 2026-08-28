@@ -2260,6 +2260,48 @@ button.pipeline-node {
 }
 .fl-signoff-card svg { color: var(--fl-accent-2); flex-shrink: 0; margin-top: 0.1rem; }
 
+.sig-matrix {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(46, 160, 67, 0.35);
+  background: rgba(46, 160, 67, 0.06);
+  display: grid;
+  gap: 0.65rem;
+}
+.sig-matrix-head p { margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--fl-muted); }
+.sig-err { color: #f85149; }
+.sig-pillar-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.sig-pillar-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface);
+}
+.sig-row-ok { border-color: rgba(46, 160, 67, 0.4); }
+.sig-row-fail { border-color: rgba(248, 81, 73, 0.35); }
+.sig-row-body { flex: 1; min-width: 0; }
+.sig-row-body strong { display: block; font-size: 0.85rem; }
+.sig-row-body small { display: block; font-size: 0.72rem; color: var(--fl-muted); }
+.sig-ok { color: #3fb950; }
+.sig-fail { color: #f85149; }
+.sig-pending { color: var(--fl-muted); }
+.sig-run-btn, .sig-all-btn {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface);
+  cursor: pointer;
+}
+.sig-all-btn { width: 100%; margin-top: 0.25rem; }
+.sig-summary { margin: 0; font-size: 0.78rem; }
+.sig-ok-text { color: #3fb950; }
+.sig-fail-text { color: #f85149; }
+
 .fl-power-chain {
   border: 1px solid var(--fl-border);
   border-radius: 12px;
