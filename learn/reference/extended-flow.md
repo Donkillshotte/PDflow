@@ -193,13 +193,23 @@ pattern sintetico OpenROAD (PSM-0073), non un package tapeout-ready.
 
 ---
 
-## 9. Thermal analysis — MISSING
+## 9. Thermal analysis — PARTIAL (proxy READY)
 
-Nessun comando thermal in OpenROAD 26Q2 di questa VM; nessun target ORFS.
+Nessun comando thermal nativo in OpenROAD 26Q2; nessun target ORFS HotSpot.
 
-**Opzioni open esterne (non installate):** HotSpot, 3D-ICE, tool vendor.  
-**Trattazione onesta:** capitolo “affidabilità / thermal” qualitativo (power map
-→ hotspot → derating timing) senza fingere un flow chiuso.
+**Slice corso (proxy READY):**
+
+| Componente | Path |
+|---|---|
+| Script | `learn/scripts/run_thermal_signoff.sh` |
+| Report | `learn/sim/reports/thermal_signoff_{v}.json` |
+| Input | chip IR JSON + heatmap ORFS `orfs_final_ir_drop.png` |
+| Studio | azione `thermal_signoff` · matrice Fase 2 su `/pkg` |
+
+Il proxy somma IR statico + droop transient come stima educativa hotspot; soglia 50 mV nel report.
+
+**Opzioni open esterne (non installate):** HotSpot, 3D-ICE.  
+**Trattazione onesta:** capitolo “affidabilità / thermal” con proxy + power map, senza fingere tapeout thermal closed-loop.
 
 Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 
@@ -221,6 +231,8 @@ Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 | `klayout_lvs` | LVS GDS vs CDL |
 | `power_signoff` | Catena power + gate golden |
 | `signoff_all` | Orchestrator 4 pilastri |
+| `thermal_signoff` | Proxy IR+droop hotspot |
+| `pkg_signoff` | Bump + RDL edu + system PDN |
 | `/api/signoff` | Matrice signoff + gate |
 | `/api/inspect` | ODB / STA / Yosys (+ note hook) |
 | `/api/viewer` | OpenROAD `-web` |

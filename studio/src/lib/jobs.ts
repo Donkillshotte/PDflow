@@ -37,6 +37,10 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   klayout_lvs: "finish",
   power_signoff: "finish",
   signoff_all: "finish",
+  thermal_signoff: "finish",
+  pkg_bump: "finish",
+  pkg_rdl: "finish",
+  pkg_signoff: "finish",
   synth: null,
   floorplan: "synth",
   place: "floorplan",
@@ -377,6 +381,22 @@ export function preflightAction(
     signoff_all: {
       rel: "6_final.odb",
       hint: "esegui prima finish (signoff completo)",
+    },
+    thermal_signoff: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (chip IR per proxy thermal)",
+    },
+    pkg_bump: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (mesh SPICE bump)",
+    },
+    pkg_rdl: {
+      rel: "6_final.gds",
+      hint: "esegui prima finish (GDS per lab RDL)",
+    },
+    pkg_signoff: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (PKG signoff)",
     },
   };
   const need = needFile[action];

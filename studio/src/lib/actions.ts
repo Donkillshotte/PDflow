@@ -8,6 +8,20 @@ export const SIGNOFF_ACTIONS = [
   "signoff_all",
 ] as const;
 
+/** Fase 2 signoff / packaging actions (post-finish). */
+export const PHASE2_SIGNOFF_ACTIONS = [
+  "thermal_signoff",
+  "pkg_bump",
+  "pkg_rdl",
+  "pkg_signoff",
+] as const;
+
+export type Phase2SignoffAction = (typeof PHASE2_SIGNOFF_ACTIONS)[number];
+
+export function isPhase2SignoffAction(action: string): action is Phase2SignoffAction {
+  return (PHASE2_SIGNOFF_ACTIONS as readonly string[]).includes(action);
+}
+
 export type SignoffAction = (typeof SIGNOFF_ACTIONS)[number];
 
 export function isSignoffAction(action: string): action is SignoffAction {
@@ -26,6 +40,8 @@ export const LONG_ACTIONS = new Set([
   "chip_pdn_ir",
   "power_signoff",
   "signoff_all",
+  "thermal_signoff",
+  "pkg_signoff",
 ]);
 
 /** Actions that may exceed 5 minutes — extended SSE timeout. */
@@ -40,6 +56,7 @@ export const EXTENDED_TIMEOUT_ACTIONS = new Set([
   "chip_pdn_ir",
   "power_signoff",
   "signoff_all",
+  "pkg_signoff",
 ]);
 
 export function defaultActionTimeoutMs(action: string): number {
@@ -69,5 +86,9 @@ export function isPowerAction(action: string): action is PowerAction {
   return (POWER_ACTIONS as readonly string[]).includes(action);
 }
 
-/** All post-finish analysis actions (power + signoff). */
-export const POST_FINISH_ACTIONS = [...POWER_ACTIONS, ...SIGNOFF_ACTIONS] as const;
+/** All post-finish analysis actions (power + signoff + fase 2). */
+export const POST_FINISH_ACTIONS = [
+  ...POWER_ACTIONS,
+  ...SIGNOFF_ACTIONS,
+  ...PHASE2_SIGNOFF_ACTIONS,
+] as const;

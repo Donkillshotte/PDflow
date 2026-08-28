@@ -85,6 +85,10 @@ const ALLOWED_ACTIONS = new Set([
   "klayout_lvs",
   "power_signoff",
   "signoff_all",
+  "thermal_signoff",
+  "pkg_bump",
+  "pkg_rdl",
+  "pkg_signoff",
 ]);
 
 type Job = {
@@ -251,6 +255,10 @@ function resolveCommand(
     klayout_lvs: "run_klayout_lvs.sh",
     power_signoff: "run_power_signoff.sh",
     signoff_all: "run_signoff_all.sh",
+    thermal_signoff: "run_thermal_signoff.sh",
+    pkg_bump: "run_pkg_bump.sh",
+    pkg_rdl: "run_pkg_rdl.sh",
+    pkg_signoff: "run_pkg_signoff.sh",
   };
   if (action in signoffScripts) {
     const cmd = path.join(LEARN_ROOT, "scripts", signoffScripts[action]!);

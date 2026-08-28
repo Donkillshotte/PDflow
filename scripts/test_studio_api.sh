@@ -353,6 +353,16 @@ else
   bad "suite signoff hooks mancanti"
 fi
 
+code="$(curl -s --max-time 60 -o /tmp/studio-thermal.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=thermal_signoff&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "thermal_signoff stream → 200" || bad "thermal_signoff → ${code}"
+rg -q 'THERMAL_SIGNOFF_DONE|"ok":true' /tmp/studio-thermal.sse && ok "thermal_signoff pass" || bad "thermal_signoff fail"
+
+code="$(curl -s --max-time 90 -o /tmp/studio-pkg.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=pkg_signoff&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "pkg_signoff stream → 200" || bad "pkg_signoff → ${code}"
+rg -q 'PKG_SIGNOFF_DONE|"ok":true' /tmp/studio-pkg.sse && ok "pkg_signoff pass" || bad "pkg_signoff fail"
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "STUDIO API SMOKE FAILED"
   exit 1

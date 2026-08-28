@@ -107,11 +107,10 @@ Pilastri predisposti in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
 
 | Pilastro | Action (future) | Script | Stato |
 |---|---|---|---|
-| **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | planned |
+| **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | READY (educational) |
 | **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (proxy IR+droop) | proxy READY |
 
-Il proxy thermal legge chip IR + heatmap ORFS; HotSpot/3D-ICE restano future (extended-flow §9).
-
 ```bash
+FLOW_VARIANT=flowlab ./learn/scripts/run_pkg_signoff.sh
 FLOW_VARIANT=flowlab ./learn/scripts/run_thermal_signoff.sh
 ```

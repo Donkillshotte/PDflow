@@ -6,7 +6,9 @@ import {
   Download,
   Grid3X3,
   Layers,
+  Package,
   ShieldCheck,
+  Thermometer,
   Zap,
 } from "lucide-react";
 import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
@@ -102,6 +104,37 @@ const FINISH_ACTIONS: SignoffAction[] = [
   },
 ];
 
+const PHASE2_ACTIONS: SignoffAction[] = [
+  {
+    id: "thermal_signoff",
+    label: "Thermal proxy",
+    hint: "IR + droop → hotspot estimate",
+    icon: Thermometer,
+    long: false,
+  },
+  {
+    id: "pkg_signoff",
+    label: "PKG signoff",
+    hint: "Bump config + RDL edu + system PDN",
+    icon: Package,
+    long: false,
+  },
+  {
+    id: "pkg_bump",
+    label: "PKG bump",
+    hint: "default.json + mesh SPICE sources",
+    icon: Package,
+    long: false,
+  },
+  {
+    id: "pkg_rdl",
+    label: "PKG RDL (edu)",
+    hint: "rdl_route API map · no bump LEF on GCD",
+    icon: Package,
+    long: false,
+  },
+];
+
 function ActionGrid({
   actions,
   disabled,
@@ -188,6 +221,23 @@ export function FlowLabSignoff({
             busy={busy}
             onRun={onRun}
           />
+          {(mode === "full") && (
+            <>
+              <div className="fl-signoff-head">
+                <strong>Fase 2 · PKG &amp; thermal</strong>
+                <p>
+                  Proxy educativi ·{" "}
+                  <a href="/materiali/reference/pkg-design-package.md">pkg-design-package</a>
+                </p>
+              </div>
+              <ActionGrid
+                actions={PHASE2_ACTIONS}
+                disabled={disabled}
+                busy={busy}
+                onRun={onRun}
+              />
+            </>
+          )}
         </>
       )}
     </div>

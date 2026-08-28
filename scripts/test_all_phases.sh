@@ -38,6 +38,18 @@ for action in rtl_sim synth floorplan gridcheck place cts route finish \
     && ok "action ${action}" || bad "run.ts senza ${action}"
 done
 
+echo "== Script signoff Fase 2 =="
+for s in run_thermal_signoff.sh run_pkg_bump.sh run_pkg_rdl.sh run_pkg_signoff.sh; do
+  f="${ROOT}/learn/scripts/${s}"
+  [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
+done
+
+echo "== Azioni Fase 2 in run.ts =="
+for action in thermal_signoff pkg_bump pkg_rdl pkg_signoff; do
+  rg -q "\"${action}\"" "${ROOT}/studio/src/lib/run.ts" \
+    && ok "action ${action}" || bad "run.ts senza ${action}"
+done
+
 echo "== Script signoff =="
 for s in run_sta_signoff.sh run_drc_signoff.sh run_klayout_lvs.sh run_power_signoff.sh run_signoff_all.sh; do
   f="${ROOT}/learn/scripts/${s}"

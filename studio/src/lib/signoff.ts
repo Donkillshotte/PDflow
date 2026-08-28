@@ -5,7 +5,7 @@ import { resultsDir } from "./open";
 
 export type SignoffPillarId = "timing" | "geometry" | "equivalence" | "power" | "pkg" | "thermal";
 
-export type SignoffPillarStatus = "active" | "planned";
+export type SignoffPillarStatus = "active" | "planned" | "proxy";
 
 export type SignoffCheckDef = {
   id: string;
@@ -153,7 +153,7 @@ export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
     id: "thermal",
     label: "Thermal (proxy)",
     description: "Power map + IR → hotspot proxy · HotSpot future",
-    status: "planned",
+    status: "proxy",
     orchestratorAction: "thermal_signoff",
     checks: [
       {
@@ -227,6 +227,8 @@ function pillarReportPath(pillarId: SignoffPillarId, variant: string): string {
     geometry: `sim/reports/drc_signoff_${variant}.json`,
     equivalence: `sim/reports/lvs_signoff_${variant}.json`,
     power: `sim/reports/power_signoff_${variant}.json`,
+    thermal: `sim/reports/thermal_signoff_${variant}.json`,
+    pkg: `sim/reports/pkg_signoff_${variant}.json`,
   };
   const rel = map[pillarId];
   return rel ? path.join(LEARN_ROOT, rel) : "";
@@ -358,7 +360,10 @@ export function signoffMatrixForUi(variant = "flowlab") {
         reportExists: fs.existsSync(reportPathForCheck(c, variant)),
       })),
     })),
-    plannedPillars: SIGNOFF_PLANNED_PILLARS,
+    plannedPillars: SIGNOFF_PLANNED_PILLARS.map((p) => ({
+      ...p,
+      reportEval: readPillarReportEval(p.id, variant),
+    })),
     orchestrator: {
       ...SIGNOFF_ORCHESTRATOR,
       reportPath: SIGNOFF_ORCHESTRATOR.reportRel.replace("{variant}", variant),

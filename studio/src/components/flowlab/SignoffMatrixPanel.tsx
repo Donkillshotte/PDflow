@@ -171,13 +171,35 @@ export function SignoffMatrixPanel({
 
       {data?.plannedPillars && data.plannedPillars.length > 0 && (
         <div className="sig-planned">
-          <strong>Fase 2 (planned)</strong>
-          <ul>
-            {data.plannedPillars.map((p) => (
-              <li key={p.id}>
-                <span className="sig-planned-badge">planned</span> {p.label} — {p.description}
-              </li>
-            ))}
+          <strong>Fase 2 (proxy / planned)</strong>
+          <ul className="sig-pillar-list">
+            {data.plannedPillars.map((p) => {
+              const eval_ = p.reportEval;
+              const ok = eval_?.ok;
+              const action = p.orchestratorAction;
+              const canRun = action === "thermal_signoff" || action === "pkg_signoff";
+              return (
+                <li key={p.id} className={ok === true ? "sig-row-ok" : ok === false ? "sig-row-fail" : ""}>
+                  <StatusIcon ok={Boolean(ok)} pending={!eval_} />
+                  <div className="sig-row-body">
+                    <strong>
+                      <span className="sig-planned-badge">{p.status ?? "planned"}</span> {p.label}
+                    </strong>
+                    <small>{eval_?.summary ?? p.description}</small>
+                  </div>
+                  {onRun && canRun && (
+                    <button
+                      type="button"
+                      className="sig-run-btn"
+                      disabled={Boolean(busy)}
+                      onClick={() => onRun(action, action === "pkg_signoff")}
+                    >
+                      {busy === action ? "…" : "Run"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
