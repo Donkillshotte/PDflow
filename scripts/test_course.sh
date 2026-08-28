@@ -43,7 +43,7 @@ done
 
 echo "== Reference =="
 for f in glossary.md file-formats.md debug-playbook.md gui-openroad.md gui-atlas.md \
-         golden-metrics.md tool-hooks.md extended-flow.md \
+         golden-metrics.md tool-hooks.md extended-flow.md signoff-matrix.md oss-integrations.md \
          walkthrough-synth.tcl.md walkthrough-floorplan.tcl.md \
          walkthrough-global_place.tcl.md walkthrough-cts.tcl.md \
          walkthrough-route.tcl.md walkthrough-finish.tcl.md; do
@@ -53,8 +53,21 @@ min_lines "${ROOT}/learn/reference/tool-hooks.md" 80
 min_lines "${ROOT}/learn/reference/extended-flow.md" 100
 rg -q 'OpenROAD -web' "${ROOT}/learn/reference/tool-hooks.md" && ok "hooks -web" || bad "hooks senza -web"
 rg -q 'report_checks -format json' "${ROOT}/learn/reference/tool-hooks.md" && ok "hooks sta json" || bad "hooks senza sta json"
-rg -q 'run_rtl_sim|gridcheck|activity_power|bump|thermal' "${ROOT}/learn/reference/extended-flow.md" \
+rg -q 'run_rtl_sim|gridcheck|activity_power|bump|thermal|signoff|FreePDK45.lylvs' "${ROOT}/learn/reference/extended-flow.md" \
   && ok "extended-flow topics" || bad "extended-flow incompleto"
+[[ -f "${ROOT}/learn/reference/signoff-matrix.md" ]] && ok "signoff-matrix.md" || bad "manca signoff-matrix"
+[[ -f "${ROOT}/learn/reference/oss-integrations.md" ]] && ok "oss-integrations.md" || bad "manca oss-integrations"
+[[ -f "${ROOT}/learn/platforms/nangate45/lvs/FreePDK45.lylvs" ]] \
+  && ok "FreePDK45.lylvs vendored" || bad "manca LVS runset"
+[[ -f "${ROOT}/studio/src/lib/signoff.ts" ]] && rg -q 'SIGNOFF_PILLARS' "${ROOT}/studio/src/lib/signoff.ts" \
+  && ok "signoff.ts registry" || bad "signoff.ts incompleto"
+for s in run_sta_signoff.sh run_signoff_phase2.sh parse_signoff_artifacts.py; do
+  [[ -f "${ROOT}/learn/scripts/${s}" ]] && ok "script ${s}" || bad "manca ${s}"
+done
+rg -q 'sta_signoff|signoff_phase2|thermal_signoff' "${ROOT}/studio/src/lib/run.ts" \
+  && ok "studio signoff actions" || bad "run.ts signoff incompleto"
+rg -q 'signoff-matrix|Parte 7' "${ROOT}/learn/lessons/07-finish/LAB.md" \
+  && ok "L07 signoff LAB" || bad "L07 LAB senza signoff"
 [[ -f "${ROOT}/learn/sim/gcd/tb_gcd.v" ]] && ok "tb_gcd.v" || bad "manca tb"
 [[ -x "${ROOT}/learn/scripts/run_rtl_sim.sh" ]] || chmod +x "${ROOT}/learn/scripts/run_rtl_sim.sh"
 [[ -x "${ROOT}/learn/scripts/run_gridcheck.sh" ]] || chmod +x "${ROOT}/learn/scripts/run_gridcheck.sh"

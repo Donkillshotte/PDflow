@@ -16,6 +16,32 @@ OUT="${ROOT}/learn/sim/reports/lvs_signoff_${VARIANT}.json"
 [[ -f "${GDS}" ]] || { echo "FAIL manca ${GDS} — esegui finish"; exit 1; }
 mkdir -p "$(dirname "${OUT}")"
 
+LYLVS="${ROOT}/learn/platforms/nangate45/lvs/FreePDK45.lylvs"
+ORFS_LVS="${FLOW}/platforms/nangate45/lvs/FreePDK45.lylvs"
+if [[ ! -f "${LYLVS}" ]]; then
+  echo "FAIL manca ${LYLVS} — see learn/reference/oss-integrations.md"
+  python3 - <<PY
+import json
+from pathlib import Path
+out = {
+  "kind": "lvs_signoff",
+  "variant": "${VARIANT}",
+  "equivalence": {"lvs_pass": False, "lvs_errors": 0, "make_rc": 2, "missing_lylvs": True},
+  "evaluation": {"checks": [{"id": "lvs_runset", "label": "LVS runset present", "actual": False, "target": True, "ok": False}], "ok": False},
+  "ok": False,
+  "summary": "LVS FAIL · missing FreePDK45.lylvs",
+  "artifacts": {"lylvs_expected": "${LYLVS}", "log": "${LOG}"},
+}
+Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
+PY
+  echo "LVS_SIGNOFF_DONE ${VARIANT}"
+  exit 0
+fi
+
+# Ensure ORFS platform path (tools/ may be gitignored clone)
+mkdir -p "$(dirname "${ORFS_LVS}")"
+cp "${LYLVS}" "${ORFS_LVS}"
+
 cd "${FLOW}"
 set +e
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
@@ -24,6 +50,7 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      OPENROAD_EXE="${OPENROAD_EXE:-openroad}" \
      OPENSTA_EXE="${OPENSTA_EXE:-sta}" \
      YOSYS_EXE="${YOSYS_EXE:-yosys}" \
+     KLAYOUT_LVS_FILE="${LYLVS}" \
      lvs 2>&1 | tee /tmp/lvs-signoff-${VARIANT}.log
 MAKE_RC=$?
 set -e
@@ -66,11 +93,24 @@ metrics = json.loads(Path("${METRICS}").read_text())
 evald = json.loads(Path("${OUT}.eval").read_text()) if Path("${OUT}.eval").exists() else {}
 eq = metrics["equivalence"]
 ev = evald.get("pillars", {}).get("equivalence", {})
+artifact_parse = {}
+import subprocess
+log_path = "${LOG}" if Path("${LOG}").exists() else "/tmp/lvs-signoff-${VARIANT}.log"
+try:
+    lvsdb_path = "${LVSDB}" if Path("${LVSDB}").exists() else "/dev/null"
+    raw = subprocess.check_output([
+        "python3", "${ROOT}/learn/scripts/parse_signoff_artifacts.py",
+        "--kind", "lvs", "--path", lvsdb_path, "--log", log_path,
+    ], text=True)
+    artifact_parse = json.loads(raw)
+except Exception:
+    pass
 out = {
   "kind": "lvs_signoff",
   "variant": "${VARIANT}",
   "equivalence": eq,
   "evaluation": ev,
+  "artifact_parse": artifact_parse,
   "ok": eq["lvs_pass"],
   "educational_note": "FreePDK45 GCD may not be tapeout-clean; value is process + report interpretation",
   "summary": f"LVS {'PASS' if eq['lvs_pass'] else 'FAIL'} · errors {eq['lvs_errors']}",

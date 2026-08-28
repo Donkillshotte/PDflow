@@ -179,19 +179,24 @@ export const SIGNOFF_ORCHESTRATOR = {
   long: true,
 } as const;
 
-export const SIGNOFF_ACTIONS = [
-  "sta_signoff",
-  "drc_signoff",
-  "klayout_lvs",
-  "power_signoff",
-  "signoff_all",
-] as const;
+export const SIGNOFF_PHASE2_ORCHESTRATOR = {
+  id: "signoff_phase2",
+  label: "Signoff Fase 2",
+  action: "signoff_phase2",
+  script: "learn/scripts/run_signoff_phase2.sh",
+  reportRel: "sim/reports/signoff_phase2_{variant}.json",
+  logRel: "sim/reports/signoff_phase2_{variant}.log",
+  long: false,
+} as const;
 
-export type SignoffAction = (typeof SIGNOFF_ACTIONS)[number];
-
-export function isSignoffAction(action: string): action is SignoffAction {
-  return (SIGNOFF_ACTIONS as readonly string[]).includes(action);
-}
+export {
+  SIGNOFF_ACTIONS,
+  PHASE2_SIGNOFF_ACTIONS,
+  type SignoffAction,
+  type Phase2SignoffAction,
+  isSignoffAction,
+  isPhase2SignoffAction,
+} from "./actions";
 
 export function signoffPillar(id: SignoffPillarId): SignoffPillarDef | undefined {
   return SIGNOFF_PILLARS.find((p) => p.id === id);
@@ -246,7 +251,12 @@ export type SignoffCheckEval = {
 export function readPillarReportEval(
   pillarId: SignoffPillarId,
   variant: string,
-): { ok?: boolean; summary?: string; checks: SignoffCheckEval[] } | null {
+): {
+  ok?: boolean;
+  summary?: string;
+  checks: SignoffCheckEval[];
+  artifactParse?: Record<string, unknown>;
+} | null {
   const abs = pillarReportPath(pillarId, variant);
   if (!abs) return null;
   const report = readJsonReport(abs);
@@ -256,6 +266,7 @@ export function readPillarReportEval(
     ok: report.ok as boolean | undefined,
     summary: report.summary as string | undefined,
     checks: evaluation.checks ?? [],
+    artifactParse: report.artifact_parse as Record<string, unknown> | undefined,
   };
 }
 

@@ -29,10 +29,14 @@ bump = load("pkg_bump") or {}
 rdl = load("pkg_rdl") or {}
 sys = load("system_pdn") or {}
 
+sys_ok = sys.get("ok")
+if sys_ok is None and sys.get("summary"):
+    sys_ok = True
+
 steps = {
   "pkg_bump": {"ok": bump.get("ok"), "summary": bump.get("summary")},
   "pkg_rdl": {"ok": rdl.get("ok"), "summary": rdl.get("summary")},
-  "system_pdn": {"ok": sys.get("ok"), "summary": sys.get("summary")},
+  "system_pdn": {"ok": sys_ok, "summary": sys.get("summary")},
 }
 all_ok = all(s.get("ok") for s in steps.values() if s.get("ok") is not None)
 out = {

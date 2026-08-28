@@ -133,6 +133,13 @@ const PHASE2_ACTIONS: SignoffAction[] = [
     icon: Package,
     long: false,
   },
+  {
+    id: "signoff_phase2",
+    label: "Signoff Fase 2",
+    hint: "Thermal proxy + PKG bump/RDL",
+    icon: Package,
+    long: false,
+  },
 ];
 
 function ActionGrid({

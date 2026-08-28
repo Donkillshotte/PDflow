@@ -363,6 +363,11 @@ code="$(curl -s --max-time 90 -o /tmp/studio-pkg.sse -w '%{http_code}' \
 [[ "${code}" == "200" ]] && ok "pkg_signoff stream → 200" || bad "pkg_signoff → ${code}"
 rg -q 'PKG_SIGNOFF_DONE|"ok":true' /tmp/studio-pkg.sse && ok "pkg_signoff pass" || bad "pkg_signoff fail"
 
+code="$(curl -s --max-time 120 -o /tmp/studio-ph2.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=signoff_phase2&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "signoff_phase2 stream → 200" || bad "signoff_phase2 → ${code}"
+rg -q 'SIGNOFF_PHASE2_DONE|"ok":true' /tmp/studio-ph2.sse && ok "signoff_phase2 pass" || bad "signoff_phase2 fail"
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "STUDIO API SMOKE FAILED"
   exit 1

@@ -123,13 +123,14 @@ ORFS: `make lvs` → CDL concat + KLayout LVS → `6_lvs.lvsdb`.
 
 | Componente | Path |
 |---|---|
+| LVS runset | `platforms/nangate45/lvs/FreePDK45.lylvs` (da [FreePDK45_for_KLayout](https://github.com/laurentc2/FreePDK45_for_KLayout)) |
 | Wrapper | `learn/scripts/run_klayout_lvs.sh` |
+| Parser UI | `learn/scripts/parse_signoff_artifacts.py` |
 | Report | `learn/sim/reports/lvs_signoff_{v}.json` |
-| Stamp | `results/.../.lvs.ok` |
 
 **Nota onesta:** su GCD FreePDK45, LVS può non essere tapeout-clean; interpretare il report.
 
-**Studio:** azione `klayout_lvs`.
+**Studio:** azione `klayout_lvs` · matrice artefatti in FlowLab finish.
 
 ---
 

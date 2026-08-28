@@ -21,13 +21,27 @@ type CheckEval = {
   note?: string;
 };
 
+type ArtifactParse = {
+  exists?: boolean;
+  items?: number;
+  samples?: { category: string; detail: string }[];
+  categories?: string[];
+  lvsdb?: { exists?: boolean; errors?: number; messages?: string[] };
+  log?: { exists?: boolean; tail?: string[]; missing_lylvs?: boolean };
+};
+
 type PillarRow = {
   id: string;
   label: string;
   description: string;
   orchestratorAction: string;
   status?: string;
-  reportEval?: { ok?: boolean; summary?: string; checks: CheckEval[] } | null;
+  reportEval?: {
+    ok?: boolean;
+    summary?: string;
+    checks: CheckEval[];
+    artifactParse?: ArtifactParse;
+  } | null;
 };
 
 type SignoffApi = {
@@ -45,6 +59,60 @@ function StatusIcon({ ok, pending }: { ok: boolean; pending?: boolean }) {
   ) : (
     <XCircle size={16} className="sig-fail" aria-hidden />
   );
+}
+
+function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: ArtifactParse }) {
+  if (!parse) return null;
+  if (pillarId === "geometry" && parse.exists) {
+    return (
+      <div className="sig-artifact">
+        <strong>DRC .lyrdb</strong>
+        <p>
+          Violazioni: {parse.items ?? 0}
+          {parse.categories && parse.categories.length > 0 && (
+            <> · categorie: {parse.categories.slice(0, 4).join(", ")}</>
+          )}
+        </p>
+        {parse.samples && parse.samples.length > 0 && (
+          <ul>
+            {parse.samples.slice(0, 4).map((s, i) => (
+              <li key={i}>
+                <code>{s.category}</code> {s.detail}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+  if (pillarId === "equivalence" && parse.lvsdb) {
+    const lvs = parse.lvsdb;
+    const log = parse.log;
+    return (
+      <div className="sig-artifact">
+        <strong>LVS report</strong>
+        <p>
+          {lvs.exists ? (
+            <>Errori: {lvs.errors ?? 0}</>
+          ) : (
+            <>File .lvsdb assente</>
+          )}
+          {log?.missing_lylvs && <> · runset .lylvs mancante</>}
+        </p>
+        {lvs.messages && lvs.messages.length > 0 && (
+          <ul>
+            {lvs.messages.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+        )}
+        {log?.tail && log.tail.length > 0 && (
+          <pre className="sig-log-tail">{log.tail.slice(-6).join("\n")}</pre>
+        )}
+      </div>
+    );
+  }
+  return null;
 }
 
 function fmtVal(v: unknown): string {
@@ -122,13 +190,13 @@ export function SignoffMatrixPanel({
               <div className="sig-row-body">
                 <strong>{g.label}</strong>
                 <small>{g.detail}</small>
-                {checks.length > 0 && (
+                {(checks.length > 0 || pillar?.reportEval?.artifactParse) && (
                   <button
                     type="button"
                     className="sig-expand-btn"
                     onClick={() => setExpanded(isOpen ? null : g.id)}
                   >
-                    {isOpen ? "Nascondi metriche" : "Metriche golden"}
+                    {isOpen ? "Nascondi dettagli" : "Metriche & artefatti"}
                   </button>
                 )}
                 {isOpen && checks.length > 0 && (
@@ -152,6 +220,16 @@ export function SignoffMatrixPanel({
                       ))}
                     </tbody>
                   </table>
+                )}
+                {isOpen && (g.id === "geometry" || g.id === "equivalence") && (
+                  <ArtifactDetails
+                    pillarId={g.id}
+                    parse={
+                      g.id === "equivalence"
+                        ? (pillar?.reportEval?.artifactParse as ArtifactParse | undefined)
+                        : pillar?.reportEval?.artifactParse
+                    }
+                  />
                 )}
               </div>
               {onRun && action && (
@@ -204,15 +282,27 @@ export function SignoffMatrixPanel({
         </div>
       )}
 
-      {showOrchestrator && allGate && onRun && (
-        <button
-          type="button"
-          className="sig-all-btn"
-          disabled={Boolean(busy)}
-          onClick={() => onRun("signoff_all", true)}
-        >
-          {busy === "signoff_all" ? "Signoff completo…" : "Signoff completo (STA→DRC→LVS→Power)"}
-        </button>
+      {showOrchestrator && onRun && (
+        <div className="sig-orch-row">
+          {allGate && (
+            <button
+              type="button"
+              className="sig-all-btn"
+              disabled={Boolean(busy)}
+              onClick={() => onRun("signoff_all", true)}
+            >
+              {busy === "signoff_all" ? "Signoff completo…" : "Signoff completo (STA→DRC→LVS→Power)"}
+            </button>
+          )}
+          <button
+            type="button"
+            className="sig-all-btn sig-phase2-btn"
+            disabled={Boolean(busy)}
+            onClick={() => onRun("signoff_phase2", false)}
+          >
+            {busy === "signoff_phase2" ? "Fase 2…" : "Signoff Fase 2 (thermal + PKG)"}
+          </button>
+        </div>
       )}
 
       {data && (

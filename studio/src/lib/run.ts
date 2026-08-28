@@ -89,6 +89,7 @@ const ALLOWED_ACTIONS = new Set([
   "pkg_bump",
   "pkg_rdl",
   "pkg_signoff",
+  "signoff_phase2",
 ]);
 
 type Job = {
@@ -259,6 +260,7 @@ function resolveCommand(
     pkg_bump: "run_pkg_bump.sh",
     pkg_rdl: "run_pkg_rdl.sh",
     pkg_signoff: "run_pkg_signoff.sh",
+    signoff_phase2: "run_signoff_phase2.sh",
   };
   if (action in signoffScripts) {
     const cmd = path.join(LEARN_ROOT, "scripts", signoffScripts[action]!);

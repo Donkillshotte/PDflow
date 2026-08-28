@@ -14,6 +14,7 @@ export const PHASE2_SIGNOFF_ACTIONS = [
   "pkg_bump",
   "pkg_rdl",
   "pkg_signoff",
+  "signoff_phase2",
 ] as const;
 
 export type Phase2SignoffAction = (typeof PHASE2_SIGNOFF_ACTIONS)[number];
@@ -42,6 +43,7 @@ export const LONG_ACTIONS = new Set([
   "signoff_all",
   "thermal_signoff",
   "pkg_signoff",
+  "signoff_phase2",
 ]);
 
 /** Actions that may exceed 5 minutes — extended SSE timeout. */
@@ -57,6 +59,7 @@ export const EXTENDED_TIMEOUT_ACTIONS = new Set([
   "power_signoff",
   "signoff_all",
   "pkg_signoff",
+  "signoff_phase2",
 ]);
 
 export function defaultActionTimeoutMs(action: string): number {

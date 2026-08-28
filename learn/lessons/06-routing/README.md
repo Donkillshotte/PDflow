@@ -73,7 +73,7 @@ Durante etch, un filo lungo su un gate è un condensatore che si carica. `repair
 | File | Se vuoto / non vuoto |
 |---|---|
 | `route.guide` | deve essere grande |
-| `5_route_drc.rpt` | vuoto = DRC clean (GCD) |
+| `5_route_drc.rpt` | vuoto = DRC clean (GCD) — vedi anche [`drc_signoff`](../../reference/signoff-matrix.md) unificato post-finish |
 | `5_global_route.rpt` | overflow + slack GRT |
 | `maze.log` | debug DRT |
 

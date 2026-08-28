@@ -41,6 +41,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   pkg_bump: "finish",
   pkg_rdl: "finish",
   pkg_signoff: "finish",
+  signoff_phase2: "finish",
   synth: null,
   floorplan: "synth",
   place: "floorplan",
@@ -397,6 +398,10 @@ export function preflightAction(
     pkg_signoff: {
       rel: "6_final.odb",
       hint: "esegui prima finish (PKG signoff)",
+    },
+    signoff_phase2: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (signoff Fase 2 thermal+pkg)",
     },
   };
   const need = needFile[action];

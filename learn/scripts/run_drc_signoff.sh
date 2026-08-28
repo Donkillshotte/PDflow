@@ -38,7 +38,7 @@ LYRDB="${REPORTS}/6_drc.lyrdb"
 GDS_VIOL=0
 if [[ -f "${LYRDB}" ]]; then
   # KLayout lyrdb is XML; count violation items heuristically
-  GDS_VIOL="$(rg -c '<item' "${LYRDB}" 2>/dev/null || echo 0)"
+  GDS_VIOL="$(python3 "${ROOT}/learn/scripts/parse_signoff_artifacts.py" --kind drc --path "${LYRDB}" 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("items",0))' || echo 0)"
   echo "GDS DRC violations (items): ${GDS_VIOL}" | tee -a "${LOG}"
 else
   echo "WARN lyrdb assente" | tee -a "${LOG}"
@@ -61,11 +61,20 @@ metrics = json.loads(Path("${METRICS}").read_text())
 evald = json.loads(Path("${OUT}.eval").read_text()) if Path("${OUT}.eval").exists() else {}
 geom = metrics["geometry"]
 ev = evald.get("pillars", {}).get("geometry", {})
+artifact_parse = {}
+if Path("${LYRDB}").exists():
+    import subprocess
+    raw = subprocess.check_output([
+        "python3", "${ROOT}/learn/scripts/parse_signoff_artifacts.py",
+        "--kind", "drc", "--path", "${LYRDB}",
+    ], text=True)
+    artifact_parse = json.loads(raw)
 out = {
   "kind": "drc_signoff",
   "variant": "${VARIANT}",
   "geometry": geom,
   "evaluation": ev,
+  "artifact_parse": artifact_parse,
   "ok": ev.get("ok"),
   "summary": f"Route DRC {geom['route_drc_lines']} lines · GDS DRC {geom['gds_drc_violations']} items",
   "artifacts": {"route_drc": "${ROUTE_DRC}", "gds_lyrdb": "${LYRDB}"},

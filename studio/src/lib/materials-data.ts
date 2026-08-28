@@ -9,6 +9,12 @@ export type MaterialLink = {
 
 export const MATERIALS: MaterialLink[] = [
   {
+    href: "/materiali/reference/oss-integrations.md",
+    title: "Integrazioni OSS",
+    group: "Riferimento",
+    description: "Stack integrato, gap LVS runset, thermal/HotSpot, tool non in scope.",
+  },
+  {
     href: "/materiali/reference/signoff-matrix.md",
     title: "Matrice signoff",
     group: "Riferimento",
