@@ -14,6 +14,8 @@ Titolo atteso: `OpenROAD - gcd` (o `OpenROAD - nangate45/gcd/learn - 6_final`).
 
 Riferimento menu/pannelli in prosa: [gui-openroad.md](./gui-openroad.md). Questo atlante è la **mappa visiva**.
 
+**FlowLab / lezioni (browser):** su `/flusso` e nello step **Risultati** del wizard, il canvas centrale mostra gli stessi layout via ORFS PNG + **OpenROAD Web Viewer** embedded (`POST /api/viewer`). Non serve aprire Qt per una prima ispezione — usa Desktop per analisi pixel-level come in questo atlante.
+
 ---
 
 ## 1. Anatomia della finestra (impara questi 7 rettangoli)
