@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { MarkdownView } from "@/components/MarkdownView";
+import { LessonLayoutPanel } from "@/components/LessonLayoutPanel";
 import { LessonPowerChainPanel } from "@/components/LessonPowerChainPanel";
 import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
@@ -333,7 +334,12 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                 .
               </p>
             </header>
-            <ResultsPanel stage={lesson.makeTarget} refreshKey={refreshKey} />
+            <LessonLayoutPanel
+              lessonId={lesson.id}
+              makeTarget={lesson.makeTarget}
+              refreshKey={refreshKey}
+            />
+            <ResultsPanel stage={lesson.makeTarget} refreshKey={refreshKey} variant="learn" />
             <div className="lesson-actions" style={{ marginTop: "1rem" }}>
               <a
                 className="btn-ghost"

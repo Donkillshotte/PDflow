@@ -62,6 +62,19 @@ UI Studio: FlowLab fase **finish**, hub [/pkg](http://127.0.0.1:43217/pkg), `GET
 
 Smoke automatico: `./scripts/test_all_phases.sh` (include hook signoff in `test_studio_api.sh`).
 
+## Laboratorio visuale (FlowLab + lezioni)
+
+Ogni fase PD mostra **layout reale**, non mockup decorativi:
+
+| Superficie | Cosa vedi |
+|---|---|
+| `/flusso` (FlowLab) | Canvas centrale: ORFS PNG (`final_routing`, …) + **OpenROAD Web Viewer** iframe |
+| `/flusso?phase=rtl` | Waveform **VCD reale** (`clk`, `reset`, handshake) da `GET /api/vcd-waveform` |
+| `/lezioni/*/risultati` | Stesso canvas layout (variante `learn`) |
+| `/strumenti?tab=results` | Layout preview sopra artefatti |
+
+API: `GET /api/layout-preview?phase=route&variant=flowlab` · mapping ODB in `studio/src/lib/layoutPreview.ts`.
+
 ### Evidenza run `learn` (2026-08-28)
 
 Dopo `6_final.*` presente in `flow/results/.../gcd/learn/`:

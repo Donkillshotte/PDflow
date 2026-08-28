@@ -3071,9 +3071,14 @@ button.pipeline-node {
   min-height: unset !important;
   padding-top: 0 !important;
 }
-.fl-vis-side-stats-row {
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+.lesson-layout-panel {
+  margin-bottom: 1rem;
+}
+.fl-vis-wave-real {
   width: 100%;
+  min-height: 120px;
+  border: 1px solid var(--fl-border);
+  border-radius: 10px;
 }
 
 /* Loading skeleton */

@@ -24,9 +24,9 @@ Produzione:
 | Area | Contenuto |
 |---|---|
 | Studio | Hero + progresso + **Suite hub** (hook live) + mappa del flusso guidato |
-| **Flusso** | **FlowLab** RTL→GDSII: editor Monaco, parametri, signoff finish, storico run, VCD download |
-| Lezioni | **Wizard 5 passi** con **gate hard** lato server (teoria, LAB ≥50%, run ok, artefatti, risultati) |
-| Strumenti | Toolchain + Suite hub + **Ops** + console SSE (confirm/cancel/retry/export) + inspect/viewer |
+| **Flusso** | **FlowLab** RTL→GDSII: editor Monaco, parametri, **layout reale** (ORFS PNG + Web Viewer embedded), signoff finish |
+| Lezioni | **Wizard 5 passi** + **canvas layout** su step Risultati (variante `learn`) |
+| Strumenti | Toolchain + Suite + Ops + console + **layout preview** + inspect/viewer |
 | Materiali | Ricerca, documenti in-app, galleria GUI |
 
 ## Contratto operativo (enterprise)
@@ -57,7 +57,10 @@ Produzione:
 | `GET /api/open` | catalogo dashboard + GUI targets |
 | `POST /api/open` `{ id }` o `{ artifact }` | naviga o lancia OpenROAD/KLayout |
 | `GET /api/inspect?stage=` | ODB / STA / Yosys live |
-| `POST /api/viewer` `{ stage }` | avvia OpenROAD Web Viewer |
+| `GET /api/layout-preview?phase=&variant=` | Metadata preview layout (ORFS PNG / gui-shots / ODB) |
+| `GET /api/layout-preview/image?phase=` | Immagine layout per fase |
+| `GET /api/vcd-waveform` | Waveform RTL parsata da `gcd.vcd` |
+| `POST /api/viewer` `{ stage, artifact? }` | OpenROAD `-web` (embedded in FlowLab) |
 | `GET /api/suite` | stato collaborativo di tutti gli hook |
 | `GET /api/signoff?variant=` | matrice 4 pilastri + gate vs golden-gcd |
 | `GET/PUT /api/flowlab` | RTL + parametri FlowLab + sim + storico run |

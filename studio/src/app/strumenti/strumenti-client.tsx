@@ -7,6 +7,7 @@ import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { OpsDashboard } from "@/components/OpsDashboard";
 import { InspectPanel } from "@/components/InspectPanel";
+import { FlowLabLayoutCanvas } from "@/components/flowlab/FlowLabLayoutCanvas";
 import { SuiteHub } from "@/components/SuiteHub";
 import { useToast } from "@/components/ToastProvider";
 
@@ -263,6 +264,18 @@ export default function StrumentiClient() {
       </section>
 
       <section className="panel panel-pro" ref={resultsRef} id="results">
+        {(STAGES as readonly string[]).includes(stage) && stage !== "rtl" && (
+          <div className="lesson-layout-panel" style={{ marginBottom: "1rem" }}>
+            <FlowLabLayoutCanvas
+              phaseId={
+                stage as "synth" | "floorplan" | "place" | "cts" | "route" | "finish"
+              }
+              variant="learn"
+              refreshKey={refreshKey}
+              stageDone
+            />
+          </div>
+        )}
         <ResultsPanel stage={stage} refreshKey={refreshKey} />
       </section>
 

@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { FlowlabParams } from "./types";
 import { PHASES } from "./phases";
 import { FlowLabLayoutCanvas } from "./FlowLabLayoutCanvas";
+import { RtlWaveformVisual } from "./RtlWaveformVisual";
 
 type Inspect = {
   odb: {
@@ -200,52 +201,6 @@ function ClockTreeViz({ paths }: { paths: { endpoint: string; slack: string; sta
   );
 }
 
-function RtlVisual({
-  rtlLines,
-  sim,
-}: {
-  rtlLines: number;
-  sim: { vcdExists: boolean; logExists: boolean };
-}) {
-  return (
-    <div className="fl-vis-rtl">
-      <div className="fl-vis-stat-grid">
-        <div className="fl-vis-stat">
-          <span>Righe RTL</span>
-          <strong>{rtlLines}</strong>
-        </div>
-        <div className="fl-vis-stat">
-          <span>Sim log</span>
-          <strong className={sim.logExists ? "ok" : ""}>{sim.logExists ? "OK" : "—"}</strong>
-        </div>
-        <div className="fl-vis-stat">
-          <span>VCD</span>
-          <strong className={sim.vcdExists ? "ok" : ""}>{sim.vcdExists ? "Pronto" : "—"}</strong>
-        </div>
-      </div>
-      <svg viewBox="0 0 400 80" className="fl-vis-wave" aria-label="Waveform preview">
-        <rect width="400" height="80" rx="8" fill="#0a0e14" />
-        {[0, 1, 2].map((lane) => (
-          <polyline
-            key={lane}
-            fill="none"
-            stroke={lane === 0 ? "#f0883e" : lane === 1 ? "#58a6ff" : "#3fb950"}
-            strokeWidth="1.5"
-            points={Array.from({ length: 40 }, (_, i) => {
-              const x = 10 + i * 9.5;
-              const y = 20 + lane * 22 + (Math.sin(i * 0.7 + lane) > 0 ? 0 : 14);
-              return `${x},${y}`;
-            }).join(" ")}
-          />
-        ))}
-        <text x="200" y="74" textAnchor="middle" fill="#484f58" fontSize="8">
-          {sim.vcdExists ? "Waveform da gcd.vcd" : "Esegui sim per waveform"}
-        </text>
-      </svg>
-    </div>
-  );
-}
-
 export function FlowLabPhaseVisual({
   phaseId,
   stage,
@@ -365,7 +320,7 @@ export function FlowLabPhaseVisual({
         </span>
       </div>
 
-      {phaseId === "rtl" && <RtlVisual rtlLines={rtlLines} sim={sim} />}
+      {phaseId === "rtl" && <RtlWaveformVisual rtlLines={rtlLines} sim={sim} />}
 
       {(phaseId === "synth" ||
         phaseId === "floorplan" ||

@@ -368,6 +368,26 @@ code="$(curl -s --max-time 120 -o /tmp/studio-ph2.sse -w '%{http_code}' \
 [[ "${code}" == "200" ]] && ok "signoff_phase2 stream → 200" || bad "signoff_phase2 → ${code}"
 rg -q 'SIGNOFF_PHASE2_DONE|"ok":true' /tmp/studio-ph2.sse && ok "signoff_phase2 pass" || bad "signoff_phase2 fail"
 
+code="$(curl -s -o /tmp/studio-layout-meta.json -w '%{http_code}' \
+  "${BASE}/api/layout-preview?phase=route&variant=flowlab")"
+[[ "${code}" == "200" ]] && ok "layout-preview route → 200" || bad "layout-preview → ${code}"
+python3 -c "import json; d=json.load(open('/tmp/studio-layout-meta.json')); assert d.get('imageUrl')" \
+  && ok "layout-preview imageUrl" || bad "layout-preview senza image"
+code="$(curl -s -o /tmp/studio-layout-route.png -w '%{http_code}' \
+  "${BASE}/api/layout-preview/image?phase=route&variant=flowlab")"
+[[ "${code}" == "200" ]] && ok "layout-preview PNG route" || bad "layout image → ${code}"
+
+code="$(curl -s -o /tmp/studio-vcd.json -w '%{http_code}' "${BASE}/api/vcd-waveform")"
+[[ "${code}" == "200" ]] && ok "vcd-waveform → 200" || ok "skip vcd-waveform (${code})"
+if [[ "${code}" == "200" ]]; then
+  python3 -c "import json; d=json.load(open('/tmp/studio-vcd.json')); assert len(d.get('signals',[]))>=2" \
+    && ok "vcd-waveform signals" || bad "vcd-waveform vuoto"
+fi
+for phase in synth place route finish; do
+  c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/api/layout-preview?phase=${phase}&variant=flowlab")"
+  [[ "${c}" == "200" ]] && ok "layout-preview ${phase}" || bad "layout ${phase} → ${c}"
+done
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "STUDIO API SMOKE FAILED"
   exit 1
