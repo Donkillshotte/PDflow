@@ -231,7 +231,8 @@ Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 | `drc_signoff` | Route DRC + KLayout GDS unificato |
 | `klayout_lvs` | LVS GDS vs CDL |
 | `power_signoff` | Catena power + gate golden |
-| `signoff_all` | Orchestrator 4 pilastri |
+| `signoff_all` | Orchestrator 4 pilastri (+ opz. Fase 2: `SIGNOFF_INCLUDE_PHASE2=1`) |
+| `signoff_phase2` | Thermal proxy + PKG orchestrator |
 | `thermal_signoff` | Proxy IR+droop hotspot |
 | `pkg_signoff` | Bump + RDL edu + system PDN |
 | `/api/signoff` | Matrice signoff + gate |

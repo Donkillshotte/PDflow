@@ -119,7 +119,7 @@ Questa lezione è il **primo anello** della catena integrità di alimentazione d
 |---|---|
 | FlowLab | [fase RTL](/flusso?phase=rtl) · azione `rtl_sim` |
 | Output | `learn/sim/gcd/gcd.vcd` (toggle → activity futura) |
-| Lezione seguente power | 02 synthesis (liberty) → 07 finish (`report_power`) |
+| Lezione seguente power | 02 synthesis (liberty) → 07 finish (`report_power`, [`signoff-matrix`](../../reference/signoff-matrix.md)) |
 
 ## Durata stimata
 

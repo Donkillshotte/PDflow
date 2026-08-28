@@ -102,7 +102,8 @@ Guida pixel-level (screenshot Qt reali, anatomia A–G, galleria synth→GDS):
 [learn/reference/gui-atlas.md](./reference/gui-atlas.md).
 
 Metriche del run tutorial (WNS, `period_min`, area, DRC): [golden-metrics.md](./reference/golden-metrics.md).  
-Matrice signoff 4 pilastri (STA/DRC/LVS/power): [signoff-matrix.md](./reference/signoff-matrix.md) · soglie in [`signoff/golden-gcd.json`](./signoff/golden-gcd.json).
+Matrice signoff 4 pilastri (STA/DRC/LVS/power): [signoff-matrix.md](./reference/signoff-matrix.md) · soglie in [`signoff/golden-gcd.json`](./signoff/golden-gcd.json).  
+Definition of Done per pilastro: script + JSON report + gate golden + test + doc (vedi checklist in signoff-matrix).  
 `make finish` verde **non** significa 2.17 GHz chiusi: a signoff `period_min` è ~0.50 ns (~2.01 GHz).
 
 Poi, sul desktop remoto:

@@ -106,7 +106,7 @@ Predizione: 50% → core ≈ metà di 25% (non esatto: snapping, margins, aspect
 
 ## Catena power & SPICE
 
-Il floorplan genera la **griglia PDN** (`2_4_floorplan_pdn.odb`); FlowLab verifica con [gridcheck](/flusso?phase=pdn). La netlist SPICE nasce post-finish — vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-03-floorplan) e [`spice-chip-mesh.md`](../../reference/spice-chip-mesh.md).
+Il floorplan genera la **griglia PDN** (`2_4_floorplan_pdn.odb`); FlowLab verifica con [gridcheck](/flusso?phase=pdn). La netlist SPICE nasce post-finish — vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-03-floorplan), [`spice-chip-mesh.md`](../../reference/spice-chip-mesh.md) e il pilastro **power** in [`signoff-matrix.md`](../../reference/signoff-matrix.md).
 
 | Collegamento | Dove |
 |---|---|

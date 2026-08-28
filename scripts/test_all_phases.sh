@@ -56,6 +56,8 @@ for s in run_sta_signoff.sh run_drc_signoff.sh run_klayout_lvs.sh run_power_sign
   f="${ROOT}/learn/scripts/${s}"
   [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
 done
+rg -q 'SIGNOFF_INCLUDE_PHASE2' "${ROOT}/learn/scripts/run_signoff_all.sh" \
+  && ok "signoff_all phase2 opt-in" || bad "run_signoff_all.sh senza SIGNOFF_INCLUDE_PHASE2"
 python3 -m py_compile "${ROOT}/learn/scripts/signoff_eval.py" && ok "signoff_eval.py" || bad "signoff_eval.py"
 [[ -f "${ROOT}/learn/signoff/golden-gcd.json" ]] && ok "golden-gcd.json" || bad "golden-gcd.json"
 [[ -f "${ROOT}/learn/reference/signoff-matrix.md" ]] && ok "signoff-matrix.md" || bad "signoff-matrix.md"
@@ -85,6 +87,20 @@ for s in run_rtl_sim.sh run_activity_power.sh run_chip_pdn_ir.sh run_system_pdn.
   [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
 done
 [[ -f "${ROOT}/learn/lib/power_vcd.sh" ]] && bash -n "${ROOT}/learn/lib/power_vcd.sh" && ok "power_vcd.sh" || bad "power_vcd.sh"
+
+echo "== powerChainLessons signoff hooks =="
+rg -q 'drc_signoff' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
+  && ok "L06 drc_signoff" || bad "powerChain L06 senza drc_signoff"
+rg -q 'signoff_all' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
+  && ok "L07 signoff_all" || bad "powerChain L07 senza signoff_all"
+rg -q 'signoff-matrix' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
+  && ok "powerChain signoff-matrix doc" || bad "powerChain senza signoff-matrix link"
+
+echo "== LiveRunConsole signoff chips =="
+for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2; do
+  rg -q "id: \"${action}\"" "${ROOT}/studio/src/components/LiveRunConsole.tsx" \
+    && ok "LiveRunConsole ${action}" || bad "LiveRunConsole senza ${action}"
+done
 
 echo "== STAGE_DEPS power =="
 python3 - <<PY || bad "STAGE_DEPS power incompleti"

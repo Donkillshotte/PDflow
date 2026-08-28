@@ -30,7 +30,7 @@ Su FreePDK45 educativo, **LVS può FAIL** anche con flow corretto: il valore did
 | **Geometria (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
 | **Equivalenza (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | LVS clean (educational) |
 | **Power / PKG** | 03–07, PKG hub | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | IR/droop/Zmax vs golden |
-| **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | tutti e 4 i pilastri |
+| **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | tutti e 4 i pilastri (+ opz. Fase 2 con `SIGNOFF_INCLUDE_PHASE2=1`) |
 
 Sub-check power (dentro pilastro `power`):
 
@@ -85,7 +85,35 @@ export FLOW_VARIANT=learn   # o flowlab
 ./learn/scripts/run_klayout_lvs.sh
 ./learn/scripts/run_power_signoff.sh
 ./learn/scripts/run_signoff_all.sh
+
+# Opzionale Fase 2 (thermal + PKG) inclusa nell'orchestrator:
+SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
 ```
+
+---
+
+## Definition of Done (deliverable enterprise)
+
+Ogni pilastro signoff è **completo** quando esistono tutti e cinque gli artefatti:
+
+| Artefatto | Esempio |
+|---|---|
+| **Script** | `learn/scripts/run_*_signoff.sh` |
+| **Report JSON** | `learn/sim/reports/*_signoff_{variant}.json` |
+| **Gate golden** | valutazione in report (`evaluation.checks` vs `signoff/golden-gcd.json`) |
+| **Test** | `scripts/test_all_phases.sh` · `scripts/test_studio_api.sh` |
+| **Doc** | questa matrice · lezione 07 LAB Parte 7 · FlowLab finish/PKG |
+
+Checklist rapida post-`finish`:
+
+- [ ] `sta_signoff` → WNS/TNS/viol vs golden
+- [ ] `drc_signoff` → route DRC + GDS items = 0
+- [ ] `klayout_lvs` → report `.lvsdb` interpretato (educational)
+- [ ] `power_signoff` → IR/droop/system vs golden
+- [ ] `signoff_all` → aggregato 4 pilastri ok
+- [ ] (opz.) Fase 2: `thermal_signoff`, `pkg_signoff`, `signoff_phase2`
+- [ ] UI: matrice visibile su FlowLab **finish** e hub **/pkg**
+- [ ] Zero drift: `signoff.ts` ↔ `actions.ts` ↔ `run.ts` ↔ `jobs.ts` ↔ script bash
 
 ---
 

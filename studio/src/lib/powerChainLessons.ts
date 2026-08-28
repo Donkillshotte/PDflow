@@ -115,12 +115,13 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     anchor: "lezione-06-routing",
     title: "Routing e SPEF",
     summary:
-      "Parassiti di rete influenzano timing; IR drop statico usa mesh post-route/finish.",
-    orfsArtifacts: ["5_2_route.odb", "route.guide"],
-    studioActions: ["route"],
+      "Parassiti di rete influenzano timing; route DRC alimenta il pilastro geometria del signoff post-finish.",
+    orfsArtifacts: ["5_2_route.odb", "route.guide", "5_route_drc.rpt"],
+    studioActions: ["route", "drc_signoff"],
     spiceOutputs: [],
     docs: [
       { href: "/materiali/reference/spice-power-chain.md#lezione-06-routing", label: "§06 Route" },
+      { href: "/materiali/reference/signoff-matrix.md", label: "Matrice signoff (DRC)" },
     ],
     flowlabHref: "/flusso?phase=route",
   },
@@ -139,10 +140,18 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     ],
     studioActions: [
       "finish",
+      "sta_signoff",
+      "drc_signoff",
+      "klayout_lvs",
+      "power_signoff",
+      "signoff_all",
       "activity_power",
       "chip_pdn_ir",
       "system_pdn",
       "power_chain",
+      "thermal_signoff",
+      "pkg_signoff",
+      "signoff_phase2",
     ],
     spiceOutputs: [
       "system_pdn_*.json",
@@ -151,6 +160,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     ],
     docs: [
       { href: "/materiali/reference/spice-power-chain.md#lezione-07-finish", label: "§07 Finish" },
+      { href: "/materiali/reference/signoff-matrix.md", label: "Matrice signoff 4 pilastri" },
       { href: "/materiali/reference/spice-ngspice-primer.md", label: "ngspice" },
       { href: "/pkg", label: "Hub PKG" },
       { href: "/flusso?phase=pkg", label: "FlowLab PKG" },
