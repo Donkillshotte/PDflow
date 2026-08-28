@@ -70,7 +70,7 @@ Interfaccia web enterprise: lezioni con gate di completamento, console SSE
 **FlowLab** (`/flusso`: RTL editabile → parametri → GDSII),
 **Ctrl+K** (dashboard / run / OpenROAD Qt / web viewer), materiali.
 Dettagli: [studio/README.md](studio/README.md) (FlowLab, API, troubleshooting).
-Smoke: `./scripts/test_studio_api.sh` e `./scripts/test_course.sh`.
+Smoke: `./scripts/test_all_phases.sh` (esaustivo), `./scripts/test_studio_api.sh`, `./scripts/test_course.sh`.
 
 ### FlowLab — laboratorio RTL → GDSII
 

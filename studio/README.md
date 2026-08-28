@@ -82,6 +82,7 @@ Smoke API (server già avviato):
 
 ```bash
 ./scripts/run_studio.sh          # http://127.0.0.1:43217
+./scripts/test_all_phases.sh      # validazione esaustiva fasi corso + FlowLab + power chain
 ./scripts/test_studio_api.sh     # include FlowLab + variant flowlab
 ./scripts/test_course.sh         # pipeline learn
 cd studio && npm run build

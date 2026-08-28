@@ -227,6 +227,8 @@ else
   ok "skip chip pdn transient (no spice/report yet)"
 fi
 rg -q 'system_pdn_hier|ngspice' "${ROOT}/learn/scripts/run_system_pdn.sh" && ok "system_pdn uses hier ngspice" || bad "system_pdn non gerarchico"
+[[ -f "${ROOT}/scripts/test_all_phases.sh" ]] && ok "test_all_phases.sh" || bad "manca test_all_phases"
+bash -n "${ROOT}/scripts/test_all_phases.sh" && ok "test_all_phases syntax" || bad "syntax test_all_phases"
 rg -q 'export_spice_lab' "${ROOT}/studio/src/lib/run.ts" && ok "run export_spice_lab" || bad "run senza export_spice_lab"
 rg -q 'read_power_activities|power_vcd' "${ROOT}/learn/scripts/run_activity_power.sh" && ok "VCD activity wiring" || bad "activity senza VCD"
 [[ -f "${ROOT}/learn/lib/power_vcd.sh" ]] && ok "power_vcd.sh shared" || bad "manca power_vcd.sh"

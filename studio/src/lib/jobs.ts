@@ -1,8 +1,11 @@
+import { LONG_ACTIONS } from "./actions";
 import fs from "fs";
 import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { collectStageResults } from "./results";
 import { resultsDir } from "./open";
+
+export { LONG_ACTIONS };
 
 export const PIPELINE_STAGES = [
   "synth",
@@ -27,6 +30,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   chip_pdn_ir: "finish",
   power_chain: "finish",
   activity_power: "finish",
+  export_spice_lab: "finish",
   klayout_drc: "finish",
   synth: null,
   floorplan: "synth",
@@ -35,10 +39,6 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   route: "cts",
   finish: "route",
 };
-
-import { LONG_ACTIONS } from "./actions";
-
-export { LONG_ACTIONS };
 
 export type JobRecord = {
   id: string;
@@ -342,6 +342,10 @@ export function preflightAction(
     export_spice_lab: {
       rel: "6_final.odb",
       hint: "esegui prima finish (export mesh SPICE)",
+    },
+    system_pdn: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (I_die da activity/chip IR)",
     },
     klayout_drc: {
       rel: "6_final.gds",

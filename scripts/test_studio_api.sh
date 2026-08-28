@@ -206,6 +206,96 @@ code="$(curl -s --max-time 60 -o /tmp/studio-syspdn.sse -w '%{http_code}' \
 [[ "${code}" == "200" ]] && ok "system_pdn stream → 200" || bad "system_pdn → ${code}"
 rg -q 'SYSTEM_PDN_DONE|"ok":true' /tmp/studio-syspdn.sse && ok "system_pdn pass" || bad "system_pdn fail"
 
+# Power signoff chain (requires finish — flowlab variant)
+for action in activity_power chip_pdn_ir export_spice_lab; do
+  code="$(curl -s --max-time 180 -o "/tmp/studio-${action}.sse" -w '%{http_code}' \
+    "${BASE}/api/run/stream?action=${action}&mode=flowlab")"
+  [[ "${code}" == "200" ]] && ok "${action} stream → 200" || bad "${action} → ${code}"
+  rg -q '"ok":true' "/tmp/studio-${action}.sse" && ok "${action} pass" || bad "${action} fail"
+done
+
+code="$(curl -s --max-time 600 -o /tmp/studio-power-chain.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=power_chain&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "power_chain stream → 200" || bad "power_chain → ${code}"
+rg -q 'POWER_CHAIN_DONE|"ok":true' /tmp/studio-power-chain.sse && ok "power_chain pass" || bad "power_chain fail"
+[[ -f "${ROOT}/learn/sim/reports/power_chain_flowlab.log" ]] && ok "power_chain log artifact" || bad "manca power_chain log"
+rg -q 'ACTIVITY_SOURCE' "${ROOT}/learn/sim/reports/activity_power_flowlab.log" 2>/dev/null \
+  && ok "activity_power source stamped" || bad "activity_power log senza ACTIVITY_SOURCE"
+
+# SPICE lab viewer + download
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/file/sim/spice/nangate_inverter_demo.sp")"
+[[ "${c}" == "200" ]] && ok "spice file viewer page" || bad "spice viewer → ${c}"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/spice-power-chain.md")"
+[[ "${c}" == "200" ]] && ok "spice-power-chain.md page" || bad "spice-power-chain → ${c}"
+code="$(curl -s -o /tmp/studio-spice-dl.sp -w '%{http_code}' \
+  "${BASE}/api/flowlab/download?kind=spice&path=sim/spice/nangate_inverter_demo.sp")"
+[[ "${code}" == "200" ]] && ok "spice download API" || bad "spice download → ${code}"
+rg -q 'CMOS inverter demo' /tmp/studio-spice-dl.sp && ok "spice download content" || bad "spice download vuoto"
+
+# Content API reports
+code="$(curl -s -o /tmp/studio-content-sys.json -w '%{http_code}' \
+  "${BASE}/api/content?path=sim/reports/system_pdn_flowlab.json")"
+[[ "${code}" == "200" ]] && ok "content system_pdn report" || bad "content system_pdn → ${code}"
+rg -q 'summary' /tmp/studio-content-sys.json && ok "system_pdn report JSON" || bad "system_pdn report debole"
+python3 - <<'PY' || bad "system_pdn report parse"
+import json
+d=json.load(open("/tmp/studio-content-sys.json"))
+c=d.get("content","")
+assert "summary" in c and "system_pdn" in c.lower() or '"kind": "system_pdn"' in c
+print("parsed ok")
+PY
+
+# Suite extended power hooks
+if python3 - <<'PY'
+import json, sys
+d = json.load(open("/tmp/studio-suite.json"))
+ids = {h["id"] for h in d["hooks"]}
+need = {"ngspice", "activity", "chip_pdn_ir", "power_chain", "spice_lab", "system_pdn"}
+miss = sorted(need - ids)
+if miss:
+    print("missing", miss)
+    sys.exit(1)
+for hid in need:
+    h = next(x for x in d["hooks"] if x["id"] == hid)
+    if not h.get("ok"):
+        print("not ok", hid, h.get("detail"))
+        sys.exit(1)
+sys.exit(0)
+PY
+then
+  ok "suite power hooks ready"
+else
+  bad "suite power hooks incomplete"
+fi
+
+rg -q '"id":"run-chip-ir"' /tmp/studio-open.json && ok "open run-chip-ir" || bad "open senza chip ir"
+rg -q '"id":"run-power-chain"' /tmp/studio-open.json && ok "open run-power-chain" || bad "open senza power chain"
+rg -q '"id":"run-export-spice"' /tmp/studio-open.json && ok "open run-export-spice" || bad "open senza export spice"
+
+# activity_power requires 6_final.odb (412 without)
+FINAL="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb"
+if [[ -f "${FINAL}" ]]; then
+  mv "${FINAL}" "${FINAL}.smoke-bak"
+  code="$(curl -s -o /tmp/studio-act-dep.json -w '%{http_code}' \
+    "${BASE}/api/run/stream?action=activity_power&mode=flowlab")"
+  mv "${FINAL}.smoke-bak" "${FINAL}"
+  [[ "${code}" == "412" ]] && ok "activity_power deps → 412" || bad "activity_power atteso 412, got ${code}"
+  rg -q '"code":"deps"' /tmp/studio-act-dep.json && ok "activity_power deps payload" || bad "412 senza code deps"
+else
+  ok "skip activity_power deps (no 6_final.odb)"
+fi
+
+# system_pdn also gated on 6_final.odb
+if [[ -f "${FINAL}" ]]; then
+  mv "${FINAL}" "${FINAL}.smoke-bak"
+  code="$(curl -s -o /tmp/studio-syspdn-dep.json -w '%{http_code}' \
+    "${BASE}/api/run/stream?action=system_pdn&mode=flowlab")"
+  mv "${FINAL}.smoke-bak" "${FINAL}"
+  [[ "${code}" == "412" ]] && ok "system_pdn deps → 412" || bad "system_pdn atteso 412, got ${code}"
+else
+  ok "skip system_pdn deps (no 6_final.odb)"
+fi
+
 # FlowLab rtl_sim (uses learn/flowlab/gcd.v)
 code="$(curl -s --max-time 60 -o /tmp/studio-fl-rtl.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=rtl_sim&mode=flowlab")"
