@@ -394,6 +394,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "region",
         }
     )
+    steps.append(
+        {
+            "level": "ir_cell_region_pdn",
+            "reason": (
+                "IR-cell-region |Δ| ≥ 1 mV chooses the winning PDN family on the "
+                "capped sized mesh — not host IR-steer, not a flattened cell+decap vector"
+            ),
+            "scope": "pdn",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

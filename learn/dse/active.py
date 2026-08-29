@@ -648,3 +648,49 @@ def steer_from_ir_cell_hotspot(mem: DesignMemory) -> dict | None:
         "via": "active_f4_ir_cell_region",
         "not": "host-region / a flattened cell+util vector",
     }
+
+
+def ir_cell_region_extract_cand(mem: DesignMemory):
+    """Newest IR-cell-region write_pg_spice. Residual vs the unconstrained IR-cell extract."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_region_extract":
+            return c
+    return None
+
+
+def steer_from_ir_cell_region_residual(mem: DesignMemory) -> dict | None:
+    """Winning PDN family on the IR-cell-region mesh after a large spatial residual."""
+    from .pdn_space import measured_pdn_keys
+
+    reg = ir_cell_region_extract_cand(mem)
+    if reg is None or reg.qor.dynamic_ir_mv is None:
+        return None
+    res = (reg.attr or {}).get("residual_mv")
+    if res is None or abs(float(res)) < KNOB_MV:
+        return None
+    spec_win, knob_r = _winning_pdn_family(mem)
+    if spec_win is None:
+        return None
+    eid = str((reg.knobs or {}).get("extract_id") or reg.id)
+    have = measured_pdn_keys(mem, extract_id=eid)
+    key = (float(spec_win["pkg_r"]), float(spec_win["pkg_l"]), float(spec_win["c_decap"]))
+    if key in have:
+        return None
+    sign = "raised" if float(res) > 0 else "lowered"
+    return {
+        "level": "pdn",
+        "spec": spec_win,
+        "extract_id": eid,
+        "host_id": reg.id,
+        "host_source": "f4_ir_cell_region_extract",
+        "region": (reg.knobs or {}).get("region") or (reg.attr or {}).get("region"),
+        "reason": (
+            f"IR-cell-region residual {float(res):+.3f} mV ({sign} droop vs 1× extract) — "
+            f"restamp {spec_win['name']} on the {(reg.knobs or {}).get('region') or 'region'}-capped mesh, "
+            "not host IR-steer, not ABC"
+        ),
+        "ir_cell_region_residual_mv": float(res),
+        "knob_residual_mv": knob_r,
+        "via": "active_f4_ir_cell_region_pdn",
+        "not": "a flattened cell+PDN vector / gold / host-region",
+    }

@@ -48,6 +48,7 @@ from .acquire import (
     should_pay_ir_cell_extract,
     should_pay_ir_cell_pdn,
     should_pay_ir_cell_region,
+    should_pay_ir_cell_region_pdn,
     should_pay_ctrl_cone,
     should_pay_net_buffer,
     should_pay_net_port,
@@ -82,6 +83,7 @@ from .active import (
     ir_cell_host,
     steer_from_ir_cell_residual,
     steer_from_ir_cell_hotspot,
+    steer_from_ir_cell_region_residual,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -2038,6 +2040,64 @@ def run_controller(
                     reason=steer_icr.get("reason"),
                 )
 
+    n_icrp = sum(
+        1
+        for c in mem.all()
+        if (c.attr or {}).get("via") == "active_f4_ir_cell_region_pdn" and c.status == "ok"
+    )
+    steer_icrp = steer_from_ir_cell_region_residual(mem)
+    pay_icrp, why_icrp = should_pay_ir_cell_region_pdn(
+        mem, budget_left=t_end - time.time(), steer=steer_icrp, n_steer=n_icrp
+    )
+    step("acquire", fidelity="IR_CELL_REGION_PDN", pay=pay_icrp, why=why_icrp, steer=steer_icrp)
+    if (
+        any(s["level"] == "ir_cell_region_pdn" for s in plan["steps"])
+        and pay_icrp
+        and steer_icrp
+        and time.time() < t_end
+    ):
+        spec_icrp = steer_icrp.get("spec") or {}
+        eid_icrp = str(steer_icrp.get("extract_id") or "")
+        hit_icrp = extract_on_disk(mem, eid_icrp) if eid_icrp else None
+        if spec_icrp and hit_icrp:
+            child = evaluate_f4_pdn(
+                mem,
+                spec_icrp,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit_icrp["candidate"].id,
+                spice=hit_icrp["spice"],
+                insts=hit_icrp["insts"],
+                extract_id=eid_icrp,
+                sta=hit_icrp.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "active_f4_ir_cell_region_pdn"
+                child.attr["steer"] = {k: steer_icrp[k] for k in steer_icrp if k != "spec"}
+                champ = winning_host_pdn(mem)
+                if champ and champ.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+                    child.attr["residual_vs_host_win_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                        champ.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_host_win"] = champ.id
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="active_f4_ir_cell_region_pdn",
+                    parent=hit_icrp["candidate"].id,
+                    catalog=spec_icrp.get("name"),
+                    extract_id=eid_icrp,
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=steer_icrp.get("reason"),
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -2081,6 +2141,7 @@ def run_controller(
             "F4 IR-cell extract: write_pg_spice on the ODB-joined size-up — residual vs host extract, not STA-only",
             "F4 IR-cell PDN: 1× residual restamps the winning family on the sized mesh — not a flattened cell+decap vector",
             "F4 IR-cell region: seq-heavy 1× bin ≠ host bin — density cap on the sized netlist, not more combo size-up",
+            "F4 IR-cell-region PDN: large spatial residual restamps the winning family on the capped mesh — not host IR-steer",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -2194,6 +2255,39 @@ def run_controller(
                 str((c.knobs or {}).get("region") or (c.attr or {}).get("region") or "")
                 for c in reversed(list(mem.by_level("pdn")))
                 if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_region_extract"
+            ),
+            None,
+        ),
+        "n_ir_cell_region_pdn": sum(
+            1
+            for c in mem.all()
+            if (c.attr or {}).get("via") == "active_f4_ir_cell_region_pdn" and c.status == "ok"
+        ),
+        "ir_cell_region_pdn_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_ir_cell_region_pdn"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "ir_cell_region_pdn_name": next(
+            (
+                str((c.knobs or {}).get("name") or "")
+                for c in reversed(list(mem.all()))
+                if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_ir_cell_region_pdn"
+            ),
+            None,
+        ),
+        "ir_cell_region_pdn_vs_host_win_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_host_win_mv"))
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_ir_cell_region_pdn"
+                and (c.attr or {}).get("residual_vs_host_win_mv") is not None
             ),
             None,
         ),
@@ -2536,6 +2630,21 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
                 else f" · IR-cell-region bin={bin_id} (not gold)"
             )
             break
+    icrpdn = ""
+    icrp_bits: list[str] = []
+    for c in mem.all():
+        if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_ir_cell_region_pdn":
+            continue
+        w = c.qor.dynamic_ir_mv
+        cat = (c.knobs or {}).get("name")
+        eid = (c.knobs or {}).get("extract_id")
+        vs = (c.attr or {}).get("residual_vs_host_win_mv")
+        extra = f" vs host-win {float(vs):+.3f}" if vs is not None else ""
+        icrp_bits.append(
+            f"{cat} on {eid} {float(w):.3f} mV{extra}" if w is not None else str(cat)
+        )
+    if icrp_bits:
+        icrpdn = " · IR-cell-region-PDN " + "; ".join(icrp_bits)
     netb = ""
     for c in mem.by_level("net"):
         if c.status == "ok" and (c.knobs or {}).get("source") == "net_buffer":
@@ -2674,5 +2783,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircext}{icpdn}{icreg}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircext}{icpdn}{icreg}{icrpdn}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )

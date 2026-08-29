@@ -359,6 +359,7 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_extract" for s in planned["steps"]), "planner schedules IR-cell write_pg_spice")
     check(any(s["level"] == "ir_cell_pdn" for s in planned["steps"]), "planner schedules IR-cell PDN restamp")
     check(any(s["level"] == "ir_cell_region" for s in planned["steps"]), "planner schedules IR-cell-region density cap")
+    check(any(s["level"] == "ir_cell_region_pdn" for s in planned["steps"]), "planner schedules IR-cell-region PDN restamp")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -452,6 +453,7 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell extract measures at F4")
     check(next_fidelity(level="ir_cell_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell PDN restamp measures at F4")
     check(next_fidelity(level="ir_cell_region", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region extract measures at F4")
+    check(next_fidelity(level="ir_cell_region_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region PDN restamp measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -558,6 +560,11 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_ir_cell_region_extract", "parent_id": "ircell", "region": "r00"})
         != knobs_fp("pdn", {"source": "f4_ir_cell_extract", "parent_id": "ircell", "ir_join": 1}),
         "IR-cell-region knobs are not flattened into the unconstrained IR-cell extract fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "icreg", "c_decap": 200e-15})
+        != knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "icext", "c_decap": 200e-15}),
+        "IR-cell-region PDN restamp is not flattened into the IR-cell 1× decap fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_region_extract", "parent_id": "psteer", "region": "r02"})
@@ -1269,6 +1276,7 @@ def main() -> int:
         should_pay_ir_cell_extract,
         should_pay_ir_cell_pdn,
         should_pay_ir_cell_region,
+        should_pay_ir_cell_region_pdn,
         should_pay_host_arrivals,
         should_pay_f4_host_extract,
         should_pay_f4_host_region,
@@ -2377,6 +2385,47 @@ def main() -> int:
     check(steer_from_ir_cell_hotspot(mem_hr) is None, "IR-cell region skips when the bin matches the host")
     ice_c.attr["region"] = "r00"
     mem_hr.touch(ice_c)
+    from dse.active import steer_from_ir_cell_region_residual
+
+    pay_icrp0, why_icrp0 = should_pay_ir_cell_region_pdn(mem_hr, budget_left=80, steer=None)
+    check(not pay_icrp0, f"IR-cell-region PDN waits for a spatial residual ({why_icrp0})")
+    mem_hr.add(
+        Candidate(
+            id="icreg",
+            design_id="gcd",
+            parent_id="ircell",
+            level="pdn",
+            knobs={"source": "f4_ir_cell_region_extract", "extract_id": "icreg", "region": "r00", "ir_join": 1},
+            knobs_fp="icreg",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=9.356, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "f4_ir_cell_region_extract", "residual_mv": -4.652, "region": "r00"},
+        )
+    )
+    st_icrp = steer_from_ir_cell_region_residual(mem_hr)
+    check(st_icrp is not None and (st_icrp.get("spec") or {}).get("name") == "decap_200f", f"large IR-cell-region residual steers decap, got {st_icrp}")
+    check(st_icrp.get("extract_id") == "icreg", f"IR-cell-region PDN stays on the capped mesh, got {st_icrp}")
+    check(st_icrp.get("host_source") == "f4_ir_cell_region_extract", "IR-cell-region PDN names the region extract")
+    check(st_icrp.get("extract_id") != "icext", "IR-cell-region PDN does not restamp the unconstrained 1× extract")
+    pay_icrp1, why_icrp1 = should_pay_ir_cell_region_pdn(mem_hr, budget_left=80, steer=st_icrp)
+    check(pay_icrp1, f"IR-cell-region PDN is paid after |Δ| ≥ 1 mV ({why_icrp1})")
+    fake_1x = dict(st_icrp)
+    fake_1x["host_source"] = "f4_ir_cell_extract"
+    pay_icrp_ref, why_icrp_ref = should_pay_ir_cell_region_pdn(mem_hr, budget_left=80, steer=fake_1x)
+    check(not pay_icrp_ref, f"IR-cell-region PDN refuses the 1× extract ({why_icrp_ref})")
+    pay_icrp2, why_icrp2 = should_pay_ir_cell_region_pdn(mem_hr, budget_left=80, steer=st_icrp, n_steer=1)
+    check(not pay_icrp2, f"IR-cell-region PDN is a single shot ({why_icrp2})")
+    ice_small = next(c for c in mem_hr.all() if c.id == "icreg")
+    ice_small.attr = dict(ice_small.attr or {})
+    ice_small.attr["residual_mv"] = -0.2
+    mem_hr.touch(ice_small)
+    check(steer_from_ir_cell_region_residual(mem_hr) is None, "small IR-cell-region residual does not restamp PDN")
+    ice_small.attr["residual_mv"] = -4.652
+    mem_hr.touch(ice_small)
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")
