@@ -2,4 +2,4 @@
 *.vcd
 sim.log
 reports/
-learn/sim/previews/
+previews/

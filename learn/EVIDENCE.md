@@ -64,16 +64,16 @@ Smoke automatico: `./scripts/test_all_phases.sh` (include hook signoff in `test_
 
 ## Laboratorio visuale (FlowLab)
 
-Il canvas **sopra la piega** su `/flusso` mostra screenshot Qt reali (`learn/reference/gui-shots/`), non mockup CSS:
+Il canvas **sopra la piega** su `/flusso` è un viewport laboratorio (zoom rotella, pan drag, Fit/`0`, Full/`F`), non un `<img>` statico:
 
 | Fase | Cosa si vede |
 |---|---|
 | Floorplan / PDN | Die + strap VDD/VSS (`03_pdn*.png`) |
-| Place | Celle sulle row + PDN (`05_place_dp.png`) |
-| Route | Metal M2/M3 «spaghetti» (`08_route_labeled.png`) |
+| Place | Celle sulle row + PDN (`05_place_dp.png`) · confronto Place↔Route |
+| Route | Metal M2/M3 «spaghetti» (`08_route_labeled.png`) · wipe GRT↔DRT · solo M2/M3 |
 | Finish | Layout finale (`09_final.png`) |
 
-Web Viewer OpenROAD è **opt-in** (non copre lo screenshot). Synth non ha die: messaggio esplicito.
+Filmstrip dei gui-shots correlati + HUD Display Control (colori Nangate45). Web Viewer OpenROAD è **opt-in**. Synth non ha die: messaggio esplicito.
 
 ### Evidenza run `learn` (2026-08-28)
 

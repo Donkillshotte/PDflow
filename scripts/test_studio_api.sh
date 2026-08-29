@@ -371,11 +371,29 @@ rg -q 'SIGNOFF_PHASE2_DONE|"ok":true' /tmp/studio-ph2.sse && ok "signoff_phase2 
 code="$(curl -s -o /tmp/studio-layout-meta.json -w '%{http_code}' \
   "${BASE}/api/layout-preview?phase=route&variant=flowlab")"
 [[ "${code}" == "200" ]] && ok "layout-preview route → 200" || bad "layout-preview → ${code}"
-python3 -c "import json; d=json.load(open('/tmp/studio-layout-meta.json')); assert d.get('imageUrl'); assert '08_route' in (d.get('image') or {}).get('rel','')" \
-  && ok "layout-preview route = 08_route_labeled" || bad "route preview non è 08_route_labeled"
+python3 -c "
+import json
+d=json.load(open('/tmp/studio-layout-meta.json'))
+assert d.get('imageUrl')
+assert '08_route' in (d.get('image') or {}).get('rel','')
+g=d.get('gallery') or []
+assert len(g)>=4, g
+assert any('07_grt' in (x.get('file') or '') for x in g)
+c=d.get('compare') or []
+assert any(x.get('id')=='grt-drt' for x in c), c
+assert any(x.get('id')=='place-route' for x in c)
+assert d.get('layers')
+" \
+  && ok "layout-preview route = 08_route_labeled + gallery/compare/layers" || bad "route preview meta incompleta"
 code="$(curl -s -o /tmp/studio-layout-route.png -w '%{http_code}' \
   "${BASE}/api/layout-preview/image?phase=route&variant=flowlab")"
 [[ "${code}" == "200" ]] && ok "layout-preview PNG route" || bad "layout image → ${code}"
+code="$(curl -s -o /tmp/studio-layout-grt.png -w '%{http_code}' \
+  "${BASE}/api/layout-preview/image?shot=07_grt.png")"
+[[ "${code}" == "200" ]] && ok "layout-preview shot 07_grt" || bad "shot 07_grt → ${code}"
+code="$(curl -s -o /dev/null -w '%{http_code}' \
+  "${BASE}/api/layout-preview/image?shot=../secret.png")"
+[[ "${code}" == "400" ]] && ok "layout-preview shot traversal 400" || bad "shot traversal → ${code}"
 
 code="$(curl -s -o /tmp/studio-vcd.json -w '%{http_code}' "${BASE}/api/vcd-waveform")"
 [[ "${code}" == "200" ]] && ok "vcd-waveform → 200" || ok "skip vcd-waveform (${code})"

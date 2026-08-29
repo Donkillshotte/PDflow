@@ -1,7 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
+import {
+  Columns2,
+  Eye,
+  Layers,
+  Maximize2,
+  Minimize2,
+  SquareSplitHorizontal,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
+import {
+  LayoutViewport,
+  type LayoutViewportHandle,
+  type ViewportMode,
+} from "./LayoutViewport";
 
 type LayoutPhaseId =
   | "rtl"
@@ -14,6 +29,29 @@ type LayoutPhaseId =
   | "finish"
   | "pkg";
 
+type GalleryItem = {
+  file: string;
+  title: string;
+  caption: string;
+  url: string;
+};
+
+type CompareItem = {
+  id: string;
+  label: string;
+  left: { file: string; title: string; url: string };
+  right: { file: string; title: string; url: string };
+};
+
+type LayerItem = {
+  id: string;
+  name: string;
+  color: string;
+  role: string;
+  soloShot?: string;
+  soloAvailable?: boolean;
+};
+
 type PreviewMeta = {
   label: string;
   layerHint?: string;
@@ -22,7 +60,15 @@ type PreviewMeta = {
   imageUrl: string | null;
   image?: { source: string; rel: string } | null;
   physical: boolean;
+  primaryShot?: string | null;
+  gallery?: GalleryItem[];
+  compare?: CompareItem[];
+  layers?: LayerItem[];
 };
+
+function withKey(url: string, k: number) {
+  return `${url}${url.includes("?") ? "&" : "?"}k=${k}`;
+}
 
 /**
  * Lab canvas: screenshot of real layout is the default.
@@ -46,11 +92,22 @@ export function FlowLabLayoutCanvas({
   const [mode, setMode] = useState<"image" | "viewer">("image");
   const [imgErr, setImgErr] = useState(false);
   const [regenBusy, setRegenBusy] = useState(false);
+  const [activeShot, setActiveShot] = useState<string | null>(null);
+  const [compareId, setCompareId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewportMode>("single");
+  const [splitPct, setSplitPct] = useState(50);
+  const [layersOpen, setLayersOpen] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const vpRef = useRef<LayoutViewportHandle>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const loadMeta = useCallback(async () => {
     setImgErr(false);
     setMode("image");
     setViewerUrl(null);
+    setCompareId(null);
+    setViewMode("single");
+    setActiveShot(null);
     const res = await fetch(
       `/api/layout-preview?phase=${encodeURIComponent(phaseId)}&variant=${encodeURIComponent(variant)}`,
     );
@@ -58,7 +115,9 @@ export function FlowLabLayoutCanvas({
       setMeta(null);
       return;
     }
-    setMeta(await res.json());
+    const data = (await res.json()) as PreviewMeta;
+    setMeta(data);
+    setActiveShot(data.primaryShot ?? data.gallery?.[0]?.file ?? null);
   }, [phaseId, variant]);
 
   const startViewer = useCallback(async () => {
@@ -114,15 +173,72 @@ export function FlowLabLayoutCanvas({
     void loadMeta();
   }, [loadMeta, refreshKey]);
 
-  const imageSrc =
-    meta?.imageUrl && !imgErr
-      ? `${meta.imageUrl}${meta.imageUrl.includes("?") ? "&" : "?"}k=${refreshKey}`
-      : null;
+  useEffect(() => {
+    function onFs() {
+      setFullscreen(Boolean(document.fullscreenElement));
+    }
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  const gallery = meta?.gallery ?? [];
+  const compareList = meta?.compare ?? [];
+  const layers = meta?.layers ?? [];
+  const compare = compareList.find((c) => c.id === compareId) ?? null;
+
+  const primaryUrl = (() => {
+    if (compare && viewMode !== "single") return withKey(compare.left.url, refreshKey);
+    if (activeShot && activeShot !== meta?.primaryShot) {
+      const hit = gallery.find((g) => g.file === activeShot);
+      if (hit) return withKey(hit.url, refreshKey);
+      return withKey(
+        `/api/layout-preview/image?shot=${encodeURIComponent(activeShot)}`,
+        refreshKey,
+      );
+    }
+    return meta?.imageUrl ? withKey(meta.imageUrl, refreshKey) : null;
+  })();
+
+  const compareUrl =
+    compare && viewMode !== "single" ? withKey(compare.right.url, refreshKey) : null;
 
   const showViewer = mode === "viewer" && viewerUrl;
+  const imageSrc = primaryUrl && !imgErr ? primaryUrl : null;
+
+  function selectShot(file: string) {
+    setActiveShot(file);
+    setCompareId(null);
+    setViewMode("single");
+    setMode("image");
+    setImgErr(false);
+  }
+
+  function selectCompare(id: string) {
+    const next = compareId === id ? null : id;
+    setCompareId(next);
+    setViewMode(next ? "wipe" : "single");
+    setMode("image");
+    setSplitPct(50);
+  }
+
+  function soloLayer(layer: LayerItem) {
+    if (layer.soloShot && layer.soloAvailable) {
+      selectShot(layer.soloShot);
+    }
+  }
+
+  async function toggleFullscreen() {
+    const el = rootRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      await el.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  }
 
   return (
-    <div className="fl-layout-canvas">
+    <div className="fl-layout-canvas" ref={rootRef}>
       <div className="fl-layout-toolbar">
         <div className="fl-layout-title">
           <strong>{meta?.label ?? "Layout"}</strong>
@@ -132,6 +248,75 @@ export function FlowLabLayoutCanvas({
           )}
         </div>
         <div className="fl-layout-actions">
+          {compareList.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={clsx("btn-ghost btn-sm", compareId === c.id && "chip-active")}
+              onClick={() => selectCompare(c.id)}
+            >
+              {c.label}
+            </button>
+          ))}
+          {compare && (
+            <>
+              <button
+                type="button"
+                className={clsx("btn-ghost btn-sm", viewMode === "wipe" && "chip-active")}
+                onClick={() => setViewMode("wipe")}
+                title="Wipe"
+              >
+                <SquareSplitHorizontal size={14} aria-hidden />
+                Wipe
+              </button>
+              <button
+                type="button"
+                className={clsx("btn-ghost btn-sm", viewMode === "split" && "chip-active")}
+                onClick={() => setViewMode("split")}
+                title="Split"
+              >
+                <Columns2 size={14} aria-hidden />
+                Split
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            disabled={!imageSrc}
+            onClick={() => vpRef.current?.zoomBy(1.22)}
+            title="Zoom +"
+          >
+            <ZoomIn size={14} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            disabled={!imageSrc}
+            onClick={() => vpRef.current?.zoomBy(0.82)}
+            title="Zoom −"
+          >
+            <ZoomOut size={14} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            disabled={!imageSrc}
+            onClick={() => vpRef.current?.fit()}
+            title="Fit (0)"
+          >
+            Fit
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            disabled={!imageSrc}
+            onClick={() => void toggleFullscreen()}
+            title="Fullscreen (F)"
+          >
+            {fullscreen ? <Minimize2 size={14} aria-hidden /> : <Maximize2 size={14} aria-hidden />}
+            {fullscreen ? "Esci" : "Full"}
+          </button>
           <button
             type="button"
             className={clsx("btn-ghost btn-sm", mode === "image" && "chip-active")}
@@ -147,7 +332,7 @@ export function FlowLabLayoutCanvas({
               disabled={viewerBusy}
               onClick={() => void startViewer()}
             >
-              {viewerBusy ? "Avvio viewer…" : "Apri Web Viewer"}
+              {viewerBusy ? "Avvio viewer…" : "Web Viewer"}
             </button>
           )}
           {meta?.odbExists && (
@@ -172,13 +357,83 @@ export function FlowLabLayoutCanvas({
             allow="fullscreen"
           />
         ) : imageSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageSrc}
-            alt={meta?.label ?? "Layout preview"}
-            className="fl-layout-img"
-            onError={() => setImgErr(true)}
-          />
+          <>
+            <LayoutViewport
+              ref={vpRef}
+              src={imageSrc}
+              alt={meta?.label ?? "Layout preview"}
+              compareSrc={compareUrl}
+              leftLabel={compare?.left.title}
+              rightLabel={compare?.right.title}
+              mode={compare ? viewMode : "single"}
+              splitPct={splitPct}
+              onSplitChange={setSplitPct}
+              resetKey={`${phaseId}:${activeShot ?? ""}:${compareId ?? ""}:${viewMode}`}
+            />
+            {layers.length > 0 && layersOpen && (
+              <aside className="fl-layer-hud" aria-label="Layer legend">
+                <header>
+                  <Layers size={13} aria-hidden />
+                  Display Control
+                  <button
+                    type="button"
+                    className="fl-layer-close"
+                    onClick={() => setLayersOpen(false)}
+                    aria-label="Nascondi layer"
+                  >
+                    ×
+                  </button>
+                </header>
+                <ul>
+                  {layers.map((layer) => (
+                    <li key={layer.id}>
+                      <button
+                        type="button"
+                        className={clsx(
+                          "fl-layer-row",
+                          layer.soloShot && activeShot === layer.soloShot && "is-solo",
+                        )}
+                        onClick={() => soloLayer(layer)}
+                        title={
+                          layer.soloAvailable
+                            ? `Mostra ${layer.name}`
+                            : "Legenda (screenshot statico — Web Viewer per togglare i layer)"
+                        }
+                      >
+                        <i style={{ background: layer.color }} />
+                        <span className="fl-layer-name">{layer.name}</span>
+                        {layer.soloAvailable ? (
+                          <Eye size={12} aria-hidden />
+                        ) : (
+                          <span className="fl-layer-legend">legenda</span>
+                        )}
+                      </button>
+                      <p>{layer.role}</p>
+                    </li>
+                  ))}
+                </ul>
+                {activeShot && activeShot !== meta?.primaryShot && (
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    onClick={() => selectShot(meta?.primaryShot ?? gallery[0]?.file ?? "")}
+                  >
+                    Tutti i layer
+                  </button>
+                )}
+              </aside>
+            )}
+            {!layersOpen && layers.length > 0 && (
+              <button
+                type="button"
+                className="fl-layer-reopen"
+                onClick={() => setLayersOpen(true)}
+              >
+                <Layers size={14} aria-hidden />
+                Layer
+              </button>
+            )}
+          </>
         ) : (
           <div className="fl-layout-empty">
             {phaseId === "synth" ? (
@@ -204,6 +459,28 @@ export function FlowLabLayoutCanvas({
           </div>
         )}
       </div>
+
+      {gallery.length > 1 && !showViewer && (
+        <div className="fl-filmstrip" role="list" aria-label="Screenshot correlati">
+          {gallery.map((shot) => (
+            <button
+              key={shot.file}
+              type="button"
+              role="listitem"
+              className={clsx(
+                "fl-film-thumb",
+                activeShot === shot.file && viewMode === "single" && !compareId && "is-active",
+              )}
+              onClick={() => selectShot(shot.file)}
+              title={shot.caption}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={withKey(shot.url, refreshKey)} alt="" />
+              <span>{shot.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {(viewerErr || imgErr) && (
         <p className="fl-layout-warn" role="status">

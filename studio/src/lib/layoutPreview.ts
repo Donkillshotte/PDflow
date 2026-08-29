@@ -3,17 +3,14 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { resultsDir } from "./open";
+import {
+  PHASE_COMPARE,
+  PHASE_GALLERY,
+  PHASE_LAYERS,
+  type LayoutPhaseId,
+} from "./layoutStudio";
 
-export type LayoutPhaseId =
-  | "rtl"
-  | "synth"
-  | "floorplan"
-  | "pdn"
-  | "place"
-  | "cts"
-  | "route"
-  | "finish"
-  | "pkg";
+export type { LayoutPhaseId } from "./layoutStudio";
 
 export type LayoutPreviewConfig = {
   phaseId: LayoutPhaseId;
@@ -126,8 +123,28 @@ function reportsDir(variant: string) {
   return path.join(FLOW(), "reports/nangate45/gcd", variant);
 }
 
+const GUI_SHOTS_DIR = () =>
+  path.resolve(path.join(LEARN_ROOT, "reference/gui-shots"));
+
+const SHOT_NAME_RE = /^[A-Za-z0-9._-]+\.(png|webp|jpe?g)$/;
+
+export function resolveNamedGuiShot(file: string): string | null {
+  if (!SHOT_NAME_RE.test(file)) return null;
+  const dir = GUI_SHOTS_DIR();
+  const abs = path.resolve(dir, file);
+  if (abs !== path.join(dir, file) && !abs.startsWith(dir + path.sep)) {
+    return null;
+  }
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return null;
+  return abs;
+}
+
 function guiShotAbs(name: string) {
-  return path.join(LEARN_ROOT, "reference/gui-shots", name);
+  return resolveNamedGuiShot(name) ?? path.join(GUI_SHOTS_DIR(), name);
+}
+
+function shotUrl(file: string) {
+  return `/api/layout-preview/image?shot=${encodeURIComponent(file)}`;
 }
 
 function cacheAbs(variant: string, phaseId: LayoutPhaseId) {
@@ -270,6 +287,26 @@ export function layoutPreviewMeta(phaseId: LayoutPhaseId, variant: string) {
   const cfg = PHASE_LAYOUT[phaseId];
   const odbAbs = cfg.odb ? path.join(resultsDir(variant), cfg.odb) : null;
   const image = resolveLayoutImageAbs(phaseId, variant);
+
+  const gallery = (PHASE_GALLERY[phaseId] ?? [])
+    .filter((s) => resolveNamedGuiShot(s.file))
+    .map((s) => ({ ...s, url: shotUrl(s.file) }));
+
+  const compare = (PHASE_COMPARE[phaseId] ?? [])
+    .filter(
+      (p) => resolveNamedGuiShot(p.left.file) && resolveNamedGuiShot(p.right.file),
+    )
+    .map((p) => ({
+      ...p,
+      left: { ...p.left, url: shotUrl(p.left.file) },
+      right: { ...p.right, url: shotUrl(p.right.file) },
+    }));
+
+  const layers = (PHASE_LAYERS[phaseId] ?? []).map((layer) => ({
+    ...layer,
+    soloAvailable: Boolean(layer.soloShot && resolveNamedGuiShot(layer.soloShot)),
+  }));
+
   return {
     phaseId,
     variant,
@@ -278,6 +315,7 @@ export function layoutPreviewMeta(phaseId: LayoutPhaseId, variant: string) {
     inspectStage: cfg.inspectStage,
     odb: cfg.odb,
     odbExists: Boolean(odbAbs && fs.existsSync(odbAbs)),
+    primaryShot: cfg.guiShot,
     image: image
       ? {
           source: image.source,
@@ -285,5 +323,8 @@ export function layoutPreviewMeta(phaseId: LayoutPhaseId, variant: string) {
         }
       : null,
     physical: PHYSICAL_LAYOUT_PHASES.has(phaseId),
+    gallery,
+    compare,
+    layers,
   };
 }

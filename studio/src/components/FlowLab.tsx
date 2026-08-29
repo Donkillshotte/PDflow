@@ -6,6 +6,8 @@ import clsx from "clsx";
 import {
   CloudUpload,
   Keyboard,
+  PanelRightClose,
+  PanelRightOpen,
   Play,
   RotateCcw,
   Save,
@@ -94,7 +96,8 @@ export function FlowLab() {
   const [rightTab, setRightTab] = useState<RightTab>("log");
   const [guiBusy, setGuiBusy] = useState(false);
   const [offerNext, setOfferNext] = useState(false);
-  const [sideWidth, setSideWidth] = useState(420);
+  const [sideWidth, setSideWidth] = useState(300);
+  const [sideCollapsed, setSideCollapsed] = useState(false);
   const [sim, setSim] = useState<{
     vcdExists: boolean;
     logExists: boolean;
@@ -413,6 +416,10 @@ export function FlowLab() {
     return () => window.removeEventListener("keydown", onKey);
   }, [saveAll, requestRun]);
 
+  useEffect(() => {
+    if (running) setSideCollapsed(false);
+  }, [running]);
+
   async function cancel() {
     if (jobId) {
       await fetch("/api/run/cancel", {
@@ -566,6 +573,19 @@ export function FlowLab() {
           <button
             type="button"
             className="fl-btn fl-btn-ghost"
+            onClick={() => setSideCollapsed((v) => !v)}
+            title={sideCollapsed ? "Mostra console" : "Nascondi console"}
+          >
+            {sideCollapsed ? (
+              <PanelRightOpen size={16} aria-hidden />
+            ) : (
+              <PanelRightClose size={16} aria-hidden />
+            )}
+            {sideCollapsed ? "Console" : "Chip"}
+          </button>
+          <button
+            type="button"
+            className="fl-btn fl-btn-ghost"
             disabled={saving || running}
             onClick={() => void saveAll()}
           >
@@ -599,7 +619,7 @@ export function FlowLab() {
       )}
 
       <div
-        className="fl-workbench-grid"
+        className={clsx("fl-workbench-grid", sideCollapsed && "is-collapsed")}
         style={{ "--fl-side-w": `${sideWidth}px` } as React.CSSProperties}
       >
         <section className="fl-main-panel">

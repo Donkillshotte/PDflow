@@ -25,7 +25,7 @@ export function parseVcdWaveform(
   vcdPath = DEFAULT_VCD,
   opts?: { maxTransitions?: number; maxSignals?: number; maxTimePs?: number },
 ): VcdWaveform | null {
-  const maxTransitions = opts?.maxTransitions ?? 120;
+  const maxTransitions = opts?.maxTransitions ?? 220;
   const maxSignals = opts?.maxSignals ?? 6;
   const maxTimePs = opts?.maxTimePs ?? 800_000;
 

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import type { FlowlabParams } from "./types";
-import { PHASES } from "./phases";
 import { FlowLabLayoutCanvas } from "./FlowLabLayoutCanvas";
 import { RtlWaveformVisual } from "./RtlWaveformVisual";
 
@@ -128,18 +127,6 @@ function DieCanvas({
         )}
       </svg>
       <p className="fl-vis-die-caption">{label}</p>
-    </div>
-  );
-}
-
-function PipelineMini({ activeId }: { activeId: string }) {
-  return (
-    <div className="fl-vis-pipeline" aria-hidden>
-      {PHASES.map((p, i) => (
-        <span key={p.id} className={clsx("fl-vis-pip", p.id === activeId && "active", i < PHASES.findIndex((x) => x.id === activeId) && "done")}>
-          {p.label}
-        </span>
-      ))}
     </div>
   );
 }
@@ -314,7 +301,7 @@ export function FlowLabPhaseVisual({
   return (
     <div className={clsx("fl-phase-visual", loading && "loading")} aria-busy={loading}>
       <div className="fl-vis-header">
-        <PipelineMini activeId={phaseId} />
+        <span className="fl-vis-kicker">Viewport laboratorio</span>
         <span className={clsx("fl-vis-badge", stageDone ? "done" : "pending")}>
           {stageDone ? "Artefatto presente" : "Esegui per popolare"}
         </span>

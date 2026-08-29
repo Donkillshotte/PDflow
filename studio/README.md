@@ -24,7 +24,7 @@ Produzione:
 | Area | Contenuto |
 |---|---|
 | Studio | Hero + progresso + **Suite hub** (hook live) + mappa del flusso guidato |
-| **Flusso** | **FlowLab** RTL→GDSII: editor Monaco, parametri, **layout reale** (ORFS PNG + Web Viewer embedded), signoff finish |
+| **Flusso** | **FlowLab** RTL→GDSII: editor Monaco, viewport layout (zoom/pan, confronti GRT↔DRT, filmstrip, HUD layer), signoff finish |
 | Lezioni | **Wizard 5 passi** + **canvas layout** su step Risultati (variante `learn`) |
 | Strumenti | Toolchain + Suite + Ops + console + **layout preview** + inspect/viewer |
 | Materiali | Ricerca, documenti in-app, galleria GUI |
@@ -57,8 +57,9 @@ Produzione:
 | `GET /api/open` | catalogo dashboard + GUI targets |
 | `POST /api/open` `{ id }` o `{ artifact }` | naviga o lancia OpenROAD/KLayout |
 | `GET /api/inspect?stage=` | ODB / STA / Yosys live |
-| `GET /api/layout-preview?phase=&variant=` | Metadata preview layout (ORFS PNG / gui-shots / ODB) |
-| `GET /api/layout-preview/image?phase=` | Immagine layout per fase |
+| `GET /api/layout-preview?phase=&variant=` | Metadata preview: PNG, gallery filmstrip, compare pairs, layer HUD |
+| `GET /api/layout-preview/image?phase=` | Immagine primaria della fase |
+| `GET /api/layout-preview/image?shot=` | Screenshot da `learn/reference/gui-shots/` (allowlist filename) |
 | `GET /api/vcd-waveform` | Waveform RTL parsata da `gcd.vcd` |
 | `POST /api/viewer` `{ stage, artifact? }` | OpenROAD `-web` (embedded in FlowLab) |
 | `GET /api/suite` | stato collaborativo di tutti gli hook |
@@ -98,9 +99,9 @@ Il CLI del corso resta invariato.
 
 Workbench **RTL → GDSII** con variante isolata `results/nangate45/gcd/flowlab`:
 
-1. **RTL** — editor Monaco, autosave, sim Icarus, download VCD
-2. **Sintesi → GDSII** — parametri ORFS (util, SDC, ABC, TNS) con profili rapidi
-3. **Console** — log SSE, artefatti, ispezione ODB/STA/Yosys
+1. **RTL** — editor Monaco, autosave, sim Icarus, waveform VCD con cursore/zoom
+2. **Sintesi → GDSII** — viewport layout (rotella zoom, pan, Fit/`0`/`f`, Full/`F`), confronti Place↔Route e GRT↔DRT (wipe/split), filmstrip gui-shots, HUD layer Nangate45
+3. **Console** — log SSE, artefatti, ispezione ODB/STA/Yosys; pulsante **Espandi chip** per nasconderla
 4. **Finish signoff** — matrice STA/DRC/LVS/power, `signoff_all`, catena SPICE
 5. **Storico** — ultimi job per fase da `/api/jobs`
 
