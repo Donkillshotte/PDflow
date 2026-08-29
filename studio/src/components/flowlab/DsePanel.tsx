@@ -75,7 +75,7 @@ export function DsePanel() {
   const [report, setReport] = useState<DseReport | null>(null);
 
   const load = useCallback(async () => {
-    const r = await fetch("/api/content?path=sim/reports/dse_flowlab.json");
+    const r = await fetch("/api/content?path=sim/reports/dse_flowlab.json", { cache: "no-store" });
     if (!r.ok) {
       setReport(null);
       return;

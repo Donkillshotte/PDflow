@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + DirectLU/AMG/RAS/Krylov + I-scale of the attributed host (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + DirectLU/AMG/RAS/Krylov + I-scale of the attributed host (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
