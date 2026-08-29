@@ -1,8 +1,10 @@
-"""Budgeted OpenROAD GPL / GRT. Replaceable physical + routing layers.
+"""Budgeted OpenROAD GPL / GRT / candidate PDN extract.
 
 GPL: `global_placement -skip_io` → HPWL (µm) + overflow.
 GRT: `place_pins` + GPL + `global_route` + `estimate_parasitics` → WNS/power.
-No CTS, no detailed route, no finish, no PDN solve, not Dynamic IR.
+PDN extract: `place_pins` + tapcell + pdngen + GPL + `detailed_placement`
+  + `write_pg_spice` — a *new* R-graph, not the finish mesh, not gold.
+No CTS, no detailed route, no finish, not Dynamic IR by itself.
 """
 
 from __future__ import annotations
@@ -21,10 +23,13 @@ SC_LEF = PLATFORM / "lef/NangateOpenCellLibrary.macro.mod.lef"
 LIB = PLATFORM / "lib/NangateOpenCellLibrary_typical.lib"
 TRACKS = PLATFORM / "make_tracks.tcl"
 SETRC = PLATFORM / "setRC.tcl"
+PDN_TCL = PLATFORM / "grid_strategy-M1-M4-M7.tcl"
 SDC = REPO / "tools/OpenROAD-flow-scripts/flow/designs/nangate45/gcd/constraint.sdc"
+EXPORT_INSTS = REPO / "learn" / "scripts" / "export_odb_inst_power.py"
 SITE = "FreePDK45_38x28_10R_NP_162NW_34O"
 IO_H = "metal5"
 IO_V = "metal6"
+TAP_MASTER = "TAPCELL_X1"
 
 _WNS = re.compile(r"wns max\s+(-?[0-9.]+)")
 _TNS = re.compile(r"tns max\s+(-?[0-9.]+)")
@@ -56,6 +61,23 @@ def available() -> bool:
         and LIB.is_file()
         and TRACKS.is_file()
     )
+
+
+def extract_available() -> bool:
+    return available() and PDN_TCL.is_file() and SDC.is_file() and EXPORT_INSTS.is_file()
+
+
+def _spice_counts(path: Path) -> tuple[int, int]:
+    n_r = n_i = 0
+    for line in Path(path).read_text(errors="replace").splitlines():
+        if not line:
+            continue
+        c = line[0]
+        if c in "Rr":
+            n_r += 1
+        elif c in "Ii":
+            n_i += 1
+    return n_r, n_i
 
 
 def evaluate_gpl(
@@ -215,4 +237,141 @@ exit
         "via": "openroad_grt — place_pins+GPL+global_route; not detailed route/F5, not IR",
         "cost_s": time.time() - t0,
         "n_iters": int(rows[-1][0]) if rows else 0,
+    }
+
+
+def extract_pdn(
+    verilog: Path,
+    out_dir: Path,
+    *,
+    top: str = "gcd",
+    util: float = 35.0,
+    density: float = 0.55,
+    pkg_r: float = 0.05,
+    timeout_s: float = 60.0,
+) -> dict:
+    """Place + legalize + pdngen + write_pg_spice. Not finish, not gold.
+
+    GPL without detailed_placement leaves cells off M1 followpins and
+    analyze_power_grid fails connectivity. Do not use -skip_io here —
+    write_pg_spice needs placed pins. Vectorless activity 0.2; no RTL VCD.
+    """
+    if not extract_available():
+        return {
+            "status": "GAP",
+            "reason": "openroad/LEF/PDN tcl missing",
+            "via": "openroad_pdn_extract",
+            "gold": False,
+        }
+    verilog = Path(verilog)
+    out_dir = Path(out_dir)
+    if not verilog.is_file():
+        return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_pdn_extract", "gold": False}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    spice = out_dir / "pg_vdd_bumps.sp"
+    odb = out_dir / "candidate.odb"
+    insts = out_dir / "inst_power_map.json"
+    logp = out_dir / "extract.log"
+    tcl = f"""
+set_thread_count 1
+read_lef {TECH_LEF}
+read_lef {SC_LEF}
+read_liberty {LIB}
+read_verilog {verilog}
+link_design {top}
+read_sdc {SDC}
+initialize_floorplan -utilization {float(util)} -aspect_ratio 1.0 -core_space 2.0 -site {SITE}
+source {TRACKS}
+tapcell -distance 25 -tapcell_master {TAP_MASTER} -endcap_master {TAP_MASTER}
+source {PDN_TCL}
+pdngen
+place_pins -hor_layers {IO_H} -ver_layers {IO_V}
+global_placement -density {float(density)}
+detailed_placement
+global_connect
+set_power_activity -global -activity 0.2 -duty 0.5
+set_pdnsim_source_settings -bump_dx 140 -bump_dy 140 -bump_size 70 -bump_interval 3 -external_resistance {float(pkg_r)}
+analyze_power_grid -net VDD -source_type BUMPS
+write_pg_spice -net VDD -source_type BUMPS {spice}
+write_db {odb}
+puts DSE_PDN_EXTRACT_OK
+exit
+"""
+    t0 = time.time()
+    script = out_dir / "extract.tcl"
+    script.write_text(tcl)
+    try:
+        proc = subprocess.run(
+            ["openroad", "-exit", "-no_init", str(script)],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "fail",
+            "reason": f"PDN extract timeout {timeout_s}s",
+            "via": "openroad_pdn_extract",
+            "gold": False,
+            "cost_s": time.time() - t0,
+        }
+    log = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    logp.write_text(log)
+    err = next((ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR")), "")
+    if "DSE_PDN_EXTRACT_OK" not in log or proc.returncode != 0 or not spice.is_file() or not odb.is_file():
+        return {
+            "status": "fail",
+            "reason": err or "pdn_extract_failed",
+            "via": "openroad_pdn_extract",
+            "gold": False,
+            "cost_s": time.time() - t0,
+            "log": str(logp),
+        }
+    try:
+        exp = subprocess.run(
+            ["openroad", "-python", "-no_init", "-exit", str(EXPORT_INSTS), str(odb), str(insts)],
+            capture_output=True,
+            text=True,
+            timeout=min(30.0, timeout_s),
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "fail",
+            "reason": "inst map export timeout",
+            "via": "openroad_pdn_extract",
+            "gold": False,
+            "spice": str(spice),
+            "cost_s": time.time() - t0,
+        }
+    if exp.returncode != 0 or not insts.is_file():
+        return {
+            "status": "fail",
+            "reason": (exp.stderr or exp.stdout or "inst map export failed")[-300:],
+            "via": "openroad_pdn_extract",
+            "gold": False,
+            "spice": str(spice),
+            "cost_s": time.time() - t0,
+        }
+    n_r, n_i = _spice_counts(spice)
+    rows = _ROW.findall(log)
+    hpwl = float(rows[-1][2]) if rows else None
+    overflow = float(rows[-1][1]) if rows else None
+    return {
+        "status": "ok",
+        "spice": str(spice),
+        "insts": str(insts),
+        "odb": str(odb),
+        "n_r": n_r,
+        "n_i": n_i,
+        "hpwl_um": hpwl,
+        "overflow": overflow,
+        "util": float(util),
+        "density": float(density),
+        "legalize": "detailed_placement",
+        "gold": False,
+        "via": (
+            "openroad write_pg_spice after place_pins+tapcell+pdngen+GPL+DP "
+            "— candidate mesh, not finish, not gold"
+        ),
+        "cost_s": time.time() - t0,
     }

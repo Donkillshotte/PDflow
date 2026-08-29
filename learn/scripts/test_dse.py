@@ -314,6 +314,7 @@ def main() -> int:
     check(f1_wns_winner(mem_w).id == "fastish", "WNS winner is the delay-improved sequence")
     check(any(s["level"] == "f3_sta" for s in planned["steps"]), "planner schedules F3 STA")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
+    check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
     check(
         knobs_fp("routing", {"source": "f2_openroad_grt"})
         != knobs_fp("physical", {"source": "f2_openroad_grt"}),
@@ -398,6 +399,10 @@ def main() -> int:
     check(all("pkg_l" not in p and "coreUtilization" not in p for p in props), "proposer stays off PDN/physical knobs")
     check("gold" in (adapter_status()["solver"]["note"] or "").lower(), "solver adapter keeps gold unrestamped")
     check("restamp" in (adapter_status()["solver"]["via"] or ""), "solver adapter can restamp on the cached extract")
+    check(
+        "write_pg_spice" in (adapter_status()["extraction"]["via"] or ""),
+        "extraction adapter is write_pg_spice, not a flattened black-box",
+    )
 
     from dse.controller import propose_logic
 
@@ -466,6 +471,33 @@ def main() -> int:
         print("    skip F1 yosys")
 
     from dse.f4_oracle import GOLD_MV, available as f4_ok, solve_f4
+    from dse.openroad_f2 import extract_available, extract_pdn
+    from dse.pdn_space import next_pdn_spec as pdn_next
+    from dse.fingerprint import knobs_fp as kfp
+
+    check(
+        kfp("pdn", {"pkg_l": 2e-10, "c_decap": 50e-15, "extract_id": "finish"})
+        != kfp("pdn", {"pkg_l": 2e-10, "c_decap": 50e-15, "extract_id": "cand1"}),
+        "same PDN knobs on a new extract is a different fingerprint",
+    )
+    mem_pdn = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pdn-")) / "p.jsonl")
+    mem_pdn.add(
+        Candidate(
+            id="fin",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "f4_solver_a", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 200e-15, "extract_id": "finish"},
+            knobs_fp="x",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=21.8, fidelity="F4"),
+            cost_s=1.0,
+        )
+    )
+    check(pdn_next(mem_pdn).get("name") == "pkg_l_100p", "finish catalog advances past decap_200f")
+    check(pdn_next(mem_pdn, extract_id="cand1").get("name") == "decap_200f", "new extract still proposes decap")
 
     gold_json = _ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     gold_before = gold_json.read_text() if gold_json.is_file() else None
@@ -473,15 +505,42 @@ def main() -> int:
         base = solve_f4(variant="flowlab")
         check(base.get("status") == "ok", f"F4 oracle Solver A ({base.get('reason')})")
         check(base.get("gold") is False, "candidate F4 is not marked gold")
+        check(base.get("extract") == "finish", "default F4 uses the finish extract")
         check(abs(float(base["worst_droop_mv"]) - GOLD_MV) < 0.05, f"i_scale=1 reproduces gold {base.get('worst_droop_mv')}")
+        em0 = base.get("em") or {}
+        check(em0.get("j_absmax_a_m2") is not None, f"F4 restamp reports EM J ({em0})")
         extra_c = solve_f4(variant="flowlab", c_decap=200e-15)
         check(extra_c["worst_droop_mv"] < base["worst_droop_mv"] - 0.5, "more decap lowers droop on the same extract")
         hot = solve_f4(variant="flowlab", i_scale=1.2)
         check(hot["worst_droop_mv"] > base["worst_droop_mv"] + 0.5, "I(t)×1.2 raises droop (same spatial pattern)")
         print(
             f"    F4 oracle base {base['worst_droop_mv']:.3f}  decap200 {extra_c['worst_droop_mv']:.3f}  "
-            f"iscale1.2 {hot['worst_droop_mv']:.3f} mV ({base['cost_s']:.2f}s)"
+            f"iscale1.2 {hot['worst_droop_mv']:.3f} mV  J={em0.get('j_absmax_a_m2'):.3e} ({base['cost_s']:.2f}s)"
         )
+        mapped_ext = _ROOT / "learn/sim/dse/netlists/ab9f115d5a67.v"
+        if not mapped_ext.is_file() and mapped_ok.is_file():
+            mapped_ext = mapped_ok
+        if extract_available() and mapped_ext.is_file():
+            dest = Path(tempfile.mkdtemp(prefix="dse-ext-"))
+            ext = extract_pdn(mapped_ext, dest, timeout_s=60)
+            check(ext.get("status") == "ok", f"candidate write_pg_spice ({ext.get('reason')})")
+            check((ext.get("n_r") or 0) > 200, f"candidate spice has an R mesh, n_r={ext.get('n_r')}")
+            check(ext.get("n_r") != base.get("n_r"), "candidate extract is not the finish mesh")
+            check(ext.get("gold") is False, "candidate extract is not gold")
+            cand = solve_f4(variant="flowlab", spice=ext["spice"], insts=ext["insts"])
+            check(cand.get("status") == "ok", f"Solver A on candidate extract ({cand.get('reason')})")
+            check(cand.get("extract") == "candidate", "override spice is labeled candidate")
+            check(cand.get("gold") is False, "candidate solve is not gold")
+            check(abs(float(cand["worst_droop_mv"]) - GOLD_MV) > 0.2, "candidate mesh droop is not the finish gold")
+            cem = cand.get("em") or {}
+            check(cem.get("j_absmax_a_m2") is not None, "candidate F4 reports EM J")
+            print(
+                f"    F4 candidate extract n_r={ext['n_r']} n_i={ext.get('n_i')} "
+                f"droop={cand['worst_droop_mv']:.3f} mV J={cem.get('j_absmax_a_m2'):.3e} "
+                f"({ext['cost_s']:.2f}+{cand.get('cost_s', 0):.2f}s)"
+            )
+        else:
+            print("    skip candidate PDN extract (no openroad or mapped netlist)")
     else:
         print("    skip F4 oracle (no cached extract)")
     if gold_before is not None:

@@ -1,10 +1,11 @@
-"""Budgeted Dynamic IR restamp. Solver A on the cached GCD extract.
+"""Budgeted Dynamic IR restamp. Solver A on a write_pg_spice extract.
 
 The PI stack (system SciPy) is isolated in `learn/scripts/dse_f4_worker.py`
 so DSE's NumPy 2 never imports the 1.x scipy.sparse extension.
 
-Same write_pg_spice mesh as the gold run. We may change PDN knobs
-(c_decap, pkg L) or scale triangle I(t) by an F3 power ratio.
+Default: same finish mesh as the gold run. Pass spice/insts for a
+*candidate* extract (place_pins+GPL+DP+pdngen). Knobs (c_decap, pkg L)
+or I(t)×F3 power may change.
 
 This is a *candidate* F4 observation — never written over gold 45.298 mV.
 """
@@ -42,6 +43,10 @@ def available(variant: str = "flowlab") -> bool:
     return p["spice"].is_file() and p["insts"].is_file() and p["sta"].is_file() and WORKER.is_file()
 
 
+def extract_ready(spice: Path | str | None, insts: Path | str | None) -> bool:
+    return bool(spice and insts and Path(spice).is_file() and Path(insts).is_file() and WORKER.is_file())
+
+
 def solve_f4(
     *,
     variant: str = "flowlab",
@@ -51,13 +56,27 @@ def solve_f4(
     i_scale: float = 1.0,
     dt_ps: float = 10.0,
     timeout_s: float = 90.0,
+    spice: Path | str | None = None,
+    insts: Path | str | None = None,
+    extract_kind: str = "finish",
 ) -> dict:
-    """Solver A only. Same extract; knobs/current scale may change. Not gold."""
-    if not available(variant):
+    """Solver A only. Finish mesh by default; spice/insts override. Not gold."""
+    kind = "candidate" if spice or insts else extract_kind
+    if spice or insts:
+        if not extract_ready(spice, insts):
+            return {
+                "status": "GAP",
+                "reason": "candidate write_pg_spice / inst map missing — not launching finish",
+                "gold": False,
+                "extract": "candidate",
+                "via": "f4_oracle",
+            }
+    elif not available(variant):
         return {
             "status": "GAP",
             "reason": "cached write_pg_spice / STA arrivals missing — not a new extract",
             "gold": False,
+            "extract": "finish",
             "via": "f4_oracle",
         }
     env = os.environ.copy()
@@ -77,7 +96,13 @@ def solve_f4(
         str(i_scale),
         "--dt-ps",
         str(dt_ps),
+        "--extract-kind",
+        kind,
     ]
+    if spice:
+        cmd.extend(["--spice", str(spice), "--no-sta", "--no-spef"])
+    if insts:
+        cmd.extend(["--insts", str(insts)])
     try:
         proc = subprocess.run(
             cmd,
@@ -102,4 +127,5 @@ def solve_f4(
         err = (proc.stderr or proc.stdout or "no json")[-400:]
         return {"status": "fail", "reason": err, "gold": False, "via": "f4_oracle", "rc": proc.returncode}
     payload.setdefault("gold", False)
+    payload.setdefault("extract", kind)
     return payload

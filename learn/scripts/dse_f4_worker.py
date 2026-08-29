@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""DSE F4 worker: Solver A on the cached extract. Run with system SciPy.
+"""DSE F4 worker: Solver A on a write_pg_spice extract. Run with system SciPy.
 
 PYTHONPATH=/usr/lib/python3/dist-packages:...  (see dse.f4_oracle)
 Never writes dynamic_ir_*.json.
+
+Default paths are the FlowLab finish extract (gold teacher). Pass --spice /
+--insts for a *candidate* mesh. --no-sta skips finish arrivals (instance
+names on a flattened F1 netlist do not join).
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ if str(_SCRIPTS) not in sys.path:
 
 from pdn_activity import load_insts, load_sta_arrivals, node_xy, plan_events  # noqa: E402
 from pdn_dynamic import assemble_be, contributors_at, timestep_be  # noqa: E402
+from pdn_em import em_thermal_snapshot  # noqa: E402
 from pdn_extract import extract_pdn  # noqa: E402
 from pdn_solvers import DirectLU  # noqa: E402
 from pdn_transient import build_system  # noqa: E402
@@ -40,6 +45,18 @@ def _paths(variant: str) -> dict[str, Path]:
     }
 
 
+def _em_compact(em: dict) -> dict:
+    return {
+        "status": em.get("status"),
+        "j_absmax_a_m2": em.get("j_absmax_a_m2"),
+        "ttf_rel_min": em.get("ttf_rel_min"),
+        "n_with_j": em.get("n_with_j"),
+        "dT_mesh_absmax_k": em.get("dT_mesh_absmax_k"),
+        "i_absmax_a": em.get("i_absmax_a"),
+        "via": "pdn_em.em_thermal_snapshot on V_worst — not foundry TTF, not gold",
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", default="flowlab")
@@ -48,20 +65,42 @@ def main() -> int:
     ap.add_argument("--c-decap", type=float, default=50e-15)
     ap.add_argument("--i-scale", type=float, default=1.0)
     ap.add_argument("--dt-ps", type=float, default=10.0)
+    ap.add_argument("--spice", type=Path, default=None)
+    ap.add_argument("--insts", type=Path, default=None)
+    ap.add_argument("--sta", type=Path, default=None)
+    ap.add_argument("--spef", type=Path, default=None)
+    ap.add_argument("--no-sta", action="store_true")
+    ap.add_argument("--no-spef", action="store_true")
+    ap.add_argument(
+        "--extract-kind",
+        default="finish",
+        choices=("finish", "candidate"),
+        help="finish = gold teacher mesh; candidate = DSE write_pg_spice",
+    )
     args = ap.parse_args()
     t0 = time.time()
-    p = _paths(args.variant)
-    if not p["spice"].is_file() or not p["insts"].is_file() or not p["sta"].is_file():
-        print(json.dumps({"status": "GAP", "reason": "cached extract missing", "gold": False}))
+    defaults = _paths(args.variant)
+    spice = Path(args.spice) if args.spice else defaults["spice"]
+    insts_p = Path(args.insts) if args.insts else defaults["insts"]
+    kind = str(args.extract_kind)
+    if args.spice is not None or args.insts is not None:
+        kind = "candidate"
+    sta_p = None if args.no_sta else (Path(args.sta) if args.sta else (None if kind == "candidate" else defaults["sta"]))
+    spef_p = None if args.no_spef or kind == "candidate" else (Path(args.spef) if args.spef else defaults["spef"])
+    if not spice.is_file() or not insts_p.is_file():
+        print(json.dumps({"status": "GAP", "reason": "extract missing", "gold": False, "extract": kind}))
+        return 0
+    if kind == "finish" and sta_p is not None and not sta_p.is_file():
+        print(json.dumps({"status": "GAP", "reason": "cached extract missing", "gold": False, "extract": kind}))
         return 0
     ext = extract_pdn(
-        p["spice"],
-        lef=p["lef"] if p["lef"].is_file() else None,
-        spef=p["spef"] if p["spef"].is_file() else None,
+        spice,
+        lef=defaults["lef"] if defaults["lef"].is_file() else None,
+        spef=spef_p if spef_p is not None and spef_p.is_file() else None,
     )
     order, idx, G = build_system(ext["resistors"], ext["currents"], ext["voltages"])
-    insts = load_insts(p["insts"])
-    sta = load_sta_arrivals(p["sta"])
+    insts = load_insts(insts_p)
+    sta = load_sta_arrivals(sta_p) if sta_p is not None and sta_p.is_file() else {}
     events = plan_events(
         ext["currents"],
         idx,
@@ -106,6 +145,47 @@ def main() -> int:
     node = dyn.get("worst_node")
     xy = node_xy(node) if node else None
     contrib = contributors_at(events, float(dyn.get("worst_time_s") or 0.0))
+    em = {}
+    vw = dyn.get("V_worst")
+    if vw is not None:
+        try:
+            raw = em_thermal_snapshot(
+                ext["resistors"],
+                idx,
+                order,
+                vw,
+                bump=sys_be.get("bump"),
+                bump_v=sys_be.get("bump_v"),
+                i_L=dyn.get("i_L_worst"),
+                pkg_r=float(args.pkg_r),
+                pkg_l=float(args.pkg_l),
+                tech=ext.get("tech"),
+                currents=ext.get("currents"),
+                vdd=vdd,
+                f_hz=1.0 / 0.46e-9,
+            )
+            raw.pop("_scaled_resistors", None)
+            raw.pop("branches", None)
+            raw.pop("hottest_j", None)
+            raw.pop("hottest_i", None)
+            em = _em_compact(raw)
+        except Exception as exc:  # noqa: BLE001 — IR must still report
+            em = {"status": "GAP", "reason": str(exc)[:200], "via": "em_thermal_snapshot"}
+    via = (
+        "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) — not finish, not gold"
+        if kind == "candidate"
+        else "Solver A worker on cached write_pg_spice extract — not finish, not gold"
+    )
+    note = (
+        "candidate PDN R-graph after legalized place; do not replace gold "
+        f"{GOLD_MV:.3f} mV"
+        if kind == "candidate"
+        else (
+            "same PDN extract as the GCD gold run; "
+            "I(t) scale is F3 power ratio (spatial pattern unchanged); "
+            f"do not replace gold {GOLD_MV:.3f} mV"
+        )
+    )
     print(
         json.dumps(
             {
@@ -123,6 +203,7 @@ def main() -> int:
                 "c_decap": float(args.c_decap),
                 "i_scale": scale,
                 "n_r": ext.get("n_r"),
+                "n_i": ext.get("n_i"),
                 "n_events": len(events),
                 "solver": dyn.get("solver"),
                 "backend": dyn.get("backend"),
@@ -130,14 +211,13 @@ def main() -> int:
                 "gold": False,
                 "gold_ref_mv": GOLD_MV,
                 "delta_vs_gold_mv": droop * 1e3 - GOLD_MV,
-                "via": "Solver A worker on cached write_pg_spice extract — not finish, not gold",
-                "spice": str(p["spice"]),
+                "extract": kind,
+                "em": em,
+                "via": via,
+                "spice": str(spice),
+                "insts": str(insts_p),
                 "cost_s": time.time() - t0,
-                "note": (
-                    "same PDN extract as the GCD gold run; "
-                    "I(t) scale is F3 power ratio (spatial pattern unchanged); "
-                    f"do not replace gold {GOLD_MV:.3f} mV"
-                ),
+                "note": note,
             }
         )
     )

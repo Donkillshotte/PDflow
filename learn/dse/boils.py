@@ -16,7 +16,7 @@ import numpy as np
 from .abc_space import BOILS_STD_OPS, CATALOG, subsequence_kernel
 from .fingerprint import knobs_fp
 from .memory import DesignMemory
-from .mo import ehvi_2d, logic_mo_rows, timing_bound
+from .mo import ehvi_2d, ir_of, logic_mo_rows, timing_bound
 from .policy import drills_propose
 
 
@@ -179,6 +179,13 @@ def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
     train_seqs = [r[0] for r in rows]
     y = [r[1] for r in rows]
     timed = [(r[0], r[1], r[2]) for r in rows if r[2] is not None]
+    ired = []
+    for c in mem.by_level("logic"):
+        if c.status != "ok" or c.qor.area_um2 is None:
+            continue
+        ir = ir_of(mem, c)
+        if ir is not None:
+            ired.append((list(c.knobs.get("abc_ops") or []), float(c.qor.area_um2), float(ir)))
     best_seq = train_seqs[int(np.argmin(y))] if y else None
     if timed:
         # Incumbent for UCB: non-dominated on (area, WNS), then smallest area
@@ -201,34 +208,58 @@ def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
         preds_a = gp_predict(train_seqs, y, query)
         best_y = min(y)
         use_ehvi = len(timed) >= 2
+        use_ehvi_ir = len(ired) >= 2
         preds_w = None
+        preds_ir = None
         front: list[tuple[float, float]] = []
+        front_ir: list[tuple[float, float]] = []
         if use_ehvi:
             preds_w = gp_predict([t[0] for t in timed], [float(t[2]) for t in timed], query)
             front = [(t[1], float(t[2])) for t in timed]
+        if use_ehvi_ir:
+            preds_ir = gp_predict([t[0] for t in ired], [float(t[2]) for t in ired], query)
+            front_ir = [(t[1], float(t[2])) for t in ired]
         scored = []
         for i, knobs in enumerate(pool):
             mu_a, std_a = preds_a[i]
             ei_a = ei_min(mu_a, std_a, best_y)
             ehvi = 0.0
+            ehvi_ir = 0.0
             mu_w = std_w = None
+            mu_ir = std_ir = None
             if use_ehvi and preds_w is not None:
                 mu_w, std_w = preds_w[i]
                 ehvi = ehvi_2d(mu_a, std_a, mu_w, std_w, front, seed=i)
-            # EHVI when WNS exists; otherwise area EI. Never mix util/pkg L.
-            score = ehvi if use_ehvi else ei_a
-            scored.append((score, ei_a, ehvi, knobs, mu_a, std_a, mu_w, std_w))
-        scored.sort(key=lambda t: (-t[0], -t[1]))
-        pick = dict(scored[0][3])
+            if use_ehvi_ir and preds_ir is not None:
+                mu_ir, std_ir = preds_ir[i]
+                ehvi_ir = ehvi_2d(mu_a, std_a, mu_ir, std_ir, front_ir, seed=i + 17)
+            # Separate GPs per axis. Never flatten util/pkg L into the ABC kernel.
+            if use_ehvi:
+                score = ehvi
+            elif use_ehvi_ir:
+                score = ehvi_ir
+            else:
+                score = ei_a
+            scored.append((score, ei_a, ehvi, ehvi_ir, knobs, mu_a, std_a, mu_w, std_w, mu_ir, std_ir))
+        scored.sort(key=lambda t: (-t[0], -t[3], -t[1]))
+        pick = dict(scored[0][4])
+        objs = ["area_um2"]
+        if use_ehvi:
+            objs.append("wns_cost")
+        if use_ehvi_ir:
+            objs.append("dynamic_ir_mv")
         pick["acq"] = {
             "ei": scored[0][1],
             "ehvi": scored[0][2],
-            "mu": scored[0][4],
-            "std": scored[0][5],
-            "mu_wns": scored[0][6],
-            "std_wns": scored[0][7],
-            "via": "ssk_gp_ehvi" if use_ehvi else "ssk_gp_ei",
-            "objectives": ["area_um2", "wns_cost"] if use_ehvi else ["area_um2"],
+            "ehvi_ir": scored[0][3],
+            "mu": scored[0][5],
+            "std": scored[0][6],
+            "mu_wns": scored[0][7],
+            "std_wns": scored[0][8],
+            "mu_ir": scored[0][9],
+            "std_ir": scored[0][10],
+            "via": "ssk_gp_ehvi" if use_ehvi else ("ssk_gp_ehvi_ir" if use_ehvi_ir else "ssk_gp_ei"),
+            "objectives": objs,
         }
         return pick
     named = [k for k in pool if any(k["name"] == s["name"] for s in CATALOG)]

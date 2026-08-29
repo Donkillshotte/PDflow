@@ -87,9 +87,10 @@ Workbench interattivo su **http://127.0.0.1:43217/flusso**:
 
 Screenshot: `studio/docs/images/flowlab/`
 
-DSE fisico-aware (architettura → ABC → F2-fast/GPL/GRT → STA F3 → IR F4):
+DSE fisico-aware (architettura → ABC → F2-fast/GPL/GRT → STA F3 → extract PDN → IR/EM F4):
 `FLOW_VARIANT=flowlab ./learn/scripts/run_dse.sh` · [learn/reference/dse.md](learn/reference/dse.md).
 Il gold Dynamic IR del GCD resta **45.298 mV** (Solver A); il DSE lo ingestisce, non lo ristampa.
+L’extract candidato è `write_pg_spice` dopo place legalizzato — non è la mesh finish.
 
 ### CLI (invariato)
 

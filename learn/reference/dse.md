@@ -16,7 +16,9 @@ RTL
  → F2 catalogo fisico: un punto AutoDMP (util/densità) misurato con GPL, non solo proxy RUDY
  → F2 ingest place / GRT del layout corrente
  → F3 ingest STA signoff
- → F4 Dynamic IR / EM ingest (gold 45.298 mV unrestampato)
+ → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen)
+ → F4 restamp Solver A (knobs PDN / I(t)×power) sullo extract nominato
+ → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle → modulo RTL (dpath/ctrl)
  → surrogato F0 (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 solo se accoppiato)
  → Pareto per livello
@@ -32,7 +34,7 @@ RTL
 | **synthesis** | `ABC_AREA` ORFS | catalogo F0 (non mescolato alle ops ABC) |
 | **physical** | util, densità, netlist del candidato | F0 proxy + F2-fast + **GPL** + **catalogo GPL** + ingest — non lancia finish |
 | **routing** | GRT dopo place_pins | READY F2 budgetato — non detailed route / F5 |
-| **pdn** | `c_decap`, pkg L, I(t)×power | ingest gold + **Solver A restamp** (non gold) |
+| **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato | ingest gold + **extract `write_pg_spice`** + Solver A (non gold) |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
 
@@ -44,7 +46,7 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F1 | Yosys synth + ABC (script *file* ending with `map`) + `equiv_*` + `write_verilog -noexpr` | READY |
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` | READY (GPL budgetato) |
 | F3 | OpenSTA sul candidato (ideale) + ingest signoff | READY sul netlist F1 |
-| F4 | Dynamic IR/EM (libdpn A/B/C/D) | ingest gold + restamp budgetato sulla mesh cached — **non** sostituisce il gold |
+| F4 | Dynamic IR/EM (libdpn A) | ingest gold + **extract candidato** + restamp (decap/I-scale/EM J) — **non** sostituisce il gold 45.298 |
 | F5 | P&R signoff | GAP: il controller non lancia finish |
 
 F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.
@@ -79,7 +81,7 @@ Dopo ogni F1 lo STA ricalcola l’ordine: extract misurati peggiori sul slack
 vanno in fondo. Congestione GRT alta o focus di regione sposta il budget sul
 livello physical. I knobs ABC e `coreUtilization` restano fingerprint distinti.
 
-- **BOiLS** — kernel SSK + GP + **EHVI(area, WNS)** (EI se manca lo STA) + trust-region
+- **BOiLS** — kernel SSK + GP + **EHVI(area, WNS)**; EHVI(area, IR) è secondario quando ≥2 extract F4 — mai un box unico con util/pkg L
 - **DRiLLS** — UCB sul prossimo op ABC dato (ultimo op, focus IR); reward area+WNS
 - **e-graph** — saturation + extract, non RTL casuale
 - **GNN** — 2 layer mean-aggregate + ridge su HPWL F2-fast; incertezza alta se n&lt;4
@@ -90,8 +92,9 @@ livello physical. I knobs ABC e `coreUtilization` restano fingerprint distinti.
 ## Layer sostituibili
 
 `learn/dse/layers.py` registra extraction / power / activity / current / DSE /
-surrogate / solver / physical_fast / physical_gpl. Il solver PI resta **ingest**:
-il gold GCD 45.298 mV non si ristampa.
+surrogate / solver / physical_fast / physical_gpl. Extraction è
+`write_pg_spice` sul candidato legalizzato **oppure** ingest del finish.
+Il gold GCD 45.298 mV non si ristampa. EM J è `em_thermal_snapshot` su V_worst.
 
 ## Comandi
 

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 ADAPTERS: dict[str, dict] = {
     "extraction": {
-        "via": "ingest",
-        "note": "PDN extract lives in learn/scripts/pdn_extract.py — DSE does not re-extract",
+        "via": "openroad write_pg_spice after place_pins+GPL+DP+pdngen, or ingest finish",
+        "note": "candidate mesh is not gold; finish gold 45.298 mV stays unrestamped",
     },
     "power": {
         "via": "ingest",
@@ -21,7 +21,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "current": {
         "via": "ingest + F3 power scale",
-        "note": "triangle I(t) on cached extract; amplitude × P_F3/P_base — no invented RTL→ITerm map",
+        "note": "triangle I(t) on named extract; amplitude × P_F3/P_base — no invented RTL→ITerm map",
     },
     "dse": {
         "via": "dse.controller",
@@ -33,7 +33,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "solver": {
         "via": "ingest F4 + budgeted Solver A restamp",
-        "note": "libdpn A on cached extract; GCD gold 45.298 mV unrestamped",
+        "note": "libdpn A on named extract; GCD gold 45.298 mV unrestamped",
     },
     "physical_fast": {
         "via": "dse.netgraph",
@@ -56,7 +56,7 @@ ADAPTERS: dict[str, dict] = {
 
 def adapter_status() -> dict:
     from .f4_oracle import available as f4_ok
-    from .openroad_f2 import available as gpl_ok
+    from .openroad_f2 import available as gpl_ok, extract_available
     from .sta_f3 import available as sta_ok
 
     out = {k: dict(v) for k, v in ADAPTERS.items()}
@@ -65,4 +65,5 @@ def adapter_status() -> dict:
     out["timing"]["ready"] = bool(sta_ok())
     out["solver"]["ready"] = bool(f4_ok())
     out["current"]["ready"] = bool(f4_ok())
+    out["extraction"]["ready"] = bool(extract_available() or f4_ok())
     return out

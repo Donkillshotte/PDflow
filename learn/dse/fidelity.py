@@ -46,6 +46,7 @@ COST_HINT = {
     "F2_GRT": 8.0,
     "F3": 2.0,
     "F4": 12.0,
+    "F4_EXTRACT": 15.0,
     "F5": 600.0,
 }
 
@@ -176,8 +177,11 @@ def evaluate_f4_pdn(
     variant: str = "flowlab",
     design_id: str = "gcd",
     parent_id: str | None = None,
+    spice: Path | str | None = None,
+    insts: Path | str | None = None,
+    extract_id: str = "finish",
 ) -> Candidate | None:
-    """PDN-level Solver A restamp. Different c_decap/pkg L; same extract. Not gold."""
+    """PDN-level Solver A restamp. Different c_decap/pkg L; named extract. Not gold."""
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
 
@@ -188,6 +192,7 @@ def evaluate_f4_pdn(
         "c_decap": spec["c_decap"],
         "i_scale": 1.0,
         "source": "f4_solver_a",
+        "extract_id": extract_id,
     }
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
@@ -198,7 +203,11 @@ def evaluate_f4_pdn(
         pkg_l=float(spec["pkg_l"]),
         c_decap=float(spec["c_decap"]),
         i_scale=1.0,
+        spice=spice,
+        insts=insts,
+        extract_kind="candidate" if spice else "finish",
     )
+    em = dyn.get("em") or {}
     attr = attribute_dynamic_ir(
         {
             "hotspot": {
@@ -210,11 +219,14 @@ def evaluate_f4_pdn(
                     "seq_frac": dyn.get("seq_frac"),
                     "combo_frac": dyn.get("combo_frac"),
                 },
-            }
+            },
+            "em": em,
         }
     )
     q = QoR(
         dynamic_ir_mv=dyn.get("worst_droop_mv"),
+        em_j_a_m2=em.get("j_absmax_a_m2"),
+        ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4",
         note=dyn.get("note") or "Solver A restamp — not gold",
     )
@@ -234,7 +246,7 @@ def evaluate_f4_pdn(
         attr=attr,
         status="ok" if dyn.get("status") == "ok" else "fail",
         failure=dyn.get("reason") if dyn.get("status") != "ok" else None,
-        note=f"F4 PDN {spec.get('name')} droop={dyn.get('worst_droop_mv')} — not gold",
+        note=f"F4 PDN {spec.get('name')} on {extract_id} droop={dyn.get('worst_droop_mv')} — not gold",
     )
     return mem.add(c)
 
@@ -249,8 +261,11 @@ def evaluate_f4_scale(
     pkg_r: float = 0.05,
     pkg_l: float = 2e-10,
     c_decap: float = 50e-15,
+    spice: Path | str | None = None,
+    insts: Path | str | None = None,
+    extract_id: str = "finish",
 ) -> Candidate | None:
-    """Same extract + PDN knobs; I(t) × (F3 power / baseline). Not a new VCD map."""
+    """Named extract + PDN knobs; I(t) × (F3 power / baseline). Not a new VCD map."""
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
     from .mo import timing_of
@@ -268,6 +283,7 @@ def evaluate_f4_scale(
         "parent_id": parent.id,
         "parent_name": parent.knobs.get("name"),
         "source": "f4_iscale",
+        "extract_id": extract_id,
     }
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
@@ -278,7 +294,11 @@ def evaluate_f4_scale(
         pkg_l=pkg_l,
         c_decap=c_decap,
         i_scale=scale,
+        spice=spice,
+        insts=insts,
+        extract_kind="candidate" if spice else "finish",
     )
+    em = dyn.get("em") or {}
     attr = attribute_dynamic_ir(
         {
             "hotspot": {
@@ -290,25 +310,36 @@ def evaluate_f4_scale(
                     "seq_frac": dyn.get("seq_frac"),
                     "combo_frac": dyn.get("combo_frac"),
                 },
-            }
+            },
+            "em": em,
         }
     )
     attr["transform"] = parent.knobs.get("name")
     attr["i_scale"] = scale
     attr["inherited_from"] = parent.id
+    attr["extract_id"] = extract_id
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
         wns_cost=parent.qor.wns_cost,
         power_w=pwr,
         dynamic_ir_mv=dyn.get("worst_droop_mv"),
+        em_j_a_m2=em.get("j_absmax_a_m2"),
+        ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4",
-        note=f"I(t)×{scale:.3f} on cached extract — not gold, not a new VCD map",
+        note=f"I(t)×{scale:.3f} on {extract_id} — not gold, not a new VCD map",
     )
     if dyn.get("status") == "ok" and dyn.get("worst_droop_mv") is not None:
         parent.qor.dynamic_ir_mv = float(dyn["worst_droop_mv"])
+        if em.get("j_absmax_a_m2") is not None:
+            parent.qor.em_j_a_m2 = float(em["j_absmax_a_m2"])
         parent.attr = dict(parent.attr or {})
-        parent.attr["f4_iscale"] = {"i_scale": scale, "droop_mv": dyn["worst_droop_mv"]}
+        parent.attr["f4_iscale"] = {
+            "i_scale": scale,
+            "droop_mv": dyn["worst_droop_mv"],
+            "extract_id": extract_id,
+            "em_j_a_m2": em.get("j_absmax_a_m2"),
+        }
         mem.touch(parent)
     c = Candidate(
         id=DesignMemory.new_id(),
@@ -326,7 +357,134 @@ def evaluate_f4_scale(
         attr=attr,
         status="ok" if dyn.get("status") == "ok" else "fail",
         failure=dyn.get("reason") if dyn.get("status") != "ok" else None,
-        note=f"F4 I-scale of {parent.knobs.get('name')} ×{scale:.3f} droop={dyn.get('worst_droop_mv')}",
+        note=f"F4 I-scale of {parent.knobs.get('name')} ×{scale:.3f} on {extract_id} droop={dyn.get('worst_droop_mv')}",
+    )
+    return mem.add(c)
+
+
+def evaluate_f4_extract(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    variant: str = "flowlab",
+    util: float = 35.0,
+    density: float = 0.55,
+    timeout_s: float = 60.0,
+    pkg_r: float = 0.05,
+    pkg_l: float = 2e-10,
+    c_decap: float = 50e-15,
+) -> Candidate | None:
+    """New write_pg_spice after legalized place, then Solver A. Not finish, not gold."""
+    from .attribute import attribute_dynamic_ir
+    from .f4_oracle import solve_f4
+    from .openroad_f2 import extract_pdn
+
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    knobs = {
+        "source": "f4_candidate_extract",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "util": util,
+        "density": density,
+        "legalize": "detailed_placement",
+        "pkg_r": pkg_r,
+        "pkg_l": pkg_l,
+        "c_decap": c_decap,
+        "i_scale": 1.0,
+        "name": f"extract_{parent.knobs.get('name')}",
+    }
+    fp = knobs_fp("pdn", knobs)
+    if fp in mem.seen_knobs("pdn"):
+        return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
+    cid = DesignMemory.new_id()
+    out_dir = REPO / "learn" / "sim" / "dse" / "extracts" / cid
+    ext = extract_pdn(Path(mapped), out_dir, util=util, density=density, timeout_s=timeout_s)
+    spice, insts = ext.get("spice"), ext.get("insts")
+    dyn: dict = {}
+    extract_cost = float(ext.get("cost_s") or 0.0)
+    if ext.get("status") == "ok" and spice and insts:
+        dyn = solve_f4(
+            variant=variant,
+            pkg_r=pkg_r,
+            pkg_l=pkg_l,
+            c_decap=c_decap,
+            i_scale=1.0,
+            spice=spice,
+            insts=insts,
+            extract_kind="candidate",
+        )
+        ext = {**ext, **{k: v for k, v in dyn.items() if k != "cost_s"}}
+        ext["extract_cost_s"] = extract_cost
+        ext["solve_cost_s"] = dyn.get("cost_s")
+        ext["cost_s"] = extract_cost + float(dyn.get("cost_s") or 0.0)
+    knobs["extract_id"] = cid
+    em = (dyn.get("em") or ext.get("em") or {}) if isinstance(dyn, dict) else {}
+    attr = attribute_dynamic_ir(
+        {
+            "hotspot": {
+                "node": ext.get("worst_node"),
+                "droop_mv": ext.get("worst_droop_mv"),
+                "x_dbu": ext.get("x_dbu"),
+                "y_dbu": ext.get("y_dbu"),
+                "contributors": {
+                    "seq_frac": ext.get("seq_frac"),
+                    "combo_frac": ext.get("combo_frac"),
+                },
+            },
+            "em": em,
+        }
+    )
+    attr["transform"] = parent.knobs.get("name")
+    attr["inherited_from"] = parent.id
+    attr["extract_id"] = cid
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=parent.qor.wns_cost,
+        power_w=parent.qor.power_w,
+        congestion=ext.get("overflow"),
+        dynamic_ir_mv=ext.get("worst_droop_mv"),
+        em_j_a_m2=em.get("j_absmax_a_m2"),
+        ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
+        fidelity="F4",
+        note=(
+            f"candidate write_pg_spice n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')} "
+            "— not finish, not gold"
+        ),
+    )
+    ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
+    if ok and ext.get("worst_droop_mv") is not None:
+        parent.qor.dynamic_ir_mv = float(ext["worst_droop_mv"])
+        if em.get("j_absmax_a_m2") is not None:
+            parent.qor.em_j_a_m2 = float(em["j_absmax_a_m2"])
+        parent.attr = dict(parent.attr or {})
+        parent.attr["f4_extract"] = {
+            "extract_id": cid,
+            "n_r": ext.get("n_r"),
+            "droop_mv": ext.get("worst_droop_mv"),
+            "em_j_a_m2": em.get("j_absmax_a_m2"),
+        }
+        mem.touch(parent)
+    c = Candidate(
+        id=cid,
+        design_id=design_id,
+        parent_id=parent.id,
+        level="pdn",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F4",
+        qor=q,
+        cost_s=float(ext.get("cost_s") or 0.0),
+        artifacts=ext,
+        attr=attr,
+        status="ok" if ok else "fail",
+        failure=ext.get("reason") if not ok else None,
+        note=f"F4 extract of {parent.knobs.get('name')} n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')}",
     )
     return mem.add(c)
 

@@ -154,17 +154,30 @@ def predict_f4_from_f1(all_cands: list[Candidate]) -> dict:
     One pair cannot identify a slope. We record the pairing and keep
     uncertainty=high so F0 never stands in for Dynamic IR.
     """
-    f1 = {
+    f1_nl = {
+        c.netlist_fp: c.qor.area_um2
+        for c in all_cands
+        if c.fidelity == "F1" and c.status == "ok" and c.netlist_fp and c.qor.area_um2 is not None
+    }
+    f1_rtl = {
         c.rtl_fp: c.qor.area_um2
         for c in all_cands
         if c.fidelity == "F1" and c.status == "ok" and c.rtl_fp and c.qor.area_um2 is not None
     }
+    by_id = {c.id: c for c in all_cands}
     pairs = []
     for c in all_cands:
-        if c.qor.dynamic_ir_mv is None or not c.rtl_fp:
+        if c.qor.dynamic_ir_mv is None:
             continue
-        if c.rtl_fp in f1:
-            pairs.append((f1[c.rtl_fp], float(c.qor.dynamic_ir_mv)))
+        area = None
+        if c.netlist_fp and c.netlist_fp in f1_nl:
+            area = f1_nl[c.netlist_fp]
+        elif c.parent_id and c.parent_id in by_id and by_id[c.parent_id].qor.area_um2 is not None:
+            area = by_id[c.parent_id].qor.area_um2
+        elif c.rtl_fp and c.rtl_fp in f1_rtl:
+            area = f1_rtl[c.rtl_fp]
+        if area is not None:
+            pairs.append((float(area), float(c.qor.dynamic_ir_mv)))
     if not pairs:
         return {
             "metric": "dynamic_ir_mv",

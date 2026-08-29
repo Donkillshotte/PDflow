@@ -9,7 +9,7 @@ Optimizers (each on its own level):
   synthesis    — ORFS ABC_AREA catalog (F0)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT (not detailed route / F5)
-  pdn          — F4 ingest + budgeted Solver A restamp (knobs / I-scale; not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + Solver A restamp (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -23,10 +23,12 @@ from pathlib import Path
 
 from .abc_space import CATALOG
 from .acquire import (
+    latest_ok_extract,
     should_pay_f2_fast,
     should_pay_f2_gpl,
     should_pay_f2_grt,
     should_pay_f3_sta,
+    should_pay_f4_extract,
     should_pay_f4_pdn,
     should_pay_f4_scale,
     should_pay_physical_catalog,
@@ -41,6 +43,7 @@ from .fidelity import (
     evaluate_f2_gpl,
     evaluate_f2_grt,
     evaluate_f3_sta,
+    evaluate_f4_extract,
     evaluate_f4_pdn,
     evaluate_f4_scale,
     ensure_mapped_netlist,
@@ -586,23 +589,98 @@ def run_controller(
                     overflow=child.qor.congestion,
                     status=child.status,
                 )
+    n_ext = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_candidate_extract" and c.status == "ok"
+    )
+    pay_ext, why_ext = should_pay_f4_extract(
+        mem, budget_left=t_end - time.time(), n_extract=n_ext
+    )
+    step("acquire", fidelity="F4_EXTRACT", pay=pay_ext, why=why_ext)
+    if any(s["level"] == "f4_extract" for s in plan["steps"]) and pay_ext and time.time() < t_end:
+        prefer = []
+        base_p_ext = None
+        for c in mem.by_level("logic"):
+            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
+                _w, p = timing_of(mem, c)
+                if p:
+                    base_p_ext = p
+                    break
+        if base_p_ext:
+            for cand in (f1_wns_winner(mem), f1_area_winner(mem), *f1_ok(mem)):
+                if cand is None:
+                    continue
+                _w, p = timing_of(mem, cand)
+                if p is None or abs(float(p) / float(base_p_ext) - 1.0) < 0.03:
+                    continue
+                prefer.append(cand)
+                break
+        pick = _mapped_pick(
+            prefer + [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+            rtl=rtl,
+            liberty=lib,
+        )
+        if pick:
+            mem.touch(pick)
+            params = flowlab_params()
+            util_e = float(params.get("coreUtilization") or 35.0)
+            den_e = gpl_density(util_e, params.get("placeDensityAddon") or 0.2)
+            child = evaluate_f4_extract(
+                pick,
+                mem,
+                design_id=design_id,
+                variant=variant,
+                util=util_e,
+                density=den_e,
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_candidate_extract",
+                    parent=pick.id,
+                    n_r=(child.artifacts or {}).get("n_r"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    em_j=(child.qor.em_j_a_m2),
+                    gold=False,
+                    status=child.status,
+                )
+
+    ext_hit = latest_ok_extract(mem)
+    extract_id = str(ext_hit["extract_id"]) if ext_hit else "finish"
     n_pdn_f4 = sum(
         1
         for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_solver_a" and c.status == "ok"
+        if (c.knobs or {}).get("source") == "f4_solver_a"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
     )
     pay_pdn, why_pdn = should_pay_f4_pdn(
-        mem, budget_left=t_end - time.time(), n_pdn=n_pdn_f4, variant=variant
+        mem,
+        budget_left=t_end - time.time(),
+        n_pdn=n_pdn_f4,
+        variant=variant,
+        extract_id=extract_id,
     )
     step("acquire", fidelity="F4_PDN", pay=pay_pdn, why=why_pdn)
-    spec_pdn = next_pdn_spec(mem) if pay_pdn else None
+    spec_pdn = next_pdn_spec(mem, extract_id=extract_id) if pay_pdn else None
     if spec_pdn and time.time() < t_end:
         ingest = next(
             (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
             None,
         )
         child = evaluate_f4_pdn(
-            mem, spec_pdn, variant=variant, design_id=design_id, parent_id=ingest.id if ingest else None
+            mem,
+            spec_pdn,
+            variant=variant,
+            design_id=design_id,
+            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
+            spice=ext_hit["spice"] if ext_hit else None,
+            insts=ext_hit["insts"] if ext_hit else None,
+            extract_id=extract_id,
         )
         if child:
             step(
@@ -612,7 +690,9 @@ def run_controller(
                 fidelity="F4",
                 via="f4_solver_a",
                 catalog=spec_pdn.get("name"),
+                extract_id=extract_id,
                 droop_mv=child.qor.dynamic_ir_mv,
+                em_j=child.qor.em_j_a_m2,
                 gold=False,
                 status=child.status,
             )
@@ -644,8 +724,16 @@ def run_controller(
             pick = cand
             break
         if pick and base_p:
+            use_ext = ext_hit and ext_hit.get("parent_id") == pick.id
             child = evaluate_f4_scale(
-                pick, mem, variant=variant, design_id=design_id, baseline_power_w=base_p
+                pick,
+                mem,
+                variant=variant,
+                design_id=design_id,
+                baseline_power_w=base_p,
+                spice=ext_hit["spice"] if use_ext else None,
+                insts=ext_hit["insts"] if use_ext else None,
+                extract_id=str(ext_hit["extract_id"]) if use_ext else "finish",
             )
             if child:
                 step(
@@ -656,7 +744,9 @@ def run_controller(
                     via="f4_iscale",
                     parent=pick.id,
                     i_scale=(child.knobs or {}).get("i_scale"),
+                    extract_id=(child.knobs or {}).get("extract_id"),
                     droop_mv=child.qor.dynamic_ir_mv,
+                    em_j=child.qor.em_j_a_m2,
                     gold=False,
                     status=child.status,
                 )
@@ -683,11 +773,11 @@ def run_controller(
             "F1 Yosys+ABC+equiv (script file, write_verilog -noexpr) on logic and dpath extracts",
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + budgeted GRT",
             "F3 OpenSTA interleaved after each F1 (ideal) + ingest signoff STA",
-            "F4 ingest gold + Solver A restamp (PDN knobs / I(t)×power) — gold unrestamped",
+            "F4 ingest gold + candidate write_pg_spice + Solver A restamp — gold unrestamped",
             "IR combo on dpath → cone extracts; F3 WNS reorders remaining, no chip restart",
             "hierarchy chip→block→region→cone; attributed cells/region from hotspot",
             "Pareto per level — EHVI acquires, it does not replace the front",
-            "BOiLS EHVI(area,WNS) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · PDN F4",
+            "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · candidate PDN F4",
         ],
         "not": [
             "flattened black-box of all knobs",
@@ -723,10 +813,15 @@ def run_controller(
             if c.knobs.get("source") == "f2_openroad_grt"
         ),
         "n_f4": sum(1 for c in mem.by_level("pdn") if c.fidelity == "F4"),
+        "n_f4_extract": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_candidate_extract" and c.status == "ok"
+        ),
         "n_f4_solve": sum(
             1
             for c in mem.by_level("pdn")
-            if (c.knobs or {}).get("source") in ("f4_solver_a", "f4_iscale")
+            if (c.knobs or {}).get("source") in ("f4_solver_a", "f4_iscale", "f4_candidate_extract")
         ),
         "memory": str(mem_path),
         "surrogate_f0": pred,
@@ -798,9 +893,17 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     best = f"{areas[0][0]}/{areas[0][1]} {areas[0][2]:.3f} µm²" if areas else "no F1"
     ir = ""
     for c in mem.by_level("pdn"):
-        if c.qor.dynamic_ir_mv is not None:
-            ir = f" · F4 droop {c.qor.dynamic_ir_mv:.3f} mV (ingest, not gold replace)"
+        if c.status != "ok" or c.qor.dynamic_ir_mv is None:
+            continue
+        src = (c.knobs or {}).get("source")
+        if src == "f4_candidate_extract":
+            ir = (
+                f" · F4 candidate extract {c.qor.dynamic_ir_mv:.3f} mV "
+                f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
+            )
             break
+        if src == "ingest_pdn" and not ir:
+            ir = f" · F4 ingest {c.qor.dynamic_ir_mv:.3f} mV (gold teacher, unrestamped)"
     wns = ""
     timed = [
         (c.knobs.get("parent_name") or c.knobs.get("name"), c.qor.wns_cost)

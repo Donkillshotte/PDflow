@@ -8,15 +8,30 @@ type Cand = {
   level: string;
   fidelity: string;
   status: string;
-  knobs?: { name?: string; extract?: string; source?: string; catalog?: string; util?: number };
+  knobs?: {
+    name?: string;
+    extract?: string;
+    source?: string;
+    catalog?: string;
+    util?: number;
+    extract_id?: string;
+  };
   qor?: {
     area_um2?: number | null;
     dynamic_ir_mv?: number | null;
     congestion?: number | null;
     wns_cost?: number | null;
     power_w?: number | null;
+    em_j_a_m2?: number | null;
   };
-  artifacts?: { hpwl?: number; hpwl_um?: number; overflow?: number; wns_ns?: number };
+  artifacts?: {
+    hpwl?: number;
+    hpwl_um?: number;
+    overflow?: number;
+    wns_ns?: number;
+    n_r?: number;
+    extract?: string;
+  };
 };
 type Attr = { status?: string; modules?: string[]; scope?: string; droop_mv?: number };
 type DseReport = {
@@ -31,6 +46,7 @@ type DseReport = {
   n_f3?: number;
   n_f2_grt?: number;
   n_f4?: number;
+  n_f4_extract?: number;
   n_f4_solve?: number;
   surrogate_f1_to_f2_gnn?: { n?: number; uncertainty?: string; via?: string };
   pareto?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
@@ -72,7 +88,7 @@ export function DsePanel() {
       <header className="fl-dynir-head">
         <strong>DSE · ricerca a livelli</strong>
         <p>
-          Planner IR+WNS · EHVI area/WNS · F2-fast/GPL/catalogo · STA F3 · IR F4 ·{" "}
+          Planner IR+WNS · EHVI · F2-fast/GPL · extract PDN · STA F3 · IR/EM F4 ·{" "}
           <Link href="/materiali/reference/dse.md">dse.md</Link>
         </p>
       </header>
@@ -132,6 +148,7 @@ export function DsePanel() {
               <dt>F4 IR</dt>
               <dd>
                 {report.n_f4 ?? 0}
+                {report.n_f4_extract != null ? ` · ext ${report.n_f4_extract}` : ""}
                 {report.n_f4_solve != null ? ` · solve ${report.n_f4_solve}` : ""}
               </dd>
             </div>
@@ -175,6 +192,7 @@ export function DsePanel() {
                 c.knobs?.source === "f2_fast_barycenter",
             )}
           />
+          <PdnTable rows={cands.filter((c) => c.level === "pdn")} />
         </>
       )}
     </section>
@@ -256,6 +274,43 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
                     : "—"}
               </td>
               <td>{c.qor?.congestion != null ? c.qor.congestion.toFixed(3) : "—"}</td>
+              <td>{c.status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PdnTable({ rows }: { rows: Cand[] }) {
+  if (!rows.length) return null;
+  return (
+    <div className="fl-dynir-group">
+      <span>PDN · extract candidato / restamp Solver A (non gold)</span>
+      <table className="fl-dynir-table">
+        <thead>
+          <tr>
+            <th>Fonte</th>
+            <th>Extract</th>
+            <th>Droop</th>
+            <th>EM J</th>
+            <th>n_R</th>
+            <th>Stato</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => (
+            <tr key={c.id} data-status={c.status}>
+              <td>{c.knobs?.name ?? c.knobs?.source ?? c.id}</td>
+              <td>{c.knobs?.extract_id ?? c.artifacts?.extract ?? "finish"}</td>
+              <td>
+                {c.qor?.dynamic_ir_mv != null ? `${c.qor.dynamic_ir_mv.toFixed(3)} mV` : "—"}
+              </td>
+              <td>
+                {c.qor?.em_j_a_m2 != null ? `${(c.qor.em_j_a_m2 / 1e9).toFixed(2)} GA/m²` : "—"}
+              </td>
+              <td>{c.artifacts?.n_r != null ? String(c.artifacts.n_r) : "—"}</td>
               <td>{c.status}</td>
             </tr>
           ))}

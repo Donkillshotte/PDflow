@@ -142,6 +142,43 @@ def should_pay_physical_catalog(
     return True, "measure AutoDMP catalog util/density with OpenROAD GPL (not F0-only)"
 
 
+def should_pay_f4_extract(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_extract: int,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay one candidate write_pg_spice after legalized place. Not finish."""
+    if n_extract >= extract_max:
+        return False, "candidate PDN extract already spent this run"
+    if budget_left < min_s:
+        return False, "wall budget would not cover write_pg_spice"
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    winners = [
+        c
+        for c in mem.all()
+        if c.status == "ok"
+        and c.fidelity == "F1"
+        and c.qor.area_um2 is not None
+        and (c.artifacts or {}).get("mapped_v")
+    ]
+    if not winners:
+        return False, "no F1 mapped netlist to extract a PDN from"
+    have = {
+        (c.knobs or {}).get("parent_id")
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_candidate_extract" and c.status == "ok"
+    }
+    if all(w.id in have for w in winners):
+        return False, "every F1 winner already has a candidate extract"
+    return True, "write_pg_spice on legalized GPL — new R-graph, not the finish mesh, not gold"
+
+
 def should_pay_f4_pdn(
     mem: DesignMemory,
     *,
@@ -150,6 +187,7 @@ def should_pay_f4_pdn(
     pdn_max: int = 1,
     min_s: float = 8.0,
     variant: str = "flowlab",
+    extract_id: str = "finish",
 ) -> tuple[bool, str]:
     if n_pdn >= pdn_max:
         return False, "PDN catalog F4 shot already spent"
@@ -158,11 +196,12 @@ def should_pay_f4_pdn(
     from .f4_oracle import available
     from .pdn_space import next_pdn_spec
 
-    if not available(variant):
+    if extract_id == "finish" and not available(variant):
         return False, "no cached write_pg_spice extract (not launching finish)"
-    if next_pdn_spec(mem) is None:
-        return False, "every PDN catalog point already has an F4 child"
-    return True, "Solver A restamp on cached extract — PDN knobs only, not gold"
+    if next_pdn_spec(mem, extract_id=extract_id) is None:
+        return False, "every PDN catalog point already has an F4 child on this extract"
+    mesh = "candidate extract" if extract_id != "finish" else "cached finish extract"
+    return True, f"Solver A restamp on {mesh} — PDN knobs only, not gold"
 
 
 def should_pay_f4_scale(
@@ -181,8 +220,9 @@ def should_pay_f4_scale(
     from .f4_oracle import available
     from .mo import timing_of
 
-    if not available(variant):
-        return False, "no cached write_pg_spice extract (not launching finish)"
+    cand = latest_ok_extract(mem)
+    if not available(variant) and cand is None:
+        return False, "no write_pg_spice extract (not launching finish)"
     base = None
     for c in mem.by_level("logic"):
         if c.status == "ok" and c.knobs.get("name") == "liberty_default":
@@ -209,7 +249,29 @@ def should_pay_f4_scale(
         cands.append(c)
     if not cands:
         return False, "no F1 with a material F3 power delta to scale I(t)"
-    return True, "Solver A with I(t)×P_F3/P_base — same extract, not a new VCD map"
+    mesh = "candidate extract" if cand else "cached finish extract"
+    return True, f"Solver A with I(t)×P_F3/P_base on {mesh} — not a new VCD map"
+
+
+def latest_ok_extract(mem: DesignMemory) -> dict | None:
+    """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
+    from pathlib import Path
+
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_candidate_extract":
+            continue
+        art = c.artifacts or {}
+        spice, insts = art.get("spice"), art.get("insts")
+        if spice and insts and Path(spice).is_file() and Path(insts).is_file():
+            return {
+                "spice": spice,
+                "insts": insts,
+                "extract_id": (c.knobs or {}).get("extract_id") or c.id,
+                "parent_id": (c.knobs or {}).get("parent_id"),
+                "n_r": art.get("n_r"),
+                "candidate": c,
+            }
+    return None
 
 
 def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hint: dict) -> str:
@@ -225,7 +287,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F2"
     if level == "f3_sta":
         return "F3"
-    if level == "pdn":
+    if level in ("pdn", "f4_extract", "f4_scale"):
         return "F4"
     need = float(cost_hint.get("F1", 2.0))
     if budget_left < need:

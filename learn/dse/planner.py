@@ -97,7 +97,17 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         }
     )
     ir_up = _ir_rose(mem)
-    pdn_why = "Solver A restamp on cached extract (c_decap/pkg L) — not gold, not finish"
+    steps.append(
+        {
+            "level": "f4_extract",
+            "reason": (
+                "write_pg_spice after place_pins+GPL+DP+pdngen on the F1 incumbent "
+                "— new R-graph, not the finish mesh, not gold"
+            ),
+            "scope": "chip",
+        }
+    )
+    pdn_why = "Solver A restamp on the named extract (c_decap/pkg L) — not gold, not finish"
     if ir_up:
         pdn_why += "; scaled I(t) IR rose — keep PDN knobs off the ABC vector"
     steps.append({"level": "pdn", "reason": pdn_why, "scope": "chip"})
@@ -105,7 +115,8 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         {
             "level": "f4_scale",
             "reason": (
-                "I(t)×P_F3/P_base on the WNS/power incumbent — same mesh, not a VCD remap"
+                "I(t)×P_F3/P_base on the WNS/power incumbent — candidate mesh if extracted, "
+                "not a VCD remap"
                 + ("; IR feedback to the cone, no chip restart" if focus != "chip" else "")
             ),
             "scope": "logic_cone" if focus != "chip" else "chip",
@@ -166,7 +177,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
         src = (c.knobs or {}).get("source")
         if src == "ingest_pdn":
             ingest = float(c.qor.dynamic_ir_mv)
-        elif src in ("f4_iscale", "f4_solver_a"):
+        elif src in ("f4_iscale", "f4_solver_a", "f4_candidate_extract"):
             v = float(c.qor.dynamic_ir_mv)
             cand = v if cand is None else max(cand, v)
     return ingest is not None and cand is not None and cand > ingest + 0.05
