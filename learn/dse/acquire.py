@@ -546,6 +546,42 @@ def should_pay_cell_size(
     return True, f"upsize {len(cells)} attributed worst-path cells — not ABC, not a chip restart"
 
 
+def should_pay_net_buffer(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_net: int = 0,
+    net_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay one BUF insert on attributed worst-path hops. Not more ABC."""
+    if n_net >= net_max:
+        return False, "net-local buffer shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover net-local STA"
+    if any((c.knobs or {}).get("source") == "net_buffer" and c.status == "ok" for c in mem.by_level("net")):
+        return False, "already have a net-local buffer child"
+    hops = _attributed_path_nets(mem)
+    if len(hops) < 1:
+        return False, "no attributed STA path hops to buffer"
+    return True, f"insert BUF on {len(hops)} attributed worst-path hops — not ABC, not a chip restart"
+
+
+def _attributed_path_nets(mem: DesignMemory) -> list[str]:
+    for c in reversed(list(mem.all())):
+        if c.status != "ok":
+            continue
+        art = c.artifacts or {}
+        hops = [h for h in (art.get("path_nets") or []) if isinstance(h, str) and "->" in h]
+        if hops:
+            return hops
+        attr = c.attr or {}
+        hops = [h for h in (attr.get("nets") or []) if isinstance(h, str) and "->" in h]
+        if hops and attr.get("kind") == "sta_path":
+            return hops
+    return []
+
+
 def _attributed_path_cells(mem: DesignMemory) -> list[str]:
     for c in reversed(list(mem.all())):
         if c.status != "ok":
@@ -695,6 +731,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
     if level in ("synthesis", "f1_synth"):
         return "F1"
     if level in ("cell", "cell_size"):
+        return "F3"
+    if level in ("net", "net_buffer"):
         return "F3"
     need = float(cost_hint.get("F1", 2.0))
     if budget_left < need:

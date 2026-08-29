@@ -4,13 +4,15 @@ Does not invent an RTL rewrite. Stores transformation+context hooks so a
 later cell-local or cone-local search can target named instances instead
 of restarting chip DSE.
 
-Hierarchy: chip → block → region → logic_cone → cell.
+Hierarchy: chip → block → region → logic_cone → cell → net.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+
+HIERARCHY = ["chip", "block", "region", "logic_cone", "cell", "net"]
 
 
 def _module_of(name: str | None) -> str | None:
@@ -114,7 +116,7 @@ def attribute_dynamic_ir(report: dict) -> dict:
         "cells": cells,
         "nets": list(hs.get("nets") or []),
         "scope": scope,
-        "hierarchy": ["chip", "block", "region", "logic_cone", "cell"],
+        "hierarchy": list(HIERARCHY),
         "em_j_a_m2": em.get("j_absmax_a_m2"),
         "dT_mesh_k": em.get("dT_mesh_absmax_k"),
         "note": (
@@ -140,7 +142,7 @@ def local_scope(attr: dict) -> dict:
         "region": region,
         "restart_chip": False,
         "focus": modules[0] if modules else (region or "chip"),
-        "hierarchy": ["chip", "block", "region", "logic_cone", "cell"],
+        "hierarchy": list(HIERARCHY),
     }
 
 
@@ -177,7 +179,7 @@ def attribute_sta(sta: dict, *, inherit: dict | None = None) -> dict:
         "cells": cells,
         "nets": list(sta.get("path_nets") or inherit.get("nets") or []),
         "scope": "cell" if cells else scope,
-        "hierarchy": ["chip", "block", "region", "logic_cone", "cell"],
+        "hierarchy": list(HIERARCHY),
         "restart_chip": False,
         "inherited_from": inherit.get("transform") or inherit.get("inherited_from"),
         "note": (

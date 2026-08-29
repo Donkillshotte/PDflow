@@ -214,7 +214,8 @@ def main() -> int:
     check(attr["scope"] == "logic_cone", "attributed scope is logic_cone, not chip restart")
     check(local_scope(attr)["restart_chip"] is False, "local scope refuses a chip restart")
     check(local_scope(attr)["focus"] == "dpath", "focus is the attributed module")
-    check(local_scope(attr)["hierarchy"][-1] == "cell", "hierarchy ends at the attributed cell")
+    check(local_scope(attr)["hierarchy"][-1] == "net", "hierarchy ends at the attributed net")
+    check("cell" in local_scope(attr)["hierarchy"], "hierarchy still includes the cell")
     check("logic_cone" in local_scope(attr)["hierarchy"], "hierarchy still includes the cone")
 
     from dse.planner import plan_search, rank_extracts
@@ -330,6 +331,7 @@ def main() -> int:
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
     check(any(s["level"] == "synthesis" for s in planned["steps"]), "planner schedules synthesis F1")
     check(any(s["level"] == "cell" for s in planned["steps"]), "planner schedules cell-local size-up")
+    check(any(s["level"] == "net" for s in planned["steps"]), "planner schedules net-local BUF")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
     check(any(s["level"] == "f2_region" for s in planned["steps"]), "planner schedules IR-bin region GPL")
@@ -373,10 +375,16 @@ def main() -> int:
     )
     check(next_fidelity(level="synthesis", pred=None, budget_left=20, cost_hint={}) == "F1", "synthesis measures at F1")
     check(next_fidelity(level="cell", pred=None, budget_left=20, cost_hint={}) == "F3", "cell-local size is measured at F3")
+    check(next_fidelity(level="net", pred=None, budget_left=20, cost_hint={}) == "F3", "net-local BUF is measured at F3")
     check(
         knobs_fp("cell", {"source": "cell_size_up", "cells": ["dpath/a_lt_b/_142_"]})
         != knobs_fp("logic", {"source": "cell_size_up", "cells": ["dpath/a_lt_b/_142_"]}),
         "cell-local knobs are not flattened into the logic fingerprint",
+    )
+    check(
+        knobs_fp("net", {"source": "net_buffer", "hops": ["_586_->_587_"], "buf": "BUF_X2"})
+        != knobs_fp("cell", {"source": "net_buffer", "hops": ["_586_->_587_"], "buf": "BUF_X2"}),
+        "net-local knobs are not flattened into the cell fingerprint",
     )
     check(
         knobs_fp("synthesis", {"name": "orfs_abc_speed", "abcArea": 0, "source": "orfs_abc_script"})
@@ -566,6 +574,7 @@ def main() -> int:
     )
     check("abc_speed" in (adapter_status()["synthesis"]["note"] or ""), "synthesis adapter is ORFS abc_speed, not logic -fast")
     check("path" in (adapter_status()["cell"]["note"] or ""), "cell adapter is attributed-path drive-up")
+    check("BUF" in (adapter_status()["net"]["note"] or ""), "net adapter is attributed-path BUF insert")
     check("SPEF" in (adapter_status()["timing"]["note"] or ""), "timing adapter includes OpenRCX SPEF")
     check("f5" in (adapter_status()["routing"]["via"] or "").lower() or "OpenRCX" in (adapter_status()["routing"]["note"] or ""), "routing adapter includes F5-lite")
     check("cts" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-CTS")
@@ -673,7 +682,8 @@ def main() -> int:
                 )
                 check((hsta.get("path_nets") or []) and len(hsta["path_nets"]) >= 2, "STA path lists net hops")
                 from dse.cell_space import next_drive, upsize_path_cells
-                from dse.fidelity import evaluate_cell_size
+                from dse.fidelity import evaluate_cell_size, evaluate_net_buffer
+                from dse.net_space import buffer_path_nets
 
                 check(next_drive("AND2_X1") == "AND2_X2", "Nangate drive ladder X1→X2")
                 tiny = (
@@ -721,6 +731,33 @@ def main() -> int:
                     f"    cell size-up n={csz.artifacts.get('n_changed')} "
                     f"WNS={csz.artifacts.get('wns_ns')} vs hier {hsta.get('wns_ns')} "
                     f"area={csz.qor.area_um2}"
+                )
+                tiny_net = (
+                    "module gcd(clk);\n  wire _118_;\n  wire _119_;\n"
+                    "  XOR2_X1 _586_ (\n    .A(_063_),\n    .B(_047_),\n    .Z(_118_)\n  );\n"
+                    "  AOI21_X1 _587_ (\n    .A(_118_),\n    .B1(_087_),\n    .B2(_056_),\n    .ZN(_119_)\n  );\n"
+                    "endmodule\n"
+                )
+                nins = buffer_path_nets(tiny_net, ["_586_->_587_"])
+                check(nins["n_changed"] == 1, f"tiny hop gets one BUF, got {nins['changed']}")
+                check("BUF_X2 netbuf_0" in nins["text"], "tiny hop inserts BUF_X2")
+                check(".A(netbuf_w0)" in nins["text"], "tiny hop retargets the sink pin")
+                sta_flat = evaluate_sta(Path(c0.artifacts["mapped_v"]))
+                nb = evaluate_net_buffer(c0, mm, hops=list(sta_flat.get("path_nets") or []))
+                check(nb is not None and nb.status == "ok", f"net-local BUF STA ({nb.failure if nb else None})")
+                check(nb.level == "net", "buffer insert is recorded on the net level")
+                check((nb.artifacts or {}).get("n_changed", 0) >= 1, f"path hops were buffered, {nb.artifacts.get('n_changed')}")
+                check("BUF_X2" in Path(nb.artifacts["mapped_v"]).read_text(), "buffered netlist contains BUF_X2")
+                check(
+                    sta_flat.get("wns_ns") is not None
+                    and nb.artifacts.get("wns_ns") is not None
+                    and abs(float(nb.artifacts["wns_ns"]) - float(sta_flat["wns_ns"])) >= 0.01,
+                    f"net BUF WNS {nb.artifacts.get('wns_ns')} must move vs {sta_flat.get('wns_ns')}",
+                )
+                print(
+                    f"    net BUF n={nb.artifacts.get('n_changed')} "
+                    f"WNS={nb.artifacts.get('wns_ns')} vs flatten {sta_flat.get('wns_ns')} "
+                    f"area={nb.qor.area_um2}"
                 )
             cs = evaluate_f1_synth(rtl=rtl, liberty=lib, mem=mm)
             check(cs.status == "ok", f"synthesis F1 abc_speed proves equiv ({cs.failure})")
@@ -844,7 +881,13 @@ def main() -> int:
         )
     )
     check(pdn_next(mem_kry).get("name") == "decap_200f", "Krylov residual does not consume the PDN catalog")
-    from dse.acquire import should_pay_f1_synth, should_pay_f4_krylov, should_pay_f4_ras, should_pay_f5_cts
+    from dse.acquire import (
+        should_pay_f1_synth,
+        should_pay_f4_krylov,
+        should_pay_f4_ras,
+        should_pay_f5_cts,
+        should_pay_net_buffer,
+    )
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
     pay_s0, _ = should_pay_f1_synth(mem_pay, budget_left=80, n_f1=0)
@@ -934,6 +977,29 @@ def main() -> int:
         check(pay_c1, f"CTS is paid after F5-lite ({why_c1})")
         pay_c2, why_c2 = should_pay_f5_cts(mem_pay, budget_left=80, n_f5_cts=1)
         check(not pay_c2, f"CTS is a single shot ({why_c2})")
+    pay_n0, why_n0 = should_pay_net_buffer(mem_pay, budget_left=80, n_net=0)
+    check(not pay_n0, f"net BUF waits for attributed hops ({why_n0})")
+    mem_pay.add(
+        Candidate(
+            id="f3nets",
+            design_id="gcd",
+            parent_id="t0",
+            level="logic",
+            knobs={"source": "f3_opensta_ideal", "parent_id": "t0"},
+            knobs_fp="f3nets",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(wns_cost=0.52, fidelity="F3"),
+            cost_s=0.1,
+            status="ok",
+            artifacts={"path_nets": ["_586_->_587_", "_587_->_588_"]},
+        )
+    )
+    pay_n1, why_n1 = should_pay_net_buffer(mem_pay, budget_left=80, n_net=0)
+    check(pay_n1, f"net BUF is paid after path hops ({why_n1})")
+    pay_n2, why_n2 = should_pay_net_buffer(mem_pay, budget_left=80, n_net=1)
+    check(not pay_n2, f"net BUF is a single shot ({why_n2})")
 
     gold_json = _ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     gold_before = gold_json.read_text() if gold_json.is_file() else None

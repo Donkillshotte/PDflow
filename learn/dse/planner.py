@@ -138,6 +138,18 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "cell",
         }
     )
+    net_n = len(attr.get("nets") or [])
+    steps.append(
+        {
+            "level": "net",
+            "reason": (
+                f"insert BUF on {net_n} attributed worst-path hops — net-local, not ABC"
+                if net_n
+                else "insert BUF on OpenSTA worst-path hops after F3 — net-local, not ABC"
+            ),
+            "scope": "net",
+        }
+    )
     steps.append(
         {
             "level": "f4_amg",
@@ -225,7 +237,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         "timing_bound": bound,
         "ir_rose": ir_up,
         "restart_chip": False,
-        "hierarchy": ["chip", "block", "region", "logic_cone", "cell"],
+        "hierarchy": ["chip", "block", "region", "logic_cone", "cell", "net"],
         "steps": steps,
     }
 

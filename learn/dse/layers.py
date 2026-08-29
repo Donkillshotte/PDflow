@@ -39,6 +39,10 @@ ADAPTERS: dict[str, dict] = {
         "via": "dse.cell_space.upsize_path_cells + dse.fidelity.evaluate_cell_size",
         "note": "attributed STA path drive-up (module-scoped); not ABC ops, not a chip restart",
     },
+    "net": {
+        "via": "dse.net_space.buffer_path_nets + dse.fidelity.evaluate_net_buffer",
+        "note": "attributed STA path BUF insert (module-scoped); not ABC, not a cell drive-up",
+    },
     "solver": {
         "via": "dse.f4_oracle + dse_f4_worker (direct|amg|bicg|ras|krylov/MOR)",
         "note": "DirectLU restamp on named extract; AMG, RAS, and rational Krylov/MOR are MF residuals; GCD gold 45.298 mV unrestamped",
@@ -78,4 +82,5 @@ def adapter_status() -> dict:
     out["extraction"]["ready"] = bool(extract_available() or f4_ok())
     out["synthesis"]["ready"] = bool(synth_ok())
     out["cell"]["ready"] = bool(sta_ok())
+    out["net"]["ready"] = bool(sta_ok())
     return out

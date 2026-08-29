@@ -1,9 +1,11 @@
-"""Cell/net-local transforms from attributed STA/IR paths.
+"""Cell-local transforms from attributed STA/IR paths.
 
 Drive-up is a *cell* level action: named instances on the worst path,
 not another ABC sequence and not a chip restart. Hierarchical names
 (`dpath/a_lt_b/_142_`) are resolved to the owning module so a leaf
 `_07_` in ctrl is not confused with `_07_` in dpath.
+
+Net-local BUF insertion lives in ``net_space`` — a different level.
 """
 
 from __future__ import annotations
