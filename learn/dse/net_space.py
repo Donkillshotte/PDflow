@@ -7,6 +7,8 @@ Intra-module hops stay in ``buffer_path_nets`` (source ``net_buffer``).
 Cross-module hops (ctrl↔dpath port nets, or dpath/a_lt_b→dpath/a_mux)
 are a different transform: ``buffer_port_nets`` (source ``net_buffer_port``)
 inserts the BUF in the parent and retargets the sink instance pin.
+A bus bit (``a_mux_sel[0]``) is the same transform: the walker keeps the
+index and the parent splices that bit, it is not skipped.
 """
 
 from __future__ import annotations
@@ -23,6 +25,12 @@ _PORT_DIR = re.compile(
     re.M,
 )
 _ASSIGN = re.compile(r"^\s*assign\s+(\S+)\s*=\s*(\S+)\s*;", re.M)
+_BUS_DECL = re.compile(
+    r"(?:wire|input|output|inout)\s+\[(\d+)\s*:\s*(\d+)\]\s+"
+    r"(\\[^\s]+|[A-Za-z_][A-Za-z0-9_$]*)",
+    re.M,
+)
+_BIT_SEL = re.compile(r"^(.*)\[(\d+)\]$")
 _OUT = {"Z", "ZN", "Q", "QN", "CO", "S", "Y"}
 _OUT_PORT = {"Z", "ZN", "Q", "QN", "CO", "Y"}
 _CLK = {"CK", "CLK", "CLOCK"}
@@ -188,16 +196,55 @@ def hop_is_block_port(hop: str) -> bool:
 def _norm_net(name: str) -> str:
     n = str(name or "").strip()
     if n.startswith("\\"):
-        n = n[1:].strip()
-    return n
+        n = n[1:]
+    n = re.sub(r"\s+\[", "[", n.strip())
+    return n.strip()
+
+
+def _split_sel(name: str) -> tuple[str, int | None]:
+    """``a_mux_sel[0]`` / ``\\ctrl$a_mux_sel [0]`` → (base, bit)."""
+    n = _norm_net(name)
+    m = _BIT_SEL.match(n)
+    if m:
+        return m.group(1).strip(), int(m.group(2))
+    return n, None
+
+
+def _join_sel(name: str, bit: int) -> str:
+    base, existing = _split_sel(name)
+    if existing is not None:
+        return f"{base}[{existing}]"
+    return f"{base}[{int(bit)}]"
 
 
 def _emit_net(name: str) -> str:
     """Escaped Verilog ids need a terminating space before the next token."""
-    n = str(name or "").strip()
-    if n.startswith("\\") and not n.endswith(" "):
-        return n + " "
-    return n
+    raw = str(name or "").strip()
+    base, bit = _split_sel(raw)
+    needs_esc = raw.startswith("\\") or any(c in base for c in ("$", ".", "/"))
+    if bit is not None:
+        if needs_esc:
+            return f"\\{base} [{bit}]"
+        return f"{base}[{bit}]"
+    if needs_esc:
+        esc = raw if raw.startswith("\\") else f"\\{base}"
+        return esc if esc.endswith(" ") else esc + " "
+    return raw
+
+
+def _bus_bounds(mod: dict | None, net: str) -> tuple[int, int] | None:
+    if not mod:
+        return None
+    base, _ = _split_sel(net)
+    for m in _BUS_DECL.finditer(_mod_blob(mod)):
+        if _norm_net(m.group(3)) == _norm_net(base):
+            return int(m.group(1)), int(m.group(2))
+    return None
+
+
+def _bit_range(msb: int, lsb: int) -> list[int]:
+    step = -1 if msb > lsb else 1
+    return list(range(msb, lsb + step, step))
 
 
 def _skip_net(net: str) -> bool:
@@ -221,16 +268,22 @@ def _port_names(mod: dict) -> set[str]:
 
 
 def _assign_port(mod: dict, net: str) -> str | None:
+    """Map a leaf net (including ``sel[0]``) onto a module port name."""
     ports = _port_names(mod)
     want = _norm_net(net)
+    base, _bit = _split_sel(want)
     if want in ports:
-        return net
+        return want
+    if base in ports:
+        return base
     for m in _ASSIGN.finditer(_mod_blob(mod)):
         left, right = m.group(1), m.group(2).rstrip(",")
-        if _norm_net(right) == want and _norm_net(left) in ports:
-            return left
-        if _norm_net(left) == want and _norm_net(right) in ports:
-            return right
+        ln, rn = _norm_net(left), _norm_net(right)
+        lb, rb = _split_sel(ln)[0], _split_sel(rn)[0]
+        if (want == rn or base == rb) and (ln in ports or lb in ports):
+            return left if ln in ports else lb
+        if (want == ln or base == lb) and (rn in ports or rb in ports):
+            return right if rn in ports else rb
     return None
 
 
@@ -260,6 +313,7 @@ def _escape_chain(text: str, hier: str, start_net: str, *, top: str = "gcd") -> 
     mods = {m["name"]: m for m in parse_modules(text)}
     lines = text.splitlines(keepends=True)
     net = start_net
+    bit = _split_sel(net)[1]
     chain: list[dict] = []
     # frames[0] is the top module; frames[1:] are instances / the leaf cell.
     # The net lives in the parent of the leaf (or of the current frame).
@@ -282,10 +336,15 @@ def _escape_chain(text: str, hier: str, start_net: str, *, top: str = "gcd") -> 
         pin_name, parent_net = hit
         if _skip_net(parent_net):
             break
+        _pbase, pbit = _split_sel(parent_net)
+        carry = pbit if pbit is not None else bit
+        effective = parent_net if carry is None else _join_sel(parent_net, carry)
         chain.append(
             {
                 "parent_module": parent_name,
-                "parent_net": parent_net,
+                "parent_net": effective,
+                "bus_net": parent_net,
+                "bit": carry,
                 "child_inst": inst["inst"],
                 "child_port": pin_name,
                 "inst_line": inst["line"],
@@ -293,7 +352,8 @@ def _escape_chain(text: str, hier: str, start_net: str, *, top: str = "gcd") -> 
                 "kind": "port",
             }
         )
-        net = parent_net
+        net = effective
+        bit = carry
         i -= 1
     return chain
 
@@ -374,9 +434,14 @@ def find_port_crossing(
 
     matches.sort(key=score)
     hit = matches[0]
+    _, bit = _split_sel(hit["parent_net"])
+    if hit.get("bit") is not None:
+        bit = hit["bit"]
     return {
         "parent_module": hit["parent_module"],
         "net": hit["parent_net"],
+        "bus_net": hit.get("bus_net") or hit["parent_net"],
+        "bit": bit,
         "dst_inst": hit["child_inst"],
         "dst_port": hit["child_port"],
         "inst_line": hit["inst_line"],
@@ -432,24 +497,43 @@ def buffer_port_nets(
         if hit is None:
             continue
         dest_pin, net = hit
-        if _norm_net(net) != _norm_net(cross["net"]):
+        cbase, cbit = _split_sel(cross["net"])
+        pbase, pbit = _split_sel(net)
+        if _norm_net(cbase) != _norm_net(pbase):
+            continue
+        splice = cbit is not None and pbit is None
+        if not splice and _norm_net(net) != _norm_net(cross["net"]):
             continue
         pl = pin_line.get(dest_pin)
         if pl is None:
             continue
-        old = lines[pl]
-        new = _retarget_pin(old, dest_pin, net, wname)
-        if new == old:
-            continue
-        lines[pl] = new
         indent = cross.get("indent") or "  "
+        sink_net = wname
         block = [
             f"{indent}wire {wname};\n",
             f"{indent}{buf} {iname} (\n",
-            f"{indent}  .A({_emit_net(net)}),\n",
+            f"{indent}  .A({_emit_net(cross['net'] if splice else net)}),\n",
             f"{indent}  .Z({wname})\n",
             f"{indent});\n",
         ]
+        if splice:
+            mods = parse_modules("".join(lines))
+            pmod = next((m for m in mods if m["name"] == cross["parent_module"]), None)
+            bounds = _bus_bounds(pmod, net)
+            if bounds is None:
+                continue
+            msb, lsb = bounds
+            bname = f"portbuf_b{n_id}"
+            sink_net = bname
+            block.insert(1, f"{indent}wire [{msb}:{lsb}] {bname};\n")
+            for i in _bit_range(msb, lsb):
+                rhs = wname if i == int(cbit) else _emit_net(_join_sel(net, i))
+                block.append(f"{indent}assign {bname}[{i}] = {rhs};\n")
+        old = lines[pl]
+        new = _retarget_pin(old, dest_pin, net, sink_net)
+        if new == old:
+            continue
+        lines[pl] = new
         at = int(cross["inst_line"])
         for j, bl in enumerate(block):
             lines.insert(at + j, bl)
@@ -463,13 +547,16 @@ def buffer_port_nets(
                 "dst": cross["dst"],
                 "src_module": cross["src_module"],
                 "dst_module": cross["dst_module"],
-                "net": net,
+                "net": cross["net"] if splice else net,
+                "bus": net if splice else None,
+                "bit": cbit,
                 "wire": wname,
                 "buf": buf,
                 "inst": iname,
                 "dst_inst": cross["dst_inst"],
                 "dst_port": dest_pin,
                 "scope": "port",
+                "splice": bool(splice),
             }
         )
         n_id += 1

@@ -10,7 +10,7 @@ Optimizers (each on its own level):
   synthesis    — ORFS ABC_AREA F0 catalog + one abc_speed.script F1 (not abc_ops)
   cell         — attributed worst-path drive-up (module-scoped; not ABC)
   net          — attributed worst-path BUF insert (module-scoped; not ABC)
-  net_port     — parent-scoped BUF on ctrl↔dpath port nets (not intra-module hops)
+  net_port     — parent-scoped BUF on ctrl↔dpath port nets, including bus bits (not intra-module hops)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual pick the next level (not a mixed vector)

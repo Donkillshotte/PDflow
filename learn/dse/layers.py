@@ -47,7 +47,8 @@ ADAPTERS: dict[str, dict] = {
         "via": "dse.net_space.buffer_path_nets + buffer_port_nets + dse.fidelity.evaluate_net_buffer",
         "note": (
             "attributed STA path BUF insert (module-scoped) and parent-scoped "
-            "port-net BUF on ctrl↔dpath hops; not ABC, not a cell drive-up"
+            "port-net BUF on ctrl↔dpath hops (including bus bits like a_mux_sel[0]); "
+            "not ABC, not a cell drive-up"
         ),
     },
     "solver": {
