@@ -33,7 +33,8 @@ RTL
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle/net → modulo RTL (dpath/ctrl)
  → F3 cell-local: drive-up sulle celle del worst path (scope di modulo, non ABC)
- → F3 net-local: `BUF_X2` sugli hop del worst path (stesso modulo; hop ctrl↔dpath saltati)
+ → F3 net-local: `BUF_X2` sugli hop del worst path (stesso modulo)
+ → F3 port-net: `BUF_X2` sul net di porta al parent (hop ctrl↔dpath; non mescolato agli hop intra-modulo)
  → surrogato F0 (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 solo se accoppiato)
  → Pareto per livello
  → prossimo candidato / extract
@@ -47,7 +48,7 @@ RTL
 | **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+**EHVI(area,WNS)** / EI · insert |
 | **synthesis** | `ABC_AREA` ORFS (`abc_speed.script` + `-D 460`) | F0 catalogo + **F1 misurato** (non mescolato alle ops ABC) |
 | **cell** | drive-up delle istanze sul worst path STA | READY F3 — scope di modulo, non `abc_ops` |
-| **net** | `BUF` sugli hop attribuiti del worst path | READY F3 — scope di modulo, non un drive-up di cella |
+| **net** | `BUF` sugli hop attribuiti del worst path | READY F3 — scope di modulo **e** scope di porta (parent) sui crossing ctrl↔dpath; non un drive-up di cella |
 | **physical** | util, densità, **regione IR**, netlist del candidato | F0 proxy + F2-fast + **GPL** + catalogo + **density cap sul bin IR** + ingest — non lancia finish |
 | **routing** | GRT dopo place_pins + F5-lite DRT/OpenRCX + F5-CTS | READY F2 GRT + F5-lite SPEF (clock ideale) + F5-CTS SPEF (clock propagato) — non `make finish` |
 | **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato, solver MF | ingest gold + **extract `write_pg_spice`** + DirectLU/AMG/RAS/Krylov (non gold) |

@@ -10,6 +10,7 @@ Optimizers (each on its own level):
   synthesis    — ORFS ABC_AREA F0 catalog + one abc_speed.script F1 (not abc_ops)
   cell         — attributed worst-path drive-up (module-scoped; not ABC)
   net          — attributed worst-path BUF insert (module-scoped; not ABC)
+  net_port     — parent-scoped BUF on ctrl↔dpath port nets (not intra-module hops)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + uncertainty pick the next local level (not a mixed vector)
@@ -21,6 +22,7 @@ Acquisition ≈ expected improvement + information − compute − extrapolation
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -38,6 +40,8 @@ from .acquire import (
     should_pay_cell_size,
     should_pay_ctrl_cone,
     should_pay_net_buffer,
+    should_pay_net_port,
+    _attributed_cross_module_nets,
     should_pay_f1_synth,
     should_pay_f4_amg,
     should_pay_f4_extract,
@@ -61,6 +65,7 @@ from .fidelity import (
     COST_HINT,
     evaluate_cell_size,
     evaluate_net_buffer,
+    evaluate_net_port_buffer,
     evaluate_f1_abc,
     evaluate_f1_synth,
     evaluate_f2_fast,
@@ -637,6 +642,64 @@ def run_controller(
                     area_um2=child.qor.area_um2,
                     status=child.status,
                     reason="attributed-path-net-buffer",
+                )
+
+    n_port = sum(
+        1
+        for c in mem.by_level("net")
+        if (c.knobs or {}).get("source") == "net_buffer_port" and c.status == "ok"
+    )
+    pay_port, why_port = should_pay_net_port(
+        mem, budget_left=t_end - time.time(), n_net=n_net, n_port=n_port
+    )
+    step("acquire", fidelity="NET_PORT", pay=pay_port, why=why_port)
+    if any(s["level"] == "net_port" for s in plan["steps"]) and pay_port and time.time() < t_end:
+        pick = None
+        for cand in list(mem.by_level("net"))[::-1] + list(mem.by_level("cell"))[::-1] + [
+            c for c in f1_ok(mem)
+        ]:
+            if cand is None or cand.status != "ok":
+                continue
+            hier = (cand.artifacts or {}).get("mapped_hier_v")
+            mapped = (cand.artifacts or {}).get("mapped_v")
+            if hier and Path(hier).is_file():
+                pick = cand
+                break
+            if mapped and Path(mapped).is_file():
+                try:
+                    body = Path(mapped).read_text()
+                except OSError:
+                    body = ""
+                if len(re.findall(r"(?m)^module\s", body)) >= 3:
+                    pick = cand
+                    break
+        if pick is None:
+            pick = _mapped_pick(
+                [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+                rtl=rtl,
+                liberty=lib,
+            )
+        if pick:
+            mem.touch(pick)
+            child = evaluate_net_port_buffer(
+                pick,
+                mem,
+                design_id=design_id,
+                hops=_attributed_cross_module_nets(mem),
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="net",
+                    fidelity="F3",
+                    via="net_buffer_port",
+                    parent=pick.id,
+                    n_changed=(child.artifacts or {}).get("n_changed"),
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    area_um2=child.qor.area_um2,
+                    status=child.status,
+                    reason="attributed-path-port-net-buffer",
                 )
 
     # F2-fast on the best F1 netlists (logic + architecture winners).
@@ -1475,6 +1538,11 @@ def run_controller(
         "n_net": sum(
             1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"
         ),
+        "n_net_port": sum(
+            1
+            for c in mem.by_level("net")
+            if (c.knobs or {}).get("source") == "net_buffer_port" and c.status == "ok"
+        ),
         "n_arch": sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1"),
         "n_f2_fast": sum(
             1
@@ -1694,6 +1762,13 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nch = (c.artifacts or {}).get("n_changed")
             netb = f" · net BUF n={nch} WNS={w:+.3f} ns" if w is not None else f" · net BUF n={nch}"
             break
+    netp = ""
+    for c in mem.by_level("net"):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "net_buffer_port":
+            w = (c.artifacts or {}).get("wns_ns")
+            nch = (c.artifacts or {}).get("n_changed")
+            netp = f" · port-net BUF n={nch} WNS={w:+.3f} ns" if w is not None else f" · port-net BUF n={nch}"
+            break
     wns = ""
     timed = [
         (c.knobs.get("parent_name") or c.knobs.get("name"), c.qor.wns_cost)
@@ -1744,5 +1819,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{wns}{f5}{f5cts}{f5loc}{steers} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{wns}{f5}{f5cts}{f5loc}{steers} · IR cone {mods}{ir}{ras}{kry}"
     )

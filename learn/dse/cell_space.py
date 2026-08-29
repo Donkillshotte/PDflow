@@ -73,6 +73,14 @@ def next_drive(cell_type: str) -> str | None:
     return name
 
 
+def inst_eq(a: str, b: str) -> bool:
+    """Match ``ctrl`` to Yosys ``\\ctrl`` / ``ctrl``."""
+    def n(x: str) -> str:
+        return str(x).replace("\\", "").split()[0]
+
+    return n(a) == n(b) and bool(n(a))
+
+
 def leaf_inst(name: str) -> str:
     n = str(name).replace("\\", "").split()[0]
     if "/" in n:
@@ -116,7 +124,7 @@ def _insts(lines: list[str], start: int, end: int) -> list[tuple[int, str, str, 
 
 def resolve_instance(text: str, hier: str, *, top: str = "gcd") -> dict | None:
     """Map `dpath/a_lt_b/_142_` to a module-local liberty instance."""
-    parts = [p for p in str(hier).replace("\\", "").split()[0].split("/") if p]
+    parts = [p for p in str(hier).replace("\\", "").split()[0].replace(".", "/").split("/") if p]
     if not parts:
         return None
     mods = parse_modules(text)
@@ -127,7 +135,7 @@ def resolve_instance(text: str, hier: str, *, top: str = "gcd") -> dict | None:
     for part in parts[:-1]:
         hit = None
         for _i, _ind, typ, inst in _insts(cur["lines"], cur["start"], cur["end"]):
-            if inst == part:
+            if inst_eq(inst, part):
                 hit = typ
                 break
         if hit is None or hit not in by_name:
@@ -135,7 +143,7 @@ def resolve_instance(text: str, hier: str, *, top: str = "gcd") -> dict | None:
         cur = by_name[hit]
     leaf = parts[-1]
     for idx, indent, typ, inst in _insts(cur["lines"], cur["start"], cur["end"]):
-        if inst == leaf and _LIBERTY.match(typ):
+        if inst_eq(inst, leaf) and _LIBERTY.match(typ):
             return {
                 "module": cur["name"],
                 "inst": inst,
@@ -145,6 +153,61 @@ def resolve_instance(text: str, hier: str, *, top: str = "gcd") -> dict | None:
                 "hier": hier,
             }
     return None
+
+
+def hier_frames(text: str, hier: str, *, top: str = "gcd") -> list[dict]:
+    """Walk ``dpath/a_lt_b/_194_`` from the top module down to the leaf.
+
+    Each frame after the top names the instance in its parent, the module
+    type it implements (if any), and the source line of that instantiation.
+    """
+    raw = str(hier).replace("\\", "").split()[0].replace(".", "/")
+    parts = [p for p in raw.split("/") if p]
+    if not parts:
+        return []
+    mods = parse_modules(text)
+    by_name = {m["name"]: m for m in mods}
+    cur = by_name.get(top) or (mods[-1] if mods else None)
+    if cur is None:
+        return []
+    frames = [
+        {
+            "role": "top",
+            "module": cur["name"],
+            "inst": top,
+            "type": cur["name"],
+            "parent_module": None,
+            "line": cur["start"],
+            "indent": "",
+        }
+    ]
+    for i, part in enumerate(parts):
+        hit = None
+        for idx, indent, typ, inst in _insts(cur["lines"], cur["start"], cur["end"]):
+            if inst_eq(inst, part):
+                hit = (idx, indent, typ, inst)
+                break
+        if hit is None:
+            return []
+        idx, indent, typ, inst = hit
+        child_mod = typ if typ in by_name else None
+        frames.append(
+            {
+                "role": "cell" if child_mod is None else "inst",
+                "module": child_mod,
+                "inst": inst,
+                "type": typ,
+                "parent_module": cur["name"],
+                "line": idx,
+                "indent": indent,
+            }
+        )
+        if child_mod is None:
+            if i != len(parts) - 1:
+                return []
+            break
+        cur = by_name[child_mod]
+    return frames
 
 
 def upsize_path_cells(text: str, cells: list[str], *, top: str = "gcd") -> dict:

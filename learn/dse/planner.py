@@ -185,6 +185,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "net_port",
+            "reason": (
+                "insert BUF on attributed ctrl↔dpath port nets at the parent "
+                "— not intra-module hops, not ABC"
+            ),
+            "scope": "port",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_amg",
             "reason": "SA-AMG restamp on the named extract — MF solver residual vs DirectLU, not gold",
             "scope": "chip",

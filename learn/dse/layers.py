@@ -44,8 +44,11 @@ ADAPTERS: dict[str, dict] = {
         "note": "attributed STA path drive-up (module-scoped); not ABC ops, not a chip restart",
     },
     "net": {
-        "via": "dse.net_space.buffer_path_nets + dse.fidelity.evaluate_net_buffer",
-        "note": "attributed STA path BUF insert (module-scoped); not ABC, not a cell drive-up",
+        "via": "dse.net_space.buffer_path_nets + buffer_port_nets + dse.fidelity.evaluate_net_buffer",
+        "note": (
+            "attributed STA path BUF insert (module-scoped) and parent-scoped "
+            "port-net BUF on ctrl↔dpath hops; not ABC, not a cell drive-up"
+        ),
     },
     "solver": {
         "via": "dse.f4_oracle + dse_f4_worker (direct|amg|bicg|ras|krylov/MOR)",

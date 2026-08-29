@@ -1378,6 +1378,145 @@ def evaluate_net_buffer(
     )
 
 
+def evaluate_net_port_buffer(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    hops: list[str] | None = None,
+    top: str = "gcd",
+) -> Candidate | None:
+    """Insert BUF on attributed cross-module port nets. Not intra-module hops."""
+    from .attribute import attribute_sta
+    from .net_space import BUF_TYPE, buffer_port_file, hop_is_cross_module
+    from .sta_f3 import evaluate_sta
+
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    hier = (parent.artifacts or {}).get("mapped_hier_v")
+    src = Path(hier) if hier and Path(hier).is_file() else (Path(mapped) if mapped else None)
+    if src is None or not src.is_file():
+        return None
+    types: dict[str, str] = {}
+    targets = [h for h in list(hops or []) if hop_is_cross_module(h)]
+    if not targets:
+        f3 = next(
+            (
+                c
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f3_opensta_ideal"
+                and (c.knobs or {}).get("parent_id") == parent.id
+            ),
+            None,
+        )
+        art = (f3.artifacts if f3 else None) or parent.artifacts or {}
+        targets = [h for h in list(art.get("path_nets") or (parent.attr or {}).get("nets") or []) if hop_is_cross_module(str(h))]
+        types = dict(art.get("path_types") or {})
+        if not types:
+            types = dict((parent.artifacts or {}).get("path_types") or {})
+    if not targets:
+        for c in reversed(list(mem.all())):
+            if c.status != "ok":
+                continue
+            art = c.artifacts or {}
+            hits = [h for h in list(art.get("path_nets") or (c.attr or {}).get("nets") or []) if hop_is_cross_module(str(h))]
+            if hits:
+                targets = hits
+                if not types:
+                    types = dict(art.get("path_types") or {})
+                break
+    knobs = {
+        "source": "net_buffer_port",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "hops": targets,
+        "buf": BUF_TYPE,
+        "scope": "port",
+        "cross_module": 1,
+    }
+    fp = knobs_fp("net", knobs)
+    if fp in mem.seen_knobs("net"):
+        return next(c for c in mem.by_level("net") if c.knobs_fp == fp)
+    cid = DesignMemory.new_id()
+    dest = REPO / "learn" / "sim" / "dse" / "netlists" / f"{cid}.v"
+    bufd = buffer_port_file(src, targets, dest, top=top, path_types=types or None)
+    if bufd.get("n_changed", 0) <= 0:
+        return mem.add(
+            Candidate(
+                id=cid,
+                design_id=design_id,
+                parent_id=parent.id,
+                level="net",
+                knobs=knobs,
+                knobs_fp=fp,
+                rtl_fp=parent.rtl_fp,
+                netlist_fp=parent.netlist_fp,
+                fidelity="F3",
+                qor=QoR(fidelity="F3", note="no cross-module port net to buffer"),
+                cost_s=0.0,
+                artifacts=bufd,
+                status="fail",
+                failure="no_net_port",
+                note="port-net buffer found no ctrl↔dpath (or cross-submodule) hop",
+            )
+        )
+    sta = evaluate_sta(dest)
+    area = n_cells = None
+    if dest.is_file() and NANGATE_LIB.is_file():
+        try:
+            proc = subprocess.run(
+                [
+                    "yosys",
+                    "-p",
+                    f"read_verilog {dest}; hierarchy -top {top}; stat -liberty {NANGATE_LIB}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=20.0,
+            )
+            area, n_cells = _parse_stat((proc.stdout or "") + (proc.stderr or ""), top)
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+    attr = attribute_sta(sta, inherit=parent.attr or {})
+    attr["nets_changed"] = bufd["changed"]
+    attr["transform"] = "net_buffer_port"
+    attr["scope"] = "port"
+    q = QoR(
+        area_um2=area,
+        n_cells=n_cells,
+        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
+        power_w=sta.get("power_w"),
+        fidelity="F3",
+        note=(
+            f"port-net BUF n={bufd['n_changed']} WNS={sta.get('wns_ns')} "
+            "— parent-scoped crossing, not intra-module, not ABC"
+        ),
+    )
+    return mem.add(
+        Candidate(
+            id=cid,
+            design_id=design_id,
+            parent_id=parent.id,
+            level="net",
+            knobs=knobs,
+            knobs_fp=fp,
+            rtl_fp=parent.rtl_fp,
+            netlist_fp=sha256_file(dest),
+            fidelity="F3",
+            qor=q,
+            cost_s=float(sta.get("cost_s") or 0.0),
+            artifacts={**sta, **bufd, "mapped_v": str(dest), "mapped_hier_v": str(dest)},
+            attr=attr,
+            status="ok" if sta.get("status") == "ok" else "fail",
+            failure=sta.get("reason") if sta.get("status") != "ok" else None,
+            note=(
+                f"port-net buffer {bufd['n_changed']} hops "
+                f"WNS={sta.get('wns_ns')} vs parent {parent.knobs.get('name')}"
+            ),
+        )
+    )
+
+
 def evaluate_f2_grt(
     parent: Candidate,
     mem: DesignMemory,

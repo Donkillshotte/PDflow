@@ -697,6 +697,58 @@ def should_pay_net_buffer(
     return True, f"insert BUF on {len(hops)} attributed worst-path hops — not ABC, not a chip restart"
 
 
+def should_pay_net_port(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_net: int = 0,
+    n_port: int = 0,
+    port_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay one parent-scoped BUF on ctrl↔dpath port nets. Not intra-module hops."""
+    from .net_space import hop_is_cross_module
+
+    if n_port >= port_max:
+        return False, "port-net buffer shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover port-net STA"
+    if any(
+        (c.knobs or {}).get("source") == "net_buffer_port" and c.status == "ok" for c in mem.by_level("net")
+    ):
+        return False, "already have a port-net buffer child"
+    have_intra = n_net >= 1 or any(
+        (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok" for c in mem.by_level("net")
+    )
+    if not have_intra:
+        return False, "port-net waits for the intra-module net shot"
+    hops = _attributed_cross_module_nets(mem)
+    if not hops:
+        return False, "no attributed cross-module hops (ctrl↔dpath ports)"
+    return True, (
+        f"insert BUF on {len(hops)} port-net hops at the parent "
+        "— not intra-module, not ABC, not a chip restart"
+    )
+
+
+def _attributed_cross_module_nets(mem: DesignMemory) -> list[str]:
+    """Latest STA path that still names a module-boundary hop (not flatten-only)."""
+    from .net_space import hop_is_cross_module
+
+    for c in reversed(list(mem.all())):
+        if c.status != "ok":
+            continue
+        art = c.artifacts or {}
+        hops = [h for h in (art.get("path_nets") or []) if isinstance(h, str) and hop_is_cross_module(h)]
+        if hops:
+            return hops
+        attr = c.attr or {}
+        hops = [h for h in (attr.get("nets") or []) if isinstance(h, str) and hop_is_cross_module(h)]
+        if hops:
+            return hops
+    return []
+
+
 def _attributed_path_nets(mem: DesignMemory) -> list[str]:
     for c in reversed(list(mem.all())):
         if c.status != "ok":
@@ -866,7 +918,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F1"
     if level in ("cell", "cell_size"):
         return "F3"
-    if level in ("net", "net_buffer"):
+    if level in ("net", "net_buffer", "net_port", "net_buffer_port"):
         return "F3"
     need = float(cost_hint.get("F1", 2.0))
     if budget_left < need:
