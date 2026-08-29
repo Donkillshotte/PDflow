@@ -2258,9 +2258,15 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir":
             w = (c.artifacts or {}).get("wns_ns")
             nch = (c.artifacts or {}).get("n_changed")
-            mods = ",".join((c.attr or {}).get("modules") or []) or ",".join(
-                {str(x).split("/")[0] for x in (c.knobs or {}).get("cells") or [] if "/" in str(x)}
-            )
+            # Knobs cells are the ODB join (ctrl). Inherited STA attr.modules
+            # still lists the dpath path and must not steal the label.
+            mods = ",".join(
+                dict.fromkeys(
+                    str(x).split("/")[0]
+                    for x in (c.knobs or {}).get("cells") or []
+                    if "/" in str(x)
+                )
+            ) or ",".join((c.attr or {}).get("modules") or [])
             ircell = (
                 f" · IR-cell size-up n={nch} {mods} WNS={w:+.3f} ns"
                 if w is not None

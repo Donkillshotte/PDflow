@@ -16,6 +16,7 @@ F5-port residual (this pair only, not the mixed F5-local mean):
 F4 I-scale host:
   port-steer > port-net > net > cell > F1 with a material power delta
   never flatten ABC + c_decap + util into one box
+F4 I-scale-win hotspot → ODB inst join → cell_size_ir (ctrl combo, not STA dpath)
 """
 
 from __future__ import annotations
