@@ -73,7 +73,17 @@ from pdn_current import (  # noqa: E402
     triangle_above_leak,
 )
 from pdn_em import em_thermal_snapshot  # noqa: E402
-from pdn_extract import extract_pdn, summarize_extract, parse_pg_sinks, pair_pg_rails, remap_events_to_rail, stamp_rail_to_rail_c  # noqa: E402
+from pdn_extract import (  # noqa: E402
+    extract_pdn,
+    summarize_extract,
+    parse_pg_sinks,
+    pair_pg_rails,
+    remap_events_to_rail,
+    stamp_rail_to_rail_c,
+    stamp_overlap_cox,
+    estimate_rail_overlap_c,
+    merge_c_triplets,
+)
 from pdn_solvers import (  # noqa: E402
     DirectLU,
     RASDD,
@@ -120,7 +130,7 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt, spe
     Inductor current i_L is *not* in A — it lives on the RHS of the time loop.
     spef_c is extra interconnect C (Farads) on named spice nodes, added to
     lumped c_decap — not a replacement, and never taken from signal SPEF.
-    c_couple is a list of (i, j, C_rr) Faraday stamps (instance-pin rail-to-rail).
+    c_couple is a list of (i, j, C) Faraday stamps (instance-pin C_rr and/or strap Cox).
     When unset, A is bit-identical to the diagonal-C GCD gold path.
     """
     n = G.shape[0]
@@ -683,14 +693,16 @@ def run_return_rail(
     lef: Path | None,
     spef: Path | None,
     rail_c_f: float = 0.0,
+    rail_c_geom: bool = False,
     vdd: float = 1.1,
 ) -> dict:
     """VSS return-path TRAN. Same I(t) magnitude as VDD on paired sinks. Does not change VDD gold.
 
     Default: block-diagonal dual-rail MNA (no rail-to-rail C). UIC and pads are 0 V.
     Bounce = −Vmin (I DC convention: current from node to 0, same as PDNSim).
-    rail_c_f>0: also solve one coupled MNA with instance-pin C_rr and KCL
-    (I leaves VDD, enters VSS). Not the GCD clock gold.
+    rail_c_f>0 and/or rail_c_geom: also solve one coupled MNA with KCL
+    (I leaves VDD, enters VSS). Instance-pin C_rr and overlapping-strap Cox are
+    independent opt-ins. Not the GCD clock gold.
     """
     vdd_sinks = parse_pg_sinks(spice_vdd)
     vss_sinks = parse_pg_sinks(spice_vss)
@@ -747,7 +759,7 @@ def run_return_rail(
         "coupled": None,
     }
     cf = float(rail_c_f or 0.0)
-    if cf <= 0.0:
+    if cf <= 0.0 and not rail_c_geom:
         return out
     ext_v = extract_pdn(spice_vdd, lef=lef, spef=spef)
     _ord_v, idx_v, G_v = build_system(ext_v["resistors"], ext_v["currents"], ext_v["voltages"])
@@ -785,6 +797,33 @@ def run_return_rail(
         ev_ret.append(rec)
     events_c = list(events_v) + ev_ret
     stamped = stamp_rail_to_rail_c(paired["pairs"], idx_v, idx_s, n0, cf)
+    geom_meta = None
+    geom_stamped = None
+    if rail_c_geom:
+        geom_meta = estimate_rail_overlap_c(
+            ext_v["resistors"], ext_s["resistors"], ext_v.get("tech") or ext_s.get("tech")
+        )
+        geom_stamped = stamp_overlap_cox(geom_meta.get("pairs") or [], idx_v, idx_s, n0)
+    trips = merge_c_triplets(
+        stamped.get("triplets"),
+        (geom_stamped or {}).get("triplets"),
+    )
+    geom_json = None
+    if geom_meta is not None:
+        geom_json = {k: v for k, v in geom_meta.items() if k != "pairs"}
+        if geom_stamped is not None:
+            geom_json["stamp"] = {k: v for k, v in geom_stamped.items() if k != "triplets"}
+    if not trips:
+        out["coupled"] = {
+            "status": "GAP",
+            "ok": False,
+            "reason": "no C_rr or strap Cox stamps (block-diagonal VSS TRAN stands)",
+            "c_rr_f": cf,
+            "c_rr": {k: v for k, v in stamped.items() if k != "triplets"},
+            "c_geom": geom_json,
+            "not": "GCD default / signal SPEF",
+        }
+        return out
     n_tot = n0 + int(G_s.shape[0])
     v_init = np.zeros(n_tot, dtype=np.float64)
     v_init[:n0] = float(vdd)
@@ -807,7 +846,7 @@ def run_return_rail(
         c_decap=c_decap,
         dt=dt,
         spef_c=spef_c or None,
-        c_couple=stamped.get("triplets"),
+        c_couple=trips,
         v_init=v_init,
         n_rail0=n0,
     )
@@ -818,8 +857,14 @@ def run_return_rail(
     if bounce_up is None and dyn_c.get("V_worst") is not None:
         vw = np.asarray(dyn_c["V_worst"], dtype=np.float64)
         bounce_up = float(np.max(vw[n0:])) if vw.size > n0 else 0.0
+    ready = stamped.get("status") == "READY" or (geom_stamped or {}).get("status") == "READY"
+    via_bits = []
+    if stamped.get("status") == "READY":
+        via_bits.append(stamped.get("via"))
+    if (geom_stamped or {}).get("status") == "READY":
+        via_bits.append(geom_stamped.get("via"))
     out["coupled"] = {
-        "status": "READY" if stamped.get("status") == "READY" else "PARTIAL",
+        "status": "READY" if ready else "PARTIAL",
         "ok": True,
         "n_nodes": sys_c["n"],
         "n_vdd": n0,
@@ -827,6 +872,9 @@ def run_return_rail(
         "n_events": len(events_c),
         "c_rr_f": cf,
         "c_rr": {k: v for k, v in stamped.items() if k != "triplets"},
+        "c_geom": geom_json,
+        "c_couple_n": sys_c.get("c_couple_n"),
+        "c_couple_sum_f": sys_c.get("c_couple_sum_f"),
         "worst_droop_mv": (float(vdd) - vmin_vdd) * 1e3,
         "worst_voltage": vmin_vdd,
         "worst_time_ns": dyn_c["worst_time_s"] * 1e9,
@@ -836,17 +884,21 @@ def run_return_rail(
         else None,
         "backend": dyn_c.get("backend"),
         "timestep_loop": dyn_c.get("timestep_loop"),
-        "via": stamped.get("via"),
+        "via": " ; ".join(x for x in via_bits if x),
         "note": (
-            "Coupled MNA: I leaves VDD and enters VSS; C_rr on paired ITerms. "
-            "Does not replace Solver A VDD gold. Not overlapping-strap Cox."
+            "Coupled MNA: I leaves VDD and enters VSS. "
+            "Instance-pin C_rr and/or overlapping-strap Cox. "
+            "Does not replace Solver A VDD gold."
         ),
-        "not": "GCD default / extracted C_rr / signal SPEF",
+        "not": "GCD default / signal SPEF / LEF CPERSQDIST / foundry PEX",
     }
-    out["note"] = (
-        paired["note"]
-        + f" Coupled C_rr={cf:.3e} F/pair ready — VDD gold unchanged."
-    )
+    extra = f" Coupled C_rr={cf:.3e} F/pair" if cf > 0.0 else " Coupled"
+    if geom_json and geom_json.get("status") == "READY":
+        extra += (
+            f" Cox={geom_json['c_sum_f']:.3e} F "
+            f"({geom_json.get('n_lateral', 0)} lat + {geom_json.get('n_plate', 0)} plate)"
+        )
+    out["note"] = paired["note"] + extra + " ready — VDD gold unchanged."
     return out
 
 
@@ -921,7 +973,7 @@ def platform_block(
             "idea": "one LinearSolver API → CPU AMG / CPU Krylov / GPU AMG / GPU Krylov (Ginkgo)",
         },
         "gold": {
-            "tiny": {"tool": "ngspice", "status": "READY", "scope": "1-node RC + 1-node series R+L companion + 2-node C_rr"},
+            "tiny": {"tool": "ngspice", "status": "READY", "scope": "1-node RC + 1-node series R+L companion + 2-node C_rr / strap Cox"},
             "medium": {
                 "tool": "Xyce",
                 "status": "GAP",
@@ -959,9 +1011,9 @@ def platform_block(
             },
             "VSS_return": {
                 "status": (vss or {}).get("status") or "GAP",
-                "role": "return-path TRAN on write_pg_spice VSS (block-diagonal default; C_rr opt-in)",
+                "role": "return-path TRAN on write_pg_spice VSS (block-diagonal default; C_rr / strap Cox opt-in)",
                 "via": (vss or {}).get("via") or "write_pg_spice -net VSS + Sink-for inst pair",
-                "not": "replacement of VDD gold; C_rr is not GCD default / not extracted",
+                "not": "replacement of VDD gold; C_rr and strap Cox are not GCD default",
                 "meta": None if not vss else {k: v for k, v in vss.items() if k not in ("extract",)},
             },
         },
@@ -1517,6 +1569,11 @@ def main() -> int:
         default=0.0,
         help="Farads per paired inst for C_rr; 0 keeps block-diagonal VSS TRAN",
     )
+    ap.add_argument(
+        "--rail-c-geom",
+        action="store_true",
+        help="stamp overlapping-strap Cox (lateral + ILD plate) on coupled MNA (not GCD gold)",
+    )
     args = ap.parse_args()
 
     current_model = probe_liberty_current_model(args.liberty)
@@ -1755,6 +1812,7 @@ def main() -> int:
             lef=args.lef,
             spef=args.spef,
             rail_c_f=rail_c_f,
+            rail_c_geom=bool(args.rail_c_geom),
             vdd=vdd,
         )
 
@@ -2243,6 +2301,12 @@ def main() -> int:
             f" · Crr {coup['c_rr_f']:.2e} F/pair coupled droop {coup['worst_droop_mv']:.3f} mV "
             f"bounce {coup['worst_bounce_mv']:.3f} mV"
         )
+        cg = coup.get("c_geom") or {}
+        if cg.get("status") == "READY":
+            vss_note += (
+                f" · Cox {cg['c_sum_f']:.2e} F "
+                f"({cg.get('n_lateral', 0)} lat+{cg.get('n_plate', 0)} plate)"
+            )
     win_err = win_run.get("abs_err_vs_A_mv")
     l3_note = (
         f" · L3 |A−W| {win_err:.3f} mV"
@@ -2255,7 +2319,7 @@ def main() -> int:
         "engine": "studio-dynamic-ir",
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
-            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in); dual-rail VSS sink-pair + opt-in instance C_rr",
+            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in); dual-rail VSS sink-pair + opt-in instance C_rr + opt-in overlapping-strap Cox",
             "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS/ECSM interpolators when tables exist — never from NLDM)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
@@ -2283,7 +2347,7 @@ def main() -> int:
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
             "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",
-            "ngspice": "unit-test gold for BE on 1-node RC, 1-node series R+L, compact VRM+die, and 2-node C_rr",
+            "ngspice": "unit-test gold for BE on 1-node RC, 1-node series R+L, compact VRM+die, and 2-node C_rr / strap Cox",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
         "platform": plat,
@@ -2302,7 +2366,7 @@ def main() -> int:
                 "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor + D_ras_schwarz + N4_descriptor",
                 "replaces": "HSpice TRAN on Calibre DSPF",
                 "via": "Solver A LU golden + B SA-AMG + C reduced ODE + D RAS Schwarz + native N4 on write_pg_spice",
-                "gold": "ngspice 1-node RC + series R+L companion + compact VRM+die + 2-node C_rr; A vs B vs C vs D on the chip mesh",
+                "gold": "ngspice 1-node RC + series R+L companion + compact VRM+die + 2-node C_rr/Cox; A vs B vs C vs D on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",

@@ -999,6 +999,211 @@ quit
     else:
         print("    skip GCD Grover (no pg_vdd_bumps.sp)")
 
+    from pdn_em import (
+        EPS0_F_M,
+        EPS_R_OX,
+        cox_lateral_f,
+        cox_plate_f,
+        ild_gap_m,
+        strap_branches,
+    )
+    from pdn_extract import estimate_rail_overlap_c, merge_c_triplets, stamp_overlap_cox
+
+    c_lat_ref = cox_lateral_f(0.13e-6, 1e-6, 0.13e-6)
+    check(abs(c_lat_ref - EPS0_F_M * EPS_R_OX * 1e-6) / c_lat_ref < 1e-12, "lateral Cox ε0εr t L / gap")
+    h_ild = ild_gap_m("metal1", "metal2", tech)
+    check(h_ild is not None and abs(h_ild - (0.62 - 0.37 - 0.13) * 1e-6) / h_ild < 1e-12, "ILD gap = via HEIGHT stack")
+    check(ild_gap_m("metal1", "metal3", tech) is None, "non-adjacent metals have no plate ILD")
+    r_min = 0.38 * 1e-6 / 0.07e-6  # 0.07 µm min-width metal1, 1 µm long
+    lat_vdd = [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", r_min)]
+    lat_vss = [("ITermNode_metal1_0_400", "ITermNode_metal1_2000_400", r_min)]  # 0.2 µm centers
+    lat = estimate_rail_overlap_c(lat_vdd, lat_vss, tech)
+    check(lat["status"] == "READY" and lat["n_lateral"] == 1 and lat["n_plate"] == 0, "1 µm parallel straps → 1 lateral Cox")
+    gap_expect = 0.2e-6 - 0.07e-6
+    c_expect = cox_lateral_f(0.13e-6, 1e-6, gap_expect)
+    check(abs(lat["c_sum_f"] - c_expect) / c_expect < 1e-9, f"lateral C={lat['c_sum_f']:.4e} F matches formula")
+    fat = estimate_rail_overlap_c(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],  # w=1 µm
+        [("ITermNode_metal1_0_400", "ITermNode_metal1_2000_400", 0.38)],
+        tech,
+    )
+    check(fat["n_lateral"] == 0, "overlapping footprints (d_gap≤0) are skipped, not shorted")
+    far = estimate_rail_overlap_c(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", r_min)],
+        [("ITermNode_metal1_0_10000", "ITermNode_metal1_2000_10000", r_min)],  # 5 µm
+        tech,
+    )
+    check(far["n_lateral"] == 0, "d_gap > 2 µm cutoff is skipped")
+    plate = estimate_rail_overlap_c(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],  # 1 µm × 1 µm H
+        [("ITermNode_metal2_1000_0", "ITermNode_metal2_1000_2000", 0.25)],  # 1 µm × 1 µm V
+        tech,
+    )
+    check(plate["status"] == "READY" and plate["n_plate"] == 1 and plate["n_lateral"] == 0, "orthogonal M1/M2 → plate Cox")
+    a_ov = 0.5e-6 * 0.5e-6
+    c_plate = cox_plate_f(a_ov, h_ild)
+    check(abs(plate["c_sum_f"] - c_plate) / c_plate < 1e-6, f"plate C={plate['c_sum_f']:.4e} F matches ε0εr A/h")
+    skip3 = estimate_rail_overlap_c(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],
+        [("ITermNode_metal3_1000_0", "ITermNode_metal3_1000_2000", 0.25)],
+        tech,
+    )
+    check(skip3["n_plate"] == 0, "metal1–metal3 plate is GAP (no stacked ILD)")
+    idx_pv = {"ITermNode_metal1_0_0": 0, "ITermNode_metal1_2000_0": 1}
+    idx_ps = {"ITermNode_metal2_1000_0": 0, "ITermNode_metal2_1000_2000": 1}
+    st_p = stamp_overlap_cox(plate["pairs"], idx_pv, idx_ps, 2)
+    check(st_p["status"] == "READY" and st_p["n_stamped"] == 1, "plate Cox stamps one (i,j)")
+    check(st_p["triplets"][0][1] >= 2, "VSS Cox index offset by n_vdd")
+    merged = merge_c_triplets([(0, 2, 1e-15)], st_p["triplets"])
+    check(len(merged) >= 1, "merge_c_triplets keeps instance + geom stamps")
+    br_one = strap_branches([("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)], tech)
+    onl_one = estimate_on_die_L([("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)], tech)
+    check(len(br_one) == onl_one["n_stamped"] == 1, "strap_branches is the Grover L strap list")
+
+    cox_dir = Path(tempfile.mkdtemp(prefix="dpn_cox_"))
+    cox_vdd = cox_dir / "vdd.sp"
+    cox_vss = cox_dir / "vss.sp"
+    cox_vdd.write_text(
+        f"""* Cox VDD — overlap centroid near the sink so lumped C sits on the ITerm
+Rstrap ITermNode_metal1_0_0 ITermNode_metal1_2000_0 R={r_min}
+Rpad Node_pad_vdd ITermNode_metal1_0_0 R=1.0
+V0 Node_pad_vdd 0 DC 1.1
+* Sink for _a_/VDD
+I0 ITermNode_metal1_2000_0 0 DC 1.0e-3
+"""
+    )
+    cox_vss.write_text(
+        f"""* Cox VSS — 0.4 µm overlap at the VDD sink end (x=0.6–1.0 µm)
+Rstrap ITermNode_metal1_1200_400 ITermNode_metal1_3200_400 R={r_min}
+Rpad Node_pad_vss ITermNode_metal1_1200_400 R=1.0
+V0 Node_pad_vss 0 DC 0
+* Sink for _a_/VSS
+I0 ITermNode_metal1_1200_400 0 DC 1.0e-3
+"""
+    )
+    ext_cx = extract_pdn(cox_vdd, lef=lef)
+    _oc, idx_cx, _Gc = build_system(ext_cx["resistors"], ext_cx["currents"], ext_cx["voltages"])
+    ev_cx = [
+        {
+            "idx": idx_cx["ITermNode_metal1_2000_0"],
+            "t50_s": 0.2e-9,
+            "dur_s": 0.2e-9,
+            "i_pulse": 5e-3,
+            "i_leak": 0.0,
+        }
+    ]
+    cox_open = run_return_rail(
+        cox_vdd,
+        cox_vss,
+        ev_cx,
+        idx_cx,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=5e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        lef=lef,
+        spef=None,
+        rail_c_f=0.0,
+        vdd=1.1,
+    )
+    check(cox_open.get("coupled") in (None,), "geom off → no coupled MNA")
+    cox_run = run_return_rail(
+        cox_vdd,
+        cox_vss,
+        ev_cx,
+        idx_cx,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=5e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        lef=lef,
+        spef=None,
+        rail_c_f=0.0,
+        rail_c_geom=True,
+        vdd=1.1,
+    )
+    check((cox_run.get("coupled") or {}).get("status") == "READY", "strap Cox coupled READY")
+    check((cox_run["coupled"].get("c_geom") or {}).get("n_lateral") == 1, "coupled geom is the lateral pair")
+    cox0 = run_return_rail(
+        cox_vdd,
+        cox_vss,
+        ev_cx,
+        idx_cx,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=5e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        lef=lef,
+        spef=None,
+        rail_c_f=1e-21,
+        vdd=1.1,
+    )
+    # 1e-21 F is a numerical epsilon coupler so the coupled path runs with ~0 Cox.
+    d_geom = cox_run["coupled"]["worst_droop_mv"]
+    d_eps = cox0["coupled"]["worst_droop_mv"]
+    check(d_geom < d_eps, f"strap Cox reduces coupled VDD droop ({d_geom:.4f} < {d_eps:.4f} mV)")
+    check(
+        abs(cox_run["worst_bounce_mv"] - cox_open["worst_bounce_mv"]) < 1e-6,
+        "uncoupled VSS bounce unchanged when Cox is extra",
+    )
+    print(
+        f"    strap Cox lateral={lat['c_sum_f']:.4e} F plate={plate['c_sum_f']:.4e} F "
+        f"coupled droop {d_geom:.4f} mV vs ~0C {d_eps:.4f} mV"
+    )
+    gold_cox = ngspice_rail_c_gold(c_rr=float(lat["c_sum_f"]))
+    if gold_cox is None:
+        print("    skip strap-Cox ngspice (no ngspice)")
+    else:
+        check(gold_cox.get("ok") is True, f"extracted lateral Cox vs ngspice ({gold_cox})")
+        print(f"    Cox ngspice |ΔVdd|={gold_cox['abs_err_mv']:.4f} mV")
+
+    geom_gap = run_return_rail(
+        vdd_sp,
+        vss_sp,
+        ev_vdd,
+        idx_v,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        lef=lef,
+        spef=None,
+        rail_c_f=0.0,
+        rail_c_geom=True,
+        vdd=1.1,
+    )
+    check((geom_gap.get("coupled") or {}).get("status") == "GAP", "ITerm-to-pad fixture has no strap Cox")
+
+    gcd_vss = (
+        _ROOT
+        / "tools"
+        / "OpenROAD-flow-scripts"
+        / "flow"
+        / "results"
+        / "nangate45"
+        / "gcd"
+        / "flowlab"
+        / "pdn"
+        / "pg_vss_bumps.sp"
+    )
+    if gcd_sp.is_file() and gcd_vss.is_file():
+        gcd_cox = estimate_rail_overlap_c(parse_spice(gcd_sp)[0], parse_spice(gcd_vss)[0], tech)
+        gcd_br = strap_branches(parse_spice(gcd_sp)[0], tech)
+        check(len(gcd_br) == gcd_l["n_stamped"], "GCD strap_branches matches Grover n_stamped")
+        check(gcd_cox["n_pairs"] > 0, f"GCD VDD/VSS strap Cox n={gcd_cox['n_pairs']}")
+        check(gcd_cox.get("truncated") is False, "GCD Cox not truncated at 100k")
+        print(
+            f"    GCD Cox n_lateral={gcd_cox['n_lateral']} n_plate={gcd_cox['n_plate']} "
+            f"C_sum={gcd_cox['c_sum_f']:.4e} F C_max={gcd_cox['c_max_f']:.4e} F "
+            f"straps VDD={gcd_cox['n_vdd_straps']} VSS={gcd_cox['n_vss_straps']}"
+        )
+    else:
+        print("    skip GCD strap Cox (no pg_vdd/vss_bumps.sp)")
+
     from pdn_vrm import assemble_strap_rlc, ngspice_coupled_l_gold, ngspice_strap_rlc_gold, xyce_vrm_die_gold
     from pdn_transient import build_system as _bs
     from shutil import which as _which

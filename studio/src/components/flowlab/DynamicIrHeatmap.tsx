@@ -114,6 +114,12 @@ type VssRail = {
     worst_droop_mv?: number;
     worst_bounce_mv?: number;
     c_rr_f?: number;
+    c_geom?: {
+      status?: string;
+      c_sum_f?: number;
+      n_lateral?: number;
+      n_plate?: number;
+    } | null;
   } | null;
 };
 type DynReport = {
@@ -401,8 +407,11 @@ export function DynamicIrHeatmap({
                 <dd>
                   droop {(vss.coupled.worst_droop_mv ?? 0).toFixed(2)} mV · bounce{" "}
                   {(vss.coupled.worst_bounce_mv ?? 0).toFixed(2)} mV
-                  {vss.coupled.c_rr_f != null
+                  {vss.coupled.c_rr_f != null && vss.coupled.c_rr_f > 0
                     ? ` · Crr ${vss.coupled.c_rr_f.toExponential(2)} F/cella`
+                    : ""}
+                  {vss.coupled.c_geom?.status === "READY"
+                    ? ` · Cox ${(vss.coupled.c_geom.c_sum_f ?? 0).toExponential(2)} F (${vss.coupled.c_geom.n_lateral ?? 0}+${vss.coupled.c_geom.n_plate ?? 0})`
                     : ""}
                 </dd>
               </div>

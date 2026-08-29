@@ -10,7 +10,8 @@ Not a DEF+LEF Rsq extractor and not a fork of OpenROAD PSM.
 Never synthesizes PDN C from signal SPEF names.
 On-die L is Grover partial self plus cutoff partial mutual on same-layer straps;
 not stamped into the SPD companion unless the caller asks for the descriptor.
-Rail-to-rail C is opt-in instance-pin C_rr (scenario Farads), not overlapping-strap Cox.
+Rail-to-rail C is opt-in: instance-pin C_rr (scenario Farads) and/or overlapping-strap
+Cox (ε0 εr lateral + ILD plate, spatial hash). Neither is the GCD default TRAN.
 """
 
 from __future__ import annotations
@@ -155,6 +156,7 @@ def pair_pg_rails(vdd_sinks: dict, vss_sinks: dict) -> dict:
         "note": (
             "I_cell leaves VDD and enters VSS; default G is block-diagonal. "
             "Instance-pin C_rr is opt-in (stamp_rail_to_rail_c), not GCD gold. "
+            "Overlapping-strap Cox is a separate opt-in (stamp_overlap_cox). "
             "VDD gold TRAN is unchanged."
         ),
     }
@@ -215,6 +217,62 @@ def stamp_rail_to_rail_c(pairs: list, vdd_idx: dict, vss_idx: dict, n_vdd: int, 
         "via": "C_rr on write_pg_spice Sink-for inst pairs (scenario F, not extracted)",
         "not": "overlapping strap Cox / signal SPEF / Nangate C_decap cells / GCD default",
     }
+
+
+def merge_c_triplets(*groups) -> list:
+    """Sum Faraday stamps that share (i, j). i is VDD, j is VSS+n_vdd."""
+    acc: dict[tuple[int, int], float] = defaultdict(float)
+    for trips in groups:
+        if not trips:
+            continue
+        for trip in trips:
+            i, j, cf = int(trip[0]), int(trip[1]), float(trip[2])
+            if i == j or cf == 0.0:
+                continue
+            acc[(i, j)] += cf
+    return [(i, j, c) for (i, j), c in acc.items() if c != 0.0]
+
+
+def stamp_overlap_cox(pairs: list, vdd_idx: dict, vss_idx: dict, n_vdd: int) -> dict:
+    """Stamp extracted strap Cox onto the coupled MNA.
+
+    C_ii += c, C_jj += c, C_ij = C_ji = −c with j = vss_idx + n_vdd.
+    Same KCL stencil as instance-pin C_rr. Not GCD default.
+    """
+    n0 = int(n_vdd)
+    trips = []
+    skipped = 0
+    for p in pairs or []:
+        i = vdd_idx.get(p["vdd_node"])
+        j0 = vss_idx.get(p["vss_node"])
+        if i is None or j0 is None:
+            skipped += 1
+            continue
+        cf = float(p.get("c_f") or 0.0)
+        if cf == 0.0:
+            continue
+        trips.append((int(i), int(j0) + n0, cf))
+    trips = merge_c_triplets(trips)
+    c_sum = float(sum(t[2] for t in trips)) if trips else 0.0
+    return {
+        "status": "READY" if trips else "GAP",
+        "n_stamped": len(trips),
+        "n_input": len(pairs or []),
+        "n_skipped": skipped,
+        "c_sum_f": c_sum,
+        "triplets": trips,
+        "via": "overlapping-strap Cox lumped on endpoints nearest the overlap centroid",
+        "not": "instance-pin C_rr / signal SPEF / LEF CPERSQDIST / GCD default",
+    }
+
+
+def estimate_rail_overlap_c(resistors_vdd, resistors_vss, tech: dict | None) -> dict:
+    """Extract-layer Cox between two write_pg_spice rails. Estimate only — not stamped here."""
+    from pdn_em import pair_rail_overlap_c, strap_branches
+
+    vdd_b = strap_branches(resistors_vdd, tech)
+    vss_b = strap_branches(resistors_vss, tech)
+    return pair_rail_overlap_c(vdd_b, vss_b, tech)
 
 
 def node_xy_dbu(name: str) -> tuple[float, float] | None:

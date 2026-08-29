@@ -26,6 +26,8 @@ from pdn_extract import layer_of, node_xy_dbu
 
 MU0 = 4.0e-7 * math.pi
 MU0_2PI = 2.0e-7  # H/m = μ0/(2π)
+EPS0_F_M = 8.854187817e-12  # F/m
+EPS_R_OX = 3.9  # SiO2; same family as K_OX, not a foundry low-k card
 K_CU_W_M_K = 400.0  # bulk Cu; not a foundry BEOL stack
 K_OX_W_M_K = 1.4  # SiO2; not a foundry low-k stack
 K_SI_W_M_K = 148.0  # bulk Si ~300 K
@@ -59,6 +61,18 @@ def rac_over_rdc(t_m: float, f_hz: float, sigma: float = SIGMA_CU_S_M) -> float:
     t = max(float(t_m), 1e-18)
     delta = skin_depth_m(f_hz, sigma)
     return t / min(t, delta)
+
+
+def cox_lateral_f(t_m: float, length_m: float, gap_m: float) -> float:
+    """Same-layer facing-sidewall C = ε0 εr t L_ov / d_gap. SiO2 εr, not LEF CPERSQDIST."""
+    g = max(float(gap_m), 1e-18)
+    return EPS0_F_M * EPS_R_OX * max(float(t_m), 0.0) * max(float(length_m), 0.0) / g
+
+
+def cox_plate_f(area_m2: float, h_m: float) -> float:
+    """Adjacent-layer plate C = ε0 εr A_ov / h_ILD. h is via ILD, not HEIGHT-to-substrate."""
+    h = max(float(h_m), 1e-18)
+    return EPS0_F_M * EPS_R_OX * max(float(area_m2), 0.0) / h
 
 
 def grover_partial_M(length_m: float, dist_m: float) -> float:
@@ -163,10 +177,260 @@ def pair_parallel_straps(
     ]
 
 
-def estimate_on_die_L(resistors, tech: dict | None) -> dict:
-    """Grover L on same-layer write_pg_spice straps. Vias stay R (no length model)."""
+def _nearest_end(rec: dict, cx: float, cy: float) -> str | None:
+    if rec.get("xa_m") is None or rec.get("ya_m") is None:
+        return None
+    da = (float(rec["xa_m"]) - cx) ** 2 + (float(rec["ya_m"]) - cy) ** 2
+    db = (float(rec["xb_m"]) - cx) ** 2 + (float(rec["yb_m"]) - cy) ** 2
+    return rec["a"] if da <= db else rec["b"]
+
+
+def strap_aabb(rec: dict) -> tuple[float, float, float, float] | None:
+    """Axis-aligned footprint (x0, y0, x1, y1) from strap axis + width. None if no XY."""
+    ax = _strap_axis(rec)
+    if ax is None or rec.get("w_m") is None or rec.get("xa_m") is None:
+        return None
+    ori, lo, hi, perp = ax
+    if hi <= lo:
+        return None
+    hw = 0.5 * float(rec["w_m"])
+    if ori == "H":
+        return lo, perp - hw, hi, perp + hw
+    return perp - hw, lo, perp + hw, hi
+
+
+def _aabb_overlap(a: tuple[float, float, float, float], b: tuple[float, float, float, float]):
+    x0 = max(a[0], b[0])
+    y0 = max(a[1], b[1])
+    x1 = min(a[2], b[2])
+    y1 = min(a[3], b[3])
+    dx, dy = x1 - x0, y1 - y0
+    if dx <= 0.0 or dy <= 0.0:
+        return 0.0, None
+    return dx * dy, (0.5 * (x0 + x1), 0.5 * (y0 + y1))
+
+
+def _aabb_cells(box: tuple[float, float, float, float], cell: float):
+    x0, y0, x1, y1 = box
+    c = max(float(cell), 1e-12)
+    ix0, ix1 = int(math.floor(x0 / c)), int(math.floor(x1 / c))
+    iy0, iy1 = int(math.floor(y0 / c)), int(math.floor(y1 / c))
+    for ix in range(ix0, ix1 + 1):
+        for iy in range(iy0, iy1 + 1):
+            yield ix, iy
+
+
+def ild_gap_m(layer_a: str | None, layer_b: str | None, tech: dict | None) -> float | None:
+    """ILD thickness between adjacent metals: HEIGHT_hi − HEIGHT_lo − t_lo. Else None."""
+    na, nb = _metal_index(layer_a), _metal_index(layer_b)
+    if na is None or nb is None or abs(na - nb) != 1:
+        return None
+    layers = (tech or {}).get("layers") or {}
+    lo, hi = (layer_a, layer_b) if na < nb else (layer_b, layer_a)
+    spec_lo, spec_hi = layers.get(lo) or {}, layers.get(hi) or {}
+    h_lo, t_lo, h_hi = spec_lo.get("height_um"), spec_lo.get("thickness_um"), spec_hi.get("height_um")
+    if h_lo is None or t_lo is None or h_hi is None:
+        return None
+    L_um = float(h_hi) - float(h_lo) - float(t_lo)
+    if L_um <= 0.0:
+        return None
+    return L_um * 1e-6
+
+
+def pair_rail_overlap_c(
+    vdd_branches: list,
+    vss_branches: list,
+    tech: dict | None = None,
+    *,
+    cutoff_m: float = 2e-6,
+    max_pairs: int = 100_000,
+) -> dict:
+    """VDD↔VSS overlapping-strap Cox. Spatial hash — not O(n²).
+
+    Same-layer lateral: C = ε0 εr t L_ov / d_gap with d_gap = d_center − (w1+w2)/2.
+    Skip d_gap ≤ 0 (footprints touch/overlap — would be a short). Cutoff 2 µm on the gap,
+    same family as Grover mutual. Adjacent-layer plate: C = ε0 εr A_ov / h_ILD with the
+    via ILD (HEIGHT_hi − HEIGHT_lo − t_lo). Not foundry PEX, not LEF CPERSQDIST, not
+    instance-pin C_rr, not signal SPEF. Lumped onto endpoints nearest the overlap centroid.
+    """
+    cutoff = max(float(cutoff_m), 1e-12)
+    tech = tech or {}
+    pairs: list[dict] = []
+    max_w = 0.0
+    for rec in vdd_branches:
+        max_w = max(max_w, float(rec.get("w_m") or 0.0))
+    for rec in vss_branches:
+        max_w = max(max_w, float(rec.get("w_m") or 0.0))
+    bin_m = cutoff
+    n_db = int(math.ceil((cutoff + max_w) / bin_m)) + 1
+    buckets: dict[tuple, list[int]] = defaultdict(list)
+    axes_s = []
+    for j, rec in enumerate(vss_branches):
+        ax = _strap_axis(rec)
+        axes_s.append(ax)
+        if ax is None:
+            continue
+        ori, _lo, _hi, perp = ax
+        b = int(round(perp / bin_m))
+        buckets[(rec.get("layer"), ori, b)].append(j)
+    n_lat_raw = 0
+    for rec_i in vdd_branches:
+        ax_i = _strap_axis(rec_i)
+        if ax_i is None:
+            continue
+        ori, lo_i, hi_i, perp_i = ax_i
+        layer = rec_i.get("layer")
+        w_i = float(rec_i["w_m"])
+        t_i = float(rec_i["t_m"])
+        b0 = int(round(perp_i / bin_m))
+        neigh = []
+        for db in range(-n_db, n_db + 1):
+            neigh.extend(buckets.get((layer, ori, b0 + db), ()))
+        for j in neigh:
+            ax_j = axes_s[j]
+            if ax_j is None:
+                continue
+            _, lo_j, hi_j, perp_j = ax_j
+            ov = min(hi_i, hi_j) - max(lo_i, lo_j)
+            if ov <= 0.0:
+                continue
+            d = abs(perp_i - perp_j)
+            w_j = float(vss_branches[j]["w_m"])
+            gap = d - 0.5 * (w_i + w_j)
+            if gap <= 1e-12 or gap > cutoff:
+                continue
+            t = min(t_i, float(vss_branches[j]["t_m"]))
+            c = cox_lateral_f(t, ov, gap)
+            if c <= 0.0:
+                continue
+            mid = 0.5 * (max(lo_i, lo_j) + min(hi_i, hi_j))
+            perp_m = 0.5 * (perp_i + perp_j)
+            cx, cy = (mid, perp_m) if ori == "H" else (perp_m, mid)
+            nd_i = _nearest_end(rec_i, cx, cy)
+            nd_j = _nearest_end(vss_branches[j], cx, cy)
+            if nd_i is None or nd_j is None:
+                continue
+            n_lat_raw += 1
+            pairs.append(
+                {
+                    "kind": "lateral",
+                    "vdd_node": nd_i,
+                    "vss_node": nd_j,
+                    "c_f": c,
+                    "layer": layer,
+                    "L_ov_m": ov,
+                    "gap_m": gap,
+                }
+            )
+
+    cell = cutoff
+    vss_boxes = []
+    plate_buckets: dict[tuple, list[int]] = defaultdict(list)
+    for j, rec in enumerate(vss_branches):
+        box = strap_aabb(rec)
+        vss_boxes.append(box)
+        if box is None:
+            continue
+        ly = rec.get("layer")
+        for ix, iy in _aabb_cells(box, cell):
+            plate_buckets[(ly, ix, iy)].append(j)
+    n_plate_raw = 0
+    seen_plate: set[tuple[int, int]] = set()
+    for i, rec_i in enumerate(vdd_branches):
+        box_i = strap_aabb(rec_i)
+        if box_i is None:
+            continue
+        la = rec_i.get("layer")
+        for ix, iy in _aabb_cells(box_i, cell):
+            na = _metal_index(la)
+            if na is None:
+                continue
+            for nb in (na - 1, na + 1):
+                if nb < 1:
+                    continue
+                ly_s = f"metal{nb}"
+                for dix in (-1, 0, 1):
+                    for diy in (-1, 0, 1):
+                        for j in plate_buckets.get((ly_s, ix + dix, iy + diy), ()):
+                            pair_id = (i, j)
+                            if pair_id in seen_plate:
+                                continue
+                            box_j = vss_boxes[j]
+                            if box_j is None:
+                                continue
+                            area, cen = _aabb_overlap(box_i, box_j)
+                            if area <= 0.0 or cen is None:
+                                continue
+                            h = ild_gap_m(la, ly_s, tech)
+                            if h is None:
+                                continue
+                            seen_plate.add(pair_id)
+                            c = cox_plate_f(area, h)
+                            if c <= 0.0:
+                                continue
+                            nd_i = _nearest_end(rec_i, cen[0], cen[1])
+                            nd_j = _nearest_end(vss_branches[j], cen[0], cen[1])
+                            if nd_i is None or nd_j is None:
+                                continue
+                            n_plate_raw += 1
+                            pairs.append(
+                                {
+                                    "kind": "plate",
+                                    "vdd_node": nd_i,
+                                    "vss_node": nd_j,
+                                    "c_f": c,
+                                    "layer_vdd": la,
+                                    "layer_vss": ly_s,
+                                    "area_m2": area,
+                                    "h_ild_m": h,
+                                }
+                            )
+
+    pairs.sort(key=lambda p: float(p["c_f"]), reverse=True)
+    truncated = len(pairs) > max_pairs
+    pairs = pairs[:max_pairs]
+    n_lat = sum(1 for p in pairs if p["kind"] == "lateral")
+    n_plate = sum(1 for p in pairs if p["kind"] == "plate")
+    c_sum = float(sum(p["c_f"] for p in pairs)) if pairs else 0.0
+    c_max = float(max((p["c_f"] for p in pairs), default=0.0))
+    return {
+        "status": "READY" if pairs else "GAP",
+        "n_pairs": len(pairs),
+        "n_lateral": n_lat,
+        "n_plate": n_plate,
+        "n_lateral_found": n_lat_raw,
+        "n_plate_found": n_plate_raw,
+        "n_vdd_straps": len(vdd_branches),
+        "n_vss_straps": len(vss_branches),
+        "c_sum_f": c_sum,
+        "c_max_f": c_max,
+        "cutoff_m": cutoff,
+        "eps_r": EPS_R_OX,
+        "truncated": truncated,
+        "pairs": pairs,
+        "via": (
+            "overlapping-strap Cox: same-layer ε0εr t L_ov/d_gap (d_gap≤2 µm) + "
+            "adjacent-layer ε0εr A_ov/h_ILD (via HEIGHT stack); SiO2 εr=3.9"
+        ),
+        "not": (
+            "foundry PEX / LEF CPERSQDIST / instance-pin C_rr / signal SPEF / "
+            "Nangate C_decap cells / GCD default TRAN"
+        ),
+        "note": (
+            "Lumped onto strap endpoints nearest the overlap centroid — not distributed PEX. "
+            "d_gap≤0 is skipped (would be a short). Non-adjacent metals are GAP (no stacked ILD)."
+            if pairs
+            else "no VDD/VSS strap overlap within cutoff / adjacent-layer AABB"
+        ),
+    }
+
+
+def strap_branches(resistors, tech: dict | None) -> list:
+    """Same-layer write_pg_spice straps with Grover L and XY. Shared by on-die L and Cox.
+
+    Vias (layer change) are omitted — no length model, same as estimate_on_die_L.
+    """
     branches = []
-    by_layer: dict[str, dict] = {}
     tech = tech or {}
     dbu = float(tech.get("dbu_per_um") or 2000.0)
     for a, b, r in resistors:
@@ -191,7 +455,16 @@ def estimate_on_die_L(resistors, tech: dict | None) -> dict:
             rec["xb_m"] = pb[0] / dbu * 1e-6
             rec["yb_m"] = pb[1] / dbu * 1e-6
         branches.append(rec)
-        slot = by_layer.setdefault(g["layer"], {"n": 0, "L_sum_h": 0.0, "L_max_h": 0.0})
+    return branches
+
+
+def estimate_on_die_L(resistors, tech: dict | None) -> dict:
+    """Grover L on same-layer write_pg_spice straps. Vias stay R (no length model)."""
+    branches = strap_branches(resistors, tech)
+    by_layer: dict[str, dict] = {}
+    for rec in branches:
+        Lh = float(rec["L_h"])
+        slot = by_layer.setdefault(rec["layer"], {"n": 0, "L_sum_h": 0.0, "L_max_h": 0.0})
         slot["n"] += 1
         slot["L_sum_h"] += Lh
         slot["L_max_h"] = max(slot["L_max_h"], Lh)
