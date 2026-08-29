@@ -280,6 +280,101 @@ def should_pay_f4_scale(
     return True, f"Solver A with I(t)×P_F3/P_base on {mesh} — not a new VCD map"
 
 
+def should_pay_f5_drt(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_f5: int,
+    f5_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay one detailed_route + OpenRCX SPEF. Not make finish."""
+    from .openroad_f2 import f5_available
+
+    if n_f5 >= f5_max:
+        return False, "F5 DRT/RCX shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover detailed_route+OpenRCX"
+    if not f5_available():
+        return False, "OpenRCX rules missing — not launching make finish"
+    winners = [
+        c
+        for c in mem.all()
+        if c.status == "ok"
+        and c.fidelity == "F1"
+        and c.qor.area_um2 is not None
+        and (c.artifacts or {}).get("mapped_v")
+    ]
+    if not winners:
+        return False, "no F1 mapped netlist to detailed-route"
+    have = {
+        (c.knobs or {}).get("parent_id")
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+    }
+    if all(w.id in have for w in winners):
+        return False, "every F1 winner already has an F5 SPEF child"
+    return True, "detailed_route + OpenRCX SPEF — F5-lite, not make finish"
+
+
+def should_pay_f3_spef(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_spef: int = 0,
+    spef_max: int = 1,
+    min_s: float = 1.0,
+) -> tuple[bool, str]:
+    from pathlib import Path
+
+    if n_spef >= spef_max:
+        return False, "F3 SPEF shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover OpenSTA+SPEF"
+    if any((c.knobs or {}).get("source") == "f3_opensta_spef" and c.status == "ok" for c in mem.all()):
+        return False, "already have an OpenSTA+SPEF child"
+    for c in mem.all():
+        art = c.artifacts or {}
+        spef, mapped = art.get("spef"), art.get("mapped_v")
+        if spef and mapped and Path(spef).is_file() and Path(mapped).is_file():
+            return True, "OpenSTA + OpenRCX SPEF (not GRT SDF, not finish launch)"
+    return False, "no OpenRCX SPEF on disk"
+
+
+def should_pay_f4_amg(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_amg: int = 0,
+    amg_max: int = 1,
+    min_s: float = 6.0,
+    variant: str = "flowlab",
+    extract_id: str = "finish",
+) -> tuple[bool, str]:
+    """Pay one SA-AMG restamp on the named extract. Residual vs DirectLU, not gold."""
+    if n_amg >= amg_max:
+        return False, "AMG F4 scout already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover AMG restamp"
+    have = any(
+        (c.knobs or {}).get("source") == "f4_solver_amg"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+        and c.status == "ok"
+        for c in mem.by_level("pdn")
+    )
+    if have:
+        return False, "this extract already has an AMG child"
+    if extract_id != "finish":
+        if latest_ok_extract(mem) is None:
+            return False, "no candidate extract for AMG residual"
+    else:
+        from .f4_oracle import available
+
+        if not available(variant):
+            return False, "no cached finish extract for AMG residual"
+    return True, f"SA-AMG restamp on {extract_id} — MF solver residual, not gold"
+
+
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
     from pathlib import Path
@@ -296,6 +391,7 @@ def latest_ok_extract(mem: DesignMemory) -> dict | None:
                 "extract_id": (c.knobs or {}).get("extract_id") or c.id,
                 "parent_id": (c.knobs or {}).get("parent_id"),
                 "n_r": art.get("n_r"),
+                "sta": art.get("sta_arrivals"),
                 "candidate": c,
             }
     return None
@@ -316,6 +412,12 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F3"
     if level == "f3_sdf":
         return "F3"
+    if level == "f3_spef":
+        return "F3"
+    if level == "f5_drt":
+        return "F5"
+    if level == "f4_amg":
+        return "F4"
     if level in ("pdn", "f4_extract", "f4_scale"):
         return "F4"
     need = float(cost_hint.get("F1", 2.0))

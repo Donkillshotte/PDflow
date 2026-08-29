@@ -59,8 +59,10 @@ def solve_f4(
     spice: Path | str | None = None,
     insts: Path | str | None = None,
     extract_kind: str = "finish",
+    solver: str = "direct",
+    sta: Path | str | None = None,
 ) -> dict:
-    """Solver A only. Finish mesh by default; spice/insts override. Not gold."""
+    """Named extract + named solver (direct/amg/bicg/ras). Not gold."""
     kind = "candidate" if spice or insts else extract_kind
     if spice or insts:
         if not extract_ready(spice, insts):
@@ -98,9 +100,15 @@ def solve_f4(
         str(dt_ps),
         "--extract-kind",
         kind,
+        "--solver",
+        str(solver or "direct"),
     ]
     if spice:
-        cmd.extend(["--spice", str(spice), "--no-sta", "--no-spef"])
+        cmd.extend(["--spice", str(spice), "--no-spef"])
+        if sta:
+            cmd.extend(["--sta", str(sta)])
+        else:
+            cmd.append("--no-sta")
     if insts:
         cmd.extend(["--insts", str(insts)])
     try:

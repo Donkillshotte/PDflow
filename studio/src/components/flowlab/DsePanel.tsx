@@ -44,9 +44,13 @@ type DseReport = {
   n_f2_gpl?: number;
   n_f2_gpl_catalog?: number;
   n_f3?: number;
+  n_f3_sdf?: number;
+  n_f3_spef?: number;
+  n_f5?: number;
   n_f2_grt?: number;
   n_f4?: number;
   n_f4_extract?: number;
+  n_f4_amg?: number;
   n_f4_solve?: number;
   surrogate_f1_to_f2_gnn?: { n?: number; uncertainty?: string; via?: string };
   pareto?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
@@ -88,13 +92,13 @@ export function DsePanel() {
       <header className="fl-dynir-head">
         <strong>DSE · ricerca a livelli</strong>
         <p>
-          Planner IR+WNS · EHVI · F2-fast/GPL · extract PDN · STA F3 · IR/EM F4 ·{" "}
+          Planner IR+WNS · EHVI · F2/F5-lite SPEF · extract PDN · STA F3 · IR/EM F4 ·{" "}
           <Link href="/materiali/reference/dse.md">dse.md</Link>
         </p>
       </header>
       {!report?.ok ? (
         <p className="fl-dynir-empty">
-          Report assente — esegui l’azione <code>dse</code> (non lancia P&amp;R).
+          Report assente — esegui l’azione <code>dse</code> (F5-lite, non <code>make finish</code>).
         </p>
       ) : (
         <>
@@ -138,17 +142,23 @@ export function DsePanel() {
                 {report.n_f2_gpl != null ? ` · GPL ${report.n_f2_gpl}` : ""}
                 {report.n_f2_gpl_catalog != null ? ` · cat ${report.n_f2_gpl_catalog}` : ""}
                 {report.n_f2_grt != null ? ` · GRT ${report.n_f2_grt}` : ""}
+                {report.n_f5 != null ? ` · F5 ${report.n_f5}` : ""}
               </dd>
             </div>
             <div>
               <dt>F3 STA</dt>
-              <dd>{report.n_f3 ?? 0}</dd>
+              <dd>
+                {report.n_f3 ?? 0}
+                {report.n_f3_sdf != null ? ` · SDF ${report.n_f3_sdf}` : ""}
+                {report.n_f3_spef != null ? ` · SPEF ${report.n_f3_spef}` : ""}
+              </dd>
             </div>
             <div>
               <dt>F4 IR</dt>
               <dd>
                 {report.n_f4 ?? 0}
                 {report.n_f4_extract != null ? ` · ext ${report.n_f4_extract}` : ""}
+                {report.n_f4_amg != null ? ` · AMG ${report.n_f4_amg}` : ""}
                 {report.n_f4_solve != null ? ` · solve ${report.n_f4_solve}` : ""}
               </dd>
             </div>
@@ -189,6 +199,8 @@ export function DsePanel() {
                 c.knobs?.source === "f2_fast_netgraph" ||
                 c.knobs?.source === "f2_openroad_gpl" ||
                 c.knobs?.source === "f2_openroad_grt" ||
+                c.knobs?.source === "f5_openroad_drt_rcx" ||
+                c.knobs?.source === "f3_opensta_spef" ||
                 c.knobs?.source === "f2_fast_barycenter",
             )}
           />
@@ -246,13 +258,14 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
   if (!rows.length) return null;
   return (
     <div className="fl-dynir-group">
-      <span>Physical / routing · F2-fast / GPL / GRT (non IR)</span>
+      <span>Physical / routing · F2-fast / GPL / GRT / F5-lite SPEF (non IR)</span>
       <table className="fl-dynir-table">
         <thead>
           <tr>
             <th>Fonte</th>
             <th>F</th>
             <th>HPWL</th>
+            <th>WNS</th>
             <th>Cong</th>
             <th>Stato</th>
           </tr>
@@ -273,6 +286,13 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
                     ? c.artifacts.hpwl.toFixed(1)
                     : "—"}
               </td>
+              <td>
+                {c.artifacts?.wns_ns != null
+                  ? `${c.artifacts.wns_ns.toFixed(3)} ns`
+                  : c.qor?.wns_cost != null
+                    ? `${(-c.qor.wns_cost).toFixed(3)} ns`
+                    : "—"}
+              </td>
               <td>{c.qor?.congestion != null ? c.qor.congestion.toFixed(3) : "—"}</td>
               <td>{c.status}</td>
             </tr>
@@ -287,7 +307,7 @@ function PdnTable({ rows }: { rows: Cand[] }) {
   if (!rows.length) return null;
   return (
     <div className="fl-dynir-group">
-      <span>PDN · extract candidato / restamp Solver A (non gold)</span>
+      <span>PDN · extract candidato / DirectLU / AMG (non gold)</span>
       <table className="fl-dynir-table">
         <thead>
           <tr>

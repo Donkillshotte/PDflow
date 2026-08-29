@@ -16,8 +16,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "ORFS finish power / STA power reports",
     },
     "activity": {
-        "via": "ingest",
-        "note": "STA/VCD/SAIF via PI reports; no invented RTL→ITerm map",
+        "via": "dse.sta_f3.export_arrivals + ingest",
+        "note": "OpenSTA report_arrival on the candidate (t50 teacher); no invented RTL→ITerm map",
     },
     "current": {
         "via": "ingest + F3 power scale",
@@ -32,8 +32,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "SSK-GP / residual / GNN readout — never Dynamic IR gold",
     },
     "solver": {
-        "via": "ingest F4 + budgeted Solver A restamp",
-        "note": "libdpn A on named extract; GCD gold 45.298 mV unrestamped",
+        "via": "dse.f4_oracle + dse_f4_worker.make_solver (direct|amg|bicg|ras)",
+        "note": "DirectLU restamp on named extract; AMG is an MF residual; GCD gold 45.298 mV unrestamped",
     },
     "physical_fast": {
         "via": "dse.netgraph",
@@ -44,25 +44,26 @@ ADAPTERS: dict[str, dict] = {
         "note": "OpenROAD global_placement -skip_io; AutoDMP catalog util/density is measured here, not as F0 truth",
     },
     "routing": {
-        "via": "dse.openroad_f2.evaluate_grt",
-        "note": "place_pins + GPL + global_route; not detailed route/F5",
+        "via": "dse.openroad_f2.evaluate_grt + evaluate_f5_drt",
+        "note": "GRT + F5-lite DRT/OpenRCX SPEF; not make finish, clock ideal",
     },
     "timing": {
         "via": "dse.sta_f3",
-        "note": "OpenSTA ideal or GRT SDF WNS/power; not SPEF/OpenRCX, not finish/F5",
+        "note": "OpenSTA ideal / GRT SDF / OpenRCX SPEF WNS/power; not finish launch",
     },
 }
 
 
 def adapter_status() -> dict:
     from .f4_oracle import available as f4_ok
-    from .openroad_f2 import available as gpl_ok, extract_available
+    from .openroad_f2 import available as gpl_ok, extract_available, f5_available
     from .sta_f3 import available as sta_ok
 
     out = {k: dict(v) for k, v in ADAPTERS.items()}
     out["physical_gpl"]["ready"] = bool(gpl_ok())
-    out["routing"]["ready"] = bool(gpl_ok())
+    out["routing"]["ready"] = bool(gpl_ok() or f5_available())
     out["timing"]["ready"] = bool(sta_ok())
+    out["activity"]["ready"] = bool(sta_ok())
     out["solver"]["ready"] = bool(f4_ok())
     out["current"]["ready"] = bool(f4_ok())
     out["extraction"]["ready"] = bool(extract_available() or f4_ok())

@@ -26,7 +26,7 @@ from pdn_activity import load_insts, load_sta_arrivals, node_xy, plan_events  # 
 from pdn_dynamic import assemble_be, contributors_at, timestep_be  # noqa: E402
 from pdn_em import em_thermal_snapshot  # noqa: E402
 from pdn_extract import extract_pdn  # noqa: E402
-from pdn_solvers import DirectLU  # noqa: E402
+from pdn_solvers import make_solver  # noqa: E402
 from pdn_transient import build_system, solve_static  # noqa: E402
 
 ORFS = _REPO / "tools/OpenROAD-flow-scripts/flow"
@@ -76,6 +76,12 @@ def main() -> int:
         default="finish",
         choices=("finish", "candidate"),
         help="finish = gold teacher mesh; candidate = DSE write_pg_spice",
+    )
+    ap.add_argument(
+        "--solver",
+        default="direct",
+        choices=("direct", "amg", "bicg", "ras"),
+        help="PDN timestep solver; default DirectLU (gold teacher). Not flattened into ABC.",
     )
     args = ap.parse_args()
     t0 = time.time()
@@ -140,7 +146,8 @@ def main() -> int:
         dt=dt,
         spef_c=(ext.get("spef") or {}).get("node_c"),
     )
-    dyn = timestep_be(sys_be, events, DirectLU(sys_be["A"]), vdd, order, t_end)
+    solver = make_solver(sys_be["A"], args.solver)
+    dyn = timestep_be(sys_be, events, solver, vdd, order, t_end)
     droop = float(dyn["worst_droop"])
     static_ir_mv = None
     static_ir_pct = None
@@ -221,7 +228,8 @@ def main() -> int:
                 "n_r": ext.get("n_r"),
                 "n_i": ext.get("n_i"),
                 "n_events": len(events),
-                "solver": dyn.get("solver"),
+                "solver": dyn.get("solver") or args.solver,
+                "solver_kind": args.solver,
                 "backend": dyn.get("backend"),
                 "timestep_loop": dyn.get("timestep_loop"),
                 "gold": False,

@@ -100,6 +100,27 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "f5_drt",
+            "reason": "budgeted detailed_route + OpenRCX SPEF — F5-lite, not make finish",
+            "scope": "chip",
+        }
+    )
+    steps.append(
+        {
+            "level": "f3_spef",
+            "reason": "OpenSTA + OpenRCX SPEF on the F5 netlist — not GRT SDF, not finish launch",
+            "scope": "chip",
+        }
+    )
+    steps.append(
+        {
+            "level": "f4_amg",
+            "reason": "SA-AMG restamp on the named extract — MF solver residual vs DirectLU, not gold",
+            "scope": "chip",
+        }
+    )
+    steps.append(
+        {
             "level": "physical_catalog",
             "reason": "measure one AutoDMP util/density point with GPL (not F0-only RUDY)",
             "scope": "region" if region else "chip",

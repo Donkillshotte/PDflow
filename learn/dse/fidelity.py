@@ -5,7 +5,7 @@ F1  Yosys + ABC liberty map + equiv (logic or architecture RTL)
 F2  ingest OpenROAD place / GRT, F2-fast netgraph, budgeted OpenROAD GPL
 F3  OpenSTA on the *candidate* (ideal or GRT SDF) + ingest of signoff STA
 F4  Dynamic IR / EM ingest (Solver A gold stays 45.298 mV on the GCD)
-F5  GAP (signoff P&R / finish not launched from the controller)
+F5  budgeted detailed_route + OpenRCX SPEF (not make finish)
 """
 
 from __future__ import annotations
@@ -29,8 +29,8 @@ from .netgraph import (
     parse_mapped_verilog,
     features as net_features,
 )
-from .openroad_f2 import evaluate_gpl, evaluate_grt
-from .sta_f3 import evaluate_sta
+from .openroad_f2 import evaluate_f5_drt as run_f5_drt, evaluate_gpl, evaluate_grt
+from .sta_f3 import evaluate_sta, export_arrivals
 
 REPO = Path(__file__).resolve().parents[1].parent
 NANGATE_LIB = (
@@ -49,7 +49,7 @@ COST_HINT = {
     "F3_SDF": 2.0,
     "F4": 12.0,
     "F4_EXTRACT": 15.0,
-    "F5": 600.0,
+    "F5": 15.0,
 }
 
 
@@ -182,8 +182,10 @@ def evaluate_f4_pdn(
     spice: Path | str | None = None,
     insts: Path | str | None = None,
     extract_id: str = "finish",
+    solver: str = "direct",
+    sta: Path | str | None = None,
 ) -> Candidate | None:
-    """PDN-level Solver A restamp. Different c_decap/pkg L; named extract. Not gold."""
+    """PDN-level restamp. Different c_decap/pkg L / solver; named extract. Not gold."""
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
 
@@ -193,7 +195,8 @@ def evaluate_f4_pdn(
         "pkg_l": spec["pkg_l"],
         "c_decap": spec["c_decap"],
         "i_scale": 1.0,
-        "source": "f4_solver_a",
+        "solver": solver,
+        "source": "f4_solver_a" if solver == "direct" else f"f4_solver_{solver}",
         "extract_id": extract_id,
     }
     fp = knobs_fp("pdn", knobs)
@@ -208,6 +211,8 @@ def evaluate_f4_pdn(
         spice=spice,
         insts=insts,
         extract_kind="candidate" if spice else "finish",
+        solver=solver,
+        sta=sta,
     )
     em = dyn.get("em") or {}
     attr = attribute_dynamic_ir(
@@ -267,6 +272,7 @@ def evaluate_f4_scale(
     spice: Path | str | None = None,
     insts: Path | str | None = None,
     extract_id: str = "finish",
+    sta: Path | str | None = None,
 ) -> Candidate | None:
     """Named extract + PDN knobs; I(t) × (F3 power / baseline). Not a new VCD map."""
     from .attribute import attribute_dynamic_ir
@@ -300,6 +306,7 @@ def evaluate_f4_scale(
         spice=spice,
         insts=insts,
         extract_kind="candidate" if spice else "finish",
+        sta=sta,
     )
     em = dyn.get("em") or {}
     attr = attribute_dynamic_ir(
@@ -413,6 +420,12 @@ def evaluate_f4_extract(
     dyn: dict = {}
     extract_cost = float(ext.get("cost_s") or 0.0)
     if ext.get("status") == "ok" and spice and insts:
+        arr_dest = out_dir / "sta_arrivals.json"
+        arr = export_arrivals(Path(mapped), arr_dest)
+        sta_p = arr_dest if arr.get("status") == "ok" and arr_dest.is_file() else None
+        if sta_p:
+            ext["sta_arrivals"] = str(sta_p)
+            ext["n_sta_inst"] = arr.get("n_inst")
         dyn = solve_f4(
             variant=variant,
             pkg_r=pkg_r,
@@ -422,6 +435,7 @@ def evaluate_f4_extract(
             spice=spice,
             insts=insts,
             extract_kind="candidate",
+            sta=sta_p,
         )
         ext = {**ext, **{k: v for k, v in dyn.items() if k != "cost_s"}}
         ext["extract_cost_s"] = extract_cost
@@ -1154,6 +1168,146 @@ def evaluate_f3_sdf(
         status="ok" if sta.get("status") == "ok" else "fail",
         failure=sta.get("reason") if sta.get("status") != "ok" else None,
         note=f"F3 SDF-GRT child of {parent.knobs.get('name')} WNS={sta.get('wns_ns')}",
+    )
+    return mem.add(c)
+
+
+def evaluate_f5_drt(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    util: float = 35.0,
+    density: float = 0.55,
+    timeout_s: float = 45.0,
+) -> Candidate | None:
+    """F5-lite: detailed_route + OpenRCX SPEF. Not make finish. Clock ideal."""
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    knobs = {
+        "source": "f5_openroad_drt_rcx",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "util": util,
+        "density": density,
+        "droute_end_iter": 2,
+        "clock": "ideal",
+    }
+    fp = knobs_fp("routing", knobs)
+    if fp in mem.seen_knobs("routing"):
+        return next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
+    cid = DesignMemory.new_id()
+    spef_dest = REPO / "learn" / "sim" / "dse" / "spef" / f"{cid}.spef"
+    raw = run_f5_drt(
+        Path(mapped), util=util, density=density, timeout_s=timeout_s, spef_out=spef_dest
+    )
+    sta = {}
+    if raw.get("status") == "ok" and raw.get("spef"):
+        sta = evaluate_sta(Path(mapped), spef=Path(raw["spef"]))
+        raw = dict(raw)
+        raw["sta"] = sta
+        raw["wns_ns"] = sta.get("wns_ns")
+        raw["power_w"] = sta.get("power_w")
+        raw["interconnect"] = sta.get("interconnect") or "spef_openrcx"
+    from .attribute import attribute_sta
+
+    attr = attribute_sta(sta or raw, inherit=parent.attr or {})
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=wns_cost_from_slack_ns(raw.get("wns_ns")),
+        power_w=raw.get("power_w") or sta.get("power_w"),
+        congestion=raw.get("grt_overflow"),
+        fidelity="F5",
+        note=(
+            f"OpenRCX SPEF WNS={raw.get('wns_ns')} segs={raw.get('n_rc_segments')} "
+            "— F5-lite, not make finish, clock ideal"
+        ),
+    )
+    if raw.get("spef"):
+        parent.artifacts = dict(parent.artifacts or {})
+        parent.artifacts["spef"] = raw["spef"]
+        if raw.get("wns_ns") is not None:
+            parent.artifacts["spef_wns_ns"] = raw["wns_ns"]
+        mem.touch(parent)
+    c = Candidate(
+        id=cid,
+        design_id=design_id,
+        parent_id=parent.id,
+        level="routing",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F5",
+        qor=q,
+        cost_s=float(raw.get("cost_s") or 0.0) + float(sta.get("cost_s") or 0.0),
+        artifacts=raw,
+        attr=attr,
+        status="ok" if raw.get("status") == "ok" else "fail",
+        failure=raw.get("reason") if raw.get("status") != "ok" else None,
+        note=f"F5 DRT+RCX child of {parent.knobs.get('name')} WNS={raw.get('wns_ns')}",
+    )
+    return mem.add(c)
+
+
+def evaluate_f3_spef(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    spef: Path | str | None = None,
+) -> Candidate | None:
+    """OpenSTA + OpenRCX SPEF on the same mapped netlist. Not finish."""
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    spef_p = Path(spef) if spef else Path((parent.artifacts or {}).get("spef") or "")
+    if not mapped or not Path(mapped).is_file() or not spef_p.is_file():
+        return None
+    knobs = {
+        "source": "f3_opensta_spef",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "interconnect": "spef",
+    }
+    fp = knobs_fp(parent.level, knobs)
+    if fp in mem.seen_knobs(parent.level):
+        return next(c for c in mem.by_level(parent.level) if c.knobs_fp == fp)
+    sta = evaluate_sta(Path(mapped), spef=spef_p)
+    from .attribute import attribute_sta
+
+    attr = attribute_sta(sta, inherit=parent.attr or {})
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
+        power_w=sta.get("power_w"),
+        fidelity="F3",
+        note=f"OpenSTA + OpenRCX SPEF WNS={sta.get('wns_ns')} ns — not finish/F5 launch",
+    )
+    if sta.get("status") == "ok":
+        parent.attr = dict(parent.attr or {})
+        parent.attr["sta_spef"] = attr
+        parent.artifacts = dict(parent.artifacts or {})
+        parent.artifacts["spef_wns_ns"] = sta.get("wns_ns")
+        mem.touch(parent)
+    c = Candidate(
+        id=DesignMemory.new_id(),
+        design_id=design_id,
+        parent_id=parent.id,
+        level=parent.level,
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F3",
+        qor=q,
+        cost_s=float(sta.get("cost_s") or 0.0),
+        artifacts=sta,
+        attr=attr,
+        status="ok" if sta.get("status") == "ok" else "fail",
+        failure=sta.get("reason") if sta.get("status") != "ok" else None,
+        note=f"F3 SPEF child of {parent.knobs.get('name')} WNS={sta.get('wns_ns')}",
     )
     return mem.add(c)
 

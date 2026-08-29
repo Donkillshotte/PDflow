@@ -8,8 +8,8 @@ Optimizers (each on its own level):
   logic        — BOiLS SSK-GP + EHVI(area, WNS) / EI, DRiLLS sequential append
   synthesis    — ORFS ABC_AREA catalog (F0)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
-  routing      — budgeted OpenROAD GRT (not detailed route / F5)
-  pdn          — F4 ingest + candidate write_pg_spice + Solver A restamp (not gold)
+  routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX (not make finish)
+  pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG restamp (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -28,8 +28,11 @@ from .acquire import (
     should_pay_f2_gpl,
     should_pay_f2_grt,
     should_pay_f3_sdf,
+    should_pay_f3_spef,
     should_pay_f3_sta,
+    should_pay_f4_amg,
     should_pay_f4_extract,
+    should_pay_f5_drt,
     should_pay_f4_pdn,
     should_pay_f4_scale,
     should_pay_physical_catalog,
@@ -44,7 +47,9 @@ from .fidelity import (
     evaluate_f2_gpl,
     evaluate_f2_grt,
     evaluate_f3_sdf,
+    evaluate_f3_spef,
     evaluate_f3_sta,
+    evaluate_f5_drt,
     evaluate_f4_extract,
     evaluate_f4_pdn,
     evaluate_f4_scale,
@@ -62,7 +67,7 @@ from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front
 from .mo import baseline_wns, timing_of
-from .pdn_space import next_pdn_spec
+from .pdn_space import GOLD_KNOBS, next_pdn_spec
 from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
 from .planner import plan_search, rank_extracts
 from .proposer import propose as propose_from_attr
@@ -581,6 +586,67 @@ def run_controller(
                     status=sdfc.status,
                 )
 
+    n_f5 = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+    )
+    pay_f5, why_f5 = should_pay_f5_drt(mem, budget_left=t_end - time.time(), n_f5=n_f5)
+    step("acquire", fidelity="F5", pay=pay_f5, why=why_f5)
+    if any(s["level"] == "f5_drt" for s in plan["steps"]) and pay_f5 and time.time() < t_end:
+        pick = _mapped_pick(
+            [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+            rtl=rtl,
+            liberty=lib,
+        )
+        if pick:
+            mem.touch(pick)
+            child = evaluate_f5_drt(pick, mem, design_id=design_id)
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="routing",
+                    fidelity="F5",
+                    via="f5_openroad_drt_rcx",
+                    parent=pick.id,
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    n_rc=(child.artifacts or {}).get("n_rc_segments"),
+                    status=child.status,
+                )
+
+    n_spef = sum(
+        1 for c in mem.all() if (c.knobs or {}).get("source") == "f3_opensta_spef" and c.status == "ok"
+    )
+    pay_spef, why_spef = should_pay_f3_spef(mem, budget_left=t_end - time.time(), n_spef=n_spef)
+    step("acquire", fidelity="F3_SPEF", pay=pay_spef, why=why_spef)
+    if any(s["level"] == "f3_spef" for s in plan["steps"]) and pay_spef and time.time() < t_end:
+        host = next(
+            (
+                c
+                for c in mem.all()
+                if (c.artifacts or {}).get("spef")
+                and (c.artifacts or {}).get("mapped_v")
+                and Path(c.artifacts["spef"]).is_file()
+                and Path(c.artifacts["mapped_v"]).is_file()
+            ),
+            None,
+        )
+        if host:
+            spc = evaluate_f3_spef(host, mem, design_id=design_id)
+            if spc:
+                step(
+                    "evaluate",
+                    id=spc.id,
+                    level=host.level,
+                    fidelity="F3",
+                    via="f3_opensta_spef",
+                    parent=host.id,
+                    wns_ns=(spc.artifacts or {}).get("wns_ns"),
+                    interconnect="spef",
+                    status=spc.status,
+                )
+
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:
         step("propose", level="physical", knobs=c.knobs, fidelity="F0")
@@ -718,6 +784,7 @@ def run_controller(
             spice=ext_hit["spice"] if ext_hit else None,
             insts=ext_hit["insts"] if ext_hit else None,
             extract_id=extract_id,
+            sta=ext_hit.get("sta") if ext_hit else None,
         )
         if child:
             step(
@@ -732,6 +799,53 @@ def run_controller(
                 em_j=child.qor.em_j_a_m2,
                 gold=False,
                 status=child.status,
+            )
+
+    n_amg = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_solver_amg"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+    )
+    pay_amg, why_amg = should_pay_f4_amg(
+        mem,
+        budget_left=t_end - time.time(),
+        n_amg=n_amg,
+        variant=variant,
+        extract_id=extract_id,
+    )
+    step("acquire", fidelity="F4_AMG", pay=pay_amg, why=why_amg)
+    if any(s["level"] == "f4_amg" for s in plan["steps"]) and pay_amg and time.time() < t_end:
+        ingest = next(
+            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
+            None,
+        )
+        child = evaluate_f4_pdn(
+            mem,
+            {"name": "amg_residual", **GOLD_KNOBS},
+            variant=variant,
+            design_id=design_id,
+            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
+            spice=ext_hit["spice"] if ext_hit else None,
+            insts=ext_hit["insts"] if ext_hit else None,
+            extract_id=extract_id,
+            solver="amg",
+            sta=ext_hit.get("sta") if ext_hit else None,
+        )
+        if child:
+            step(
+                "evaluate",
+                id=child.id,
+                level="pdn",
+                fidelity="F4",
+                via="f4_solver_amg",
+                extract_id=extract_id,
+                droop_mv=child.qor.dynamic_ir_mv,
+                em_j=child.qor.em_j_a_m2,
+                gold=False,
+                status=child.status,
+                reason="mf-amg-residual-vs-direct",
             )
 
     n_scale = sum(
@@ -771,6 +885,7 @@ def run_controller(
                 spice=ext_hit["spice"] if use_ext else None,
                 insts=ext_hit["insts"] if use_ext else None,
                 extract_id=str(ext_hit["extract_id"]) if use_ext else "finish",
+                sta=ext_hit.get("sta") if use_ext else None,
             )
             if child:
                 step(
@@ -809,18 +924,20 @@ def run_controller(
             "F0 SSK-GP area + RUDY-class congestion; not IR",
             "F1 chip flatten-first (area teacher 409.108) · cone-local ABC on dpath when IR focuses the cone",
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + budgeted GRT",
-            "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF (not SPEF) + ingest",
-            "F4 ingest gold + candidate write_pg_spice + Solver A restamp + static IR — gold unrestamped",
+            "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF + OpenRCX SPEF",
+            "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
+            "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; F3 WNS reorders remaining, no chip restart",
             "hierarchy chip→block→region→cone; attributed cells/region from hotspot",
             "Pareto per level — EHVI acquires, it does not replace the front",
-            "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · candidate PDN F4",
+            "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · MF PDN solver residual",
         ],
         "not": [
             "flattened black-box of all knobs",
             "neural voltage map as sign-off",
-            "automatic P&R launch from the controller (F5 GAP)",
+            "make finish launched from the controller (F5-lite is not CTS/signoff)",
             "LLM as the optimizer (proposer-only; DSE_LLM_URL optional)",
+            "signal SPEF C mapped onto the PDN extract",
         ],
         "layers": adapter_status(),
         "budget_s": budget_s,
@@ -849,6 +966,16 @@ def run_controller(
             for c in mem.all()
             if (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok"
         ),
+        "n_f3_spef": sum(
+            1
+            for c in mem.all()
+            if (c.knobs or {}).get("source") == "f3_opensta_spef" and c.status == "ok"
+        ),
+        "n_f5": sum(
+            1
+            for c in mem.by_level("routing")
+            if (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+        ),
         "n_f2_grt": sum(
             1
             for c in mem.by_level("routing")
@@ -860,10 +987,16 @@ def run_controller(
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_candidate_extract" and c.status == "ok"
         ),
+        "n_f4_amg": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_solver_amg" and c.status == "ok"
+        ),
         "n_f4_solve": sum(
             1
             for c in mem.by_level("pdn")
-            if (c.knobs or {}).get("source") in ("f4_solver_a", "f4_iscale", "f4_candidate_extract")
+            if (c.knobs or {}).get("source")
+            in ("f4_solver_a", "f4_iscale", "f4_candidate_extract", "f4_solver_amg")
         ),
         "memory": str(mem_path),
         "surrogate_f0": pred,
@@ -960,8 +1093,16 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     if timed:
         timed.sort(key=lambda t: t[1])
         wns = f" · best ideal WNS {-timed[0][1]:+.3f} ns ({timed[0][0]})"
+    f5 = ""
+    for c in mem.all():
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f5_openroad_drt_rcx":
+            continue
+        w = (c.artifacts or {}).get("wns_ns")
+        if w is not None:
+            f5 = f" · F5 SPEF WNS {float(w):+.3f} ns"
+            break
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{wns} · IR cone {mods}{ir}"
+        f"best mapped area {best}{wns}{f5} · IR cone {mods}{ir}"
     )

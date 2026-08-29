@@ -7,9 +7,12 @@ not required — NLDM delay is enough for WNS ranking.
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -20,6 +23,7 @@ LIB = (
     / "tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 )
 SDC = REPO / "tools/OpenROAD-flow-scripts/flow/designs/nangate45/gcd/constraint.sdc"
+EXPORT_ARRIVALS = REPO / "learn" / "scripts" / "export_sta_arrivals.py"
 
 _WNS = re.compile(r"wns max\s+(-?[0-9.]+)")
 _TNS = re.compile(r"tns max\s+(-?[0-9.]+)")
@@ -122,3 +126,56 @@ puts DSE_STA_OK
         ),
         "cost_s": time.time() - t0,
     }
+
+
+def export_arrivals(
+    verilog: Path,
+    dest: Path,
+    *,
+    spef: Path | None = None,
+    timeout_s: float = 60.0,
+) -> dict:
+    """OpenSTA report_arrival on the candidate. t50 teacher — not a VCD→ITerm map."""
+    if not available() or not EXPORT_ARRIVALS.is_file():
+        return {"status": "GAP", "reason": "opensta or export_sta_arrivals missing", "via": "opensta_arrivals"}
+    verilog = Path(verilog)
+    dest = Path(dest)
+    if not verilog.is_file():
+        return {"status": "fail", "reason": f"missing {verilog}", "via": "opensta_arrivals"}
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    env = os.environ.copy()
+    env["STA_LIB"] = str(LIB)
+    env["STA_V"] = str(verilog)
+    env["STA_SDC"] = str(SDC)
+    env["STA_OUT"] = str(dest)
+    if spef and Path(spef).is_file():
+        env["STA_SPEF"] = str(spef)
+    else:
+        env.pop("STA_SPEF", None)
+    t0 = time.time()
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(EXPORT_ARRIVALS)],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "fail",
+            "reason": f"arrivals timeout {timeout_s}s",
+            "via": "opensta_arrivals",
+            "cost_s": time.time() - t0,
+        }
+    if not dest.is_file():
+        err = ((proc.stderr or "") + (proc.stdout or ""))[-300:]
+        return {"status": "fail", "reason": err or "arrivals_failed", "via": "opensta_arrivals"}
+    try:
+        blob = json.loads(dest.read_text())
+    except json.JSONDecodeError:
+        return {"status": "fail", "reason": "arrivals json", "via": "opensta_arrivals"}
+    blob["status"] = "ok" if blob.get("n_inst") else "fail"
+    blob["cost_s"] = time.time() - t0
+    blob.setdefault("via", "opensta_arrivals — t50 from report_arrival, not VCD")
+    return blob

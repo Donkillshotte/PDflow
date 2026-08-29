@@ -14,13 +14,15 @@ RTL
  → F2-fast netgraph (baricentro ancorato + HPWL + RUDY)
  → F2 OpenROAD GPL -skip_io (un colpo a budget, non finish)
  → F3 OpenSTA sul *candidato* (ideale; path gerarchici `dpath/sub/…` sul cono), **interleaved** dopo ogni F1
- → F2 routing: place_pins + GPL + global_route + `write_sdf` (non detailed route, non SPEF)
- → F3 OpenSTA + SDF GRT (stesso `mapped.v` del GRT — non OpenRCX / F5)
+ → F2 routing: place_pins + GPL + global_route + `write_sdf` (non SPEF)
+ → F3 OpenSTA + SDF GRT (stesso `mapped.v` del GRT — non OpenRCX)
+ → F5-lite: `detailed_route` (2 iter, no CTS) + OpenRCX + OpenSTA `read_spef`
+ → F3 OpenSTA + SPEF OpenRCX (stesso SPEF, senza un secondo DRT)
  → F2 catalogo fisico: un punto AutoDMP (util/densità) misurato con GPL, non solo proxy RUDY
  → F2 ingest place / GRT del layout corrente
  → F3 ingest STA signoff
- → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen)
- → F4 restamp Solver A (knobs PDN / I(t)×power / **static IR**) sullo extract nominato
+ → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen) + `report_arrival`
+ → F4 restamp DirectLU / SA-AMG (knobs PDN / I(t)×power / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle → modulo RTL (dpath/ctrl)
  → surrogato F0 (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 solo se accoppiato)
@@ -36,8 +38,8 @@ RTL
 | **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+**EHVI(area,WNS)** / EI · insert |
 | **synthesis** | `ABC_AREA` ORFS | catalogo F0 (non mescolato alle ops ABC) |
 | **physical** | util, densità, netlist del candidato | F0 proxy + F2-fast + **GPL** + **catalogo GPL** + ingest — non lancia finish |
-| **routing** | GRT dopo place_pins | READY F2 budgetato — non detailed route / F5 |
-| **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato | ingest gold + **extract `write_pg_spice`** + Solver A (non gold) |
+| **routing** | GRT dopo place_pins + F5-lite DRT/OpenRCX | READY F2 GRT + F5-lite SPEF — non `make finish`, clock ideale |
+| **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato, solver MF | ingest gold + **extract `write_pg_spice`** + DirectLU/AMG (non gold) |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
 
@@ -48,9 +50,9 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F0 | SSK-GP area ± std; congestion RUDY-class; skip F1 se l’ottimista è già peggiore | READY — **non** è IR |
 | F1 | Yosys synth + ABC (script *file* ending with `map`) + `equiv_*` + `write_verilog -noexpr` | READY · chip flatten-first **o** cone-local ABC (`cone=dpath`) |
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` · GRT+SDF | READY (GPL/GRT budgetati) |
-| F3 | OpenSTA ideale (hier sul cono) + OpenSTA+SDF GRT + ingest signoff | READY — **non** è SPEF/OpenRCX |
-| F4 | Dynamic IR/EM (libdpn A) + static IR sullo stesso extract | ingest gold + **extract candidato** + restamp (decap/I-scale/EM J/static) — **non** sostituisce il gold 45.298 |
-| F5 | P&R signoff | GAP: il controller non lancia finish |
+| F3 | OpenSTA ideale (hier sul cono) + OpenSTA+SDF GRT + OpenSTA+SPEF OpenRCX + ingest | READY — SPEF è F5-lite, non signoff CTS |
+| F4 | Dynamic IR/EM (libdpn A/B) + static IR sullo stesso extract | ingest gold + **extract candidato** + arrivals + restamp DirectLU/AMG — **non** sostituisce il gold 45.298 |
+| F5 | DRT + OpenRCX SPEF + OpenSTA `read_spef` | READY F5-lite (`droute_end_iter=2`, no CTS) — il controller **non** lancia `make finish` |
 
 F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.
 La congestion F2-fast è `rudy_excess/(1+rudy_excess)` ∈ [0,1) — non è l’overflow GRT.
@@ -102,8 +104,10 @@ livello physical. I knobs ABC e `coreUtilization` restano fingerprint distinti.
 ## Layer sostituibili
 
 `learn/dse/layers.py` registra extraction / power / activity / current / DSE /
-surrogate / solver / physical_fast / physical_gpl. Extraction è
-`write_pg_spice` sul candidato legalizzato **oppure** ingest del finish.
+surrogate / solver / physical_fast / physical_gpl / routing / timing.
+Extraction è `write_pg_spice` sul candidato legalizzato **oppure** ingest del finish.
+Activity è OpenSTA `report_arrival` sul candidato (t50), non una mappa RTL→ITerm inventata.
+Solver è `make_solver(direct|amg|bicg|ras)` — AMG è residuo MF, non il gold.
 Il gold GCD 45.298 mV non si ristampa. EM J è `em_thermal_snapshot` su V_worst.
 
 ## Comandi

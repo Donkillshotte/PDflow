@@ -1,10 +1,11 @@
-"""Budgeted OpenROAD GPL / GRT / candidate PDN extract.
+"""Budgeted OpenROAD GPL / GRT / F5-lite DRT+OpenRCX / candidate PDN extract.
 
 GPL: `global_placement -skip_io` → HPWL (µm) + overflow.
 GRT: `place_pins` + GPL + `global_route` + `estimate_parasitics` → WNS/power.
+F5-lite: legalize + GRT + `detailed_route` + OpenRCX `extract_parasitics`
+  + `write_spef` — not `make finish`, clock stays ideal (no CTS).
 PDN extract: `place_pins` + tapcell + pdngen + GPL + `detailed_placement`
   + `write_pg_spice` — a *new* R-graph, not the finish mesh, not gold.
-No CTS, no detailed route, no finish, not Dynamic IR by itself.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ LIB = PLATFORM / "lib/NangateOpenCellLibrary_typical.lib"
 TRACKS = PLATFORM / "make_tracks.tcl"
 SETRC = PLATFORM / "setRC.tcl"
 PDN_TCL = PLATFORM / "grid_strategy-M1-M4-M7.tcl"
+RCX_RULES = PLATFORM / "rcx_patterns.rules"
 SDC = REPO / "tools/OpenROAD-flow-scripts/flow/designs/nangate45/gcd/constraint.sdc"
 EXPORT_INSTS = REPO / "learn" / "scripts" / "export_odb_inst_power.py"
 SITE = "FreePDK45_38x28_10R_NP_162NW_34O"
@@ -65,6 +67,10 @@ def available() -> bool:
 
 def extract_available() -> bool:
     return available() and PDN_TCL.is_file() and SDC.is_file() and EXPORT_INSTS.is_file()
+
+
+def f5_available() -> bool:
+    return available() and RCX_RULES.is_file() and SDC.is_file()
 
 
 def _spice_counts(path: Path) -> tuple[int, int]:
@@ -247,6 +253,117 @@ exit
         "n_iters": int(rows[-1][0]) if rows else 0,
         "sdf": str(sdf_tmp) if ok and sdf_tmp is not None and sdf_tmp.is_file() else None,
         "interconnect": "sdf_grt" if ok and sdf_tmp is not None and sdf_tmp.is_file() else "grt_inmem",
+    }
+
+
+def evaluate_f5_drt(
+    verilog: Path,
+    *,
+    top: str = "gcd",
+    util: float = 35.0,
+    density: float = 0.55,
+    timeout_s: float = 45.0,
+    spef_out: Path | None = None,
+    droute_end_iter: int = 2,
+) -> dict:
+    """Legalize + GRT + detailed_route + OpenRCX SPEF. Not make finish.
+
+    Clock stays ideal (no CTS). `droute_end_iter` is a budget cap, not signoff
+    convergence. Timing truth is OpenSTA `read_spef`, not OpenROAD report_wns.
+    """
+    if not f5_available():
+        return {"status": "GAP", "reason": "openroad/LEF/RCX rules missing", "via": "openroad_f5_drt"}
+    verilog = Path(verilog)
+    if not verilog.is_file():
+        return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_f5_drt"}
+    rc = f"source {SETRC}" if SETRC.is_file() else ""
+    spef_tmp = Path(spef_out) if spef_out is not None else None
+    if spef_tmp is not None:
+        spef_tmp.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        spef_tmp = Path(tempfile.mkdtemp(prefix="dse-f5-")) / "cand.spef"
+    tcl = f"""
+set_thread_count 1
+read_lef {TECH_LEF}
+read_lef {SC_LEF}
+read_liberty {LIB}
+read_verilog {verilog}
+link_design {top}
+read_sdc {SDC}
+initialize_floorplan -utilization {float(util)} -aspect_ratio 1.0 -core_space 2.0 -site {SITE}
+source {TRACKS}
+{rc}
+place_pins -hor_layers {IO_H} -ver_layers {IO_V}
+global_placement -density {float(density)}
+detailed_placement
+global_route
+detailed_route -droute_end_iter {int(droute_end_iter)} -verbose 1
+extract_parasitics -ext_model_file {RCX_RULES}
+write_spef {spef_tmp}
+report_wns
+report_tns
+report_power
+puts STA_PATH_BEGIN
+report_checks -path_delay max -fields {{input_pin}} -digits 4 -format full -group_path_count 1
+puts STA_PATH_END
+puts DSE_F5_OK
+exit
+"""
+    t0 = time.time()
+    with tempfile.TemporaryDirectory(prefix="dse-f5-") as tmp:
+        script = Path(tmp) / "f5.tcl"
+        script.write_text(tcl)
+        try:
+            proc = subprocess.run(
+                ["openroad", "-exit", "-no_init", str(script)],
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "fail",
+                "reason": f"F5 DRT/RCX timeout {timeout_s}s",
+                "via": "openroad_f5_drt",
+                "cost_s": time.time() - t0,
+            }
+        log = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    wns = _WNS.search(log)
+    tns = _TNS.search(log)
+    pwr = _PWR.search(log)
+    start = _START.search(log)
+    end = _END.search(log)
+    gwl = _GRT_WL.search(log)
+    gov = _GRT_OV.search(log)
+    ok = "DSE_F5_OK" in log and proc.returncode == 0 and spef_tmp.is_file()
+    err = next((ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR")), "")
+    segs = None
+    mseg = re.search(r"Final (\d+) rc segments", log)
+    if mseg:
+        segs = int(mseg.group(1))
+    return {
+        "status": "ok" if ok else "fail",
+        "reason": None if ok else (err or "f5_drt_rcx_failed"),
+        "spef": str(spef_tmp) if ok else None,
+        "spef_bytes": spef_tmp.stat().st_size if ok else 0,
+        "n_rc_segments": segs,
+        "wns_or_ns": float(wns.group(1)) if wns else None,
+        "tns_or_ns": float(tns.group(1)) if tns else None,
+        "power_or_w": float(pwr.group(1)) if pwr else None,
+        "path_start": start.group(1) if start else None,
+        "path_end": end.group(1) if end else None,
+        "grt_wl": float(gwl.group(1)) if gwl else None,
+        "grt_overflow": float(gov.group(6)) if gov else None,
+        "util": float(util),
+        "density": float(density),
+        "droute_end_iter": int(droute_end_iter),
+        "clock": "ideal",
+        "interconnect": "spef_openrcx" if ok else "none",
+        "via": (
+            "openroad detailed_route+OpenRCX write_spef — F5-lite, not make finish, "
+            "clock ideal (no CTS); OpenSTA read_spef is the timing oracle"
+        ),
+        "cost_s": time.time() - t0,
     }
 
 
