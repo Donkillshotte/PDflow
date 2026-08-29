@@ -273,6 +273,7 @@ assert r["platform"]["product_tiers"]["FAST"]["status"] == "READY"
 assert r["platform"]["network_levels"]["N2_RC"]["status"] == "READY"
 assert r["solver_b"]["ok"] is True
 assert r["solver_b"]["abs_err_vs_A_mv"] < 5.0
+assert r["solver_b"].get("backend") in (None, "native", "python")
 assert "windows" in r["sim_levels"]["L3_windowed"]
 g = r.get("ngspice_gold")
 assert g is None or g.get("ok") is True, g

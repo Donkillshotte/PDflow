@@ -43,7 +43,7 @@ Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A
 | Solver | Ruolo | GCD |
 |---|---|---|
 | **A** direct BE + LU | golden | READY (~3 ms setup, più veloce a 4k nodi) |
-| **B** SA-AMG + CG | workhorse (scala verso milioni di nodi) | READY · 5 livelli · \|A−B\| ≪ 1 mV |
+| **B** SA-AMG + CG in `libdpn` | workhorse | READY · 5 livelli · \|A−B\| ≪ 1 mV · nativo |
 | **C** shared PDN | stessa A, tanti `I(t)` | PARTIAL — non ODE Krylov/MOR |
 
 | Rete | Equazione | GCD |

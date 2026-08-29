@@ -212,6 +212,12 @@ rg -q 'id: "pkg"' "${ROOT}/studio/src/components/flowlab/phases.ts" && ok "FlowL
 python3 -m py_compile "${ROOT}/learn/scripts/spice_to_pdn.py" && ok "spice_to_pdn compile" || bad "spice_to_pdn compile"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic compile" || bad "pdn_dynamic compile"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_solvers.py" && ok "pdn_solvers compile" || bad "pdn_solvers compile"
+if "${ROOT}/learn/scripts/build_dpn_engine.sh" >/tmp/dpn-engine-build.log 2>&1; then
+  ok "libdpn build + dpn_test"
+else
+  bad "libdpn build"
+  tail -20 /tmp/dpn-engine-build.log || true
+fi
 if PYTHONPATH=/usr/lib/python3/dist-packages:"${ROOT}/learn/scripts" python3 - <<'PY'
 from scipy import sparse
 import numpy as np
@@ -224,9 +230,10 @@ B=SAAMG(A)
 xb=B.solve(b)
 assert B.n_levels>=2
 assert float(np.max(np.abs(xa-xb)))<1e-6
-print("amg poisson ok", B.n_levels)
+print("amg poisson ok", B.n_levels, getattr(B, "backend", "?"))
+assert getattr(B, "backend", "") == "native"
 PY
-then ok "SA-AMG vs LU poisson"; else bad "SA-AMG poisson"; fi
+then ok "SA-AMG vs LU poisson (native)"; else bad "SA-AMG poisson"; fi
 rg -q 'vyges_em_ir' "${ROOT}/studio/src/lib/run.ts" && ok "studio vyges_em_ir action" || bad "studio senza vyges_em_ir"
 rg -q 'dynamic_ir' "${ROOT}/studio/src/lib/run.ts" && ok "studio dynamic_ir action" || bad "studio senza dynamic_ir"
 rg -F -q 'image/svg+xml' "${ROOT}/studio/src/app/api/content/route.ts" && ok "content SVG mime" || bad "content senza SVG"

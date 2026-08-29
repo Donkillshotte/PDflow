@@ -40,6 +40,11 @@ STAMP="${RES}/.dynamic_ir.ok"
 mkdir -p "${OUT_DIR}" "${RES}/pdn"
 : > "${LOG}"
 
+if [[ ! -f "${ROOT}/engine/build/libdpn.so" ]]; then
+  echo "=== build libdpn ===" | tee -a "${LOG}"
+  "${ROOT}/learn/scripts/build_dpn_engine.sh" 2>&1 | tee -a "${LOG}"
+fi
+
 if [[ ! -f "${INSTS}" ]]; then
   echo "=== export inst_power_map ===" | tee -a "${LOG}"
   openroad -python -no_init -exit \

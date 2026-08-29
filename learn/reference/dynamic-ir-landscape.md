@@ -16,7 +16,7 @@ Questa slice **implementa** SA-AMG (Solver B) e il riuso dell’operatore PDN tr
 | Liberty CCS/ECSM + VCD/FSDB + STA | domanda di corrente vera | GAP (NLDM + t50 sintetici) |
 | Scenario / window engine | non simulare 100k cicli | PARTIAL (`I_tot(t)` di questo run) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
-| **Solver B** SA-AMG + CG | workhorse | **READY** (5 livelli sul GCD, \|A−B\| ≪ 1 mV; LU è più veloce a 4k nodi) |
+| **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
 | **Solver C** shared PDN (non Krylov ODE) | riuso tra scenari | **PARTIAL** — stessa \(A=G+C/\Delta t\), tre `I(t)` |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
@@ -154,4 +154,4 @@ B  Cosa fa la PDN?              READY   (Solver A gold + Solver B SA-AMG)
 
 Riferimenti concettuali (non dipendenze): ESPSim, MATEX, Raptor, Ginkgo, Xyce.
 
-Come lanciare lo slice: [dynamic-ir.md](./dynamic-ir.md).
+Performance-critical numerics live in `engine/` (`libdpn.so`, Eigen SparseLU + SA-AMG). Python orchestrates extraction and I(t).

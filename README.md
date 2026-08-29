@@ -73,6 +73,7 @@ Interfaccia web enterprise: lezioni con gate di completamento, console SSE
 **FlowLab** (`/flusso`: RTL editabile → parametri → GDSII),
 **Ctrl+K** (dashboard / run / OpenROAD Qt / web viewer), materiali.
 Azioni analisi OSS: `vectorless`, `vyges_em_ir`, `dynamic_ir`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `tool_matrix`.
+Solver nativi: `engine/` (`libdpn.so`, LU + SA-AMG). Build: `./learn/scripts/build_dpn_engine.sh`.
 Dettagli: [studio/README.md](studio/README.md) (FlowLab, API, troubleshooting).
 Smoke: `./scripts/test_all_phases.sh` (esaustivo), `./scripts/test_studio_api.sh`, `./scripts/test_course.sh`.
 

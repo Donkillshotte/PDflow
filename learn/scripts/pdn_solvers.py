@@ -13,8 +13,11 @@ SA plus damped Jacobi, coarse LU when n is small.
 
 from __future__ import annotations
 
+import ctypes
+import os
 import sys
 import time
+from pathlib import Path
 
 if "/usr/lib/python3/dist-packages" not in sys.path:
     sys.path.insert(0, "/usr/lib/python3/dist-packages")
@@ -22,6 +25,123 @@ if "/usr/lib/python3/dist-packages" not in sys.path:
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import LinearOperator, cg, splu
+
+_LIB = None
+_LIB_TRIED = False
+
+
+def _libdpn():
+    """Load engine/build/libdpn.so if present. Never raises."""
+    global _LIB, _LIB_TRIED
+    if _LIB_TRIED:
+        return _LIB
+    _LIB_TRIED = True
+    if os.environ.get("DPN_NATIVE", "1") in ("0", "false", "no"):
+        return None
+    root = Path(__file__).resolve().parents[2]
+    path = root / "engine" / "build" / "libdpn.so"
+    if not path.is_file():
+        return None
+    lib = ctypes.CDLL(str(path))
+    lib.dpn_setup.restype = ctypes.c_void_p
+    lib.dpn_setup.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+    ]
+    lib.dpn_solve.restype = ctypes.c_int
+    lib.dpn_solve.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+    ]
+    lib.dpn_n.restype = ctypes.c_int
+    lib.dpn_n.argtypes = [ctypes.c_void_p]
+    lib.dpn_n_levels.restype = ctypes.c_int
+    lib.dpn_n_levels.argtypes = [ctypes.c_void_p]
+    lib.dpn_setup_s.restype = ctypes.c_double
+    lib.dpn_setup_s.argtypes = [ctypes.c_void_p]
+    lib.dpn_name.restype = ctypes.c_char_p
+    lib.dpn_name.argtypes = [ctypes.c_void_p]
+    lib.dpn_free.argtypes = [ctypes.c_void_p]
+    _LIB = lib
+    return _LIB
+
+
+class NativeSolver:
+    """C API wrapper. Same surface as PyDirectLU / PySAAMG."""
+
+    def __init__(self, A, kind: int, lib):
+        Ac = A.tocsr()
+        n = int(Ac.shape[0])
+        nnz = int(Ac.nnz)
+        rp = np.ascontiguousarray(Ac.indptr, dtype=np.int32)
+        ci = np.ascontiguousarray(Ac.indices, dtype=np.int32)
+        va = np.ascontiguousarray(Ac.data, dtype=np.float64)
+        if int(rp[-1]) != nnz:
+            raise ValueError("CSR nnz mismatch")
+        h = lib.dpn_setup(
+            kind,
+            n,
+            nnz,
+            rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        )
+        if not h:
+            raise RuntimeError("dpn_setup failed")
+        self._lib = lib
+        self._h = h
+        self.n = n
+        self.setup_s = float(lib.dpn_setup_s(h))
+        self.n_levels = int(lib.dpn_n_levels(h))
+        raw = lib.dpn_name(h)
+        self.name = raw.decode() if raw else ("B_sa_amg" if kind else "A_direct_be")
+        self.last_iters = 0
+        self.backend = "native"
+
+    def solve(self, b: np.ndarray, x0: np.ndarray | None = None) -> np.ndarray:
+        b = np.ascontiguousarray(b, dtype=np.float64)
+        x = np.zeros(self.n, dtype=np.float64)
+        x0p = None
+        x0a = None
+        if x0 is not None:
+            x0a = np.ascontiguousarray(x0, dtype=np.float64)
+            x0p = x0a.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        rel = ctypes.c_double(0.0)
+        rc = self._lib.dpn_solve(
+            self._h,
+            b.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            x.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            x0p,
+            ctypes.byref(rel),
+        )
+        if rc != 0:
+            raise RuntimeError(f"dpn_solve rc={rc}")
+        return x
+
+    def __del__(self):
+        h = getattr(self, "_h", None)
+        lib = getattr(self, "_lib", None)
+        if h and lib:
+            lib.dpn_free(h)
+            self._h = None
+
+
+def _native(A, kind: int):
+    lib = _libdpn()
+    if lib is None:
+        return None
+    try:
+        return NativeSolver(A, kind, lib)
+    except Exception as exc:
+        print(f"libdpn unavailable ({exc}); using SciPy fallback", file=sys.stderr)
+        return None
 
 COARSE_N = 64
 THETA = 0.25
@@ -116,7 +236,7 @@ def smooth_prolongation(A, P, omega: float = SMOOTH_OMEGA) -> sparse.csr_matrix:
     return Ps
 
 
-class DirectLU:
+class PyDirectLU:
     name = "A_direct_be"
 
     def __init__(self, A):
@@ -126,12 +246,13 @@ class DirectLU:
         self.setup_s = time.perf_counter() - t0
         self.last_iters = 1
         self.n = A.shape[0]
+        self.backend = "python"
 
     def solve(self, b: np.ndarray, x0: np.ndarray | None = None) -> np.ndarray:
         return self.lu.solve(np.asarray(b, dtype=np.float64))
 
 
-class SAAMG:
+class PySAAMG:
     """Smoothed-aggregation AMG; CG on the fine grid, LU on the coarsest."""
 
     name = "B_sa_amg"
@@ -157,6 +278,7 @@ class SAAMG:
         self.setup_s = time.perf_counter() - t0
         self.last_iters = 0
         self.n_levels = len(self.levels) + 1
+        self.backend = "python"
 
     def _vcycle(self, b: np.ndarray, x: np.ndarray, depth: int = 0) -> np.ndarray:
         if depth >= len(self.levels):
@@ -188,6 +310,18 @@ class SAAMG:
                 x = self._vcycle(b, x)
         self.last_iters = 64 if info > 0 else (0 if info < 0 else 8)
         return x
+
+
+def DirectLU(A):
+    n = _native(A, 0)
+    return n if n is not None else PyDirectLU(A)
+
+
+def SAAMG(A, coarse_n: int = COARSE_N):
+    n = _native(A, 1)
+    if n is not None:
+        return n
+    return PySAAMG(A, coarse_n=coarse_n)
 
 
 def make_solver(A, kind: str):

@@ -14,6 +14,7 @@ type Amg = {
   worst_droop_mv?: number;
   abs_err_vs_A_mv?: number;
   n_levels?: number;
+  backend?: string;
 };
 type DynReport = {
   ok?: boolean;
@@ -196,6 +197,7 @@ export function DynamicIrHeatmap({
                     ? "< 1 µV"
                     : `${(amg.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
                   {amg.n_levels != null ? ` · L${amg.n_levels}` : ""}
+                  {amg.backend ? ` · ${amg.backend}` : ""}
                 </dd>
               </div>
             )}

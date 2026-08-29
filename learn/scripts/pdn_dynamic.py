@@ -319,7 +319,7 @@ def platform_block(
     fast = "READY" if b_status == "READY" else "PARTIAL"
     return {
         "name": "hierarchical multi-fidelity power-integrity engine",
-        "slice": "OpenROAD frontend + triangle I(t) + Solver A gold + Solver B SA-AMG",
+        "slice": "native libdpn (A LU + B SA-AMG) + OpenROAD frontend + triangle I(t)",
         "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
         "do_not_implement_this_slice": [
             "Liberty CCS/ECSM I(t) tables",
@@ -750,6 +750,8 @@ def main() -> int:
             "step_s": dyn_b["solver_step_s"],
             "lu_setup_s": solver_a.setup_s,
             "lu_step_s": dyn["solver_step_s"],
+            "backend": getattr(solver_b, "backend", "python"),
+            "lu_backend": getattr(solver_a, "backend", "python"),
         }
         dyn_b.pop("V_worst", None)
         dyn["amg"] = {k: v for k, v in dyn_b.items() if not k.startswith("wave_") and k != "V_worst"}

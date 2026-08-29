@@ -12,3 +12,6 @@ studio/out/
 # Artefatti temporanei
 *.log
 terminals/
+
+# Native solver build
+engine/build/
