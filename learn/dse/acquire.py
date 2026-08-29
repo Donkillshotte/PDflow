@@ -376,6 +376,65 @@ def should_pay_f4_scale(
     )
 
 
+def should_pay_f4_scale_win(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_scale: int = 0,
+    scale_max: int = 1,
+    min_s: float = 8.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """Re-scale I(t) on the winning host PDN point after host IR-steer. Not the first I-scale."""
+    if n_scale >= scale_max:
+        return False, "winning-host I-scale shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover winning-host I-scale"
+    from .active import iscale_parent, winning_host_pdn
+    from .f4_oracle import available
+
+    first = next(
+        (
+            c
+            for c in reversed(list(mem.by_level("pdn")))
+            if c.status == "ok" and (c.knobs or {}).get("source") == "f4_iscale"
+        ),
+        None,
+    )
+    if first is None:
+        return False, "no first I-scale to compare a winning host mesh against"
+    win = winning_host_pdn(mem)
+    if win is None:
+        return False, "no host extract / host-IR-steer point to re-scale"
+    eid = str((win.knobs or {}).get("extract_id") or win.id)
+    first_eid = str((first.knobs or {}).get("extract_id") or "")
+    same_mesh = eid == first_eid
+    same_knob = (
+        abs(float((win.knobs or {}).get("c_decap") or 50e-15) - float((first.knobs or {}).get("c_decap") or 50e-15))
+        < 1e-16
+        and abs(float((win.knobs or {}).get("pkg_l") or 2e-10) - float((first.knobs or {}).get("pkg_l") or 2e-10))
+        < 1e-16
+    )
+    if same_mesh and same_knob:
+        return False, "winning host PDN is already the first I-scale mesh"
+    if not extract_on_disk(mem, eid) and not available(variant):
+        return False, "winning host extract is not on disk"
+    host = iscale_parent(mem)
+    if host is None and not (first.knobs or {}).get("parent_id"):
+        return False, "first I-scale host is missing"
+    have = any(
+        (c.knobs or {}).get("source") == "f4_iscale_win" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    )
+    if have:
+        return False, "winning-host I-scale already measured"
+    src = (win.knobs or {}).get("name") or (win.attr or {}).get("via") or (win.knobs or {}).get("source")
+    return True, (
+        f"I(t)×P_F3/P_base of the attributed host on winning {src} "
+        f"{float(win.qor.dynamic_ir_mv):.3f} mV — not the unconstrained I-scale, not VCD"
+    )
+
+
 def latest_host_arrivals(mem: DesignMemory) -> dict | None:
     """Most recent report_arrival JSON on an attributed host. Not extract STA."""
     from pathlib import Path
@@ -1276,6 +1335,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "f4_host_region_extract",
         "ir_steer",
         "host_ir_steer",
+        "f4_scale_win",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):

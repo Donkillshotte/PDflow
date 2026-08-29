@@ -67,10 +67,13 @@ from .acquire import (
     local_hosts,
     should_pay_f4_pdn,
     should_pay_f4_scale,
+    should_pay_f4_scale_win,
     should_pay_physical_catalog,
 )
 from .active import (
     iscale_host,
+    iscale_parent,
+    winning_host_pdn,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -1793,6 +1796,65 @@ def run_controller(
             reason=steer_hir.get("reason"),
         )
 
+    n_sw = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_iscale_win" and c.status == "ok"
+    )
+    pay_sw, why_sw = should_pay_f4_scale_win(
+        mem, budget_left=t_end - time.time(), n_scale=n_sw, variant=variant
+    )
+    step("acquire", fidelity="F4_ISCALE_WIN", pay=pay_sw, why=why_sw)
+    if any(s["level"] == "f4_scale_win" for s in plan["steps"]) and pay_sw and time.time() < t_end:
+        base_p_w = None
+        for c in mem.by_level("logic"):
+            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
+                _w, p = timing_of(mem, c)
+                if p:
+                    base_p_w = p
+                    break
+        pick_w = iscale_parent(mem)
+        win = winning_host_pdn(mem)
+        eid_w = str((win.knobs or {}).get("extract_id") or win.id) if win else ""
+        hit_w = extract_on_disk(mem, eid_w) if eid_w else None
+        if pick_w and base_p_w and win and hit_w:
+            arr_w = latest_host_arrivals(mem)
+            child = evaluate_f4_scale(
+                pick_w,
+                mem,
+                variant=variant,
+                design_id=design_id,
+                baseline_power_w=base_p_w,
+                pkg_r=float((win.knobs or {}).get("pkg_r") or 0.05),
+                pkg_l=float((win.knobs or {}).get("pkg_l") or 2e-10),
+                c_decap=float((win.knobs or {}).get("c_decap") or 50e-15),
+                spice=hit_w["spice"],
+                insts=hit_w["insts"],
+                extract_id=eid_w,
+                sta=arr_w["sta"] if arr_w else hit_w.get("sta"),
+                sta_via="f4_host_arrivals" if arr_w else "f4_iscale_win",
+                source="f4_iscale_win",
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_iscale_win",
+                    parent=pick_w.id,
+                    host_level=pick_w.level,
+                    host_source=(pick_w.knobs or {}).get("source") or pick_w.level,
+                    win_source=(win.knobs or {}).get("name") or (win.attr or {}).get("via"),
+                    i_scale=(child.knobs or {}).get("i_scale"),
+                    extract_id=eid_w,
+                    c_decap=(child.knobs or {}).get("c_decap"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    gold=False,
+                    status=child.status,
+                    reason=why_sw,
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -1831,6 +1893,7 @@ def run_controller(
             "F4 host-region extract: density cap on the host IR bin — not gold rXY on synth F1, not more ABC",
             "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
             "F4 host IR residual loop: winning family on the host-region mesh, then unused pkg L on the unconstrained host — not candidate IR-steer",
+            "F4 I-scale-win: I(t)×P of the attributed host on the winning host PDN point after host IR-steer — not the unconstrained first I-scale",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -1985,6 +2048,11 @@ def run_controller(
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_iscale" and c.status == "ok"
         ),
+        "n_f4_iscale_win": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_iscale_win" and c.status == "ok"
+        ),
         "n_host_arrivals": sum(
             1
             for c in mem.by_level("pdn")
@@ -1997,6 +2065,7 @@ def run_controller(
             in (
                 "f4_solver_a",
                 "f4_iscale",
+                "f4_iscale_win",
                 "f4_candidate_extract",
                 "f4_host_extract",
                 "f4_host_region_extract",
@@ -2250,6 +2319,19 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             via = (c.knobs or {}).get("sta_via")
             extra = f" sta={via}" if via else ""
             isc = f" · I-scale {host} ×{float(sc):.3f} {float(w):.3f} mV{extra}"
+        break
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_iscale_win":
+            continue
+        sc = (c.knobs or {}).get("i_scale")
+        host = (c.knobs or {}).get("parent_name") or (c.knobs or {}).get("host_source")
+        w = c.qor.dynamic_ir_mv
+        eid = (c.knobs or {}).get("extract_id")
+        if sc is not None and w is not None:
+            isc += (
+                f" · I-scale-win {host} ×{float(sc):.3f} {float(w):.3f} mV "
+                f"on {eid}"
+            )
         break
     arrs = ""
     for c in mem.by_level("pdn"):

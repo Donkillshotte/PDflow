@@ -30,7 +30,8 @@ ADAPTERS: dict[str, dict] = {
         "via": "ingest + F3 power scale",
         "note": (
             "triangle I(t) on named extract; amplitude × P_F3/P_base of the "
-            "attributed host; t50 from host report_arrival when paid — "
+            "attributed host; first shot on unconstrained host mesh, then "
+            "winning host PDN after host IR-steer; t50 from host report_arrival — "
             "no invented RTL→ITerm map"
         ),
     },

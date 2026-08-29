@@ -342,6 +342,17 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "region",
         }
     )
+    steps.append(
+        {
+            "level": "f4_scale_win",
+            "reason": (
+                "I(t)×P_F3/P_base of the attributed host on the winning host PDN "
+                "point after host IR-steer — not the unconstrained first I-scale, "
+                "not a VCD remap"
+            ),
+            "scope": "region",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
@@ -399,6 +410,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             ingest = float(c.qor.dynamic_ir_mv)
         elif src in (
             "f4_iscale",
+            "f4_iscale_win",
             "f4_solver_a",
             "f4_candidate_extract",
             "f4_host_extract",

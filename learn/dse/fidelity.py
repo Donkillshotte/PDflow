@@ -280,11 +280,13 @@ def evaluate_f4_scale(
     extract_id: str = "finish",
     sta: Path | str | None = None,
     sta_via: str | None = None,
+    source: str = "f4_iscale",
 ) -> Candidate | None:
     """Named extract + PDN knobs; I(t) × (attributed host F3 power / baseline).
 
     Host is the hierarchical incumbent (port-steer / port-net / net / cell)
     when present — not a silent flatten to the synth WNS-winner. Not a VCD map.
+    source=f4_iscale_win restamps the winning host PDN point after host IR-steer.
     """
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
@@ -305,10 +307,12 @@ def evaluate_f4_scale(
         "parent_name": host,
         "host_level": parent.level,
         "host_source": parent.knobs.get("source") or parent.level,
-        "source": "f4_iscale",
+        "source": source,
         "extract_id": extract_id,
         "sta_via": sta_via or ("extract" if sta else "none"),
     }
+    if source == "f4_iscale_win":
+        knobs["name"] = f"iscale_win_{host}"
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
         return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
@@ -358,7 +362,9 @@ def evaluate_f4_scale(
         fidelity="F4",
         note=f"I(t)×{scale:.3f} on {extract_id} — not gold, not a new VCD map",
     )
-    if dyn.get("status") == "ok" and dyn.get("worst_droop_mv") is not None:
+    if source == "f4_iscale_win":
+        attr["via"] = "f4_iscale_win"
+    if dyn.get("status") == "ok" and dyn.get("worst_droop_mv") is not None and source == "f4_iscale":
         parent.qor.dynamic_ir_mv = float(dyn["worst_droop_mv"])
         if dyn.get("static_ir_mv") is not None:
             parent.qor.static_ir_mv = float(dyn["static_ir_mv"])

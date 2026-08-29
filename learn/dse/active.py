@@ -491,3 +491,35 @@ def iscale_host(mem: DesignMemory):
         if _ok(c):
             return c
     return None
+
+
+def iscale_parent(mem: DesignMemory):
+    """Host already used for the first I-scale shot. Not a new iscale_host pick."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_iscale":
+            continue
+        pid = (c.knobs or {}).get("parent_id")
+        if pid:
+            hit = mem.get(str(pid))
+            if hit:
+                return hit
+    return iscale_host(mem)
+
+
+def winning_host_pdn(mem: DesignMemory):
+    """Lowest 1× droop among host extract / host-region / host-IR-steer. Not gold."""
+    best = None
+    best_mv = None
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or c.qor.dynamic_ir_mv is None:
+            continue
+        src = (c.knobs or {}).get("source")
+        via = (c.attr or {}).get("via")
+        if src not in ("f4_host_extract", "f4_host_region_extract") and via != "active_f4_host_ir":
+            continue
+        if abs(float((c.knobs or {}).get("i_scale") or 1.0) - 1.0) > 1e-9:
+            continue
+        mv = float(c.qor.dynamic_ir_mv)
+        if best_mv is None or mv < best_mv:
+            best, best_mv = c, mv
+    return best

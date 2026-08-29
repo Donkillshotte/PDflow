@@ -354,6 +354,7 @@ def main() -> int:
     check(any(s["level"] == "port_steer" for s in planned["steps"]), "planner schedules F5-port residual steer")
     check(any(s["level"] == "ir_steer" for s in planned["steps"]), "planner schedules F4 IR residual steer")
     check(any(s["level"] == "host_ir_steer" for s in planned["steps"]), "planner schedules host IR residual steer")
+    check(any(s["level"] == "f4_scale_win" for s in planned["steps"]), "planner schedules winning-host I-scale")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -442,6 +443,7 @@ def main() -> int:
     check(next_fidelity(level="port_steer", pred=None, budget_left=20, cost_hint={}) == "F3", "F5-port residual steer measures at F3")
     check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
     check(next_fidelity(level="host_ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "host IR residual steer measures at F4")
+    check(next_fidelity(level="f4_scale_win", pred=None, budget_left=20, cost_hint={}) == "F4", "winning-host I-scale measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -490,6 +492,29 @@ def main() -> int:
             {"source": "f4_iscale", "parent_id": "synp", "host_source": "orfs_abc_script", "i_scale": 2.31},
         ),
         "I-scale of the port-steer host is not flattened into the synth I-scale fingerprint",
+    )
+    check(
+        knobs_fp(
+            "pdn",
+            {
+                "source": "f4_iscale_win",
+                "parent_id": "psteer",
+                "extract_id": "hreg",
+                "c_decap": 200e-15,
+                "i_scale": 4.21,
+            },
+        )
+        != knobs_fp(
+            "pdn",
+            {
+                "source": "f4_iscale",
+                "parent_id": "psteer",
+                "extract_id": "hex",
+                "c_decap": 50e-15,
+                "i_scale": 4.21,
+            },
+        ),
+        "winning-host I-scale is not flattened into the unconstrained I-scale fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1206,6 +1231,7 @@ def main() -> int:
         should_pay_ir_steer,
         should_pay_host_ir_steer,
         should_pay_f4_scale,
+        should_pay_f4_scale_win,
         should_pay_host_arrivals,
         should_pay_f4_host_extract,
         should_pay_f4_host_region,
@@ -2068,6 +2094,76 @@ def main() -> int:
     fake_cand["host_source"] = "f4_candidate_extract"
     pay_href, why_href = should_pay_host_ir_steer(mem_hr, budget_left=80, steer=fake_cand, n_steer=1)
     check(not pay_href, f"host IR-steer refuses a candidate extract ({why_href})")
+    from dse.active import winning_host_pdn
+
+    win0 = winning_host_pdn(mem_hr)
+    check(win0 is not None and win0.id == "hdecapr", f"winning host PDN is the host-region decap, got {win0}")
+    pay_sw0, why_sw0 = should_pay_f4_scale_win(mem_hr, budget_left=80, n_scale=0)
+    check(not pay_sw0, f"winning I-scale waits for the first I-scale ({why_sw0})")
+    mem_hr.add(
+        Candidate(
+            id="isc0",
+            design_id="gcd",
+            parent_id="psteer",
+            level="pdn",
+            knobs={
+                "source": "f4_iscale",
+                "parent_id": "psteer",
+                "extract_id": "hex",
+                "c_decap": 50e-15,
+                "pkg_l": 2e-10,
+                "i_scale": 4.21,
+            },
+            knobs_fp="isc0",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=42.436, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    pay_sw1, why_sw1 = should_pay_f4_scale_win(mem_hr, budget_left=80, n_scale=0)
+    check(pay_sw1, f"winning I-scale is paid when host-IR-steer mesh differs ({why_sw1})")
+    check("unconstrained" in why_sw1 or "winning" in why_sw1, f"winning I-scale names the residual ({why_sw1})")
+    pay_sw2, why_sw2 = should_pay_f4_scale_win(mem_hr, budget_left=80, n_scale=1)
+    check(not pay_sw2, f"winning I-scale is a single shot ({why_sw2})")
+    mem_same = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-sw-")) / "s.jsonl")
+    for cid, src, eid, mv, extra in (
+        (
+            "h",
+            "f4_host_extract",
+            "h",
+            10.07,
+            {"pkg_l": 2e-10, "c_decap": 50e-15, "i_scale": 1.0},
+        ),
+        (
+            "i",
+            "f4_iscale",
+            "h",
+            42.4,
+            {"parent_id": "psteer", "pkg_l": 2e-10, "c_decap": 50e-15, "i_scale": 4.21},
+        ),
+    ):
+        kn = {"source": src, "extract_id": eid, **extra}
+        mem_same.add(
+            Candidate(
+                id=cid,
+                design_id="gcd",
+                parent_id=None,
+                level="pdn",
+                knobs=kn,
+                knobs_fp=cid,
+                rtl_fp="x",
+                netlist_fp=None,
+                fidelity="F4",
+                qor=QoR(dynamic_ir_mv=mv, fidelity="F4"),
+                cost_s=0.1,
+                status="ok",
+            )
+        )
+    pay_same_m, why_same_m = should_pay_f4_scale_win(mem_same, budget_left=80, n_scale=0)
+    check(not pay_same_m, f"winning I-scale skips when the host mesh already is the I-scale ({why_same_m})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")
