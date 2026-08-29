@@ -9,7 +9,10 @@ from __future__ import annotations
 ADAPTERS: dict[str, dict] = {
     "extraction": {
         "via": "openroad write_pg_spice after place_pins+GPL+DP+pdngen, or ingest finish",
-        "note": "candidate mesh is not gold; finish gold 45.298 mV stays unrestamped",
+        "note": (
+            "candidate mesh is not gold; host extract is the attributed netlist "
+            "(not synth-only); finish gold 45.298 mV stays unrestamped"
+        ),
     },
     "power": {
         "via": "ingest",

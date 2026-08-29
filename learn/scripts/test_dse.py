@@ -363,6 +363,7 @@ def main() -> int:
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
     check(any(s["level"] == "f4_activity" for s in planned["steps"]), "planner schedules host report_arrival")
+    check(any(s["level"] == "f4_host_extract" for s in planned["steps"]), "planner schedules host write_pg_spice")
     check(any(s["level"] == "f4_scale" for s in planned["steps"]), "planner schedules attributed I-scale")
     check(
         "attributed host" in next(s["reason"] for s in planned["steps"] if s["level"] == "f4_scale"),
@@ -440,6 +441,7 @@ def main() -> int:
     check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
+    check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
@@ -489,6 +491,11 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
         != knobs_fp("pdn", {"source": "f4_iscale", "parent_id": "psteer", "host_source": "net_buffer_spef"}),
         "host arrivals knobs are not flattened into the I-scale fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_host_extract", "parent_id": "psteer"})
+        != knobs_fp("pdn", {"source": "f4_candidate_extract", "parent_id": "synp"}),
+        "host extract knobs are not flattened into the synth extract fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "finish"})
@@ -1174,6 +1181,7 @@ def main() -> int:
         should_pay_ir_steer,
         should_pay_f4_scale,
         should_pay_host_arrivals,
+        should_pay_f4_host_extract,
     )
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
@@ -1737,6 +1745,11 @@ def main() -> int:
     )
     hit = latest_host_arrivals(mem_is)
     check(hit is not None and hit.get("host_source") == "net_buffer_spef", f"latest host arrivals prefer the attributed JSON, got {hit}")
+    pay_he0, why_he0 = should_pay_f4_host_extract(mem_is, budget_left=80, n_extract=0)
+    check(pay_he0, f"host extract is paid on the attributed mapped host ({why_he0})")
+    check("net_buffer_spef" in why_he0, f"host extract acquire names the port-steer host ({why_he0})")
+    pay_he1, why_he1 = should_pay_f4_host_extract(mem_is, budget_left=80, n_extract=1)
+    check(not pay_he1, f"host extract is a single shot ({why_he1})")
     pay_is0, why_is0 = should_pay_f4_scale(mem_is, budget_left=80, n_scale=0)
     check(pay_is0, f"attributed I-scale is paid ({why_is0})")
     check("net_buffer_spef" in why_is0, f"acquire names the port-steer host ({why_is0})")

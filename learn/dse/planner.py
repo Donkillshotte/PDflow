@@ -291,6 +291,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "f4_host_extract",
+            "reason": (
+                "write_pg_spice on the attributed host netlist — host R-graph, "
+                "not the synth F1 extract, not gold"
+            ),
+            "scope": "net" if focus != "chip" else "chip",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_scale",
             "reason": (
                 "I(t)×P_F3/P_base of the attributed host (port-steer/port-net/net/cell, "
@@ -365,7 +375,13 @@ def _ir_rose(mem: DesignMemory) -> bool:
         src = (c.knobs or {}).get("source")
         if src == "ingest_pdn":
             ingest = float(c.qor.dynamic_ir_mv)
-        elif src in ("f4_iscale", "f4_solver_a", "f4_candidate_extract", "f4_region_extract"):
+        elif src in (
+            "f4_iscale",
+            "f4_solver_a",
+            "f4_candidate_extract",
+            "f4_host_extract",
+            "f4_region_extract",
+        ):
             v = float(c.qor.dynamic_ir_mv)
             cand = v if cand is None else max(cand, v)
     return ingest is not None and cand is not None and cand > ingest + 0.05

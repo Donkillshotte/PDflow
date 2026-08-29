@@ -30,6 +30,7 @@ RTL
  → F3 ingest STA signoff
  → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen) + `report_arrival`
  → F3 `report_arrival` sull’host attribuito (t50 per I(t), non lo STA dell’extract synth)
+ → F4 extract host (`write_pg_spice` sul netlist attribuito — mesh propria, non synth)
  → F4 restamp DirectLU / SA-AMG / RAS / Krylov-MOR (knobs PDN / I(t)×power dell’host attribuito / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle/net → modulo RTL (dpath/ctrl)

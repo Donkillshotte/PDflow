@@ -206,6 +206,48 @@ def should_pay_f4_extract(
     return True, "write_pg_spice on legalized GPL — new R-graph, not the finish mesh, not gold"
 
 
+def should_pay_f4_host_extract(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_extract: int = 0,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay write_pg_spice on the attributed host netlist. Not the synth F1 mesh."""
+    if n_extract >= extract_max:
+        return False, "host PDN extract already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover host write_pg_spice"
+    from pathlib import Path
+
+    from .active import iscale_host
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    host = iscale_host(mem)
+    if host is None:
+        return False, "no attributed host to extract a PDN from"
+    mapped = (host.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return False, "attributed host has no mapped netlist for write_pg_spice"
+    cand = latest_ok_extract(mem)
+    if cand and str(cand.get("parent_id") or "") == host.id:
+        return False, "host is already the candidate-extract parent"
+    have = {
+        (c.knobs or {}).get("parent_id")
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_host_extract" and c.status == "ok"
+    }
+    if host.id in have:
+        return False, "attributed host already has a write_pg_spice mesh"
+    host_src = (host.knobs or {}).get("source") or (host.knobs or {}).get("name") or host.level
+    return True, (
+        f"write_pg_spice on {host_src} — host R-graph, not the synth extract, not gold"
+    )
+
+
 def should_pay_f4_pdn(
     mem: DesignMemory,
     *,
@@ -1001,6 +1043,11 @@ def latest_ok_extract(mem: DesignMemory) -> dict | None:
     return _latest_extract(mem, source="f4_candidate_extract")
 
 
+def latest_ok_host_extract(mem: DesignMemory) -> dict | None:
+    """Most recent write_pg_spice of the attributed host netlist."""
+    return _latest_extract(mem, source="f4_host_extract")
+
+
 def latest_ok_region_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful IR-bin write_pg_spice (spice+insts on disk)."""
     return _latest_extract(mem, source="f4_region_extract")
@@ -1030,7 +1077,7 @@ def _latest_extract(mem: DesignMemory, *, source: str) -> dict | None:
 def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
     """Resolve spice+insts for a named extract (candidate or region)."""
     want = str(extract_id)
-    for src in ("f4_region_extract", "f4_candidate_extract"):
+    for src in ("f4_region_extract", "f4_candidate_extract", "f4_host_extract"):
         hit = _latest_extract(mem, source=src)
         if hit and str(hit["extract_id"]) == want:
             return hit
@@ -1042,7 +1089,11 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
             continue
         if str((c.knobs or {}).get("extract_id") or c.id) != want:
             continue
-        if (c.knobs or {}).get("source") not in ("f4_candidate_extract", "f4_region_extract"):
+        if (c.knobs or {}).get("source") not in (
+            "f4_candidate_extract",
+            "f4_region_extract",
+            "f4_host_extract",
+        ):
             continue
         art = c.artifacts or {}
         spice, insts = art.get("spice"), art.get("insts")
@@ -1098,7 +1149,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level in ("f4_activity", "f4_host_arrivals"):
         return "F3"
-    if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract", "ir_steer"):
+    if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract", "f4_host_extract", "ir_steer"):
         return "F4"
     if level in ("synthesis", "f1_synth"):
         return "F1"

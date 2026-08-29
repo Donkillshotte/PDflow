@@ -493,8 +493,14 @@ def evaluate_f4_extract(
     y_dbu: float | None = None,
     region: str | None = None,
     region_density: float | None = None,
+    kind: str = "candidate",
+    sta: Path | str | None = None,
 ) -> Candidate | None:
-    """New write_pg_spice after legalized place, then Solver A. Not finish, not gold."""
+    """New write_pg_spice after legalized place, then Solver A. Not finish, not gold.
+
+    kind=host extracts the attributed hierarchical netlist (port-steer/…).
+    That mesh is not the synth F1 extract and not gold.
+    """
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn
@@ -502,10 +508,11 @@ def evaluate_f4_extract(
     mapped = (parent.artifacts or {}).get("mapped_v")
     if not mapped or not Path(mapped).is_file():
         return None
+    host = parent.knobs.get("name") or parent.knobs.get("source") or parent.level
     knobs = {
         "source": "f4_candidate_extract",
         "parent_id": parent.id,
-        "parent_name": parent.knobs.get("name"),
+        "parent_name": host,
         "util": util,
         "density": density,
         "legalize": "detailed_placement",
@@ -513,8 +520,13 @@ def evaluate_f4_extract(
         "pkg_l": pkg_l,
         "c_decap": c_decap,
         "i_scale": 1.0,
-        "name": f"extract_{parent.knobs.get('name')}",
+        "name": f"extract_{host}",
     }
+    if kind == "host":
+        knobs["source"] = "f4_host_extract"
+        knobs["name"] = f"extract_host_{host}"
+        knobs["host_level"] = parent.level
+        knobs["host_source"] = parent.knobs.get("source") or parent.level
     if region or x_dbu is not None:
         knobs["source"] = "f4_region_extract"
         knobs["region"] = region
@@ -543,11 +555,15 @@ def evaluate_f4_extract(
     extract_cost = float(ext.get("cost_s") or 0.0)
     if ext.get("status") == "ok" and spice and insts:
         arr_dest = out_dir / "sta_arrivals.json"
-        arr = export_arrivals(Path(mapped), arr_dest)
-        sta_p = arr_dest if arr.get("status") == "ok" and arr_dest.is_file() else None
+        sta_p = Path(sta) if sta and Path(sta).is_file() else None
+        if sta_p is None:
+            arr = export_arrivals(Path(mapped), arr_dest)
+            sta_p = arr_dest if arr.get("status") == "ok" and arr_dest.is_file() else None
+            if sta_p:
+                ext["n_sta_inst"] = arr.get("n_inst")
         if sta_p:
             ext["sta_arrivals"] = str(sta_p)
-            ext["n_sta_inst"] = arr.get("n_inst")
+            ext["sta_via"] = "f4_host_arrivals" if sta else "extract"
         dyn = solve_f4(
             variant=variant,
             pkg_r=pkg_r,
@@ -580,9 +596,13 @@ def evaluate_f4_extract(
             "em": em,
         }
     )
-    attr["transform"] = parent.knobs.get("name")
+    attr["transform"] = host
     attr["inherited_from"] = parent.id
     attr["extract_id"] = cid
+    if kind == "host":
+        attr["via"] = "f4_host_extract"
+        attr["host_level"] = parent.level
+        attr["host_source"] = parent.knobs.get("source") or parent.level
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
@@ -595,7 +615,8 @@ def evaluate_f4_extract(
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4",
         note=(
-            f"candidate write_pg_spice n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')} "
+            f"{'host' if kind == 'host' else 'candidate'} write_pg_spice "
+            f"n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')} "
             "— not finish, not gold"
         ),
     )
@@ -631,7 +652,7 @@ def evaluate_f4_extract(
         attr=attr,
         status="ok" if ok else "fail",
         failure=ext.get("reason") if not ok else None,
-        note=f"F4 extract of {parent.knobs.get('name')} n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')}",
+        note=f"F4 extract of {host} n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')}",
     )
     return mem.add(c)
 

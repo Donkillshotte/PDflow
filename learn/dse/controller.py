@@ -30,8 +30,10 @@ from pathlib import Path
 from .abc_space import CATALOG
 from .acquire import (
     latest_ok_extract,
+    latest_ok_host_extract,
     latest_host_arrivals,
     should_pay_host_arrivals,
+    should_pay_f4_host_extract,
     should_pay_f2_fast,
     should_pay_f2_gpl,
     should_pay_f2_region,
@@ -1530,6 +1532,49 @@ def run_controller(
                     reason=why_arr,
                 )
 
+    n_host_ext = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_host_extract" and c.status == "ok"
+    )
+    pay_he, why_he = should_pay_f4_host_extract(
+        mem, budget_left=t_end - time.time(), n_extract=n_host_ext
+    )
+    step("acquire", fidelity="F4_HOST_EXTRACT", pay=pay_he, why=why_he)
+    if any(s["level"] == "f4_host_extract" for s in plan["steps"]) and pay_he and time.time() < t_end:
+        host_ex = iscale_host(mem)
+        if host_ex and (host_ex.artifacts or {}).get("mapped_v"):
+            params = flowlab_params()
+            util_h = float(params.get("coreUtilization") or 35.0)
+            den_h = gpl_density(util_h, params.get("placeDensityAddon") or 0.2)
+            arr_hit = latest_host_arrivals(mem)
+            child = evaluate_f4_extract(
+                host_ex,
+                mem,
+                design_id=design_id,
+                variant=variant,
+                util=util_h,
+                density=den_h,
+                kind="host",
+                sta=arr_hit["sta"] if arr_hit else None,
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_host_extract",
+                    parent=host_ex.id,
+                    host_source=(host_ex.knobs or {}).get("source") or host_ex.level,
+                    n_r=(child.artifacts or {}).get("n_r"),
+                    n_sta=(child.artifacts or {}).get("n_sta_inst"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    gold=False,
+                    status=child.status,
+                    reason=why_he,
+                )
+
     n_scale = sum(
         1
         for c in mem.by_level("pdn")
@@ -1549,19 +1594,25 @@ def run_controller(
                     break
         pick = iscale_host(mem)
         if pick and base_p:
-            use_ext = bool(ext_hit)
+            host_hit = latest_ok_host_extract(mem)
+            mesh = host_hit or ext_hit
+            use_ext = bool(mesh)
             arr_hit = latest_host_arrivals(mem)
-            sta = arr_hit["sta"] if arr_hit else (ext_hit.get("sta") if use_ext else None)
-            sta_via = "f4_host_arrivals" if arr_hit else ("extract" if use_ext else None)
+            sta = arr_hit["sta"] if arr_hit else (mesh.get("sta") if mesh else None)
+            sta_via = (
+                "f4_host_arrivals"
+                if arr_hit
+                else ("f4_host_extract" if host_hit else ("extract" if ext_hit else None))
+            )
             child = evaluate_f4_scale(
                 pick,
                 mem,
                 variant=variant,
                 design_id=design_id,
                 baseline_power_w=base_p,
-                spice=ext_hit["spice"] if use_ext else None,
-                insts=ext_hit["insts"] if use_ext else None,
-                extract_id=str(ext_hit["extract_id"]) if use_ext else "finish",
+                spice=mesh["spice"] if use_ext else None,
+                insts=mesh["insts"] if use_ext else None,
+                extract_id=str(mesh["extract_id"]) if use_ext else "finish",
                 sta=sta,
                 sta_via=sta_via,
             )
@@ -1667,6 +1718,7 @@ def run_controller(
             "active learning: F3→F5-lite residual orders cell vs net host; F3→F5-local residual + uncertainty pick the next level",
             "F4 I-scale uses F3 power of the attributed host (port-steer/port-net/net/cell), not synth-only WNS-winner",
             "F3 host arrivals: report_arrival on that same host — t50 for I(t), not extract STA, not VCD",
+            "F4 host extract: write_pg_spice on the attributed netlist — not the synth F1 mesh, not gold",
             "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
@@ -1782,6 +1834,11 @@ def run_controller(
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_candidate_extract" and c.status == "ok"
         ),
+        "n_f4_host_extract": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_host_extract" and c.status == "ok"
+        ),
         "n_f4_region_extract": sum(
             1
             for c in mem.by_level("pdn")
@@ -1820,6 +1877,7 @@ def run_controller(
                 "f4_solver_a",
                 "f4_iscale",
                 "f4_candidate_extract",
+                "f4_host_extract",
                 "f4_region_extract",
                 "f4_solver_amg",
                 "f4_solver_ras",
@@ -1911,12 +1969,16 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
                 f" · F4 region extract {c.qor.dynamic_ir_mv:.3f} mV "
                 f"bin={(c.artifacts or {}).get('region_bin')} n_r={(c.artifacts or {}).get('n_r')} (not gold)"
             )
-        if src == "f4_candidate_extract":
+        if src == "f4_host_extract":
+            ir = (
+                f" · F4 host extract {c.qor.dynamic_ir_mv:.3f} mV "
+                f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
+            )
+        elif src == "f4_candidate_extract" and "host extract" not in ir:
             ir = (
                 f" · F4 candidate extract {c.qor.dynamic_ir_mv:.3f} mV "
                 f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
             )
-            break
         if src == "ingest_pdn" and not ir:
             ir = f" · F4 ingest {c.qor.dynamic_ir_mv:.3f} mV (gold teacher, unrestamped)"
     ras = ""
