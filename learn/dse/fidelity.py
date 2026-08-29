@@ -287,6 +287,7 @@ def evaluate_f4_scale(
     Host is the hierarchical incumbent (port-steer / port-net / net / cell)
     when present — not a silent flatten to the synth WNS-winner. Not a VCD map.
     source=f4_iscale_win restamps the winning host PDN point after host IR-steer.
+    source=f4_iscale_champ restamps winning_ir_pdn (IR-cell family) — not host-win.
     """
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
@@ -313,6 +314,8 @@ def evaluate_f4_scale(
     }
     if source == "f4_iscale_win":
         knobs["name"] = f"iscale_win_{host}"
+    if source == "f4_iscale_champ":
+        knobs["name"] = f"iscale_champ_{host}"
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
         return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
@@ -364,6 +367,8 @@ def evaluate_f4_scale(
     )
     if source == "f4_iscale_win":
         attr["via"] = "f4_iscale_win"
+    if source == "f4_iscale_champ":
+        attr["via"] = "f4_iscale_champ"
     if dyn.get("status") == "ok" and dyn.get("worst_droop_mv") is not None and source == "f4_iscale":
         parent.qor.dynamic_ir_mv = float(dyn["worst_droop_mv"])
         if dyn.get("static_ir_mv") is not None:

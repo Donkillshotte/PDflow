@@ -59,6 +59,10 @@ type DseReport = {
   n_f4_amg?: number;
   n_f4_iscale?: number;
   n_f4_iscale_win?: number;
+  n_f4_iscale_champ?: number;
+  ir_cell_iscale_champ_mv?: number;
+  ir_cell_iscale_champ_scale?: number;
+  ir_cell_iscale_champ_vs_win_mv?: number;
   n_ir_cell?: number;
   n_f4_ir_cell_extract?: number;
   n_ir_cell_pdn?: number;
@@ -128,7 +132,7 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.n_ir_cell || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn ? (
+          {report.n_ir_cell || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -165,6 +169,15 @@ export function DsePanel() {
                   }`
                 : report.n_ir_cell_region_pdn != null
                   ? ` · IR-rp ${report.n_ir_cell_region_pdn}`
+                  : ""}
+              {report.ir_cell_iscale_champ_mv != null
+                ? ` · I×c ×${(report.ir_cell_iscale_champ_scale ?? 0).toFixed(2)} ${report.ir_cell_iscale_champ_mv.toFixed(3)} mV${
+                    report.ir_cell_iscale_champ_vs_win_mv != null
+                      ? ` vs I×w ${report.ir_cell_iscale_champ_vs_win_mv >= 0 ? "+" : ""}${report.ir_cell_iscale_champ_vs_win_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_iscale_champ != null
+                  ? ` · I×c ${report.n_f4_iscale_champ}`
                   : ""}
             </p>
           ) : null}
@@ -224,6 +237,7 @@ export function DsePanel() {
                 {report.n_f4_amg != null ? ` · AMG ${report.n_f4_amg}` : ""}
                 {report.n_f4_iscale != null ? ` · I× ${report.n_f4_iscale}` : ""}
                 {report.n_f4_iscale_win != null ? ` · I×w ${report.n_f4_iscale_win}` : ""}
+                {report.n_f4_iscale_champ != null ? ` · I×c ${report.n_f4_iscale_champ}` : ""}
                 {report.n_f4_ir_cell_extract != null ? ` · IR-x ${report.n_f4_ir_cell_extract}` : ""}
                 {report.n_ir_cell_pdn != null ? ` · IR-p ${report.n_ir_cell_pdn}` : ""}
                 {report.n_f4_ir_cell_region_extract != null
@@ -408,9 +422,13 @@ function PdnTable({ rows }: { rows: Cand[] }) {
           {rows.map((c) => (
             <tr key={c.id} data-status={c.status}>
               <td>
-                {c.knobs?.source === "f4_iscale" && c.knobs.host_source
-                  ? `iscale · ${c.knobs.host_source}`
-                  : (c.knobs?.name ?? c.knobs?.source ?? c.id)}
+                {c.knobs?.source === "f4_iscale_champ" && c.knobs.host_source
+                  ? `iscale-champ · ${c.knobs.host_source}`
+                  : c.knobs?.source === "f4_iscale_win" && c.knobs.host_source
+                    ? `iscale-win · ${c.knobs.host_source}`
+                    : c.knobs?.source === "f4_iscale" && c.knobs.host_source
+                      ? `iscale · ${c.knobs.host_source}`
+                      : (c.knobs?.name ?? c.knobs?.source ?? c.id)}
               </td>
               <td>{c.knobs?.extract_id ?? c.artifacts?.extract ?? "finish"}</td>
               <td>

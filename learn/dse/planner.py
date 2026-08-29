@@ -404,6 +404,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
+    steps.append(
+        {
+            "level": "f4_scale_champ",
+            "reason": (
+                "I-scale-champ: I(t)×P on winning_ir_pdn (IR-cell-region-PDN mesh) "
+                "— not I-scale-win on the stale host-win mesh, not host arrivals"
+            ),
+            "scope": "pdn",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
@@ -462,6 +472,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
         elif src in (
             "f4_iscale",
             "f4_iscale_win",
+            "f4_iscale_champ",
             "f4_solver_a",
             "f4_candidate_extract",
             "f4_host_extract",

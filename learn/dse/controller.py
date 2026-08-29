@@ -73,12 +73,15 @@ from .acquire import (
     should_pay_f4_pdn,
     should_pay_f4_scale,
     should_pay_f4_scale_win,
+    should_pay_f4_scale_champ,
+    iscale_champ_sta,
     should_pay_physical_catalog,
 )
 from .active import (
     iscale_host,
     iscale_parent,
     winning_host_pdn,
+    winning_ir_pdn,
     ir_hotspot_cells,
     ir_cell_host,
     steer_from_ir_cell_residual,
@@ -2098,6 +2101,88 @@ def run_controller(
                     reason=steer_icrp.get("reason"),
                 )
 
+    n_sc = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_iscale_champ" and c.status == "ok"
+    )
+    pay_sch, why_sch = should_pay_f4_scale_champ(
+        mem, budget_left=t_end - time.time(), n_scale=n_sc, variant=variant
+    )
+    step("acquire", fidelity="F4_ISCALE_CHAMP", pay=pay_sch, why=why_sch)
+    if any(s["level"] == "f4_scale_champ" for s in plan["steps"]) and pay_sch and time.time() < t_end:
+        base_p_c = None
+        for c in mem.by_level("logic"):
+            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
+                _w, p = timing_of(mem, c)
+                if p:
+                    base_p_c = p
+                    break
+        pick_c = ir_cell_host(mem)
+        champ = winning_ir_pdn(mem)
+        eid_c = str((champ.knobs or {}).get("extract_id") or champ.id) if champ else ""
+        hit_c = extract_on_disk(mem, eid_c) if eid_c else None
+        sta_c, via_c = iscale_champ_sta(hit_c)
+        if pick_c and base_p_c and champ and hit_c and via_c != "f4_host_arrivals":
+            child = evaluate_f4_scale(
+                pick_c,
+                mem,
+                variant=variant,
+                design_id=design_id,
+                baseline_power_w=base_p_c,
+                pkg_r=float((champ.knobs or {}).get("pkg_r") or 0.05),
+                pkg_l=float((champ.knobs or {}).get("pkg_l") or 2e-10),
+                c_decap=float((champ.knobs or {}).get("c_decap") or 50e-15),
+                spice=hit_c["spice"],
+                insts=hit_c["insts"],
+                extract_id=eid_c,
+                sta=sta_c,
+                sta_via=via_c,
+                source="f4_iscale_champ",
+            )
+            if child:
+                host_win = winning_host_pdn(mem)
+                isw = next(
+                    (
+                        c
+                        for c in reversed(list(mem.by_level("pdn")))
+                        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_iscale_win"
+                    ),
+                    None,
+                )
+                child.attr = dict(child.attr or {})
+                if host_win and host_win.qor.dynamic_ir_mv is not None:
+                    child.attr["residual_vs_host_win_mv"] = float(child.qor.dynamic_ir_mv or 0.0) - float(
+                        host_win.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_host_win"] = host_win.id
+                if isw and isw.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+                    child.attr["residual_vs_iscale_win_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                        isw.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_iscale_win"] = isw.id
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_iscale_champ",
+                    parent=pick_c.id,
+                    host_level=pick_c.level,
+                    host_source=(pick_c.knobs or {}).get("source") or pick_c.level,
+                    champ_source=(champ.knobs or {}).get("name") or (champ.attr or {}).get("via"),
+                    i_scale=(child.knobs or {}).get("i_scale"),
+                    extract_id=eid_c,
+                    c_decap=(child.knobs or {}).get("c_decap"),
+                    sta_via=via_c,
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_iscale_win_mv=(child.attr or {}).get("residual_vs_iscale_win_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=why_sch,
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -2142,6 +2227,7 @@ def run_controller(
             "F4 IR-cell PDN: 1× residual restamps the winning family on the sized mesh — not a flattened cell+decap vector",
             "F4 IR-cell region: seq-heavy 1× bin ≠ host bin — density cap on the sized netlist, not more combo size-up",
             "F4 IR-cell-region PDN: large spatial residual restamps the winning family on the capped mesh — not host IR-steer",
+            "F4 I-scale-champ: I(t)×P of the IR-cell host on winning_ir_pdn — not I-scale-win on the stale host-win mesh, not host arrivals",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -2291,6 +2377,41 @@ def run_controller(
             ),
             None,
         ),
+        "n_f4_iscale_champ": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_iscale_champ" and c.status == "ok"
+        ),
+        "ir_cell_iscale_champ_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_iscale_champ"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "ir_cell_iscale_champ_scale": next(
+            (
+                float((c.knobs or {}).get("i_scale"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_iscale_champ"
+                and (c.knobs or {}).get("i_scale") is not None
+            ),
+            None,
+        ),
+        "ir_cell_iscale_champ_vs_win_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_iscale_win_mv"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_iscale_champ"
+                and (c.attr or {}).get("residual_vs_iscale_win_mv") is not None
+            ),
+            None,
+        ),
         "n_net": sum(
             1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"
         ),
@@ -2431,6 +2552,7 @@ def run_controller(
                 "f4_solver_a",
                 "f4_iscale",
                 "f4_iscale_win",
+                "f4_iscale_champ",
                 "f4_candidate_extract",
                 "f4_host_extract",
                 "f4_host_region_extract",
@@ -2770,6 +2892,21 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             isc += (
                 f" · I-scale-win {host} ×{float(sc):.3f} {float(w):.3f} mV "
                 f"on {eid}"
+            )
+        break
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_iscale_champ":
+            continue
+        sc = (c.knobs or {}).get("i_scale")
+        host = (c.knobs or {}).get("parent_name") or (c.knobs or {}).get("host_source")
+        w = c.qor.dynamic_ir_mv
+        eid = (c.knobs or {}).get("extract_id")
+        vs = (c.attr or {}).get("residual_vs_iscale_win_mv")
+        extra = f" vs I×w {float(vs):+.3f}" if vs is not None else ""
+        if sc is not None and w is not None:
+            isc += (
+                f" · I-scale-champ {host} ×{float(sc):.3f} {float(w):.3f} mV "
+                f"on {eid}{extra}"
             )
         break
     arrs = ""

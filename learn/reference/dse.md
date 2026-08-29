@@ -35,6 +35,7 @@ RTL
  → F4 host-IR-steer: famiglia vincente sul mesh host-regione, poi pkg L sull’host libero (non IR-steer candidato)
  → F4 I-scale-win: I(t)×P sull’extract PDN host vincente (dopo host-IR-steer, non il primo I-scale)
  → F3 IR-cell: hotspot I-scale-win → join geometrico ODB → drive-up modulo (ctrl, non path STA dpath)
+ → F4 I-scale-champ: I(t)×P sull’extract `winning_ir_pdn` (IR-cell-region-PDN, non host-win; STA dell’extract, non host arrivals)
  → F4 restamp DirectLU / SA-AMG / RAS / Krylov-MOR (knobs PDN / I(t)×power dell’host attribuito / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle/net → modulo RTL (dpath/ctrl)

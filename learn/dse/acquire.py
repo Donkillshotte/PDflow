@@ -435,6 +435,81 @@ def should_pay_f4_scale_win(
     )
 
 
+def iscale_champ_sta(hit: dict | None) -> tuple[str | None, str]:
+    """Champion I-scale uses extract STA. Never host arrivals (unsized netlist)."""
+    sta = (hit or {}).get("sta") if hit else None
+    if sta:
+        return str(sta), "extract"
+    return None, "f4_iscale_champ"
+
+
+def should_pay_f4_scale_champ(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_scale: int = 0,
+    scale_max: int = 1,
+    min_s: float = 8.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """I(t)×P on winning_ir_pdn when that mesh is not the I-scale-win host.
+
+    Host I-scale-win stays on winning_host_pdn. After IR-cell-region-PDN the
+    1× champion is a different extract. Parent is ir_cell_host; arrivals
+    come from the champ extract, never host arrivals.
+    """
+    if n_scale >= scale_max:
+        return False, "champion I-scale shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover champion I-scale"
+    from .active import ir_cell_host, winning_host_pdn, winning_ir_pdn
+    from .f4_oracle import available
+
+    win_scale = next(
+        (
+            c
+            for c in reversed(list(mem.by_level("pdn")))
+            if c.status == "ok" and (c.knobs or {}).get("source") == "f4_iscale_win"
+        ),
+        None,
+    )
+    if win_scale is None:
+        return False, "no winning-host I-scale to compare a champion mesh against"
+    champ = winning_ir_pdn(mem)
+    host_win = winning_host_pdn(mem)
+    if champ is None:
+        return False, "no IR-family 1× champion to scale"
+    if host_win is None:
+        return False, "no host-win to refuse flattening onto"
+    champ_id = str((champ.knobs or {}).get("extract_id") or champ.id)
+    win_id = str((win_scale.knobs or {}).get("extract_id") or "")
+    if champ_id == win_id:
+        return False, "champion mesh is already the I-scale-win extract"
+    via = (champ.attr or {}).get("via") or (champ.knobs or {}).get("source")
+    if via not in (
+        "f4_ir_cell_extract",
+        "f4_ir_cell_region_extract",
+        "active_f4_ir_cell_pdn",
+        "active_f4_ir_cell_region_pdn",
+    ):
+        return False, "champion I-scale refuses a host-only 1× point"
+    if ir_cell_host(mem) is None:
+        return False, "IR-cell host missing — not flattening to unsized port-steer"
+    if not extract_on_disk(mem, champ_id) and not available(variant):
+        return False, "champion extract is not on disk"
+    have = any(
+        (c.knobs or {}).get("source") == "f4_iscale_champ" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    )
+    if have:
+        return False, "champion I-scale already measured"
+    src = (champ.knobs or {}).get("name") or via
+    return True, (
+        f"I(t)×P_F3/P_base of the IR-cell host on champion {src} "
+        f"{float(champ.qor.dynamic_ir_mv):.3f} mV — not I-scale-win, not host arrivals, not VCD"
+    )
+
+
 def latest_host_arrivals(mem: DesignMemory) -> dict | None:
     """Most recent report_arrival JSON on an attributed host. Not extract STA."""
     from pathlib import Path
@@ -1525,6 +1600,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "ir_steer",
         "host_ir_steer",
         "f4_scale_win",
+        "f4_scale_champ",
         "ir_cell_extract",
         "f4_ir_cell_extract",
         "ir_cell_pdn",

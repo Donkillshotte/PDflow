@@ -529,6 +529,32 @@ def winning_host_pdn(mem: DesignMemory):
     return best
 
 
+def winning_ir_pdn(mem: DesignMemory):
+    """Lowest 1× droop among host-win and the IR-cell family. Not gold.
+
+    winning_host_pdn stays host-only so host IR-steer cannot steal the
+    IR-cell mesh. I-scale-champ uses this so activity is measured on
+    the IR-cell-region-PDN point (live 3.921 mV), not the host-win (4.016).
+    """
+    best = winning_host_pdn(mem)
+    best_mv = float(best.qor.dynamic_ir_mv) if best and best.qor.dynamic_ir_mv is not None else None
+    extra_src = ("f4_ir_cell_extract", "f4_ir_cell_region_extract")
+    extra_via = ("active_f4_ir_cell_pdn", "active_f4_ir_cell_region_pdn")
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or c.qor.dynamic_ir_mv is None:
+            continue
+        src = (c.knobs or {}).get("source")
+        via = (c.attr or {}).get("via")
+        if src not in extra_src and via not in extra_via:
+            continue
+        if abs(float((c.knobs or {}).get("i_scale") or 1.0) - 1.0) > 1e-9:
+            continue
+        mv = float(c.qor.dynamic_ir_mv)
+        if best_mv is None or mv < best_mv:
+            best, best_mv = c, mv
+    return best
+
+
 def ir_hotspot_cells(mem: DesignMemory) -> dict | None:
     """I-scale-win (else winning host PDN) hotspot → nearest ODB instances."""
     from .attribute import join_hotspot_insts

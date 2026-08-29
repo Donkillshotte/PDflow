@@ -360,6 +360,7 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_pdn" for s in planned["steps"]), "planner schedules IR-cell PDN restamp")
     check(any(s["level"] == "ir_cell_region" for s in planned["steps"]), "planner schedules IR-cell-region density cap")
     check(any(s["level"] == "ir_cell_region_pdn" for s in planned["steps"]), "planner schedules IR-cell-region PDN restamp")
+    check(any(s["level"] == "f4_scale_champ" for s in planned["steps"]), "planner schedules champion I-scale")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -454,6 +455,7 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell PDN restamp measures at F4")
     check(next_fidelity(level="ir_cell_region", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region extract measures at F4")
     check(next_fidelity(level="ir_cell_region_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region PDN restamp measures at F4")
+    check(next_fidelity(level="f4_scale_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion I-scale measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -530,6 +532,29 @@ def main() -> int:
             },
         ),
         "winning-host I-scale is not flattened into the unconstrained I-scale fingerprint",
+    )
+    check(
+        knobs_fp(
+            "pdn",
+            {
+                "source": "f4_iscale_champ",
+                "parent_id": "ircell",
+                "extract_id": "icreg",
+                "c_decap": 200e-15,
+                "i_scale": 4.21,
+            },
+        )
+        != knobs_fp(
+            "pdn",
+            {
+                "source": "f4_iscale_win",
+                "parent_id": "psteer",
+                "extract_id": "hreg",
+                "c_decap": 200e-15,
+                "i_scale": 4.21,
+            },
+        ),
+        "champion I-scale is not flattened into the winning-host I-scale fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1272,6 +1297,8 @@ def main() -> int:
         should_pay_host_ir_steer,
         should_pay_f4_scale,
         should_pay_f4_scale_win,
+        should_pay_f4_scale_champ,
+        iscale_champ_sta,
         should_pay_ir_cell,
         should_pay_ir_cell_extract,
         should_pay_ir_cell_pdn,
@@ -2426,6 +2453,73 @@ def main() -> int:
     check(steer_from_ir_cell_region_residual(mem_hr) is None, "small IR-cell-region residual does not restamp PDN")
     ice_small.attr["residual_mv"] = -4.652
     mem_hr.touch(ice_small)
+    from dse.active import winning_ir_pdn
+
+    win_host = winning_host_pdn(mem_hr)
+    check(win_host is not None and win_host.id == "hdecapr", f"winning_host_pdn stays host-only, got {win_host}")
+    win_ir0 = winning_ir_pdn(mem_hr)
+    check(win_ir0 is not None and win_ir0.id == "hdecapr", f"without IR-cell-region-PDN, winning_ir_pdn is still host-win, got {win_ir0}")
+    pay_sc0, why_sc0 = should_pay_f4_scale_champ(mem_hr, budget_left=80, n_scale=0)
+    check(not pay_sc0, f"champion I-scale refuses a host-only 1× point ({why_sc0})")
+    sta0, via0 = iscale_champ_sta(None)
+    check(sta0 is None and via0 == "f4_iscale_champ", f"empty champ STA is not host arrivals, got {via0}")
+    sta1, via1 = iscale_champ_sta({"sta": "/tmp/extract/sta_arrivals.json"})
+    check(via1 == "extract" and via1 != "f4_host_arrivals", f"champ STA is extract-only, got {via1}")
+    check("host" not in via1, f"champ STA via refuses host flatten ({via1})")
+    mem_hr.add(
+        Candidate(
+            id="icrp",
+            design_id="gcd",
+            parent_id="icreg",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "decap_200f",
+                "extract_id": "icreg",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 200e-15,
+                "i_scale": 1.0,
+            },
+            knobs_fp="icrp",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=3.921, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "active_f4_ir_cell_region_pdn", "residual_vs_host_win_mv": -0.095},
+        )
+    )
+    win_ir1 = winning_ir_pdn(mem_hr)
+    check(win_ir1 is not None and win_ir1.id == "icrp", f"winning_ir_pdn picks IR-cell-region-PDN 3.921, got {win_ir1}")
+    check(winning_host_pdn(mem_hr).id == "hdecapr", "winning_host_pdn still does not steal the IR-cell-region-PDN mesh")
+    pay_sc1, why_sc1 = should_pay_f4_scale_champ(mem_hr, budget_left=80, n_scale=0)
+    check(pay_sc1, f"champion I-scale is paid on a different IR-cell mesh ({why_sc1})")
+    check("not I-scale-win" in why_sc1 and "not host arrivals" in why_sc1, f"champion I-scale refuses host flatten ({why_sc1})")
+    check("3.921" in why_sc1, f"champion I-scale names the 3.921 point ({why_sc1})")
+    pay_sc2, why_sc2 = should_pay_f4_scale_champ(mem_hr, budget_left=80, n_scale=1)
+    check(not pay_sc2, f"champion I-scale is a single shot ({why_sc2})")
+    mem_hr.add(
+        Candidate(
+            id="iscchamp",
+            design_id="gcd",
+            parent_id="ircell",
+            level="pdn",
+            knobs={"source": "f4_iscale_champ", "parent_id": "ircell", "extract_id": "icreg", "i_scale": 4.21},
+            knobs_fp="iscchamp",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=16.52, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "f4_iscale_champ"},
+        )
+    )
+    pay_sc3, why_sc3 = should_pay_f4_scale_champ(mem_hr, budget_left=80, n_scale=0)
+    check(not pay_sc3, f"champion I-scale skips once measured ({why_sc3})")
+    check(winning_ir_pdn(mem_hr).id == "icrp", "scaled I-scale-champ does not steal the 1× champion")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

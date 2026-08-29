@@ -31,8 +31,8 @@ ADAPTERS: dict[str, dict] = {
         "note": (
             "triangle I(t) on named extract; amplitude × P_F3/P_base of the "
             "attributed host; first shot on unconstrained host mesh, then "
-            "winning host PDN after host IR-steer; t50 from host report_arrival — "
-            "no invented RTL→ITerm map"
+            "winning host PDN after host IR-steer, then winning_ir_pdn "
+            "(IR-cell-region-PDN) with extract STA — no invented RTL→ITerm map"
         ),
     },
     "dse": {
@@ -45,7 +45,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "active": {
         "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + steer_from_host_ir_residual + iscale_host + order_local_hosts",
-        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; not a mixed knob vector",
+        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; I-scale-champ measures activity on winning_ir_pdn (not host-win); not a mixed knob vector",
     },
     "synthesis": {
         "via": "dse.synthesis + dse.fidelity.evaluate_f1_synth",
