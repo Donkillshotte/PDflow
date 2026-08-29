@@ -46,8 +46,18 @@ int dpn_timestep_be_hist(DpnHandle* h, const double* C, const double* leak, doub
                          double* solve_s, int max_steps, double* wave_t, double* wave_vmin,
                          double* wave_itot, int64_t* n_steps, double* i_L_absmax, double* i_L_worst);
 
-/* Adaptive BE. G is the mesh without package pad. bumps[n_bumps] are V-source nodes.
-   bump_v[n_bumps] are ideal sources (NULL → fill with vdd). */
+/* Sparse-C BE with mixed-rail UIC. Cmat CSR (nnz_c=0 → diagonal C). n_rail0 splits VDD|VSS. */
+int dpn_timestep_be_hist_cmat(DpnHandle* h, const double* C, int64_t nnz_c, const int64_t* cptr,
+                              const int64_t* cidx, const double* cval, const double* leak, double dt,
+                              double t_end, const int64_t* bumps, int64_t n_bumps,
+                              const double* bump_v, double pkg_r, double pkg_l, const double* v_init,
+                              int64_t n_rail0, int64_t n_events, const int64_t* ev_idx,
+                              const double* ev_t50, const double* ev_dur, const double* ev_ipulse,
+                              double* V_worst, int64_t* worst_node, double* worst_v, double* worst_t,
+                              double* V_worst_rail1, int64_t* worst_node_rail1, double* worst_v_rail1,
+                              double* worst_t_rail1, double* rel_res_max, double* solve_s,
+                              int max_steps, double* wave_t, double* wave_vmin, double* wave_itot,
+                              int64_t* n_steps, double* i_L_absmax, double* i_L_worst);
 int dpn_timestep_be_adaptive(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
                              const double* Gval, const double* C, const int64_t* bumps,
                              int64_t n_bumps, const double* bump_v, double pkg_r, double pkg_l,

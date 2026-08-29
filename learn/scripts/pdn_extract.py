@@ -10,6 +10,7 @@ Not a DEF+LEF Rsq extractor and not a fork of OpenROAD PSM.
 Never synthesizes PDN C from signal SPEF names.
 On-die L is Grover partial self plus cutoff partial mutual on same-layer straps;
 not stamped into the SPD companion unless the caller asks for the descriptor.
+Rail-to-rail C is opt-in instance-pin \(C_{rr}\) (scenario Farads), not overlapping-strap Cox.
 """
 
 from __future__ import annotations
@@ -115,7 +116,8 @@ def parse_pg_sinks(path: Path) -> dict:
 def pair_pg_rails(vdd_sinks: dict, vss_sinks: dict) -> dict:
     """Pair VDD/VSS ITerms by spice sink instance. CMOS I_vdd returns as I_vss.
 
-    Block-diagonal dual-rail MNA: no rail-to-rail C. Not a second physics model.
+    Block-diagonal dual-rail MNA by default: no rail-to-rail C unless the caller stamps C_rr.
+    Not a second physics model.
     """
     by_inst_vdd: dict[str, dict] = {}
     for rec in vdd_sinks.values():
@@ -151,7 +153,8 @@ def pair_pg_rails(vdd_sinks: dict, vss_sinks: dict) -> dict:
         "pairs": pairs,
         "via": "write_pg_spice '* Sink for inst/pin' on VDD and VSS (not RTL name-join)",
         "note": (
-            "I_cell leaves VDD and enters VSS; G is block-diagonal (no rail-to-rail C). "
+            "I_cell leaves VDD and enters VSS; default G is block-diagonal. "
+            "Instance-pin C_rr is opt-in (stamp_rail_to_rail_c), not GCD gold. "
             "VDD gold TRAN is unchanged."
         ),
     }
@@ -176,6 +179,42 @@ def remap_events_to_rail(events: list, vdd_idx: dict, vss_idx: dict, pairs: list
         rec["vss_node"] = vss_node
         out.append(rec)
     return out
+
+
+def stamp_rail_to_rail_c(pairs: list, vdd_idx: dict, vss_idx: dict, n_vdd: int, c_f: float) -> dict:
+    """Stamp instance-pin C_rr between paired VDD/VSS ITerms.
+
+    C_ii += c, C_jj += c, C_ij = C_ji = −c with j = vss_idx + n_vdd.
+    Scenario Farads, not overlapping-strap Cox, not signal SPEF, not Nangate C_decap cells.
+    """
+    cf = float(c_f)
+    trips = []
+    if cf <= 0.0:
+        return {
+            "status": "GAP",
+            "n_stamped": 0,
+            "c_f": cf,
+            "c_sum_f": 0.0,
+            "triplets": [],
+            "via": "C_rr skipped (c_f<=0) — block-diagonal dual-rail",
+            "not": "extracted rail-to-rail C / signal SPEF / NLDM mapping",
+        }
+    n0 = int(n_vdd)
+    for p in pairs:
+        i = vdd_idx.get(p["vdd_node"])
+        j0 = vss_idx.get(p["vss_node"])
+        if i is None or j0 is None:
+            continue
+        trips.append((int(i), int(j0) + n0, cf))
+    return {
+        "status": "READY" if trips else "GAP",
+        "n_stamped": len(trips),
+        "c_f": cf,
+        "c_sum_f": cf * len(trips),
+        "triplets": trips,
+        "via": "C_rr on write_pg_spice Sink-for inst pairs (scenario F, not extracted)",
+        "not": "overlapping strap Cox / signal SPEF / Nangate C_decap cells / GCD default",
+    }
 
 
 def node_xy_dbu(name: str) -> tuple[float, float] | None:

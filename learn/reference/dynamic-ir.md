@@ -21,7 +21,8 @@ pdn_dynamic.py
     Solver B: SA-AMG + CG       workhorse, |A−B| sul GCD < 1 µV
     Solver C: rational Krylov MOR  descriptor RLC (o RC se L=0)
     Solver D: RAS Schwarz (grafo undirected A∪Aᵀ, LU locali, GMRES)
-    Dual-rail VSS: I(t) copiato sui sink accoppiati; MNA block-diagonal
+    Dual-rail VSS: I(t) copiato sui sink accoppiati; MNA block-diagonal di default;
+    C_rr opt-in (`--rail-c`) su pin istanza (non extracted, non gold GCD)
     Native BE loop in libdpn (R+L companion + i_L)
     ▼
 sim/reports/dynamic_ir_<variant>.json
@@ -61,7 +62,7 @@ Indici nativi: `int64_t` (`dpn_index_width()==64`). SciPy fallback può restare 
 | N2 R+C | + `c_decap` | READY |
 | **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L on-die **stimata** (Σ partial self, non loop L) + mutual parziale cutoff \(d\le 2\,\mu\mathrm{m}\); descriptor TRAN solo con `--on-die-l` / `ON_DIE_L=1` (sparse \(E\), \(n_\mathrm{iv}\) bump, non AMG) |
 | N4 + VRM | on-die + lumped VRM descriptor | **READY** (native descriptor BE; \|N3−N4\| ≈ 23 nV on this STA-clock window — 47 µF is stiff). Full VRM µs load-step resta `system_pdn` |
-| Dual-rail VSS | return path, same \(I(t)\) | **READY** extract+TRAN: `write_pg_spice -net VSS`, pair `* Sink for inst/pin`, bounce = −Vmin; **non** cambia il gold VDD 45.298 mV; no C rail-to-rail |
+| Dual-rail VSS | return path, same \(I(t)\) | **READY** extract+TRAN: `write_pg_spice -net VSS`, pair `* Sink for inst/pin`, bounce = −Vmin; **non** cambia il gold VDD 45.298 mV; C rail-to-rail **opt-in** (`--rail-c` / `RAIL_C=1`) su pin istanza (scenario F, non Cox di strap) |
 
 FAST = vectorless + AMG = **READY** (STA t50 in clock). ACCURATE e SIGNOFF = GAP.
 
@@ -71,11 +72,11 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 
 | # | Livello | Oggi | Gap onesto |
 |---|---|---|---|
-| 1 | PDN extract | OpenROAD `write_pg_spice` VDD+VSS + tech LEF + SPEF PG C name-join + Grover on-die L+M | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped; on-die L default is estimate-only; mutual is cutoff/partial, not PEEC; dual-rail is block-diagonal (no rail-to-rail C) |
+| 1 | PDN extract | OpenROAD `write_pg_spice` VDD+VSS + tech LEF + SPEF PG C name-join + Grover on-die L+M | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped; on-die L default is estimate-only; mutual is cutoff/partial, not PEEC; dual-rail default is block-diagonal; instance-pin \(C_{rr}\) is opt-in (`--rail-c`), not extracted strap Cox |
 | 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatori CCS **e** ECSM READY su Liberty sintetica; GCD Nangate = GAP (no tabelle) |
 | 3 | Activity | STA `report_arrival` t50 (clock) + SAIF TC name-join | VCD RTL name-join GAP; ranking extra I(t) resta sintetico; SAIF non inventa t50 |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) o ECSM \(\|C\mathrm{d}V/\mathrm{d}t\|\) se tabelle + slew/c_load; Nangate = GAP |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS (companion GCD; kind=2 su \(K\) unsymmetric) + **N4** descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)) + kind=3 BiCGSTAB workhorse + Δt adattivo sul descriptor + MOR gen sparse-\(E\) (opt-in on-die L, non il gold GCD) + VSS return TRAN | ngspice = gold 1-nodo RC, R+L, VRM+die, strap K, 1-nodo thermal analogue; Xyce = GAP in VM (deck contract); Index nativo int64; Ginkgo GPU = GAP |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS (companion GCD; kind=2 su \(K\) unsymmetric) + **N4** descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)) + kind=3 BiCGSTAB workhorse + Δt adattivo sul descriptor + MOR gen sparse-\(E\) (opt-in on-die L, non il gold GCD) + VSS return TRAN + opt-in coupled \(C_{rr}\) (sparse \(C\), native `hist_cmat`) | ngspice = gold 1-nodo RC, R+L, VRM+die, strap K, 1-nodo thermal analogue, **2-nodo \(C_{rr}\)**; Xyce = GAP in VM (deck contract); Index nativo int64; Ginkgo GPU = GAP |
 | 6 | Analysis | heatmap, finestre, ranking, path STA delay, \(J=I/(wt)\), **mesh termica** strap+via+ILD/Si lumpato | TTF relativo (no A foundry); 3D FEM/package CFD = GAP; skin δ riportato non stampato in G; path = NLDM typical-V |
 
 ```bash

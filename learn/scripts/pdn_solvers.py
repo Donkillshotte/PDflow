@@ -159,6 +159,48 @@ def _libdpn():
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
     ]
+    if hasattr(lib, "dpn_timestep_be_hist_cmat"):
+        lib.dpn_timestep_be_hist_cmat.restype = ctypes.c_int
+        lib.dpn_timestep_be_hist_cmat.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_double),
+            _C_IDX,
+            _P_IDX,
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_double,
+            ctypes.c_double,
+            _P_IDX,
+            _C_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.POINTER(ctypes.c_double),
+            _C_IDX,
+            _C_IDX,
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+        ]
     lib.dpn_mor_setup.restype = ctypes.c_void_p
     lib.dpn_mor_setup.argtypes = [
         _C_IDX,
@@ -974,8 +1016,20 @@ def _tran_result(kw, n, solver_name, setup_s, n_levels, vdd, dt, t_end, backend,
     return out
 
 
+def _needs_cmat_hist(sys: dict) -> bool:
+    if sys.get("C_mat") is not None:
+        return True
+    if sys.get("v_init") is not None:
+        return True
+    return int(sys.get("n_rail0") or 0) > 0
+
+
 def native_timestep(solver, sys, events, vdd: float, t_end: float):
-    """BE loop inside libdpn. Uses inductor-current history when bumps exist."""
+    """BE loop inside libdpn. Uses inductor-current history when bumps exist.
+
+    Sparse C (rail-to-rail) and mixed-rail UIC go through dpn_timestep_be_hist_cmat.
+    Never fall back to diagonal-C hist when C_mat is set — that would drop C_rr.
+    """
     if getattr(solver, "backend", "") != "native" or not hasattr(solver, "_h"):
         return None
     lib = getattr(solver, "_lib", None)
@@ -990,6 +1044,94 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
     extra = {}
     rc = -1
     loop = "native"
+    if _needs_cmat_hist(sys):
+        if n_bumps <= 0 or not hasattr(lib, "dpn_timestep_be_hist_cmat"):
+            return None
+        Cmat = sys.get("C_mat")
+        if Cmat is None:
+            nnz_c = 0
+            rp = np.zeros(n + 1, dtype=_NP_IDX)
+            ci = np.zeros(1, dtype=_NP_IDX)
+            va = np.zeros(1, dtype=np.float64)
+        else:
+            _, nnz_c, rp, ci, va = _csr_ct(Cmat)
+        v_init = sys.get("v_init")
+        if v_init is None:
+            v_init = np.full(n, float(vdd), dtype=np.float64)
+        else:
+            v_init = np.ascontiguousarray(v_init, dtype=np.float64)
+        n_rail0 = int(sys.get("n_rail0") or 0)
+        ilabs = ctypes.c_double(0.0)
+        ilw = np.zeros(max(n_bumps, 1), dtype=np.float64)
+        Vw1 = np.zeros(n, dtype=np.float64)
+        wn1 = _C_IDX(0)
+        wv1 = ctypes.c_double(0.0)
+        wt1 = ctypes.c_double(0.0)
+        rc = lib.dpn_timestep_be_hist_cmat(
+            solver._h,
+            C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            nnz_c,
+            rp.ctypes.data_as(_P_IDX),
+            ci.ctypes.data_as(_P_IDX),
+            va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            leak.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            dt,
+            float(t_end),
+            bumps.ctypes.data_as(_P_IDX),
+            n_bumps,
+            bump_v.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            float(sys.get("pkg_r") or 0.0),
+            float(sys.get("pkg_l") or 0.0),
+            v_init.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            n_rail0,
+            kw["n_ev"],
+            kw["idx"].ctypes.data_as(_P_IDX),
+            kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["worst_node"]),
+            ctypes.byref(kw["worst_v"]),
+            ctypes.byref(kw["worst_t"]),
+            Vw1.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(wn1),
+            ctypes.byref(wv1),
+            ctypes.byref(wt1),
+            ctypes.byref(kw["rel"]),
+            ctypes.byref(kw["solve_s"]),
+            kw["max_steps"],
+            kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["n_steps"]),
+            ctypes.byref(ilabs),
+            ilw.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        )
+        if rc != 0:
+            print(f"dpn_timestep_be_hist_cmat rc={rc}; not using diagonal-C hist", file=sys.stderr)
+            return None
+        loop = "native_hist_cmat"
+        extra = {
+            "i_L_absmax": float(ilabs.value),
+            "i_L_worst": ilw.copy(),
+            "worst_voltage_rail1": float(wv1.value),
+            "worst_time_s_rail1": float(wt1.value),
+            "worst_node_idx_rail1": int(wn1.value),
+            "V_worst_rail1": Vw1.copy(),
+        }
+        return _tran_result(
+            kw,
+            n,
+            solver.name,
+            getattr(solver, "setup_s", None),
+            getattr(solver, "n_levels", 1),
+            vdd,
+            dt,
+            t_end,
+            "native",
+            loop,
+            extra=extra,
+        )
     if n_bumps > 0 and hasattr(lib, "dpn_timestep_be_hist"):
         ilabs = ctypes.c_double(0.0)
         ilw = np.zeros(n_bumps, dtype=np.float64)
@@ -1786,7 +1928,7 @@ class PyMorDescriptor:
 
 
 def _py_triangle(t, t50, dur, ipulse):
-    if dur <= 0.0 or ipulse <= 0.0:
+    if dur <= 0.0 or ipulse == 0.0:
         return 0.0
     half = 0.5 * dur
     tau = t - t50

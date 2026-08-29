@@ -27,9 +27,14 @@ struct TranResult {
   std::vector<double> wave_vmin;
   std::vector<double> wave_itot;
   std::vector<double> i_L_worst;
+  /* Second rail (VSS bounce) when n_rail0 splits a coupled VDD|VSS MNA. */
+  double worst_v_rail1 = 0.0;
+  double worst_t_rail1 = 0.0;
+  Index worst_node_rail1 = 0;
+  std::vector<double> V_worst_rail1;
 };
 
-/* Same triangle as learn/scripts/pdn_dynamic.py. */
+/* Same triangle as learn/scripts/pdn_current.py. ipulse may be negative (return-rail KCL). */
 double triangle(double t, double t50, double dur, double ipulse);
 
 void fill_idraw(Index n, double t, const double* leak, const TriangleSrc* ev, int n_ev, double* I);
@@ -38,17 +43,21 @@ void fill_idraw(Index n, double t, const double* leak, const TriangleSrc* ev, in
 void rl_companion(double pkg_r, double pkg_l, double dt, double* g_eq, double* hist_scale);
 
 /* Fixed-Δt backward Euler on a pre-factored A = G + C/Δt.
-   Matches the Python loop: IC V=Vdd, I(t) at the new time, then solve. */
+   Matches the Python loop: IC V=Vdd, I(t) at the new time, then solve.
+   Cmat (nullable) is a sparse capacitance including off-diagonal C_rr; RHS is C V/Δt.
+   v_init (nullable) overrides UIC. n_rail0>0 tracks min on [0,n_rail0) and max on the rest. */
 TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const double* leak,
                        const double* pad, double dt, double t_end, double vdd,
-                       const TriangleSrc* ev, int n_ev);
+                       const TriangleSrc* ev, int n_ev, const Csr* Cmat = nullptr,
+                       const double* v_init = nullptr, Index n_rail0 = 0);
 
 /* Same A, but package R+L uses inductor current history (not memoryless L/Δt).
    A must already include g_eq on bump diagonals. bump_v[k] is the ideal source at bump k. */
 TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const double* leak,
                             double dt, double t_end, const TriangleSrc* ev, int n_ev,
                             const Index* bumps, int n_bumps, const double* bump_v, double pkg_r,
-                            double pkg_l);
+                            double pkg_l, const Csr* Cmat = nullptr, const double* v_init = nullptr,
+                            Index n_rail0 = 0);
 
 /* Adaptive BE with RL history. g_eq follows the current Δt; i_L is the MNA state.
    LTE ≈ ½|Δ²V| vs atol + rtol|V|. SparseLU only. */

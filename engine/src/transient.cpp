@@ -10,7 +10,7 @@
 namespace dpn {
 
 double triangle(double t, double t50, double dur, double ipulse) {
-  if (dur <= 0.0 || ipulse <= 0.0) {
+  if (dur <= 0.0 || ipulse == 0.0) {
     return 0.0;
   }
   const double half = 0.5 * dur;
@@ -38,11 +38,27 @@ void fill_idraw(Index n, double t, const double* leak, const TriangleSrc* ev, in
 
 namespace {
 
-void record_step(TranResult& out, double t, const double* V, const double* I, Index n, double vdd) {
+void cap_over_dt(Index n, const double* C, const Csr* Cmat, const double* V, double dt, double* out) {
+  const double inv_dt = 1.0 / dt;
+  if (Cmat != nullptr && Cmat->nrows == n && Cmat->nnz() > 0) {
+    Cmat->spmv(V, out);
+    for (Index i = 0; i < n; ++i) {
+      out[i] *= inv_dt;
+    }
+    return;
+  }
+  for (Index i = 0; i < n; ++i) {
+    out[i] = (C[i] * inv_dt) * V[i];
+  }
+}
+
+void record_step(TranResult& out, double t, const double* V, const double* I, Index n, double vdd,
+                 Index n_rail0) {
+  const Index n0 = (n_rail0 > 0 && n_rail0 < n) ? n_rail0 : n;
   double vmin = V[0];
   Index imin = 0;
   double itot = 0.0;
-  for (Index i = 0; i < n; ++i) {
+  for (Index i = 0; i < n0; ++i) {
     if (V[i] < vmin) {
       vmin = V[i];
       imin = i;
@@ -57,6 +73,22 @@ void record_step(TranResult& out, double t, const double* V, const double* I, In
     out.worst_t = t;
     out.worst_node = imin;
     out.V_worst.assign(V, V + n);
+  }
+  if (n_rail0 > 0 && n_rail0 < n) {
+    double vmax = V[n_rail0];
+    Index imax = n_rail0;
+    for (Index i = n_rail0 + 1; i < n; ++i) {
+      if (V[i] > vmax) {
+        vmax = V[i];
+        imax = i;
+      }
+    }
+    if (out.V_worst_rail1.empty() || vmax > out.worst_v_rail1) {
+      out.worst_v_rail1 = vmax;
+      out.worst_t_rail1 = t;
+      out.worst_node_rail1 = imax;
+      out.V_worst_rail1.assign(V, V + n);
+    }
   }
   (void)vdd;
 }
@@ -146,7 +178,8 @@ void track_descriptor_vmin(TranResult& out, const std::vector<double>& x, Index 
 
 TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const double* leak,
                        const double* pad, double dt, double t_end, double vdd,
-                       const TriangleSrc* ev, int n_ev) {
+                       const TriangleSrc* ev, int n_ev, const Csr* Cmat, const double* v_init,
+                       Index n_rail0) {
   const Index n = solver.n();
   TranResult out;
   out.worst_v = vdd;
@@ -157,6 +190,15 @@ TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const doub
   }
   const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
   std::vector<double> V(static_cast<size_t>(n), vdd);
+  if (v_init) {
+    std::copy(v_init, v_init + n, V.begin());
+    out.V_worst.assign(v_init, v_init + n);
+    const Index n0 = (n_rail0 > 0 && n_rail0 < n) ? n_rail0 : n;
+    out.worst_v = V[0];
+    for (Index i = 1; i < n0; ++i) {
+      out.worst_v = std::min(out.worst_v, V[i]);
+    }
+  }
   std::vector<double> rhs(static_cast<size_t>(n));
   std::vector<double> I(static_cast<size_t>(n));
   std::vector<double> Vnext(static_cast<size_t>(n));
@@ -165,15 +207,16 @@ TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const doub
   for (int s = 0; s < steps; ++s) {
     const double t = static_cast<double>(s) * dt;
     fill_idraw(n, t, leak, ev, n_ev, I.data());
+    cap_over_dt(n, C, Cmat, V.data(), dt, rhs.data());
     for (Index i = 0; i < n; ++i) {
-      rhs[i] = (C[i] / dt) * V[i] - I[i] + pad[i];
+      rhs[i] += -I[i] + pad[i];
     }
     const auto t0 = std::chrono::steady_clock::now();
     solver.solve(rhs.data(), Vnext.data(), V.data());
     t_solve += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     res_max = std::max(res_max, residual_rel(A, Vnext.data(), rhs.data()));
     V.swap(Vnext);
-    record_step(out, t, V.data(), I.data(), n, vdd);
+    record_step(out, t, V.data(), I.data(), n, vdd, n_rail0);
   }
   out.steps = steps;
   out.rel_res_max = res_max;
@@ -219,7 +262,7 @@ Csr form_be_operator(const Csr& Gmesh, const double* C, double dt, const Index* 
 TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const double* leak,
                             double dt, double t_end, const TriangleSrc* ev, int n_ev,
                             const Index* bumps, int n_bumps, const double* bump_v, double pkg_r,
-                            double pkg_l) {
+                            double pkg_l, const Csr* Cmat, const double* v_init, Index n_rail0) {
   const Index n = solver.n();
   double vref = 0.0;
   for (int k = 0; k < n_bumps; ++k) {
@@ -236,6 +279,15 @@ TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const
   rl_companion(pkg_r, pkg_l, dt, &g_eq, &hsc);
   const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
   std::vector<double> V(static_cast<size_t>(n), vref);
+  if (v_init) {
+    std::copy(v_init, v_init + n, V.begin());
+    out.V_worst.assign(v_init, v_init + n);
+    const Index n0 = (n_rail0 > 0 && n_rail0 < n) ? n_rail0 : n;
+    out.worst_v = V[0];
+    for (Index i = 1; i < n0; ++i) {
+      out.worst_v = std::min(out.worst_v, V[i]);
+    }
+  }
   std::vector<double> rhs(static_cast<size_t>(n));
   std::vector<double> I(static_cast<size_t>(n));
   std::vector<double> Vnext(static_cast<size_t>(n));
@@ -245,8 +297,9 @@ TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const
   for (int s = 0; s < steps; ++s) {
     const double t = static_cast<double>(s) * dt;
     fill_idraw(n, t, leak, ev, n_ev, I.data());
+    cap_over_dt(n, C, Cmat, V.data(), dt, rhs.data());
     for (Index i = 0; i < n; ++i) {
-      rhs[i] = (C[i] / dt) * V[i] - I[i];
+      rhs[i] -= I[i];
     }
     for (int k = 0; k < n_bumps; ++k) {
       const Index b = bumps[k];
@@ -271,7 +324,7 @@ TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const
     }
     i_L.swap(i_new);
     V.swap(Vnext);
-    record_step(out, t, V.data(), I.data(), n, vref);
+    record_step(out, t, V.data(), I.data(), n, vref, n_rail0);
     if (out.worst_t == t) {
       out.i_L_worst = i_L;
       out.i_L_absmax = iabs;
@@ -381,7 +434,7 @@ TranResult timestep_be_adaptive(const Csr& Gmesh, const double* C, const Index* 
     Vprev.swap(V);
     V.swap(Vnext);
     have_prev = 1;
-    record_step(out, t, V.data(), I.data(), n, vref);
+    record_step(out, t, V.data(), I.data(), n, vref, 0);
     if (out.worst_t == t) {
       out.i_L_worst = i_L;
       out.i_L_absmax = iabs;

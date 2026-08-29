@@ -966,6 +966,84 @@ int main() {
     check(P.nnz() == 2 && std::abs(P.val[0] - 1.5) < 1e-15 && std::abs(P.val[1] - 3.0) < 1e-15,
           "csr plus/scale/diag");
   }
+  {
+    const double pos = dpn::triangle(0.2e-9, 0.2e-9, 0.2e-9, 5e-3);
+    const double neg = dpn::triangle(0.2e-9, 0.2e-9, 0.2e-9, -5e-3);
+    check(std::abs(pos + neg) < 1e-18 && pos > 0.0, "triangle signed ipulse (return-rail KCL)");
+    const double vdd = 1.1, rpad = 1.0, cdie = 50e-15, crr = 20e-15, dt = 10e-12;
+    const double t_end = 0.4e-9, t50 = 0.2e-9, dur = 0.2e-9, ipulse = 5e-3;
+    const double geq = 1.0 / rpad;
+    double z[2] = {0.0, 0.0};
+    double gd[2] = {geq, geq};
+    Csr Gs = dpn::plus_diag(dpn::diag_csr(2, z), gd);
+    auto run_crr = [&](double ccoup) {
+      Index ci[4] = {0, 0, 1, 1};
+      Index cj[4] = {0, 1, 0, 1};
+      double cv[4] = {cdie + ccoup, -ccoup, -ccoup, cdie + ccoup};
+      Csr Cmat = dpn::from_triplets(2, ci, cj, cv, 4);
+      Csr A = dpn::plus(Gs, dpn::scale(Cmat, 1.0 / dt));
+      auto solver = dpn::make_direct(A);
+      double Cd[2] = {cdie, cdie};
+      double leak[2] = {0.0, 0.0};
+      Index bumps[2] = {0, 1};
+      double bump_v[2] = {vdd, 0.0};
+      double v_init[2] = {vdd, 0.0};
+      dpn::TriangleSrc ev[2];
+      ev[0].idx = 0;
+      ev[0].t50 = t50;
+      ev[0].dur = dur;
+      ev[0].ipulse = ipulse;
+      ev[1].idx = 1;
+      ev[1].t50 = t50;
+      ev[1].dur = dur;
+      ev[1].ipulse = -ipulse;
+      return dpn::timestep_be_hist(*solver, A, Cd, leak, dt, t_end, ev, 2, bumps, 2, bump_v, rpad,
+                                   0.0, &Cmat, v_init, 1);
+    };
+    auto zc = run_crr(0.0);
+    auto cc = run_crr(crr);
+    double v1 = vdd;
+    const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+    double worst1 = vdd;
+    for (int s = 0; s < steps; ++s) {
+      const double t = static_cast<double>(s) * dt;
+      const double i = dpn::triangle(t, t50, dur, ipulse);
+      const double rhs = (cdie / dt) * v1 - i + geq * vdd;
+      v1 = rhs / (geq + cdie / dt);
+      worst1 = std::min(worst1, v1);
+    }
+    check(std::abs(zc.worst_v - worst1) < 1e-9, "Crr=0 coupled VDD matches 1-node BE");
+    check(cc.worst_v > zc.worst_v, "Crr reduces VDD droop vs block-diagonal");
+    check(cc.worst_v_rail1 > 1e-6, "coupled VSS bounce is +Vmax (current into VSS)");
+    std::printf("    rail-to-rail C: Crr=0 droop=%.6f mV Crr=20fF droop=%.6f mV bounce=%.6f mV\n",
+                (vdd - zc.worst_v) * 1e3, (vdd - cc.worst_v) * 1e3, cc.worst_v_rail1 * 1e3);
+
+    Index ci[4] = {0, 0, 1, 1};
+    Index cj[4] = {0, 1, 0, 1};
+    double cv[4] = {cdie + crr, -crr, -crr, cdie + crr};
+    Csr Cmat = dpn::from_triplets(2, ci, cj, cv, 4);
+    Csr A = dpn::plus(Gs, dpn::scale(Cmat, 1.0 / dt));
+    DpnHandle* hc = dpn_setup(0, 2, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data());
+    check(hc != nullptr, "c_api hist_cmat setup");
+    const int maxs = 128;
+    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(2), Vw1(2), ilw(2);
+    Index wn = 0, wn1 = 0, ns = 0;
+    double wrost = 0, wt0 = 0, wv1 = 0, wt1 = 0, rel = 0, ts = 0, ilabs = 0;
+    Index ev_idx[2] = {0, 1};
+    double ev_t50[2] = {t50, t50}, ev_dur[2] = {dur, dur}, ev_ip[2] = {ipulse, -ipulse};
+    double Cd[2] = {cdie, cdie}, leak[2] = {0.0, 0.0};
+    Index bumps[2] = {0, 1};
+    double bump_v[2] = {vdd, 0.0}, v_init[2] = {vdd, 0.0};
+    check(dpn_timestep_be_hist_cmat(hc, Cd, Cmat.nnz(), Cmat.rowptr.data(), Cmat.col.data(),
+                                    Cmat.val.data(), leak, dt, t_end, bumps, 2, bump_v, rpad, 0.0,
+                                    v_init, 1, 2, ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(), &wn,
+                                    &wrost, &wt0, Vw1.data(), &wn1, &wv1, &wt1, &rel, &ts, maxs,
+                                    wt.data(), wv.data(), wi.data(), &ns, &ilabs, ilw.data()) == 0,
+          "c_api hist_cmat");
+    check(std::abs(wrost - cc.worst_v) < 1e-12, "c_api hist_cmat vs C++ VDD");
+    check(std::abs(wv1 - cc.worst_v_rail1) < 1e-12, "c_api hist_cmat vs C++ VSS");
+    dpn_free(hc);
+  }
   if (fails) {
     std::fprintf(stderr, "%d checks failed\n", fails);
     return 1;

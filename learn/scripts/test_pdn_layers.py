@@ -274,6 +274,144 @@ I1 ITermNode_metal1_100_1 0 DC 2.0e-3
         f"    VSS return bounce={vss_run['worst_bounce_mv']:.4f} mV "
         f"pairs={vss_run['n_pairs']} backend={vss_run.get('backend')}"
     )
+    check(vss_run.get("coupled") in (None,), "default VSS TRAN does not stamp C_rr")
+    check(
+        abs(triangle_above_leak(0.1, 0.1, 0.2, -1.0) + 1.0) < 1e-12,
+        "triangle signed return-rail current",
+    )
+
+    from pdn_extract import stamp_rail_to_rail_c
+    from pdn_dynamic import assemble_be, timestep_be, ngspice_rail_c_gold
+    from pdn_solvers import DirectLU
+    import numpy as np
+
+    stamped = stamp_rail_to_rail_c(
+        paired["pairs"],
+        idx_vdd,
+        {"ITermNode_metal1_0_1": 0, "ITermNode_metal1_100_1": 1, "Node_pad_vss": 2},
+        3,
+        20e-15,
+    )
+    check(stamped["status"] == "READY" and stamped["n_stamped"] == 2, "C_rr stamps paired insts")
+    check(stamped["triplets"][0][1] == 3, "VSS index offset by n_vdd")
+
+    ext_s = extract_pdn(vss_sp)
+    order_v, idx_v, G_v = _ord, idx_vdd, _G
+    _os, idx_s, G_s = build_system(ext_s["resistors"], ext_s["currents"], ext_s["voltages"])
+    ev_vdd = [
+        {
+            "idx": idx_v["ITermNode_metal1_0_0"],
+            "t50_s": 0.2e-9,
+            "dur_s": 0.2e-9,
+            "i_pulse": 5e-3,
+            "i_leak": 0.0,
+        },
+        {
+            "idx": idx_v["ITermNode_metal1_100_0"],
+            "t50_s": 0.2e-9,
+            "dur_s": 0.2e-9,
+            "i_pulse": 5e-3,
+            "i_leak": 0.0,
+        },
+    ]
+    sys_v = assemble_be(
+        G_v, idx_v, ext_vdd["voltages"], 1.1, ev_vdd, pkg_r=0.05, pkg_l=0.0, c_decap=50e-15, dt=10e-12
+    )
+    dyn_v = timestep_be(sys_v, ev_vdd, DirectLU(sys_v["A"]), 1.1, order_v, 0.4e-9)
+    n0 = int(G_v.shape[0])
+    idx_c = {f"VDD::{nm}": i for nm, i in idx_v.items()}
+    idx_c.update({f"VSS::{nm}": i + n0 for nm, i in idx_s.items()})
+    volt_c = {f"VDD::{nm}": float(v) for nm, v in ext_vdd["voltages"].items()}
+    volt_c.update({f"VSS::{nm}": float(v) for nm, v in ext_s["voltages"].items()})
+    from scipy import sparse as sp_crr
+
+    G_c = sp_crr.block_diag((G_v, G_s), format="csr")
+    ev_s = remap_events_to_rail(ev_vdd, idx_v, idx_s, paired["pairs"])
+    ev_ret = []
+    for e in ev_s:
+        rec = dict(e)
+        rec["idx"] = int(e["idx"]) + n0
+        rec["i_pulse"] = -float(e["i_pulse"])
+        rec["i_leak"] = 0.0
+        ev_ret.append(rec)
+    events_c = list(ev_vdd) + ev_ret
+    n_tot = n0 + int(G_s.shape[0])
+    v_init = np.zeros(n_tot)
+    v_init[:n0] = 1.1
+    order_c = [""] * n_tot
+    for nm, i in idx_c.items():
+        order_c[int(i)] = nm
+    sys_c0 = assemble_be(
+        G_c,
+        idx_c,
+        volt_c,
+        1.1,
+        events_c,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        v_init=v_init,
+        n_rail0=n0,
+    )
+    dyn_c0 = timestep_be(sys_c0, events_c, DirectLU(sys_c0["A"]), 1.1, order_c, 0.4e-9)
+    err0 = abs(dyn_c0["worst_voltage"] - dyn_v["worst_voltage"])
+    check(err0 < 1e-9, f"Crr=0 coupled VDD matches VDD-only |err|={err0:.3e} V")
+    trips = stamp_rail_to_rail_c(paired["pairs"], idx_v, idx_s, n0, 20e-15)["triplets"]
+    sys_cc = assemble_be(
+        G_c,
+        idx_c,
+        volt_c,
+        1.1,
+        events_c,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        c_couple=trips,
+        v_init=v_init,
+        n_rail0=n0,
+    )
+    dyn_cc = timestep_be(sys_cc, events_c, DirectLU(sys_cc["A"]), 1.1, order_c, 0.4e-9)
+    check(dyn_cc["worst_voltage"] > dyn_c0["worst_voltage"], "C_rr reduces VDD droop")
+    check(dyn_cc.get("worst_voltage_rail1") is not None and dyn_cc["worst_voltage_rail1"] > 0.0, "C_rr VSS +bounce")
+    print(
+        f"    Crr=0 droop={(1.1-dyn_c0['worst_voltage'])*1e3:.4f} mV "
+        f"Crr=20fF droop={(1.1-dyn_cc['worst_voltage'])*1e3:.4f} mV "
+        f"bounce={dyn_cc['worst_voltage_rail1']*1e3:.4f} mV "
+        f"loop={dyn_cc.get('timestep_loop')}"
+    )
+    coupled_run = run_return_rail(
+        vdd_sp,
+        vss_sp,
+        ev_vdd,
+        idx_v,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        lef=None,
+        spef=None,
+        rail_c_f=20e-15,
+        vdd=1.1,
+    )
+    check(coupled_run["status"] == "READY", "uncoupled VSS still READY with --rail-c")
+    check((coupled_run.get("coupled") or {}).get("status") == "READY", "coupled C_rr READY")
+    check(
+        abs(coupled_run["worst_bounce_mv"] - vss_run["worst_bounce_mv"]) < 1e-6,
+        "uncoupled VSS bounce unchanged when C_rr is extra",
+    )
+
+    gold_rr = ngspice_rail_c_gold()
+    if gold_rr is None:
+        print("    skip C_rr ngspice (no ngspice)")
+    else:
+        check(gold_rr.get("ok") is True, f"2-node C_rr vs ngspice ({gold_rr})")
+        print(
+            f"    C_rr ngspice |ΔVdd|={gold_rr['abs_err_mv']:.4f} mV "
+            f"|ΔVss|={gold_rr['abs_err_vss_mv']:.4f} mV"
+        )
 
     ev_sp = plan_events(
         {"ITermNode_metal1_100_0": 1e-3},

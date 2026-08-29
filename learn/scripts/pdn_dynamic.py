@@ -73,7 +73,7 @@ from pdn_current import (  # noqa: E402
     triangle_above_leak,
 )
 from pdn_em import em_thermal_snapshot  # noqa: E402
-from pdn_extract import extract_pdn, summarize_extract, parse_pg_sinks, pair_pg_rails, remap_events_to_rail  # noqa: E402
+from pdn_extract import extract_pdn, summarize_extract, parse_pg_sinks, pair_pg_rails, remap_events_to_rail, stamp_rail_to_rail_c  # noqa: E402
 from pdn_solvers import (  # noqa: E402
     DirectLU,
     RASDD,
@@ -112,13 +112,16 @@ def viridis(t: float) -> str:
     return "#fde725"
 
 
-def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt, spef_c=None):
+def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt, spef_c=None,
+                c_couple=None, v_init=None, n_rail0=0):
     """A = G + C/Δt + pad conductance. Independent of I(t) / t50.
 
     Pad stamp is the BE companion of lumped package R+L: g_eq = 1/(R+L/Δt).
     Inductor current i_L is *not* in A — it lives on the RHS of the time loop.
     spef_c is extra interconnect C (Farads) on named spice nodes, added to
     lumped c_decap — not a replacement, and never taken from signal SPEF.
+    c_couple is a list of (i, j, C_rr) Faraday stamps (instance-pin rail-to-rail).
+    When unset, A is bit-identical to the diagonal-C GCD gold path.
     """
     n = G.shape[0]
     bump = []
@@ -148,6 +151,28 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt, spe
                 c_spef += float(cf)
 
     A = (Gsoft + sparse.diags(C / dt)).tocsc()
+    C_mat = None
+    n_couple = 0
+    c_couple_sum = 0.0
+    if c_couple:
+        C_mat = sparse.diags(C, format="lil")
+        for trip in c_couple:
+            i, j, cf = int(trip[0]), int(trip[1]), float(trip[2])
+            if i < 0 or j < 0 or i >= n or j >= n or i == j or cf == 0.0:
+                continue
+            C_mat[i, i] += cf
+            C_mat[j, j] += cf
+            C_mat[i, j] -= cf
+            C_mat[j, i] -= cf
+            n_couple += 1
+            c_couple_sum += cf
+        C_mat = C_mat.tocsr()
+        A = (Gsoft + C_mat * (1.0 / dt)).tocsc()
+    v0 = None
+    if v_init is not None:
+        v0 = np.asarray(v_init, dtype=np.float64)
+        if v0.size != n:
+            raise ValueError(f"v_init length {v0.size} != n {n}")
     pad = np.zeros(n)
     for i, vs in zip(bump, bump_v):
         pad[i] = g_eq * vs
@@ -169,6 +194,11 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt, spe
         "dt": dt,
         "g_pad": g_eq,
         "hist_scale": hsc,
+        "C_mat": C_mat,
+        "c_couple_n": n_couple,
+        "c_couple_sum_f": c_couple_sum,
+        "v_init": v0,
+        "n_rail0": int(n_rail0 or 0),
     }
 
 
@@ -221,6 +251,7 @@ def timestep_be(
             return _map_worst_node(native, order)
 
     C = sys["C"]
+    C_mat = sys.get("C_mat")
     leak = sys["leak"]
     dt = sys["dt"]
     A = sys["A"]
@@ -229,10 +260,19 @@ def timestep_be(
     bump_v = np.asarray(sys.get("bump_v") if sys.get("bump_v") is not None else [vdd] * len(bump), dtype=np.float64)
     g_eq, hsc = rl_companion(sys["pkg_r"], sys["pkg_l"], dt)
     steps = max(2, int(math.ceil(t_end / dt)))
-    V = np.full(n, vdd)
+    if sys.get("v_init") is not None:
+        V = np.array(sys["v_init"], dtype=np.float64, copy=True)
+    else:
+        V = np.full(n, vdd)
+    n0 = int(sys.get("n_rail0") or 0)
+    if n0 <= 0 or n0 >= n:
+        n0 = n
     i_L = np.zeros(len(bump), dtype=np.float64)
     wave_t, wave_vmin, wave_itot = [], [], []
-    worst_v, worst_t, worst_node, worst_V = vdd, 0.0, None, V.copy()
+    worst_v = float(np.min(V[:n0]))
+    worst_t, worst_node, worst_V = 0.0, None, V.copy()
+    worst_v1 = float(np.max(V[n0:])) if n0 < n else None
+    worst_t1, worst_node1, worst_V1 = 0.0, None, (V.copy() if n0 < n else None)
     i_L_worst = i_L.copy()
     i_L_absmax = 0.0
     res_max = 0.0
@@ -246,7 +286,10 @@ def timestep_be(
                 ev, t, ccs_tables=ccs_tables, vout=float(V[ev["idx"]]),
                 ecsm_tables=ecsm_tables,
             )
-        rhs = (C / dt) * V - I_draw
+        if C_mat is not None:
+            rhs = C_mat.dot(V) / dt - I_draw
+        else:
+            rhs = (C / dt) * V - I_draw
         for k, b in enumerate(bump):
             vs = float(bump_v[k]) if k < bump_v.size else vdd
             rhs[b] += g_eq * vs + hsc * i_L[k]
@@ -259,17 +302,25 @@ def timestep_be(
             vs = float(bump_v[k]) if k < bump_v.size else vdd
             i_new[k] = g_eq * (vs - V[b]) + hsc * i_L[k]
         i_L = i_new
-        vmin = float(np.min(V))
+        vmin = float(np.min(V[:n0]))
         wave_t.append(float(t))
         wave_vmin.append(vmin)
-        wave_itot.append(float(np.sum(I_draw)))
+        wave_itot.append(float(np.sum(I_draw[:n0])))
         if vmin < worst_v:
             worst_v = vmin
             worst_t = float(t)
-            worst_node = order[int(np.argmin(V))]
+            worst_node = order[int(np.argmin(V[:n0]))]
             worst_V = V.copy()
             i_L_worst = i_L.copy()
             i_L_absmax = float(np.max(np.abs(i_L))) if i_L.size else 0.0
+        if n0 < n:
+            imax = n0 + int(np.argmax(V[n0:]))
+            vmax1 = float(V[imax])
+            if worst_v1 is None or vmax1 > worst_v1:
+                worst_v1 = vmax1
+                worst_t1 = float(t)
+                worst_node1 = order[imax]
+                worst_V1 = V.copy()
 
     loop = "python_hist" if bump else "python"
     if use_ccs:
@@ -304,6 +355,10 @@ def timestep_be(
         "timestep_loop": loop,
         "ccs_in_loop": bool(use_ccs),
         "ecsm_in_loop": bool(use_ecsm),
+        "worst_voltage_rail1": worst_v1,
+        "worst_time_s_rail1": worst_t1 if n0 < n else None,
+        "worst_node_rail1": worst_node1,
+        "V_worst_rail1": worst_V1,
     }
 
 
@@ -627,11 +682,15 @@ def run_return_rail(
     t_end: float,
     lef: Path | None,
     spef: Path | None,
+    rail_c_f: float = 0.0,
+    vdd: float = 1.1,
 ) -> dict:
     """VSS return-path TRAN. Same I(t) magnitude as VDD on paired sinks. Does not change VDD gold.
 
-    Block-diagonal dual-rail MNA (no rail-to-rail C). UIC and pads are 0 V.
+    Default: block-diagonal dual-rail MNA (no rail-to-rail C). UIC and pads are 0 V.
     Bounce = −Vmin (I DC convention: current from node to 0, same as PDNSim).
+    rail_c_f>0: also solve one coupled MNA with instance-pin C_rr and KCL
+    (I leaves VDD, enters VSS). Not the GCD clock gold.
     """
     vdd_sinks = parse_pg_sinks(spice_vdd)
     vss_sinks = parse_pg_sinks(spice_vss)
@@ -668,7 +727,7 @@ def run_return_rail(
     lu = DirectLU(sys_s["A"])
     dyn_s = timestep_be(sys_s, ev_s, lu, 0.0, order_s, t_end)
     bounce = -float(dyn_s["worst_voltage"])
-    return {
+    out = {
         "status": "READY",
         "ok": True,
         "n_pairs": paired["n_pairs"],
@@ -685,7 +744,110 @@ def run_return_rail(
         "pair": {k: v for k, v in paired.items() if k != "pairs"},
         "via": paired["via"],
         "note": paired["note"],
+        "coupled": None,
     }
+    cf = float(rail_c_f or 0.0)
+    if cf <= 0.0:
+        return out
+    ext_v = extract_pdn(spice_vdd, lef=lef, spef=spef)
+    _ord_v, idx_v, G_v = build_system(ext_v["resistors"], ext_v["currents"], ext_v["voltages"])
+    inv = {int(i): n for n, i in vdd_idx.items()}
+    events_v = []
+    for ev in events:
+        nm = inv.get(int(ev["idx"]))
+        if nm is None or nm not in idx_v:
+            continue
+        rec = dict(ev)
+        rec["idx"] = int(idx_v[nm])
+        events_v.append(rec)
+    ev_s2 = remap_events_to_rail(events, vdd_idx, idx_s, paired["pairs"])
+    n0 = int(G_v.shape[0])
+    idx_c = {}
+    volt_c = {}
+    for nm, i in idx_v.items():
+        key = f"VDD::{nm}"
+        idx_c[key] = int(i)
+        if nm in ext_v["voltages"]:
+            volt_c[key] = float(ext_v["voltages"][nm])
+    for nm, i in idx_s.items():
+        key = f"VSS::{nm}"
+        idx_c[key] = int(i) + n0
+        if nm in voltages:
+            volt_c[key] = float(voltages[nm])
+    G_c = sparse.block_diag((G_v, G_s), format="csr")
+    ev_ret = []
+    for e in ev_s2:
+        rec = dict(e)
+        rec["idx"] = int(e["idx"]) + n0
+        rec["i_pulse"] = -float(e["i_pulse"])
+        rec["i_leak"] = -float(e.get("i_leak") or 0.0)
+        rec["rail"] = "VSS"
+        ev_ret.append(rec)
+    events_c = list(events_v) + ev_ret
+    stamped = stamp_rail_to_rail_c(paired["pairs"], idx_v, idx_s, n0, cf)
+    n_tot = n0 + int(G_s.shape[0])
+    v_init = np.zeros(n_tot, dtype=np.float64)
+    v_init[:n0] = float(vdd)
+    order_c = [""] * n_tot
+    for nm, i in idx_c.items():
+        order_c[int(i)] = nm
+    spef_c = {}
+    for nm, val in ((ext_v.get("spef") or {}).get("node_c") or {}).items():
+        spef_c[f"VDD::{nm}"] = val
+    for nm, val in ((ext_s.get("spef") or {}).get("node_c") or {}).items():
+        spef_c[f"VSS::{nm}"] = val
+    sys_c = assemble_be(
+        G_c,
+        idx_c,
+        volt_c,
+        vdd,
+        events_c,
+        pkg_r=pkg_r,
+        pkg_l=pkg_l,
+        c_decap=c_decap,
+        dt=dt,
+        spef_c=spef_c or None,
+        c_couple=stamped.get("triplets"),
+        v_init=v_init,
+        n_rail0=n0,
+    )
+    lu_c = DirectLU(sys_c["A"])
+    dyn_c = timestep_be(sys_c, events_c, lu_c, vdd, order_c, t_end)
+    vmin_vdd = float(dyn_c["worst_voltage"])
+    bounce_up = dyn_c.get("worst_voltage_rail1")
+    if bounce_up is None and dyn_c.get("V_worst") is not None:
+        vw = np.asarray(dyn_c["V_worst"], dtype=np.float64)
+        bounce_up = float(np.max(vw[n0:])) if vw.size > n0 else 0.0
+    out["coupled"] = {
+        "status": "READY" if stamped.get("status") == "READY" else "PARTIAL",
+        "ok": True,
+        "n_nodes": sys_c["n"],
+        "n_vdd": n0,
+        "n_vss": int(G_s.shape[0]),
+        "n_events": len(events_c),
+        "c_rr_f": cf,
+        "c_rr": {k: v for k, v in stamped.items() if k != "triplets"},
+        "worst_droop_mv": (float(vdd) - vmin_vdd) * 1e3,
+        "worst_voltage": vmin_vdd,
+        "worst_time_ns": dyn_c["worst_time_s"] * 1e9,
+        "worst_bounce_mv": float(bounce_up or 0.0) * 1e3,
+        "worst_bounce_time_ns": (dyn_c.get("worst_time_s_rail1") or 0.0) * 1e9
+        if dyn_c.get("worst_time_s_rail1") is not None
+        else None,
+        "backend": dyn_c.get("backend"),
+        "timestep_loop": dyn_c.get("timestep_loop"),
+        "via": stamped.get("via"),
+        "note": (
+            "Coupled MNA: I leaves VDD and enters VSS; C_rr on paired ITerms. "
+            "Does not replace Solver A VDD gold. Not overlapping-strap Cox."
+        ),
+        "not": "GCD default / extracted C_rr / signal SPEF",
+    }
+    out["note"] = (
+        paired["note"]
+        + f" Coupled C_rr={cf:.3e} F/pair ready — VDD gold unchanged."
+    )
+    return out
 
 
 def platform_block(
@@ -759,7 +921,7 @@ def platform_block(
             "idea": "one LinearSolver API → CPU AMG / CPU Krylov / GPU AMG / GPU Krylov (Ginkgo)",
         },
         "gold": {
-            "tiny": {"tool": "ngspice", "status": "READY", "scope": "1-node RC + 1-node series R+L companion"},
+            "tiny": {"tool": "ngspice", "status": "READY", "scope": "1-node RC + 1-node series R+L companion + 2-node C_rr"},
             "medium": {
                 "tool": "Xyce",
                 "status": "GAP",
@@ -797,9 +959,9 @@ def platform_block(
             },
             "VSS_return": {
                 "status": (vss or {}).get("status") or "GAP",
-                "role": "return-path TRAN on write_pg_spice VSS (block-diagonal dual-rail)",
+                "role": "return-path TRAN on write_pg_spice VSS (block-diagonal default; C_rr opt-in)",
                 "via": (vss or {}).get("via") or "write_pg_spice -net VSS + Sink-for inst pair",
-                "not": "rail-to-rail C, replacement of VDD gold",
+                "not": "replacement of VDD gold; C_rr is not GCD default / not extracted",
                 "meta": None if not vss else {k: v for k, v in vss.items() if k not in ("extract",)},
             },
         },
@@ -1198,6 +1360,110 @@ quit
     }
 
 
+def ngspice_rail_c_gold(
+    vdd: float = 1.1,
+    r: float = 1.0,
+    c_die: float = 50e-15,
+    c_rr: float = 20e-15,
+    i_peak: float = 5e-3,
+    dur: float = 0.2e-9,
+    dt: float = 10e-12,
+) -> dict | None:
+    """2-node VDD–VSS C_rr vs ngspice gear maxord=1. I from n_vdd to n_vss.
+
+    Not the GCD mesh. Instance-pin coupler only.
+    """
+    if not shutil_which("ngspice"):
+        return None
+    t_end = dur * 4
+    steps = max(8, int(math.ceil(t_end / dt)))
+    t50 = dur
+    g = 1.0 / r
+    Cmat = np.array([[c_die + c_rr, -c_rr], [-c_rr, c_die + c_rr]], dtype=np.float64)
+    G = np.diag([g, g])
+    A = G + Cmat / dt
+    V = np.array([vdd, 0.0], dtype=np.float64)
+    pad = np.array([g * vdd, 0.0], dtype=np.float64)
+    worst_vdd, worst_vss = vdd, 0.0
+    for s in range(steps):
+        t = s * dt
+        i = triangle_above_leak(t, t50, dur, i_peak)
+        I = np.array([i, -i], dtype=np.float64)
+        rhs = Cmat @ V / dt - I + pad
+        V = np.linalg.solve(A, rhs)
+        worst_vdd = min(worst_vdd, float(V[0]))
+        worst_vss = max(worst_vss, float(V[1]))
+    t0 = max(t50 - 0.5 * dur, 0.0)
+    t1 = t50 + 0.5 * dur
+    tmp = Path(tempfile.mkdtemp(prefix="dynir-railc-"))
+    sp_path = tmp / "railc.sp"
+    dat_v = tmp / "vdd.dat"
+    dat_s = tmp / "vss.dat"
+    sp_path.write_text(
+        f"""* rail-to-rail C gold (gear maxord=1 ≈ backward Euler)
+Vpad pad 0 DC {vdd}
+R1 pad n1 {r}
+R2 n2 0 {r}
+C1 n1 0 {c_die}
+C2 n2 0 {c_die}
+Crr n1 n2 {c_rr}
+Icell n1 n2 PWL(0 0 {t0:.6e} 0 {t50:.6e} {i_peak:.6e} {t1:.6e} 0 {t_end:.6e} 0)
+.control
+option method=gear maxord=1
+set filetype=ascii
+tran {dt:.6e} {t_end:.6e}
+wrdata {dat_v} v(n1)
+wrdata {dat_s} v(n2)
+quit
+.endc
+.end
+"""
+    )
+    subprocess.run(["ngspice", "-b", str(sp_path)], capture_output=True, text=True, timeout=30)
+    vmin_ng = _parse_wrdata_vmin(dat_v)
+    vmax_ng = _parse_wrdata_vmax(dat_s)
+    if vmin_ng is None or vmax_ng is None:
+        return {
+            "ok": False,
+            "be_vmin": worst_vdd,
+            "ngspice_vmin": vmin_ng,
+            "be_vss_max": worst_vss,
+            "ngspice_vss_max": vmax_ng,
+        }
+    err_mv = abs(worst_vdd - vmin_ng) * 1e3
+    err_s = abs(worst_vss - vmax_ng) * 1e3
+    return {
+        "ok": err_mv < 5.0 and err_s < 5.0,
+        "be_vmin": worst_vdd,
+        "ngspice_vmin": vmin_ng,
+        "be_vss_max": worst_vss,
+        "ngspice_vss_max": vmax_ng,
+        "abs_err_mv": err_mv,
+        "abs_err_vss_mv": err_s,
+        "c_rr": c_rr,
+        "c_die": c_die,
+        "i_peak": i_peak,
+        "method": "ngspice gear maxord=1 vs BE 2-node C_rr (I VDD→VSS)",
+    }
+
+
+def _parse_wrdata_vmax(path: Path) -> float | None:
+    """Max voltage from ngspice ASCII wrdata (time v)."""
+    if not path.is_file():
+        return None
+    worst = None
+    for line in path.read_text(errors="replace").splitlines():
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        try:
+            v = float(parts[1])
+        except ValueError:
+            continue
+        worst = v if worst is None else max(worst, v)
+    return worst
+
+
 def shutil_which(name: str):
     from shutil import which
 
@@ -1239,6 +1505,17 @@ def main() -> int:
         "--on-die-l",
         action="store_true",
         help="stamp Grover strap L+M as descriptor TRAN (not the GCD N3 gold; never AMG)",
+    )
+    ap.add_argument(
+        "--rail-c",
+        action="store_true",
+        help="stamp instance-pin C_rr and solve coupled VDD+VSS MNA (not GCD gold)",
+    )
+    ap.add_argument(
+        "--rail-c-f",
+        type=float,
+        default=0.0,
+        help="Farads per paired inst for C_rr; 0 keeps block-diagonal VSS TRAN",
     )
     args = ap.parse_args()
 
@@ -1461,6 +1738,9 @@ def main() -> int:
         dyn["ras"] = {k: v for k, v in dyn_d.items() if not k.startswith("wave_") and k != "V_worst"}
 
     vss_meta = None
+    rail_c_f = float(args.rail_c_f or 0.0)
+    if args.rail_c and rail_c_f <= 0.0:
+        rail_c_f = 1e-15
     if args.spice_vss and Path(args.spice_vss).is_file():
         vss_meta = run_return_rail(
             args.spice,
@@ -1474,6 +1754,8 @@ def main() -> int:
             t_end=t_end,
             lef=args.lef,
             spef=args.spef,
+            rail_c_f=rail_c_f,
+            vdd=vdd,
         )
 
     mor_meta = None
@@ -1753,9 +2035,11 @@ def main() -> int:
     gold = None
     gold_rl = None
     gold_n4 = None
+    gold_rail_c = None
     if not args.skip_ngspice:
         gold = ngspice_gold(vdd=vdd)
         gold_rl = ngspice_rl_gold(vdd=vdd)
+        gold_rail_c = ngspice_rail_c_gold(vdd=vdd)
         gold_n4 = ngspice_vrm_die_gold(
             vdd=vdd,
             r_vrm=0.015,
@@ -1953,6 +2237,12 @@ def main() -> int:
         if vss_meta and vss_meta.get("status") == "READY"
         else (" · VSS GAP" if args.spice_vss else "")
     )
+    if vss_meta and (vss_meta.get("coupled") or {}).get("status") == "READY":
+        coup = vss_meta["coupled"]
+        vss_note += (
+            f" · Crr {coup['c_rr_f']:.2e} F/pair coupled droop {coup['worst_droop_mv']:.3f} mV "
+            f"bounce {coup['worst_bounce_mv']:.3f} mV"
+        )
     win_err = win_run.get("abs_err_vs_A_mv")
     l3_note = (
         f" · L3 |A−W| {win_err:.3f} mV"
@@ -1965,7 +2255,7 @@ def main() -> int:
         "engine": "studio-dynamic-ir",
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
-            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in); dual-rail VSS sink-pair",
+            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in); dual-rail VSS sink-pair + opt-in instance C_rr",
             "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS/ECSM interpolators when tables exist — never from NLDM)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
@@ -1993,7 +2283,7 @@ def main() -> int:
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
             "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",
-            "ngspice": "unit-test gold for BE on 1-node RC, 1-node series R+L, and compact VRM+die",
+            "ngspice": "unit-test gold for BE on 1-node RC, 1-node series R+L, compact VRM+die, and 2-node C_rr",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
         "platform": plat,
@@ -2012,7 +2302,7 @@ def main() -> int:
                 "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor + D_ras_schwarz + N4_descriptor",
                 "replaces": "HSpice TRAN on Calibre DSPF",
                 "via": "Solver A LU golden + B SA-AMG + C reduced ODE + D RAS Schwarz + native N4 on write_pg_spice",
-                "gold": "ngspice 1-node RC + series R+L companion + compact VRM+die; A vs B vs C vs D on the chip mesh",
+                "gold": "ngspice 1-node RC + series R+L companion + compact VRM+die + 2-node C_rr; A vs B vs C vs D on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
@@ -2049,6 +2339,7 @@ def main() -> int:
         "ngspice_gold": gold,
         "ngspice_rl_gold": gold_rl,
         "ngspice_n4_gold": gold_n4,
+        "ngspice_rail_c_gold": gold_rail_c,
         "extract": extract_report,
         "em": em,
         "solver_b": amg_meta,
@@ -2098,6 +2389,8 @@ def main() -> int:
         print("ngspice_rl_gold", gold_rl)
     if gold_n4:
         print("ngspice_n4_gold", gold_n4)
+    if gold_rail_c:
+        print("ngspice_rail_c_gold", gold_rail_c)
     if n4_meta:
         print("n4", {k: n4_meta[k] for k in n4_meta if k != "note"})
     if em.get("n_with_j"):

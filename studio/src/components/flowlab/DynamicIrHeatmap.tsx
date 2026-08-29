@@ -109,6 +109,12 @@ type VssRail = {
   n_pairs?: number;
   n_events?: number;
   reason?: string;
+  coupled?: {
+    status?: string;
+    worst_droop_mv?: number;
+    worst_bounce_mv?: number;
+    c_rr_f?: number;
+  } | null;
 };
 type DynReport = {
   ok?: boolean;
@@ -389,6 +395,18 @@ export function DynamicIrHeatmap({
                 </dd>
               </div>
             )}
+            {vss?.coupled?.status === "READY" ? (
+              <div>
+                <dt>C rail-to-rail</dt>
+                <dd>
+                  droop {(vss.coupled.worst_droop_mv ?? 0).toFixed(2)} mV · bounce{" "}
+                  {(vss.coupled.worst_bounce_mv ?? 0).toFixed(2)} mV
+                  {vss.coupled.c_rr_f != null
+                    ? ` · Crr ${vss.coupled.c_rr_f.toExponential(2)} F/cella`
+                    : ""}
+                </dd>
+              </div>
+            ) : null}
             {em?.i_absmax_a != null && (
               <div>
                 <dt>|I| branch</dt>

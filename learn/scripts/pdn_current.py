@@ -27,7 +27,8 @@ _ECSM_WF = re.compile(
 
 
 def triangle_above_leak(t: float, t50: float, dur: float, i_pulse: float) -> float:
-    if dur <= 0 or i_pulse <= 0:
+    """Triangle pulse. i_pulse may be negative (current into the node — VSS return KCL)."""
+    if dur <= 0 or i_pulse == 0:
         return 0.0
     half = 0.5 * dur
     tau = t - t50

@@ -6,6 +6,7 @@
 # Grover on-die L is estimated always; descriptor TRAN is ON_DIE_L=1 (not AMG).
 # Dual-rail VSS: write_pg_spice -net VSS independently of VDD; pair by Sink-for
 # inst (not RTL). VSS TRAN does not change VDD gold 45.298 mV.
+# Rail-to-rail C_rr is opt-in (RAIL_C=1, RAIL_C_F=1e-15) — not the GCD default.
 # Activity = OpenSTA arrival t50 (clock) + VCD/SAIF name-join (GAP on RTL tb_gcd).
 # SAIF idle-zeros TC=0 pulses; does not invent t50 or rescale I_avg.
 # Path STA delay from OpenSTA report_checks (NLDM typical-V × (Vdd/V)^α).
@@ -125,6 +126,12 @@ if [[ -f "${VCD}" ]]; then
 fi
 if [[ "${ON_DIE_L:-}" == "1" ]]; then
   EXTRA+=(--on-die-l)
+fi
+if [[ "${RAIL_C:-}" == "1" ]]; then
+  EXTRA+=(--rail-c)
+  if [[ -n "${RAIL_C_F:-}" ]]; then
+    EXTRA+=(--rail-c-f "${RAIL_C_F}")
+  fi
 fi
 if [[ -f "${SPICE_VSS}" ]]; then
   EXTRA+=(--spice-vss "${SPICE_VSS}")
