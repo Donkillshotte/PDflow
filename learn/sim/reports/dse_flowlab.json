@@ -22160,5 +22160,9 @@
     "boils_rewrite_balance",
     "boils_resyn2ish",
     "boils_balance_first"
-  ]
+  ],
+  "ir_cell_extract_mv": 14.007544447720788,
+  "ir_cell_extract_residual_mv": 3.9379362895353154,
+  "ir_cell_pdn_mv": 5.172045635280842,
+  "ir_cell_pdn_name": "decap_200f"
 }

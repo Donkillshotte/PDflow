@@ -2030,6 +2030,8 @@ def run_controller(
             "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
             "F4 host IR residual loop: winning family on the host-region mesh, then unused pkg L on the unconstrained host — not candidate IR-steer",
             "F4 I-scale-win: I(t)×P of the attributed host on the winning host PDN point after host IR-steer — not the unconstrained first I-scale",
+            "F4 IR-cell extract: write_pg_spice on the ODB-joined size-up — residual vs host extract, not STA-only",
+            "F4 IR-cell PDN: 1× residual restamps the winning family on the sized mesh — not a flattened cell+decap vector",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -2074,6 +2076,44 @@ def run_controller(
             1
             for c in mem.all()
             if (c.attr or {}).get("via") == "active_f4_ir_cell_pdn" and c.status == "ok"
+        ),
+        "ir_cell_extract_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_ir_cell_extract"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "ir_cell_extract_residual_mv": next(
+            (
+                float((c.attr or {}).get("residual_mv"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_ir_cell_extract"
+                and (c.attr or {}).get("residual_mv") is not None
+            ),
+            None,
+        ),
+        "ir_cell_pdn_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_ir_cell_pdn"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "ir_cell_pdn_name": next(
+            (
+                str((c.knobs or {}).get("name") or "")
+                for c in reversed(list(mem.all()))
+                if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_ir_cell_pdn"
+            ),
+            None,
         ),
         "n_net": sum(
             1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"

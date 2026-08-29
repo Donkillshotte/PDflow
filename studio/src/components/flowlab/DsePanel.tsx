@@ -62,6 +62,10 @@ type DseReport = {
   n_ir_cell?: number;
   n_f4_ir_cell_extract?: number;
   n_ir_cell_pdn?: number;
+  ir_cell_extract_mv?: number;
+  ir_cell_extract_residual_mv?: number;
+  ir_cell_pdn_mv?: number;
+  ir_cell_pdn_name?: string;
   n_host_ir_steer?: number;
   n_port_steer?: number;
   n_f4_solve?: number;
@@ -116,6 +120,26 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
+          {report.n_ir_cell || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn ? (
+            <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
+              IR loop
+              {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
+              {report.ir_cell_extract_mv != null
+                ? ` · IR-x ${report.ir_cell_extract_mv.toFixed(3)} mV${
+                    report.ir_cell_extract_residual_mv != null
+                      ? ` Δ=${report.ir_cell_extract_residual_mv >= 0 ? "+" : ""}${report.ir_cell_extract_residual_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_ir_cell_extract != null
+                  ? ` · IR-x ${report.n_f4_ir_cell_extract}`
+                  : ""}
+              {report.ir_cell_pdn_mv != null
+                ? ` · IR-p ${report.ir_cell_pdn_name ?? "PDN"} ${report.ir_cell_pdn_mv.toFixed(3)} mV`
+                : report.n_ir_cell_pdn != null
+                  ? ` · IR-p ${report.n_ir_cell_pdn}`
+                  : ""}
+            </p>
+          ) : null}
           <ul className="fl-dynir-levels">
             {LEVELS.map((lv) => {
               const n = cands.filter((c) => c.level === lv).length;
