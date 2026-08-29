@@ -657,7 +657,7 @@ def main() -> int:
         arr_p = Path(tempfile.mkdtemp(prefix="dse-arr-")) / "sta_arrivals.json"
         arr = export_arrivals(mapped_ok, arr_p)
         check(arr.get("status") == "ok", f"candidate STA arrivals ({arr.get('reason')})")
-        check((arr.get("n_inst") or 0) > 0, f"arrivals cover instances, n_inst={arr.get('n_inst')}")
+        check((arr.get("n_inst") or 0) > 50, f"arrivals cover the cell set, n_inst={arr.get('n_inst')}")
         check(arr_p.is_file(), "export_arrivals writes JSON")
         print(f"    F3 arrivals n_inst={arr.get('n_inst')} ({arr.get('cost_s', 0):.2f}s)")
 
