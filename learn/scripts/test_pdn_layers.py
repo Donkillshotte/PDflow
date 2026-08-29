@@ -131,6 +131,25 @@ library (nldm_only) {
     check(err_mv < 1.0, f"1-node Python RLC MOR vs hist |A−C|={err_mv:.4f} mV")
     print(f"    python RLC MOR m={mor.m} backend={mor.backend} |A-C|={err_mv:.4e} mV")
 
+    from pdn_vrm import compact_vrm_die, ngspice_vrm_die_gold, timestep_descriptor
+
+    n4 = ngspice_vrm_die_gold(
+        vdd=1.1,
+        r_vrm=0.015,
+        l_vrm=2e-10,
+        c_vrm=50e-12,
+        r_pkg=0.05,
+        l_pkg=2e-10,
+        c_die=50e-12,
+        i_peak=5e-3,
+        t50=0.2e-9,
+        dur=0.2e-9,
+        dt=10e-12,
+        t_end=0.4e-9,
+    )
+    check(n4.get("ok") is True, f"N4 compact vs ngspice ({n4})")
+    print(f"    N4 compact |BE−ng|={n4.get('abs_err_mv'):.4f} mV droop={n4.get('be_droop_mv'):.3f} mV")
+
     print("ALL test_pdn_layers PASSED")
     return 0
 

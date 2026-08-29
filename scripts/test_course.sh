@@ -316,7 +316,8 @@ assert r["dynamic"].get("timestep_loop") in ("native", "native_hist", "python", 
 assert p["product_tiers"]["FAST"]["status"]=="READY"
 assert p["product_tiers"]["SIGNOFF"]["status"]=="GAP"
 assert p["network_levels"]["N1_R"]["status"]=="READY"
-assert p["network_levels"]["N4_vrm"]["status"]=="PARTIAL"
+assert p["network_levels"]["N4_vrm"]["status"] in ("READY", "PARTIAL")
+assert r.get("n4") is None or r["n4"].get("ok") is True
 assert "i_L" in p["network_levels"]["N3_RC_pkg"]["via"]
 assert p["em_thermal"]["status"]=="PARTIAL"
 assert p["em_thermal"]["i_absmax_a"] > 0
@@ -328,6 +329,8 @@ g=r.get("ngspice_gold")
 assert g is None or g.get("ok") is True, g
 g_rl=r.get("ngspice_rl_gold")
 assert g_rl is None or g_rl.get("ok") is True, g_rl
+g_n4=r.get("ngspice_n4_gold")
+assert g_n4 is None or g_n4.get("ok") is True, g_n4
 print(r["summary"][:100])
 PY
 else

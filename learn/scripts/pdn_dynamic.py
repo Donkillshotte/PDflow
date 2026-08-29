@@ -59,6 +59,7 @@ from pdn_solvers import (  # noqa: E402
     rl_companion,
 )
 from pdn_transient import build_system, parse_spice, solve_static  # noqa: E402
+from pdn_vrm import assemble_n4_mesh, load_vrm_cfg, ngspice_vrm_die_gold, timestep_descriptor  # noqa: E402
 
 
 def viridis(t: float) -> str:
@@ -296,6 +297,7 @@ def platform_block(
     mor: dict | None = None,
     adaptive: dict | None = None,
     em: dict | None = None,
+    n4: dict | None = None,
 ) -> dict:
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
     if mor and mor.get("ok"):
@@ -386,9 +388,13 @@ def platform_block(
                 "note": "not extracted on-die inductance; companion stays SPD so AMG applies",
             },
             "N4_vrm": {
-                "status": "PARTIAL",
-                "eq": "on-die + package + bumps + VRM",
-                "via": "bumps as V sources in write_pg_spice; VRM ladder is system_pdn (not coupled TRAN)",
+                "status": "READY" if n4 and n4.get("ok") else "PARTIAL",
+                "eq": "on-die + package R+L + lumped VRM (descriptor BE)",
+                "via": (n4 or {}).get("via")
+                or "bumps as V sources in write_pg_spice; VRM ladder is system_pdn (not coupled TRAN)",
+                "vs_N3_mv": None if not n4 else n4.get("abs_err_vs_N3_mv"),
+                "note": (n4 or {}).get("note")
+                or "µs VRM capacitors look stiff on a sub-ns GCD window",
             },
         },
         "product_tiers": {
@@ -854,6 +860,8 @@ def main() -> int:
     ap.add_argument("--adaptive", action="store_true", help="also run adaptive-Δt BE (LU)")
     ap.add_argument("--liberty", type=Path, default=None, help="Liberty file to probe for CCS/ECSM (never synthesized)")
     ap.add_argument("--vcd", type=Path, default=None, help="VCD/SAIF/FSDB to probe (never silently mapped to ITerms)")
+    ap.add_argument("--no-vrm", action="store_true", help="skip coupled N4 VRM+die descriptor BE")
+    ap.add_argument("--vrm-cfg", type=Path, default=None, help="system_pdn JSON for lumped VRM")
     args = ap.parse_args()
 
     current_model = probe_liberty_current_model(args.liberty)
@@ -968,6 +976,42 @@ def main() -> int:
             "steps": dyn_ad["steps"],
             "timestep_loop": dyn_ad.get("timestep_loop"),
             "via": "BE LTE ½|Δ²V|; g_eq(Δt)+i_L (different L discretization than fixed-Δt gold)",
+        }
+
+    n4_meta = None
+    if not args.no_vrm:
+        vrm = (load_vrm_cfg(args.vrm_cfg).get("vrm") or {})
+        n4sys = assemble_n4_mesh(
+            sys_be["G_mesh"],
+            sys_be["C"],
+            sys_be["bump"],
+            vdd=vdd,
+            pkg_r=args.pkg_r,
+            pkg_l=args.pkg_l,
+            r_vrm=float(vrm.get("r_out") or 0.015),
+            l_vrm=float(vrm.get("l_out") or 2e-9),
+            c_vrm=float(vrm.get("c_out") or 47e-6),
+        )
+        leak_n4 = np.asarray(sys_be["leak"], dtype=np.float64)
+
+        def _i_n4(t, leak=leak_n4, evs=events):
+            I = leak.copy()
+            for ev in evs:
+                I[ev["idx"]] += triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
+            return I
+
+        dyn_n4 = timestep_descriptor(n4sys, _i_n4, dt, t_end, vdd)
+        err_n4 = abs(dyn["worst_droop"] - dyn_n4["worst_droop"]) * 1e3
+        n4_meta = {
+            "ok": True,
+            "worst_droop_mv": dyn_n4["worst_droop"] * 1e3,
+            "worst_time_ns": dyn_n4["worst_time_s"] * 1e9,
+            "abs_err_vs_N3_mv": err_n4,
+            "via": "coupled descriptor BE: write_pg_spice die + lumped VRM C/L/R + bump R+L",
+            "note": "N3 (ideal Vsrc) stays gold on this sub-ns window; 47 µF VRM is stiff here",
+            "r_vrm": float(vrm.get("r_out") or 0.015),
+            "l_vrm": float(vrm.get("l_out") or 2e-9),
+            "c_vrm": float(vrm.get("c_out") or 47e-6),
         }
 
     scenarios = None
@@ -1092,9 +1136,24 @@ def main() -> int:
 
     gold = None
     gold_rl = None
+    gold_n4 = None
     if not args.skip_ngspice:
         gold = ngspice_gold(vdd=vdd)
         gold_rl = ngspice_rl_gold(vdd=vdd)
+        gold_n4 = ngspice_vrm_die_gold(
+            vdd=vdd,
+            r_vrm=0.015,
+            l_vrm=2e-10,
+            c_vrm=50e-12,
+            r_pkg=0.05,
+            l_pkg=2e-10,
+            c_die=50e-12,
+            i_peak=5e-3,
+            t50=0.2e-9,
+            dur=0.2e-9,
+            dt=10e-12,
+            t_end=0.4e-9,
+        )
 
     i_tot_peak = max(dyn["wave_itot"]) if dyn["wave_itot"] else 0.0
     n_seq = sum(1 for e in events if e["seq"])
@@ -1176,6 +1235,7 @@ def main() -> int:
         mor=mor_meta,
         adaptive=adaptive_meta,
         em=em,
+        n4=n4_meta,
     )
     amg_note = (
         f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
@@ -1185,6 +1245,11 @@ def main() -> int:
     mor_note = (
         f" · MOR m={mor_meta['m']} {mor_meta['worst_droop_mv']:.3f} mV (|A−C| {mor_meta['abs_err_vs_A_mv']:.3f} mV)"
         if mor_meta
+        else ""
+    )
+    n4_note = (
+        f" · N4 {n4_meta['worst_droop_mv']:.3f} mV (|N3−N4| {n4_meta['abs_err_vs_N3_mv']:.3f} mV)"
+        if n4_meta
         else ""
     )
     report = {
@@ -1267,9 +1332,11 @@ def main() -> int:
         "waveform": str(wave_path),
         "ngspice_gold": gold,
         "ngspice_rl_gold": gold_rl,
+        "ngspice_n4_gold": gold_n4,
         "em": em,
         "solver_b": amg_meta,
         "solver_c": mor_meta,
+        "n4": n4_meta,
         "adaptive": adaptive_meta,
         "scenarios": scenarios,
         "timing_impact": timing,
@@ -1281,6 +1348,7 @@ def main() -> int:
             f"t50 span {((max(t50s)-min(t50s))*1e9) if t50s else 0:.2f} ns"
             f"{amg_note}"
             f"{mor_note}"
+            f"{n4_note}"
             f" · delay +{timing['degradation_ps']:.2f} ps"
         ),
     }
@@ -1302,6 +1370,10 @@ def main() -> int:
         print("ngspice_gold", gold)
     if gold_rl:
         print("ngspice_rl_gold", gold_rl)
+    if gold_n4:
+        print("ngspice_n4_gold", gold_n4)
+    if n4_meta:
+        print("n4", {k: n4_meta[k] for k in n4_meta if k != "note"})
     return 0
 
 

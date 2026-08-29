@@ -23,10 +23,10 @@ type Mor = {
   m?: number;
   backend?: string;
 };
-type Em = {
-  status?: string;
-  i_absmax_a?: number;
-  hottest?: { a?: string; b?: string; i_abs?: number };
+type N4 = {
+  ok?: boolean;
+  worst_droop_mv?: number;
+  abs_err_vs_N3_mv?: number;
 };
 type DynReport = {
   ok?: boolean;
@@ -78,6 +78,7 @@ type DynReport = {
   };
   solver_b?: Amg;
   solver_c?: Mor;
+  n4?: N4;
   scenarios?: Scenario[];
   timing_impact?: Timing;
   em?: Em;
@@ -153,6 +154,7 @@ export function DynamicIrHeatmap({
   const tiers = plat?.product_tiers;
   const amg = report?.solver_b;
   const mor = report?.solver_c;
+  const n4 = report?.n4;
   const timing = report?.timing_impact ?? plat?.timing_impact;
   const scenarios = report?.scenarios ?? [];
   const worstScen = scenarios[0];
@@ -239,6 +241,19 @@ export function DynamicIrHeatmap({
                     : `${(mor.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
                   {mor.m != null ? ` · m=${mor.m}` : ""}
                   {mor.backend ? ` · ${mor.backend}` : ""}
+                </dd>
+              </div>
+            )}
+            {n4 && (
+              <div>
+                <dt>|N3−N4| VRM</dt>
+                <dd>
+                  {(n4.abs_err_vs_N3_mv ?? 0) < 0.001
+                    ? "< 1 µV"
+                    : `${(n4.abs_err_vs_N3_mv ?? 0).toFixed(3)} mV`}
+                  {n4.worst_droop_mv != null
+                    ? ` · ${n4.worst_droop_mv.toFixed(2)} mV`
+                    : ""}
                 </dd>
               </div>
             )}

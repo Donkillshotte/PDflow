@@ -1,7 +1,7 @@
 # Dynamic IR sul GCD (I(t) per pin + Solver A gold + Solver B SA-AMG)
 
 Slice eseguibile di una **piattaforma ibrida**, non un RedHawk e non un fork.
-Frontend: OpenROAD `write_pg_spice`. **Solver A** (BE + LU) è l’oracle. **Solver B** (SA-AMG + CG) è il workhorse sulla stessa \(A=G+C/\Delta t\). **Solver C** è un ODE Krylov ridotto su \(\delta v=v-V_\mathrm{dd}\). vyges-em-ir è bootstrap.
+Frontend: OpenROAD `write_pg_spice`. **Solver A** (BE + LU + \(i_L\)) è l’oracle. **Solver B** (SA-AMG + CG) è il workhorse sulla stessa \(A=G+C/\Delta t+g_\mathrm{eq}\). **Solver C** è MOR: RC su \(\delta v\), o descriptor RLC su \(x=[v;i_L]\) (stessa fisica del companion). vyges-em-ir è bootstrap.
 
 ```text
 6_final.odb
@@ -16,7 +16,7 @@ pdn_dynamic.py
     A = G + C/Δt                setup una volta (indipendente da I(t))
     Solver A: LU                gold
     Solver B: SA-AMG + CG       workhorse, |A−B| sul GCD < 1 µV
-    Solver C: rational Krylov MOR  reduced ODE, |A−C| sul GCD in report
+    Solver C: rational Krylov MOR  descriptor RLC (o RC se L=0)
     Native BE loop in libdpn (R+L companion + i_L)
     ▼
 sim/reports/dynamic_ir_<variant>.json
@@ -36,8 +36,9 @@ vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch
 | **L2 VCD dynamic** | tempi reali di pin | **GAP** — VCD RTL ≠ ITerm gate |
 | **L3 Windowed** | simula solo finestre ad alta corrente | PARTIAL — finestre su `I_tot(t)` di **questo** run |
 
-Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A/B/C ci sono.
-**Non** si forka vyges, EMSim o PSM. CCS e Ginkgo GPU restano GAP.
+Il salto qualitativo restante è il modello **cella → I(t)** sul GCD (Nangate è NLDM).
+L’interpolatore CCS esiste (`pdn_current.py`) e si testa su Liberty sintetica — **non** si inventa un mapping NLDM→CCS.
+I solver A/B/C ci sono. **Non** si forka vyges, EMSim o PSM. Ginkgo GPU resta GAP.
 
 ## Solver A / B / C e livelli prodotto
 
@@ -45,14 +46,14 @@ Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A
 |---|---|---|
 | **A** direct BE + LU | golden | READY (~3 ms setup, più veloce a 4k nodi) |
 | **B** SA-AMG + CG in `libdpn` | workhorse | READY · 5 livelli · \|A−B\| ≪ 1 mV · nativo |
-| **C** rational Krylov MOR | reduced ODE, tanti `I(t)` | PARTIAL · m=24 · \|A−C\| 13.6 mV (niente \(i_L\)); ranking resta A |
+| **C** rational Krylov MOR | reduced ODE, tanti `I(t)` | **READY** · m=96 · \|A−C\| 0.129 mV (descriptor RLC, \(x=[v;i_L]\)); ranking resta A |
 
 | Rete | Equazione | GCD |
 |---|---|---|
 | N1 R | \(GV=I\) | READY |
 | N2 R+C | + `c_decap` | READY |
 | N3 + pkg R/L | companion \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\) | READY (L on-die non estratta) |
-| N4 + VRM | on-die + package + VRM | PARTIAL (`system_pdn` non accoppiato) |
+| N4 + VRM | on-die + lumped VRM descriptor | **READY** (coupled BE; \|N3−N4\| ≈ 18 µV on this 0.46 ns window — 47 µF is stiff). Full VRM µs load-step resta `system_pdn` |
 
 FAST = vectorless + AMG = **READY** (t50 sintetici). ACCURATE e SIGNOFF = GAP.
 
@@ -63,10 +64,10 @@ Sul GCD Nangate45 LU è più veloce di AMG (4k nodi). AMG è il path che tiene s
 | # | Livello | Oggi | Gap onesto |
 |---|---|---|---|
 | 1 | PDN extract | OpenROAD `write_pg_spice` | non DEF+LEF nativo vyges su Nangate |
-| 2 | Power model | I_avg nel `.sp` (NLDM) | no CCS I(t) |
-| 3 | Activity | clock/spatial/simultaneous | no VCD pin, no SAIF |
-| 4 | Current waveform | triangolo per ITerm | no slew/load/arc |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** Krylov | ngspice = gold 1-nodo RC e R+L; MOR senza \(i_L\) |
+| 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
+| 3 | Activity | clock/spatial/simultaneous | no VCD pin, no SAIF (`pdn_activity` probe = GAP) |
+| 4 | Current waveform | triangolo per ITerm | CCS I(V,slew) solo se tabelle + Vout(t) |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov | ngspice = gold 1-nodo RC e R+L; \|A−C\| ≪ 1 mV sul GCD |
 | 6 | Analysis | heatmap, finestre, ranking scenari, delay scaling, \(I_\mathrm{branch}\) | no J/TTF (manca width), no path STA |
 
 ```bash
@@ -110,7 +111,7 @@ N3 = companion BE con storia di \(i_L\) (non \(L/\Delta t\) memoryless). Il droo
 | vyges-em-ir 0.1.33 | 17.46 mV | 78.8 mV @ 1.016 ns (simultaneous) |
 | **questo engine `clock` + \(i_L\)** | **17.52 mV** | **59.925 mV (5.45%) @ 0.33 ns** · I_peak 21.7 mA · native_hist |
 | Solver B SA-AMG | — | 59.925 mV · \|A−B\| ≪ 1 µV · L5 native |
-| Solver C Krylov MOR | — | 73.518 mV · m=24 · \|A−C\| 13.59 mV · **screening** |
+| Solver C Krylov MOR | — | 60.054 mV · m=96 · \|A−C\| **0.129 mV** · descriptor RLC |
 
 Ranking Solver A (gold): simultaneous 67.25 mV > clock 59.93 mV > spatial 55.31 mV.
 Con \(i_L\), lo spike simultaneo è il peggiore (I_peak 52 mA vs 22 mA clock) — il contrario della slice memoryless.
@@ -123,9 +124,13 @@ EM: \(I=(V_a-V_b)/R\) a \(t_\mathrm{worst}\) = PARTIAL · \|I\|_max ≈ 3.04 mA 
 
 | Path | Ruolo |
 |---|---|
-| `learn/scripts/pdn_dynamic.py` | I(t) + BE + SVG |
+| `learn/scripts/pdn_dynamic.py` | orchestrazione + report |
+| `learn/scripts/pdn_current.py` | triangolo + probe/interpolatore CCS |
+| `learn/scripts/pdn_activity.py` | t50 sintetici + probe VCD/SAIF |
+| `learn/scripts/pdn_solvers.py` | A/B/C (libdpn ctypes + SciPy) |
 | `learn/scripts/run_dynamic_ir.sh` | GCD + stamp `.dynamic_ir.ok` |
-| `sim/reports/dynamic_ir_<variant>.*` | JSON / wave / map / SVG |
+| `learn/scripts/pdn_vrm.py` | N4 descriptor: VRM + bump R+L + mesh |
+| `engine/` | `libdpn` LU / SA-AMG / BE hist / descriptor RLC MOR |
 
 Limiti in aula: triangolo ≠ CCS; AMG sul GCD è più lento di LU (4k nodi); package R/L lumpato; pad PDNSim su metal4.
 
