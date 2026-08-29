@@ -2989,15 +2989,20 @@ button.pipeline-node {
 
 /* Real layout canvas — EDA viewport */
 .fl-layout-canvas {
-  display: grid;
-  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
   margin: 0;
-  padding: 0.55rem 0.65rem 0.75rem;
+  padding: 0.5rem 0.6rem 0.55rem;
+  min-height: min(74vh, 820px);
+  height: min(74vh, 820px);
 }
 .fl-layout-canvas:fullscreen {
   background: #05070b;
   padding: 0.75rem 1rem 1rem;
-  overflow: auto;
+  overflow: hidden;
+  height: 100vh;
+  min-height: 100vh;
 }
 .fl-layout-toolbar {
   display: flex;
@@ -3005,6 +3010,7 @@ button.pipeline-node {
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem 0.75rem;
+  flex: 0 0 auto;
 }
 .fl-layout-title {
   display: flex;
@@ -3037,8 +3043,9 @@ button.pipeline-node {
   min-height: 1.85rem;
 }
 .fl-layout-stage {
-  min-height: min(72vh, 820px);
-  height: min(72vh, 820px);
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
   border-radius: 14px;
   border: 1px solid rgba(126, 224, 255, 0.18);
   background:
@@ -3051,7 +3058,8 @@ button.pipeline-node {
     0 18px 50px rgba(0, 0, 0, 0.35);
 }
 .fl-layout-canvas:fullscreen .fl-layout-stage {
-  height: calc(100vh - 9rem);
+  flex: 1 1 auto;
+  height: auto;
   min-height: 0;
 }
 .fl-layout-stage.pending {
@@ -3193,15 +3201,17 @@ button.pipeline-node {
 .fl-layer-hud {
   position: absolute;
   left: 10px;
-  bottom: 10px;
-  width: 210px;
+  top: 10px;
+  width: 218px;
   z-index: 6;
   border-radius: 12px;
   border: 1px solid rgba(126, 224, 255, 0.22);
-  background: rgba(8, 12, 18, 0.92);
+  background: rgba(8, 12, 18, 0.94);
   backdrop-filter: blur(10px);
   padding: 0.55rem 0.6rem 0.65rem;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  max-height: calc(100% - 7.5rem);
+  overflow: auto;
 }
 .fl-layer-hud header {
   display: flex;
@@ -3272,7 +3282,7 @@ button.pipeline-node {
 .fl-layer-reopen {
   position: absolute;
   left: 10px;
-  bottom: 10px;
+  top: 10px;
   z-index: 6;
   display: inline-flex;
   align-items: center;
@@ -3290,8 +3300,9 @@ button.pipeline-node {
   display: flex;
   gap: 0.45rem;
   overflow-x: auto;
-  padding: 0.15rem 0 0.2rem;
+  padding: 0.1rem 0 0;
   scrollbar-width: thin;
+  flex: 0 0 auto;
 }
 .fl-film-thumb {
   flex: 0 0 auto;
@@ -3417,9 +3428,13 @@ button.pipeline-node {
   .fl-resize-handle { display: none; }
   .fl-side-panel { width: 100% !important; min-height: 22rem; }
   .fl-pipeline-step { min-width: 6.5rem; }
+  .fl-layout-canvas {
+    height: min(68vh, 640px);
+    min-height: 28rem;
+  }
   .fl-layout-stage {
-    height: min(62vh, 560px);
-    min-height: 22rem;
+    height: auto;
+    min-height: 0;
   }
   .fl-layer-hud { width: 170px; }
 }

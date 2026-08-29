@@ -96,8 +96,8 @@ export function FlowLab() {
   const [rightTab, setRightTab] = useState<RightTab>("log");
   const [guiBusy, setGuiBusy] = useState(false);
   const [offerNext, setOfferNext] = useState(false);
-  const [sideWidth, setSideWidth] = useState(300);
-  const [sideCollapsed, setSideCollapsed] = useState(false);
+  const [sideWidth, setSideWidth] = useState(280);
+  const [sideCollapsed, setSideCollapsed] = useState(true);
   const [sim, setSim] = useState<{
     vcdExists: boolean;
     logExists: boolean;
@@ -581,7 +581,7 @@ export function FlowLab() {
             ) : (
               <PanelRightClose size={16} aria-hidden />
             )}
-            {sideCollapsed ? "Console" : "Chip"}
+            {sideCollapsed ? "Console" : "Espandi chip"}
           </button>
           <button
             type="button"
