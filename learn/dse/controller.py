@@ -27,13 +27,14 @@ from .acquire import (
     should_pay_f2_fast,
     should_pay_f2_gpl,
     should_pay_f2_grt,
+    should_pay_f3_sdf,
     should_pay_f3_sta,
     should_pay_f4_extract,
     should_pay_f4_pdn,
     should_pay_f4_scale,
     should_pay_physical_catalog,
 )
-from .arch_space import emit_gcd_variant
+from .arch_space import emit_gcd_variant, stamp_cone_knobs
 from .attribute import attribute_from_path, local_scope
 from .boils import propose_logic_boils, should_pay_f1
 from .fidelity import (
@@ -42,6 +43,7 @@ from .fidelity import (
     evaluate_f2_fast,
     evaluate_f2_gpl,
     evaluate_f2_grt,
+    evaluate_f3_sdf,
     evaluate_f3_sta,
     evaluate_f4_extract,
     evaluate_f4_pdn,
@@ -363,6 +365,7 @@ def run_controller(
                 break
         if knobs is None:
             break
+        knobs = stamp_cone_knobs(knobs, str(plan.get("focus") or "chip"))
         pred = predict_f1_area(mem.by_level("logic"), list(knobs.get("abc_ops") or []))
         best = _best_area(mem, "logic")
         acq = knobs.get("acq") or {}
@@ -542,6 +545,40 @@ def run_controller(
                     wns_ns=(child.artifacts or {}).get("wns_ns"),
                     overflow=child.qor.congestion,
                     status=child.status,
+                )
+
+    n_sdf = sum(
+        1
+        for c in mem.all()
+        if (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok"
+    )
+    pay_sdf, why_sdf = should_pay_f3_sdf(mem, budget_left=t_end - time.time(), n_sdf=n_sdf)
+    step("acquire", fidelity="F3_SDF", pay=pay_sdf, why=why_sdf)
+    if any(s["level"] == "f3_sdf" for s in plan["steps"]) and pay_sdf and time.time() < t_end:
+        host = next(
+            (
+                c
+                for c in mem.all()
+                if (c.artifacts or {}).get("sdf")
+                and (c.artifacts or {}).get("mapped_v")
+                and Path(c.artifacts["sdf"]).is_file()
+                and Path(c.artifacts["mapped_v"]).is_file()
+            ),
+            None,
+        )
+        if host:
+            sdfc = evaluate_f3_sdf(host, mem, design_id=design_id)
+            if sdfc:
+                step(
+                    "evaluate",
+                    id=sdfc.id,
+                    level=host.level,
+                    fidelity="F3",
+                    via="f3_opensta_sdf_grt",
+                    parent=host.id,
+                    wns_ns=(sdfc.artifacts or {}).get("wns_ns"),
+                    interconnect="sdf_grt",
+                    status=sdfc.status,
                 )
 
     phys_f0 = propose_physical_f0(mem, design_id)
@@ -770,11 +807,11 @@ def run_controller(
         "architecture": [
             "layered search: architecture ≠ logic ≠ synthesis ≠ physical ≠ routing ≠ PDN",
             "F0 SSK-GP area + RUDY-class congestion; not IR",
-            "F1 Yosys+ABC+equiv (script file, write_verilog -noexpr) on logic and dpath extracts",
+            "F1 chip flatten-first (area teacher 409.108) · cone-local ABC on dpath when IR focuses the cone",
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + budgeted GRT",
-            "F3 OpenSTA interleaved after each F1 (ideal) + ingest signoff STA",
-            "F4 ingest gold + candidate write_pg_spice + Solver A restamp — gold unrestamped",
-            "IR combo on dpath → cone extracts; F3 WNS reorders remaining, no chip restart",
+            "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF (not SPEF) + ingest",
+            "F4 ingest gold + candidate write_pg_spice + Solver A restamp + static IR — gold unrestamped",
+            "IR combo on dpath → cone extracts then cone-local ABC; F3 WNS reorders remaining, no chip restart",
             "hierarchy chip→block→region→cone; attributed cells/region from hotspot",
             "Pareto per level — EHVI acquires, it does not replace the front",
             "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · candidate PDN F4",
@@ -807,6 +844,11 @@ def run_controller(
             if (c.knobs or {}).get("catalog")
         ),
         "n_f3": sum(1 for c in mem.all() if c.fidelity == "F3"),
+        "n_f3_sdf": sum(
+            1
+            for c in mem.all()
+            if (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok"
+        ),
         "n_f2_grt": sum(
             1
             for c in mem.by_level("routing")
@@ -908,7 +950,12 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     timed = [
         (c.knobs.get("parent_name") or c.knobs.get("name"), c.qor.wns_cost)
         for c in mem.all()
-        if c.status == "ok" and c.qor.wns_cost is not None and c.fidelity == "F3"
+        if (
+            c.status == "ok"
+            and c.qor.wns_cost is not None
+            and c.fidelity == "F3"
+            and (c.knobs or {}).get("source") == "f3_opensta_ideal"
+        )
     ]
     if timed:
         timed.sort(key=lambda t: t[1])

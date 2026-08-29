@@ -27,6 +27,27 @@ def _module_of(name: str | None) -> str | None:
     return None
 
 
+def _cones_of(name: str | None) -> list[str]:
+    """Hierarchical STA: dpath/sub/_122_ → [dpath, dpath/sub]."""
+    if not name:
+        return []
+    n = str(name).replace("\\", "").split()[0]
+    if "/" in n:
+        parts = [p for p in n.split("/") if p]
+    elif n.startswith("dpath.") or n.startswith("ctrl."):
+        parts = [p for p in n.split(".") if p]
+    else:
+        m = _module_of(n)
+        return [m] if m else []
+    if not parts or parts[0] not in ("dpath", "ctrl"):
+        m = _module_of(n)
+        return [m] if m else []
+    out = [parts[0]]
+    if len(parts) >= 2 and not parts[1].startswith("_"):
+        out.append(f"{parts[0]}/{parts[1]}")
+    return out
+
+
 def _cell_of(name: str | None) -> str | None:
     if not name:
         return None
@@ -50,11 +71,15 @@ def attribute_dynamic_ir(report: dict) -> dict:
     start = path.get("startpoint")
     end = path.get("endpoint")
     modules: list[str] = []
+    cones: list[str] = []
     cells: list[str] = []
     for n in (start, end):
         m = _module_of(n)
         if m and m not in modules:
             modules.append(m)
+        for cone in _cones_of(n):
+            if cone not in cones:
+                cones.append(cone)
         c = _cell_of(n)
         if c and c not in cells:
             cells.append(c)
@@ -84,6 +109,7 @@ def attribute_dynamic_ir(report: dict) -> dict:
         "path_end": end,
         "path_slack_ns": timing.get("path_slack_ns") or path.get("slack_ns"),
         "modules": modules,
+        "cones": cones,
         "cells": cells,
         "scope": scope,
         "hierarchy": ["chip", "block", "region", "logic_cone"],
@@ -106,6 +132,7 @@ def local_scope(attr: dict) -> dict:
     return {
         "scope": scope,
         "modules": modules,
+        "cones": list(attr.get("cones") or []),
         "cells": list(attr.get("cells") or []),
         "region": region,
         "restart_chip": False,
@@ -120,16 +147,21 @@ def attribute_sta(sta: dict, *, inherit: dict | None = None) -> dict:
     start = sta.get("path_start")
     end = sta.get("path_end")
     modules: list[str] = []
+    cones: list[str] = []
     cells: list[str] = []
     for n in (start, end):
         m = _module_of(n)
         if m and m not in modules:
             modules.append(m)
+        for cone in _cones_of(n):
+            if cone not in cones:
+                cones.append(cone)
         c = _cell_of(n)
         if c and c not in cells:
             cells.append(c)
     if not modules:
         modules = list(inherit.get("modules") or [])
+        cones = list(inherit.get("cones") or cones)
     scope = "logic_cone" if modules else (inherit.get("scope") or "chip")
     return {
         "status": "READY" if (start or modules) else "GAP",
@@ -138,6 +170,7 @@ def attribute_sta(sta: dict, *, inherit: dict | None = None) -> dict:
         "path_end": end,
         "path_slack_ns": sta.get("wns_ns"),
         "modules": modules,
+        "cones": cones,
         "cells": cells,
         "scope": scope,
         "restart_chip": False,

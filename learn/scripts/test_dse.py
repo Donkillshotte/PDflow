@@ -13,7 +13,7 @@ if str(_ROOT / "learn") not in sys.path:
     sys.path.insert(0, str(_ROOT / "learn"))
 
 from dse.abc_space import CATALOG, BOILS_STD_OPS, abc_script_plus, min_kernel_to_seen, subsequence_kernel
-from dse.arch_space import emit_gcd_variant, plan_dpath_extracts
+from dse.arch_space import DPATH_MODULE, emit_gcd_variant, plan_dpath_extracts, stamp_cone_knobs
 from dse.attribute import attribute_dynamic_ir, local_scope
 from dse.boils import ei_min, gp_predict, propose_logic_boils, should_pay_f1
 from dse.egraph import gcd_dpath_egraph
@@ -290,7 +290,14 @@ def main() -> int:
     mo_pick = propose_logic_boils(mem_w, focus="dpath")
     check(mo_pick is not None, "MO BOiLS still proposes after two timed sequences")
     check((mo_pick or {}).get("acq", {}).get("via") == "ssk_gp_ehvi", f"acquisition is EHVI, got {mo_pick}")
+    check((mo_pick or {}).get("cone") == "dpath", "IR focus dpath stamps cone ABC knobs")
+    check((mo_pick or {}).get("cone_module") == DPATH_MODULE, "cone ABC names the dpath Yosys module")
     check("coreUtilization" not in (mo_pick or {}), "EHVI proposal does not flatten physical knobs")
+    chip_rb = {"name": "boils_rewrite_balance", "abc_ops": ["rewrite", "balance"], "abc_script": "file"}
+    check(
+        knobs_fp("logic", chip_rb) != knobs_fp("logic", stamp_cone_knobs(chip_rb, "dpath")),
+        "cone rewrite+balance is not the chip flatten-first fingerprint",
+    )
     from dse.controller import f1_area_winner, f1_wns_winner
 
     check(f1_area_winner(mem_w).id == "base", "area winner is liberty_default")
@@ -313,6 +320,7 @@ def main() -> int:
     check(f1_area_winner(mem_w).id == "base", "larger faster netlist does not steal the area crown")
     check(f1_wns_winner(mem_w).id == "fastish", "WNS winner is the delay-improved sequence")
     check(any(s["level"] == "f3_sta" for s in planned["steps"]), "planner schedules F3 STA")
+    check(any(s["level"] == "f3_sdf" for s in planned["steps"]), "planner schedules F3 SDF-GRT")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
     check(
@@ -376,6 +384,14 @@ def main() -> int:
     from dse.openroad_f2 import evaluate_grt
     from dse.attribute import attribute_sta
 
+    slash = attribute_sta(
+        {"path_start": "dpath/b_reg/_49_", "path_end": "dpath/sub/_122_", "wns_ns": -0.39}
+    )
+    check(slash["modules"] == ["dpath"], f"slash STA paths map to dpath, got {slash['modules']}")
+    check("dpath/sub" in (slash.get("cones") or []), f"sub-cone from slash path, got {slash.get('cones')}")
+    check("dpath/b_reg" in (slash.get("cones") or []), "register instance is a sub-cone")
+    check(slash["status"] == "READY", "hier STA path is READY without inherit")
+
     if sta_available() and mapped_ok.is_file():
         sta = evaluate_sta(mapped_ok)
         check(sta.get("status") == "ok", f"OpenSTA F3 on mapped F1 ({sta.get('reason')})")
@@ -387,12 +403,25 @@ def main() -> int:
         check("dpath" in (sattr.get("modules") or []), "STA inherit keeps the dpath cone")
 
     if gpl_available() and mapped_ok.is_file():
-        grt = evaluate_grt(mapped_ok, timeout_s=40)
+        sdf_p = Path(tempfile.mkdtemp(prefix="dse-sdf-")) / "cand.sdf"
+        grt = evaluate_grt(mapped_ok, timeout_s=40, sdf_out=sdf_p)
         check(grt.get("status") == "ok", f"OpenROAD GRT on mapped F1 ({grt.get('reason')})")
         check(grt.get("wns_ns") is not None, "GRT+parasitics reports WNS")
+        check(grt.get("sdf") and Path(grt["sdf"]).is_file(), "GRT persists SDF (not SPEF/OpenRCX)")
+        check(grt.get("interconnect") == "sdf_grt", f"GRT interconnect is sdf_grt, got {grt.get('interconnect')}")
         check("detailed" not in (grt.get("via") or "").lower() or "not detailed" in (grt.get("via") or ""),
               "GRT via states it is not detailed route")
         print(f"    F2 GRT WNS={grt['wns_ns']:.3f} ns overflow={grt.get('overflow')} ({grt['cost_s']:.2f}s)")
+        if sta_available() and sdf_p.is_file():
+            sdf_sta = evaluate_sta(mapped_ok, sdf=sdf_p)
+            check(sdf_sta.get("status") == "ok", f"OpenSTA + GRT SDF ({sdf_sta.get('reason')})")
+            check(sdf_sta.get("interconnect") == "sdf_grt", "OpenSTA labels interconnect sdf_grt")
+            if sta.get("wns_ns") is not None and sdf_sta.get("wns_ns") is not None:
+                check(
+                    abs(float(sdf_sta["wns_ns"]) - float(sta["wns_ns"])) > 0.05,
+                    f"SDF WNS {sdf_sta['wns_ns']} must differ from ideal {sta['wns_ns']}",
+                )
+            print(f"    F3 SDF-GRT WNS={sdf_sta['wns_ns']:.3f} ns vs ideal {sta.get('wns_ns')} ns")
 
     props = dse_propose(mem2, focus="dpath", attr=attr)
     check(props, "symbolic proposer returns at least one idea")
@@ -410,6 +439,9 @@ def main() -> int:
     check(knobs is not None and knobs.get("name"), "controller proposes a logic catalog entry")
     check("coreUtilization" not in knobs, "logic proposal does not smuggle physical knobs")
     check("pkg_l" not in knobs, "logic proposal does not smuggle PDN knobs")
+    check(not knobs.get("cone"), "chip-focus proposal is flatten-first, not cone ABC")
+    knobs_d = propose_logic(mem2, focus="dpath")
+    check((knobs_d or {}).get("cone") == "dpath", "dpath-focus proposal stamps cone ABC")
 
     ir_p = _ROOT / "learn" / "sim" / "reports" / "dynamic_ir_flowlab.json"
     if ir_p.is_file():
@@ -442,6 +474,10 @@ def main() -> int:
             check(c2.status == "ok", f"F1 rewrite+balance proves equiv ({c2.failure})")
             check(c0.qor.area_um2 and c1.qor.area_um2 and c2.qor.area_um2, "F1 reports mapped area")
             check(
+                abs(float(c0.qor.area_um2) - 409.108) < 1.0,
+                f"chip flatten-first teacher stays ~409.108, got {c0.qor.area_um2}",
+            )
+            check(
                 abs(c0.qor.area_um2 - c1.qor.area_um2) > 1.0,
                 f"default vs -fast is a real area move ({c0.qor.area_um2} vs {c1.qor.area_um2})",
             )
@@ -461,9 +497,37 @@ def main() -> int:
             ca = evaluate_f1_abc(rtl=dest, liberty=lib, knobs=ka, mem=mm, level="architecture")
             check(ca.status == "ok", f"architecture eqz extract proves equiv ({ca.failure})")
             check(ca.level == "architecture", "extract is recorded on the architecture level")
+            check(not (ca.artifacts or {}).get("mapped_hier_v"), "architecture extract stays flatten-first")
+            kc = {
+                "name": "boils_rewrite_balance",
+                "abc_args": [],
+                "abc_ops": ["rewrite", "balance"],
+                "abc_script": "file",
+                "scope": "logic_cone",
+                "cone": "dpath",
+                "cone_module": DPATH_MODULE,
+            }
+            cc = evaluate_f1_abc(rtl=rtl, liberty=lib, knobs=kc, mem=mm)
+            check(cc.status == "ok", f"cone rewrite+balance proves equiv ({cc.failure})")
+            hier_p = (cc.artifacts or {}).get("mapped_hier_v")
+            check(hier_p and Path(hier_p).is_file(), "cone F1 writes mapped_hier.v")
+            check(
+                abs(float(cc.qor.area_um2) - float(c2.qor.area_um2)) > 1.0,
+                f"cone ABC ≠ chip flatten-first rewrite+balance ({cc.qor.area_um2} vs {c2.qor.area_um2})",
+            )
+            if sta_available():
+                hsta = evaluate_sta(Path(hier_p))
+                check(hsta.get("status") == "ok", f"OpenSTA on hier cone netlist ({hsta.get('reason')})")
+                path = (hsta.get("path_start") or "") + " " + (hsta.get("path_end") or "")
+                check("dpath/" in path.replace(".", "/"), f"hier STA path keeps dpath/, got {path}")
+                hattr = attribute_sta(hsta)
+                check(hattr["status"] == "READY", "hier STA attribution is READY without inherit")
+                check("dpath" in (hattr.get("modules") or []), "hier STA attributes to dpath")
+                print(f"    F3 hier STA {hsta.get('path_start')} → {hsta.get('path_end')} WNS={hsta.get('wns_ns')}")
             print(
                 f"    F1 default {c0.qor.area_um2:.3f} vs fast {c1.qor.area_um2:.3f} vs "
-                f"rewrite+balance {c2.qor.area_um2:.3f} vs eqz-arch {ca.qor.area_um2:.3f} µm²"
+                f"rewrite+balance {c2.qor.area_um2:.3f} vs eqz-arch {ca.qor.area_um2:.3f} "
+                f"vs cone-rb {cc.qor.area_um2:.3f} µm²"
             )
         else:
             print("    skip F1 yosys (no liberty)")
@@ -507,6 +571,12 @@ def main() -> int:
         check(base.get("gold") is False, "candidate F4 is not marked gold")
         check(base.get("extract") == "finish", "default F4 uses the finish extract")
         check(abs(float(base["worst_droop_mv"]) - GOLD_MV) < 0.05, f"i_scale=1 reproduces gold {base.get('worst_droop_mv')}")
+        check(base.get("static_ir_mv") is not None, "F4 restamp reports static IR")
+        check(float(base["static_ir_mv"]) > 1.0, f"static IR is a real mV drop, got {base.get('static_ir_mv')}")
+        check(
+            abs(float(base["static_ir_mv"]) - float(base["worst_droop_mv"])) > 0.5,
+            "static IR is not a copy of dynamic droop",
+        )
         em0 = base.get("em") or {}
         check(em0.get("j_absmax_a_m2") is not None, f"F4 restamp reports EM J ({em0})")
         extra_c = solve_f4(variant="flowlab", c_decap=200e-15)
@@ -532,6 +602,7 @@ def main() -> int:
             check(cand.get("extract") == "candidate", "override spice is labeled candidate")
             check(cand.get("gold") is False, "candidate solve is not gold")
             check(abs(float(cand["worst_droop_mv"]) - GOLD_MV) > 0.2, "candidate mesh droop is not the finish gold")
+            check(cand.get("static_ir_mv") is not None, "candidate F4 reports static IR")
             cem = cand.get("em") or {}
             check(cem.get("j_absmax_a_m2") is not None, "candidate F4 reports EM J")
             print(

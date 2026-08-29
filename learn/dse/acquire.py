@@ -83,6 +83,33 @@ def should_pay_f3_sta(
     return True, "OpenSTA ideal WNS/power on the candidate (not SPEF, not IR)"
 
 
+def should_pay_f3_sdf(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_sdf: int = 0,
+    sdf_max: int = 1,
+    min_s: float = 1.0,
+) -> tuple[bool, str]:
+    """Pay one OpenSTA + GRT SDF shot. Not OpenRCX SPEF, not finish/F5."""
+    from pathlib import Path
+
+    if n_sdf >= sdf_max:
+        return False, "F3 SDF-GRT shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover OpenSTA+SDF"
+    if any(
+        (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok" for c in mem.all()
+    ):
+        return False, "already have an OpenSTA+SDF child"
+    for c in mem.all():
+        art = c.artifacts or {}
+        sdf, mapped = art.get("sdf"), art.get("mapped_v")
+        if sdf and mapped and Path(sdf).is_file() and Path(mapped).is_file():
+            return True, "OpenSTA + GRT SDF (not SPEF/OpenRCX, not finish/F5)"
+    return False, "no GRT SDF on disk (write_spef after GRT needs OpenRCX / F5)"
+
+
 def should_pay_f2_grt(
     mem: DesignMemory,
     *,
@@ -286,6 +313,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
     if level in ("routing", "f2_grt"):
         return "F2"
     if level == "f3_sta":
+        return "F3"
+    if level == "f3_sdf":
         return "F3"
     if level in ("pdn", "f4_extract", "f4_scale"):
         return "F4"

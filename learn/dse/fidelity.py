@@ -3,7 +3,7 @@
 F0  cheap analytical / SSK-GP / RUDY-class proxy
 F1  Yosys + ABC liberty map + equiv (logic or architecture RTL)
 F2  ingest OpenROAD place / GRT, F2-fast netgraph, budgeted OpenROAD GPL
-F3  OpenSTA on the *candidate* netlist (ideal) + ingest of signoff STA
+F3  OpenSTA on the *candidate* (ideal or GRT SDF) + ingest of signoff STA
 F4  Dynamic IR / EM ingest (Solver A gold stays 45.298 mV on the GCD)
 F5  GAP (signoff P&R / finish not launched from the controller)
 """
@@ -19,6 +19,7 @@ import time
 from pathlib import Path
 
 from .abc_space import write_abc_script
+from .arch_space import is_cone_abc
 from .fingerprint import knobs_fp, sha256_file, sha256_text
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, wns_cost_from_slack_ns
@@ -45,6 +46,7 @@ COST_HINT = {
     "F2_GPL": 8.0,
     "F2_GRT": 8.0,
     "F3": 2.0,
+    "F3_SDF": 2.0,
     "F4": 12.0,
     "F4_EXTRACT": 15.0,
     "F5": 600.0,
@@ -224,6 +226,7 @@ def evaluate_f4_pdn(
         }
     )
     q = QoR(
+        static_ir_mv=dyn.get("static_ir_mv"),
         dynamic_ir_mv=dyn.get("worst_droop_mv"),
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
@@ -323,6 +326,7 @@ def evaluate_f4_scale(
         n_cells=parent.qor.n_cells,
         wns_cost=parent.qor.wns_cost,
         power_w=pwr,
+        static_ir_mv=dyn.get("static_ir_mv"),
         dynamic_ir_mv=dyn.get("worst_droop_mv"),
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
@@ -331,12 +335,15 @@ def evaluate_f4_scale(
     )
     if dyn.get("status") == "ok" and dyn.get("worst_droop_mv") is not None:
         parent.qor.dynamic_ir_mv = float(dyn["worst_droop_mv"])
+        if dyn.get("static_ir_mv") is not None:
+            parent.qor.static_ir_mv = float(dyn["static_ir_mv"])
         if em.get("j_absmax_a_m2") is not None:
             parent.qor.em_j_a_m2 = float(em["j_absmax_a_m2"])
         parent.attr = dict(parent.attr or {})
         parent.attr["f4_iscale"] = {
             "i_scale": scale,
             "droop_mv": dyn["worst_droop_mv"],
+            "static_ir_mv": dyn.get("static_ir_mv"),
             "extract_id": extract_id,
             "em_j_a_m2": em.get("j_absmax_a_m2"),
         }
@@ -446,6 +453,7 @@ def evaluate_f4_extract(
         wns_cost=parent.qor.wns_cost,
         power_w=parent.qor.power_w,
         congestion=ext.get("overflow"),
+        static_ir_mv=ext.get("static_ir_mv") or dyn.get("static_ir_mv"),
         dynamic_ir_mv=ext.get("worst_droop_mv"),
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
@@ -458,6 +466,8 @@ def evaluate_f4_extract(
     ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
     if ok and ext.get("worst_droop_mv") is not None:
         parent.qor.dynamic_ir_mv = float(ext["worst_droop_mv"])
+        if ext.get("static_ir_mv") is not None or dyn.get("static_ir_mv") is not None:
+            parent.qor.static_ir_mv = float(ext.get("static_ir_mv") or dyn["static_ir_mv"])
         if em.get("j_absmax_a_m2") is not None:
             parent.qor.em_j_a_m2 = float(em["j_absmax_a_m2"])
         parent.attr = dict(parent.attr or {})
@@ -465,6 +475,7 @@ def evaluate_f4_extract(
             "extract_id": cid,
             "n_r": ext.get("n_r"),
             "droop_mv": ext.get("worst_droop_mv"),
+            "static_ir_mv": ext.get("static_ir_mv") or dyn.get("static_ir_mv"),
             "em_j_a_m2": em.get("j_absmax_a_m2"),
         }
         mem.touch(parent)
@@ -561,6 +572,98 @@ def ingest_f2(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candid
     return mem.add(c)
 
 
+def _f1_yscript(
+    rtl: Path,
+    top: str,
+    lib: str,
+    map_cmd: str,
+    net: Path,
+    hier: Path | None,
+    knobs: dict,
+    abc_file: Path | None = None,
+    *,
+    equiv: bool = True,
+) -> str:
+    """Chip F1 flattens first (area teacher 409.108). Cone F1 keeps hierarchy.
+
+    Equiv is always on generic synth *before* liberty map — Nangate cells
+    have no SAT model. Architecture extracts use flatten-first even when
+    `scope=logic_cone`. Cone ABC requires `cone=dpath` / `cone_module`.
+    """
+    cone = is_cone_abc(knobs)
+    if not cone:
+        body = f"""
+read_verilog {rtl}
+hierarchy -check -top {top}
+proc; flatten; opt_expr; opt_clean
+design -save rtl
+synth -top {top}
+design -save syn
+"""
+        if equiv:
+            body += f"""
+design -copy-from rtl -as gold {top}
+design -copy-from syn -as gate {top}
+equiv_make gold gate equiv
+hierarchy -top equiv
+equiv_simple
+equiv_induct
+equiv_status
+"""
+        body += f"""
+design -load syn
+dfflibmap -liberty {lib}
+{map_cmd}
+techmap; opt_clean
+stat -liberty {lib}
+write_verilog -noattr -noexpr {net}
+"""
+        return body
+    from .arch_space import DPATH_CONE_MODULES, LEFTOVER_MODULES
+
+    cone_mods = [str(m) for m in (knobs.get("cone_modules") or DPATH_CONE_MODULES)]
+    leftover = [str(m) for m in LEFTOVER_MODULES] + [top]
+    hier_w = f"write_verilog -noattr -noexpr {hier}" if hier else ""
+
+    def _map_mods(mods: list[str], cmd: str) -> str:
+        return "".join(f"cd {m}\ndfflibmap -liberty {lib}\n{cmd}\ncd ..\n" for m in mods)
+
+    body = f"""
+read_verilog {rtl}
+hierarchy -check -top {top}
+proc; opt_expr; opt_clean
+design -save rtl_hier
+flatten
+design -save rtl
+synth -top {top}
+design -save syn
+"""
+    if equiv:
+        body += f"""
+design -copy-from rtl -as gold {top}
+design -copy-from syn -as gate {top}
+equiv_make gold gate equiv
+hierarchy -top equiv
+equiv_simple
+equiv_induct
+equiv_status
+"""
+    body += f"""
+design -load rtl_hier
+synth -top {top}
+{_map_mods(cone_mods, map_cmd)}
+hierarchy -top {top}
+{_map_mods(leftover, f"abc -liberty {lib}")}
+hierarchy -top {top}
+techmap; opt_clean
+{hier_w}
+flatten
+stat -liberty {lib}
+write_verilog -noattr -noexpr {net}
+"""
+    return body
+
+
 def evaluate_f1_abc(
     *,
     rtl: Path,
@@ -585,35 +688,14 @@ def evaluate_f1_abc(
         net = tmp_p / "mapped.v"
         ys = tmp_p / "f1.ys"
         abc_file = tmp_p / "aig.abc"
+        hier = tmp_p / "hier.v"
         map_cmd = "abc -liberty " + lib
         if args:
             map_cmd += " " + " ".join(args)
         if ops:
             write_abc_script(ops, abc_file, map_liberty=True)
             map_cmd += f" -script {abc_file}"
-        ys.write_text(
-            f"""
-read_verilog {rtl}
-hierarchy -check -top {top}
-proc; flatten; opt_expr; opt_clean
-design -save rtl
-synth -top {top}
-design -save syn
-design -copy-from rtl -as gold {top}
-design -copy-from syn -as gate {top}
-equiv_make gold gate equiv
-hierarchy -top equiv
-equiv_simple
-equiv_induct
-equiv_status
-design -load syn
-dfflibmap -liberty {lib}
-{map_cmd}
-techmap; opt_clean
-stat -liberty {lib}
-write_verilog -noattr -noexpr {net}
-"""
-        )
+        ys.write_text(_f1_yscript(rtl, top, lib, map_cmd, net, hier, knobs, abc_file))
         proc = subprocess.run(
             ["yosys", "-q", "-l", str(log), "-s", str(ys)],
             capture_output=True,
@@ -629,6 +711,7 @@ write_verilog -noattr -noexpr {net}
         net_fp = sha256_file(net) if net.is_file() else sha256_text(text[-2000:])
         err = next((ln.strip() for ln in text.splitlines() if "ERROR" in ln), "")
         mapped_text = net.read_text() if net.is_file() else None
+        hier_text = hier.read_text() if hier.is_file() else None
     cost = time.time() - t0
     ok = equiv and area is not None and proc.returncode == 0
     fail = None if ok else (err or "equiv_or_map_failed")
@@ -643,11 +726,21 @@ write_verilog -noattr -noexpr {net}
             artifacts.update(net_features(parse_mapped_verilog(dest)))
         except Exception:
             pass
+        if hier_text:
+            hdest = REPO / "learn" / "sim" / "dse" / "netlists" / f"{cid}.hier.v"
+            hdest.write_text(hier_text)
+            artifacts["mapped_hier_v"] = str(hdest)
+            artifacts["hierarchy"] = True
+            artifacts["cone"] = knobs.get("cone") or knobs.get("scope")
     q = QoR(
         area_um2=area,
         n_cells=n_cells,
         fidelity="F1",
-        note="Yosys+ABC mapped area; delay/IR not claimed from F1",
+        note=(
+            "Yosys+ABC cone-local map on dpath modules; delay/IR not claimed from F1"
+            if is_cone_abc(knobs)
+            else "Yosys+ABC mapped area; delay/IR not claimed from F1"
+        ),
     )
     c = Candidate(
         id=cid,
@@ -665,6 +758,7 @@ write_verilog -noattr -noexpr {net}
         status="ok" if ok else "fail",
         failure=fail,
         note=f"F1 {knobs.get('name')} equiv={'PASS' if equiv else 'FAIL'}"
+        + (" · cone dpath" if is_cone_abc(knobs) else "")
         + (f" · {err}" if err and not ok else ""),
     )
     return mem.add(c)
@@ -710,17 +804,9 @@ def ensure_mapped_netlist(
                 src_rtl = variant
             except ValueError:
                 pass
+        hier = tmp_p / "hier.v"
         ys.write_text(
-            f"""
-read_verilog {src_rtl}
-hierarchy -check -top {top}
-proc; flatten; opt_expr; opt_clean
-synth -top {top}
-dfflibmap -liberty {lib}
-{map_cmd}
-techmap; opt_clean
-write_verilog -noattr -noexpr {net}
-"""
+            _f1_yscript(src_rtl, top, lib, map_cmd, net, hier, knobs, abc_file, equiv=False)
         )
         proc = subprocess.run(
             ["yosys", "-q", "-s", str(ys)],
@@ -731,8 +817,17 @@ write_verilog -noattr -noexpr {net}
         if proc.returncode != 0 or not net.is_file():
             return cand
         dest.write_text(net.read_text())
+        if hier.is_file():
+            hdest = REPO / "learn" / "sim" / "dse" / "netlists" / f"{cand.id}.hier.v"
+            hdest.write_text(hier.read_text())
+            art_h = str(hdest)
+        else:
+            art_h = None
     art = dict(cand.artifacts or {})
     art["mapped_v"] = str(dest)
+    if art_h:
+        art["mapped_hier_v"] = art_h
+        art["hierarchy"] = True
     try:
         art.update(net_features(parse_mapped_verilog(dest)))
     except Exception:
@@ -875,16 +970,19 @@ def evaluate_f3_sta(
     mapped = (parent.artifacts or {}).get("mapped_v")
     if not mapped or not Path(mapped).is_file():
         return None
+    hier = (parent.artifacts or {}).get("mapped_hier_v")
+    sta_v = Path(hier) if hier and Path(hier).is_file() else Path(mapped)
     knobs = {
         "source": "f3_opensta_ideal",
         "parent_id": parent.id,
         "parent_name": parent.knobs.get("name"),
         "interconnect": "ideal",
+        "hierarchy": bool(hier and Path(hier).is_file()),
     }
     fp = knobs_fp(parent.level, knobs)
     if fp in mem.seen_knobs(parent.level):
         return next(c for c in mem.by_level(parent.level) if c.knobs_fp == fp)
-    sta = evaluate_sta(Path(mapped))
+    sta = evaluate_sta(sta_v)
     from .attribute import attribute_sta
 
     attr = attribute_sta(sta, inherit=parent.attr or {})
@@ -896,7 +994,7 @@ def evaluate_f3_sta(
         fidelity="F3",
         note=(
             f"OpenSTA ideal WNS={sta.get('wns_ns')} ns P={sta.get('power_w')} W "
-            f"— not SPEF signoff, not IR"
+            f"{'(hier paths)' if knobs.get('hierarchy') else ''} — not SPEF signoff, not IR"
         ),
     )
     if sta.get("status") == "ok":
@@ -949,7 +1047,11 @@ def evaluate_f2_grt(
     fp = knobs_fp("routing", knobs)
     if fp in mem.seen_knobs("routing"):
         return next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
-    grt = evaluate_grt(Path(mapped), util=util, density=density, timeout_s=timeout_s)
+    cid = DesignMemory.new_id()
+    sdf_dest = REPO / "learn" / "sim" / "dse" / "sdf" / f"{cid}.sdf"
+    grt = evaluate_grt(
+        Path(mapped), util=util, density=density, timeout_s=timeout_s, sdf_out=sdf_dest
+    )
     from .attribute import attribute_sta
 
     attr = attribute_sta(grt, inherit=parent.attr or {})
@@ -968,8 +1070,13 @@ def evaluate_f2_grt(
             f"HPWL={grt.get('hpwl_um')} — not detailed route/F5, not IR"
         ),
     )
+    if grt.get("sdf"):
+        grt = dict(grt)
+        parent.artifacts = dict(parent.artifacts or {})
+        parent.artifacts["sdf"] = grt["sdf"]
+        mem.touch(parent)
     c = Candidate(
-        id=DesignMemory.new_id(),
+        id=cid,
         design_id=design_id,
         parent_id=parent.id,
         level="routing",
@@ -985,6 +1092,68 @@ def evaluate_f2_grt(
         status="ok" if grt.get("status") == "ok" else "fail",
         failure=grt.get("reason") if grt.get("status") != "ok" else None,
         note=f"F2 GRT child of {parent.knobs.get('name')} WNS={grt.get('wns_ns')}",
+    )
+    return mem.add(c)
+
+
+def evaluate_f3_sdf(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    sdf: Path | str | None = None,
+) -> Candidate | None:
+    """OpenSTA + GRT SDF on the same mapped netlist. Not OpenRCX SPEF, not F5."""
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    sdf_p = Path(sdf) if sdf else Path((parent.artifacts or {}).get("sdf") or "")
+    if not mapped or not Path(mapped).is_file() or not sdf_p.is_file():
+        return None
+    knobs = {
+        "source": "f3_opensta_sdf_grt",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "interconnect": "sdf_grt",
+    }
+    fp = knobs_fp(parent.level, knobs)
+    if fp in mem.seen_knobs(parent.level):
+        return next(c for c in mem.by_level(parent.level) if c.knobs_fp == fp)
+    sta = evaluate_sta(Path(mapped), sdf=sdf_p)
+    from .attribute import attribute_sta
+
+    attr = attribute_sta(sta, inherit=parent.attr or {})
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
+        power_w=sta.get("power_w"),
+        fidelity="F3",
+        note=(
+            f"OpenSTA + GRT SDF WNS={sta.get('wns_ns')} ns — not SPEF/OpenRCX, not finish/F5"
+        ),
+    )
+    if sta.get("status") == "ok":
+        parent.attr = dict(parent.attr or {})
+        parent.attr["sta_sdf"] = attr
+        parent.artifacts = dict(parent.artifacts or {})
+        parent.artifacts["sdf_wns_ns"] = sta.get("wns_ns")
+        mem.touch(parent)
+    c = Candidate(
+        id=DesignMemory.new_id(),
+        design_id=design_id,
+        parent_id=parent.id,
+        level=parent.level,
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F3",
+        qor=q,
+        cost_s=float(sta.get("cost_s") or 0.0),
+        artifacts=sta,
+        attr=attr,
+        status="ok" if sta.get("status") == "ok" else "fail",
+        failure=sta.get("reason") if sta.get("status") != "ok" else None,
+        note=f"F3 SDF-GRT child of {parent.knobs.get('name')} WNS={sta.get('wns_ns')}",
     )
     return mem.add(c)
 

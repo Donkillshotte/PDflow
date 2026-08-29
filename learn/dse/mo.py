@@ -13,6 +13,11 @@ from typing import Iterable
 from .memory import Candidate, DesignMemory
 
 
+def is_cone_logic(cand: Candidate) -> bool:
+    k = cand.knobs or {}
+    return bool(k.get("cone_module") or k.get("cone") == "dpath")
+
+
 def timing_of(mem: DesignMemory, cand: Candidate) -> tuple[float | None, float | None]:
     """(wns_cost, power_w) from an F3 child or an enriched parent QoR."""
     if cand.qor.wns_cost is not None:
@@ -56,11 +61,21 @@ def baseline_wns(mem: DesignMemory) -> float | None:
     return min(xs) if xs else None
 
 
-def logic_mo_rows(mem: DesignMemory) -> list[tuple[list[str], float, float | None, float | None]]:
-    """F1 logic rows joined with F3: (abc_ops, area, wns_cost, power_w)."""
+def logic_mo_rows(
+    mem: DesignMemory, *, cone: bool | None = None
+) -> list[tuple[list[str], float, float | None, float | None]]:
+    """F1 logic rows joined with F3: (abc_ops, area, wns_cost, power_w).
+
+    `cone=True` keeps only cone-ABC rows so the SSK-GP does not mix the
+    chip flatten-first teacher (409.108) with hier-then-flatten cone maps.
+    """
     rows = []
     for c in mem.by_level("logic"):
         if c.status != "ok" or c.qor.area_um2 is None:
+            continue
+        if cone is True and not is_cone_logic(c):
+            continue
+        if cone is False and is_cone_logic(c):
             continue
         wns, pwr = timing_of(mem, c)
         rows.append((list(c.knobs.get("abc_ops") or []), float(c.qor.area_um2), wns, pwr))

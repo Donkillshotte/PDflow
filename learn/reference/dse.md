@@ -8,16 +8,19 @@ scalare.
 RTL
  → e-graph datapath (cono IR, es. dpath)
  → F1 Yosys+ABC (alfabeto BOiLS, GP+SSK, append DRiLLS) + equiv
+   chip = flatten-first (teacher area 409.108 µm²)
+   cono dpath = ABC solo sui moduli del datapath; ctrl leftover default-map; `mapped_hier.v`
    write_verilog -noattr -noexpr  (celle liberty, non assign soup)
  → F2-fast netgraph (baricentro ancorato + HPWL + RUDY)
  → F2 OpenROAD GPL -skip_io (un colpo a budget, non finish)
- → F3 OpenSTA sul *candidato* (interconnect ideale: WNS + potenza), **interleaved** dopo ogni F1
- → F2 routing: place_pins + GPL + global_route (non detailed route)
+ → F3 OpenSTA sul *candidato* (ideale; path gerarchici `dpath/sub/…` sul cono), **interleaved** dopo ogni F1
+ → F2 routing: place_pins + GPL + global_route + `write_sdf` (non detailed route, non SPEF)
+ → F3 OpenSTA + SDF GRT (stesso `mapped.v` del GRT — non OpenRCX / F5)
  → F2 catalogo fisico: un punto AutoDMP (util/densità) misurato con GPL, non solo proxy RUDY
  → F2 ingest place / GRT del layout corrente
  → F3 ingest STA signoff
  → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen)
- → F4 restamp Solver A (knobs PDN / I(t)×power) sullo extract nominato
+ → F4 restamp Solver A (knobs PDN / I(t)×power / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle → modulo RTL (dpath/ctrl)
  → surrogato F0 (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 solo se accoppiato)
@@ -43,10 +46,10 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F | Ruolo | Stato |
 |---|---|---|
 | F0 | SSK-GP area ± std; congestion RUDY-class; skip F1 se l’ottimista è già peggiore | READY — **non** è IR |
-| F1 | Yosys synth + ABC (script *file* ending with `map`) + `equiv_*` + `write_verilog -noexpr` | READY |
-| F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` | READY (GPL budgetato) |
-| F3 | OpenSTA sul candidato (ideale) + ingest signoff | READY sul netlist F1 |
-| F4 | Dynamic IR/EM (libdpn A) | ingest gold + **extract candidato** + restamp (decap/I-scale/EM J) — **non** sostituisce il gold 45.298 |
+| F1 | Yosys synth + ABC (script *file* ending with `map`) + `equiv_*` + `write_verilog -noexpr` | READY · chip flatten-first **o** cone-local ABC (`cone=dpath`) |
+| F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` · GRT+SDF | READY (GPL/GRT budgetati) |
+| F3 | OpenSTA ideale (hier sul cono) + OpenSTA+SDF GRT + ingest signoff | READY — **non** è SPEF/OpenRCX |
+| F4 | Dynamic IR/EM (libdpn A) + static IR sullo stesso extract | ingest gold + **extract candidato** + restamp (decap/I-scale/EM J/static) — **non** sostituisce il gold 45.298 |
 | F5 | P&R signoff | GAP: il controller non lancia finish |
 
 F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.
@@ -66,6 +69,13 @@ ispirato a SmoothE, senza loop GPU. Se l’hotspot IR è su `dpath`, si riscrive
 **solo quel cono** — niente restart del chip. Un extract peggiore sul WNS
 (es. `lt_borrow` a −0.59 ns vs baseline −0.52) viene **deprioritizzato**, non
 ripetuto come se l’area fosse l’unico asse.
+
+Dopo il teacher chip (`liberty_default` flatten-first, 409.108 µm²) i proposal
+BOiLS con focus IR `dpath` ricevono `scope=logic_cone` + `cone=dpath` +
+`cone_module` (`knobs_fp` li distingue dal flatten-first). ABC gira sui moduli
+del datapath (`GcdUnitDpathRTL`, `sub`, `a_reg`/`b_reg`, …); ctrl resta
+default-map. Lo STA sul `mapped_hier.v` vede `dpath/b_reg/…` → `dpath/sub/…`
+senza inherit. Il netlist flattenato va a P&R/GRT/F4.
 
 ## Attributi (chip → block → region → cone)
 

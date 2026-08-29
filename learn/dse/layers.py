@@ -49,7 +49,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "timing": {
         "via": "dse.sta_f3",
-        "note": "OpenSTA ideal WNS/power on the candidate; SPEF optional",
+        "note": "OpenSTA ideal or GRT SDF WNS/power; not SPEF/OpenRCX, not finish/F5",
     },
 }
 

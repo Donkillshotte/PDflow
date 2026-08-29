@@ -156,6 +156,7 @@ def evaluate_grt(
     util: float = 35.0,
     density: float = 0.55,
     timeout_s: float = 45.0,
+    sdf_out: Path | None = None,
 ) -> dict:
     """Place pins + GPL + global_route. Routing-level F2. Not detailed route/F5."""
     if not available() or not SDC.is_file():
@@ -164,6 +165,12 @@ def evaluate_grt(
     if not verilog.is_file():
         return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_grt"}
     rc = f"source {SETRC}" if SETRC.is_file() else ""
+    sdf_write = ""
+    sdf_tmp = None
+    if sdf_out is not None:
+        sdf_tmp = Path(sdf_out)
+        sdf_tmp.parent.mkdir(parents=True, exist_ok=True)
+        sdf_write = f"write_sdf {sdf_tmp}"
     tcl = f"""
 set_thread_count 1
 read_lef {TECH_LEF}
@@ -179,6 +186,7 @@ place_pins -hor_layers {IO_H} -ver_layers {IO_V}
 global_placement -density {float(density)}
 global_route
 estimate_parasitics -global_routing
+{sdf_write}
 report_wns
 report_tns
 report_power
@@ -237,6 +245,8 @@ exit
         "via": "openroad_grt — place_pins+GPL+global_route; not detailed route/F5, not IR",
         "cost_s": time.time() - t0,
         "n_iters": int(rows[-1][0]) if rows else 0,
+        "sdf": str(sdf_tmp) if ok and sdf_tmp is not None and sdf_tmp.is_file() else None,
+        "interconnect": "sdf_grt" if ok and sdf_tmp is not None and sdf_tmp.is_file() else "grt_inmem",
     }
 
 

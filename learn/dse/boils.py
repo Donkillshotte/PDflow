@@ -14,9 +14,10 @@ import math
 import numpy as np
 
 from .abc_space import BOILS_STD_OPS, CATALOG, subsequence_kernel
+from .arch_space import stamp_cone_knobs
 from .fingerprint import knobs_fp
 from .memory import DesignMemory
-from .mo import ehvi_2d, ir_of, logic_mo_rows, timing_bound
+from .mo import ehvi_2d, ir_of, is_cone_logic, logic_mo_rows, timing_bound
 from .policy import drills_propose
 
 
@@ -175,13 +176,19 @@ def generate_candidates(seen_ops: list[list[str]], best: list[str] | None) -> li
 def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
     """Next logic knobs: DRiLLS UCB, then EHVI(area, WNS) or area EI."""
     seen_fp = mem.seen_knobs("logic")
-    rows = logic_mo_rows(mem)
+    want_cone = focus == "dpath"
+    rows = logic_mo_rows(mem, cone=True if want_cone else False)
+    if want_cone and not rows:
+        rows = logic_mo_rows(mem, cone=False)
     train_seqs = [r[0] for r in rows]
     y = [r[1] for r in rows]
     timed = [(r[0], r[1], r[2]) for r in rows if r[2] is not None]
+    have_cone = any(is_cone_logic(c) for c in mem.by_level("logic") if c.status == "ok")
     ired = []
     for c in mem.by_level("logic"):
         if c.status != "ok" or c.qor.area_um2 is None:
+            continue
+        if want_cone and have_cone and not is_cone_logic(c):
             continue
         ir = ir_of(mem, c)
         if ir is not None:
@@ -193,10 +200,11 @@ def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
         best_seq = timed_sorted[0][0]
     pool = []
     if best_seq is not None:
-        ucb = drills_propose(mem, best_seq, focus)
-        if ucb and knobs_fp("logic", ucb) not in seen_fp:
+        ucb = stamp_cone_knobs(drills_propose(mem, best_seq, focus) or {}, focus)
+        if ucb.get("name") and knobs_fp("logic", ucb) not in seen_fp:
             pool.append(ucb)
     for knobs in generate_candidates(train_seqs, best_seq):
+        knobs = stamp_cone_knobs(knobs, focus)
         fp = knobs_fp("logic", knobs)
         if fp in seen_fp:
             continue

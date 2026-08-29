@@ -27,6 +27,42 @@ _LT_BORROW_BLOCK = """  wire [16:0] _dse_lt_ext;
   end"""
 
 
+# Yosys modules after hierarchical `synth -top gcd` (no flatten).
+# Cone ABC remaps these with the BOiLS script; leftover stays default-map.
+DPATH_MODULE = "GcdUnitDpathRTL_0x4d0fc71ead8d3d9e"
+CTRL_MODULE = "GcdUnitCtrlRTL_0x4d0fc71ead8d3d9e"
+DPATH_CONE_MODULES = (
+    DPATH_MODULE,
+    "RegEn_0x68db79c4ec1d6e5b",
+    "LtComparator_0x422b1f52edd46a85",
+    "ZeroComparator_0x422b1f52edd46a85",
+    "Mux_0x683fa1a418b072c9",
+    "Mux_0xdd6473406d1a99a",
+    "Subtractor_0x422b1f52edd46a85",
+)
+LEFTOVER_MODULES = (
+    CTRL_MODULE,
+    "RegRst_0x9f365fdf6c8998a",
+)
+
+
+def is_cone_abc(knobs: dict | None) -> bool:
+    """Explicit cone ABC — not architecture `scope=logic_cone` (flatten-first)."""
+    k = knobs or {}
+    return bool(k.get("cone_module") or k.get("cone") == "dpath")
+
+
+def stamp_cone_knobs(knobs: dict, focus: str) -> dict:
+    """Same ABC sequence, scoped to the IR cone. Chip flatten-first stays unstamped."""
+    if focus != "dpath":
+        return knobs
+    out = dict(knobs)
+    out["scope"] = "logic_cone"
+    out["cone"] = "dpath"
+    out["cone_module"] = DPATH_MODULE
+    out["cone_modules"] = list(DPATH_CONE_MODULES)
+    return out
+
 EXTRACTS: dict[str, dict] = {
     "sub_twos_complement": {
         "module": "Subtractor_0x422b1f52edd46a85",

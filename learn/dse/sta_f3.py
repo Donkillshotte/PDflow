@@ -40,23 +40,34 @@ def evaluate_sta(
     *,
     top: str = "gcd",
     spef: Path | None = None,
+    sdf: Path | None = None,
     timeout_s: float = 20.0,
 ) -> dict:
-    """WNS / TNS / power on the candidate. Ideal nets unless SPEF is given."""
+    """WNS / TNS / power on the candidate. Ideal nets unless SPEF/SDF is given.
+
+    GRT `write_spef` needs OpenRCX (detailed route / F5). After
+    `estimate_parasitics -global_routing`, `write_sdf` is the honest
+    parasitic annotation we can persist — not SPEF signoff.
+    """
     if not available():
         return {"status": "GAP", "reason": "opensta or liberty/sdc missing", "via": "opensta_f3"}
     verilog = Path(verilog)
     if not verilog.is_file():
         return {"status": "fail", "reason": f"missing {verilog}", "via": "opensta_f3"}
-    spef_cmd = ""
+    anno = ""
+    interconnect = "ideal"
     if spef and Path(spef).is_file():
-        spef_cmd = f"read_spef {spef}"
+        anno = f"read_spef {spef}"
+        interconnect = "spef"
+    elif sdf and Path(sdf).is_file():
+        anno = f"read_sdf {sdf}"
+        interconnect = "sdf_grt"
     tcl = f"""
 read_liberty {LIB}
 read_verilog {verilog}
 link_design {top}
 read_sdc {SDC}
-{spef_cmd}
+{anno}
 report_wns
 report_tns
 report_power
@@ -98,7 +109,16 @@ puts DSE_STA_OK
         "power_w": float(pwr.group(1)) if pwr else None,
         "path_start": start.group(1) if start else None,
         "path_end": end.group(1) if end else None,
-        "interconnect": "spef" if spef_cmd else "ideal",
-        "via": "opensta_f3 — ideal (or SPEF) WNS/power; not IR, not finish",
+        "interconnect": interconnect,
+        "via": (
+            "opensta_f3 — "
+            + (
+                "SDF from GRT estimate_parasitics (not SPEF/OpenRCX, not finish)"
+                if interconnect == "sdf_grt"
+                else "SPEF WNS/power; not IR, not finish"
+                if interconnect == "spef"
+                else "ideal WNS/power; not IR, not finish"
+            )
+        ),
         "cost_s": time.time() - t0,
     }

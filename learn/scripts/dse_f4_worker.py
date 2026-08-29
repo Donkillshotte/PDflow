@@ -27,7 +27,7 @@ from pdn_dynamic import assemble_be, contributors_at, timestep_be  # noqa: E402
 from pdn_em import em_thermal_snapshot  # noqa: E402
 from pdn_extract import extract_pdn  # noqa: E402
 from pdn_solvers import DirectLU  # noqa: E402
-from pdn_transient import build_system  # noqa: E402
+from pdn_transient import build_system, solve_static  # noqa: E402
 
 ORFS = _REPO / "tools/OpenROAD-flow-scripts/flow"
 GOLD_MV = 45.298
@@ -142,6 +142,19 @@ def main() -> int:
     )
     dyn = timestep_be(sys_be, events, DirectLU(sys_be["A"]), vdd, order, t_end)
     droop = float(dyn["worst_droop"])
+    static_ir_mv = None
+    static_ir_pct = None
+    static_node = None
+    try:
+        currents = ext["currents"]
+        if abs(scale - 1.0) > 1e-15:
+            currents = {k: float(v) * scale for k, v in currents.items()}
+        st = solve_static(G, idx, order, currents, ext["voltages"], vdd)
+        static_ir_mv = float(st["worst_ir"]) * 1e3
+        static_ir_pct = float(st.get("worst_ir_pct") or 0.0)
+        static_node = st.get("worst_node")
+    except (Exception, SystemExit) as exc:  # noqa: BLE001 — dynamic oracle must still report
+        static_node = str(exc)[:160]
     node = dyn.get("worst_node")
     xy = node_xy(node) if node else None
     contrib = contributors_at(events, float(dyn.get("worst_time_s") or 0.0))
@@ -192,6 +205,9 @@ def main() -> int:
                 "status": "ok",
                 "worst_droop_mv": droop * 1e3,
                 "worst_droop_pct": float(dyn.get("worst_droop_pct") or 0.0),
+                "static_ir_mv": static_ir_mv,
+                "static_ir_pct": static_ir_pct,
+                "static_node": static_node,
                 "worst_time_ns": float(dyn.get("worst_time_s") or 0.0) * 1e9,
                 "worst_node": node,
                 "x_dbu": xy[0] if xy else None,

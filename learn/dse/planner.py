@@ -54,11 +54,13 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         logic_why = "BOiLS SSK-GP + DRiLLS UCB on ABC sequences"
         if bound or extract_wns(mem):
             logic_why = "BOiLS EHVI(area, WNS) + DRiLLS UCB — F3 steers ABC, not area-only"
+        if focus == "dpath":
+            logic_why += "; cone-local ABC on dpath (chip flatten-first teacher already measured)"
         steps.append(
             {
                 "level": "logic",
                 "reason": logic_why,
-                "scope": "block" if focus != "chip" else "chip",
+                "scope": "logic_cone" if focus == "dpath" else ("block" if focus != "chip" else "chip"),
             }
         )
     steps.append(
@@ -86,6 +88,13 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         {
             "level": "routing",
             "reason": "budgeted OpenROAD GRT after place_pins — not detailed route/F5",
+            "scope": "chip",
+        }
+    )
+    steps.append(
+        {
+            "level": "f3_sdf",
+            "reason": "OpenSTA + GRT SDF after estimate_parasitics — not SPEF/OpenRCX, not F5",
             "scope": "chip",
         }
     )
