@@ -483,6 +483,42 @@ def should_pay_f1_synth(
     return True, "ORFS abc_speed.script (ABC_AREA=0) — not logic -fast, not abc_ops"
 
 
+def should_pay_cell_size(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_cell: int = 0,
+    cell_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay one drive-up on attributed worst-path cells. Not more ABC."""
+    if n_cell >= cell_max:
+        return False, "cell-local size shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover cell-local STA"
+    if any((c.knobs or {}).get("source") == "cell_size_up" and c.status == "ok" for c in mem.by_level("cell")):
+        return False, "already have a cell-local size child"
+    cells = _attributed_path_cells(mem)
+    if len(cells) < 2:
+        return False, "no attributed STA path cells to size"
+    return True, f"upsize {len(cells)} attributed worst-path cells — not ABC, not a chip restart"
+
+
+def _attributed_path_cells(mem: DesignMemory) -> list[str]:
+    for c in reversed(list(mem.all())):
+        if c.status != "ok":
+            continue
+        art = c.artifacts or {}
+        cells = list(art.get("path_cells") or [])
+        if len(cells) >= 2:
+            return cells
+        attr = c.attr or {}
+        cells = list(attr.get("cells") or [])
+        if len(cells) >= 2 and attr.get("kind") == "sta_path":
+            return cells
+    return []
+
+
 def should_pay_f4_ras(
     mem: DesignMemory,
     *,
@@ -614,6 +650,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level in ("synthesis", "f1_synth"):
         return "F1"
+    if level in ("cell", "cell_size"):
+        return "F3"
     need = float(cost_hint.get("F1", 2.0))
     if budget_left < need:
         return "F0"

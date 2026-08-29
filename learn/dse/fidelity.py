@@ -1120,6 +1120,132 @@ def evaluate_f3_sta(
     return mem.add(c)
 
 
+def evaluate_cell_size(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    cells: list[str] | None = None,
+    top: str = "gcd",
+) -> Candidate | None:
+    """Upsize attributed worst-path cells. Not ABC, not a chip restart."""
+    from .attribute import attribute_sta
+    from .cell_space import upsize_file
+    from .sta_f3 import evaluate_sta
+
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    hier = (parent.artifacts or {}).get("mapped_hier_v")
+    src = Path(hier) if hier and Path(hier).is_file() else (Path(mapped) if mapped else None)
+    if src is None or not src.is_file():
+        return None
+    targets = list(cells or [])
+    if not targets:
+        f3 = next(
+            (
+                c
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f3_opensta_ideal"
+                and (c.knobs or {}).get("parent_id") == parent.id
+            ),
+            None,
+        )
+        art = (f3.artifacts if f3 else None) or {}
+        targets = list(art.get("path_cells") or (parent.attr or {}).get("sta", {}).get("cells") or [])
+        if not targets:
+            for key in ("path_start", "path_end"):
+                v = art.get(key) or (parent.attr or {}).get("sta", {}).get(key)
+                if v:
+                    targets.append(str(v))
+    knobs = {
+        "source": "cell_size_up",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "cells": targets,
+        "step": 1,
+    }
+    fp = knobs_fp("cell", knobs)
+    if fp in mem.seen_knobs("cell"):
+        return next(c for c in mem.by_level("cell") if c.knobs_fp == fp)
+    cid = DesignMemory.new_id()
+    dest = REPO / "learn" / "sim" / "dse" / "netlists" / f"{cid}.v"
+    sized = upsize_file(src, targets, dest, top=top)
+    if sized.get("n_changed", 0) <= 0:
+        return mem.add(
+            Candidate(
+                id=cid,
+                design_id=design_id,
+                parent_id=parent.id,
+                level="cell",
+                knobs=knobs,
+                knobs_fp=fp,
+                rtl_fp=parent.rtl_fp,
+                netlist_fp=parent.netlist_fp,
+                fidelity="F3",
+                qor=QoR(fidelity="F3", note="no liberty drive step on the attributed cells"),
+                cost_s=0.0,
+                artifacts=sized,
+                status="fail",
+                failure="no_cell_drive_step",
+                note="cell-local upsize found no X1/X2/X4 instance on the path",
+            )
+        )
+    sta = evaluate_sta(dest)
+    area = n_cells = None
+    if dest.is_file() and NANGATE_LIB.is_file():
+        try:
+            proc = subprocess.run(
+                [
+                    "yosys",
+                    "-p",
+                    f"read_verilog {dest}; hierarchy -top {top}; stat -liberty {NANGATE_LIB}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=20.0,
+            )
+            area, n_cells = _parse_stat((proc.stdout or "") + (proc.stderr or ""), top)
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+    attr = attribute_sta(sta, inherit=parent.attr or {})
+    attr["cells_changed"] = sized["changed"]
+    attr["transform"] = "cell_size_up"
+    q = QoR(
+        area_um2=area,
+        n_cells=n_cells,
+        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
+        power_w=sta.get("power_w"),
+        fidelity="F3",
+        note=(
+            f"cell-local upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
+            "— attributed path, not ABC, not IR"
+        ),
+    )
+    return mem.add(
+        Candidate(
+            id=cid,
+            design_id=design_id,
+            parent_id=parent.id,
+            level="cell",
+            knobs=knobs,
+            knobs_fp=fp,
+            rtl_fp=parent.rtl_fp,
+            netlist_fp=sha256_file(dest),
+            fidelity="F3",
+            qor=q,
+            cost_s=float(sta.get("cost_s") or 0.0),
+            artifacts={**sta, **sized, "mapped_v": str(dest)},
+            attr=attr,
+            status="ok" if sta.get("status") == "ok" else "fail",
+            failure=sta.get("reason") if sta.get("status") != "ok" else None,
+            note=(
+                f"cell size-up {sized['n_changed']} inst "
+                f"WNS={sta.get('wns_ns')} vs parent {parent.knobs.get('name')}"
+            ),
+        )
+    )
+
+
 def evaluate_f2_grt(
     parent: Candidate,
     mem: DesignMemory,
@@ -1397,7 +1523,7 @@ def evaluate_f3_spef(
 def _parse_stat(text: str, top: str = "gcd") -> tuple[float | None, float | None]:
     area = None
     cells = None
-    for m in re.finditer(rf"Chip area for module '\\{top}':\s+([0-9.]+)", text):
+    for m in re.finditer(rf"Chip area for (?:top )?module '\\{top}':\s+([0-9.]+)", text):
         area = float(m.group(1))
     # Prefer the last cell count that sits near a gcd/top area line
     for m in re.finditer(r"Number of cells:\s+([0-9]+)", text):

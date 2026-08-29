@@ -1,9 +1,10 @@
-"""Attributed physical feedback: IR/timing → region → cells → RTL module.
+"""Attributed physical feedback: IR/timing → region → cells/nets → cone.
 
 Does not invent an RTL rewrite. Stores transformation+context hooks so a
-later cone-local search can target dpath vs ctrl instead of restarting chip DSE.
+later cell-local or cone-local search can target named instances instead
+of restarting chip DSE.
 
-Hierarchy: chip → block → region → logic_cone.
+Hierarchy: chip → block → region → logic_cone → cell.
 """
 
 from __future__ import annotations
@@ -111,8 +112,9 @@ def attribute_dynamic_ir(report: dict) -> dict:
         "modules": modules,
         "cones": cones,
         "cells": cells,
+        "nets": list(hs.get("nets") or []),
         "scope": scope,
-        "hierarchy": ["chip", "block", "region", "logic_cone"],
+        "hierarchy": ["chip", "block", "region", "logic_cone", "cell"],
         "em_j_a_m2": em.get("j_absmax_a_m2"),
         "dT_mesh_k": em.get("dT_mesh_absmax_k"),
         "note": (
@@ -134,10 +136,11 @@ def local_scope(attr: dict) -> dict:
         "modules": modules,
         "cones": list(attr.get("cones") or []),
         "cells": list(attr.get("cells") or []),
+        "nets": list(attr.get("nets") or []),
         "region": region,
         "restart_chip": False,
         "focus": modules[0] if modules else (region or "chip"),
-        "hierarchy": ["chip", "block", "region", "logic_cone"],
+        "hierarchy": ["chip", "block", "region", "logic_cone", "cell"],
     }
 
 
@@ -149,7 +152,7 @@ def attribute_sta(sta: dict, *, inherit: dict | None = None) -> dict:
     modules: list[str] = []
     cones: list[str] = []
     cells: list[str] = []
-    for n in (start, end):
+    for n in list(sta.get("path_cells") or []) + [start, end]:
         m = _module_of(n)
         if m and m not in modules:
             modules.append(m)
@@ -172,7 +175,9 @@ def attribute_sta(sta: dict, *, inherit: dict | None = None) -> dict:
         "modules": modules,
         "cones": cones,
         "cells": cells,
-        "scope": scope,
+        "nets": list(sta.get("path_nets") or inherit.get("nets") or []),
+        "scope": "cell" if cells else scope,
+        "hierarchy": ["chip", "block", "region", "logic_cone", "cell"],
         "restart_chip": False,
         "inherited_from": inherit.get("transform") or inherit.get("inherited_from"),
         "note": (

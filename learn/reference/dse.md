@@ -27,7 +27,8 @@ RTL
  → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen) + `report_arrival`
  → F4 restamp DirectLU / SA-AMG / RAS / Krylov-MOR (knobs PDN / I(t)×power / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
- → attributo hotspot → regione → celle → modulo RTL (dpath/ctrl)
+ → attributo hotspot → regione → celle/net → modulo RTL (dpath/ctrl)
+ → F3 cell-local: drive-up sulle celle del worst path (scope di modulo, non ABC)
  → surrogato F0 (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 solo se accoppiato)
  → Pareto per livello
  → prossimo candidato / extract
@@ -40,6 +41,7 @@ RTL
 | **architecture** | extract e-graph equivalenti sul cono `dpath` (ROVER/ASPEN-shaped) | READY F1 + equiv |
 | **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+**EHVI(area,WNS)** / EI · insert |
 | **synthesis** | `ABC_AREA` ORFS (`abc_speed.script` + `-D 460`) | F0 catalogo + **F1 misurato** (non mescolato alle ops ABC) |
+| **cell** | drive-up delle istanze sul worst path STA | READY F3 — scope di modulo, non `abc_ops` |
 | **physical** | util, densità, **regione IR**, netlist del candidato | F0 proxy + F2-fast + **GPL** + catalogo + **density cap sul bin IR** + ingest — non lancia finish |
 | **routing** | GRT dopo place_pins + F5-lite DRT/OpenRCX | READY F2 GRT + F5-lite SPEF — non `make finish`, clock ideale |
 | **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato, solver MF | ingest gold + **extract `write_pg_spice`** + DirectLU/AMG/RAS/Krylov (non gold) |

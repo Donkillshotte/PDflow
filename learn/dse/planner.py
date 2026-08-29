@@ -119,6 +119,18 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "chip",
         }
     )
+    cell_n = len(attr.get("cells") or [])
+    steps.append(
+        {
+            "level": "cell",
+            "reason": (
+                f"upsize {cell_n} attributed worst-path cells — not more ABC, not a chip restart"
+                if cell_n
+                else "upsize OpenSTA worst-path cells after F3 — cell-local, not ABC"
+            ),
+            "scope": "cell",
+        }
+    )
     steps.append(
         {
             "level": "f4_amg",
@@ -206,7 +218,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         "timing_bound": bound,
         "ir_rose": ir_up,
         "restart_chip": False,
-        "hierarchy": ["chip", "block", "region", "logic_cone"],
+        "hierarchy": ["chip", "block", "region", "logic_cone", "cell"],
         "steps": steps,
     }
 

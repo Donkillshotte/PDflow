@@ -214,7 +214,8 @@ def main() -> int:
     check(attr["scope"] == "logic_cone", "attributed scope is logic_cone, not chip restart")
     check(local_scope(attr)["restart_chip"] is False, "local scope refuses a chip restart")
     check(local_scope(attr)["focus"] == "dpath", "focus is the attributed module")
-    check(local_scope(attr)["hierarchy"][-1] == "logic_cone", "hierarchy ends at the cone")
+    check(local_scope(attr)["hierarchy"][-1] == "cell", "hierarchy ends at the attributed cell")
+    check("logic_cone" in local_scope(attr)["hierarchy"], "hierarchy still includes the cone")
 
     from dse.planner import plan_search, rank_extracts
     from dse.policy import ucb_next_op
@@ -327,6 +328,7 @@ def main() -> int:
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
     check(any(s["level"] == "synthesis" for s in planned["steps"]), "planner schedules synthesis F1")
+    check(any(s["level"] == "cell" for s in planned["steps"]), "planner schedules cell-local size-up")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
     check(any(s["level"] == "f2_region" for s in planned["steps"]), "planner schedules IR-bin region GPL")
@@ -363,6 +365,12 @@ def main() -> int:
         "Krylov residual is not flattened into the RAS fingerprint",
     )
     check(next_fidelity(level="synthesis", pred=None, budget_left=20, cost_hint={}) == "F1", "synthesis measures at F1")
+    check(next_fidelity(level="cell", pred=None, budget_left=20, cost_hint={}) == "F3", "cell-local size is measured at F3")
+    check(
+        knobs_fp("cell", {"source": "cell_size_up", "cells": ["dpath/a_lt_b/_142_"]})
+        != knobs_fp("logic", {"source": "cell_size_up", "cells": ["dpath/a_lt_b/_142_"]}),
+        "cell-local knobs are not flattened into the logic fingerprint",
+    )
     check(
         knobs_fp("synthesis", {"name": "orfs_abc_speed", "abcArea": 0, "source": "orfs_abc_script"})
         != knobs_fp("logic", {"name": "orfs_abc_speed", "abcArea": 0, "source": "orfs_abc_script"}),
@@ -518,6 +526,7 @@ def main() -> int:
         "solver adapter names Krylov/MOR as a replaceable MF solver",
     )
     check("abc_speed" in (adapter_status()["synthesis"]["note"] or ""), "synthesis adapter is ORFS abc_speed, not logic -fast")
+    check("path" in (adapter_status()["cell"]["note"] or ""), "cell adapter is attributed-path drive-up")
     check("SPEF" in (adapter_status()["timing"]["note"] or ""), "timing adapter includes OpenRCX SPEF")
     check("f5" in (adapter_status()["routing"]["via"] or "").lower() or "OpenRCX" in (adapter_status()["routing"]["note"] or ""), "routing adapter includes F5-lite")
     check("arrival" in (adapter_status()["activity"]["via"] or "").lower(), "activity adapter is candidate STA arrivals")
@@ -617,6 +626,61 @@ def main() -> int:
                 check(hattr["status"] == "READY", "hier STA attribution is READY without inherit")
                 check("dpath" in (hattr.get("modules") or []), "hier STA attributes to dpath")
                 print(f"    F3 hier STA {hsta.get('path_start')} → {hsta.get('path_end')} WNS={hsta.get('wns_ns')}")
+                check(
+                    (hsta.get("path_cells") or []) and "dpath/" in " ".join(hsta.get("path_cells") or []),
+                    f"STA path lists hierarchical cells, got {hsta.get('path_cells')}",
+                )
+                check((hsta.get("path_nets") or []) and len(hsta["path_nets"]) >= 2, "STA path lists net hops")
+                from dse.cell_space import next_drive, upsize_path_cells
+                from dse.fidelity import evaluate_cell_size
+
+                check(next_drive("AND2_X1") == "AND2_X2", "Nangate drive ladder X1→X2")
+                tiny = (
+                    "module left(a,z);\n  input a; output z;\n"
+                    "  NOR3_X1 _07_ (.A1(a), .ZN(z));\nendmodule\n"
+                    "module right(a,z);\n  input a; output z;\n"
+                    "  NOR3_X1 _07_ (.A1(a), .ZN(z));\nendmodule\n"
+                    "module gcd(a,z);\n  input a; output z;\n"
+                    "  left ctrl (.A(a), .Z(n1));\n  right dpath (.A(n1), .Z(z));\nendmodule\n"
+                )
+                scoped = upsize_path_cells(tiny, ["ctrl/_07_"], top="gcd")
+                check(scoped["n_changed"] == 1, f"module-scoped upsize hits one _07_, got {scoped['changed']}")
+                check("NOR3_X2 _07_" in scoped["text"], "ctrl _07_ became NOR3_X2")
+                check(scoped["text"].count("NOR3_X1 _07_") == 1, "dpath _07_ stays X1")
+                cc.artifacts = dict(cc.artifacts or {})
+                if hsta.get("path_cells"):
+                    cc.attr = dict(cc.attr or {})
+                    mm.add(
+                        Candidate(
+                            id="f3hier",
+                            design_id="gcd",
+                            parent_id=cc.id,
+                            level="logic",
+                            knobs={"source": "f3_opensta_ideal", "parent_id": cc.id, "parent_name": cc.knobs.get("name")},
+                            knobs_fp="f3hier",
+                            rtl_fp="x",
+                            netlist_fp="y",
+                            fidelity="F3",
+                            qor=QoR(wns_cost=0.21, fidelity="F3"),
+                            cost_s=0.1,
+                            artifacts=hsta,
+                            attr=hattr,
+                        )
+                    )
+                csz = evaluate_cell_size(cc, mm, cells=list(hsta.get("path_cells") or []))
+                check(csz is not None and csz.status == "ok", f"cell-local size-up STA ({csz.failure if csz else None})")
+                check(csz.level == "cell", "size-up is recorded on the cell level")
+                check((csz.artifacts or {}).get("n_changed", 0) >= 1, f"path cells were resized, {csz.artifacts}")
+                check(
+                    csz.qor.area_um2 is not None
+                    and abs(float(csz.qor.area_um2) - float(cc.qor.area_um2 or 0)) > 0.1,
+                    f"cell size-up must move area ({csz.qor.area_um2} vs {cc.qor.area_um2})",
+                )
+                print(
+                    f"    cell size-up n={csz.artifacts.get('n_changed')} "
+                    f"WNS={csz.artifacts.get('wns_ns')} vs hier {hsta.get('wns_ns')} "
+                    f"area={csz.qor.area_um2}"
+                )
             cs = evaluate_f1_synth(rtl=rtl, liberty=lib, mem=mm)
             check(cs.status == "ok", f"synthesis F1 abc_speed proves equiv ({cs.failure})")
             check(cs.level == "synthesis", "ORFS abc_speed is recorded on the synthesis level")

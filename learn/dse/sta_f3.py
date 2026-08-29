@@ -33,6 +33,9 @@ _PWR = re.compile(
 )
 _START = re.compile(r"Startpoint:\s+(\S+)")
 _END = re.compile(r"Endpoint:\s+(\S+)")
+_PATH_PIN = re.compile(
+    r"([A-Za-z0-9_./$\\]+)/([A-Za-z0-9]+)\s+\(([A-Za-z0-9_]+)\)"
+)
 
 
 def available() -> bool:
@@ -104,6 +107,7 @@ puts DSE_STA_OK
     pwr = _PWR.search(log)
     start = _START.search(log)
     end = _END.search(log)
+    path_cells, path_nets, path_types = _parse_path(log)
     ok = "DSE_STA_OK" in log and wns is not None and proc.returncode == 0
     return {
         "status": "ok" if ok else "fail",
@@ -113,6 +117,9 @@ puts DSE_STA_OK
         "power_w": float(pwr.group(1)) if pwr else None,
         "path_start": start.group(1) if start else None,
         "path_end": end.group(1) if end else None,
+        "path_cells": path_cells,
+        "path_nets": path_nets,
+        "path_types": path_types,
         "interconnect": interconnect,
         "via": (
             "opensta_f3 — "
@@ -126,6 +133,23 @@ puts DSE_STA_OK
         ),
         "cost_s": time.time() - t0,
     }
+
+
+def _parse_path(log: str) -> tuple[list[str], list[str], dict[str, str]]:
+    """Unique instances / hops on the worst path. Clock-network-only lines skipped."""
+    blob = log
+    if "STA_PATH_BEGIN" in log and "STA_PATH_END" in log:
+        blob = log.split("STA_PATH_BEGIN", 1)[1].split("STA_PATH_END", 1)[0]
+    cells: list[str] = []
+    types: dict[str, str] = {}
+    for inst, _pin, typ in _PATH_PIN.findall(blob):
+        if inst.startswith("clock"):
+            continue
+        if inst not in cells:
+            cells.append(inst)
+        types.setdefault(inst, typ)
+    nets = [f"{a}->{b}" for a, b in zip(cells, cells[1:])]
+    return cells, nets, types
 
 
 def export_arrivals(
