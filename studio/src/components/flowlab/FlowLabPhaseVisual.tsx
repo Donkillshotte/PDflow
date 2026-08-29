@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { FlowlabParams } from "./types";
 import { FlowLabLayoutCanvas } from "./FlowLabLayoutCanvas";
 import { RtlWaveformVisual } from "./RtlWaveformVisual";
+import { DsePanel } from "./DsePanel";
 
 type Inspect = {
   odb: {
@@ -492,6 +493,7 @@ export function FlowLabPhaseVisual({
                 : "Esegui PKG: System PDN VRM→board→pkg→die (ngspice)"}
             </p>
           )}
+          <DsePanel />
         </div>
       )}
     </div>

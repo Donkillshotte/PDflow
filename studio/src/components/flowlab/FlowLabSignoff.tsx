@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
 import { DynamicIrHeatmap } from "./DynamicIrHeatmap";
-import { DsePanel } from "./DsePanel";
 
 type SignoffAction = {
   id: string;
@@ -281,7 +280,6 @@ export function FlowLabSignoff({
             </p>
           </div>
           <DynamicIrHeatmap />
-          <DsePanel />
           <ActionGrid
             actions={POWER_ACTIONS}
             disabled={disabled}
