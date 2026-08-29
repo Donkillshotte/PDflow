@@ -7,33 +7,103 @@
   "architecture": [
     "layered search: architecture e-graph \u2260 logic ABC \u2260 synthesis ABC_AREA \u2260 physical \u2260 PDN",
     "F0 SSK-GP area + RUDY-class congestion; not IR",
-    "F1 Yosys+ABC+equiv (script file) on logic sequences and dpath extracts",
-    "F2 ingest of OpenROAD place/GRT/finish",
+    "F1 Yosys+ABC+equiv (script file, write_verilog -noexpr) on logic and dpath extracts",
+    "F2 ingest of OpenROAD place/GRT + F2-fast netgraph + budgeted GPL skip_io",
     "F3/F4 ingest of OpenSTA + Dynamic IR (Solver A gold unrestamped)",
-    "IR hotspot \u2192 dpath cone \u2192 local extract, not a chip restart",
+    "IR combo on dpath \u2192 planner orders cone extracts (lt/sub/eqz), no chip restart",
+    "hierarchy chip\u2192block\u2192region\u2192cone; attributed cells/region from hotspot",
     "Pareto per level \u2014 no premature scalar",
-    "BOiLS SSK-GP + EI \u00b7 DRiLLS append \u00b7 AutoDMP-shaped physical F0"
+    "BOiLS SSK-GP + EI \u00b7 DRiLLS UCB \u00b7 GNN HPWL residual \u00b7 AutoDMP F0 \u00b7 GPL F2"
   ],
   "not": [
     "flattened black-box of all knobs",
     "neural voltage map as sign-off",
     "automatic P&R launch from the controller (F5 GAP)",
-    "LLM as the optimizer (proposer-only GAP)"
+    "LLM as the optimizer (proposer-only; DSE_LLM_URL optional)"
   ],
-  "budget_s": 10.0,
-  "spent_s": 4.862313985824585,
-  "n_candidates": 15,
+  "layers": {
+    "extraction": {
+      "via": "ingest",
+      "note": "PDN extract lives in learn/scripts/pdn_extract.py \u2014 DSE does not re-extract"
+    },
+    "power": {
+      "via": "ingest",
+      "note": "ORFS finish power / STA power reports"
+    },
+    "activity": {
+      "via": "ingest",
+      "note": "STA/VCD/SAIF via PI reports; no invented RTL\u2192ITerm map"
+    },
+    "current": {
+      "via": "ingest",
+      "note": "CCS/ECSM GAP on Nangate45; triangle I(t) stays Solver A"
+    },
+    "dse": {
+      "via": "dse.controller",
+      "note": "budget-aware inspect\u2192transform\u2192fidelity\u2192attribute loop"
+    },
+    "surrogate": {
+      "via": "dse.surrogate + dse.gnn",
+      "note": "SSK-GP / residual / GNN readout \u2014 never Dynamic IR gold"
+    },
+    "solver": {
+      "via": "ingest F4",
+      "note": "libdpn A/B/C/D; GCD gold 45.298 mV unrestamped"
+    },
+    "physical_fast": {
+      "via": "dse.netgraph",
+      "note": "anchored barycenter + HPWL + RUDY on the candidate netlist"
+    },
+    "physical_gpl": {
+      "via": "dse.openroad_f2",
+      "note": "OpenROAD global_placement -skip_io; not route/finish/F5",
+      "ready": true
+    }
+  },
+  "budget_s": 90.0,
+  "spent_s": 5.068060636520386,
+  "n_candidates": 20,
   "n_f1": 6,
-  "n_arch": 2,
+  "n_arch": 3,
+  "n_f2_fast": 4,
+  "n_f2_gpl": 1,
   "memory": "/workspace/learn/sim/dse/memory_flowlab.jsonl",
   "surrogate_f0": {
     "metric": "area_um2",
-    "mean": 333.697,
-    "std": 137.7774725708089,
-    "n": 4,
+    "mean": 460.8006666666667,
+    "std": 44.89047187692877,
+    "n": 3,
     "uncertainty": "medium",
     "via": "empirical mean of F1 mapped area",
     "not": "Dynamic IR, WNS, or a neural voltage map"
+  },
+  "surrogate_f1_to_f2": {
+    "metric": "hpwl",
+    "mean": 1400.204322430758,
+    "slope_d_hpwl_d_area": 13.13449197230254,
+    "intercept": -4210.7981101689975,
+    "residual_std": 42.27449963801279,
+    "n": 4,
+    "uncertainty": "medium",
+    "via": "linear residual F1 area \u2192 F2-fast HPWL (RTLDistil-shaped)",
+    "not": "Dynamic IR / a neural voltage map"
+  },
+  "surrogate_f1_to_f2_gnn": {
+    "metric": "hpwl",
+    "mean": 1131.472065537484,
+    "std": 4.478027388072307,
+    "n": 4,
+    "uncertainty": "medium",
+    "via": "2-layer mean-aggregate GNN + ridge on F2-fast HPWL",
+    "not": "Dynamic IR / a neural voltage map"
+  },
+  "surrogate_f1_to_gpl": {
+    "metric": "hpwl_um",
+    "mean": 1081.694,
+    "n": 1,
+    "uncertainty": "high",
+    "via": "mean OpenROAD GPL HPWL (\u00b5m)",
+    "not": "F2-fast grid units or Dynamic IR"
   },
   "surrogate_f1_to_f4": {
     "metric": "dynamic_ir_mv",
@@ -41,8 +111,50 @@
     "n": 2,
     "pairs": 2,
     "uncertainty": "high",
-    "via": "RTLDistil-shaped residual placeholder (need \u22654 pairs to fit)",
+    "via": "RTLDistil-shaped residual (need \u22654 pairs to fit a slope)",
     "not": "Dynamic IR gold / a neural voltage map"
+  },
+  "plan": {
+    "focus": "dpath",
+    "combo_frac": 0.983563683518776,
+    "seq_frac": 0.01643631648122413,
+    "f2_cong": 0.0,
+    "region": "r31",
+    "scope": "logic_cone",
+    "restart_chip": false,
+    "hierarchy": [
+      "chip",
+      "block",
+      "region",
+      "logic_cone"
+    ],
+    "steps": [
+      {
+        "level": "architecture",
+        "reason": "combo IR 0.98 on dpath \u2014 cone extracts, no chip restart",
+        "extracts": [
+          "lt_borrow",
+          "sub_twos_complement",
+          "eqz_or_reduce"
+        ],
+        "scope": "logic_cone"
+      },
+      {
+        "level": "logic",
+        "reason": "BOiLS SSK-GP + DRiLLS UCB on ABC sequences",
+        "scope": "block"
+      },
+      {
+        "level": "f2_fast",
+        "reason": "anchored barycenter HPWL/RUDY on the best F1 netlist (not make finish)",
+        "scope": "chip"
+      },
+      {
+        "level": "f2_gpl",
+        "reason": "budgeted OpenROAD GPL -skip_io on the F1 winner \u2014 not route/F5/IR",
+        "scope": "chip"
+      }
+    ]
   },
   "attribution": {
     "status": "READY",
@@ -50,6 +162,7 @@
     "node": "ITermNode_metal1_70896_39429",
     "x_dbu": 70896.0,
     "y_dbu": 39429.0,
+    "region": "r31",
     "droop_mv": 45.29757732817474,
     "seq_frac": 0.01643631648122413,
     "combo_frac": 0.983563683518776,
@@ -59,54 +172,78 @@
     "modules": [
       "dpath"
     ],
+    "cells": [
+      "dpath.a_reg.out[5]$_DFFE_PP_",
+      "dpath.a_reg.out[7]$_DFFE_PP_"
+    ],
     "scope": "logic_cone",
+    "hierarchy": [
+      "chip",
+      "block",
+      "region",
+      "logic_cone"
+    ],
     "em_j_a_m2": 148105295223.4235,
     "dT_mesh_k": 0.6635062367629478,
-    "note": "IR hotspot + OpenSTA worst path \u2192 RTL module dpath; hierarchical focus, not a chip-wide restart"
+    "note": "IR hotspot + OpenSTA worst path \u2192 cone dpath \u00b7 region r31; hierarchical focus, not a chip-wide restart"
   },
   "focus": {
     "scope": "logic_cone",
     "modules": [
       "dpath"
     ],
+    "cells": [
+      "dpath.a_reg.out[5]$_DFFE_PP_",
+      "dpath.a_reg.out[7]$_DFFE_PP_"
+    ],
+    "region": "r31",
     "restart_chip": false,
-    "focus": "dpath"
+    "focus": "dpath",
+    "hierarchy": [
+      "chip",
+      "block",
+      "region",
+      "logic_cone"
+    ]
   },
   "pareto": {
     "architecture": [
-      "1f5296a327cc"
+      "2057b8b37001"
     ],
     "logic": [
-      "0ca5cc9ba193",
-      "d3c68bddb407"
+      "5130270dfd12"
     ],
     "synthesis": [
-      "edeb9d5a6868",
-      "a1245689fbcb"
+      "1eac33218872",
+      "b61c3406327d"
     ],
     "physical": [
-      "7313bdb9a75b",
-      "0b962e560215",
-      "5b7ac108cfd0"
+      "4df4645db89e",
+      "460b56ec434a",
+      "1b390b953adb",
+      "be73e43dd35d",
+      "516954136c5e",
+      "da52268c95f8",
+      "aa6ff614b76e"
     ],
     "pdn": [
-      "f63e2be96a8b"
+      "5263228540fe"
     ],
     "note": "frontiers are per level; do not rank ABC area against IR droop"
   },
   "candidates": [
     {
-      "id": "7313bdb9a75b",
+      "id": "4df4645db89e",
       "design_id": "gcd",
       "parent_id": null,
       "level": "physical",
       "knobs": {
-        "abcArea": 1,
         "coreUtilization": 35,
         "placeDensityAddon": 0.2,
+        "abcArea": 1,
         "sdcPreset": "default",
-        "source": "ingest_layout",
-        "tnsEndPercent": 100
+        "tnsEndPercent": 100,
+        "source": "ingest_layout"
       },
       "knobs_fp": "34146a1ede695c222c0ebc28e1e4e0787e1a40d63d21bbf40318a7355729201b",
       "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
@@ -133,6 +270,7 @@
         "node": "ITermNode_metal1_70896_39429",
         "x_dbu": 70896.0,
         "y_dbu": 39429.0,
+        "region": "r31",
         "droop_mv": 45.29757732817474,
         "seq_frac": 0.01643631648122413,
         "combo_frac": 0.983563683518776,
@@ -142,19 +280,30 @@
         "modules": [
           "dpath"
         ],
+        "cells": [
+          "dpath.a_reg.out[5]$_DFFE_PP_",
+          "dpath.a_reg.out[7]$_DFFE_PP_"
+        ],
         "scope": "logic_cone",
+        "hierarchy": [
+          "chip",
+          "block",
+          "region",
+          "logic_cone"
+        ],
         "em_j_a_m2": 148105295223.4235,
         "dT_mesh_k": 0.6635062367629478,
-        "note": "IR hotspot + OpenSTA worst path \u2192 RTL module dpath; hierarchical focus, not a chip-wide restart"
+        "note": "IR hotspot + OpenSTA worst path \u2192 cone dpath \u00b7 region r31; hierarchical focus, not a chip-wide restart"
       },
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014436.6443558,
+      "created_at": 1788016896.0506744,
       "note": "F3/F4 ingest of existing FlowLab finish + Dynamic IR"
     },
     {
-      "id": "0b962e560215",
+      "id": "460b56ec434a",
       "design_id": "gcd",
       "parent_id": null,
       "level": "physical",
@@ -187,6 +336,7 @@
         "node": "ITermNode_metal1_70896_39429",
         "x_dbu": 70896.0,
         "y_dbu": 39429.0,
+        "region": "r31",
         "droop_mv": 45.29757732817474,
         "seq_frac": 0.01643631648122413,
         "combo_frac": 0.983563683518776,
@@ -196,27 +346,38 @@
         "modules": [
           "dpath"
         ],
+        "cells": [
+          "dpath.a_reg.out[5]$_DFFE_PP_",
+          "dpath.a_reg.out[7]$_DFFE_PP_"
+        ],
         "scope": "logic_cone",
+        "hierarchy": [
+          "chip",
+          "block",
+          "region",
+          "logic_cone"
+        ],
         "em_j_a_m2": 148105295223.4235,
         "dT_mesh_k": 0.6635062367629478,
-        "note": "IR hotspot + OpenSTA worst path \u2192 RTL module dpath; hierarchical focus, not a chip-wide restart"
+        "note": "IR hotspot + OpenSTA worst path \u2192 cone dpath \u00b7 region r31; hierarchical focus, not a chip-wide restart"
       },
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014436.6451783,
+      "created_at": 1788016896.0515313,
       "note": "F2 ingest of place/GRT/finish \u2014 controller did not launch P&R"
     },
     {
-      "id": "f63e2be96a8b",
+      "id": "5263228540fe",
       "design_id": "gcd",
       "parent_id": null,
       "level": "pdn",
       "knobs": {
+        "pkg_r": 0.05,
+        "pkg_l": 2e-10,
         "c_decap": 5e-14,
         "mode": "clock",
-        "pkg_l": 2e-10,
-        "pkg_r": 0.05,
         "source": "ingest_pdn"
       },
       "knobs_fp": "c1220e5c49809321ca244c87238e6e6687b5a3d1e79961974e812e76540ff49f",
@@ -244,6 +405,7 @@
         "node": "ITermNode_metal1_70896_39429",
         "x_dbu": 70896.0,
         "y_dbu": 39429.0,
+        "region": "r31",
         "droop_mv": 45.29757732817474,
         "seq_frac": 0.01643631648122413,
         "combo_frac": 0.983563683518776,
@@ -253,31 +415,42 @@
         "modules": [
           "dpath"
         ],
+        "cells": [
+          "dpath.a_reg.out[5]$_DFFE_PP_",
+          "dpath.a_reg.out[7]$_DFFE_PP_"
+        ],
         "scope": "logic_cone",
+        "hierarchy": [
+          "chip",
+          "block",
+          "region",
+          "logic_cone"
+        ],
         "em_j_a_m2": 148105295223.4235,
         "dT_mesh_k": 0.6635062367629478,
-        "note": "IR hotspot + OpenSTA worst path \u2192 RTL module dpath; hierarchical focus, not a chip-wide restart"
+        "note": "IR hotspot + OpenSTA worst path \u2192 cone dpath \u00b7 region r31; hierarchical focus, not a chip-wide restart"
       },
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014436.6460223,
+      "created_at": 1788016896.0523841,
       "note": "F4 PDN ingest \u2014 does not re-run TRAN"
     },
     {
-      "id": "85050aa5357f",
+      "id": "5130270dfd12",
       "design_id": "gcd",
-      "parent_id": "7313bdb9a75b",
+      "parent_id": "4df4645db89e",
       "level": "logic",
       "knobs": {
+        "name": "liberty_default",
         "abc_args": [],
         "abc_ops": [],
-        "abc_script": "file",
-        "name": "liberty_default"
+        "abc_script": "file"
       },
       "knobs_fp": "24c913951b1e49bfeb1853c9b26a9cfdab517f591d4e271587a80b742aab06d0",
       "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
-      "netlist_fp": "d19ce3a098e2b25d50bc70e56f44f1fd642b40b4369c88e073492a7de90bc828",
+      "netlist_fp": "1069584aa86734cadea9d5efa2579daaf91229ba1aadcfe181defd9a39a87a9e",
       "fidelity": "F1",
       "qor": {
         "area_um2": 409.108,
@@ -292,38 +465,156 @@
         "fidelity": "F1",
         "note": "Yosys+ABC mapped area; delay/IR not claimed from F1"
       },
-      "cost_s": 0.7743597030639648,
+      "cost_s": 0.7702977657318115,
       "pred": {},
       "attr": {
         "inherited_from": "physical_ir",
+        "scope": "logic_cone",
         "modules": [
           "dpath"
         ],
-        "note": "F1 baseline; attribution is context from F4",
-        "scope": "logic_cone",
-        "transform": "liberty_default"
+        "transform": "liberty_default",
+        "note": "F1 baseline; attribution is context from F4"
       },
       "egraph": {},
+      "artifacts": {
+        "mapped_v": "/workspace/learn/sim/dse/netlists/5130270dfd12.v",
+        "n_cells": 248,
+        "n_nets": 221,
+        "avg_degree": 3.3347,
+        "n_seq": 35,
+        "n_comb": 213,
+        "n_liberty_types": 22
+      },
       "status": "ok",
       "failure": null,
-      "created_at": 1788014437.4219794,
+      "created_at": 1788016896.8335764,
       "note": "F1 liberty_default equiv=PASS"
     },
     {
-      "id": "1f5296a327cc",
+      "id": "cbe83cc9447c",
       "design_id": "gcd",
-      "parent_id": "7313bdb9a75b",
+      "parent_id": "4df4645db89e",
       "level": "architecture",
       "knobs": {
-        "abc_script": "file",
-        "extract": "sub_twos_complement",
+        "name": "lt_borrow",
         "module": "dpath",
+        "extract": "lt_borrow",
+        "scope": "logic_cone",
+        "abc_script": "file"
+      },
+      "knobs_fp": "ecfd8886f19f3f5d02c69d71547e2ff22d8aedfbb49ed7c5e2cde050c0ae4b0e",
+      "rtl_fp": "53e600091f7846eaa2c33136d3758135d7d9cb99cf7672f7584d10ab05dd60ff",
+      "netlist_fp": "623f94c577b0b3b82cf1a1016313dafa13fecd5f357a982cb4352eab21bb751c",
+      "fidelity": "F1",
+      "qor": {
+        "area_um2": 410.438,
+        "n_cells": null,
+        "wns_cost": null,
+        "power_w": null,
+        "congestion": null,
+        "static_ir_mv": null,
+        "dynamic_ir_mv": null,
+        "em_j_a_m2": null,
+        "ttf_rel_inv": null,
+        "fidelity": "F1",
+        "note": "Yosys+ABC mapped area; delay/IR not claimed from F1"
+      },
+      "cost_s": 0.7855558395385742,
+      "pred": {},
+      "attr": {
+        "transform": "lt_borrow",
+        "context": {
+          "scope": "logic_cone",
+          "modules": [
+            "dpath"
+          ],
+          "cells": [
+            "dpath.a_reg.out[5]$_DFFE_PP_",
+            "dpath.a_reg.out[7]$_DFFE_PP_"
+          ],
+          "region": "r31",
+          "restart_chip": false,
+          "focus": "dpath",
+          "hierarchy": [
+            "chip",
+            "block",
+            "region",
+            "logic_cone"
+          ]
+        },
+        "inherited_from": "physical_ir",
+        "scope": "logic_cone",
+        "modules": [
+          "dpath"
+        ],
+        "operator": "lt",
+        "note": "cone-local extract; F1 equiv vs this RTL, not a chip restart",
+        "delta": {
+          "vs": "5130270dfd12",
+          "area_um2": 1.329999999999984,
+          "note": "transform+context \u2192 \u0394area vs liberty_default (same chip, different RTL extract)"
+        }
+      },
+      "egraph": {
+        "n_enodes": 11,
+        "n_eclasses": 8,
+        "rules_fired": 3,
+        "extracts": [
+          "sub_twos_complement",
+          "eqz_or_reduce",
+          "lt_borrow"
+        ],
+        "greedy_ops": {
+          "sub": "sub",
+          "lt": "lt",
+          "eqz": "eqz"
+        },
+        "softmax": {
+          "sub": {
+            "entropy": 9.43783648189031e-10,
+            "expected": 16.00000000090603
+          },
+          "lt": {
+            "entropy": 0.01731142407753898,
+            "expected": 12.01483573893981
+          },
+          "eqz": {
+            "entropy": 0.01731142407753898,
+            "expected": 8.01483573893981
+          }
+        },
+        "note": "ROVER-class equality saturation on GCD dpath; not a neural extractor"
+      },
+      "artifacts": {
+        "mapped_v": "/workspace/learn/sim/dse/netlists/cbe83cc9447c.v",
+        "n_cells": 258,
+        "n_nets": 231,
+        "avg_degree": 3.3101,
+        "n_seq": 35,
+        "n_comb": 223,
+        "n_liberty_types": 21
+      },
+      "status": "ok",
+      "failure": null,
+      "created_at": 1788016897.6272595,
+      "note": "F1 lt_borrow equiv=PASS"
+    },
+    {
+      "id": "2057b8b37001",
+      "design_id": "gcd",
+      "parent_id": "4df4645db89e",
+      "level": "architecture",
+      "knobs": {
         "name": "sub_twos_complement",
-        "scope": "logic_cone"
+        "module": "dpath",
+        "extract": "sub_twos_complement",
+        "scope": "logic_cone",
+        "abc_script": "file"
       },
       "knobs_fp": "d687e13df6df4e5b6cb586c4a8bd9bd1c7242fdf7c02c27d1e50332515e5cad1",
       "rtl_fp": "85951018e3307a01c94ca52c748b2418017c6ae1c1f047d9e6db5784f030c428",
-      "netlist_fp": "90b49de697c355d483a4dd892f18628800d8e02dc86803beb5f7e76f0cd288b2",
+      "netlist_fp": "11e24f2eadc1eabab14b5e71adf7c0764ca9413db3f502ba8c162bb4a986f746",
       "fidelity": "F1",
       "qor": {
         "area_um2": 407.512,
@@ -338,81 +629,101 @@
         "fidelity": "F1",
         "note": "Yosys+ABC mapped area; delay/IR not claimed from F1"
       },
-      "cost_s": 0.8022027015686035,
+      "cost_s": 0.8168981075286865,
       "pred": {},
       "attr": {
+        "transform": "sub_twos_complement",
         "context": {
-          "focus": "dpath",
+          "scope": "logic_cone",
           "modules": [
             "dpath"
           ],
+          "cells": [
+            "dpath.a_reg.out[5]$_DFFE_PP_",
+            "dpath.a_reg.out[7]$_DFFE_PP_"
+          ],
+          "region": "r31",
           "restart_chip": false,
-          "scope": "logic_cone"
-        },
-        "delta": {
-          "area_um2": -1.5960000000000036,
-          "note": "transform+context \u2192 \u0394area vs liberty_default (same chip, different RTL extract)",
-          "vs": "85050aa5357f"
+          "focus": "dpath",
+          "hierarchy": [
+            "chip",
+            "block",
+            "region",
+            "logic_cone"
+          ]
         },
         "inherited_from": "physical_ir",
+        "scope": "logic_cone",
         "modules": [
           "dpath"
         ],
-        "note": "cone-local extract; F1 equiv vs this RTL, not a chip restart",
         "operator": "sub",
-        "scope": "logic_cone",
-        "transform": "sub_twos_complement"
+        "note": "cone-local extract; F1 equiv vs this RTL, not a chip restart",
+        "delta": {
+          "vs": "5130270dfd12",
+          "area_um2": -1.5960000000000036,
+          "note": "transform+context \u2192 \u0394area vs liberty_default (same chip, different RTL extract)"
+        }
       },
       "egraph": {
+        "n_enodes": 11,
+        "n_eclasses": 8,
+        "rules_fired": 3,
         "extracts": [
           "sub_twos_complement",
           "eqz_or_reduce",
           "lt_borrow"
         ],
         "greedy_ops": {
-          "eqz": "eqz",
+          "sub": "sub",
           "lt": "lt",
-          "sub": "sub"
+          "eqz": "eqz"
         },
-        "n_eclasses": 8,
-        "n_enodes": 11,
-        "note": "ROVER-class equality saturation on GCD dpath; not a neural extractor",
-        "rules_fired": 3,
         "softmax": {
-          "eqz": {
-            "entropy": 0.01731142407753898,
-            "expected": 8.01483573893981
+          "sub": {
+            "entropy": 9.43783648189031e-10,
+            "expected": 16.00000000090603
           },
           "lt": {
             "entropy": 0.01731142407753898,
             "expected": 12.01483573893981
           },
-          "sub": {
-            "entropy": 9.43783648189031e-10,
-            "expected": 16.00000000090603
+          "eqz": {
+            "entropy": 0.01731142407753898,
+            "expected": 8.01483573893981
           }
-        }
+        },
+        "note": "ROVER-class equality saturation on GCD dpath; not a neural extractor"
+      },
+      "artifacts": {
+        "mapped_v": "/workspace/learn/sim/dse/netlists/2057b8b37001.v",
+        "n_cells": 257,
+        "n_nets": 230,
+        "avg_degree": 3.3191,
+        "n_seq": 35,
+        "n_comb": 222,
+        "n_liberty_types": 22
       },
       "status": "ok",
       "failure": null,
-      "created_at": 1788014438.2258904,
+      "created_at": 1788016898.4528348,
       "note": "F1 sub_twos_complement equiv=PASS"
     },
     {
-      "id": "21ae7b4a1415",
+      "id": "65e115dab18d",
       "design_id": "gcd",
-      "parent_id": "7313bdb9a75b",
+      "parent_id": "4df4645db89e",
       "level": "architecture",
       "knobs": {
-        "abc_script": "file",
-        "extract": "eqz_or_reduce",
-        "module": "dpath",
         "name": "eqz_or_reduce",
-        "scope": "logic_cone"
+        "module": "dpath",
+        "extract": "eqz_or_reduce",
+        "scope": "logic_cone",
+        "abc_script": "file"
       },
       "knobs_fp": "b205ee62f39f179271d0332ed10dd04a095b93816c38a2b1d9f47eba990cb51f",
       "rtl_fp": "0347b859c3a416a6f09a5d2f5e263fcd62bef14908173e57d4eb449c8b61315b",
-      "netlist_fp": "a16b99bb4ea78880aea5903f62bccdc022425f81edfdc1770cf5a9c001c1d868",
+      "netlist_fp": "ed1a2a9d2c5821050e478fdcd29a6da0192cc834a9573a90fe994a7edf57039e",
       "fidelity": "F1",
       "qor": {
         "area_um2": 408.842,
@@ -427,82 +738,102 @@
         "fidelity": "F1",
         "note": "Yosys+ABC mapped area; delay/IR not claimed from F1"
       },
-      "cost_s": 0.7573237419128418,
+      "cost_s": 0.7981340885162354,
       "pred": {},
       "attr": {
+        "transform": "eqz_or_reduce",
         "context": {
-          "focus": "dpath",
+          "scope": "logic_cone",
           "modules": [
             "dpath"
           ],
+          "cells": [
+            "dpath.a_reg.out[5]$_DFFE_PP_",
+            "dpath.a_reg.out[7]$_DFFE_PP_"
+          ],
+          "region": "r31",
           "restart_chip": false,
-          "scope": "logic_cone"
-        },
-        "delta": {
-          "area_um2": -0.26600000000001955,
-          "note": "transform+context \u2192 \u0394area vs liberty_default (same chip, different RTL extract)",
-          "vs": "85050aa5357f"
+          "focus": "dpath",
+          "hierarchy": [
+            "chip",
+            "block",
+            "region",
+            "logic_cone"
+          ]
         },
         "inherited_from": "physical_ir",
+        "scope": "logic_cone",
         "modules": [
           "dpath"
         ],
-        "note": "cone-local extract; F1 equiv vs this RTL, not a chip restart",
         "operator": "eqz",
-        "scope": "logic_cone",
-        "transform": "eqz_or_reduce"
+        "note": "cone-local extract; F1 equiv vs this RTL, not a chip restart",
+        "delta": {
+          "vs": "5130270dfd12",
+          "area_um2": -0.26600000000001955,
+          "note": "transform+context \u2192 \u0394area vs liberty_default (same chip, different RTL extract)"
+        }
       },
       "egraph": {
+        "n_enodes": 11,
+        "n_eclasses": 8,
+        "rules_fired": 3,
         "extracts": [
           "sub_twos_complement",
           "eqz_or_reduce",
           "lt_borrow"
         ],
         "greedy_ops": {
-          "eqz": "eqz",
+          "sub": "sub",
           "lt": "lt",
-          "sub": "sub"
+          "eqz": "eqz"
         },
-        "n_eclasses": 8,
-        "n_enodes": 11,
-        "note": "ROVER-class equality saturation on GCD dpath; not a neural extractor",
-        "rules_fired": 3,
         "softmax": {
-          "eqz": {
-            "entropy": 0.01731142407753898,
-            "expected": 8.01483573893981
+          "sub": {
+            "entropy": 9.43783648189031e-10,
+            "expected": 16.00000000090603
           },
           "lt": {
             "entropy": 0.01731142407753898,
             "expected": 12.01483573893981
           },
-          "sub": {
-            "entropy": 9.43783648189031e-10,
-            "expected": 16.00000000090603
+          "eqz": {
+            "entropy": 0.01731142407753898,
+            "expected": 8.01483573893981
           }
-        }
+        },
+        "note": "ROVER-class equality saturation on GCD dpath; not a neural extractor"
+      },
+      "artifacts": {
+        "mapped_v": "/workspace/learn/sim/dse/netlists/65e115dab18d.v",
+        "n_cells": 249,
+        "n_nets": 222,
+        "avg_degree": 3.3333,
+        "n_seq": 35,
+        "n_comb": 214,
+        "n_liberty_types": 22
       },
       "status": "ok",
       "failure": null,
-      "created_at": 1788014438.9842927,
+      "created_at": 1788016899.2592406,
       "note": "F1 eqz_or_reduce equiv=PASS"
     },
     {
-      "id": "db71a9dc9cb4",
+      "id": "c4257926e4f2",
       "design_id": "gcd",
-      "parent_id": "7313bdb9a75b",
+      "parent_id": "4df4645db89e",
       "level": "logic",
       "knobs": {
+        "name": "liberty_fast",
         "abc_args": [
           "-fast"
         ],
         "abc_ops": [],
-        "abc_script": "file",
-        "name": "liberty_fast"
+        "abc_script": "file"
       },
       "knobs_fp": "f967710273048ea3ff39413d63f2170e55de5c8349e8051b9c2455a44de530df",
       "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
-      "netlist_fp": "e79cbf0731c07c663f702c9778bfe708895022fc462341a12c0137a15b2c31e9",
+      "netlist_fp": "dcd7af0862810ff89f597a373dc23fb7b2bafaccd8e927e8ab44ddac4755885d",
       "fidelity": "F1",
       "qor": {
         "area_um2": 489.972,
@@ -517,7 +848,7 @@
         "fidelity": "F1",
         "note": "Yosys+ABC mapped area; delay/IR not claimed from F1"
       },
-      "cost_s": 0.7155866622924805,
+      "cost_s": 0.7270457744598389,
       "pred": {
         "actual": 489.972,
         "pred": 409.108,
@@ -526,25 +857,35 @@
       },
       "attr": {
         "inherited_from": "physical_ir",
+        "scope": "logic_cone",
         "modules": [
           "dpath"
         ],
-        "note": "F1 does not re-solve IR; attribution is context from F4",
-        "scope": "logic_cone",
-        "transform": "liberty_fast"
+        "transform": "liberty_fast",
+        "note": "F1 does not re-solve IR; attribution is context from F4"
       },
       "egraph": {},
+      "artifacts": {
+        "mapped_v": "/workspace/learn/sim/dse/netlists/c4257926e4f2.v",
+        "n_cells": 385,
+        "n_nets": 352,
+        "avg_degree": 3.1273,
+        "n_seq": 35,
+        "n_comb": 350,
+        "n_liberty_types": 20
+      },
       "status": "ok",
       "failure": null,
-      "created_at": 1788014439.7009346,
+      "created_at": 1788016899.9968593,
       "note": "F1 liberty_fast equiv=PASS"
     },
     {
-      "id": "0ca5cc9ba193",
+      "id": "80ab177960ac",
       "design_id": "gcd",
-      "parent_id": "7313bdb9a75b",
+      "parent_id": "4df4645db89e",
       "level": "logic",
       "knobs": {
+        "name": "boils_rewrite_balance",
         "abc_args": [],
         "abc_ops": [
           "rewrite",
@@ -556,15 +897,14 @@
           "mu": 449.53999999999996,
           "std": 40.43199999999999,
           "via": "ssk_gp_ei"
-        },
-        "name": "boils_rewrite_balance"
+        }
       },
       "knobs_fp": "60b0f832b33ffdcd636b47904e43546da855bf02aca4ae4d9537c24d6b8f6a0b",
       "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
-      "netlist_fp": "e94f87509625f160bb142fc476e2d9d3d6e6889bdab4756100937ffbea5e57f1",
+      "netlist_fp": "673c8d7e4ffd421972e2dd10f79e8825c8aa999d1d449b12dc95707bdf47b644",
       "fidelity": "F1",
       "qor": {
-        "area_um2": 217.854,
+        "area_um2": 483.322,
         "n_cells": null,
         "wns_cost": null,
         "power_w": null,
@@ -576,97 +916,341 @@
         "fidelity": "F1",
         "note": "Yosys+ABC mapped area; delay/IR not claimed from F1"
       },
-      "cost_s": 0.9087607860565186,
+      "cost_s": 0.7436261177062988,
       "pred": {
-        "actual": 217.854,
+        "actual": 483.322,
         "pred": 449.53999999999996,
-        "residual": -231.68599999999995,
+        "residual": 33.78200000000004,
         "uncertainty": "medium"
       },
       "attr": {
         "inherited_from": "physical_ir",
+        "scope": "logic_cone",
         "modules": [
           "dpath"
         ],
-        "note": "F1 does not re-solve IR; attribution is context from F4",
-        "scope": "logic_cone",
-        "transform": "boils_rewrite_balance"
+        "transform": "boils_rewrite_balance",
+        "note": "F1 does not re-solve IR; attribution is context from F4"
       },
       "egraph": {},
+      "artifacts": {
+        "mapped_v": "/workspace/learn/sim/dse/netlists/80ab177960ac.v",
+        "n_cells": 378,
+        "n_nets": 347,
+        "avg_degree": 3.1217,
+        "n_seq": 35,
+        "n_comb": 343,
+        "n_liberty_types": 19
+      },
       "status": "ok",
       "failure": null,
-      "created_at": 1788014440.6113882,
+      "created_at": 1788016900.7514017,
       "note": "F1 boils_rewrite_balance equiv=PASS"
     },
     {
-      "id": "d3c68bddb407",
+      "id": "1b390b953adb",
       "design_id": "gcd",
-      "parent_id": "7313bdb9a75b",
-      "level": "logic",
+      "parent_id": "5130270dfd12",
+      "level": "physical",
       "knobs": {
-        "abc_args": [],
-        "abc_ops": [
-          "rewrite",
-          "balance",
-          "rewrite -z"
-        ],
-        "abc_script": "file",
-        "acq": {
-          "ei": 14.15129780523226,
-          "mu": 265.23503156471475,
-          "std": 81.46664057015296,
-          "via": "ssk_gp_ei"
-        },
-        "name": "drills_rewrite_balance_rewrite-",
-        "via": "drills_append"
+        "source": "f2_fast_netgraph",
+        "parent_id": "5130270dfd12",
+        "parent_name": "liberty_default",
+        "util": 0.35,
+        "rev": 2
       },
-      "knobs_fp": "a08f8b138dacd39e4fade27a090fb7e411a85eee730161f4cc05796e679eb99c",
+      "knobs_fp": "3c626b922605c4c3ca548af5a5ab98080d0f3a3e8fc091d1aa31de50b40ce6ef",
       "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
-      "netlist_fp": "1d449dd08cbc69639e0219bef0c786248cea68ba314f346f7d01a98ea2d54fa9",
-      "fidelity": "F1",
+      "netlist_fp": "1069584aa86734cadea9d5efa2579daaf91229ba1aadcfe181defd9a39a87a9e",
+      "fidelity": "F2",
       "qor": {
-        "area_um2": 217.854,
-        "n_cells": null,
+        "area_um2": 409.108,
+        "n_cells": 248,
         "wns_cost": null,
         "power_w": null,
-        "congestion": null,
+        "congestion": 0.5826939215921353,
         "static_ir_mv": null,
         "dynamic_ir_mv": null,
         "em_j_a_m2": null,
         "ttf_rel_inv": null,
-        "fidelity": "F1",
-        "note": "Yosys+ABC mapped area; delay/IR not claimed from F1"
+        "fidelity": "F2",
+        "note": "F2-fast HPWL=1131.670 grid \u00b7 rudy_excess=1.396 \u00b7 anchored-barycenter+HPWL+RUDY \u2014 F2-fast, not GRT, not IR"
       },
-      "cost_s": 0.9040803909301758,
-      "pred": {
-        "actual": 217.854,
-        "pred": 265.23503156471475,
-        "residual": -47.38103156471473,
-        "uncertainty": "medium"
-      },
+      "cost_s": 0.03917217254638672,
+      "pred": {},
       "attr": {
-        "inherited_from": "physical_ir",
-        "modules": [
-          "dpath"
-        ],
-        "note": "F1 does not re-solve IR; attribution is context from F4",
-        "scope": "logic_cone",
-        "transform": "drills_rewrite_balance_rewrite-"
+        "transform": "liberty_default",
+        "context": {
+          "parent": "5130270dfd12",
+          "level": "logic"
+        },
+        "note": "transform+netlist \u2192 \u0394HPWL/RUDY; not Dynamic IR"
       },
       "egraph": {},
+      "artifacts": {
+        "n_cells": 248,
+        "n_nets": 221,
+        "avg_degree": 3.3347,
+        "n_seq": 35,
+        "n_comb": 213,
+        "n_liberty_types": 22,
+        "hpwl": 1131.6695071285756,
+        "hpwl_units": "grid",
+        "rudy_excess": 1.3963226316167496,
+        "congestion": 0.5826939215921353,
+        "via": "anchored-barycenter+HPWL+RUDY \u2014 F2-fast, not GRT, not IR",
+        "mapped_v": "/workspace/learn/sim/dse/netlists/5130270dfd12.v"
+      },
       "status": "ok",
       "failure": null,
-      "created_at": 1788014441.5175557,
-      "note": "F1 drills_rewrite_balance_rewrite- equiv=PASS"
+      "created_at": 1788016900.7991893,
+      "note": "F2-fast child of liberty_default HPWL=1131.670"
     },
     {
-      "id": "5b7ac108cfd0",
+      "id": "c930e3cde3ad",
+      "design_id": "gcd",
+      "parent_id": "80ab177960ac",
+      "level": "physical",
+      "knobs": {
+        "source": "f2_fast_netgraph",
+        "parent_id": "80ab177960ac",
+        "parent_name": "boils_rewrite_balance",
+        "util": 0.35,
+        "rev": 2
+      },
+      "knobs_fp": "17cd7f3d2c02981274c5d4e1a5b137a7a86927c329a7186f11cc5a481e851951",
+      "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
+      "netlist_fp": "673c8d7e4ffd421972e2dd10f79e8825c8aa999d1d449b12dc95707bdf47b644",
+      "fidelity": "F2",
+      "qor": {
+        "area_um2": 483.322,
+        "n_cells": 378,
+        "wns_cost": null,
+        "power_w": null,
+        "congestion": 0.7091485493748976,
+        "static_ir_mv": null,
+        "dynamic_ir_mv": null,
+        "em_j_a_m2": null,
+        "ttf_rel_inv": null,
+        "fidelity": "F2",
+        "note": "F2-fast HPWL=2138.357 grid \u00b7 rudy_excess=2.438 \u00b7 anchored-barycenter+HPWL+RUDY \u2014 F2-fast, not GRT, not IR"
+      },
+      "cost_s": 0.04355573654174805,
+      "pred": {},
+      "attr": {
+        "transform": "boils_rewrite_balance",
+        "context": {
+          "parent": "80ab177960ac",
+          "level": "logic"
+        },
+        "note": "transform+netlist \u2192 \u0394HPWL/RUDY; not Dynamic IR"
+      },
+      "egraph": {},
+      "artifacts": {
+        "n_cells": 378,
+        "n_nets": 347,
+        "avg_degree": 3.1217,
+        "n_seq": 35,
+        "n_comb": 343,
+        "n_liberty_types": 19,
+        "hpwl": 2138.356717652413,
+        "hpwl_units": "grid",
+        "rudy_excess": 2.4381812359910344,
+        "congestion": 0.7091485493748976,
+        "via": "anchored-barycenter+HPWL+RUDY \u2014 F2-fast, not GRT, not IR",
+        "mapped_v": "/workspace/learn/sim/dse/netlists/80ab177960ac.v"
+      },
+      "status": "ok",
+      "failure": null,
+      "created_at": 1788016900.8525152,
+      "note": "F2-fast child of boils_rewrite_balance HPWL=2138.357"
+    },
+    {
+      "id": "be73e43dd35d",
+      "design_id": "gcd",
+      "parent_id": "2057b8b37001",
+      "level": "physical",
+      "knobs": {
+        "source": "f2_fast_netgraph",
+        "parent_id": "2057b8b37001",
+        "parent_name": "sub_twos_complement",
+        "util": 0.35,
+        "rev": 2
+      },
+      "knobs_fp": "707c00880dae1815aee19f400d9fdabfd5d3f08375bf5a71a814f80d9ea1444f",
+      "rtl_fp": "85951018e3307a01c94ca52c748b2418017c6ae1c1f047d9e6db5784f030c428",
+      "netlist_fp": "11e24f2eadc1eabab14b5e71adf7c0764ca9413db3f502ba8c162bb4a986f746",
+      "fidelity": "F2",
+      "qor": {
+        "area_um2": 407.512,
+        "n_cells": 257,
+        "wns_cost": null,
+        "power_w": null,
+        "congestion": 0.6254339471248483,
+        "static_ir_mv": null,
+        "dynamic_ir_mv": null,
+        "em_j_a_m2": null,
+        "ttf_rel_inv": null,
+        "fidelity": "F2",
+        "note": "F2-fast HPWL=1189.564 grid \u00b7 rudy_excess=1.670 \u00b7 anchored-barycenter+HPWL+RUDY \u2014 F2-fast, not GRT, not IR"
+      },
+      "cost_s": 0.03945136070251465,
+      "pred": {},
+      "attr": {
+        "transform": "sub_twos_complement",
+        "context": {
+          "parent": "2057b8b37001",
+          "level": "architecture"
+        },
+        "note": "transform+netlist \u2192 \u0394HPWL/RUDY; not Dynamic IR"
+      },
+      "egraph": {},
+      "artifacts": {
+        "n_cells": 257,
+        "n_nets": 230,
+        "avg_degree": 3.3191,
+        "n_seq": 35,
+        "n_comb": 222,
+        "n_liberty_types": 22,
+        "hpwl": 1189.5636894618538,
+        "hpwl_units": "grid",
+        "rudy_excess": 1.669756087942424,
+        "congestion": 0.6254339471248483,
+        "via": "anchored-barycenter+HPWL+RUDY \u2014 F2-fast, not GRT, not IR",
+        "mapped_v": "/workspace/learn/sim/dse/netlists/2057b8b37001.v"
+      },
+      "status": "ok",
+      "failure": null,
+      "created_at": 1788016900.900129,
+      "note": "F2-fast child of sub_twos_complement HPWL=1189.564"
+    },
+    {
+      "id": "516954136c5e",
+      "design_id": "gcd",
+      "parent_id": "65e115dab18d",
+      "level": "physical",
+      "knobs": {
+        "source": "f2_fast_netgraph",
+        "parent_id": "65e115dab18d",
+        "parent_name": "eqz_or_reduce",
+        "util": 0.35,
+        "rev": 2
+      },
+      "knobs_fp": "ab8adfe94dd9664b74da8fe36974618ff43bdf59789f37831cf93c3000d277c4",
+      "rtl_fp": "0347b859c3a416a6f09a5d2f5e263fcd62bef14908173e57d4eb449c8b61315b",
+      "netlist_fp": "ed1a2a9d2c5821050e478fdcd29a6da0192cc834a9573a90fe994a7edf57039e",
+      "fidelity": "F2",
+      "qor": {
+        "area_um2": 408.842,
+        "n_cells": 249,
+        "wns_cost": null,
+        "power_w": null,
+        "congestion": 0.627166124373926,
+        "static_ir_mv": null,
+        "dynamic_ir_mv": null,
+        "em_j_a_m2": null,
+        "ttf_rel_inv": null,
+        "fidelity": "F2",
+        "note": "F2-fast HPWL=1141.227 grid \u00b7 rudy_excess=1.682 \u00b7 anchored-barycenter+HPWL+RUDY \u2014 F2-fast, not GRT, not IR"
+      },
+      "cost_s": 0.03880596160888672,
+      "pred": {},
+      "attr": {
+        "transform": "eqz_or_reduce",
+        "context": {
+          "parent": "65e115dab18d",
+          "level": "architecture"
+        },
+        "note": "transform+netlist \u2192 \u0394HPWL/RUDY; not Dynamic IR"
+      },
+      "egraph": {},
+      "artifacts": {
+        "n_cells": 249,
+        "n_nets": 222,
+        "avg_degree": 3.3333,
+        "n_seq": 35,
+        "n_comb": 214,
+        "n_liberty_types": 22,
+        "hpwl": 1141.2273754801906,
+        "hpwl_units": "grid",
+        "rudy_excess": 1.6821597107311392,
+        "congestion": 0.627166124373926,
+        "via": "anchored-barycenter+HPWL+RUDY \u2014 F2-fast, not GRT, not IR",
+        "mapped_v": "/workspace/learn/sim/dse/netlists/65e115dab18d.v"
+      },
+      "status": "ok",
+      "failure": null,
+      "created_at": 1788016900.9470356,
+      "note": "F2-fast child of eqz_or_reduce HPWL=1141.227"
+    },
+    {
+      "id": "da52268c95f8",
+      "design_id": "gcd",
+      "parent_id": "2057b8b37001",
+      "level": "physical",
+      "knobs": {
+        "source": "f2_openroad_gpl",
+        "parent_id": "2057b8b37001",
+        "parent_name": "sub_twos_complement",
+        "util": 35.0,
+        "density": 0.55,
+        "skip_io": true
+      },
+      "knobs_fp": "e9f0c41ec99445d32bb91f10c98b8e09eae036ccb80e111fc035d71b32c07ea5",
+      "rtl_fp": "85951018e3307a01c94ca52c748b2418017c6ae1c1f047d9e6db5784f030c428",
+      "netlist_fp": "11e24f2eadc1eabab14b5e71adf7c0764ca9413db3f502ba8c162bb4a986f746",
+      "fidelity": "F2",
+      "qor": {
+        "area_um2": 451.8056,
+        "n_cells": 257,
+        "wns_cost": null,
+        "power_w": null,
+        "congestion": 0.0978,
+        "static_ir_mv": null,
+        "dynamic_ir_mv": null,
+        "em_j_a_m2": null,
+        "ttf_rel_inv": null,
+        "fidelity": "F2",
+        "note": "OpenROAD GPL HPWL=1081.694 um overflow=0.0978 \u2014 not GRT, not F5, not IR"
+      },
+      "cost_s": 0.2655177116394043,
+      "pred": {},
+      "attr": {
+        "transform": "sub_twos_complement",
+        "context": {
+          "parent": "2057b8b37001",
+          "level": "architecture"
+        },
+        "note": "transform+netlist \u2192 OpenROAD GPL; not Dynamic IR"
+      },
+      "egraph": {},
+      "artifacts": {
+        "status": "ok",
+        "reason": null,
+        "hpwl_um": 1081.694,
+        "overflow": 0.0978,
+        "inst_area_um2": 451.8056,
+        "n_inst": 257,
+        "util": 35.0,
+        "density": 0.55,
+        "skip_io": true,
+        "via": "openroad_gpl_skip_io \u2014 F2, not GRT, not finish/F5, not IR",
+        "cost_s": 0.2655177116394043,
+        "n_iters": 377
+      },
+      "status": "ok",
+      "failure": null,
+      "created_at": 1788016901.2281885,
+      "note": "F2 GPL child of sub_twos_complement HPWL_um=1081.694"
+    },
+    {
+      "id": "aa6ff614b76e",
       "design_id": "gcd",
       "parent_id": null,
       "level": "physical",
       "knobs": {
-        "coreUtilization": 30,
         "name": "util30_den010",
+        "coreUtilization": 30,
         "placeDensityAddon": 0.1,
         "source": "autodmp_catalog_f0"
       },
@@ -691,19 +1275,20 @@
       "pred": {},
       "attr": {},
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014441.5186436,
+      "created_at": 1788016901.2289886,
       "note": "AutoDMP-shaped physical proposal; F5 P&R not launched"
     },
     {
-      "id": "3018bb5544f5",
+      "id": "b3d8453e0ed6",
       "design_id": "gcd",
       "parent_id": null,
       "level": "physical",
       "knobs": {
-        "coreUtilization": 35,
         "name": "util35_den020",
+        "coreUtilization": 35,
         "placeDensityAddon": 0.2,
         "source": "autodmp_catalog_f0"
       },
@@ -728,19 +1313,20 @@
       "pred": {},
       "attr": {},
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014441.5191624,
+      "created_at": 1788016901.2297251,
       "note": "AutoDMP-shaped physical proposal; F5 P&R not launched"
     },
     {
-      "id": "9c000613a024",
+      "id": "0d3adc2c6aac",
       "design_id": "gcd",
       "parent_id": null,
       "level": "physical",
       "knobs": {
-        "coreUtilization": 40,
         "name": "util40_den025",
+        "coreUtilization": 40,
         "placeDensityAddon": 0.25,
         "source": "autodmp_catalog_f0"
       },
@@ -765,19 +1351,20 @@
       "pred": {},
       "attr": {},
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014441.519656,
+      "created_at": 1788016901.230481,
       "note": "AutoDMP-shaped physical proposal; F5 P&R not launched"
     },
     {
-      "id": "fc4c10e22d3b",
+      "id": "0d22a1a778b6",
       "design_id": "gcd",
       "parent_id": null,
       "level": "physical",
       "knobs": {
-        "coreUtilization": 45,
         "name": "util45_den030",
+        "coreUtilization": 45,
         "placeDensityAddon": 0.3,
         "source": "autodmp_catalog_f0"
       },
@@ -802,21 +1389,22 @@
       "pred": {},
       "attr": {},
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014441.5201468,
+      "created_at": 1788016901.231219,
       "note": "AutoDMP-shaped physical proposal; F5 P&R not launched"
     },
     {
-      "id": "edeb9d5a6868",
+      "id": "1eac33218872",
       "design_id": "gcd",
       "parent_id": null,
       "level": "synthesis",
       "knobs": {
-        "abcArea": 1,
-        "current": true,
         "name": "abc_area",
-        "source": "orfs_abc_area"
+        "abcArea": 1,
+        "source": "orfs_abc_area",
+        "current": true
       },
       "knobs_fp": "cb84ed383f431eb2bfd9b98c46cae34bb1a0ede2a7c201104a7f28ddf88d3b28",
       "rtl_fp": null,
@@ -839,21 +1427,22 @@
       "pred": {},
       "attr": {},
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014441.5207188,
+      "created_at": 1788016901.2320719,
       "note": "synthesis-level proposal; no P&R, no ABC sequence"
     },
     {
-      "id": "a1245689fbcb",
+      "id": "b61c3406327d",
       "design_id": "gcd",
       "parent_id": null,
       "level": "synthesis",
       "knobs": {
-        "abcArea": 0,
-        "current": false,
         "name": "abc_delay",
-        "source": "orfs_abc_area"
+        "abcArea": 0,
+        "source": "orfs_abc_area",
+        "current": false
       },
       "knobs_fp": "5d89964d89399ab2293911cbc94b99a0384e52e0f04f232b40bb336e97b63ded",
       "rtl_fp": null,
@@ -876,48 +1465,106 @@
       "pred": {},
       "attr": {},
       "egraph": {},
+      "artifacts": {},
       "status": "ok",
       "failure": null,
-      "created_at": 1788014441.521298,
+      "created_at": 1788016901.232912,
       "note": "synthesis-level proposal; no P&R, no ABC sequence"
     }
   ],
   "log": [
     {
-      "t": 1788014506.2297583,
+      "t": 1788016896.0494893,
       "kind": "inspect",
-      "n": 15,
-      "levels": [
-        "architecture",
-        "logic",
-        "pdn",
-        "physical",
-        "synthesis"
-      ]
+      "n": 0,
+      "levels": []
     },
     {
-      "t": 1788014506.230688,
+      "t": 1788016896.0509171,
       "kind": "ingest",
       "level": "physical",
-      "id": "7313bdb9a75b",
+      "id": "4df4645db89e",
       "fidelity": "F4"
     },
     {
-      "t": 1788014506.230805,
+      "t": 1788016896.051775,
       "kind": "ingest",
       "level": "physical",
-      "id": "0b962e560215",
+      "id": "460b56ec434a",
       "fidelity": "F2"
     },
     {
-      "t": 1788014506.231348,
+      "t": 1788016896.0546608,
       "kind": "ingest",
       "level": "pdn",
-      "id": "f63e2be96a8b",
+      "id": "5263228540fe",
       "fidelity": "F4"
     },
     {
-      "t": 1788014506.234069,
+      "t": 1788016896.0562856,
+      "kind": "plan",
+      "focus": "dpath",
+      "combo_frac": 0.983563683518776,
+      "f2_cong": 0.0
+    },
+    {
+      "t": 1788016896.0562873,
+      "kind": "plan_step",
+      "level": "architecture",
+      "reason": "combo IR 0.98 on dpath \u2014 cone extracts, no chip restart",
+      "extracts": [
+        "lt_borrow",
+        "sub_twos_complement",
+        "eqz_or_reduce"
+      ],
+      "scope": "logic_cone"
+    },
+    {
+      "t": 1788016896.0562882,
+      "kind": "plan_step",
+      "level": "logic",
+      "reason": "BOiLS SSK-GP + DRiLLS UCB on ABC sequences",
+      "scope": "block"
+    },
+    {
+      "t": 1788016896.0562887,
+      "kind": "plan_step",
+      "level": "f2_fast",
+      "reason": "anchored barycenter HPWL/RUDY on the best F1 netlist (not make finish)",
+      "scope": "chip"
+    },
+    {
+      "t": 1788016896.056289,
+      "kind": "plan_step",
+      "level": "f2_gpl",
+      "reason": "budgeted OpenROAD GPL -skip_io on the F1 winner \u2014 not route/F5/IR",
+      "scope": "chip"
+    },
+    {
+      "t": 1788016896.0563138,
+      "kind": "propose",
+      "level": "logic",
+      "knobs": {
+        "name": "liberty_default",
+        "abc_args": [],
+        "abc_ops": [],
+        "abc_script": "file"
+      },
+      "fidelity": "F1",
+      "why": "baseline teacher"
+    },
+    {
+      "t": 1788016896.8343177,
+      "kind": "evaluate",
+      "id": "5130270dfd12",
+      "level": "logic",
+      "fidelity": "F1",
+      "status": "ok",
+      "area_um2": 409.108,
+      "cost_s": 0.7702977657318115
+    },
+    {
+      "t": 1788016896.8345768,
       "kind": "egraph",
       "n_enodes": 11,
       "n_eclasses": 8,
@@ -927,9 +1574,299 @@
         "eqz_or_reduce",
         "lt_borrow"
       ]
+    },
+    {
+      "t": 1788016896.834578,
+      "kind": "arch_reason",
+      "reason": "combo IR 0.98 on dpath \u2014 cone extracts, no chip restart"
+    },
+    {
+      "t": 1788016896.8347876,
+      "kind": "propose",
+      "level": "architecture",
+      "knobs": {
+        "name": "lt_borrow",
+        "module": "dpath",
+        "extract": "lt_borrow",
+        "scope": "logic_cone",
+        "abc_script": "file"
+      },
+      "fidelity": "F1"
+    },
+    {
+      "t": 1788016897.6281555,
+      "kind": "evaluate",
+      "id": "cbe83cc9447c",
+      "level": "architecture",
+      "fidelity": "F1",
+      "status": "ok",
+      "area_um2": 410.438,
+      "cost_s": 0.7855558395385742
+    },
+    {
+      "t": 1788016897.628374,
+      "kind": "propose",
+      "level": "architecture",
+      "knobs": {
+        "name": "sub_twos_complement",
+        "module": "dpath",
+        "extract": "sub_twos_complement",
+        "scope": "logic_cone",
+        "abc_script": "file"
+      },
+      "fidelity": "F1"
+    },
+    {
+      "t": 1788016898.4538789,
+      "kind": "evaluate",
+      "id": "2057b8b37001",
+      "level": "architecture",
+      "fidelity": "F1",
+      "status": "ok",
+      "area_um2": 407.512,
+      "cost_s": 0.8168981075286865
+    },
+    {
+      "t": 1788016898.4541109,
+      "kind": "propose",
+      "level": "architecture",
+      "knobs": {
+        "name": "eqz_or_reduce",
+        "module": "dpath",
+        "extract": "eqz_or_reduce",
+        "scope": "logic_cone",
+        "abc_script": "file"
+      },
+      "fidelity": "F1"
+    },
+    {
+      "t": 1788016899.2605486,
+      "kind": "evaluate",
+      "id": "65e115dab18d",
+      "level": "architecture",
+      "fidelity": "F1",
+      "status": "ok",
+      "area_um2": 408.842,
+      "cost_s": 0.7981340885162354
+    },
+    {
+      "t": 1788016899.2608006,
+      "kind": "propose",
+      "level": "logic",
+      "knobs": {
+        "name": "liberty_fast",
+        "abc_args": [
+          "-fast"
+        ],
+        "abc_ops": [],
+        "abc_script": "file"
+      },
+      "fidelity": "F1",
+      "pred": {
+        "metric": "area_um2",
+        "mean": 409.108,
+        "std": null,
+        "n": 1,
+        "uncertainty": "high",
+        "via": "empirical mean of F1 mapped area",
+        "not": "Dynamic IR, WNS, or a neural voltage map"
+      },
+      "pay": true,
+      "why": "no F0 confidence \u2014 pay F1"
+    },
+    {
+      "t": 1788016899.9979072,
+      "kind": "evaluate",
+      "id": "c4257926e4f2",
+      "level": "logic",
+      "fidelity": "F1",
+      "status": "ok",
+      "area_um2": 489.972,
+      "cost_s": 0.7270457744598389
+    },
+    {
+      "t": 1788016899.9989183,
+      "kind": "propose",
+      "level": "logic",
+      "knobs": {
+        "name": "boils_rewrite_balance",
+        "abc_args": [],
+        "abc_ops": [
+          "rewrite",
+          "balance"
+        ],
+        "abc_script": "file",
+        "acq": {
+          "ei": 3.3654391984521626,
+          "mu": 449.53999999999996,
+          "std": 40.43199999999999,
+          "via": "ssk_gp_ei"
+        }
+      },
+      "fidelity": "F1",
+      "pred": {
+        "metric": "area_um2",
+        "mean": 449.53999999999996,
+        "std": 40.43199999999999,
+        "n": 2,
+        "uncertainty": "medium",
+        "via": "SSK-GP posterior on ABC sequence (BOiLS-class)",
+        "not": "Dynamic IR, WNS, or a neural voltage map",
+        "ops": [
+          "rewrite",
+          "balance"
+        ]
+      },
+      "pay": true,
+      "why": "n<3 \u2014 pay F1"
+    },
+    {
+      "t": 1788016900.752692,
+      "kind": "evaluate",
+      "id": "80ab177960ac",
+      "level": "logic",
+      "fidelity": "F1",
+      "status": "ok",
+      "area_um2": 483.322,
+      "cost_s": 0.7436261177062988
+    },
+    {
+      "t": 1788016900.799859,
+      "kind": "evaluate",
+      "id": "1b390b953adb",
+      "level": "physical",
+      "fidelity": "F2",
+      "via": "f2_fast_netgraph",
+      "parent": "5130270dfd12",
+      "hpwl": 1131.6695071285756,
+      "congestion": 0.5826939215921353
+    },
+    {
+      "t": 1788016900.8532348,
+      "kind": "evaluate",
+      "id": "c930e3cde3ad",
+      "level": "physical",
+      "fidelity": "F2",
+      "via": "f2_fast_netgraph",
+      "parent": "80ab177960ac",
+      "hpwl": 2138.356717652413,
+      "congestion": 0.7091485493748976
+    },
+    {
+      "t": 1788016900.9008512,
+      "kind": "evaluate",
+      "id": "be73e43dd35d",
+      "level": "physical",
+      "fidelity": "F2",
+      "via": "f2_fast_netgraph",
+      "parent": "2057b8b37001",
+      "hpwl": 1189.5636894618538,
+      "congestion": 0.6254339471248483
+    },
+    {
+      "t": 1788016900.9482195,
+      "kind": "evaluate",
+      "id": "516954136c5e",
+      "level": "physical",
+      "fidelity": "F2",
+      "via": "f2_fast_netgraph",
+      "parent": "65e115dab18d",
+      "hpwl": 1141.2273754801906,
+      "congestion": 0.627166124373926
+    },
+    {
+      "t": 1788016900.9482477,
+      "kind": "acquire",
+      "fidelity": "F2_GPL",
+      "pay": true,
+      "why": "promote F1 winner to OpenROAD GPL (skip_io, not finish/F5)"
+    },
+    {
+      "t": 1788016901.2289543,
+      "kind": "evaluate",
+      "id": "da52268c95f8",
+      "level": "physical",
+      "fidelity": "F2",
+      "via": "f2_openroad_gpl",
+      "parent": "2057b8b37001",
+      "hpwl_um": 1081.694,
+      "overflow": 0.0978,
+      "status": "ok"
+    },
+    {
+      "t": 1788016901.2319407,
+      "kind": "propose",
+      "level": "physical",
+      "knobs": {
+        "name": "util30_den010",
+        "coreUtilization": 30,
+        "placeDensityAddon": 0.1,
+        "source": "autodmp_catalog_f0"
+      },
+      "fidelity": "F0"
+    },
+    {
+      "t": 1788016901.2319422,
+      "kind": "propose",
+      "level": "physical",
+      "knobs": {
+        "name": "util35_den020",
+        "coreUtilization": 35,
+        "placeDensityAddon": 0.2,
+        "source": "autodmp_catalog_f0"
+      },
+      "fidelity": "F0"
+    },
+    {
+      "t": 1788016901.2319427,
+      "kind": "propose",
+      "level": "physical",
+      "knobs": {
+        "name": "util40_den025",
+        "coreUtilization": 40,
+        "placeDensityAddon": 0.25,
+        "source": "autodmp_catalog_f0"
+      },
+      "fidelity": "F0"
+    },
+    {
+      "t": 1788016901.231943,
+      "kind": "propose",
+      "level": "physical",
+      "knobs": {
+        "name": "util45_den030",
+        "coreUtilization": 45,
+        "placeDensityAddon": 0.3,
+        "source": "autodmp_catalog_f0"
+      },
+      "fidelity": "F0"
+    },
+    {
+      "t": 1788016901.233711,
+      "kind": "propose",
+      "level": "synthesis",
+      "knobs": {
+        "name": "abc_area",
+        "abcArea": 1,
+        "source": "orfs_abc_area",
+        "current": true
+      },
+      "fidelity": "F0"
+    },
+    {
+      "t": 1788016901.2337124,
+      "kind": "propose",
+      "level": "synthesis",
+      "knobs": {
+        "name": "abc_delay",
+        "abcArea": 0,
+        "source": "orfs_abc_area",
+        "current": false
+      },
+      "fidelity": "F0"
     }
   ],
-  "summary": "DSE 15 candidates \u00b7 F1 6 (arch 2) \u00b7 logic Pareto 2 \u00b7 best mapped area logic/boils_rewrite_balance 217.854 \u00b5m\u00b2 \u00b7 IR cone dpath \u00b7 F4 droop 45.298 mV (ingest, not gold replace)",
+  "summary": "DSE 20 candidates \u00b7 F1 6 (arch 3) \u00b7 logic Pareto 1 \u00b7 best mapped area architecture/sub_twos_complement 407.512 \u00b5m\u00b2 \u00b7 IR cone dpath \u00b7 F4 droop 45.298 mV (ingest, not gold replace)",
   "catalog": [
     "liberty_default",
     "liberty_fast",
