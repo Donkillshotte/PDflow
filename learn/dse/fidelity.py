@@ -2,10 +2,10 @@
 
 F0  cheap analytical / SSK-GP / RUDY-class proxy
 F1  Yosys + ABC liberty map + equiv (logic or architecture RTL)
-F2  ingest OpenROAD place / GRT, plus F2-fast barycenter on a *candidate* netlist
+F2  ingest OpenROAD place / GRT, F2-fast netgraph, budgeted OpenROAD GPL
 F3  OpenSTA signoff ingest
 F4  Dynamic IR / EM ingest (Solver A gold stays 45.298 mV on the GCD)
-F5  GAP (signoff P&R not launched from the controller)
+F5  GAP (signoff P&R / finish not launched from the controller)
 """
 
 from __future__ import annotations
@@ -22,7 +22,13 @@ from .abc_space import write_abc_script
 from .fingerprint import knobs_fp, sha256_file, sha256_text
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, wns_cost_from_slack_ns
-from .netgraph import estimate_physical, parse_mapped_verilog, features as net_features
+from .netgraph import (
+    estimate_physical,
+    is_gate_cell_netlist,
+    parse_mapped_verilog,
+    features as net_features,
+)
+from .openroad_f2 import evaluate_gpl
 
 REPO = Path(__file__).resolve().parents[1].parent
 NANGATE_LIB = (
@@ -30,7 +36,16 @@ NANGATE_LIB = (
     / "tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 )
 ORFS = REPO / "tools/OpenROAD-flow-scripts/flow"
-COST_HINT = {"F0": 0.05, "F1": 2.0, "F2": 30.0, "F3": 20.0, "F4": 35.0, "F5": 600.0}
+COST_HINT = {
+    "F0": 0.05,
+    "F1": 2.0,
+    "F2": 30.0,
+    "F2_FAST": 0.2,
+    "F2_GPL": 8.0,
+    "F3": 20.0,
+    "F4": 35.0,
+    "F5": 600.0,
+}
 
 
 def reports_dir(variant: str) -> Path:
@@ -275,7 +290,7 @@ design -load syn
 dfflibmap -liberty {lib}
 {map_cmd}
 stat -liberty {lib}
-write_verilog -noattr {net}
+write_verilog -noattr -noexpr {net}
 """
         )
         proc = subprocess.run(
@@ -342,9 +357,9 @@ def ensure_mapped_netlist(
     top: str = "gcd",
     timeout_s: float = 60.0,
 ) -> Candidate:
-    """Resume-safe: re-map an F1 candidate that predates netlist persistence."""
+    """Resume-safe: re-map F1 rows that lack cells or were written without -noexpr."""
     existing = (cand.artifacts or {}).get("mapped_v")
-    if existing and Path(existing).is_file():
+    if existing and Path(existing).is_file() and is_gate_cell_netlist(Path(existing)):
         return cand
     dest = REPO / "learn" / "sim" / "dse" / "netlists" / f"{cand.id}.v"
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -352,6 +367,8 @@ def ensure_mapped_netlist(
     ops = list(knobs.get("abc_ops") or [])
     args = list(knobs.get("abc_args") or [])
     lib = str(liberty)
+    src_rtl = Path(rtl)
+    extract = knobs.get("extract")
     with tempfile.TemporaryDirectory(prefix="dse-map-") as tmp:
         tmp_p = Path(tmp)
         net = tmp_p / "mapped.v"
@@ -364,16 +381,25 @@ def ensure_mapped_netlist(
         map_cmd = "abc -liberty " + lib
         if args:
             map_cmd += " " + " ".join(args)
+        if extract:
+            from .arch_space import emit_gcd_variant
+
+            variant = tmp_p / "variant.v"
+            try:
+                emit_gcd_variant(src_rtl, str(extract), variant)
+                src_rtl = variant
+            except ValueError:
+                pass
         ys.write_text(
             f"""
-read_verilog {rtl}
+read_verilog {src_rtl}
 hierarchy -check -top {top}
 proc; flatten; opt_expr; opt_clean
 synth -top {top}
 {aig_cmd}
 dfflibmap -liberty {lib}
 {map_cmd}
-write_verilog -noattr {net}
+write_verilog -noattr -noexpr {net}
 """
         )
         proc = subprocess.run(
@@ -407,22 +433,28 @@ def evaluate_f2_fast(
     if not mapped or not Path(mapped).is_file():
         return None
     knobs = {
-        "source": "f2_fast_barycenter",
+        "source": "f2_fast_netgraph",
         "parent_id": parent.id,
         "parent_name": parent.knobs.get("name"),
         "util": util,
+        "rev": 2,
     }
     fp = knobs_fp("physical", knobs)
     if fp in mem.seen_knobs("physical"):
         return next(c for c in mem.by_level("physical") if c.knobs_fp == fp)
     t0 = time.time()
     est = estimate_physical(Path(mapped), util=util)
+    est = dict(est)
+    est["mapped_v"] = mapped
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=est.get("n_cells"),
         congestion=est.get("congestion"),
         fidelity="F2",
-        note=f"F2-fast HPWL={est['hpwl']:.3f} · {est['via']}",
+        note=(
+            f"F2-fast HPWL={est['hpwl']:.3f} grid · rudy_excess={est.get('rudy_excess', 0):.3f} "
+            f"· {est['via']}"
+        ),
     )
     c = Candidate(
         id=DesignMemory.new_id(),
@@ -443,6 +475,66 @@ def evaluate_f2_fast(
             "note": "transform+netlist → ΔHPWL/RUDY; not Dynamic IR",
         },
         note=f"F2-fast child of {parent.knobs.get('name')} HPWL={est['hpwl']:.3f}",
+    )
+    return mem.add(c)
+
+
+def evaluate_f2_gpl(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    util: float = 35.0,
+    density: float = 0.55,
+    timeout_s: float = 45.0,
+) -> Candidate | None:
+    """Budgeted OpenROAD GPL on a gate-level F1 netlist. Not finish, not IR."""
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    knobs = {
+        "source": "f2_openroad_gpl",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "util": util,
+        "density": density,
+        "skip_io": True,
+    }
+    fp = knobs_fp("physical", knobs)
+    if fp in mem.seen_knobs("physical"):
+        return next(c for c in mem.by_level("physical") if c.knobs_fp == fp)
+    gpl = evaluate_gpl(Path(mapped), util=util, density=density, timeout_s=timeout_s)
+    q = QoR(
+        area_um2=gpl.get("inst_area_um2") or parent.qor.area_um2,
+        n_cells=gpl.get("n_inst") or parent.qor.n_cells,
+        congestion=gpl.get("overflow"),
+        fidelity="F2",
+        note=(
+            f"OpenROAD GPL HPWL={gpl.get('hpwl_um')} um overflow={gpl.get('overflow')} "
+            f"— not GRT, not F5, not IR"
+        ),
+    )
+    c = Candidate(
+        id=DesignMemory.new_id(),
+        design_id=design_id,
+        parent_id=parent.id,
+        level="physical",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F2",
+        qor=q,
+        cost_s=float(gpl.get("cost_s") or 0.0),
+        artifacts=gpl,
+        attr={
+            "transform": parent.knobs.get("name"),
+            "context": {"parent": parent.id, "level": parent.level},
+            "note": "transform+netlist → OpenROAD GPL; not Dynamic IR",
+        },
+        status="ok" if gpl.get("status") == "ok" else "fail",
+        failure=gpl.get("reason") if gpl.get("status") != "ok" else None,
+        note=f"F2 GPL child of {parent.knobs.get('name')} HPWL_um={gpl.get('hpwl_um')}",
     )
     return mem.add(c)
 

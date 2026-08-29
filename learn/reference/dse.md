@@ -8,11 +8,14 @@ scalare.
 RTL
  → e-graph datapath (cono IR, es. dpath)
  → F1 Yosys+ABC (alfabeto BOiLS, GP+SSK, append DRiLLS) + equiv
- → F2 ingest place / GRT
+   write_verilog -noattr -noexpr  (celle liberty, non assign soup)
+ → F2-fast netgraph (baricentro ancorato + HPWL + RUDY)
+ → F2 OpenROAD GPL -skip_io (un colpo a budget, non finish)
+ → F2 ingest place / GRT del layout corrente
  → F3 STA ingest
  → F4 Dynamic IR / EM ingest (gold 45.298 mV unrestampato)
- → attributo hotspot → modulo RTL (dpath/ctrl)
- → surrogato F0 (SSK-GP area, RUDY congestion; residual F1→F4 solo se accoppiato)
+ → attributo hotspot → regione → celle → modulo RTL (dpath/ctrl)
+ → surrogato F0 (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 solo se accoppiato)
  → Pareto per livello
  → prossimo candidato / extract
 ```
@@ -22,9 +25,9 @@ RTL
 | Livello | Cosa si cerca | Stato |
 |---|---|---|
 | **architecture** | extract e-graph equivalenti sul cono `dpath` (ROVER/ASPEN-shaped) | READY F1 + equiv |
-| **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+EI |
+| **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+EI · insert |
 | **synthesis** | `ABC_AREA` ORFS | catalogo F0 (non mescolato alle ops ABC) |
-| **physical** | util, densità (catalogo AutoDMP-shaped) | F0 proxy + **ingest** F2/F4 — non lancia P&R |
+| **physical** | util, densità, netlist del candidato | F0 proxy + F2-fast + **GPL** + ingest F2/F4 — non lancia finish |
 | **pdn** | `c_decap`, pkg L | **ingest** F4 |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
@@ -34,11 +37,14 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F | Ruolo | Stato |
 |---|---|---|
 | F0 | SSK-GP area ± std; congestion RUDY-class; skip F1 se l’ottimista è già peggiore | READY — **non** è IR |
-| F1 | Yosys synth + ABC (script *file*) + `equiv_*` | READY |
-| F2 | place / GRT / finish ORFS | ingest log esistenti |
+| F1 | Yosys synth + ABC (script *file*) + `equiv_*` + `write_verilog -noexpr` | READY |
+| F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` | READY (GPL budgetato) |
 | F3 | OpenSTA | ingest `sta_signoff_*.json` |
 | F4 | Dynamic IR/EM (libdpn A/B/C/D) | ingest — **non** sostituisce il gold |
 | F5 | P&R signoff | GAP: il controller non lancia finish |
+
+F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.
+La congestion F2-fast è `rudy_excess/(1+rudy_excess)` ∈ [0,1) — non è l’overflow GRT.
 
 ## E-graph / extract
 
@@ -53,26 +59,31 @@ forzati vengono misurati a F1 (feedback EDA, idea ASPEN). Softmax su −cost/T �
 ispirato a SmoothE, senza loop GPU. Se l’hotspot IR è su `dpath`, si riscrive
 **solo quel cono** — niente restart del chip.
 
-## Attributi
+## Attributi (chip → block → region → cone)
 
-Il path OpenSTA del GCD (`dpath.a_reg…`) e l’hotspot ITerm diventano
-`scope=logic_cone`, `modules=[dpath]`. Si registra `transform + context → Δarea`,
-non solo `design → QoR`.
+Il path OpenSTA del GCD (`dpath.a_reg…`) e l’hotspot ITerm (`x_dbu`, `y_dbu`)
+diventano `scope=logic_cone`, `modules=[dpath]`, `region=r31`. Si registra
+`transform + context → ΔQoR`, non solo `design → QoR`.
 
 ## Ottimizzatori (uno per problema)
 
-Il **planner** legge `combo_frac` e il modulo attribuito: IR combo su `dpath`
-ordina gli extract (`lt_borrow` → `sub` → `eqz`) e non riparte dal chip. Congestione
-GRT alta sposta il budget sul livello physical.
+Il **planner** legge `combo_frac`, il modulo e la regione: IR combo su `dpath`
+ordina gli extract (`lt_borrow` → `sub` → `eqz`) e non riparte dal chip.
+Congestione GRT alta o focus di regione sposta il budget sul livello physical.
 
-F2-fast: place baricentrico + HPWL + RUDY sul *netlist del candidato* (non è GRT,
-non è `make finish`). L’ingest ORFS resta l’osservazione F2 del layout corrente.
-
-- **BOiLS** — kernel SSK + GP + EI + trust-region (swap/delete)
+- **BOiLS** — kernel SSK + GP + EI + trust-region (swap/delete/**insert**)
 - **DRiLLS** — UCB sul prossimo op ABC dato (ultimo op, focus IR)
 - **e-graph** — saturation + extract, non RTL casuale
-- **AutoDMP-shaped** — catalogo util/densità a F0; F5 non parte
-- **LLM** — non è l’ottimizzatore (GAP proposer)
+- **GNN** — 2 layer mean-aggregate + ridge su HPWL F2-fast; incertezza alta se n&lt;4
+- **AutoDMP-shaped** — catalogo util/densità a F0
+- **OpenROAD GPL** — un colpo `-skip_io` sul vincitore F1 (non route, non F5)
+- **LLM** — proposer opzionale (`DSE_LLM_URL`); fallback simbolico; **non** è l’ottimizzatore
+
+## Layer sostituibili
+
+`learn/dse/layers.py` registra extraction / power / activity / current / DSE /
+surrogate / solver / physical_fast / physical_gpl. Il solver PI resta **ingest**:
+il gold GCD 45.298 mV non si ristampa.
 
 ## Comandi
 

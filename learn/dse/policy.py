@@ -81,7 +81,7 @@ def drills_propose(mem: DesignMemory, best_ops: list[str], focus: str) -> dict |
     if op is None:
         return None
     seq = [*best_ops, op]
-    if len(seq) > 8:
+    if len(seq) > 12:
         return None
     return {
         "name": "drills_ucb_" + op.replace(" ", ""),

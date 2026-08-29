@@ -13,8 +13,13 @@ from __future__ import annotations
 
 import math
 
+from pathlib import Path
+
 from .boils import gp_predict
+from .gnn import embed_path, predict_hpwl as gnn_hpwl
 from .memory import Candidate
+
+_F2_FAST = {"f2_fast_netgraph", "f2_fast_barycenter"}
 
 
 def predict_f1_area(logic: list[Candidate], ops: list[str] | None = None) -> dict:
@@ -93,12 +98,12 @@ def predict_f2_from_f1(all_cands: list[Candidate]) -> dict:
     for c in all_cands:
         if c.fidelity != "F2" or c.status != "ok":
             continue
-        if (c.knobs or {}).get("source") != "f2_fast_barycenter":
+        if (c.knobs or {}).get("source") not in _F2_FAST:
             continue
         hpwl = (c.artifacts or {}).get("hpwl")
         parent = next((p for p in all_cands if p.id == c.parent_id), None)
         area = parent.qor.area_um2 if parent else c.qor.area_um2
-        if hpwl is None or area is None:
+        if hpwl is None or area is None or float(hpwl) < 1.0:
             continue
         pairs.append((float(area), float(hpwl)))
     if not pairs:
@@ -176,6 +181,63 @@ def predict_f4_from_f1(all_cands: list[Candidate]) -> dict:
         "n": len(pairs),
         "pairs": len(pairs),
         "uncertainty": "high" if len(pairs) < 4 else "medium",
-        "via": "RTLDistil-shaped residual placeholder (need ≥4 pairs to fit)",
+        "via": "RTLDistil-shaped residual (need ≥4 pairs to fit a slope)",
         "not": "Dynamic IR gold / a neural voltage map",
+    }
+
+
+def predict_f2_gnn(all_cands: list[Candidate], query_mapped=None) -> dict:
+    """GNN readout on the candidate netlist → F2-fast HPWL. Not IR."""
+    teachers = []
+    for c in all_cands:
+        if (c.knobs or {}).get("source") not in _F2_FAST or c.status != "ok":
+            continue
+        hpwl = (c.artifacts or {}).get("hpwl")
+        mapped = (c.artifacts or {}).get("mapped_v") or ""
+        parent = next((p for p in all_cands if p.id == c.parent_id), None)
+        src = mapped or (parent.artifacts or {}).get("mapped_v") if parent else mapped
+        if hpwl is None or float(hpwl) < 1.0 or not src or not Path(src).is_file():
+            continue
+        try:
+            teachers.append((embed_path(src), float(hpwl)))
+        except OSError:
+            continue
+    q = None
+    if query_mapped and Path(query_mapped).is_file():
+        q = embed_path(query_mapped)
+    elif teachers:
+        q = teachers[0][0]
+    else:
+        q = [0.0] * 8
+    return gnn_hpwl(teachers, q)
+
+
+def predict_gpl_from_f1(all_cands: list[Candidate]) -> dict:
+    """F1 area → OpenROAD GPL HPWL (µm). Separate scale from F2-fast grid HPWL."""
+    pairs = []
+    for c in all_cands:
+        if (c.knobs or {}).get("source") != "f2_openroad_gpl" or c.status != "ok":
+            continue
+        hp = (c.artifacts or {}).get("hpwl_um")
+        parent = next((p for p in all_cands if p.id == c.parent_id), None)
+        area = parent.qor.area_um2 if parent else c.qor.area_um2
+        if hp is None or area is None:
+            continue
+        pairs.append((float(area), float(hp)))
+    if not pairs:
+        return {
+            "metric": "hpwl_um",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no F1→GPL pairs",
+            "not": "F2-fast grid HPWL or Dynamic IR",
+        }
+    mean = sum(p[1] for p in pairs) / len(pairs)
+    return {
+        "metric": "hpwl_um",
+        "mean": mean,
+        "n": len(pairs),
+        "uncertainty": "high" if len(pairs) < 4 else "medium",
+        "via": "mean OpenROAD GPL HPWL (µm)",
+        "not": "F2-fast grid units or Dynamic IR",
     }

@@ -1,9 +1,9 @@
 """Fast physical oracle on a mapped netlist (F2-fast).
 
-Not OpenROAD GPL and not GRT. Barycenter placement + star HPWL + RUDY-class
-bin demand, in the spirit of AutoDMP's cheap proxies (RSMT/RUDY) before an
-expensive EDA eval. Structure of the *candidate* netlist changes the metric —
-ingest of a finished layout is a different observation.
+Not OpenROAD GPL and not GRT. Anchored barycenter + star HPWL + RUDY-class
+bin demand, in the spirit of AutoDMP's cheap proxies before an expensive EDA
+eval. Structure of the *candidate* netlist changes the metric — ingest of a
+finished layout is a different observation.
 
 Never claims Dynamic IR.
 """
@@ -17,6 +17,9 @@ from pathlib import Path
 
 
 _PORT = re.compile(r"\.([A-Za-z0-9_]+)\s*\(\s*([^)]+?)\s*\)")
+_INST_HEAD = re.compile(
+    r"([A-Za-z_][A-Za-z0-9_$]*)\s+(\\[^\s]+\s|[A-Za-z_][A-Za-z0-9_$]*)\s*\("
+)
 _SKIP = {
     "module",
     "endmodule",
@@ -28,7 +31,19 @@ _SKIP = {
     "reg",
     "supply0",
     "supply1",
+    "function",
+    "endfunction",
+    "task",
+    "endtask",
+    "primitive",
+    "if",
+    "for",
+    "while",
+    "case",
+    "casex",
+    "casez",
 }
+_LIBERTY_TYPE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*_X\d+$")
 
 
 @dataclass
@@ -56,22 +71,69 @@ class NetlistGraph:
         return sum(deg.values()) / len(self.cells)
 
     def n_seq(self) -> int:
-        return sum(1 for t in self.types.values() if t.upper().startswith("DFF") or "DFF" in t.upper())
+        return sum(1 for t in self.types.values() if "DFF" in t.upper())
+
+    def n_liberty_types(self) -> int:
+        return len({t for t in self.types.values() if _LIBERTY_TYPE.match(t)})
+
+
+def strip_verilog_comments(text: str) -> str:
+    """Drop // and /* */ so a Yosys banner cannot become a fake instance."""
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            if j < 0:
+                break
+            out.append(" ")
+            i = j + 2
+        elif text.startswith("//", i):
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
+
+
+def _balanced_ports(text: str, open_paren: int) -> tuple[str, int] | None:
+    depth = 0
+    j = open_paren
+    n = len(text)
+    while j < n:
+        ch = text[j]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return text[open_paren + 1 : j], j + 1
+        j += 1
+    return None
 
 
 def parse_mapped_verilog(path: Path) -> NetlistGraph:
-    text = Path(path).read_text(errors="replace")
+    """Paren-balanced instance scan. Comments stripped. Assign soup is not cells."""
+    text = strip_verilog_comments(Path(path).read_text(errors="replace"))
     g = NetlistGraph()
-    # Flatten port lists that wrap lines
-    blob = re.sub(r"\s+", " ", text)
-    for m in re.finditer(
-        r"([A-Za-z_][A-Za-z0-9_]*)\s+(\S+)\s*\((.*?)\)\s*;",
-        blob,
-    ):
-        kind, name, ports = m.group(1), m.group(2).strip("\\"), m.group(3)
+    i = 0
+    while True:
+        m = _INST_HEAD.search(text, i)
+        if not m:
+            break
+        kind = m.group(1)
+        name = m.group(2).strip().lstrip("\\").rstrip()
         if kind.lower() in _SKIP:
+            i = m.end()
             continue
-        if name in ("module",) or kind in ("wire",):
+        found = _balanced_ports(text, m.end() - 1)
+        if found is None:
+            break
+        ports, nxt = found
+        i = nxt
+        if not name or name in g.types:
             continue
         g.cells.append(name)
         g.types[name] = kind
@@ -81,20 +143,44 @@ def parse_mapped_verilog(path: Path) -> NetlistGraph:
             if not net or net in ("1'b0", "1'b1", "1'bx"):
                 continue
             g.nets.setdefault(net, set()).add(name)
-    # drop nets that touch <2 cells (ports)
     g.nets = {n: cs for n, cs in g.nets.items() if len(cs) >= 2}
     return g
 
 
-def barycenter_place(g: NetlistGraph, *, util: float = 0.35, iters: int = 24) -> dict[str, tuple[float, float]]:
-    """Cheap analytic place: neighbor barycenter + box scale. Deterministic."""
+def is_gate_cell_netlist(path: Path) -> bool:
+    """True when Yosys wrote liberty instances, not assign-lowered gates."""
+    p = Path(path)
+    if not p.is_file():
+        return False
+    text = p.read_text(errors="replace")
+    if "write_verilog" in text and "-noexpr" in text:
+        pass
+    g = parse_mapped_verilog(p)
+    if g.n_liberty_types() >= 6 and g.n_cells >= 80:
+        return True
+    if g.n_cells >= 40 and g.n_nets >= max(20, g.n_cells // 4) and g.n_liberty_types() >= 4:
+        return True
+    return False
+
+
+def barycenter_place(
+    g: NetlistGraph, *, util: float = 0.35, iters: int = 24
+) -> dict[str, tuple[float, float]]:
+    """Analytic place with a grid *anchor* so a connected graph cannot collapse.
+
+    0.55 neighbor + 0.25 original slot + 0.20 momentum, then scale onto a
+    fixed outline (not the collapsed bbox). Deterministic.
+    """
     n = max(g.n_cells, 1)
     side = math.sqrt(n / max(util, 0.15))
-    # grid init
     cols = max(1, int(math.ceil(math.sqrt(n))))
+    rows = max(1, int(math.ceil(n / cols)))
+    grid: dict[str, list[float]] = {}
     pos: dict[str, list[float]] = {}
     for i, c in enumerate(g.cells):
-        pos[c] = [float(i % cols), float(i // cols)]
+        slot = [float(i % cols), float(i // cols)]
+        grid[c] = slot
+        pos[c] = list(slot)
     nbrs: dict[str, set[str]] = {c: set() for c in g.cells}
     for cells in g.nets.values():
         cl = list(cells)
@@ -103,25 +189,22 @@ def barycenter_place(g: NetlistGraph, *, util: float = 0.35, iters: int = 24) ->
                 if a != b:
                     nbrs[a].add(b)
     for _ in range(iters):
-        nxt = {}
+        nxt: dict[str, list[float]] = {}
         for c, (x, y) in pos.items():
+            gx, gy = grid[c]
             adj = nbrs[c]
             if not adj:
-                nxt[c] = [x, y]
+                nxt[c] = [0.85 * x + 0.15 * gx, 0.85 * y + 0.15 * gy]
                 continue
-            sx = sum(pos[a][0] for a in adj)
-            sy = sum(pos[a][1] for a in adj)
-            nxt[c] = [0.35 * x + 0.65 * sx / len(adj), 0.35 * y + 0.65 * sy / len(adj)]
+            sx = sum(pos[a][0] for a in adj) / len(adj)
+            sy = sum(pos[a][1] for a in adj) / len(adj)
+            nxt[c] = [0.20 * x + 0.55 * sx + 0.25 * gx, 0.20 * y + 0.55 * sy + 0.25 * gy]
         pos = nxt
-    xs = [p[0] for p in pos.values()] or [0.0]
-    ys = [p[1] for p in pos.values()] or [0.0]
-    minx, maxx = min(xs), max(xs)
-    miny, maxy = min(ys), max(ys)
-    dx = max(maxx - minx, 1e-9)
-    dy = max(maxy - miny, 1e-9)
-    out = {}
+    out: dict[str, tuple[float, float]] = {}
+    dx = max(cols - 1, 1)
+    dy = max(rows - 1, 1)
     for c, (x, y) in pos.items():
-        out[c] = ((x - minx) / dx * side, (y - miny) / dy * side)
+        out[c] = (x / dx * side, y / dy * side)
     return out
 
 
@@ -137,11 +220,7 @@ def hpwl(g: NetlistGraph, pos: dict[str, tuple[float, float]]) -> float:
 
 
 def rudy_congestion(g: NetlistGraph, pos: dict[str, tuple[float, float]], bins: int = 8) -> float:
-    """Peak / mean bin demand (RUDY-class). 1.0 = uniform. Lower is better after we store peak/mean-1? 
-
-    We store (peak/mean) so 1.0 is flat, larger is hotter. QoR minimizes congestion —
-    use (peak/mean - 1) so uniform → 0.
-    """
+    """Peak/mean − 1 (RUDY-class). 0 = uniform. Not GRT overflow."""
     if not pos:
         return 0.0
     xs = [p[0] for p in pos.values()]
@@ -183,15 +262,19 @@ def features(g: NetlistGraph) -> dict:
         "avg_degree": round(g.avg_degree(), 4),
         "n_seq": g.n_seq(),
         "n_comb": g.n_cells - g.n_seq(),
+        "n_liberty_types": g.n_liberty_types(),
     }
 
 
 def estimate_physical(path: Path, *, util: float = 0.35) -> dict:
     g = parse_mapped_verilog(path)
     pos = barycenter_place(g, util=util)
+    rudy = rudy_congestion(g, pos)
     return {
         **features(g),
         "hpwl": hpwl(g, pos),
-        "congestion": rudy_congestion(g, pos),
-        "via": "barycenter+HPWL+RUDY — F2-fast, not GRT, not IR",
+        "hpwl_units": "grid",
+        "rudy_excess": rudy,
+        "congestion": rudy / (1.0 + rudy),
+        "via": "anchored-barycenter+HPWL+RUDY — F2-fast, not GRT, not IR",
     }

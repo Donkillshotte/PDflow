@@ -108,7 +108,7 @@ def generate_candidates(seen_ops: list[list[str]], best: list[str] | None) -> li
     if best is not None:
         for op in BOILS_STD_OPS:
             seq = [*best, op]
-            if len(seq) > 8:
+            if len(seq) > 12:
                 continue
             out.append(
                 {
@@ -148,6 +148,21 @@ def generate_candidates(seen_ops: list[list[str]], best: list[str] | None) -> li
                         "via": "trust_region_delete",
                     }
                 )
+        if len(best) < 12:
+            for i in range(len(best) + 1):
+                for alt in BOILS_STD_OPS:
+                    seq = [*best[:i], alt, *best[i:]]
+                    if len(seq) > 12:
+                        continue
+                    out.append(
+                        {
+                            "name": _name_for(seq, "boils"),
+                            "abc_args": [],
+                            "abc_ops": seq,
+                            "abc_script": "file",
+                            "via": "trust_region_insert",
+                        }
+                    )
     # de-dup by ops tuple + args
     uniq: dict[tuple, dict] = {}
     for k in out:

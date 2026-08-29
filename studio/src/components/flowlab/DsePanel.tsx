@@ -8,12 +8,13 @@ type Cand = {
   level: string;
   fidelity: string;
   status: string;
-  knobs?: { name?: string; extract?: string };
+  knobs?: { name?: string; extract?: string; source?: string };
   qor?: {
     area_um2?: number | null;
     dynamic_ir_mv?: number | null;
     congestion?: number | null;
   };
+  artifacts?: { hpwl?: number; hpwl_um?: number; overflow?: number };
 };
 type Attr = { status?: string; modules?: string[]; scope?: string; droop_mv?: number };
 type DseReport = {
@@ -23,6 +24,8 @@ type DseReport = {
   n_f1?: number;
   n_arch?: number;
   n_f2_fast?: number;
+  n_f2_gpl?: number;
+  surrogate_f1_to_f2_gnn?: { n?: number; uncertainty?: string; via?: string };
   pareto?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
   attribution?: Attr;
   focus?: { focus?: string; scope?: string };
@@ -62,7 +65,7 @@ export function DsePanel() {
       <header className="fl-dynir-head">
         <strong>DSE · ricerca a livelli</strong>
         <p>
-          Planner dal cono IR · ABC BOiLS/DRiLLS · F2-fast sul netlist · IR F4 ·{" "}
+          Planner dal cono IR · ABC BOiLS/DRiLLS · F2-fast + GPL · IR F4 ·{" "}
           <Link href="/materiali/reference/dse.md">dse.md</Link>
         </p>
       </header>
@@ -73,8 +76,14 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.plan?.steps?.[0]?.reason ? (
-            <p className="fl-dynir-summary">Piano: {report.plan.steps[0].reason}</p>
+          {report.plan?.steps?.length ? (
+            <ul className="fl-dynir-summary">
+              {report.plan.steps.map((s, i) => (
+                <li key={`${s.level}-${i}`}>
+                  {s.level}: {s.reason}
+                </li>
+              ))}
+            </ul>
           ) : null}
           <ul className="fl-dynir-levels">
             {LEVELS.map((lv) => {
@@ -100,8 +109,24 @@ export function DsePanel() {
               </dd>
             </div>
             <div>
+              <dt>F2</dt>
+              <dd>
+                fast {report.n_f2_fast ?? 0}
+                {report.n_f2_gpl != null ? ` · GPL ${report.n_f2_gpl}` : ""}
+              </dd>
+            </div>
+            <div>
               <dt>Pareto logic</dt>
               <dd>{report.pareto?.logic?.length ?? 0}</dd>
+            </div>
+            <div>
+              <dt>GNN</dt>
+              <dd>
+                {report.surrogate_f1_to_f2_gnn?.uncertainty ?? "—"}
+                {report.surrogate_f1_to_f2_gnn?.n != null
+                  ? ` · n=${report.surrogate_f1_to_f2_gnn.n}`
+                  : ""}
+              </dd>
             </div>
             <div>
               <dt>Cono IR</dt>
@@ -120,6 +145,15 @@ export function DsePanel() {
             title="Logic · sequenze ABC"
             rows={cands.filter((c) => c.level === "logic")}
             front={frontLogic}
+          />
+          <PhysicalTable
+            rows={cands.filter(
+              (c) =>
+                c.level === "physical" &&
+                (c.knobs?.source === "f2_fast_netgraph" ||
+                  c.knobs?.source === "f2_openroad_gpl" ||
+                  c.knobs?.source === "f2_fast_barycenter"),
+            )}
           />
         </>
       )}
@@ -158,6 +192,43 @@ function LevelTable({
               <td>{c.qor?.area_um2 != null ? c.qor.area_um2.toFixed(3) : "—"}</td>
               <td>{c.status}</td>
               <td>{front.has(c.id) ? "sì" : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PhysicalTable({ rows }: { rows: Cand[] }) {
+  if (!rows.length) return null;
+  return (
+    <div className="fl-dynir-group">
+      <span>Physical · F2-fast / GPL (non IR)</span>
+      <table className="fl-dynir-table">
+        <thead>
+          <tr>
+            <th>Fonte</th>
+            <th>F</th>
+            <th>HPWL</th>
+            <th>Cong</th>
+            <th>Stato</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => (
+            <tr key={c.id} data-status={c.status}>
+              <td>{c.knobs?.source ?? c.id}</td>
+              <td>{c.fidelity}</td>
+              <td>
+                {c.artifacts?.hpwl_um != null
+                  ? `${c.artifacts.hpwl_um.toFixed(1)} µm`
+                  : c.artifacts?.hpwl != null
+                    ? c.artifacts.hpwl.toFixed(1)
+                    : "—"}
+              </td>
+              <td>{c.qor?.congestion != null ? c.qor.congestion.toFixed(3) : "—"}</td>
+              <td>{c.status}</td>
             </tr>
           ))}
         </tbody>
