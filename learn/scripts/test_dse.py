@@ -364,6 +364,7 @@ def main() -> int:
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
     check(any(s["level"] == "f4_activity" for s in planned["steps"]), "planner schedules host report_arrival")
     check(any(s["level"] == "f4_host_extract" for s in planned["steps"]), "planner schedules host write_pg_spice")
+    check(any(s["level"] == "f4_host_region" for s in planned["steps"]), "planner schedules host-region write_pg_spice")
     check(any(s["level"] == "f4_scale" for s in planned["steps"]), "planner schedules attributed I-scale")
     check(
         "attributed host" in next(s["reason"] for s in planned["steps"] if s["level"] == "f4_scale"),
@@ -442,6 +443,7 @@ def main() -> int:
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
+    check(next_fidelity(level="f4_host_region", pred=None, budget_left=20, cost_hint={}) == "F4", "host-region extract measures at F4")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
@@ -496,6 +498,16 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_host_extract", "parent_id": "psteer"})
         != knobs_fp("pdn", {"source": "f4_candidate_extract", "parent_id": "synp"}),
         "host extract knobs are not flattened into the synth extract fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_host_region_extract", "parent_id": "psteer", "region": "r02"})
+        != knobs_fp("pdn", {"source": "f4_host_extract", "parent_id": "psteer"}),
+        "host-region extract knobs are not flattened into the unconstrained host extract fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_host_region_extract", "parent_id": "psteer", "region": "r02"})
+        != knobs_fp("pdn", {"source": "f4_region_extract", "parent_id": "synp", "region": "r31"}),
+        "host-region extract knobs are not flattened into the synth region extract fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "finish"})
@@ -1182,6 +1194,7 @@ def main() -> int:
         should_pay_f4_scale,
         should_pay_host_arrivals,
         should_pay_f4_host_extract,
+        should_pay_f4_host_region,
     )
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
@@ -1750,6 +1763,56 @@ def main() -> int:
     check("net_buffer_spef" in why_he0, f"host extract acquire names the port-steer host ({why_he0})")
     pay_he1, why_he1 = should_pay_f4_host_extract(mem_is, budget_left=80, n_extract=1)
     check(not pay_he1, f"host extract is a single shot ({why_he1})")
+    pay_hr0, why_hr0 = should_pay_f4_host_region(mem_is, budget_left=80, n_extract=0)
+    check(not pay_hr0, f"host-region waits for a host extract hotspot ({why_hr0})")
+    mem_is.add(
+        Candidate(
+            id="goldr",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "ingest_pdn"},
+            knobs_fp="goldr",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=45.298, fidelity="F4"),
+            cost_s=0.0,
+            status="ok",
+            attr={"region": "r31", "seq_frac": 0.2, "combo_frac": 0.8},
+        )
+    )
+    mem_is.add(
+        Candidate(
+            id="hext",
+            design_id="gcd",
+            parent_id="psteer",
+            level="pdn",
+            knobs={"source": "f4_host_extract", "parent_id": "psteer", "host_source": "net_buffer_spef"},
+            knobs_fp="hext",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=10.07, fidelity="F4"),
+            cost_s=0.6,
+            status="ok",
+            attr={"region": "r02", "x_dbu": 14709.0, "y_dbu": 58545.0, "seq_frac": 0.90, "via": "f4_host_extract"},
+        )
+    )
+    pay_hr1, why_hr1 = should_pay_f4_host_region(mem_is, budget_left=80, n_extract=0)
+    check(pay_hr1, f"host-region is paid when host bin ≠ gold ({why_hr1})")
+    check("r02" in why_hr1 and "r31" in why_hr1, f"host-region acquire names both bins ({why_hr1})")
+    check("combo ABC" in why_hr1, f"host-region acquire refuses more combo ABC ({why_hr1})")
+    pay_hr2, why_hr2 = should_pay_f4_host_region(mem_is, budget_left=80, n_extract=1)
+    check(not pay_hr2, f"host-region is a single shot ({why_hr2})")
+    hext_same = next(c for c in mem_is.all() if c.id == "hext")
+    hext_same.attr = dict(hext_same.attr or {})
+    hext_same.attr["region"] = "r31"
+    mem_is.touch(hext_same)
+    pay_hr3, why_hr3 = should_pay_f4_host_region(mem_is, budget_left=80, n_extract=0)
+    check(not pay_hr3, f"host-region skips when host bin matches gold ({why_hr3})")
+    hext_same.attr["region"] = "r02"
+    mem_is.touch(hext_same)
     pay_is0, why_is0 = should_pay_f4_scale(mem_is, budget_left=80, n_scale=0)
     check(pay_is0, f"attributed I-scale is paid ({why_is0})")
     check("net_buffer_spef" in why_is0, f"acquire names the port-steer host ({why_is0})")
@@ -1778,7 +1841,7 @@ def main() -> int:
     check(not pay_is2, f"acquire still spends only one I-scale shot ({why_is2})")
 
     from dse.active import steer_from_ir_residual
-    from dse.surrogate import residual_f4_knob, residual_f4_mesh, residual_f4_region
+    from dse.surrogate import residual_f4_knob, residual_f4_mesh, residual_f4_region, residual_f4_host_region
 
     mem_ir = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-ir-")) / "i.jsonl")
     mem_ir.add(
@@ -1861,6 +1924,47 @@ def main() -> int:
     reg_r = residual_f4_region(list(mem_ir.all()))
     check((reg_r.get("n") or 0) == 1, f"F4 region residual has a pair, got {reg_r}")
     check(abs(float(reg_r["mean_residual_mv"]) - (14.202 - 16.616)) < 1e-6, f"region residual vs candidate, got {reg_r.get('mean_residual_mv')}")
+    mem_hr = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-hr-")) / "h.jsonl")
+    mem_hr.add(
+        Candidate(
+            id="hex",
+            design_id="gcd",
+            parent_id="psteer",
+            level="pdn",
+            knobs={"source": "f4_host_extract", "extract_id": "hex"},
+            knobs_fp="hex",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=10.07, fidelity="F4"),
+            cost_s=0.6,
+            status="ok",
+            attr={"region": "r02"},
+        )
+    )
+    mem_hr.add(
+        Candidate(
+            id="hreg",
+            design_id="gcd",
+            parent_id="psteer",
+            level="pdn",
+            knobs={"source": "f4_host_region_extract", "extract_id": "hreg", "region": "r02"},
+            knobs_fp="hreg",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=8.50, fidelity="F4"),
+            cost_s=0.6,
+            status="ok",
+            attr={"region": "r02"},
+        )
+    )
+    hr_r = residual_f4_host_region(list(mem_hr.all()))
+    check((hr_r.get("n") or 0) == 1, f"F4 host-region residual has a pair, got {hr_r}")
+    check(abs(float(hr_r["mean_residual_mv"]) - (8.50 - 10.07)) < 1e-6, f"host-region residual vs host, got {hr_r.get('mean_residual_mv')}")
+    check(hr_r.get("host_bin") == "r02", f"host-region residual names the host bin, got {hr_r}")
+    empty_hr = residual_f4_host_region(list(mem_ir.all()))
+    check((empty_hr.get("n") or 0) == 0, "synth region residual is not a host-region pair")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

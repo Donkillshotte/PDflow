@@ -11,7 +11,8 @@ ADAPTERS: dict[str, dict] = {
         "via": "openroad write_pg_spice after place_pins+GPL+DP+pdngen, or ingest finish",
         "note": (
             "candidate mesh is not gold; host extract is the attributed netlist "
-            "(not synth-only); finish gold 45.298 mV stays unrestamped"
+            "(not synth-only); host-region density-caps the host IR bin "
+            "(not gold rXY on synth); finish gold 45.298 mV stays unrestamped"
         ),
     },
     "power": {
@@ -39,7 +40,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "surrogate": {
         "via": "dse.surrogate + dse.gnn + dse.active",
-        "note": "SSK-GP / F1→F2 residual / F3→F5-lite+local residual steers the next level / F4 IR residual steers PDN / GNN readout — never Dynamic IR gold",
+        "note": "SSK-GP / F1→F2 residual / F3→F5-lite+local residual steers the next level / F4 IR residual steers PDN / F4 host-region residual vs unconstrained host / GNN readout — never Dynamic IR gold",
     },
     "active": {
         "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + iscale_host + order_local_hosts",

@@ -31,6 +31,7 @@ RTL
  → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen) + `report_arrival`
  → F3 `report_arrival` sull’host attribuito (t50 per I(t), non lo STA dell’extract synth)
  → F4 extract host (`write_pg_spice` sul netlist attribuito — mesh propria, non synth)
+ → F4 extract host-regione (density cap sul bin IR dell’host, es. r02 — non r31 gold sul synth)
  → F4 restamp DirectLU / SA-AMG / RAS / Krylov-MOR (knobs PDN / I(t)×power dell’host attribuito / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle/net → modulo RTL (dpath/ctrl)
@@ -53,7 +54,7 @@ RTL
 | **net** | `BUF` sugli hop attribuiti del worst path | READY F3 — scope di modulo **e** scope di porta (parent) sui crossing ctrl↔dpath; non un drive-up di cella |
 | **physical** | util, densità, **regione IR**, netlist del candidato | F0 proxy + F2-fast + **GPL** + catalogo + **density cap sul bin IR** + ingest — non lancia finish |
 | **routing** | GRT dopo place_pins + F5-lite DRT/OpenRCX + F5-CTS | READY F2 GRT + F5-lite SPEF (clock ideale) + F5-CTS SPEF (clock propagato) — non `make finish` |
-| **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato, solver MF | ingest gold + **extract `write_pg_spice`** + DirectLU/AMG/RAS/Krylov (non gold) |
+| **pdn** | `c_decap`, pkg L, I(t)×power, mesh candidato/host, solver MF | ingest gold + extract candidato + **extract host** + **extract host-regione** + DirectLU/AMG/RAS/Krylov (non gold) |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
 
@@ -65,7 +66,7 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F1 | Yosys synth + ABC (script *file*) + `equiv_*` + `write_verilog -noexpr` | READY · chip flatten-first **o** cone-local ABC **o** ORFS `abc_speed` (synthesis) |
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` · GRT+SDF | READY (GPL/GRT budgetati) |
 | F3 | OpenSTA ideale (hier sul cono) + OpenSTA+SDF GRT + OpenSTA+SPEF OpenRCX + ingest | READY — SPEF F5-lite è clock ideale; F5-CTS usa `set_propagated_clock` |
-| F4 | Dynamic IR/EM (libdpn A/B/C/D) + static IR sullo stesso extract | ingest gold + **extract candidato** + arrivals + restamp DirectLU/AMG/RAS/Krylov — **non** sostituisce il gold 45.298 |
+| F4 | Dynamic IR/EM (libdpn A/B/C/D) + static IR sullo stesso extract | ingest gold + **extract candidato** + arrivals + **extract host** + **extract host-regione** + restamp DirectLU/AMG/RAS/Krylov — **non** sostituisce il gold 45.298 |
 | F5 | DRT + OpenRCX SPEF + OpenSTA `read_spef` | READY F5-lite (clock ideale) **e** F5-CTS (clock propagato) **e** F5-local sul netlist cell/net — il controller **non** lancia `make finish` |
 
 F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.

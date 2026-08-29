@@ -500,6 +500,7 @@ def evaluate_f4_extract(
 
     kind=host extracts the attributed hierarchical netlist (port-steer/…).
     That mesh is not the synth F1 extract and not gold.
+    kind=host_region density-caps the host IR bin (not gold rXY on synth F1).
     """
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
@@ -527,7 +528,16 @@ def evaluate_f4_extract(
         knobs["name"] = f"extract_host_{host}"
         knobs["host_level"] = parent.level
         knobs["host_source"] = parent.knobs.get("source") or parent.level
-    if region or x_dbu is not None:
+    elif kind == "host_region":
+        knobs["source"] = "f4_host_region_extract"
+        knobs["name"] = f"extract_host_region_{host}"
+        knobs["host_level"] = parent.level
+        knobs["host_source"] = parent.knobs.get("source") or parent.level
+        knobs["region"] = region
+        knobs["x_dbu"] = x_dbu
+        knobs["y_dbu"] = y_dbu
+        knobs["region_density"] = region_density if region_density is not None else 0.30
+    elif region or x_dbu is not None:
         knobs["source"] = "f4_region_extract"
         knobs["region"] = region
         knobs["x_dbu"] = x_dbu
@@ -603,6 +613,11 @@ def evaluate_f4_extract(
         attr["via"] = "f4_host_extract"
         attr["host_level"] = parent.level
         attr["host_source"] = parent.knobs.get("source") or parent.level
+    if kind == "host_region":
+        attr["via"] = "f4_host_region_extract"
+        attr["host_level"] = parent.level
+        attr["host_source"] = parent.knobs.get("source") or parent.level
+    kind_note = {"host": "host", "host_region": "host-region"}.get(kind, "candidate")
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
@@ -615,13 +630,13 @@ def evaluate_f4_extract(
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4",
         note=(
-            f"{'host' if kind == 'host' else 'candidate'} write_pg_spice "
+            f"{kind_note} write_pg_spice "
             f"n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')} "
             "— not finish, not gold"
         ),
     )
     ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
-    if ok and ext.get("worst_droop_mv") is not None:
+    if ok and ext.get("worst_droop_mv") is not None and kind in ("candidate", "host"):
         parent.qor.dynamic_ir_mv = float(ext["worst_droop_mv"])
         if ext.get("static_ir_mv") is not None or dyn.get("static_ir_mv") is not None:
             parent.qor.static_ir_mv = float(ext.get("static_ir_mv") or dyn["static_ir_mv"])

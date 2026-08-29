@@ -55,6 +55,7 @@ type DseReport = {
   n_f4?: number;
   n_f4_extract?: number;
   n_f4_host_extract?: number;
+  n_f4_host_region_extract?: number;
   n_f4_amg?: number;
   n_f4_iscale?: number;
   n_port_steer?: number;
@@ -158,6 +159,9 @@ export function DsePanel() {
                 {report.n_f4 ?? 0}
                 {report.n_f4_extract != null ? ` · ext ${report.n_f4_extract}` : ""}
                 {report.n_f4_host_extract != null ? ` · host ${report.n_f4_host_extract}` : ""}
+                {report.n_f4_host_region_extract != null
+                  ? ` · host-r ${report.n_f4_host_region_extract}`
+                  : ""}
                 {report.n_f4_region_extract != null ? ` · r-ext ${report.n_f4_region_extract}` : ""}
                 {report.n_f4_amg != null ? ` · AMG ${report.n_f4_amg}` : ""}
                 {report.n_f4_iscale != null ? ` · I× ${report.n_f4_iscale}` : ""}

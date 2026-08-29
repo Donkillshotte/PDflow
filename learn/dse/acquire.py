@@ -248,6 +248,79 @@ def should_pay_f4_host_extract(
     )
 
 
+def latest_host_extract_cand(mem: DesignMemory):
+    """Newest host write_pg_spice candidate (hotspot/attr). Spice files optional."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_host_extract":
+            return c
+    return None
+
+
+def _ingest_region(mem: DesignMemory) -> str | None:
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "ingest_pdn":
+            continue
+        r = (c.attr or {}).get("region")
+        if r:
+            return str(r)
+    return None
+
+
+def should_pay_f4_host_region(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_extract: int = 0,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay write_pg_spice under the host IR-bin density cap. Not gold rXY on synth."""
+    if n_extract >= extract_max:
+        return False, "host-region PDN extract already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover host-region write_pg_spice"
+    from pathlib import Path
+
+    from .active import iscale_host
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    host_ext = latest_host_extract_cand(mem)
+    if host_ext is None:
+        return False, "no host write_pg_spice to attribute a region from"
+    hattr = host_ext.attr or {}
+    region = hattr.get("region")
+    x_dbu, y_dbu = hattr.get("x_dbu"), hattr.get("y_dbu")
+    if x_dbu is None and not region:
+        return False, "host extract has no IR hotspot / region"
+    host = iscale_host(mem)
+    mapped = (host.artifacts or {}).get("mapped_v") if host else None
+    if not host or not mapped or not Path(mapped).is_file():
+        return False, "attributed host has no mapped netlist for host-region extract"
+    gold_r = _ingest_region(mem)
+    if gold_r and region and str(region) == str(gold_r):
+        return False, f"host IR region {region} already matches the gold bin"
+    have = any(
+        (c.knobs or {}).get("source") == "f4_host_region_extract" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    )
+    if have:
+        return False, "attributed host already has a region-capped write_pg_spice"
+    seq = float(hattr.get("seq_frac") or 0.0)
+    tag = region or f"xy={float(x_dbu):.0f},{float(y_dbu):.0f}"
+    gold_tag = gold_r or "unjoined"
+    if seq >= 0.5:
+        return True, (
+            f"host IR bin {tag} ≠ gold {gold_tag}; seq_frac={seq:.2f} — "
+            "density cap on the host netlist, not more combo ABC on dpath"
+        )
+    return True, (
+        f"host IR bin {tag} ≠ gold {gold_tag} — density cap on the host netlist, "
+        "not gold-region on synth F1, not more combo ABC"
+    )
+
+
 def should_pay_f4_pdn(
     mem: DesignMemory,
     *,
@@ -1048,6 +1121,11 @@ def latest_ok_host_extract(mem: DesignMemory) -> dict | None:
     return _latest_extract(mem, source="f4_host_extract")
 
 
+def latest_ok_host_region_extract(mem: DesignMemory) -> dict | None:
+    """Most recent host-bin density-cap write_pg_spice. Not the unconstrained host mesh."""
+    return _latest_extract(mem, source="f4_host_region_extract")
+
+
 def latest_ok_region_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful IR-bin write_pg_spice (spice+insts on disk)."""
     return _latest_extract(mem, source="f4_region_extract")
@@ -1077,7 +1155,12 @@ def _latest_extract(mem: DesignMemory, *, source: str) -> dict | None:
 def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
     """Resolve spice+insts for a named extract (candidate or region)."""
     want = str(extract_id)
-    for src in ("f4_region_extract", "f4_candidate_extract", "f4_host_extract"):
+    for src in (
+        "f4_region_extract",
+        "f4_candidate_extract",
+        "f4_host_extract",
+        "f4_host_region_extract",
+    ):
         hit = _latest_extract(mem, source=src)
         if hit and str(hit["extract_id"]) == want:
             return hit
@@ -1093,6 +1176,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
             "f4_candidate_extract",
             "f4_region_extract",
             "f4_host_extract",
+            "f4_host_region_extract",
         ):
             continue
         art = c.artifacts or {}
@@ -1149,7 +1233,16 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level in ("f4_activity", "f4_host_arrivals"):
         return "F3"
-    if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract", "f4_host_extract", "ir_steer"):
+    if level in (
+        "pdn",
+        "f4_extract",
+        "f4_scale",
+        "f4_region_extract",
+        "f4_host_extract",
+        "f4_host_region",
+        "f4_host_region_extract",
+        "ir_steer",
+    ):
         return "F4"
     if level in ("synthesis", "f1_synth"):
         return "F1"

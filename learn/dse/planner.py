@@ -301,10 +301,21 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "f4_host_region",
+            "reason": (
+                "host IR bin ≠ gold/candidate bin — write_pg_spice under a density "
+                "cap on the host netlist, not gold rXY on synth F1, not more ABC"
+            ),
+            "scope": "region",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_scale",
             "reason": (
                 "I(t)×P_F3/P_base of the attributed host (port-steer/port-net/net/cell, "
-                "else F1) on the candidate mesh — not synth-only, not a VCD remap"
+                "else F1) on the host extract mesh (else candidate) — not synth-only, "
+                "not a VCD remap"
                 + ("; IR feedback to the cone, no chip restart" if focus != "chip" else "")
             ),
             "scope": "logic_cone" if focus != "chip" else "chip",
@@ -380,6 +391,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             "f4_solver_a",
             "f4_candidate_extract",
             "f4_host_extract",
+            "f4_host_region_extract",
             "f4_region_extract",
         ):
             v = float(c.qor.dynamic_ir_mv)

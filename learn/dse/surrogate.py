@@ -548,3 +548,42 @@ def residual_f4_region(all_cands: list[Candidate]) -> dict:
         "via": "F4 region mesh vs unconstrained candidate — density cap, not gold",
         "not": "a solver residual or a mixed ABC+PDN vector",
     }
+
+
+def residual_f4_host_region(all_cands: list[Candidate]) -> dict:
+    """Host density-cap extract vs unconstrained host extract. Not gold rXY."""
+    host = host_r = None
+    host_bin = region_bin = None
+    region_id = None
+    for c in all_cands:
+        if c.status != "ok" or c.qor.dynamic_ir_mv is None:
+            continue
+        src = (c.knobs or {}).get("source")
+        if src == "f4_host_extract":
+            host = float(c.qor.dynamic_ir_mv)
+            host_bin = (c.attr or {}).get("region")
+        elif src == "f4_host_region_extract":
+            host_r = float(c.qor.dynamic_ir_mv)
+            region_bin = (c.knobs or {}).get("region") or (c.attr or {}).get("region")
+            region_id = (c.knobs or {}).get("extract_id") or c.id
+    if host is None or host_r is None:
+        return {
+            "metric": "dynamic_ir_mv",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no host-region-extract ↔ host-extract pair",
+            "not": "Dynamic IR gold / synth region extract",
+        }
+    return {
+        "metric": "dynamic_ir_mv",
+        "mean_residual_mv": host_r - host,
+        "host_mv": host,
+        "host_region_mv": host_r,
+        "host_bin": host_bin,
+        "region_bin": region_bin,
+        "extract_id": region_id,
+        "n": 1,
+        "uncertainty": "medium",
+        "via": "F4 host-region mesh vs unconstrained host — density cap, not gold rXY",
+        "not": "a solver residual or a mixed ABC+PDN vector",
+    }

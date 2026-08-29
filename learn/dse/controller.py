@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS/Krylov + I-scale of the attributed host (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + DirectLU/AMG/RAS/Krylov + I-scale of the attributed host (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -34,6 +34,8 @@ from .acquire import (
     latest_host_arrivals,
     should_pay_host_arrivals,
     should_pay_f4_host_extract,
+    should_pay_f4_host_region,
+    latest_host_extract_cand,
     should_pay_f2_fast,
     should_pay_f2_gpl,
     should_pay_f2_region,
@@ -129,6 +131,7 @@ from .surrogate import (
     residual_f4_knob,
     residual_f4_mesh,
     residual_f4_region,
+    residual_f4_host_region,
     residual,
 )
 
@@ -1575,6 +1578,58 @@ def run_controller(
                     reason=why_he,
                 )
 
+    n_hre = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_host_region_extract" and c.status == "ok"
+    )
+    pay_hre, why_hre = should_pay_f4_host_region(
+        mem, budget_left=t_end - time.time(), n_extract=n_hre
+    )
+    step("acquire", fidelity="F4_HOST_REGION", pay=pay_hre, why=why_hre)
+    if any(s["level"] == "f4_host_region" for s in plan["steps"]) and pay_hre and time.time() < t_end:
+        host_rg = iscale_host(mem)
+        host_ext_c = latest_host_extract_cand(mem)
+        hattr = (host_ext_c.attr or {}) if host_ext_c else {}
+        if host_rg and (host_rg.artifacts or {}).get("mapped_v") and (
+            hattr.get("region") or hattr.get("x_dbu") is not None
+        ):
+            params = flowlab_params()
+            util_hr = float(params.get("coreUtilization") or 35.0)
+            den_hr = gpl_density(util_hr, params.get("placeDensityAddon") or 0.2)
+            arr_hr = latest_host_arrivals(mem)
+            child = evaluate_f4_extract(
+                host_rg,
+                mem,
+                design_id=design_id,
+                variant=variant,
+                util=util_hr,
+                density=den_hr,
+                kind="host_region",
+                region=hattr.get("region"),
+                x_dbu=hattr.get("x_dbu"),
+                y_dbu=hattr.get("y_dbu"),
+                region_density=0.30,
+                sta=arr_hr["sta"] if arr_hr else None,
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_host_region_extract",
+                    parent=host_rg.id,
+                    host_source=(host_rg.knobs or {}).get("source") or host_rg.level,
+                    region=hattr.get("region"),
+                    region_bin=(child.artifacts or {}).get("region_bin"),
+                    n_r=(child.artifacts or {}).get("n_r"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    gold=False,
+                    status=child.status,
+                    reason=why_hre,
+                )
+
     n_scale = sum(
         1
         for c in mem.by_level("pdn")
@@ -1719,6 +1774,7 @@ def run_controller(
             "F4 I-scale uses F3 power of the attributed host (port-steer/port-net/net/cell), not synth-only WNS-winner",
             "F3 host arrivals: report_arrival on that same host — t50 for I(t), not extract STA, not VCD",
             "F4 host extract: write_pg_spice on the attributed netlist — not the synth F1 mesh, not gold",
+            "F4 host-region extract: density cap on the host IR bin — not gold rXY on synth F1, not more ABC",
             "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
@@ -1839,6 +1895,11 @@ def run_controller(
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_host_extract" and c.status == "ok"
         ),
+        "n_f4_host_region_extract": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_host_region_extract" and c.status == "ok"
+        ),
         "n_f4_region_extract": sum(
             1
             for c in mem.by_level("pdn")
@@ -1878,6 +1939,7 @@ def run_controller(
                 "f4_iscale",
                 "f4_candidate_extract",
                 "f4_host_extract",
+                "f4_host_region_extract",
                 "f4_region_extract",
                 "f4_solver_amg",
                 "f4_solver_ras",
@@ -1899,6 +1961,7 @@ def run_controller(
         "surrogate_f4_mesh": residual_f4_mesh(mem.all()),
         "surrogate_f4_knob": residual_f4_knob(mem.all()),
         "surrogate_f4_region": residual_f4_region(mem.all()),
+        "surrogate_f4_host_region": residual_f4_host_region(mem.all()),
         "plan": plan,
         "attribution": attr,
         "focus": focus,
@@ -1969,12 +2032,18 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
                 f" · F4 region extract {c.qor.dynamic_ir_mv:.3f} mV "
                 f"bin={(c.artifacts or {}).get('region_bin')} n_r={(c.artifacts or {}).get('n_r')} (not gold)"
             )
-        if src == "f4_host_extract":
+        if src == "f4_host_region_extract":
+            ir = (
+                f" · F4 host-region extract {c.qor.dynamic_ir_mv:.3f} mV "
+                f"bin={(c.artifacts or {}).get('region_bin') or (c.knobs or {}).get('region')} "
+                f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
+            )
+        if src == "f4_host_extract" and "host-region" not in ir:
             ir = (
                 f" · F4 host extract {c.qor.dynamic_ir_mv:.3f} mV "
                 f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
             )
-        elif src == "f4_candidate_extract" and "host extract" not in ir:
+        elif src == "f4_candidate_extract" and "host extract" not in ir and "host-region" not in ir:
             ir = (
                 f" · F4 candidate extract {c.qor.dynamic_ir_mv:.3f} mV "
                 f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
