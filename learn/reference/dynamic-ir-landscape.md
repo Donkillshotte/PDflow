@@ -119,7 +119,7 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; SAIF TC name-join (idle-zero, no t50); extra I(t) ranking sintetico; VCD RTL name-join = GAP |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |
-| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB |
+| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB workhorse; Δt adattivo descriptor; MOR gen sparse-\(E\) (compact/strap, non default GCD) |
 | 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + R(T) lumpato + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)) |
 
 ## Classifica reale

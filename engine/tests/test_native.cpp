@@ -783,6 +783,121 @@ int main() {
     std::printf("    unsym BiCGSTAB max|LU-E|=%.3e relres=%.3e\n", err, bicg->last_relres());
   }
   {
+    // Sparse-E workhorse (kind=3), adaptive Δt, and gen MOR on compact VRM.
+    const double vdd = 1.1, dt = 10e-12, t_end = 0.4e-9;
+    const double r_vrm = 0.015, r_pkg = 0.05;
+    const double c_vrm = 50e-12, c_die = 50e-12, l_vrm = 2e-10, l_pkg = 2e-10;
+    const double t50 = 0.2e-9, dur = 0.2e-9, ipulse = 5e-3;
+    Index ti[8] = {0, 0, 1, 2, 2, 3, 3, 3};
+    Index tj[8] = {2, 3, 3, 0, 2, 1, 0, 3};
+    double tv[8] = {-1.0, 1.0, -1.0, 1.0, r_vrm, 1.0, -1.0, r_pkg};
+    Csr A = dpn::from_triplets(4, ti, tj, tv, 8);
+    double Ediag[4] = {c_vrm, c_die, l_vrm, l_pkg};
+    Csr E = dpn::diag_csr(4, Ediag);
+    Index iv_row[1] = {2};
+    dpn::TriangleSrc ev;
+    ev.idx = 0;
+    ev.t50 = t50;
+    ev.dur = dur;
+    ev.ipulse = ipulse;
+    auto gold = dpn::timestep_descriptor_gen(A, E, dt, t_end, vdd, 2, 1, 1, iv_row, 1, nullptr,
+                                            nullptr, &ev, 1, 0);
+    auto bicg = dpn::timestep_descriptor_gen(A, E, dt, t_end, vdd, 2, 1, 1, iv_row, 1, nullptr,
+                                            nullptr, &ev, 1, 3);
+    check(std::abs(bicg.worst_v - gold.worst_v) < 1e-8, "descriptor BiCGSTAB vs SparseLU gold");
+    std::printf("    descriptor BiCGSTAB vmin=%.9f gold=%.9f |err|=%.3e V\n", bicg.worst_v,
+                gold.worst_v, std::abs(bicg.worst_v - gold.worst_v));
+
+    auto ad = dpn::timestep_descriptor_adaptive(A, E, dt, t_end, vdd, 2, 1, 1, iv_row, 1, nullptr,
+                                               nullptr, 1e-4, 0.01, &ev, 1, 0);
+    check(ad.steps >= 2, "adaptive descriptor took steps");
+    check(std::abs(ad.worst_v - gold.worst_v) < 2e-3, "adaptive descriptor vs fixed-dt (1 mV-class)");
+    std::printf("    adaptive descriptor steps=%d vmin=%.6f gold=%.6f |err|=%.3e V\n", ad.steps,
+                ad.worst_v, gold.worst_v, std::abs(ad.worst_v - gold.worst_v));
+
+    std::vector<double> start(2, 0.0);
+    start[1] = 1.0;
+    double shifts[3] = {0.0, 1e9, 1.0 / dt};
+    auto mor = dpn::make_mor_gen(A, E, 2, 1, 1, iv_row, 1, nullptr, 1, start.data(), 3, shifts, 4);
+    double leak0[1] = {0.0};
+    double pad0[2] = {0.0, 0.0};
+    auto red = mor->timestep(leak0, pad0, dt, t_end, vdd, &ev, 1);
+    check(mor->rlc(), "gen MOR is descriptor RLC");
+    check(std::abs(red.worst_v - gold.worst_v) < 5e-3, "compact VRM gen MOR vs descriptor BE");
+    std::printf("    gen MOR m=%d vmin=%.6f gold=%.6f |A-C|=%.3e V\n", mor->m(), red.worst_v,
+                gold.worst_v, std::abs(red.worst_v - gold.worst_v));
+
+    const int maxs = 8192;
+    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
+    Index worst_node = 0, n_steps = 0;
+    double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
+    Index ev_idx[1] = {0};
+    double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
+    check(dpn_timestep_descriptor_workhorse(
+              4, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data(), E.nnz(), E.rowptr.data(),
+              E.col.data(), E.val.data(), 2, 1, 1, 1, iv_row, dt, t_end, vdd, nullptr, nullptr, 3, 1,
+              ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts,
+              maxs, wt.data(), wv.data(), wi.data(), &n_steps) == 0,
+          "c_api descriptor workhorse BiCGSTAB");
+    check(std::abs(worst_v - gold.worst_v) < 1e-8, "c_api workhorse vs LU gold");
+    check(dpn_timestep_descriptor_workhorse(
+              4, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data(), E.nnz(), E.rowptr.data(),
+              E.col.data(), E.val.data(), 2, 1, 1, 1, iv_row, dt, t_end, vdd, nullptr, nullptr, 1, 1,
+              ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts,
+              maxs, wt.data(), wv.data(), wi.data(), &n_steps) == -1,
+          "c_api workhorse rejects AMG on unsymmetric K");
+    check(dpn_timestep_descriptor_adaptive(
+              4, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data(), E.nnz(), E.rowptr.data(),
+              E.col.data(), E.val.data(), 2, 1, 1, 1, iv_row, dt, t_end, vdd, nullptr, nullptr, 1e-4,
+              0.01, 1, ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(), &worst_node, &worst_v, &worst_t,
+              &rel, &ts, maxs, wt.data(), wv.data(), wi.data(), &n_steps) == 0,
+          "c_api descriptor adaptive");
+    DpnMor* hm = dpn_mor_setup_gen(4, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data(), E.nnz(),
+                                   E.rowptr.data(), E.col.data(), E.val.data(), 2, 1, 1, 1, iv_row,
+                                   nullptr, 1, start.data(), 3, shifts, 4);
+    check(hm != nullptr && dpn_mor_m(hm) >= 1, "c_api mor_setup_gen");
+    check(dpn_mor_timestep(hm, leak0, pad0, dt, t_end, vdd, 1, ev_idx, ev_t50, ev_dur, ev_ip,
+                           Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
+                           wv.data(), wi.data(), &n_steps) == 0,
+          "c_api gen MOR timestep");
+    check(std::abs(worst_v - gold.worst_v) < 5e-3, "c_api gen MOR vs descriptor BE");
+    dpn_mor_free(hm);
+  }
+  {
+    // Coupled-L gen MOR vs sparse-E descriptor BE (reduced, 1 mV-class).
+    const double vdd = 1.1, dt = 10e-12, t_end = 0.4e-9, t50 = 0.2e-9, dur = 0.2e-9, ipulse = 5e-3;
+    const double R = 0.38, L = 1e-12, M = 0.3e-12, C = 50e-12, gpad = 1.0 / 0.05;
+    Index ti[10] = {0, 0, 1, 2, 2, 2, 0, 1, 3, 3};
+    Index tj[10] = {0, 2, 2, 0, 1, 2, 3, 3, 0, 1};
+    double tv[10] = {gpad, -1.0, 1.0, 1.0, -1.0, R, -1.0, 1.0, 1.0, -1.0};
+    Index ti2[1] = {3};
+    Index tj2[1] = {3};
+    double tv2[1] = {R};
+    Csr A = dpn::plus(dpn::from_triplets(4, ti, tj, tv, 10), dpn::from_triplets(4, ti2, tj2, tv2, 1));
+    Index ei[6] = {0, 1, 2, 2, 3, 3};
+    Index ej[6] = {0, 1, 2, 3, 2, 3};
+    double evv[6] = {C, C, L, M, M, L};
+    Csr E = dpn::from_triplets(4, ei, ej, evv, 6);
+    double u0[4] = {gpad * vdd, 0, 0, 0};
+    dpn::TriangleSrc ev;
+    ev.idx = 1;
+    ev.t50 = t50;
+    ev.dur = dur;
+    ev.ipulse = ipulse;
+    auto gold = dpn::timestep_descriptor_gen(A, E, dt, t_end, vdd, 2, 2, -1, nullptr, 0, nullptr, u0,
+                                            &ev, 1, 0);
+    std::vector<double> start(2, 0.0);
+    start[1] = 1.0;
+    double shifts[3] = {0.0, 1e9, 1.0 / dt};
+    auto mor = dpn::make_mor_gen(A, E, 2, 2, -1, nullptr, 0, u0, 1, start.data(), 3, shifts, 4);
+    double leak[2] = {0.0, 0.0};
+    double pad0[2] = {0.0, 0.0};
+    auto red = mor->timestep(leak, pad0, dt, t_end, vdd, &ev, 1);
+    check(std::abs(red.worst_v - gold.worst_v) < 5e-3, "coupled L gen MOR vs sparse-E BE");
+    std::printf("    coupled L MOR m=%d vmin=%.6f gold=%.6f |A-C|=%.3e V\n", mor->m(), red.worst_v,
+                gold.worst_v, std::abs(red.worst_v - gold.worst_v));
+  }
+  {
     double d[2] = {1.0, 2.0};
     Csr D = dpn::diag_csr(2, d);
     Csr S = dpn::scale(D, 0.5);

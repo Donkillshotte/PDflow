@@ -72,7 +72,7 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 | 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
 | 3 | Activity | STA `report_arrival` t50 (clock) + SAIF TC name-join | VCD RTL name-join GAP; ranking extra I(t) resta sintetico; SAIF non inventa t50 |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) in Python TRAN se tabelle + slew; Nangate = GAP |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS + **N4** descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)) + kind=3 BiCGSTAB | ngspice = gold 1-nodo RC, R+L, VRM+die, strap K; Xyce = GAP in VM (deck contract); Index nativo int64; Ginkgo GPU = GAP |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS + **N4** descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)) + kind=3 BiCGSTAB workhorse + Δt adattivo sul descriptor + MOR gen sparse-\(E\) (opt-in on-die L, non il gold GCD) | ngspice = gold 1-nodo RC, R+L, VRM+die, strap K; Xyce = GAP in VM (deck contract); Index nativo int64; Ginkgo GPU = GAP |
 | 6 | Analysis | heatmap, finestre, ranking, path STA delay, \(J=I/(wt)\) | TTF relativo (no A foundry); R(T) lumpato one-shot N1, non mesh 3D; path = NLDM typical-V, non liberty a Vmin |
 
 ```bash
@@ -143,7 +143,7 @@ GCD clock STA: \|I\|_max ≈ 2.25 mA (via / strap). \(J_\max\) ≈ \(1.48\times1
 | `learn/scripts/pdn_solvers.py` | A/B/C/D + N4 descriptor (libdpn ctypes + SciPy) |
 | `learn/scripts/run_dynamic_ir.sh` | GCD + stamp `.dynamic_ir.ok` |
 | `learn/scripts/pdn_vrm.py` | N4 descriptor: VRM + bump R+L + mesh |
-| `engine/` | `libdpn` LU / SA-AMG / RAS / BE hist / descriptor N4 / RLC MOR |
+| `engine/` | `libdpn` LU / SA-AMG / RAS / BE hist / descriptor N4 / RLC MOR / sparse-E gen MOR / descriptor adaptive |
 
 Limiti in aula: triangolo ≠ CCS; AMG sul GCD è più lento di LU (4k nodi); package R/L lumpato; pad PDNSim su metal4.
 

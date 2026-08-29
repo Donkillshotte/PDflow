@@ -23,6 +23,10 @@ class RationalMor {
               const double* bump_v, double pkg_r, double pkg_l, int n_starts, const double* starts,
               int n_shifts, const double* shifts, int n_moments);
 
+  RationalMor(const Csr& A, const Csr& E, int n_v, int n_die, Index die_idx, const Index* iv,
+              int n_iv, const double* u_const, int n_starts, const double* starts, int n_shifts,
+              const double* shifts, int n_moments);
+
   TranResult timestep(const double* leak, const double* pad, double dt, double t_end, double vdd,
                       const TriangleSrc* ev, int n_ev) const;
 
@@ -33,6 +37,8 @@ class RationalMor {
   bool rlc() const { return rlc_; }
 
  private:
+  void build_basis(const Csr& A, const Csr& E, Index n_aug, int n_starts, const double* starts_aug,
+                   int n_shifts, const double* shifts, int n_moments);
   void build_basis(const Csr& A, const double* Ediag, Index n_aug, int n_starts,
                    const double* starts_aug, int n_shifts, const double* shifts, int n_moments);
 
@@ -41,8 +47,13 @@ class RationalMor {
   int m_ = 0;
   double setup_s_ = 0.0;
   bool rlc_ = false;
+  Index die_idx_ = -1;
+  int n_die_ = 0;
   Csr A_;
-  std::vector<double> Ediag_;
+  Csr E_;
+  std::vector<Index> iv_;
+  std::vector<double> iv_src_;
+  std::vector<double> u_const_;
   std::vector<double> bump_v_;
   std::vector<double> V_;   /* n_aug × m column-major, orthonormal */
   std::vector<double> Ar_;  /* m × m row-major */
@@ -56,6 +67,12 @@ std::unique_ptr<RationalMor> make_mor(const Csr& G, const double* C, int n_start
 std::unique_ptr<RationalMor> make_mor_rlc(const Csr& Gmesh, const double* C, const Index* bumps,
                                           int n_bumps, const double* bump_v, double pkg_r,
                                           double pkg_l, int n_starts, const double* starts,
+                                          int n_shifts, const double* shifts, int n_moments);
+
+/* Sparse-E descriptor MOR (mutual L, n_iv sources, optional u_const). */
+std::unique_ptr<RationalMor> make_mor_gen(const Csr& A, const Csr& E, int n_v, int n_die,
+                                          Index die_idx, const Index* iv, int n_iv,
+                                          const double* u_const, int n_starts, const double* starts,
                                           int n_shifts, const double* shifts, int n_moments);
 
 }  // namespace dpn

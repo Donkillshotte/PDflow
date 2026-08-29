@@ -97,11 +97,11 @@ Csr descriptor_rlc(const Csr& Gmesh, const Index* bumps, int n_bumps, double pkg
 
 }  // namespace
 
-void RationalMor::build_basis(const Csr& A, const double* Ediag, Index n_aug, int n_starts,
+void RationalMor::build_basis(const Csr& A, const Csr& E, Index n_aug, int n_starts,
                               const double* starts_aug, int n_shifts, const double* shifts,
                               int n_moments) {
   A_ = A;
-  Ediag_.assign(Ediag, Ediag + n_aug);
+  E_ = E;
   n_aug_ = n_aug;
   const auto t0 = std::chrono::steady_clock::now();
   const int cap = std::min(static_cast<int>(n_aug), 96);
@@ -111,14 +111,10 @@ void RationalMor::build_basis(const Csr& A, const double* Ediag, Index n_aug, in
   const int moments = std::max(1, n_moments);
   std::vector<double> rhs(static_cast<size_t>(n_aug));
   std::vector<double> x(static_cast<size_t>(n_aug));
-  std::vector<double> d(static_cast<size_t>(n_aug));
 
   for (int s = 0; s < n_shifts && m_ < cap; ++s) {
     const double shift = shifts[s];
-    for (Index i = 0; i < n_aug; ++i) {
-      d[i] = shift * Ediag_[i];
-    }
-    Csr K = plus_diag(A_, d.data());
+    Csr K = plus(A_, scale(E_, shift));
     auto lu = make_direct(K);
     for (int b = 0; b < n_starts && m_ < cap; ++b) {
       const double* start = starts_aug + static_cast<size_t>(b) * static_cast<size_t>(n_aug);
@@ -126,9 +122,7 @@ void RationalMor::build_basis(const Csr& A, const double* Ediag, Index n_aug, in
       for (int mom = 0; mom < moments && m_ < cap; ++mom) {
         if (mom > 0) {
           const double* vlast = V_.data() + static_cast<size_t>(m_ - 1) * static_cast<size_t>(n_aug);
-          for (Index i = 0; i < n_aug; ++i) {
-            rhs[i] = Ediag_[i] * vlast[i];
-          }
+          E_.spmv(vlast, rhs.data());
         }
         lu->solve(rhs.data(), x.data(), nullptr);
         if (!mgs_append(V_, m_, n_aug, x, 1e-14)) {
@@ -150,20 +144,25 @@ void RationalMor::build_basis(const Csr& A, const double* Ediag, Index n_aug, in
   Ar_.assign(static_cast<size_t>(m_ * m_), 0.0);
   Er_.assign(static_cast<size_t>(m_ * m_), 0.0);
   std::vector<double> av(static_cast<size_t>(n_aug));
+  std::vector<double> ev(static_cast<size_t>(n_aug));
   for (int k = 0; k < m_; ++k) {
     const double* vk = V_.data() + static_cast<size_t>(k) * static_cast<size_t>(n_aug);
     A_.spmv(vk, av.data());
+    E_.spmv(vk, ev.data());
     for (int j = 0; j < m_; ++j) {
       const double* vj = V_.data() + static_cast<size_t>(j) * static_cast<size_t>(n_aug);
       Ar_[j * m_ + k] = dot(vj, av.data(), n_aug);
-      double ejk = 0.0;
-      for (Index i = 0; i < n_aug; ++i) {
-        ejk += vj[i] * Ediag_[i] * vk[i];
-      }
-      Er_[j * m_ + k] = ejk;
+      Er_[j * m_ + k] = dot(vj, ev.data(), n_aug);
     }
   }
   setup_s_ = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+}
+
+void RationalMor::build_basis(const Csr& A, const double* Ediag, Index n_aug, int n_starts,
+                              const double* starts_aug, int n_shifts, const double* shifts,
+                              int n_moments) {
+  Csr Ed = diag_csr(n_aug, Ediag);
+  build_basis(A, Ed, n_aug, n_starts, starts_aug, n_shifts, shifts, n_moments);
 }
 
 RationalMor::RationalMor(const Csr& G, const double* C, int n_starts, const double* starts,
@@ -203,6 +202,13 @@ RationalMor::RationalMor(const Csr& Gmesh, const double* C, const Index* bumps, 
     E[n_volt_ + k] = pkg_l;
   }
   bump_v_.assign(bump_v, bump_v + n_bumps);
+  n_die_ = static_cast<int>(n_volt_);
+  die_idx_ = -1;
+  iv_.resize(static_cast<size_t>(n_bumps));
+  iv_src_.assign(bump_v, bump_v + n_bumps);
+  for (int k = 0; k < n_bumps; ++k) {
+    iv_[static_cast<size_t>(k)] = n_volt_ + static_cast<Index>(k);
+  }
 
   /* Ports: each inductor (Vsrc), caller voltage starts, then all-node common-mode. */
   const int ns_aug = n_starts + n_bumps + 1;
@@ -227,6 +233,50 @@ RationalMor::RationalMor(const Csr& Gmesh, const double* C, const Index* bumps, 
   build_basis(A, E.data(), n_aug, ns_aug, starts_aug.data(), n_shifts, shifts, n_moments);
 }
 
+RationalMor::RationalMor(const Csr& A, const Csr& E, int n_v, int n_die, Index die_idx,
+                         const Index* iv, int n_iv, const double* u_const, int n_starts,
+                         const double* starts, int n_shifts, const double* shifts, int n_moments) {
+  n_volt_ = std::max(n_v, 0);
+  n_aug_ = A.nrows;
+  rlc_ = true;
+  n_die_ = std::max(0, n_die);
+  if (n_volt_ > 0 && n_die_ > n_volt_) {
+    n_die_ = n_volt_;
+  }
+  die_idx_ = die_idx;
+  if (n_iv > 0 && iv) {
+    iv_.assign(iv, iv + n_iv);
+  }
+  if (u_const) {
+    u_const_.assign(u_const, u_const + n_aug_);
+  }
+  const int ns_aug = n_starts + n_iv + 1;
+  std::vector<double> starts_aug(static_cast<size_t>(std::max(ns_aug, 1)) * static_cast<size_t>(n_aug_),
+                                 0.0);
+  int col = 0;
+  for (int k = 0; k < n_iv; ++k, ++col) {
+    const Index j = iv_[static_cast<size_t>(k)];
+    if (j >= 0 && j < n_aug_) {
+      starts_aug[static_cast<size_t>(col) * static_cast<size_t>(n_aug_) + static_cast<size_t>(j)] =
+          1.0;
+    }
+  }
+  for (int b = 0; b < n_starts; ++b, ++col) {
+    const double* src = starts + static_cast<size_t>(b) * static_cast<size_t>(n_volt_);
+    double* dst = starts_aug.data() + static_cast<size_t>(col) * static_cast<size_t>(n_aug_);
+    const Index nv = std::min(n_volt_, n_aug_);
+    std::copy(src, src + nv, dst);
+  }
+  {
+    double* sV = starts_aug.data() + static_cast<size_t>(col) * static_cast<size_t>(n_aug_);
+    const double nv = 1.0 / std::sqrt(static_cast<double>(std::max(n_volt_, Index{1})));
+    for (Index i = 0; i < n_volt_ && i < n_aug_; ++i) {
+      sV[i] = nv;
+    }
+  }
+  build_basis(A, E, n_aug_, ns_aug, starts_aug.data(), n_shifts, shifts, n_moments);
+}
+
 TranResult RationalMor::timestep(const double* leak, const double* pad, double dt, double t_end,
                                  double vdd, const TriangleSrc* ev, int n_ev) const {
   TranResult out;
@@ -248,7 +298,8 @@ TranResult RationalMor::timestep(const double* leak, const double* pad, double d
   const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
   Eigen::VectorXd z = Eigen::VectorXd::Zero(m_);
   Eigen::VectorXd znext(m_), rhs(m_), f(m_);
-  std::vector<double> I(static_cast<size_t>(n_volt_));
+  const Index nI = (rlc_ && n_die_ > 0) ? std::min(static_cast<Index>(n_die_), n_volt_) : n_volt_;
+  std::vector<double> I(static_cast<size_t>(std::max(nI, Index{1})), 0.0);
   std::vector<double> x(static_cast<size_t>(n_aug_), 0.0);
   std::vector<double> u(static_cast<size_t>(n_aug_), 0.0);
   const Index p = n_aug_ - n_volt_;
@@ -257,15 +308,13 @@ TranResult RationalMor::timestep(const double* leak, const double* pad, double d
       x[i] = vdd;
     }
     /* Consistent mass projection: Er z0 = Vᵀ E x0 (UIC v=Vdd, i_L=0). */
+    std::vector<double> Exn(static_cast<size_t>(n_aug_), 0.0);
+    E_.spmv(x.data(), Exn.data());
     Eigen::VectorXd Ex(m_);
     Ex.setZero();
     for (int k = 0; k < m_; ++k) {
       const double* vk = V_.data() + static_cast<size_t>(k) * static_cast<size_t>(n_aug_);
-      double s = 0.0;
-      for (Index i = 0; i < n_volt_; ++i) {
-        s += vk[i] * Ediag_[i] * vdd;
-      }
-      Ex[k] = s;
+      Ex[k] = dot(vk, Exn.data(), n_aug_);
     }
     Eigen::PartialPivLU<Eigen::MatrixXd> Erlu(Er);
     z = Erlu.solve(Ex);
@@ -287,15 +336,36 @@ TranResult RationalMor::timestep(const double* leak, const double* pad, double d
 
   for (int s = 0; s < steps; ++s) {
     const double t = static_cast<double>(s) * dt;
-    fill_idraw(n_volt_, t, leak, ev, n_ev, I.data());
+    std::fill(I.begin(), I.end(), 0.0);
+    fill_idraw(nI, t, leak, ev, n_ev, I.data());
     f.setZero();
     if (rlc_) {
       std::fill(u.begin(), u.end(), 0.0);
-      for (Index i = 0; i < n_volt_; ++i) {
-        u[i] = -I[i];
+      if (die_idx_ >= 0 && die_idx_ < n_aug_) {
+        u[static_cast<size_t>(die_idx_)] = -I[0];
+      } else {
+        const Index nd = std::min(nI, n_aug_);
+        for (Index i = 0; i < nd; ++i) {
+          u[static_cast<size_t>(i)] = -I[static_cast<size_t>(i)];
+        }
       }
-      for (Index k = 0; k < p; ++k) {
-        u[n_volt_ + k] = (k < static_cast<Index>(bump_v_.size())) ? bump_v_[k] : vdd;
+      if (u_const_.size() == static_cast<size_t>(n_aug_)) {
+        for (Index i = 0; i < n_aug_; ++i) {
+          u[i] += u_const_[static_cast<size_t>(i)];
+        }
+      }
+      if (!iv_.empty()) {
+        for (size_t k = 0; k < iv_.size(); ++k) {
+          const Index j = iv_[k];
+          const double vs = (k < iv_src_.size()) ? iv_src_[k] : vdd;
+          if (j >= 0 && j < n_aug_) {
+            u[static_cast<size_t>(j)] += vs;
+          }
+        }
+      } else if (!bump_v_.empty()) {
+        for (Index k = 0; k < p; ++k) {
+          u[n_volt_ + k] = (k < static_cast<Index>(bump_v_.size())) ? bump_v_[k] : vdd;
+        }
       }
       for (int k = 0; k < m_; ++k) {
         const double* vk = V_.data() + static_cast<size_t>(k) * static_cast<size_t>(n_aug_);
@@ -324,9 +394,15 @@ TranResult RationalMor::timestep(const double* leak, const double* pad, double d
         axpy(z[k], vk, xprev.data(), n_aug_);
       }
       A_.spmv(x.data(), av.data());
+      std::vector<double> dx(static_cast<size_t>(n_aug_), 0.0);
+      std::vector<double> Edx(static_cast<size_t>(n_aug_), 0.0);
+      for (Index i = 0; i < n_aug_; ++i) {
+        dx[static_cast<size_t>(i)] = (x[i] - xprev[i]) / dt;
+      }
+      E_.spmv(dx.data(), Edx.data());
       double nr = 0.0, nb = 0.0;
       for (Index i = 0; i < n_aug_; ++i) {
-        const double r = Ediag_[i] * (x[i] - xprev[i]) / dt + av[i] - u[i];
+        const double r = Edx[i] + av[i] - u[i];
         nr += r * r;
         nb += u[i] * u[i];
       }
@@ -342,9 +418,15 @@ TranResult RationalMor::timestep(const double* leak, const double* pad, double d
         }
       }
       A_.spmv(V.data(), av.data());
+      std::vector<double> dx(static_cast<size_t>(n_volt_), 0.0);
+      std::vector<double> Edx(static_cast<size_t>(n_volt_), 0.0);
+      for (Index i = 0; i < n_volt_; ++i) {
+        dx[static_cast<size_t>(i)] = (V[i] - Vprev[i]) / dt;
+      }
+      E_.spmv(dx.data(), Edx.data());
       double nr = 0.0, nb = 0.0;
       for (Index i = 0; i < n_volt_; ++i) {
-        const double r = Ediag_[i] * (V[i] - Vprev[i]) / dt + av[i] - (pad ? pad[i] : 0.0) + I[i];
+        const double r = Edx[i] + av[i] - (pad ? pad[i] : 0.0) + I[i];
         nr += r * r;
         nb += I[i] * I[i];
       }
@@ -355,13 +437,30 @@ TranResult RationalMor::timestep(const double* leak, const double* pad, double d
     z = znext;
     double vmin = V[0];
     Index imin = 0;
-    double itot = 0.0;
-    for (Index i = 0; i < n_volt_; ++i) {
-      if (V[i] < vmin) {
-        vmin = V[i];
-        imin = i;
+    if (rlc_ && die_idx_ >= 0 && die_idx_ < n_volt_) {
+      vmin = V[static_cast<size_t>(die_idx_)];
+      imin = 0;
+    } else if (rlc_ && n_die_ > 0) {
+      const Index nd = std::min(static_cast<Index>(n_die_), n_volt_);
+      vmin = V[0];
+      imin = 0;
+      for (Index i = 1; i < nd; ++i) {
+        if (V[i] < vmin) {
+          vmin = V[i];
+          imin = i;
+        }
       }
-      itot += I[i];
+    } else {
+      for (Index i = 1; i < n_volt_; ++i) {
+        if (V[i] < vmin) {
+          vmin = V[i];
+          imin = i;
+        }
+      }
+    }
+    double itot = 0.0;
+    for (Index i = 0; i < nI; ++i) {
+      itot += I[static_cast<size_t>(i)];
     }
     out.wave_t.push_back(t);
     out.wave_vmin.push_back(vmin);
@@ -390,6 +489,14 @@ std::unique_ptr<RationalMor> make_mor_rlc(const Csr& Gmesh, const double* C, con
                                           double pkg_l, int n_starts, const double* starts,
                                           int n_shifts, const double* shifts, int n_moments) {
   return std::make_unique<RationalMor>(Gmesh, C, bumps, n_bumps, bump_v, pkg_r, pkg_l, n_starts,
+                                       starts, n_shifts, shifts, n_moments);
+}
+
+std::unique_ptr<RationalMor> make_mor_gen(const Csr& A, const Csr& E, int n_v, int n_die,
+                                          Index die_idx, const Index* iv, int n_iv,
+                                          const double* u_const, int n_starts, const double* starts,
+                                          int n_shifts, const double* shifts, int n_moments) {
+  return std::make_unique<RationalMor>(A, E, n_v, n_die, die_idx, iv, n_iv, u_const, n_starts,
                                        starts, n_shifts, shifts, n_moments);
 }
 

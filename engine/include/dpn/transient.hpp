@@ -69,10 +69,19 @@ TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double 
                                const TriangleSrc* ev, int n_ev);
 
 /* Same BE; E is sparse (mutual L, non-diagonal C). iv[0:n_iv) get +Vdd each step.
-   u_const (nullable, length n) is added every step (N3 pad companion). Gold = SparseLU. */
+   u_const (nullable, length n) is added every step (N3 pad companion).
+   solver_kind: 0 SparseLU gold, 3 BiCGSTAB workhorse. Never AMG (A unsymmetric). */
 TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double t_end, double vdd,
                                    int n_v, int n_die, Index die_idx, const Index* iv, int n_iv,
                                    const double* leak, const double* u_const, const TriangleSrc* ev,
-                                   int n_ev);
+                                   int n_ev, int solver_kind = 0);
+
+/* Adaptive Δt on the same descriptor. LTE on voltage states 0..n_v-1 only.
+   Not the fixed-Δt gold when L>0 (same caveat as companion adaptive). */
+TranResult timestep_descriptor_adaptive(const Csr& A, const Csr& E, double dt0, double t_end,
+                                        double vdd, int n_v, int n_die, Index die_idx,
+                                        const Index* iv, int n_iv, const double* leak,
+                                        const double* u_const, double atol, double rtol,
+                                        const TriangleSrc* ev, int n_ev, int solver_kind = 0);
 
 }  // namespace dpn

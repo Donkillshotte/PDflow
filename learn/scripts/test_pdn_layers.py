@@ -848,12 +848,13 @@ quit
         f"ΔT={em['dT_absmax_k']:.4e} K w/min={em['hottest_j'].get('w_over_min')}"
     )
 
-    from pdn_solvers import native_descriptor
+    from pdn_solvers import native_descriptor, native_descriptor_adaptive, native_mor_descriptor
 
     sysd = compact_vrm_die(
         vdd=1.1, r_vrm=0.015, l_vrm=2e-10, c_vrm=50e-12, r_pkg=0.05, l_pkg=2e-10, c_die=50e-12
     )
     t50, dur, i_peak, dt, t_end, vdd = 0.2e-9, 0.2e-9, 5e-3, 10e-12, 0.4e-9, 1.1
+    ev_n4 = [{"idx": 0, "t50_s": t50, "dur_s": dur, "i_pulse": i_peak, "i_leak": 0.0}]
     py_n4 = timestep_descriptor(
         sysd,
         lambda t: triangle_above_leak(t, t50, dur, i_peak),
@@ -864,7 +865,7 @@ quit
     check(py_n4.get("backend") == "python", f"descriptor without events is Python ({py_n4.get('via')})")
     nat_n4 = native_descriptor(
         sysd,
-        [{"idx": 0, "t50_s": t50, "dur_s": dur, "i_pulse": i_peak, "i_leak": 0.0}],
+        ev_n4,
         vdd,
         t_end,
         dt,
@@ -878,6 +879,51 @@ quit
             f"    native N4 droop={nat_n4['worst_droop']*1e3:.4f} mV "
             f"python={py_n4['worst_droop']*1e3:.4f} mV |N-P|={err_n4:.4e} mV"
         )
+        bicg_n4 = native_descriptor(sysd, ev_n4, vdd, t_end, dt, solver_kind=3)
+        if bicg_n4 is None:
+            print("    skip descriptor BiCGSTAB (no workhorse symbol)")
+        else:
+            err_b = abs(nat_n4["worst_droop"] - bicg_n4["worst_droop"]) * 1e3
+            check(err_b < 1e-5, f"descriptor BiCGSTAB vs LU |err|={err_b:.4e} mV")
+            print(f"    descriptor BiCGSTAB |A-E|={err_b:.4e} mV via={bicg_n4.get('via')}")
+        ad_n4 = native_descriptor_adaptive(sysd, ev_n4, vdd, t_end, dt)
+        if ad_n4 is None:
+            print("    skip descriptor adaptive (no symbol)")
+        else:
+            err_a = abs(nat_n4["worst_droop"] - ad_n4["worst_droop"]) * 1e3
+            check(err_a < 2.0, f"adaptive descriptor vs gold (1 mV-class) |err|={err_a:.4f} mV")
+            print(
+                f"    adaptive descriptor steps={ad_n4['steps']} |A-ad|={err_a:.4f} mV "
+                f"(not gold when L>0)"
+            )
+        sysd["dt"] = dt
+        starts = np.zeros((2, 1), dtype=np.float64, order="F")
+        starts[1, 0] = 1.0
+        shifts = np.array([0.0, 1e9, 1.0 / dt], dtype=np.float64)
+        mor = native_mor_descriptor(sysd, starts, shifts, n_moments=4)
+        red = mor.timestep(sysd, ev_n4, vdd, t_end)
+        err_m = abs(nat_n4["worst_droop"] - red["worst_droop"]) * 1e3
+        check(err_m < 5.0, f"gen MOR vs N4 descriptor |A-C|={err_m:.4f} mV")
+        print(
+            f"    gen MOR m={mor.m} backend={mor.backend} |A-C|={err_m:.4e} mV"
+        )
+        sys_st["dt"] = dt
+        st_ev = [{"idx": 1, "t50_s": t50, "dur_s": dur, "i_pulse": i_peak, "i_leak": 0.0}]
+        st_lu = native_descriptor(sys_st, st_ev, vdd, t_end, dt)
+        st_wh = native_descriptor(sys_st, st_ev, vdd, t_end, dt, solver_kind=3)
+        if st_lu is not None and st_wh is not None:
+            err_st = abs(st_lu["worst_droop"] - st_wh["worst_droop"]) * 1e3
+            check(err_st < 1e-4, f"strap descriptor BiCGSTAB vs LU |err|={err_st:.4e} mV")
+            print(f"    strap BiCGSTAB |A-E|={err_st:.4e} mV")
+        if st_lu is not None:
+            n_v_st = int(sys_st["n_v"])
+            starts_st = np.zeros((n_v_st, 1), dtype=np.float64, order="F")
+            starts_st[-1, 0] = 1.0
+            mor_st = native_mor_descriptor(sys_st, starts_st, shifts, n_moments=4)
+            red_st = mor_st.timestep(sys_st, st_ev, vdd, t_end)
+            err_stm = abs(st_lu["worst_droop"] - red_st["worst_droop"]) * 1e3
+            check(err_stm < 5.0, f"strap gen MOR vs descriptor |A-C|={err_stm:.4f} mV")
+            print(f"    strap gen MOR m={mor_st.m} backend={mor_st.backend} |A-C|={err_stm:.4e} mV")
 
     print("ALL test_pdn_layers PASSED")
     return 0

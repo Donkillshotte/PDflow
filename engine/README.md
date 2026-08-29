@@ -15,8 +15,11 @@ This library owns the numerically hot path:
 | `timestep_be_hist` | Same operator; package R+L companion with inductor current \(i_L\) |
 | `timestep_be_adaptive` | Same physics; \(\Delta t\) from voltage LTE \(\tfrac12\|\Delta^2 V\|\); \(g_\mathrm{eq}(\Delta t)\) and \(i_L\) |
 | `timestep_descriptor` | Fixed-\(\Delta t\) BE on \(E\dot x + A x = u\) (N4 VRM+die). Diagonal \(E\) wrapper |
-| `timestep_descriptor_gen` | Same BE; sparse \(E\) (mutual L), \(n_\mathrm{iv}\) voltage sources, optional \(u_\mathrm{const}\). Unsymmetric \(A\) → SparseLU, never AMG |
+| `timestep_descriptor_gen` | Same BE; sparse \(E\) (mutual L), \(n_\mathrm{iv}\) voltage sources, optional \(u_\mathrm{const}\). Unsymmetric \(A\) → SparseLU gold, never AMG |
+| `timestep_descriptor_workhorse` | Same operator; `solver_kind` 0=SparseLU, 3=BiCGSTAB+ILUT. Rejects AMG/RAS |
+| `timestep_descriptor_adaptive` | Same physics; \(\Delta t\) from voltage LTE \(\tfrac12\|\Delta^2 x\|\) on states \(0..n_v-1\). Not the fixed-\(\Delta t\) gold when \(L>0\) |
 | `rational_krylov` | RC: reduced ODE on \(\delta v=v-V_\mathrm{dd}\). RLC: descriptor \(E\dot x+Ax=u\) on \(x=[v;i_L]\) |
+| `dpn_mor_setup_gen` | Sparse-\(E\) rational Krylov (mutual L, \(n_\mathrm{iv}\), \(u_\mathrm{const}\)). Opt-in; GCD Solver C stays package-L companion MOR |
 
 ## Assumptions
 
@@ -29,7 +32,8 @@ This library owns the numerically hot path:
 - N4 descriptor BE stamps \(C\dot v + G v - i_L = -I_\mathrm{draw}\) and \(L\dot i + R i + v_\mathrm{bump} = V_\mathrm{src}\) (unsymmetric). UIC \(v=V_\mathrm{dd}\), \(i=0\). Not AMG. Multiple bump KVL rows each get \(+V_\mathrm{src}\).
 - Extraction and EM live in Python (`pdn_extract`, `pdn_em`): tech LEF WIDTH/THICKNESS/RPERSQ; strap width from \(w=\mathrm{RPERSQ}\cdot L/R\), not min WIDTH. SPEF PG C is stamped only from a power `*D_NET` by name-join onto `write_pg_spice` nodes (GCD OpenRCX SPEF has no VDD).
 - MOR RLC uses the same physics as Solver A: \(C\dot v + G v - i_L = -I_\mathrm{draw}\), \(L\dot i + R i + v = V_\mathrm{src}\). UIC \(v=V_\mathrm{dd}\), \(i_L=0\), projected with \(E_r z_0 = V^\top E x_0\). Do not rank extra \(I(t)\) scenarios with MOR; ranking is Solver A.
-- Adaptive \(\Delta t\) recomputes \(g_\mathrm{eq}(\Delta t)\). That is a **different** discretization of \(L\) than the fixed-\(\Delta t\) gold (coarse BE damps \(L\)). Gold is the stated analysis \(\Delta t\). Opt in with `--adaptive` / `DYNAMIC_IR_ADAPTIVE=1`.
+- Adaptive \(\Delta t\) recomputes \(g_\mathrm{eq}(\Delta t)\). That is a **different** discretization of \(L\) than the fixed-\(\Delta t\) gold (coarse BE damps \(L\)). Gold is the stated analysis \(\Delta t\). Opt in with `--adaptive` / `DYNAMIC_IR_ADAPTIVE=1`. Descriptor adaptive is the same caveat on \(E\dot x+Ax=u\) (LTE on voltage states only).
+- Sparse-\(E\) rational Krylov (`make_mor_gen` / `dpn_mor_setup_gen`) is for **repeated on-die L+M scenarios**, not the GCD clock gold. GCD Solver C is package-L descriptor MOR on the N3 companion mesh. Do not rank extra \(I(t)\) with MOR.
 - RC deviation form assumes \(G V_\mathrm{dd} = \mathrm{pad}\) (floating mesh + pad conductances). That holds for the OpenROAD `write_pg_spice` + package pad model.
 
 ## Build
@@ -56,3 +60,5 @@ Requires **g++-13** (Clang as `/usr/bin/c++` fails `-lstdc++` here). Produces `e
 - Compact 4-state VRM+die **descriptor BE** vs dense 4×4 gold (C API too)
 - Sparse-E `plus`/`scale`/`diag_csr`; gen API vs diagonal wrapper; off-diagonal C and coupled L vs dense BE
 - Poisson and unsymmetric VRM \(K\) **BiCGSTAB** vs SparseLU (C API `kind=3`)
+- Compact VRM: descriptor BiCGSTAB vs LU; adaptive vs fixed \(\Delta t\) (1 mV-class); **sparse-E gen MOR** vs descriptor BE (C API too)
+- Coupled-L gen MOR vs sparse-\(E\) BE (1 mV-class; not GCD Solver C)

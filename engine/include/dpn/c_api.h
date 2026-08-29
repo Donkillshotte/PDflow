@@ -89,7 +89,7 @@ int dpn_timestep_descriptor(int64_t n, int64_t nnz, const int64_t* rowptr, const
                             double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
                             double* wave_vmin, double* wave_itot, int64_t* n_steps);
 
-/* Descriptor BE with sparse E (CSR). iv[n_iv] get +Vdd. u_const may be NULL. */
+/* Descriptor BE with sparse E (CSR). iv[n_iv] get +Vdd. u_const may be NULL. SparseLU gold. */
 int dpn_timestep_descriptor_gen(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
                                 const double* Aval, int64_t nnz_e, const int64_t* eptr,
                                 const int64_t* eidx, const double* eval, int n_v, int n_die,
@@ -100,6 +100,41 @@ int dpn_timestep_descriptor_gen(int64_t n, int64_t nnz, const int64_t* rowptr, c
                                 int64_t* worst_node, double* worst_v, double* worst_t,
                                 double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
                                 double* wave_vmin, double* wave_itot, int64_t* n_steps);
+
+/* Same as gen; solver_kind 0=SparseLU, 3=BiCGSTAB. Never AMG. */
+int dpn_timestep_descriptor_workhorse(int64_t n, int64_t nnz, const int64_t* rowptr,
+                                      const int64_t* col, const double* Aval, int64_t nnz_e,
+                                      const int64_t* eptr, const int64_t* eidx, const double* eval,
+                                      int n_v, int n_die, int64_t die_idx, int64_t n_iv,
+                                      const int64_t* iv, double dt, double t_end, double vdd,
+                                      const double* leak, const double* u_const, int solver_kind,
+                                      int64_t n_events, const int64_t* ev_idx, const double* ev_t50,
+                                      const double* ev_dur, const double* ev_ipulse, double* V_worst,
+                                      int64_t* worst_node, double* worst_v, double* worst_t,
+                                      double* rel_res_max, double* solve_s, int max_steps,
+                                      double* wave_t, double* wave_vmin, double* wave_itot,
+                                      int64_t* n_steps);
+
+/* Adaptive Δt descriptor BE. LTE on voltage states. Not the fixed-Δt gold when L>0. */
+int dpn_timestep_descriptor_adaptive(int64_t n, int64_t nnz, const int64_t* rowptr,
+                                     const int64_t* col, const double* Aval, int64_t nnz_e,
+                                     const int64_t* eptr, const int64_t* eidx, const double* eval,
+                                     int n_v, int n_die, int64_t die_idx, int64_t n_iv,
+                                     const int64_t* iv, double dt0, double t_end, double vdd,
+                                     const double* leak, const double* u_const, double atol,
+                                     double rtol, int64_t n_events, const int64_t* ev_idx,
+                                     const double* ev_t50, const double* ev_dur,
+                                     const double* ev_ipulse, double* V_worst, int64_t* worst_node,
+                                     double* worst_v, double* worst_t, double* rel_res_max,
+                                     double* solve_s, int max_steps, double* wave_t,
+                                     double* wave_vmin, double* wave_itot, int64_t* n_steps);
+
+/* Sparse-E descriptor MOR. starts is n_v × n_starts column-major. */
+DpnMor* dpn_mor_setup_gen(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
+                          const double* Aval, int64_t nnz_e, const int64_t* eptr, const int64_t* eidx,
+                          const double* eval, int n_v, int n_die, int64_t die_idx, int64_t n_iv,
+                          const int64_t* iv, const double* u_const, int n_starts,
+                          const double* starts, int n_shifts, const double* shifts, int n_moments);
 
 #ifdef __cplusplus
 }

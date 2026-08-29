@@ -61,6 +61,81 @@ void record_step(TranResult& out, double t, const double* V, const double* I, In
   (void)vdd;
 }
 
+std::unique_ptr<Solver> descriptor_solver(const Csr& K, int kind) {
+  if (kind == 3) {
+    return make_bicgstab(K);
+  }
+  return make_direct(K);
+}
+
+void stamp_descriptor_u(Index n, int n_die, Index die_idx, const Index* iv, int n_iv, double vdd,
+                        const double* leak, const double* u_const, const TriangleSrc* ev, int n_ev,
+                        double t, double* rhs, double* I) {
+  const Index n_die_i = std::max(static_cast<Index>(n_die), Index{0});
+  fill_idraw(n_die_i > 0 ? n_die_i : 1, t, leak, ev, n_ev, I);
+  std::fill(rhs, rhs + n, 0.0);
+  if (die_idx >= 0 && die_idx < n) {
+    rhs[static_cast<size_t>(die_idx)] = -I[0];
+  } else {
+    const Index nd = std::min(n_die_i, n);
+    for (Index i = 0; i < nd; ++i) {
+      rhs[static_cast<size_t>(i)] = -I[static_cast<size_t>(i)];
+    }
+  }
+  if (u_const) {
+    for (Index i = 0; i < n; ++i) {
+      rhs[i] += u_const[i];
+    }
+  }
+  if (iv && n_iv > 0) {
+    for (int k = 0; k < n_iv; ++k) {
+      const Index j = iv[k];
+      if (j >= 0 && j < n) {
+        rhs[static_cast<size_t>(j)] += vdd;
+      }
+    }
+  }
+}
+
+void track_descriptor_vmin(TranResult& out, const std::vector<double>& x, Index n, int n_die,
+                           Index die_idx, double t, const double* I, double vdd) {
+  const Index n_die_i = std::max(static_cast<Index>(n_die), Index{0});
+  double vmin = vdd;
+  Index imin = 0;
+  if (die_idx >= 0 && die_idx < n) {
+    vmin = x[static_cast<size_t>(die_idx)];
+    imin = 0;
+  } else {
+    const Index nd = std::min(n_die_i, n);
+    vmin = x[0];
+    for (Index i = 1; i < nd; ++i) {
+      if (x[static_cast<size_t>(i)] < vmin) {
+        vmin = x[static_cast<size_t>(i)];
+        imin = i;
+      }
+    }
+  }
+  out.wave_t.push_back(t);
+  out.wave_vmin.push_back(vmin);
+  double itot = 0.0;
+  const Index ndi = n_die_i > 0 ? n_die_i : 1;
+  for (Index i = 0; i < ndi; ++i) {
+    itot += I[i];
+  }
+  out.wave_itot.push_back(itot);
+  if (vmin < out.worst_v) {
+    out.worst_v = vmin;
+    out.worst_t = t;
+    out.worst_node = imin;
+    if (die_idx >= 0) {
+      out.V_worst.assign(1, vmin);
+    } else {
+      const Index nd = std::min(n_die_i, n);
+      out.V_worst.assign(x.begin(), x.begin() + nd);
+    }
+  }
+}
+
 }  // namespace
 
 TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const double* leak,
@@ -317,7 +392,7 @@ TranResult timestep_be_adaptive(const Csr& Gmesh, const double* C, const Index* 
 TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double t_end, double vdd,
                                    int n_v, int n_die, Index die_idx, const Index* iv, int n_iv,
                                    const double* leak, const double* u_const, const TriangleSrc* ev,
-                                   int n_ev) {
+                                   int n_ev, int solver_kind) {
   TranResult out;
   const Index n = A.nrows;
   out.worst_v = vdd;
@@ -329,7 +404,7 @@ TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double
   }
   Csr Edt = scale(E, 1.0 / dt);
   Csr K = plus(A, Edt);
-  auto solver = make_direct(K);
+  auto solver = descriptor_solver(K, solver_kind);
   const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
   std::vector<double> x(static_cast<size_t>(n), 0.0);
   for (int i = 0; i < n_v && static_cast<Index>(i) < n; ++i) {
@@ -340,29 +415,8 @@ TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double
   double res_max = 0.0;
   for (int s = 0; s < steps; ++s) {
     const double t = static_cast<double>(s) * dt;
-    std::fill(rhs.begin(), rhs.end(), 0.0);
-    fill_idraw(n_die_i > 0 ? n_die_i : 1, t, leak, ev, n_ev, I.data());
-    if (die_idx >= 0 && die_idx < n) {
-      rhs[static_cast<size_t>(die_idx)] = -I[0];
-    } else {
-      const Index nd = std::min(n_die_i, n);
-      for (Index i = 0; i < nd; ++i) {
-        rhs[static_cast<size_t>(i)] = -I[static_cast<size_t>(i)];
-      }
-    }
-    if (u_const) {
-      for (Index i = 0; i < n; ++i) {
-        rhs[static_cast<size_t>(i)] += u_const[i];
-      }
-    }
-    if (iv && n_iv > 0) {
-      for (int k = 0; k < n_iv; ++k) {
-        const Index j = iv[k];
-        if (j >= 0 && j < n) {
-          rhs[static_cast<size_t>(j)] += vdd;
-        }
-      }
-    }
+    stamp_descriptor_u(n, n_die, die_idx, iv, n_iv, vdd, leak, u_const, ev, n_ev, t, rhs.data(),
+                       I.data());
     std::vector<double> hist(static_cast<size_t>(n), 0.0);
     Edt.spmv(x.data(), hist.data());
     for (Index i = 0; i < n; ++i) {
@@ -372,44 +426,105 @@ TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double
     solver->solve(rhs.data(), xnext.data(), x.data());
     res_max = std::max(res_max, residual_rel(K, xnext.data(), rhs.data()));
     x.swap(xnext);
-    double vmin = vdd;
-    Index imin = 0;
-    if (die_idx >= 0 && die_idx < n) {
-      vmin = x[static_cast<size_t>(die_idx)];
-      imin = 0;
-    } else {
-      const Index nd = std::min(n_die_i, n);
-      vmin = x[0];
-      for (Index i = 1; i < nd; ++i) {
-        if (x[static_cast<size_t>(i)] < vmin) {
-          vmin = x[static_cast<size_t>(i)];
-          imin = i;
-        }
-      }
-    }
-    out.wave_t.push_back(t);
-    out.wave_vmin.push_back(vmin);
-    double itot = 0.0;
-    const Index ndi = n_die_i > 0 ? n_die_i : 1;
-    for (Index i = 0; i < ndi; ++i) {
-      itot += I[static_cast<size_t>(i)];
-    }
-    out.wave_itot.push_back(itot);
-    if (vmin < out.worst_v) {
-      out.worst_v = vmin;
-      out.worst_t = t;
-      out.worst_node = imin;
-      if (die_idx >= 0) {
-        out.V_worst.assign(1, vmin);
-      } else {
-        const Index nd = std::min(n_die_i, n);
-        out.V_worst.assign(x.begin(), x.begin() + nd);
-      }
-    }
+    track_descriptor_vmin(out, x, n, n_die, die_idx, t, I.data(), vdd);
   }
   out.steps = steps;
   out.rel_res_max = res_max;
   out.solve_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+  return out;
+}
+
+TranResult timestep_descriptor_adaptive(const Csr& A, const Csr& E, double dt0, double t_end,
+                                        double vdd, int n_v, int n_die, Index die_idx,
+                                        const Index* iv, int n_iv, const double* leak,
+                                        const double* u_const, double atol, double rtol,
+                                        const TriangleSrc* ev, int n_ev, int solver_kind) {
+  TranResult out;
+  const Index n = A.nrows;
+  out.worst_v = vdd;
+  out.worst_t = 0.0;
+  const Index n_die_i = std::max(static_cast<Index>(n_die), Index{0});
+  out.V_worst.assign(static_cast<size_t>(n_die_i > 0 ? n_die_i : n), vdd);
+  if (n <= 0 || dt0 <= 0.0 || t_end <= 0.0 || n_v <= 0 || E.nrows != n || E.ncols != n) {
+    return out;
+  }
+  const double dt_min = dt0 / 128.0;
+  const double dt_max = dt0 * 8.0;
+  double dt = dt0;
+  double t = 0.0;
+  std::vector<double> x(static_cast<size_t>(n), 0.0);
+  std::vector<double> xprev(static_cast<size_t>(n), 0.0);
+  std::vector<double> xnext(static_cast<size_t>(n));
+  for (int i = 0; i < n_v && static_cast<Index>(i) < n; ++i) {
+    x[static_cast<size_t>(i)] = vdd;
+    xprev[static_cast<size_t>(i)] = vdd;
+  }
+  std::vector<double> rhs(static_cast<size_t>(n));
+  std::vector<double> I(static_cast<size_t>(std::max(n_die_i, Index{1})));
+  std::unique_ptr<Solver> solver;
+  Csr K;
+  Csr Edt;
+  double last_dt = -1.0;
+  int have_prev = 0;
+  double t_solve = 0.0;
+  double res_max = 0.0;
+  const int cap = std::max(4, static_cast<int>(std::ceil(t_end / dt_min)) + 4);
+  int accepted = 0;
+
+  auto refactor = [&](double dtc) {
+    if (std::abs(dtc - last_dt) < 1e-18 * std::max(dtc, 1e-18) && solver) {
+      return;
+    }
+    Edt = scale(E, 1.0 / dtc);
+    K = plus(A, Edt);
+    solver = descriptor_solver(K, solver_kind);
+    last_dt = dtc;
+  };
+
+  while (t < t_end - 1e-18 * t_end && accepted < cap) {
+    const double dt_use = std::min(dt, t_end - t);
+    refactor(dt_use);
+    stamp_descriptor_u(n, n_die, die_idx, iv, n_iv, vdd, leak, u_const, ev, n_ev, t, rhs.data(),
+                       I.data());
+    std::vector<double> hist(static_cast<size_t>(n), 0.0);
+    Edt.spmv(x.data(), hist.data());
+    for (Index i = 0; i < n; ++i) {
+      rhs[i] += hist[i];
+    }
+    const auto t0 = std::chrono::steady_clock::now();
+    solver->solve(rhs.data(), xnext.data(), x.data());
+    t_solve += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    res_max = std::max(res_max, residual_rel(K, xnext.data(), rhs.data()));
+
+    bool accept = true;
+    if (have_prev && atol > 0.0) {
+      double err = 0.0;
+      const Index nv = std::min(static_cast<Index>(n_v), n);
+      for (Index i = 0; i < nv; ++i) {
+        const double lte = 0.5 * std::abs(xnext[i] - 2.0 * x[i] + xprev[i]);
+        const double tol = atol + rtol * std::abs(xnext[i]);
+        err = std::max(err, lte / std::max(tol, 1e-18));
+      }
+      if (err > 1.0 && dt_use > dt_min * 1.01) {
+        accept = false;
+        dt = std::max(dt_use * 0.5, dt_min);
+      } else if (err < 0.25) {
+        dt = std::min(dt_use * 1.5, dt_max);
+      }
+    }
+    if (!accept) {
+      continue;
+    }
+    xprev.swap(x);
+    x.swap(xnext);
+    have_prev = 1;
+    track_descriptor_vmin(out, x, n, n_die, die_idx, t, I.data(), vdd);
+    t += dt_use;
+    ++accepted;
+  }
+  out.steps = accepted;
+  out.rel_res_max = res_max;
+  out.solve_s = t_solve;
   return out;
 }
 
@@ -425,7 +540,7 @@ TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double 
   const Index iv_i = static_cast<Index>(iv);
   const int n_iv = (iv >= 0) ? 1 : 0;
   return timestep_descriptor_gen(A, Ed, dt, t_end, vdd, n_v, n_die, die_idx, n_iv ? &iv_i : nullptr,
-                                 n_iv, leak, nullptr, ev, n_ev);
+                                 n_iv, leak, nullptr, ev, n_ev, 0);
 }
 
 }  // namespace dpn

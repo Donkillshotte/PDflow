@@ -323,6 +323,81 @@ def _libdpn():
             ctypes.POINTER(ctypes.c_double),
             _P_IDX,
         ]
+    _desc_head = [
+        _C_IDX,
+        _C_IDX,
+        _P_IDX,
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        _C_IDX,
+        _P_IDX,
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+        ctypes.c_int,
+        _C_IDX,
+        _C_IDX,
+        _P_IDX,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+    ]
+    _desc_ev = [
+        _C_IDX,
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+    ]
+    _desc_tail = [
+        ctypes.POINTER(ctypes.c_double),
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        _P_IDX,
+    ]
+    if hasattr(lib, "dpn_timestep_descriptor_workhorse"):
+        lib.dpn_timestep_descriptor_workhorse.restype = ctypes.c_int
+        lib.dpn_timestep_descriptor_workhorse.argtypes = (
+            _desc_head + [ctypes.c_int] + _desc_ev + _desc_tail
+        )
+    if hasattr(lib, "dpn_timestep_descriptor_adaptive"):
+        lib.dpn_timestep_descriptor_adaptive.restype = ctypes.c_int
+        lib.dpn_timestep_descriptor_adaptive.argtypes = (
+            _desc_head + [ctypes.c_double, ctypes.c_double] + _desc_ev + _desc_tail
+        )
+    if hasattr(lib, "dpn_mor_setup_gen"):
+        lib.dpn_mor_setup_gen.restype = ctypes.c_void_p
+        lib.dpn_mor_setup_gen.argtypes = [
+            _C_IDX,
+            _C_IDX,
+            _P_IDX,
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            _C_IDX,
+            _P_IDX,
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.c_int,
+            _C_IDX,
+            _C_IDX,
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+        ]
     _LIB = lib
     return _LIB
 
@@ -1036,13 +1111,9 @@ def native_adaptive(sys, events, vdd: float, t_end: float, atol: float = 1e-4, r
     return _tran_result(kw, n, "A_direct_be_adaptive", None, 1, vdd, dt, t_end, "native", "adaptive")
 
 
-def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=None):
-    """Native BE on Eẋ+Ax=u. Prefers sparse-E gen API (u_const, n_iv, mutual)."""
+def _descriptor_prep(sys, events, vdd, t_end, dt, leak=None, adaptive=False):
     from pdn_vrm import as_e_csr
 
-    lib = _libdpn()
-    if lib is None or not hasattr(lib, "dpn_timestep_descriptor"):
-        return None
     A = sys.get("A")
     Eraw = sys.get("E")
     if A is None or Eraw is None:
@@ -1059,7 +1130,7 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
         leak_a = np.zeros(max(n_die, 1), dtype=np.float64)
     else:
         leak_a = np.ascontiguousarray(leak, dtype=np.float64)
-    kw = _tran_kwargs(max(n_die, 1), events, dt, t_end)
+    kw = _tran_kwargs(max(n_die, 1), events, dt, t_end, adaptive=adaptive)
     u0 = sys.get("u_const")
     iv_list = sys.get("iv_list")
     if iv_list is None:
@@ -1073,86 +1144,152 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
     else:
         iv_list = [int(k) for k in iv_list]
         n_iv = len(iv_list)
-    use_gen = hasattr(lib, "dpn_timestep_descriptor_gen")
-    if use_gen:
-        n_e, nnz_e, erp, eci, eva = _csr_ct(Ecsr)
-        if n_e != n:
+    n_e, nnz_e, erp, eci, eva = _csr_ct(Ecsr)
+    if n_e != n:
+        return None
+    if eci.size == 0:
+        eci = np.zeros(1, dtype=_NP_IDX)
+        eva = np.zeros(1, dtype=np.float64)
+    iv_arr = np.ascontiguousarray(iv_list if n_iv else [0], dtype=_NP_IDX)
+    u_ptr = None
+    u_arr = None
+    if u0 is not None:
+        u_arr = np.ascontiguousarray(u0, dtype=np.float64)
+        if u_arr.size != n:
             return None
-        if eci.size == 0:
-            eci = np.zeros(1, dtype=_NP_IDX)
-            eva = np.zeros(1, dtype=np.float64)
-        iv_arr = np.ascontiguousarray(iv_list if n_iv else [0], dtype=_NP_IDX)
-        u_ptr = None
-        u_arr = None
-        if u0 is not None:
-            u_arr = np.ascontiguousarray(u0, dtype=np.float64)
-            if u_arr.size != n:
-                return None
-            u_ptr = u_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
-        rc = lib.dpn_timestep_descriptor_gen(
-            n,
-            nnz,
-            rp.ctypes.data_as(_P_IDX),
-            ci.ctypes.data_as(_P_IDX),
-            va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            nnz_e,
-            erp.ctypes.data_as(_P_IDX),
-            eci.ctypes.data_as(_P_IDX),
-            eva.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            n_v,
-            n_die,
-            die_idx,
-            n_iv,
-            iv_arr.ctypes.data_as(_P_IDX),
-            float(dt),
-            float(t_end),
-            float(vdd),
-            leak_a.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            u_ptr,
-            kw["n_ev"],
-            kw["idx"].ctypes.data_as(_P_IDX),
-            kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            ctypes.byref(kw["worst_node"]),
-            ctypes.byref(kw["worst_v"]),
-            ctypes.byref(kw["worst_t"]),
-            ctypes.byref(kw["rel"]),
-            ctypes.byref(kw["solve_s"]),
-            kw["max_steps"],
-            kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            ctypes.byref(kw["n_steps"]),
+        u_ptr = u_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+    return {
+        "n": n,
+        "nnz": nnz,
+        "rp": rp,
+        "ci": ci,
+        "va": va,
+        "nnz_e": nnz_e,
+        "erp": erp,
+        "eci": eci,
+        "eva": eva,
+        "n_v": n_v,
+        "n_die": n_die,
+        "die_idx": die_idx,
+        "n_iv": n_iv,
+        "iv_arr": iv_arr,
+        "iv_list": iv_list,
+        "leak_a": leak_a,
+        "u_ptr": u_ptr,
+        "u_arr": u_arr,
+        "kw": kw,
+        "Ecsr": Ecsr,
+        "u0": u0,
+    }
+
+
+def _descriptor_common_args(p):
+    return [
+        p["n"],
+        p["nnz"],
+        p["rp"].ctypes.data_as(_P_IDX),
+        p["ci"].ctypes.data_as(_P_IDX),
+        p["va"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        p["nnz_e"],
+        p["erp"].ctypes.data_as(_P_IDX),
+        p["eci"].ctypes.data_as(_P_IDX),
+        p["eva"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        p["n_v"],
+        p["n_die"],
+        p["die_idx"],
+        p["n_iv"],
+        p["iv_arr"].ctypes.data_as(_P_IDX),
+    ]
+
+
+def _descriptor_wave_args(p, vdd, t_end, dt):
+    kw = p["kw"]
+    return [
+        float(dt),
+        float(t_end),
+        float(vdd),
+        p["leak_a"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        p["u_ptr"],
+    ], [
+        kw["n_ev"],
+        kw["idx"].ctypes.data_as(_P_IDX),
+        kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.byref(kw["worst_node"]),
+        ctypes.byref(kw["worst_v"]),
+        ctypes.byref(kw["worst_t"]),
+        ctypes.byref(kw["rel"]),
+        ctypes.byref(kw["solve_s"]),
+        kw["max_steps"],
+        kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.byref(kw["n_steps"]),
+    ]
+
+
+def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=None, solver_kind: int = 0):
+    """Native BE on Eẋ+Ax=u. Sparse-E gen API. solver_kind 0=SparseLU gold, 3=BiCGSTAB. Never AMG."""
+    lib = _libdpn()
+    if lib is None or not hasattr(lib, "dpn_timestep_descriptor"):
+        return None
+    if solver_kind not in (0, 3):
+        return None
+    p = _descriptor_prep(sys, events, vdd, t_end, dt, leak=leak)
+    if p is None:
+        return None
+    mid, tail = _descriptor_wave_args(p, vdd, t_end, dt)
+    use_wh = solver_kind == 3 and hasattr(lib, "dpn_timestep_descriptor_workhorse")
+    use_gen = hasattr(lib, "dpn_timestep_descriptor_gen")
+    if use_wh:
+        rc = lib.dpn_timestep_descriptor_workhorse(
+            *_descriptor_common_args(p), *mid, int(solver_kind), *tail
         )
+        if rc != 0:
+            print(f"dpn_timestep_descriptor_workhorse rc={rc}", file=sys.stderr)
+            return None
+        out = _tran_result(
+            p["kw"], p["n_die"], "E_bicgstab_descriptor", None, 1, vdd, dt, t_end, "native",
+            "native_desc",
+        )
+        out["via"] = "descriptor BE sparse-E (libdpn BiCGSTAB)"
+        return out
+    if solver_kind == 3:
+        return None
+    if use_gen:
+        rc = lib.dpn_timestep_descriptor_gen(*_descriptor_common_args(p), *mid, *tail)
         if rc != 0:
             print(f"dpn_timestep_descriptor_gen rc={rc}", file=sys.stderr)
             return None
-        out = _tran_result(kw, n_die, "N4_descriptor_be", None, 1, vdd, dt, t_end, "native", "native_desc")
+        out = _tran_result(
+            p["kw"], p["n_die"], "N4_descriptor_be", None, 1, vdd, dt, t_end, "native", "native_desc"
+        )
         out["via"] = "descriptor BE sparse-E (libdpn SparseLU)"
         return out
-    if n_iv != 1 or u0 is not None:
+    if p["n_iv"] != 1 or p["u0"] is not None:
         return None
-    E = np.ascontiguousarray(np.asarray(Ecsr.diagonal()), dtype=np.float64)
-    if E.size != n:
+    E = np.ascontiguousarray(np.asarray(p["Ecsr"].diagonal()), dtype=np.float64)
+    if E.size != p["n"]:
         return None
-    iv = int(iv_list[0]) if iv_list else -1
+    iv = int(p["iv_list"][0]) if p["iv_list"] else -1
+    kw = p["kw"]
     rc = lib.dpn_timestep_descriptor(
-        n,
-        nnz,
-        rp.ctypes.data_as(_P_IDX),
-        ci.ctypes.data_as(_P_IDX),
-        va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        p["n"],
+        p["nnz"],
+        p["rp"].ctypes.data_as(_P_IDX),
+        p["ci"].ctypes.data_as(_P_IDX),
+        p["va"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         E.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        n_v,
-        n_die,
-        die_idx,
+        p["n_v"],
+        p["n_die"],
+        p["die_idx"],
         iv,
         float(dt),
         float(t_end),
         float(vdd),
-        leak_a.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        p["leak_a"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         kw["n_ev"],
         kw["idx"].ctypes.data_as(_P_IDX),
         kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -1173,8 +1310,33 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
     if rc != 0:
         print(f"dpn_timestep_descriptor rc={rc}", file=sys.stderr)
         return None
-    out = _tran_result(kw, n_die, "N4_descriptor_be", None, 1, vdd, dt, t_end, "native", "native_desc")
+    out = _tran_result(kw, p["n_die"], "N4_descriptor_be", None, 1, vdd, dt, t_end, "native", "native_desc")
     out["via"] = "descriptor BE VRM+pkg+die (libdpn SparseLU)"
+    return out
+
+
+def native_descriptor_adaptive(
+    sys, events, vdd: float, t_end: float, dt0: float, leak=None, atol: float = 1e-4, rtol: float = 0.01
+):
+    """Adaptive Δt descriptor BE. LTE on voltage states. Not the fixed-Δt gold when L>0."""
+    lib = _libdpn()
+    if lib is None or not hasattr(lib, "dpn_timestep_descriptor_adaptive"):
+        return None
+    p = _descriptor_prep(sys, events, vdd, t_end, dt0, leak=leak, adaptive=True)
+    if p is None:
+        return None
+    mid, tail = _descriptor_wave_args(p, vdd, t_end, dt0)
+    rc = lib.dpn_timestep_descriptor_adaptive(
+        *_descriptor_common_args(p), *mid, float(atol), float(rtol), *tail
+    )
+    if rc != 0:
+        print(f"dpn_timestep_descriptor_adaptive rc={rc}", file=sys.stderr)
+        return None
+    out = _tran_result(
+        p["kw"], p["n_die"], "N4_descriptor_be_adaptive", None, 1, vdd, dt0, t_end, "native",
+        "adaptive",
+    )
+    out["via"] = "descriptor BE sparse-E adaptive Δt (libdpn SparseLU; not gold when L>0)"
     return out
 
 
@@ -1312,7 +1474,311 @@ class NativeMor:
             self._h = None
 
 
-def _descriptor_rlc(Gmesh, bumps, pkg_r: float):
+class NativeMorGen:
+    """Sparse-E descriptor MOR (mutual L, n_iv, u_const). Not GCD Solver C."""
+
+    name = "C_rational_krylov_rlc"
+    backend = "native"
+
+    def __init__(self, sys, starts, shifts, n_moments, lib):
+        from pdn_vrm import as_e_csr
+
+        A = sys["A"]
+        n, nnz, rp, ci, va = _csr_ct(A)
+        Ecsr = as_e_csr(sys["E"], n)
+        n_e, nnz_e, erp, eci, eva = _csr_ct(Ecsr)
+        if n_e != n:
+            raise ValueError("E rows != A rows")
+        if eci.size == 0:
+            eci = np.zeros(1, dtype=_NP_IDX)
+            eva = np.zeros(1, dtype=np.float64)
+        n_v = int(sys["n_v"])
+        die_idx = -1 if sys.get("die_idx") is None else int(sys["die_idx"])
+        n_die = int(sys.get("n_die") or (1 if die_idx >= 0 else n_v))
+        iv_list = sys.get("iv_list")
+        if iv_list is None:
+            iv = int(sys.get("iv", n_v))
+            n_iv = int(sys.get("n_iv", 1 if iv >= 0 else 0))
+            iv_list = list(range(iv, iv + n_iv)) if n_iv > 0 and iv >= 0 else []
+            n_iv = len(iv_list)
+        else:
+            iv_list = [int(k) for k in iv_list]
+            n_iv = len(iv_list)
+        iv_arr = np.ascontiguousarray(iv_list if n_iv else [0], dtype=_NP_IDX)
+        u0 = sys.get("u_const")
+        u_ptr = None
+        u_arr = None
+        if u0 is not None:
+            u_arr = np.ascontiguousarray(u0, dtype=np.float64)
+            if u_arr.size != n:
+                raise ValueError("u_const length")
+            u_ptr = u_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        starts = np.asfortranarray(starts, dtype=np.float64)
+        if starts.ndim != 2 or starts.shape[0] != n_v:
+            raise ValueError("starts must be n_v × n_starts")
+        shifts = np.ascontiguousarray(shifts, dtype=np.float64)
+        h = lib.dpn_mor_setup_gen(
+            n,
+            nnz,
+            rp.ctypes.data_as(_P_IDX),
+            ci.ctypes.data_as(_P_IDX),
+            va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            nnz_e,
+            erp.ctypes.data_as(_P_IDX),
+            eci.ctypes.data_as(_P_IDX),
+            eva.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            n_v,
+            n_die,
+            die_idx,
+            n_iv,
+            iv_arr.ctypes.data_as(_P_IDX),
+            u_ptr,
+            int(starts.shape[1]),
+            starts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            int(shifts.size),
+            shifts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            int(n_moments),
+        )
+        if not h:
+            raise RuntimeError("dpn_mor_setup_gen failed")
+        self._lib = lib
+        self._h = h
+        self.n = n_v
+        self.n_die = n_die
+        self.m = int(lib.dpn_mor_m(h))
+        self.setup_s = float(lib.dpn_mor_setup_s(h))
+        raw = lib.dpn_mor_name(h)
+        self.name = raw.decode() if raw else self.name
+        self._keep = (rp, ci, va, erp, eci, eva, starts, shifts, iv_arr, u_arr)
+
+    def timestep(self, sys, events, vdd: float, t_end: float) -> dict:
+        n_leak = max(int(sys.get("n_die") or self.n_die), 1)
+        leak_raw = sys.get("leak")
+        if leak_raw is None or isinstance(leak_raw, str):
+            leak = np.zeros(n_leak, dtype=np.float64)
+        else:
+            leak = np.ascontiguousarray(leak_raw, dtype=np.float64)
+        pad_raw = sys.get("pad")
+        if pad_raw is None or isinstance(pad_raw, str):
+            pad = np.zeros(self.n, dtype=np.float64)
+        else:
+            pad = np.ascontiguousarray(pad_raw, dtype=np.float64)
+        dt = float(sys["dt"])
+        kw = _tran_kwargs(self.n, events, dt, t_end)
+        rc = self._lib.dpn_mor_timestep(
+            self._h,
+            leak.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            pad.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            dt,
+            float(t_end),
+            float(vdd),
+            kw["n_ev"],
+            kw["idx"].ctypes.data_as(_P_IDX),
+            kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["worst_node"]),
+            ctypes.byref(kw["worst_v"]),
+            ctypes.byref(kw["worst_t"]),
+            ctypes.byref(kw["rel"]),
+            ctypes.byref(kw["solve_s"]),
+            kw["max_steps"],
+            kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["n_steps"]),
+        )
+        if rc != 0:
+            raise RuntimeError(f"dpn_mor_timestep rc={rc}")
+        out = _tran_result(kw, self.n, self.name, self.setup_s, 1, vdd, dt, t_end, "native", "mor")
+        out["n_levels"] = self.m
+        out["m"] = self.m
+        out["via"] = "sparse-E descriptor MOR (libdpn; not GCD Solver C)"
+        return out
+
+    def __del__(self):
+        h = getattr(self, "_h", None)
+        lib = getattr(self, "_lib", None)
+        if h and lib:
+            lib.dpn_mor_free(h)
+            self._h = None
+
+
+class PyMorDescriptor:
+    """SciPy fallback: rational Arnoldi on sparse E (same stamp as libdpn gen MOR)."""
+
+    name = "C_rational_krylov_rlc"
+    backend = "python"
+
+    def __init__(self, sys, starts, shifts, n_moments: int = 4):
+        from pdn_vrm import as_e_csr
+
+        t0 = time.perf_counter()
+        self.Aop = sys["A"].tocsr().astype(np.float64)
+        n = int(self.Aop.shape[0])
+        self.E = as_e_csr(sys["E"], n)
+        self.n_v = int(sys["n_v"])
+        self.n_aug = n
+        self.n = self.n_v
+        self.die_idx = -1 if sys.get("die_idx") is None else int(sys["die_idx"])
+        self.n_die = int(sys.get("n_die") or (1 if self.die_idx >= 0 else self.n_v))
+        iv_list = sys.get("iv_list")
+        if iv_list is None:
+            iv = int(sys.get("iv", self.n_v))
+            n_iv = int(sys.get("n_iv", 1 if iv >= 0 else 0))
+            iv_list = list(range(iv, iv + n_iv)) if n_iv > 0 and iv >= 0 else []
+        self.iv_list = [int(k) for k in iv_list]
+        u0 = sys.get("u_const")
+        self.u_const = None if u0 is None else np.asarray(u0, dtype=np.float64)
+        starts = np.asarray(starts, dtype=np.float64)
+        if starts.ndim == 1:
+            starts = starts.reshape(self.n_v, 1)
+        ns = []
+        for j in self.iv_list:
+            e = np.zeros(n)
+            if 0 <= j < n:
+                e[j] = 1.0
+            ns.append(e)
+        for b in range(starts.shape[1]):
+            e = np.zeros(n)
+            nv = min(self.n_v, n)
+            e[:nv] = starts[:nv, b]
+            ns.append(e)
+        e = np.zeros(n)
+        e[: min(self.n_v, n)] = 1.0 / np.sqrt(max(self.n_v, 1))
+        ns.append(e)
+        starts_use = np.column_stack(ns)
+        cap = min(n, 96)
+        Vcols = []
+        moments = max(1, n_moments)
+        for s in np.asarray(shifts, dtype=np.float64):
+            K = (self.Aop + s * self.E).tocsc()
+            lu = splu(K)
+            for b in range(starts_use.shape[1]):
+                rhs = starts_use[:, b].copy()
+                for mom in range(moments):
+                    if mom > 0:
+                        rhs = self.E @ Vcols[-1]
+                    x = lu.solve(rhs)
+                    x = PyMor._mgs(Vcols, x)
+                    if x is None:
+                        break
+                    Vcols.append(x)
+                    if len(Vcols) >= cap:
+                        break
+                if len(Vcols) >= cap:
+                    break
+            if len(Vcols) >= cap:
+                break
+        if not Vcols:
+            x = np.ones(n) / np.sqrt(n)
+            Vcols = [x]
+        self.V = np.column_stack(Vcols)
+        self.m = self.V.shape[1]
+        self.Ar = self.V.T @ (self.Aop @ self.V)
+        self.Er = self.V.T @ (self.E @ self.V)
+        self.setup_s = time.perf_counter() - t0
+
+    def timestep(self, sys, events, vdd: float, t_end: float) -> dict:
+        dt = float(sys["dt"])
+        n_leak = max(self.n_die, 1)
+        leak = np.asarray(sys.get("leak") if sys.get("leak") is not None else np.zeros(n_leak), dtype=np.float64)
+        steps = max(2, int(np.ceil(t_end / dt)))
+        Kr = self.Ar + self.Er / dt
+        dsolve = np.linalg.solve
+        x0 = np.zeros(self.n_aug)
+        x0[: self.n_v] = vdd
+        Ex = self.V.T @ (self.E @ x0)
+        z = dsolve(self.Er, Ex)
+        worst_v, worst_t, worst_i = vdd, 0.0, 0
+        worst_V = np.full(self.n_v, vdd)
+        wave_t, wave_vmin, wave_itot = [], [], []
+        t0 = time.perf_counter()
+        n_ev, idx, t50, dur, ip = _events_ct(events)
+        for s in range(steps):
+            t = s * dt
+            I = np.zeros(n_leak)
+            if leak.size:
+                I[: min(leak.size, n_leak)] = leak[: min(leak.size, n_leak)]
+            for e in range(n_ev):
+                i = int(idx[e])
+                if 0 <= i < n_leak:
+                    I[i] += _py_triangle(t, float(t50[e]), float(dur[e]), float(ip[e]))
+            u = np.zeros(self.n_aug)
+            if self.die_idx >= 0:
+                u[self.die_idx] = -I[0]
+            else:
+                nd = min(n_leak, self.n_aug)
+                u[:nd] = -I[:nd]
+            if self.u_const is not None:
+                u = u + self.u_const
+            for j in self.iv_list:
+                if 0 <= j < self.n_aug:
+                    u[j] += vdd
+            f = self.V.T @ u
+            rhs = (self.Er @ z) / dt + f
+            z = dsolve(Kr, rhs)
+            V = self.V[: self.n_v, :] @ z
+            if self.die_idx >= 0 and self.die_idx < self.n_v:
+                vmin = float(V[self.die_idx])
+                imin = 0
+            else:
+                nd = min(self.n_die, self.n_v)
+                imin = int(np.argmin(V[:nd]))
+                vmin = float(V[imin])
+            wave_t.append(float(t))
+            wave_vmin.append(vmin)
+            wave_itot.append(float(np.sum(I)))
+            if vmin < worst_v:
+                worst_v = vmin
+                worst_t = float(t)
+                worst_i = imin
+                worst_V = np.asarray(V, dtype=np.float64).copy()
+        return {
+            "worst_voltage": worst_v,
+            "worst_droop": vdd - worst_v,
+            "worst_droop_pct": 100.0 * (vdd - worst_v) / vdd,
+            "worst_time_s": worst_t,
+            "worst_node_idx": worst_i,
+            "dt": dt,
+            "t_end": t_end,
+            "steps": steps,
+            "solver": self.name,
+            "solver_setup_s": self.setup_s,
+            "solver_step_s": time.perf_counter() - t0,
+            "n_levels": self.m,
+            "m": self.m,
+            "rel_res_max": 0.0,
+            "wave_t": wave_t,
+            "wave_vmin": wave_vmin,
+            "wave_itot": wave_itot,
+            "V_worst": worst_V,
+            "backend": "python",
+            "timestep_loop": "mor",
+            "via": "sparse-E descriptor MOR (SciPy; not GCD Solver C)",
+        }
+
+
+def _py_triangle(t, t50, dur, ipulse):
+    if dur <= 0.0 or ipulse <= 0.0:
+        return 0.0
+    half = 0.5 * dur
+    tau = t - t50
+    if abs(tau) >= half:
+        return 0.0
+    return ipulse * (1.0 - abs(tau) / half)
+
+
+def native_mor_descriptor(sys, starts, shifts, n_moments: int = 4):
+    """Sparse-E descriptor MOR. Opt-in for on-die L+M; GCD Solver C stays package-L RLC MOR."""
+    lib = _libdpn()
+    if lib is not None and hasattr(lib, "dpn_mor_setup_gen"):
+        try:
+            return NativeMorGen(sys, starts, shifts, n_moments, lib)
+        except Exception as exc:
+            print(f"libdpn gen MOR unavailable ({exc}); using SciPy fallback", file=sys.stderr)
+    return PyMorDescriptor(sys, starts, shifts, n_moments)
     """Unsymmetric MNA: C v' + G v − i = −I, L i' + R i + v = Vsrc."""
     Gmesh = Gmesh.tocsr().astype(np.float64)
     n = Gmesh.shape[0]
