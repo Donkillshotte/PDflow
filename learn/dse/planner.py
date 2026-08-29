@@ -2,15 +2,17 @@
 
 Physical feedback chooses *where* to search (chip→block→region→cone):
   combo IR on a module  → architecture extracts on that cone
+  F3 WNS on an extract  → deprioritize extracts that lost slack
   spatial IR region     → physical density, not more ABC
   high GRT congestion   → physical F0 / GPL, not more ABC
-  otherwise             → logic BOiLS/DRiLLS, then F2-fast / budgeted GPL
+  otherwise             → logic BOiLS/DRiLLS (EHVI area+WNS), then F2 / GPL
 """
 
 from __future__ import annotations
 
 from .arch_space import plan_dpath_extracts
 from .memory import DesignMemory
+from .mo import baseline_wns, extract_wns, timing_bound
 
 
 def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict:
@@ -20,18 +22,23 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     combo = float(attr.get("combo_frac") or 0.0)
     seq = float(attr.get("seq_frac") or 0.0)
     scope = attr.get("scope") or ("logic_cone" if modules else "chip")
+    slack = None
+    hot = (attr.get("hotspot") or {}) if isinstance(attr.get("hotspot"), dict) else {}
+    timing = hot.get("timing") if isinstance(hot, dict) else None
+    if isinstance(timing, dict) and timing.get("path_slack_ns") is not None:
+        slack = float(timing["path_slack_ns"])
+    bound = timing_bound(mem, slack_ns=slack)
     steps: list[dict] = []
     _eg, _r, extracts, _st = plan_dpath_extracts()
-    unseen_arch = [
-        e
-        for e in _prefer_extracts(extracts, combo=combo)
-        if not any(c.knobs.get("extract") == e and c.status == "ok" for c in mem.by_level("architecture"))
-    ]
+    unseen_arch = rank_extracts(extracts, mem, combo=combo)
     if scope == "logic_cone" and focus != "chip" and combo >= 0.5 and unseen_arch:
+        why = f"combo IR {combo:.2f} on {focus} — cone extracts, no chip restart"
+        if bound:
+            why += "; F3 WNS reorders remaining extracts"
         steps.append(
             {
                 "level": "architecture",
-                "reason": f"combo IR {combo:.2f} on {focus} — cone extracts, no chip restart",
+                "reason": why,
                 "extracts": unseen_arch,
                 "scope": "logic_cone",
             }
@@ -44,10 +51,13 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         )
         steps.append({"level": "physical", "reason": why, "scope": "region" if region else "block"})
     else:
+        logic_why = "BOiLS SSK-GP + DRiLLS UCB on ABC sequences"
+        if bound or extract_wns(mem):
+            logic_why = "BOiLS EHVI(area, WNS) + DRiLLS UCB — F3 steers ABC, not area-only"
         steps.append(
             {
                 "level": "logic",
-                "reason": "BOiLS SSK-GP + DRiLLS UCB on ABC sequences",
+                "reason": logic_why,
                 "scope": "block" if focus != "chip" else "chip",
             }
         )
@@ -68,7 +78,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     steps.append(
         {
             "level": "f3_sta",
-            "reason": "OpenSTA ideal WNS/power on F1 winners — not SPEF signoff, not IR",
+            "reason": "OpenSTA ideal WNS/power interleaved after each F1 — not SPEF, not IR",
             "scope": "block" if focus != "chip" else "chip",
         }
     )
@@ -79,6 +89,13 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "chip",
         }
     )
+    steps.append(
+        {
+            "level": "physical_catalog",
+            "reason": "measure one AutoDMP util/density point with GPL (not F0-only RUDY)",
+            "scope": "region" if region else "chip",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
@@ -86,13 +103,34 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         "f2_cong": f2_cong,
         "region": region,
         "scope": scope,
+        "timing_bound": bound,
         "restart_chip": False,
         "hierarchy": ["chip", "block", "region", "logic_cone"],
         "steps": steps,
     }
 
 
-def _prefer_extracts(extracts: list[str], *, combo: float) -> list[str]:
+def rank_extracts(extracts: list[str], mem: DesignMemory, *, combo: float) -> list[str]:
+    """IR order, then F3 WNS: measured-worse extracts go last; unseen stay first."""
+    prefer = _ir_prefer(extracts, combo=combo)
+    seen = {c.knobs.get("extract") or c.knobs.get("name") for c in mem.by_level("architecture")}
+    unseen = [e for e in prefer if e not in seen]
+    timed = extract_wns(mem)
+    base = baseline_wns(mem)
+
+    def key(e: str) -> tuple:
+        w = timed.get(e)
+        ir_i = prefer.index(e) if e in prefer else 99
+        if w is None:
+            return (0, ir_i, 0.0)
+        worse = base is not None and w > base + 1e-6
+        return (1 if worse else 0, ir_i if not worse else 0, w)
+
+    unseen.sort(key=key)
+    return unseen
+
+
+def _ir_prefer(extracts: list[str], *, combo: float) -> list[str]:
     """Combo-heavy IR → compare/sub first (datapath), then zero-test."""
     prefer = ["lt_borrow", "sub_twos_complement", "eqz_or_reduce"] if combo >= 0.5 else list(extracts)
     out = [e for e in prefer if e in extracts]
@@ -100,3 +138,8 @@ def _prefer_extracts(extracts: list[str], *, combo: float) -> list[str]:
         if e not in out:
             out.append(e)
     return out
+
+
+def _prefer_extracts(extracts: list[str], *, combo: float) -> list[str]:
+    """Back-compat wrapper used by tests — IR order with no WNS memory."""
+    return _ir_prefer(extracts, combo=combo)

@@ -16,6 +16,7 @@ import numpy as np
 from .abc_space import BOILS_STD_OPS, CATALOG, subsequence_kernel
 from .fingerprint import knobs_fp
 from .memory import DesignMemory
+from .mo import ehvi_2d, logic_mo_rows, timing_bound
 from .policy import drills_propose
 
 
@@ -172,12 +173,17 @@ def generate_candidates(seen_ops: list[list[str]], best: list[str] | None) -> li
 
 
 def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
-    """Next logic knobs: DRiLLS UCB first, then EI on the SSK-GP."""
+    """Next logic knobs: DRiLLS UCB, then EHVI(area, WNS) or area EI."""
     seen_fp = mem.seen_knobs("logic")
-    ok = [c for c in mem.by_level("logic") if c.status == "ok" and c.qor.area_um2 is not None]
-    train_seqs = [list(c.knobs.get("abc_ops") or []) for c in ok]
-    y = [float(c.qor.area_um2) for c in ok]
+    rows = logic_mo_rows(mem)
+    train_seqs = [r[0] for r in rows]
+    y = [r[1] for r in rows]
+    timed = [(r[0], r[1], r[2]) for r in rows if r[2] is not None]
     best_seq = train_seqs[int(np.argmin(y))] if y else None
+    if timed:
+        # Incumbent for UCB: non-dominated on (area, WNS), then smallest area
+        timed_sorted = sorted(timed, key=lambda t: (t[1], t[2] if t[2] is not None else 1e9))
+        best_seq = timed_sorted[0][0]
     pool = []
     if best_seq is not None:
         ucb = drills_propose(mem, best_seq, focus)
@@ -190,24 +196,46 @@ def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
         pool.append(knobs)
     if not pool:
         return None
+    query = [list(k["abc_ops"]) for k in pool]
     if len(y) >= 2:
-        preds = gp_predict(train_seqs, y, [list(k["abc_ops"]) for k in pool])
+        preds_a = gp_predict(train_seqs, y, query)
         best_y = min(y)
+        use_ehvi = len(timed) >= 2
+        preds_w = None
+        front: list[tuple[float, float]] = []
+        if use_ehvi:
+            preds_w = gp_predict([t[0] for t in timed], [float(t[2]) for t in timed], query)
+            front = [(t[1], float(t[2])) for t in timed]
         scored = []
-        for knobs, (mu, std) in zip(pool, preds):
-            scored.append((ei_min(mu, std, best_y), -std, knobs, mu, std))
-        scored.sort(key=lambda t: (-t[0], t[1]))
-        pick = scored[0][2]
-        pick = dict(pick)
+        for i, knobs in enumerate(pool):
+            mu_a, std_a = preds_a[i]
+            ei_a = ei_min(mu_a, std_a, best_y)
+            ehvi = 0.0
+            mu_w = std_w = None
+            if use_ehvi and preds_w is not None:
+                mu_w, std_w = preds_w[i]
+                ehvi = ehvi_2d(mu_a, std_a, mu_w, std_w, front, seed=i)
+            # EHVI when WNS exists; otherwise area EI. Never mix util/pkg L.
+            score = ehvi if use_ehvi else ei_a
+            scored.append((score, ei_a, ehvi, knobs, mu_a, std_a, mu_w, std_w))
+        scored.sort(key=lambda t: (-t[0], -t[1]))
+        pick = dict(scored[0][3])
         pick["acq"] = {
-            "ei": scored[0][0],
-            "mu": scored[0][3],
-            "std": scored[0][4],
-            "via": "ssk_gp_ei",
+            "ei": scored[0][1],
+            "ehvi": scored[0][2],
+            "mu": scored[0][4],
+            "std": scored[0][5],
+            "mu_wns": scored[0][6],
+            "std_wns": scored[0][7],
+            "via": "ssk_gp_ehvi" if use_ehvi else "ssk_gp_ei",
+            "objectives": ["area_um2", "wns_cost"] if use_ehvi else ["area_um2"],
         }
         return pick
-    # Cold start: unused catalog first (named), then lowest SSK to seen
     named = [k for k in pool if any(k["name"] == s["name"] for s in CATALOG)]
+    if timing_bound(mem) and named:
+        delay = [k for k in named if k["name"] == "boils_balance_first"]
+        if delay:
+            return delay[0]
     if named:
         return named[0]
     from .abc_space import min_kernel_to_seen
@@ -217,14 +245,25 @@ def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
     return pool[idx]
 
 
-def should_pay_f1(pred: dict, best_area: float | None) -> tuple[bool, str]:
-    """Skip F1 when even an optimistic F0 draw is worse than the incumbent."""
+def should_pay_f1(
+    pred: dict,
+    best_area: float | None,
+    pred_wns: dict | None = None,
+    best_wns: float | None = None,
+) -> tuple[bool, str]:
+    """Skip F1 only when an optimistic draw is dominated on every measured axis."""
     if best_area is None or pred.get("mean") is None or pred.get("std") is None:
         return True, "no F0 confidence — pay F1"
     n = int(pred.get("n") or 0)
     if n < 3:
         return True, "n<3 — pay F1"
-    optimistic = float(pred["mean"]) - 2.0 * float(pred["std"])
-    if optimistic > float(best_area) * 1.05:
+    opt_area = float(pred["mean"]) - 2.0 * float(pred["std"])
+    if pred_wns and pred_wns.get("mean") is not None and best_wns is not None:
+        std_w = float(pred_wns["std"] or 0.0)
+        opt_wns = float(pred_wns["mean"]) - 2.0 * std_w
+        if opt_area > float(best_area) * 1.05 and opt_wns > float(best_wns) + 0.01:
+            return False, "F0 optimistic dominated on area and WNS — skip F1"
+        return True, "MO uncertainty or EHVI — pay F1"
+    if opt_area > float(best_area) * 1.05:
         return False, "F0 optimistic still worse than incumbent — skip F1"
     return True, "uncertainty or EI — pay F1"

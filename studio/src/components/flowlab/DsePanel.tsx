@@ -8,7 +8,7 @@ type Cand = {
   level: string;
   fidelity: string;
   status: string;
-  knobs?: { name?: string; extract?: string; source?: string };
+  knobs?: { name?: string; extract?: string; source?: string; catalog?: string; util?: number };
   qor?: {
     area_um2?: number | null;
     dynamic_ir_mv?: number | null;
@@ -27,6 +27,7 @@ type DseReport = {
   n_arch?: number;
   n_f2_fast?: number;
   n_f2_gpl?: number;
+  n_f2_gpl_catalog?: number;
   n_f3?: number;
   n_f2_grt?: number;
   surrogate_f1_to_f2_gnn?: { n?: number; uncertainty?: string; via?: string };
@@ -69,7 +70,7 @@ export function DsePanel() {
       <header className="fl-dynir-head">
         <strong>DSE · ricerca a livelli</strong>
         <p>
-          Planner dal cono IR · ABC · F2-fast/GPL/GRT · STA F3 · IR F4 ·{" "}
+          Planner IR+WNS · EHVI area/WNS · F2-fast/GPL/catalogo · STA F3 · IR F4 ·{" "}
           <Link href="/materiali/reference/dse.md">dse.md</Link>
         </p>
       </header>
@@ -117,6 +118,7 @@ export function DsePanel() {
               <dd>
                 fast {report.n_f2_fast ?? 0}
                 {report.n_f2_gpl != null ? ` · GPL ${report.n_f2_gpl}` : ""}
+                {report.n_f2_gpl_catalog != null ? ` · cat ${report.n_f2_gpl_catalog}` : ""}
                 {report.n_f2_grt != null ? ` · GRT ${report.n_f2_grt}` : ""}
               </dd>
             </div>
@@ -231,7 +233,11 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
         <tbody>
           {rows.map((c) => (
             <tr key={c.id} data-status={c.status}>
-              <td>{c.knobs?.source ?? c.id}</td>
+              <td>
+                {c.knobs?.catalog
+                  ? `${c.knobs.source ?? "gpl"} · ${c.knobs.catalog}`
+                  : (c.knobs?.source ?? c.id)}
+              </td>
               <td>{c.fidelity}</td>
               <td>
                 {c.artifacts?.hpwl_um != null

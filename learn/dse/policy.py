@@ -1,7 +1,7 @@
 """DRiLLS-shaped sequential policy: UCB over the next ABC op.
 
-State = (last op, attributed focus). Reward = −Δarea when a child sequence
-is the parent plus one STD op. Physical knobs never enter the state.
+State = (last op, attributed focus). Reward = −Δ(area, WNS) when a child
+sequence is the parent plus one STD op. Physical knobs never enter the state.
 
 This is a contextual bandit, not a deep RL policy. It only proposes; F1
 still measures.
@@ -14,6 +14,7 @@ from collections import defaultdict
 
 from .abc_space import BOILS_STD_OPS
 from .memory import DesignMemory
+from .mo import mo_scalar, timing_of
 
 
 def _last_op(ops: list[str]) -> str:
@@ -21,24 +22,34 @@ def _last_op(ops: list[str]) -> str:
 
 
 def transitions(mem: DesignMemory) -> list[tuple[str, str, str, float]]:
-    """(last_op, focus, next_op, reward) from logic F1 pairs."""
-    by_ops: dict[tuple[str, ...], float] = {}
+    """(last_op, focus, next_op, reward) from logic F1 pairs.
+
+    Reward is −Δ scalar(area, WNS) vs the parent. Area-only when F3 is missing.
+    """
+    by_ops: dict[tuple[str, ...], tuple[float, float | None]] = {}
     focus_of: dict[tuple[str, ...], str] = {}
     for c in mem.by_level("logic"):
         if c.status != "ok" or c.qor.area_um2 is None:
             continue
         key = tuple(c.knobs.get("abc_ops") or [])
-        by_ops[key] = float(c.qor.area_um2)
+        wns, _ = timing_of(mem, c)
+        by_ops[key] = (float(c.qor.area_um2), wns)
         mods = (c.attr or {}).get("modules") or []
         focus_of[key] = mods[0] if mods else "chip"
+    ref_area = min(v[0] for v in by_ops.values()) if by_ops else 1.0
+    wns_vals = [v[1] for v in by_ops.values() if v[1] is not None]
+    ref_wns = min(wns_vals) if wns_vals else None
     out = []
-    for seq, area in by_ops.items():
+    for seq, (area, wns) in by_ops.items():
         if not seq:
             continue
         parent = seq[:-1]
         if parent not in by_ops:
             continue
-        reward = -(area - by_ops[parent])  # improvement is positive
+        pa, pw = by_ops[parent]
+        child_s = mo_scalar(area, wns, area_ref=ref_area, wns_ref=ref_wns)
+        parent_s = mo_scalar(pa, pw, area_ref=ref_area, wns_ref=ref_wns)
+        reward = -(child_s - parent_s)
         out.append((_last_op(list(parent)), focus_of.get(parent, "chip"), seq[-1], reward))
     return out
 

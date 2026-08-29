@@ -11,8 +11,9 @@ RTL
    write_verilog -noattr -noexpr  (celle liberty, non assign soup)
  → F2-fast netgraph (baricentro ancorato + HPWL + RUDY)
  → F2 OpenROAD GPL -skip_io (un colpo a budget, non finish)
- → F3 OpenSTA sul *candidato* (interconnect ideale: WNS + potenza)
+ → F3 OpenSTA sul *candidato* (interconnect ideale: WNS + potenza), **interleaved** dopo ogni F1
  → F2 routing: place_pins + GPL + global_route (non detailed route)
+ → F2 catalogo fisico: un punto AutoDMP (util/densità) misurato con GPL, non solo proxy RUDY
  → F2 ingest place / GRT del layout corrente
  → F3 ingest STA signoff
  → F4 Dynamic IR / EM ingest (gold 45.298 mV unrestampato)
@@ -27,9 +28,9 @@ RTL
 | Livello | Cosa si cerca | Stato |
 |---|---|---|
 | **architecture** | extract e-graph equivalenti sul cono `dpath` (ROVER/ASPEN-shaped) | READY F1 + equiv |
-| **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+EI · insert |
+| **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+**EHVI(area,WNS)** / EI · insert |
 | **synthesis** | `ABC_AREA` ORFS | catalogo F0 (non mescolato alle ops ABC) |
-| **physical** | util, densità, netlist del candidato | F0 proxy + F2-fast + **GPL** + ingest F2/F4 — non lancia finish |
+| **physical** | util, densità, netlist del candidato | F0 proxy + F2-fast + **GPL** + **catalogo GPL** + ingest — non lancia finish |
 | **routing** | GRT dopo place_pins | READY F2 budgetato — non detailed route / F5 |
 | **pdn** | `c_decap`, pkg L | **ingest** F4 |
 
@@ -58,9 +59,11 @@ Sul datapath GCD saturiamo uguaglianze:
 - unsigned `a<b` ≡ borrow di `{0,a}-{0,b}`
 
 L’extract greedy (costo strutturale) preferisce l’operatore nativo; gli extract
-forzati vengono misurati a F1 (feedback EDA, idea ASPEN). Softmax su −cost/T è
+forzati vengono misurati a F1 e subito a F3 (feedback EDA, idea ASPEN). Softmax su −cost/T è
 ispirato a SmoothE, senza loop GPU. Se l’hotspot IR è su `dpath`, si riscrive
-**solo quel cono** — niente restart del chip.
+**solo quel cono** — niente restart del chip. Un extract peggiore sul WNS
+(es. `lt_borrow` a −0.59 ns vs baseline −0.52) viene **deprioritizzato**, non
+ripetuto come se l’area fosse l’unico asse.
 
 ## Attributi (chip → block → region → cone)
 
@@ -70,16 +73,18 @@ diventano `scope=logic_cone`, `modules=[dpath]`, `region=r31`. Si registra
 
 ## Ottimizzatori (uno per problema)
 
-Il **planner** legge `combo_frac`, il modulo e la regione: IR combo su `dpath`
-ordina gli extract (`lt_borrow` → `sub` → `eqz`) e non riparte dal chip.
-Congestione GRT alta o focus di regione sposta il budget sul livello physical.
+Il **planner** legge `combo_frac`, il modulo, la regione e il WNS F3: IR combo su
+`dpath` nomina gli extract (`lt_borrow` → `sub` → `eqz`) e non riparte dal chip.
+Dopo ogni F1 lo STA ricalcola l’ordine: extract misurati peggiori sul slack
+vanno in fondo. Congestione GRT alta o focus di regione sposta il budget sul
+livello physical. I knobs ABC e `coreUtilization` restano fingerprint distinti.
 
-- **BOiLS** — kernel SSK + GP + EI + trust-region (swap/delete/**insert**)
-- **DRiLLS** — UCB sul prossimo op ABC dato (ultimo op, focus IR)
+- **BOiLS** — kernel SSK + GP + **EHVI(area, WNS)** (EI se manca lo STA) + trust-region
+- **DRiLLS** — UCB sul prossimo op ABC dato (ultimo op, focus IR); reward area+WNS
 - **e-graph** — saturation + extract, non RTL casuale
 - **GNN** — 2 layer mean-aggregate + ridge su HPWL F2-fast; incertezza alta se n&lt;4
-- **AutoDMP-shaped** — catalogo util/densità a F0
-- **OpenROAD GPL** — un colpo `-skip_io` sul vincitore F1 (non route, non F5)
+- **AutoDMP-shaped** — catalogo util/densità: F0 è solo un prior; **un punto è GPL**
+- **OpenROAD GPL** — colpo `-skip_io` sul vincitore F1 + colpo catalogo (non F5)
 - **LLM** — proposer opzionale (`DSE_LLM_URL`); fallback simbolico; **non** è l’ottimizzatore
 
 ## Layer sostituibili

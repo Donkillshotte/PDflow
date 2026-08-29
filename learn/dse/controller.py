@@ -5,9 +5,9 @@ Loop: inspect → propose (level, knobs) → pick fidelity → evaluate → attr
 
 Optimizers (each on its own level):
   architecture — e-graph extract of the IR-attributed dpath cone (ROVER/ASPEN shape)
-  logic        — BOiLS SSK-GP + EI, DRiLLS sequential append
+  logic        — BOiLS SSK-GP + EHVI(area, WNS) / EI, DRiLLS sequential append
   synthesis    — ORFS ABC_AREA catalog (F0)
-  physical     — F2-fast netgraph + budgeted OpenROAD GPL + ingest + AutoDMP F0
+  physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT (not detailed route / F5)
   pdn          — F4 ingest only
 
@@ -22,7 +22,13 @@ import time
 from pathlib import Path
 
 from .abc_space import CATALOG
-from .acquire import should_pay_f2_fast, should_pay_f2_gpl, should_pay_f2_grt, should_pay_f3_sta
+from .acquire import (
+    should_pay_f2_fast,
+    should_pay_f2_gpl,
+    should_pay_f2_grt,
+    should_pay_f3_sta,
+    should_pay_physical_catalog,
+)
 from .arch_space import emit_gcd_variant
 from .attribute import attribute_from_path, local_scope
 from .boils import propose_logic_boils, should_pay_f1
@@ -46,8 +52,9 @@ from .layers import adapter_status
 from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front
-from .physical_space import propose_physical_f0, propose_synthesis_f0
-from .planner import plan_search
+from .mo import baseline_wns
+from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
+from .planner import plan_search, rank_extracts
 from .proposer import propose as propose_from_attr
 from .surrogate import (
     predict_f1_area,
@@ -89,10 +96,49 @@ def run_controller(
         if idx.is_file():
             idx.unlink()
     mem = DesignMemory(mem_path)
+    lib = liberty_path()
     log: list[dict] = []
 
     def step(kind: str, **kw):
         log.append({"t": time.time(), "kind": kind, **kw})
+
+    def time_candidate(cand, *, reason: str):
+        """Interleave F3 so WNS can steer the next extract / ABC sequence."""
+        if cand is None or cand.status != "ok":
+            return None
+        if time.time() + COST_HINT["F3"] > t_end:
+            return None
+        n_have = sum(
+            1
+            for c in mem.all()
+            if (c.knobs or {}).get("source") == "f3_opensta_ideal" and c.status == "ok"
+        )
+        if n_have >= 8:
+            return None
+        if any(
+            (c.knobs or {}).get("source") == "f3_opensta_ideal"
+            and (c.knobs or {}).get("parent_id") == cand.id
+            and c.status == "ok"
+            for c in mem.all()
+        ):
+            return None
+        w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib)
+        mem.touch(w)
+        child = evaluate_f3_sta(w, mem, design_id=design_id)
+        if child:
+            step(
+                "evaluate",
+                id=child.id,
+                level=w.level,
+                fidelity="F3",
+                via="f3_interleave",
+                parent=w.id,
+                wns_ns=(child.artifacts or {}).get("wns_ns"),
+                power_w=child.qor.power_w,
+                status=child.status,
+                reason=reason,
+            )
+        return child
 
     step("inspect", n=len(mem), levels=sorted({c.level for c in mem.all()}))
     phys = ingest_physical(variant, mem, design_id)
@@ -119,7 +165,6 @@ def run_controller(
     for s in plan["steps"]:
         step("plan_step", **s)
 
-    lib = liberty_path()
     n_f1 = 0
     n_arch = 0
 
@@ -160,6 +205,7 @@ def run_controller(
                 area_um2=cand.qor.area_um2,
                 cost_s=cand.cost_s,
             )
+            time_candidate(cand, reason="F3 teacher on liberty_default before extracts")
 
     # Hierarchical architecture: planner orders extracts from IR attribution.
     arch_step = next((s for s in plan["steps"] if s["level"] == "architecture"), None)
@@ -167,13 +213,18 @@ def run_controller(
         from .arch_space import plan_dpath_extracts
 
         _eg, _roots, _ex, stats = plan_dpath_extracts()
-        extracts = list(arch_step.get("extracts") or _ex)
         step("egraph", **{k: stats[k] for k in ("n_enodes", "n_eclasses", "rules_fired", "extracts")})
         step("arch_reason", reason=arch_step.get("reason"))
-        seen_arch = mem.seen_knobs("architecture")
-        for name in extracts:
-            if n_arch >= arch_max or n_f1 >= f1_max or time.time() >= t_end:
+        arch_skip: set[str] = set()
+        while n_arch < arch_max and n_f1 < f1_max and time.time() < t_end:
+            remaining = [
+                e
+                for e in rank_extracts(list(_ex), mem, combo=float(plan.get("combo_frac") or 0.0))
+                if e not in arch_skip
+            ]
+            if not remaining:
                 break
+            name = remaining[0]
             knobs = {
                 "name": name,
                 "module": "dpath",
@@ -181,7 +232,8 @@ def run_controller(
                 "scope": "logic_cone",
                 "abc_script": "file",
             }
-            if knobs_fp("architecture", knobs) in seen_arch:
+            if knobs_fp("architecture", knobs) in mem.seen_knobs("architecture"):
+                arch_skip.add(name)
                 continue
             if time.time() + COST_HINT["F1"] > t_end and n_f1:
                 step("stop", reason="budget would not cover architecture F1")
@@ -191,6 +243,7 @@ def run_controller(
                 try:
                     meta = emit_gcd_variant(rtl, name, dest)
                 except ValueError as exc:
+                    arch_skip.add(name)
                     step("arch_skip", extract=name, reason=str(exc))
                     continue
                 step("propose", level="architecture", knobs=knobs, fidelity="F1")
@@ -226,6 +279,7 @@ def run_controller(
                 area_um2=cand.qor.area_um2,
                 cost_s=cand.cost_s,
             )
+            time_candidate(cand, reason=f"F3 after extract {name} — reorder remaining")
 
     while n_f1 < f1_max and time.time() < t_end:
         knobs = propose_logic_boils(mem, focus=str(plan.get("focus") or "chip"))
@@ -255,7 +309,11 @@ def run_controller(
             break
         pred = predict_f1_area(mem.by_level("logic"), list(knobs.get("abc_ops") or []))
         best = _best_area(mem, "logic")
-        pay, why = should_pay_f1(pred, best)
+        acq = knobs.get("acq") or {}
+        pred_wns = None
+        if acq.get("mu_wns") is not None:
+            pred_wns = {"mean": acq.get("mu_wns"), "std": acq.get("std_wns")}
+        pay, why = should_pay_f1(pred, best, pred_wns, baseline_wns(mem))
         step("propose", level="logic", knobs=knobs, fidelity="F1", pred=pred, pay=pay, why=why)
         if not pay:
             mem.add(
@@ -309,6 +367,7 @@ def run_controller(
             area_um2=cand.qor.area_um2,
             cost_s=cand.cost_s,
         )
+        time_candidate(cand, reason="F3 after ABC so EHVI sees WNS")
 
     # F2-fast on the best F1 netlists (logic + architecture winners).
     n_f2 = 0
@@ -366,7 +425,10 @@ def run_controller(
         if pick:
             w = pick
             mem.touch(w)
-            child = evaluate_f2_gpl(w, mem, design_id=design_id)
+            params = flowlab_params()
+            util0 = float(params.get("coreUtilization") or 35.0)
+            den0 = gpl_density(util0, params.get("placeDensityAddon") or 0.2)
+            child = evaluate_f2_gpl(w, mem, design_id=design_id, util=util0, density=den0)
             if child:
                 step(
                     "evaluate",
@@ -449,6 +511,55 @@ def run_controller(
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:
         step("propose", level="physical", knobs=c.knobs, fidelity="F0")
+    n_cat = sum(1 for c in mem.by_level("physical") if (c.knobs or {}).get("catalog"))
+    pay_cat, why_cat = should_pay_physical_catalog(
+        mem, budget_left=t_end - time.time(), n_catalog=n_cat
+    )
+    step("acquire", fidelity="F2_GPL_CATALOG", pay=pay_cat, why=why_cat)
+    spec = next_catalog_spec(mem) if pay_cat else None
+    if spec and time.time() < t_end:
+        ranked = [
+            c
+            for c in mem.all()
+            if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
+        ]
+        ranked.sort(key=lambda c: float(c.qor.area_um2))
+        pick = None
+        for cand in ranked:
+            w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib)
+            mapped = (w.artifacts or {}).get("mapped_v")
+            if mapped and is_gate_cell_netlist(Path(mapped)):
+                pick = w
+                break
+        if pick:
+            mem.touch(pick)
+            util_c = float(spec["coreUtilization"])
+            den_c = gpl_density(util_c, spec["placeDensityAddon"])
+            child = evaluate_f2_gpl(
+                pick,
+                mem,
+                design_id=design_id,
+                util=util_c,
+                density=den_c,
+                extra_knobs={
+                    "catalog": spec["name"],
+                    "coreUtilization": spec["coreUtilization"],
+                    "placeDensityAddon": spec["placeDensityAddon"],
+                },
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="physical",
+                    fidelity="F2",
+                    via="f2_openroad_gpl_catalog",
+                    parent=pick.id,
+                    catalog=spec["name"],
+                    hpwl_um=(child.artifacts or {}).get("hpwl_um"),
+                    overflow=child.qor.congestion,
+                    status=child.status,
+                )
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -469,13 +580,13 @@ def run_controller(
             "layered search: architecture ≠ logic ≠ synthesis ≠ physical ≠ routing ≠ PDN",
             "F0 SSK-GP area + RUDY-class congestion; not IR",
             "F1 Yosys+ABC+equiv (script file, write_verilog -noexpr) on logic and dpath extracts",
-            "F2 ingest + F2-fast netgraph + budgeted GPL + budgeted GRT (routing level)",
-            "F3 OpenSTA on the candidate (ideal) + ingest signoff STA",
+            "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + budgeted GRT",
+            "F3 OpenSTA interleaved after each F1 (ideal) + ingest signoff STA",
             "F4 ingest Dynamic IR (Solver A gold unrestamped)",
-            "IR combo on dpath → planner orders cone extracts (lt/sub/eqz), no chip restart",
+            "IR combo on dpath → cone extracts; F3 WNS reorders remaining, no chip restart",
             "hierarchy chip→block→region→cone; attributed cells/region from hotspot",
-            "Pareto per level — no premature scalar",
-            "BOiLS SSK-GP + EI · DRiLLS UCB · GNN HPWL residual · AutoDMP F0 · GPL F2",
+            "Pareto per level — EHVI acquires, it does not replace the front",
+            "BOiLS SSK-GP + EHVI(area,WNS) · DRiLLS UCB · GNN HPWL · AutoDMP catalog GPL",
         ],
         "not": [
             "flattened black-box of all knobs",
@@ -498,6 +609,11 @@ def run_controller(
             1
             for c in mem.by_level("physical")
             if c.knobs.get("source") == "f2_openroad_gpl"
+        ),
+        "n_f2_gpl_catalog": sum(
+            1
+            for c in mem.by_level("physical")
+            if (c.knobs or {}).get("catalog")
         ),
         "n_f3": sum(1 for c in mem.all() if c.fidelity == "F3"),
         "n_f2_grt": sum(

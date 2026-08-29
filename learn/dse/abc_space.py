@@ -45,6 +45,12 @@ CATALOG: list[dict] = [
         "abc_ops": ["balance", "rewrite", "rewrite -z", "balance", "rewrite -z", "balance"],
         "note": "resyn2-class sequence from the BOiLS/ABC cookbook, not a fork",
     },
+    {
+        "name": "boils_balance_first",
+        "abc_args": [],
+        "abc_ops": ["balance", "rewrite", "resub", "balance"],
+        "note": "delay-leaning BOiLS sequence when F3 WNS is the bottleneck",
+    },
 ]
 
 

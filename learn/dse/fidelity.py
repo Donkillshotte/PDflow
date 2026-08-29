@@ -487,6 +487,7 @@ def evaluate_f2_gpl(
     util: float = 35.0,
     density: float = 0.55,
     timeout_s: float = 45.0,
+    extra_knobs: dict | None = None,
 ) -> Candidate | None:
     """Budgeted OpenROAD GPL on a gate-level F1 netlist. Not finish, not IR."""
     mapped = (parent.artifacts or {}).get("mapped_v")
@@ -500,6 +501,11 @@ def evaluate_f2_gpl(
         "density": density,
         "skip_io": True,
     }
+    if extra_knobs:
+        # Catalog tags only — never ABC/PDN knobs on this fingerprint.
+        for k in ("catalog", "coreUtilization", "placeDensityAddon"):
+            if k in extra_knobs:
+                knobs[k] = extra_knobs[k]
     fp = knobs_fp("physical", knobs)
     if fp in mem.seen_knobs("physical"):
         return next(c for c in mem.by_level("physical") if c.knobs_fp == fp)

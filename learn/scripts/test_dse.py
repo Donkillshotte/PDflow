@@ -15,12 +15,13 @@ if str(_ROOT / "learn") not in sys.path:
 from dse.abc_space import CATALOG, BOILS_STD_OPS, abc_script_plus, min_kernel_to_seen, subsequence_kernel
 from dse.arch_space import emit_gcd_variant, plan_dpath_extracts
 from dse.attribute import attribute_dynamic_ir, local_scope
-from dse.boils import ei_min, gp_predict, should_pay_f1
+from dse.boils import ei_min, gp_predict, propose_logic_boils, should_pay_f1
 from dse.egraph import gcd_dpath_egraph
 from dse.fingerprint import knobs_fp
 from dse.memory import Candidate, DesignMemory
 from dse.metrics import QoR, dominates, pareto_front, wns_cost_from_slack_ns
-from dse.physical_space import PHYSICAL_CATALOG, rudy_congestion
+from dse.mo import ehvi_2d, hypervolume_2d
+from dse.physical_space import PHYSICAL_CATALOG, gpl_density, next_catalog_spec, rudy_congestion
 
 
 def check(ok: bool, msg: str) -> None:
@@ -143,9 +144,34 @@ def main() -> int:
     check(not pay, "F0 skip when optimistic draw is still worse than incumbent")
     pay0, _ = should_pay_f1({"mean": 900.0, "std": 5.0, "n": 1}, 200.0)
     check(pay0, "n<3 still pays F1")
+    pay_mo, _ = should_pay_f1(
+        {"mean": 900.0, "std": 5.0, "n": 5},
+        200.0,
+        {"mean": 0.10, "std": 0.01},
+        0.52,
+    )
+    check(pay_mo, "optimistic worse area but better WNS still pays F1")
+    pay_dom, _ = should_pay_f1(
+        {"mean": 900.0, "std": 5.0, "n": 5},
+        200.0,
+        {"mean": 0.80, "std": 0.01},
+        0.52,
+    )
+    check(not pay_dom, "optimistic dominated on area and WNS skips F1")
+
+    hv = hypervolume_2d([(1.0, 5.0), (3.0, 2.0)], (10.0, 10.0))
+    hv_dom = hypervolume_2d([(1.0, 5.0), (3.0, 2.0), (4.0, 6.0)], (10.0, 10.0))
+    check(hv > 50.0, f"2-D HV of a known front, got {hv}")
+    check(abs(hv - hv_dom) < 1e-9, "dominated point does not change HV")
+    front_aw = [(400.0, 0.52), (410.0, 0.40)]
+    ehvi_good = ehvi_2d(390.0, 5.0, 0.38, 0.02, front_aw, seed=1)
+    ehvi_bad = ehvi_2d(430.0, 5.0, 0.70, 0.02, front_aw, seed=1)
+    check(ehvi_good > ehvi_bad, f"EHVI prefers a point that can grow the front ({ehvi_good} vs {ehvi_bad})")
 
     check(len(PHYSICAL_CATALOG) >= 3, "physical catalog has several AutoDMP-shaped points")
     check(rudy_congestion(45, 0.3) > rudy_congestion(30, 0.1), "higher util/density → higher proxy congestion")
+    check(abs(gpl_density(35, 0.2) - 0.55) < 1e-9, "ORFS place density = util/100 + addon")
+    check(next_catalog_spec(mem).get("name") == "util30_den010", "empty memory proposes first catalog point")
     check(
         knobs_fp("physical", {"coreUtilization": 35})
         != knobs_fp("logic", {"coreUtilization": 35}),
@@ -182,7 +208,7 @@ def main() -> int:
     check(local_scope(attr)["focus"] == "dpath", "focus is the attributed module")
     check(local_scope(attr)["hierarchy"][-1] == "logic_cone", "hierarchy ends at the cone")
 
-    from dse.planner import plan_search
+    from dse.planner import plan_search, rank_extracts
     from dse.policy import ucb_next_op
     from dse.netgraph import estimate_physical, is_gate_cell_netlist, parse_mapped_verilog, strip_verilog_comments
     from dse.gnn import graph_embedding, predict_hpwl
@@ -200,6 +226,63 @@ def main() -> int:
         planned["steps"][0].get("extracts", [None])[0] == "lt_borrow",
         "combo-heavy IR prefers lt_borrow first",
     )
+    mem_w = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-wns-")) / "w.jsonl")
+    mem_w.add(
+        Candidate(
+            id="base",
+            design_id="gcd",
+            parent_id=None,
+            level="logic",
+            knobs={"name": "liberty_default", "abc_ops": []},
+            knobs_fp=knobs_fp("logic", {"name": "liberty_default", "abc_ops": []}),
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=409.1, wns_cost=0.52, fidelity="F1"),
+            cost_s=1.0,
+        )
+    )
+    mem_w.add(
+        Candidate(
+            id="lt1",
+            design_id="gcd",
+            parent_id=None,
+            level="architecture",
+            knobs={"name": "lt_borrow", "extract": "lt_borrow", "abc_script": "file"},
+            knobs_fp=knobs_fp("architecture", {"name": "lt_borrow", "extract": "lt_borrow"}),
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=410.4, wns_cost=0.59, fidelity="F1"),
+            cost_s=1.0,
+        )
+    )
+    ranked = rank_extracts(
+        ["lt_borrow", "sub_twos_complement", "eqz_or_reduce"],
+        mem_w,
+        combo=0.98,
+    )
+    check(ranked[0] == "sub_twos_complement", f"F3-worse lt_borrow is deprioritized, got {ranked}")
+    check("lt_borrow" not in ranked, "already-measured extract is not proposed again")
+    mem_w.add(
+        Candidate(
+            id="rb",
+            design_id="gcd",
+            parent_id=None,
+            level="logic",
+            knobs={"name": "boils_rewrite_balance", "abc_ops": ["rewrite", "balance"]},
+            knobs_fp=knobs_fp("logic", {"name": "boils_rewrite_balance", "abc_ops": ["rewrite", "balance"]}),
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=483.3, wns_cost=0.55, fidelity="F1"),
+            cost_s=1.0,
+        )
+    )
+    mo_pick = propose_logic_boils(mem_w, focus="dpath")
+    check(mo_pick is not None, "MO BOiLS still proposes after two timed sequences")
+    check((mo_pick or {}).get("acq", {}).get("via") == "ssk_gp_ehvi", f"acquisition is EHVI, got {mo_pick}")
+    check("coreUtilization" not in (mo_pick or {}), "EHVI proposal does not flatten physical knobs")
     check(any(s["level"] == "f3_sta" for s in planned["steps"]), "planner schedules F3 STA")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(

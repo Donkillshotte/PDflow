@@ -59,7 +59,7 @@ def should_pay_f3_sta(
     *,
     budget_left: float,
     n_sta: int,
-    sta_max: int = 4,
+    sta_max: int = 8,
     min_s: float = 1.0,
 ) -> tuple[bool, str]:
     if n_sta >= sta_max:
@@ -110,6 +110,36 @@ def should_pay_f2_grt(
     if all(w.id in have for w in winners):
         return False, "every F1 winner already has a GRT child"
     return True, "promote F1 winner to OpenROAD GRT (not detailed route/F5)"
+
+
+def should_pay_physical_catalog(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_catalog: int,
+    catalog_max: int = 1,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay one GPL shot on an unseen AutoDMP util/density — not F0 RUDY as truth."""
+    if n_catalog >= catalog_max:
+        return False, "physical catalog GPL shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover catalog GPL"
+    from .physical_space import next_catalog_spec
+
+    if next_catalog_spec(mem) is None:
+        return False, "every AutoDMP catalog point already has a GPL child"
+    winners = [
+        c
+        for c in mem.all()
+        if c.status == "ok"
+        and c.fidelity == "F1"
+        and c.qor.area_um2 is not None
+        and (c.artifacts or {}).get("mapped_v")
+    ]
+    if not winners:
+        return False, "no F1 mapped netlist for catalog GPL"
+    return True, "measure AutoDMP catalog util/density with OpenROAD GPL (not F0-only)"
 
 
 def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hint: dict) -> str:
