@@ -1040,7 +1040,7 @@ quit
         tech,
     )
     check(plate["status"] == "READY" and plate["n_plate"] == 1 and plate["n_lateral"] == 0, "orthogonal M1/M2 → plate Cox")
-    a_ov = 0.5e-6 * 0.5e-6
+    a_ov = 1.0e-6 * 0.5e-6  # VDD 1 µm × 1 µm H at y=0; VSS 1 µm × 1 µm V at x=0.5 µm
     c_plate = cox_plate_f(a_ov, h_ild)
     check(abs(plate["c_sum_f"] - c_plate) / c_plate < 1e-6, f"plate C={plate['c_sum_f']:.4e} F matches ε0εr A/h")
     skip3 = estimate_rail_overlap_c(
