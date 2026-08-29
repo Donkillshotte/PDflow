@@ -62,6 +62,7 @@ from .acquire import (
     latest_port_host,
     should_pay_residual_steer,
     should_pay_ir_steer,
+    should_pay_host_ir_steer,
     extract_on_disk,
     local_hosts,
     should_pay_f4_pdn,
@@ -72,6 +73,7 @@ from .active import (
     iscale_host,
     order_local_hosts,
     steer_from_ir_residual,
+    steer_from_host_ir_residual,
     steer_from_port_residual,
     steer_from_residual,
 )
@@ -1739,6 +1741,58 @@ def run_controller(
             reason=steer_ir.get("reason"),
         )
 
+    planned_hir = any(s["level"] == "host_ir_steer" for s in plan["steps"])
+    while planned_hir and time.time() < t_end:
+        steer_hir = steer_from_host_ir_residual(mem)
+        n_hir_st = sum(
+            1
+            for c in mem.all()
+            if (c.attr or {}).get("via") == "active_f4_host_ir" and c.status == "ok"
+        )
+        pay_hir, why_hir = should_pay_host_ir_steer(
+            mem, budget_left=t_end - time.time(), steer=steer_hir, n_steer=n_hir_st
+        )
+        step("acquire", fidelity="HOST_IR_STEER", pay=pay_hir, why=why_hir, steer=steer_hir)
+        if not pay_hir or not steer_hir:
+            break
+        spec = steer_hir.get("spec") or {}
+        eid = str(steer_hir.get("extract_id") or "")
+        hit = extract_on_disk(mem, eid) if eid else None
+        if not spec or not hit:
+            break
+        child = evaluate_f4_pdn(
+            mem,
+            spec,
+            variant=variant,
+            design_id=design_id,
+            parent_id=hit["candidate"].id,
+            spice=hit["spice"],
+            insts=hit["insts"],
+            extract_id=eid,
+            sta=hit.get("sta"),
+        )
+        if not child:
+            break
+        child.attr = dict(child.attr or {})
+        child.attr["via"] = "active_f4_host_ir"
+        child.attr["steer"] = {k: steer_hir[k] for k in steer_hir if k != "spec"}
+        mem.touch(child)
+        step(
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="active_f4_host_ir",
+            parent=hit["candidate"].id,
+            catalog=spec.get("name"),
+            extract_id=eid,
+            host_source=steer_hir.get("host_source"),
+            droop_mv=child.qor.dynamic_ir_mv,
+            gold=False,
+            status=child.status,
+            reason=steer_hir.get("reason"),
+        )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -1776,6 +1830,7 @@ def run_controller(
             "F4 host extract: write_pg_spice on the attributed netlist — not the synth F1 mesh, not gold",
             "F4 host-region extract: density cap on the host IR bin — not gold rXY on synth F1, not more ABC",
             "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
+            "F4 host IR residual loop: winning family on the host-region mesh, then unused pkg L on the unconstrained host — not candidate IR-steer",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -1878,6 +1933,11 @@ def run_controller(
         ),
         "n_ir_steer": sum(
             1 for c in mem.all() if (c.attr or {}).get("via") == "active_f4_ir" and c.status == "ok"
+        ),
+        "n_host_ir_steer": sum(
+            1
+            for c in mem.all()
+            if (c.attr or {}).get("via") == "active_f4_host_ir" and c.status == "ok"
         ),
         "n_f2_grt": sum(
             1
@@ -2166,6 +2226,19 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         )
     if ir_bits:
         irst = " · IR-steer " + "; ".join(ir_bits)
+    hirst = ""
+    hir_bits: list[str] = []
+    for c in mem.all():
+        if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_host_ir":
+            continue
+        w = c.qor.dynamic_ir_mv
+        cat = (c.knobs or {}).get("name")
+        eid = (c.knobs or {}).get("extract_id")
+        hir_bits.append(
+            f"{cat} on {eid} {float(w):.3f} mV" if w is not None else str(cat)
+        )
+    if hir_bits:
+        hirst = " · host-IR-steer " + "; ".join(hir_bits)
     isc = ""
     for c in mem.by_level("pdn"):
         if c.status != "ok" or (c.knobs or {}).get("source") != "f4_iscale":
@@ -2189,5 +2262,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )

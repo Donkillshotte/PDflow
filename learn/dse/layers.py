@@ -43,8 +43,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "SSK-GP / F1→F2 residual / F3→F5-lite+local residual steers the next level / F4 IR residual steers PDN / F4 host-region residual vs unconstrained host / GNN readout — never Dynamic IR gold",
     },
     "active": {
-        "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + iscale_host + order_local_hosts",
-        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; not a mixed knob vector",
+        "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + steer_from_host_ir_residual + iscale_host + order_local_hosts",
+        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; not a mixed knob vector",
     },
     "synthesis": {
         "via": "dse.synthesis + dse.fidelity.evaluate_f1_synth",

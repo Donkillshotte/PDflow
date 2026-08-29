@@ -353,6 +353,7 @@ def main() -> int:
     check(any(s["level"] == "f5_port" for s in planned["steps"]), "planner schedules F5-port SPEF on the port-net host")
     check(any(s["level"] == "port_steer" for s in planned["steps"]), "planner schedules F5-port residual steer")
     check(any(s["level"] == "ir_steer" for s in planned["steps"]), "planner schedules F4 IR residual steer")
+    check(any(s["level"] == "host_ir_steer" for s in planned["steps"]), "planner schedules host IR residual steer")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -440,6 +441,7 @@ def main() -> int:
     check(next_fidelity(level="f5_port", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-port measures at F5")
     check(next_fidelity(level="port_steer", pred=None, budget_left=20, cost_hint={}) == "F3", "F5-port residual steer measures at F3")
     check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
+    check(next_fidelity(level="host_ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "host IR residual steer measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -508,6 +510,17 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_host_region_extract", "parent_id": "psteer", "region": "r02"})
         != knobs_fp("pdn", {"source": "f4_region_extract", "parent_id": "synp", "region": "r31"}),
         "host-region extract knobs are not flattened into the synth region extract fingerprint",
+    )
+    check(
+        knobs_fp(
+            "pdn",
+            {"source": "f4_solver_a", "name": "decap_200f", "extract_id": "hreg", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 200e-15},
+        )
+        != knobs_fp(
+            "pdn",
+            {"source": "f4_solver_a", "name": "decap_200f", "extract_id": "regext", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 200e-15},
+        ),
+        "host-region decap restamp is not flattened into the synth-region decap fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "finish"})
@@ -1191,6 +1204,7 @@ def main() -> int:
         should_pay_net_port,
         should_pay_residual_steer,
         should_pay_ir_steer,
+        should_pay_host_ir_steer,
         should_pay_f4_scale,
         should_pay_host_arrivals,
         should_pay_f4_host_extract,
@@ -1965,6 +1979,95 @@ def main() -> int:
     check(hr_r.get("host_bin") == "r02", f"host-region residual names the host bin, got {hr_r}")
     empty_hr = residual_f4_host_region(list(mem_ir.all()))
     check((empty_hr.get("n") or 0) == 0, "synth region residual is not a host-region pair")
+    from dse.active import steer_from_host_ir_residual
+
+    mem_hr.add(
+        Candidate(
+            id="hcand",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "f4_candidate_extract", "extract_id": "hcand"},
+            knobs_fp="hcand",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=16.616, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    mem_hr.add(
+        Candidate(
+            id="hdecap",
+            design_id="gcd",
+            parent_id="hcand",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "decap_200f",
+                "extract_id": "hcand",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 200e-15,
+            },
+            knobs_fp="hdecap",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=8.842, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    st_hir = steer_from_host_ir_residual(mem_hr)
+    check(st_hir is not None and (st_hir.get("spec") or {}).get("name") == "decap_200f", f"large host-region residual steers decap, got {st_hir}")
+    check(st_hir.get("extract_id") == "hreg", f"host IR-steer restamps the host-region mesh, got {st_hir}")
+    check(st_hir.get("host_source") == "f4_host_region_extract", "host IR-steer names the host-region extract")
+    check(st_hir.get("extract_id") != "hcand", "host IR-steer does not pick the synth candidate extract")
+    pay_hir0, why_hir0 = should_pay_host_ir_steer(mem_hr, budget_left=80, steer=None)
+    check(not pay_hir0, f"host IR-steer waits for a steer dict ({why_hir0})")
+    pay_hir1, why_hir1 = should_pay_host_ir_steer(mem_hr, budget_left=80, steer=st_hir)
+    check(pay_hir1, f"host IR-steer is paid after host-region residual ({why_hir1})")
+    mem_hr.add(
+        Candidate(
+            id="hdecapr",
+            design_id="gcd",
+            parent_id="hreg",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "decap_200f",
+                "extract_id": "hreg",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 200e-15,
+            },
+            knobs_fp="hdecapr",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=6.80, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "active_f4_host_ir"},
+        )
+    )
+    pay_hsame, why_hsame = should_pay_host_ir_steer(mem_hr, budget_left=80, steer=st_hir, n_steer=1)
+    check(not pay_hsame, f"same host-region decap point is not restamped ({why_hsame})")
+    st_hir2 = steer_from_host_ir_residual(mem_hr)
+    check(st_hir2 is not None and (st_hir2.get("spec") or {}).get("name") == "pkg_l_100p", f"after host-region decap, unused pkg L is next, got {st_hir2}")
+    check(st_hir2.get("extract_id") == "hex", f"second host IR-steer stays on the unconstrained host extract, got {st_hir2}")
+    check(st_hir2.get("host_source") == "f4_host_extract", "second host IR-steer names the unconstrained host extract")
+    check(st_hir2.get("extract_id") != "hcand", "second host IR-steer does not pick the synth candidate")
+    pay_hir2, why_hir2 = should_pay_host_ir_steer(mem_hr, budget_left=80, steer=st_hir2, n_steer=1)
+    check(pay_hir2, f"second host IR-steer is paid after inspect ({why_hir2})")
+    pay_hir3, why_hir3 = should_pay_host_ir_steer(mem_hr, budget_left=80, steer=st_hir2, n_steer=2)
+    check(not pay_hir3, f"host IR-steer loop caps at host-region family + unused catalog ({why_hir3})")
+    fake_cand = dict(st_hir2)
+    fake_cand["host_source"] = "f4_candidate_extract"
+    pay_href, why_href = should_pay_host_ir_steer(mem_hr, budget_left=80, steer=fake_cand, n_steer=1)
+    check(not pay_href, f"host IR-steer refuses a candidate extract ({why_href})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

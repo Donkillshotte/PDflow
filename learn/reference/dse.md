@@ -32,6 +32,7 @@ RTL
  → F3 `report_arrival` sull’host attribuito (t50 per I(t), non lo STA dell’extract synth)
  → F4 extract host (`write_pg_spice` sul netlist attribuito — mesh propria, non synth)
  → F4 extract host-regione (density cap sul bin IR dell’host, es. r02 — non r31 gold sul synth)
+ → F4 host-IR-steer: famiglia vincente sul mesh host-regione, poi pkg L sull’host libero (non IR-steer candidato)
  → F4 restamp DirectLU / SA-AMG / RAS / Krylov-MOR (knobs PDN / I(t)×power dell’host attribuito / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle/net → modulo RTL (dpath/ctrl)

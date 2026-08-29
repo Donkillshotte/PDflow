@@ -8,6 +8,9 @@ F3→F5 residual + uncertainty:
 F4 IR residual (mesh / PDN knob / region):
   large |catalog − gold-knob| → that PDN family on the region mesh
   small |catalog − gold-knob| → unused pkg L on the candidate extract
+F4 host-region residual (this pair only, not the synth region residual):
+  large |host-region − host| → winning PDN family on the host-region mesh
+  after that / small residual → unused pkg L on the unconstrained host extract
 F5-port residual (this pair only, not the mixed F5-local mean):
   large |SPEF − ideal| → intra-module BUF on SPEF hops (not another port BUF)
 F4 I-scale host:
@@ -320,6 +323,116 @@ def steer_from_ir_residual(mem: DesignMemory) -> dict | None:
                 "via": "active_f4_ir_residual",
                 "not": "a flattened black-box of ABC+PDN knobs",
             }
+    return None
+
+
+def _winning_pdn_family(mem: DesignMemory) -> tuple[dict | None, float | None]:
+    """Catalog point with the largest |ΔIR| on the candidate extract. Not a mixed vector."""
+    from .pdn_space import PDN_CATALOG
+    from .surrogate import residual_f4_knob
+
+    knob = residual_f4_knob(list(mem.all()))
+    pairs = list(knob.get("pairs") or [])
+    if pairs:
+        best = max(pairs, key=lambda p: abs(float(p["residual_mv"])))
+        spec = next((s for s in PDN_CATALOG if s["name"] == best["catalog"]), None)
+        if spec:
+            return spec, float(best["residual_mv"])
+    return (PDN_CATALOG[0] if PDN_CATALOG else None), knob.get("mean_residual_mv")
+
+
+def steer_from_host_ir_residual(mem: DesignMemory) -> dict | None:
+    """Next PDN action on the host mesh from the host-region residual. Not candidate IR-steer."""
+    from .pdn_space import PDN_CATALOG, measured_pdn_keys
+    from .surrogate import residual_f4_host_region
+
+    host_r = residual_f4_host_region(list(mem.all()))
+    if int(host_r.get("n") or 0) < 1:
+        return None
+
+    def _latest(src: str):
+        for c in reversed(list(mem.by_level("pdn"))):
+            if c.status == "ok" and (c.knobs or {}).get("source") == src:
+                return c
+        return None
+
+    host = _latest("f4_host_extract")
+    hreg = _latest("f4_host_region_extract")
+    if host is None or hreg is None:
+        return None
+
+    spec_win, knob_r = _winning_pdn_family(mem)
+    winning = str((spec_win or {}).get("name") or "")
+    mesh_r = host_r.get("mean_residual_mv")
+    large = mesh_r is not None and abs(float(mesh_r)) >= KNOB_MV
+
+    if large and spec_win is not None:
+        rid = str((hreg.knobs or {}).get("extract_id") or hreg.id)
+        have = measured_pdn_keys(mem, extract_id=rid)
+        key = (float(spec_win["pkg_r"]), float(spec_win["pkg_l"]), float(spec_win["c_decap"]))
+        if key not in have:
+            return {
+                "level": "pdn",
+                "spec": spec_win,
+                "extract_id": rid,
+                "host_id": hreg.id,
+                "host_source": "f4_host_region_extract",
+                "reason": (
+                    f"F4 host-region residual {float(mesh_r):+.3f} mV — "
+                    f"restamp {winning} on the host-region mesh, not gold rXY, not ABC"
+                ),
+                "host_region_residual_mv": float(mesh_r),
+                "knob_residual_mv": knob_r,
+                "via": "active_f4_host_ir_residual",
+                "not": "candidate IR-steer / a mixed ABC+PDN vector",
+            }
+
+    cid = str((host.knobs or {}).get("extract_id") or host.id)
+    have = measured_pdn_keys(mem, extract_id=cid)
+    unused = [
+        s
+        for s in PDN_CATALOG
+        if (float(s["pkg_r"]), float(s["pkg_l"]), float(s["c_decap"])) not in have
+    ]
+    rid = str((hreg.knobs or {}).get("extract_id") or hreg.id)
+    transferred = spec_win is not None and (
+        float(spec_win["pkg_r"]),
+        float(spec_win["pkg_l"]),
+        float(spec_win["c_decap"]),
+    ) in measured_pdn_keys(mem, extract_id=rid)
+    small = mesh_r is not None and abs(float(mesh_r)) < KNOB_MV
+    if unused and (small or transferred):
+        spec = unused[0]
+        if transferred and spec_win is not None:
+            spec = next((s for s in unused if s["name"] != winning), spec)
+        if transferred and not small:
+            why = (
+                f"F4 winning family {winning} already on the host-region mesh — "
+                f"pay unused {spec['name']} on the unconstrained host extract "
+                "(not candidate IR-steer, not ABC)"
+            )
+        elif small:
+            why = (
+                f"F4 host-region residual {float(mesh_r):+.3f} mV (small) — pay {spec['name']} "
+                "on the unconstrained host extract, not more decap, not ABC"
+            )
+        else:
+            why = (
+                f"F4 host-region residual {mesh_r} mV — pay {spec['name']} "
+                "on the unconstrained host extract, not ABC"
+            )
+        return {
+            "level": "pdn",
+            "spec": spec,
+            "extract_id": cid,
+            "host_id": host.id,
+            "host_source": "f4_host_extract",
+            "reason": why,
+            "host_region_residual_mv": mesh_r,
+            "knob_residual_mv": knob_r,
+            "via": "active_f4_host_ir_residual",
+            "not": "candidate IR-steer / a mixed ABC+PDN vector",
+        }
     return None
 
 

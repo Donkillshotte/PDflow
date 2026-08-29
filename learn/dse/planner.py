@@ -331,6 +331,17 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "region" if region else "chip",
         }
     )
+    steps.append(
+        {
+            "level": "host_ir_steer",
+            "reason": (
+                "F4 host-region residual loop: winning family on the host-region "
+                "mesh, then unused pkg L on the unconstrained host — not candidate "
+                "IR-steer, not gold rXY, not ABC"
+            ),
+            "scope": "region",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

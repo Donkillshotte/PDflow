@@ -775,6 +775,39 @@ def should_pay_ir_steer(
     return True, str(steer.get("reason") or "F4 IR residual steers the next PDN action")
 
 
+def should_pay_host_ir_steer(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 2,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay the next host-mesh PDN action from the host-region residual.
+
+    Shot 1: winning catalog on the host-region mesh. Shot 2: unused pkg L on
+    the unconstrained host extract. Not candidate IR-steer, not a mixed vector.
+    """
+    if n_steer >= steer_max:
+        return False, "host IR-residual-steered budget spent (host-region family + unused catalog)"
+    if budget_left < min_s:
+        return False, "wall budget would not cover host IR-steered Solver A"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no host IR-residual-steered PDN action (need a host-region residual pair)"
+    src = str(steer.get("host_source") or "")
+    if src not in ("f4_host_region_extract", "f4_host_extract"):
+        return False, "host IR-steer refuses a candidate/region extract"
+    spec = steer["spec"]
+    from .pdn_space import measured_pdn_keys
+
+    have = measured_pdn_keys(mem, extract_id=str(steer["extract_id"]))
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that host IR-steered PDN point is already measured on this extract"
+    return True, str(steer.get("reason") or "F4 host-region residual steers the next host PDN action")
+
+
 def should_pay_f3_spef(
     mem: DesignMemory,
     *,
@@ -1242,6 +1275,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "f4_host_region",
         "f4_host_region_extract",
         "ir_steer",
+        "host_ir_steer",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):
