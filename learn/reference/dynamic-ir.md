@@ -48,7 +48,7 @@ I solver A/B/C/D ci sono. **Non** si forka vyges, EMSim o PSM. Ginkgo GPU resta 
 | **A** direct BE + LU | golden | READY (~3 ms setup, più veloce a 4k nodi) |
 | **B** SA-AMG + CG in `libdpn` | workhorse | READY · 5 livelli · \|A−B\| ≪ 1 mV · nativo |
 | **C** rational Krylov MOR | reduced ODE, tanti `I(t)` | **READY** · m=96 · \|A−C\| 0.129 mV (descriptor RLC, \(x=[v;i_L]\)); ranking resta A |
-| **D** RAS Schwarz | domain decomposition su \(A\) | graph partition + LU locali + GMRES; vs A sul TRAN GCD nel report `solver_d` |
+| **D** RAS Schwarz | domain decomposition su \(A\) | **READY** · ndom=8 · 59.929 mV · \|A−D\| **0.004 mV** · nativo (LU resta più veloce a 4k nodi) |
 
 | Rete | Equazione | GCD |
 |---|---|---|
@@ -59,7 +59,7 @@ I solver A/B/C/D ci sono. **Non** si forka vyges, EMSim o PSM. Ginkgo GPU resta 
 
 FAST = vectorless + AMG = **READY** (t50 sintetici). ACCURATE e SIGNOFF = GAP.
 
-Sul GCD Nangate45 LU è più veloce di AMG (4k nodi). AMG è il path che tiene su mesh enormi; A resta l’oracle.
+Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i path che tengono su mesh enormi; A resta l’oracle. RAS setup 3.6 ms, TRAN ~2.9 s vs LU TRAN ~7.5 ms.
 
 ## Pipeline a 6 livelli (oggi)
 
@@ -114,7 +114,7 @@ N3 = companion BE con storia di \(i_L\) (non \(L/\Delta t\) memoryless). Il droo
 | **questo engine `clock` + \(i_L\)** | **17.52 mV** | **59.925 mV (5.45%) @ 0.33 ns** · I_peak 21.7 mA · native_hist |
 | Solver B SA-AMG | — | 59.925 mV · \|A−B\| ≪ 1 µV · L5 native |
 | Solver C Krylov MOR | — | 60.054 mV · m=96 · \|A−C\| **0.129 mV** · descriptor RLC |
-| Solver D RAS Schwarz | — | vs A sul TRAN; `ndom` dal grafo (non stripe); numeri in `solver_d` del report |
+| Solver D RAS Schwarz | — | **59.929 mV** · ndom=8 · \|A−D\| **0.004 mV** · native_hist |
 
 Ranking Solver A (gold): simultaneous 67.25 mV > clock 59.93 mV > spatial 55.31 mV.
 Con \(i_L\), lo spike simultaneo è il peggiore (I_peak 52 mA vs 22 mA clock) — il contrario della slice memoryless.

@@ -18,7 +18,7 @@ Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Pytho
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
 | **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=96 · \|A−C\| 0.129 mV sul GCD clock (descriptor RLC); ranking scenari = Solver A |
-| **Solver D** RAS Schwarz | decomposizione di dominio | graph-grown subdomains, LU locali, RAS, GMRES (`dpn_setup` kind=2) |
+| **Solver D** RAS Schwarz | decomposizione di dominio | **READY** · ndom=8 · \|A−D\| 0.004 mV sul GCD clock (grafo, non stripe) |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
 | ngspice | unit test fisico 1-nodo RC e R+L | READY |
@@ -54,7 +54,7 @@ Lo split da copiare è quello di EMSim *current analysis*, non il passo EM probe
 | **A — Direct BE** | \((G + C/\Delta t) V_{n+1} = \mathrm{rhs}\) · LU sparso | gold, lento, indispensabile per validare | **READY** |
 | **B — SA-AMG** | V-cycle Jacobi + CG, LU sul coarse | workhorse (ESPSim-class) | **READY** |
 | **C — rational Krylov** | RC: \(C_r \dot z + G_r z = -V^\top I\); RLC: \(E_r \dot z + A_r z = V^\top u\), \(x=[v;i_L]\) | tante TRAN sulla stessa PDN | **READY** sul GCD (\|A−C\| 0.129 mV, m=96) |
-| **D — RAS Schwarz** | subdomain LU + RAS + GMRES su \(A\) | domain decomposition, non stripe | Poisson vs LU in `dpn_test`; TRAN GCD in `solver_d` |
+| **D — RAS Schwarz** | subdomain LU + RAS + GMRES su \(A\) | domain decomposition, non stripe | **READY** sul GCD (\|A−D\| 0.004 mV, ndom=8) |
 
 Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. Non si scrive una GPU fork: un giorno `LinearSolver` → Ginkgo.
 
@@ -116,7 +116,7 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | modi sintetici clock/spatial; VCD RTL non è pin-accurate |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |
-| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold | **A + B + C READY**; D vs A on Poisson in `dpn_test`, GCD TRAN in `solver_d` |
+| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold | **A + B + C + D READY** (D = RAS, \|A−D\| 0.004 mV, ndom=8) |
 | 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG heatmap + \(I_\mathrm{branch}\) PARTIAL |
 
 ## Classifica reale
