@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """EM + lumped thermal reporting on the PDN graph.
 
-J from branch I and a width inferred from R, length, and LEF RPERSQ
-(not min WIDTH — PDN straps are wider than the routing minimum).
-Thickness from LEF. Black TTF is *relative* (∝ J^{-n} exp(Ea/kT)); no
-foundry A. Thermal is lumped P→ΔT→R(T), not a 3D solver, and not a
-sub-ns TRAN (thermal RC is much slower).
+J from branch I and a width inferred from R, length, and LEF RPERSQ.
+PDN straps are usually wider than min WIDTH; when inferred w is below
+min WIDTH (OpenROAD R is not a pure rectangle), w is clamped to min WIDTH
+so J is not a 10^12 A/m² artifact. Thickness from LEF. Black TTF is
+*relative* (∝ J^{-n}); no foundry A. Thermal is lumped P→ΔT→R(T), not a
+3D solver, and not a sub-ns TRAN (thermal RC is much slower).
 Never ML.
 """
 
@@ -52,20 +53,26 @@ def branch_geometry(a: str, b: str, r: float, tech: dict) -> dict | None:
     L = _len_m(a, b, dbu)
     if L is None:
         return None
-    w_m = (float(rpsq) * L) / max(r, 1e-18)
+    w_inf_m = (float(rpsq) * L) / max(r, 1e-18)
     t_m = float(t_um) * 1e-6
+    w_min_m = float(spec.get("width_um") or 0.0) * 1e-6
+    # OpenROAD R is not a pure rectangle (vias lumped into the edge).
+    # A legal wire cannot be thinner than min WIDTH — clamp so J is not a
+    # 10^12 A/m² artifact from w≪WIDTH.
+    w_m = max(w_inf_m, w_min_m) if w_min_m > 0.0 else w_inf_m
     if w_m <= 0.0 or t_m <= 0.0:
         return None
-    w_min_m = float(spec.get("width_um") or 0.0) * 1e-6
     return {
         "layer": la,
         "L_m": L,
         "w_m": w_m,
+        "w_inferred_m": w_inf_m,
         "t_m": t_m,
         "area_m2": w_m * t_m,
         "rpersq": float(rpsq),
         "w_min_m": w_min_m,
         "w_over_min": (w_m / w_min_m) if w_min_m > 0 else None,
+        "w_clamped": bool(w_min_m > 0.0 and w_inf_m < w_min_m),
     }
 
 
@@ -154,13 +161,13 @@ def em_thermal_snapshot(
     return {
         "status": status,
         "model": (
-            "I=(Va-Vb)/R; w=RPERSQ·L/R (LEF); J=I/(w·t); "
+            "I=(Va-Vb)/R; w=max(RPERSQ·L/R, WIDTH_min); J=I/(w·t); "
             f"TTF_rel=(Jref/J)^{BLACK_N} at {T_EM_K:.0f} K; "
             f"ΔT=Rth·I²R with Rth={RTH_K_PER_W} K/W lumped"
         ),
         "not": [
             "foundry Black A / TTF hours",
-            "extracted strap width from LEF geometry (width from R)",
+            "extracted strap width from LEF geometry (width from R, clamped to min WIDTH)",
             "3D thermal / sub-ns thermal TRAN",
         ],
         "n_branches": len(branches),

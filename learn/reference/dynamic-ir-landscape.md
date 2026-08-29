@@ -67,7 +67,7 @@ Il prototipo stampava \(L/\Delta t\) memoryless. N3 ora è un **companion BE ser
 | **N1 R** | \(GV = I\) | READY — `solve_static` |
 | **N2 R+C** | decap lumpato sui tap | READY — `c_decap` |
 | **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\) (non L on-die estratta) |
-| **N4 on-die + pkg + bumps + VRM** | gerarchia completa | **READY** accoppiato (descriptor BE, \|N3−N4\| ≪ 1 mV sul clock GCD). Il load-step µs VRM resta `system_pdn` ngspice |
+| **N4 on-die + pkg + bumps + VRM** | gerarchia completa | **READY** nativo (`libdpn` descriptor BE, \|N3−N4\| ≈ 18 nV sul clock GCD). Il load-step µs VRM resta `system_pdn` ngspice |
 
 ## Tre livelli di prodotto
 

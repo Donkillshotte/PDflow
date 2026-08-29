@@ -319,6 +319,23 @@ quit
     area = 1e-6 * 0.13e-6
     j_expect = i_br / area
     check(abs(em["j_absmax_a_m2"] - j_expect) / j_expect < 1e-9, "J = I/(w t)")
+    check(not em["hottest_j"].get("w_clamped"), "wide inferred strap is not clamped")
+    # Skinny inferred w from lumped via-ish R → clamp to min WIDTH 0.07 µm.
+    em_c = em_thermal_snapshot(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_330_0", 12.54)],
+        {"ITermNode_metal1_0_0": 0, "ITermNode_metal1_330_0": 1},
+        ["ITermNode_metal1_0_0", "ITermNode_metal1_330_0"],
+        np.array([1.10, 1.09], dtype=np.float64),
+        bump=[],
+        bump_v=[],
+        i_L=None,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        tech=tech,
+    )
+    em_c.pop("_scaled_resistors", None)
+    check(em_c["hottest_j"]["w_clamped"] is True, "inferred w < min WIDTH is clamped")
+    check(abs(em_c["hottest_j"]["w_m"] - 0.07e-6) < 1e-15, "clamped w equals metal1 min WIDTH")
     em.pop("_scaled_resistors", None)
     print(
         f"    EM J={em['j_absmax_a_m2']:.4e} A/m² TTF_rel={em['ttf_rel_min']:.4e} "

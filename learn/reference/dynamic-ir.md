@@ -55,7 +55,7 @@ I solver A/B/C/D ci sono. **Non** si forka vyges, EMSim o PSM. Ginkgo GPU resta 
 | N1 R | \(GV=I\) | READY |
 | N2 R+C | + `c_decap` | READY |
 | N3 + pkg R/L | companion \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\) | READY (L on-die non estratta) |
-| N4 + VRM | on-die + lumped VRM descriptor | **READY** (coupled BE; \|N3−N4\| ≈ 18 µV on this 0.46 ns window — 47 µF is stiff). Full VRM µs load-step resta `system_pdn` |
+| N4 + VRM | on-die + lumped VRM descriptor | **READY** (native descriptor BE; \|N3−N4\| ≈ 18 nV on this 0.46 ns window — 47 µF is stiff). Full VRM µs load-step resta `system_pdn` |
 
 FAST = vectorless + AMG = **READY** (t50 sintetici). ACCURATE e SIGNOFF = GAP.
 
@@ -121,7 +121,9 @@ Con \(i_L\), lo spike simultaneo è il peggiore (I_peak 52 mA vs 22 mA clock) �
 
 Gold ngspice: **1 nodo RC** `|V_BE−V_ng| ≈ 0.032 mV`; **1 nodo pad–R–L–C** ≈ 0.056 mV (`gear maxord=1`, soglia 5 mV). Non è il chip.
 
-EM: \(I=(V_a-V_b)/R\) e \(J=I/(w t)\) con \(w=\mathrm{RPERSQ}\cdot L/R\) dal tech LEF (non min WIDTH). TTF relativo \((J_\mathrm{ref}/J)^n\), \(n=2\), \(J_\mathrm{ref}=10^{10}\,\mathrm{A/m^2}\) — **non** ore foundry. \(\Delta T=R_\mathrm{th} I^2 R\) lumpato, restamp N1 \(R(T)\). Numeri GCD dopo `run_dynamic_ir.sh`. Path STA = GAP.
+EM: \(I=(V_a-V_b)/R\) e \(J=I/(w t)\) con \(w=\max(\mathrm{RPERSQ}\cdot L/R,\,\mathrm{WIDTH}_\min)\) dal tech LEF. TTF relativo \((J_\mathrm{ref}/J)^n\), \(n=2\), \(J_\mathrm{ref}=10^{10}\,\mathrm{A/m^2}\) — **non** ore foundry. \(\Delta T=R_\mathrm{th} I^2 R\) lumpato, restamp N1 \(R(T)\).
+
+GCD clock: \|I\|_max ≈ 3.04 mA (via M3–M4, no J). \(J_\max\) ≈ \(2.68\times10^{11}\,\mathrm{A/m^2}\) su metal1 (w clampato a 0.07 µm; \(I\) ≈ 2.44 mA) · TTF_rel ≈ \(1.39\times10^{-3}\) · \(\Delta T\) lumpato ≈ 20 mK · \(\Delta\)IR \(R(T)\) ≈ 0.63 µV. \(i_L\) bump max ≈ 2.38 mA. Path STA = GAP.
 
 ## File
 
