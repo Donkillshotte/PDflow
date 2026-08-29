@@ -116,6 +116,7 @@ export function DynamicIrHeatmap({
   const load = useCallback(async () => {
     const res = await fetch(
       `/api/content?path=sim/reports/dynamic_ir_${variant}.json`,
+      { cache: "no-store" },
     );
     if (!res.ok) {
       setMissing(true);

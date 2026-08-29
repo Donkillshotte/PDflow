@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     return new NextResponse(buf, {
       headers: {
         "Content-Type": "image/svg+xml; charset=utf-8",
-        "Cache-Control": "public, max-age=60",
+        "Cache-Control": "no-store, must-revalidate",
       },
     });
   }
@@ -35,8 +35,15 @@ export async function GET(req: Request) {
     });
   }
   const text = fs.readFileSync(abs, "utf8");
-  return NextResponse.json({
-    path: path.relative(LEARN_ROOT, abs),
-    content: text,
-  });
+  return NextResponse.json(
+    {
+      path: path.relative(LEARN_ROOT, abs),
+      content: text,
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store, must-revalidate",
+      },
+    },
+  );
 }
