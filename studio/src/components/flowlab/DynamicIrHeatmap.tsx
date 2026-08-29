@@ -65,9 +65,12 @@ type Em = {
     status?: string;
     dT_absmax_k?: number;
     dT_pad_max_k?: number;
+    dT_si_k?: number;
     n_pads?: number;
     n_vias?: number;
     n_straps?: number;
+    n_ild?: number;
+    n_si?: number;
     backend?: string;
   };
   skin?: { status?: string; rac_rdc?: number; delta_m?: number };
@@ -426,6 +429,15 @@ export function DynamicIrHeatmap({
                     : `${(em.dT_mesh_absmax_k ?? em.thermal_mesh.dT_absmax_k ?? 0).toFixed(3)} K`}
                   {em.thermal_mesh.n_vias != null
                     ? ` · ${em.thermal_mesh.n_vias} via`
+                    : ""}
+                  {em.thermal_mesh.n_si
+                    ? ` · Si${
+                        em.thermal_mesh.dT_si_k == null
+                          ? ""
+                          : em.thermal_mesh.dT_si_k < 1e-3
+                            ? " <1 mK"
+                            : ` ${em.thermal_mesh.dT_si_k.toFixed(3)} K`
+                      }`
                     : ""}
                   {em.thermal_mesh.n_pads != null
                     ? ` · ${em.thermal_mesh.n_pads} pad`

@@ -8,12 +8,13 @@ so J is not a 10^12 A/m² artifact. Thickness from LEF. Black TTF is
 *relative* (∝ J^{-n}); no foundry A.
 
 Thermal: metal-graph diffusion (G_th = k A/L on same-layer straps *and*
-adjacent-layer vias from LEF HEIGHT/CUT). Pads get G_amb to ambient.
-Without vias the stack is disconnected (metal1 I²R cannot reach metal7
-pads) — that is a GAP, not a 2D-only solve. Not 3D Si, not CFD, not a
-foundry package model. Lumped Rth·I²R is a comparison, not the restamp ΔT
-when the mesh solves. Skin depth is reported; Nangate metal1 is thinner
-than δ at the GCD clock so Rac/Rdc ≈ 1. Never ML.
+adjacent-layer vias from LEF HEIGHT/CUT). Straps also couple vertically
+through ILD (k_ox A_foot / HEIGHT) into a lumped Si node (k_si A_die / t_wafer)
+that stars to the C4 pads. That is the substrate path metal-only vias omit —
+not 3D FEM, not CFD, not a foundry package. Pads still G_amb to ambient.
+Lumped Rth·I²R is a comparison, not the restamp ΔT when the mesh solves.
+Skin depth is reported; Nangate metal1 is thinner than δ at the GCD clock
+so Rac/Rdc ≈ 1. Never ML.
 """
 
 from __future__ import annotations
@@ -26,7 +27,11 @@ from pdn_extract import layer_of, node_xy_dbu
 MU0 = 4.0e-7 * math.pi
 MU0_2PI = 2.0e-7  # H/m = μ0/(2π)
 K_CU_W_M_K = 400.0  # bulk Cu; not a foundry BEOL stack
+K_OX_W_M_K = 1.4  # SiO2; not a foundry low-k stack
+K_SI_W_M_K = 148.0  # bulk Si ~300 K
+T_SI_M = 300e-6  # wafer thickness; not extracted from GDS
 C_VOL_CU_J_M3_K = 3.45e6  # 385 J/kg/K × 8960 kg/m³
+C_VOL_SI_J_M3_K = 1.63e6  # 700 J/kg/K × 2330 kg/m³
 SIGMA_CU_S_M = 5.8e7
 RTH_PAD_K_PER_W = 50.0  # C4-class bump → ambient; not extracted PKG
 
@@ -350,6 +355,44 @@ def thermal_edge_geometry(a: str, b: str, r: float, tech: dict | None) -> dict |
     return branch_geometry(a, b, float(r), tech or {}) or via_geometry(a, b, float(r), tech)
 
 
+def strap_ild_g(geo: dict | None, tech: dict | None) -> float:
+    """Vertical ILD: G = k_ox · (w L) / HEIGHT. HEIGHT is substrate→metal bottom.
+
+    Oxide-equivalent stack, not a layered FEM. Vias are Cu and do not get this G.
+    Missing HEIGHT → 0 (do not invent t_ild).
+    """
+    if not geo or geo.get("kind") != "strap":
+        return 0.0
+    spec = ((tech or {}).get("layers") or {}).get(geo.get("layer")) or {}
+    h_um = spec.get("height_um")
+    if h_um is None or float(h_um) <= 0.0:
+        return 0.0
+    w = float(geo.get("w_m") or 0.0)
+    L = float(geo.get("L_m") or 0.0)
+    if w <= 0.0 or L <= 0.0:
+        return 0.0
+    return K_OX_W_M_K * w * L / (float(h_um) * 1e-6)
+
+
+def _bbox_area_m2(idx: dict, used: set, dbu: float, w_floor: float) -> float:
+    """Die footprint from node bbox. A 1-D line of nodes uses max(span, w_floor)."""
+    xs, ys = [], []
+    floor = max(float(w_floor), 1e-9)
+    for name, i in idx.items():
+        if int(i) not in used:
+            continue
+        xy = node_xy_dbu(name)
+        if xy is None:
+            continue
+        xs.append(xy[0] / dbu * 1e-6)
+        ys.append(xy[1] / dbu * 1e-6)
+    if not xs:
+        return floor * floor
+    dx = max(max(xs) - min(xs), floor)
+    dy = max(max(ys) - min(ys), floor)
+    return dx * dy
+
+
 def _thermal_pads_reach(G, pad_th: list[int], n: int) -> bool:
     """Every node with a thermal edge must reach a pad. No invented island ambient."""
     adj: list[list[int]] = [[] for _ in range(n)]
@@ -383,14 +426,15 @@ def assemble_thermal_mesh(
     tech: dict | None,
     *,
     rth_pad: float = RTH_PAD_K_PER_W,
+    t_si: float = T_SI_M,
 ) -> dict | None:
-    """SPD thermal graph on straps + adjacent vias.
+    """SPD thermal graph: straps + vias + ILD-to-Si + pad G_amb.
 
-    G_th_ij = k_Cu · A / L. C_th lumped half to each node.
-    Pads get G_amb = 1/Rth_pad to ambient (ΔT=0). Singular without a pad
-    path — vias are required to couple metal1 I²R to metal7 bumps.
+    G_th_ij = k_Cu · A / L on metal. Straps add G_ild = k_ox (w L)/HEIGHT to a
+    lumped Si node; Si stars to pads with G_vert/n_pads, G_vert = k_si A_die / t_wafer.
+    All heat still exits through pad G_amb (Si has no second ambient).
     Compact: electrical nodes with no thermal edge are dropped (no fake G_amb).
-    Not 3D, not a mold/heat-sink CFD, not Si substrate spreading.
+    Not 3D FEM, not a mold/heat-sink CFD, not foundry BEOL k(T).
     """
     if "/usr/lib/python3/dist-packages" not in __import__("sys").path:
         __import__("sys").path.insert(0, "/usr/lib/python3/dist-packages")
@@ -403,6 +447,10 @@ def assemble_thermal_mesh(
     tech = tech or {}
     n_strap = 0
     n_via = 0
+    n_ild = 0
+    g_ild_sum = 0.0
+    w_floor = 1e-9
+    dbu = float(tech.get("dbu_per_um") or 2000.0)
     for a, b, r in resistors:
         if a not in idx or b not in idx:
             continue
@@ -412,11 +460,16 @@ def assemble_thermal_mesh(
         gth = K_CU_W_M_K * geo["area_m2"] / max(geo["L_m"], 1e-18)
         cth = C_VOL_CU_J_M3_K * geo["area_m2"] * geo["L_m"]
         kind = geo.get("kind") or "strap"
-        edges.append((int(idx[a]), int(idx[b]), gth, cth, kind))
+        g_ild = strap_ild_g(geo, tech)
+        edges.append((int(idx[a]), int(idx[b]), gth, cth, kind, g_ild))
         if kind == "via":
             n_via += 1
         else:
             n_strap += 1
+            w_floor = max(w_floor, float(geo.get("w_m") or 0.0))
+        if g_ild > 0.0:
+            n_ild += 1
+            g_ild_sum += g_ild
     if not edges:
         return None
     pads = sorted({int(i) for i in pad_idx})
@@ -427,11 +480,17 @@ def assemble_thermal_mesh(
         used.add(ia)
         used.add(ib)
     th_of = {e: k for k, e in enumerate(sorted(used))}
-    n = len(th_of)
+    n_metal = len(th_of)
+    a_die = _bbox_area_m2(idx, used, dbu, w_floor)
+    t_wafer = max(float(t_si), 1e-9)
+    g_vert = K_SI_W_M_K * a_die / t_wafer
+    use_si = n_ild > 0 and g_vert > 0.0
+    n = n_metal + (1 if use_si else 0)
+    si_th = n_metal if use_si else None
     G = sparse.lil_matrix((n, n), dtype=np.float64)
     C = np.zeros(n, dtype=np.float64)
     gth_sum = 0.0
-    for ia, ib, gth, cth, _kind in edges:
+    for ia, ib, gth, cth, _kind, g_ild in edges:
         ta, tb = th_of[ia], th_of[ib]
         G[ta, ta] += gth
         G[tb, tb] += gth
@@ -440,26 +499,45 @@ def assemble_thermal_mesh(
         C[ta] += 0.5 * cth
         C[tb] += 0.5 * cth
         gth_sum += gth
+        if use_si and g_ild > 0.0 and si_th is not None:
+            half = 0.5 * g_ild
+            for t in (ta, tb):
+                G[t, t] += half
+                G[si_th, si_th] += half
+                G[t, si_th] -= half
+                G[si_th, t] -= half
     g_amb = 1.0 / max(float(rth_pad), 1e-9)
     pad_th = [th_of[i] for i in pads if i in th_of]
     if not pad_th:
         return None
     for t in pad_th:
         G[t, t] += g_amb
+    if use_si and si_th is not None:
+        gsp = g_vert / float(len(pad_th))
+        for t in pad_th:
+            G[t, t] += gsp
+            G[si_th, si_th] += gsp
+            G[t, si_th] -= gsp
+            G[si_th, t] -= gsp
+        C[si_th] += C_VOL_SI_J_M3_K * a_die * t_wafer
     Gcsr = G.tocsr()
     if not _thermal_pads_reach(Gcsr, pad_th, n):
         return None
     C = np.maximum(C, 1e-18)
-    elec_of = [0] * n
+    elec_of = [-1] * n
     for elec, th_i in th_of.items():
         elec_of[th_i] = elec
     return {
         "G": Gcsr,
         "C": C,
         "n": n,
+        "n_metal": n_metal,
         "n_edges": len(edges),
         "n_straps": n_strap,
         "n_vias": n_via,
+        "n_ild": n_ild,
+        "n_si": 1 if use_si else 0,
+        "si_th": si_th,
         "n_pads": len(pad_th),
         "pads": pads,
         "pad_th": pad_th,
@@ -468,11 +546,19 @@ def assemble_thermal_mesh(
         "g_amb": g_amb,
         "rth_pad": float(rth_pad),
         "gth_sum": gth_sum,
+        "g_ild_sum": g_ild_sum,
+        "g_vert": g_vert if use_si else 0.0,
+        "a_die_m2": a_die,
+        "t_si_m": t_wafer if use_si else None,
         "k_cu": K_CU_W_M_K,
+        "k_ox": K_OX_W_M_K,
+        "k_si": K_SI_W_M_K,
         "c_vol": C_VOL_CU_J_M3_K,
         "via": (
-            "metal-graph G_th=kA/L on straps + adjacent vias (LEF HEIGHT/CUT); "
-            "pad G_amb; not 3D / not substrate"
+            "metal-graph G_th=kA/L + via HEIGHT/CUT + ILD k_ox A/HEIGHT to lumped Si "
+            f"(k_si A_die/t_wafer, t={t_wafer*1e6:.0f} µm); pad G_amb; not 3D FEM"
+            if use_si
+            else "metal-graph G_th=kA/L on straps + adjacent vias; pad G_amb; no HEIGHT → no ILD/Si"
         ),
     }
 
@@ -708,28 +794,41 @@ def em_thermal_snapshot(
         else:
             th_of = th["th_of"]
             pad_temps = [float(T[t]) for t in th["pad_th"] if 0 <= t < T.size]
+            si_th = th.get("si_th")
+            metal_ts = [float(T[i]) for i in range(T.size) if si_th is None or i != int(si_th)]
+            dT_metal = float(max(metal_ts)) if metal_ts else sol["dT_absmax_k"]
+            dT_si = float(T[int(si_th)]) if si_th is not None and 0 <= int(si_th) < T.size else None
             mesh_meta = {
                 "status": "READY",
                 "n": th["n"],
+                "n_metal": th.get("n_metal"),
                 "n_edges": th["n_edges"],
                 "n_straps": th["n_straps"],
                 "n_vias": th["n_vias"],
+                "n_ild": th.get("n_ild"),
+                "n_si": th.get("n_si") or 0,
                 "n_pads": th["n_pads"],
                 "rth_pad": th["rth_pad"],
                 "g_amb": th["g_amb"],
+                "g_ild_sum": th.get("g_ild_sum"),
+                "g_vert": th.get("g_vert"),
+                "a_die_m2": th.get("a_die_m2"),
+                "t_si_m": th.get("t_si_m"),
                 "p_cell_w": float(max(float(P.sum()) - p_joule, 0.0)),
                 "p_total_w": float(P.sum()),
-                "dT_absmax_k": sol["dT_absmax_k"],
-                "dT_mean_k": sol["dT_mean_k"],
+                "dT_absmax_k": dT_metal,
+                "dT_mean_k": float(sum(metal_ts) / len(metal_ts)) if metal_ts else sol["dT_mean_k"],
                 "dT_pad_max_k": float(max(pad_temps)) if pad_temps else 0.0,
+                "dT_si_k": dT_si,
                 "backend": sol["backend"],
                 "solver": sol["solver"],
                 "rel_res": sol["rel_res"],
                 "via": th["via"],
                 "note": (
                     "Steady metal-graph ΔT; cell P=I_avg·Vdd at sinks + strap/via I²R. "
-                    "Via G_th from LEF HEIGHT/CUT (n_cuts=R_cut/R). "
-                    "Pad Rth=50 K/W C4-class (not extracted). Not 3D, not Si spreading."
+                    "Via G_th from LEF HEIGHT/CUT. ILD k_ox A/HEIGHT to lumped Si "
+                    f"(t_wafer={float(th.get('t_si_m') or 0)*1e6:.0f} µm, not 3D FEM). "
+                    "Pad Rth=50 K/W C4-class. All heat exits G_amb; Si has no second ambient."
                 ),
             }
             for rec in branches:
@@ -743,7 +842,7 @@ def em_thermal_snapshot(
                         rec["dT_mesh_k"] = 0.5 * (float(T[ta]) + float(T[tb]))
                         rec["dT_k"] = rec["dT_mesh_k"]
                         rec["r_scale"] = 1.0 + ALPHA_R * rec["dT_k"]
-            dt_mesh = sol["dT_absmax_k"]
+            dt_mesh = dT_metal
     else:
         dt_mesh = None
         mesh_meta = {
@@ -805,7 +904,7 @@ def em_thermal_snapshot(
             "I=(Va-Vb)/R; w=max(RPERSQ·L/R, WIDTH_min); J=I/(w·t); "
             f"TTF_rel=(Jref/J)^{BLACK_N} at {T_EM_K:.0f} K; "
             + (
-                "ΔT from metal-graph G_th=kA/L (straps+vias) + pad G_amb (lumped Rth kept as comparison)"
+                "ΔT from metal-graph G_th=kA/L (straps+vias) + ILD/Si + pad G_amb (lumped Rth comparison)"
                 if mesh_ready
                 else f"ΔT=Rth·I²R with Rth={RTH_K_PER_W} K/W lumped (mesh GAP)"
             )
@@ -813,7 +912,7 @@ def em_thermal_snapshot(
         "not": [
             "foundry Black A / TTF hours",
             "extracted strap width from LEF geometry (width from R, clamped to min WIDTH)",
-            "3D thermal / Si substrate / package CFD",
+            "3D thermal FEM / package CFD (lumped Si + ILD is not that)",
             "skin-effect stamp into G (reported, not restamped)",
         ],
         "n_branches": len(branches),

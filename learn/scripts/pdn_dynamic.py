@@ -1717,7 +1717,7 @@ def main() -> int:
         em["rT_delta_ir_mv"] = (st_t["worst_ir"] - static["worst_ir"]) * 1e3
         em["rT_via"] = (
             "one-shot N1 restamp R'=R(1+αΔT) from metal-graph T "
-            "(cell P=I_avg·Vdd + strap/via I²R; pad Rth=50 K/W); not 3D CFD"
+            "(cell P=I_avg·Vdd + strap/via I²R; ILD→lumped Si; pad Rth=50 K/W); not 3D CFD"
             if (em.get("thermal_mesh") or {}).get("status") == "READY"
             else "one-shot N1 restamp R'=R(1+αΔT) from lumped ΔT=Rth·I²R; mesh GAP"
         )
@@ -1980,7 +1980,7 @@ def main() -> int:
             "CCS/ECSM I(t) on Nangate45 (NLDM, no current tables — interpolators are tested on synthetic Liberty)",
             "gate-level VCD pin times (RTL VCD names do not match ODB ITerms — no silent map)",
             "foundry Black TTF hours / extracted strap WIDTH from LEF geometry",
-            "3D thermal / Si substrate / package CFD (metal-graph straps+vias is not that)",
+            "3D thermal FEM / Si substrate CFD (lumped Si + ILD k_ox is not that)",
             "RedHawk / Voltus / Totem sign-off",
             "vyges-em-ir fork",
             "EMSim commercial flow (VCS/Calibre/PT-PX/HSpice)",

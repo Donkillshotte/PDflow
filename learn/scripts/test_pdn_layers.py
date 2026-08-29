@@ -975,11 +975,14 @@ quit
 
     from pdn_em import (
         K_CU_W_M_K,
+        K_SI_W_M_K,
         RTH_PAD_K_PER_W,
+        T_SI_M,
         assemble_thermal_mesh,
         ngspice_thermal_1node_gold,
         rac_over_rdc,
         solve_thermal_steady,
+        strap_ild_g,
         timestep_thermal_be,
         via_geometry,
     )
@@ -1003,11 +1006,27 @@ quit
     geo = em_m["hottest_j"]
     gth = K_CU_W_M_K * geo["area_m2"] / geo["L_m"]
     gamb = 1.0 / RTH_PAD_K_PER_W
-    t1 = P / gamb + 0.5 * P / gth
-    check(abs(em_m["dT_mesh_absmax_k"] - t1) / t1 < 1e-6, "2-node mesh ΔT vs G_th series (split I²R)")
+    g_ild = strap_ild_g(geo, tech)
+    a_die = 1e-6 * 1e-6  # 1 µm span × w_floor 1 µm
+    g_vert = K_SI_W_M_K * a_die / T_SI_M
+    gi, gs = 0.5 * g_ild, g_vert
+    # [T0, T1, Ts]; all heat exits G_amb so T0 = P/G_amb.
+    K = np.array(
+        [
+            [gamb + gth + gi + gs, -gth, -(gi + gs)],
+            [-gth, gth + gi, -gi],
+            [-(gi + gs), -gi, 2 * gi + gs],
+        ],
+        dtype=np.float64,
+    )
+    rhs = np.array([P / 2.0, P / 2.0, 0.0], dtype=np.float64)
+    Tgold = np.linalg.solve(K, rhs)
+    check((em_m.get("thermal_mesh") or {}).get("n_si") == 1, "2-node mesh has lumped Si")
+    check(abs(em_m["dT_mesh_absmax_k"] - Tgold[1]) / Tgold[1] < 1e-6, "2-node mesh ΔT vs ILD+Si KCL")
     t0_gold = P / gamb
     t0 = float((em_m.get("thermal_mesh") or {}).get("dT_pad_max_k") or 0.0)
-    check(abs(t0 - t0_gold) / t0_gold < 1e-6, "pad T0 = P/G_amb")
+    check(abs(t0 - t0_gold) / t0_gold < 1e-6, "pad T0 = P/G_amb (Si has no second ambient)")
+    check(abs(t0 - Tgold[0]) / t0_gold < 1e-6, "pad T0 matches 3-node KCL")
     check(t0 < em_m["dT_lumped_absmax_k"], "pad node cooler than isolated lumped Rth")
     # Far-node T1 can exceed lumped Rth when G_th ≪ G_lumped (tiny A/L). Not a spreading theorem.
     sk = em_m.get("skin") or {}
@@ -1051,13 +1070,25 @@ quit
     check(abs(em_v["dT_mesh_absmax_k"] - t1_via) / t1_via < 1e-6, "via mesh ΔT vs G_th series")
     print(f"    via mesh ΔT={em_v['dT_mesh_absmax_k']:.4e} K n_cuts={vg['n_cuts']:.2f} G_th={gv:.4e} W/K")
 
-    th_gap = assemble_thermal_mesh(
+    th_si = assemble_thermal_mesh(
         [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],
         {"ITermNode_metal1_0_0": 0, "ITermNode_metal1_2000_0": 1, "ITermNode_metal7_0_0": 2},
         [2],
         tech,
     )
-    check(th_gap is None, "strap with pad on another layer and no via → GAP (no invented island ambient)")
+    check(th_si is not None and th_si.get("n_si") == 1, "strap + other-layer pad reaches via ILD→Si (no PDN via)")
+    layers_noh = {
+        k: {kk: vv for kk, vv in (v or {}).items() if kk != "height_um"}
+        for k, v in (tech.get("layers") or {}).items()
+    }
+    tech_noh = {**tech, "layers": layers_noh}
+    th_gap = assemble_thermal_mesh(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],
+        {"ITermNode_metal1_0_0": 0, "ITermNode_metal1_2000_0": 1, "ITermNode_metal7_0_0": 2},
+        [2],
+        tech_noh,
+    )
+    check(th_gap is None, "without HEIGHT and without vias, other-layer pad stays GAP")
 
     gcd_sp = (
         _ROOT
@@ -1080,13 +1111,14 @@ quit
         th_g = assemble_thermal_mesh(Rg, idx_g, pads_g, tech)
         check(th_g is not None, "GCD VDD thermal mesh is pad-reachable (vias couple layers)")
         check(th_g["n_vias"] > 0, f"GCD stamps via G_th (n_vias={th_g.get('n_vias')})")
+        check(th_g.get("n_si") == 1 and (th_g.get("n_ild") or 0) > 0, "GCD stamps ILD→Si")
         P_g = np.full(th_g["n"], 1e-8, dtype=np.float64)
         sol_g = solve_thermal_steady(th_g["G"], P_g)
         check(np.isfinite(sol_g["T"]).all(), "GCD thermal T finite")
         check(sol_g["rel_res"] < 1e-4, f"GCD thermal G_th rel_res={sol_g['rel_res']}")
         print(
             f"    GCD thermal n={th_g['n']} straps={th_g['n_straps']} vias={th_g['n_vias']} "
-            f"pads={th_g['n_pads']} rel_res={sol_g['rel_res']:.2e}"
+            f"ild={th_g.get('n_ild')} Si={th_g.get('n_si')} pads={th_g['n_pads']} rel_res={sol_g['rel_res']:.2e}"
         )
     else:
         print("    skip GCD thermal mesh (no pg_vdd_bumps.sp)")
