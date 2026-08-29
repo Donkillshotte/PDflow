@@ -39,6 +39,8 @@ from pdn_current import (  # noqa: E402
     parse_ecsm_waveforms,
     probe_liberty_current_model,
     triangle_above_leak,
+    events_use_ccs,
+    events_use_ecsm,
 )
 
 
@@ -125,6 +127,8 @@ library (nldm_only) {
         abs(current_source_for_event(ev_ec, 0.02) - triangle_above_leak(0.02, 0.04, 0.08, 5e-3)) < 1e-18,
         "without ECSM tables the same event stays triangle (no NLDM→ECSM)",
     )
+    check(events_use_ecsm([ev_ec], wfs), "ECSM tables + c_load ⇒ TRAN must skip native triangle")
+    check(not events_use_ecsm([{"t50_s": 0.1, "i_pulse": 1e-3}], wfs), "no c_load ⇒ ECSM stays out of the TRAN loop")
 
     act = probe_activity_trace(None)
     check(act["status"] == "GAP", "missing VCD is GAP")

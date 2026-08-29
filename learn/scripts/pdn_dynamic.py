@@ -5,7 +5,7 @@ Architecture (what this file actually does — not a product claim):
 
   OpenROAD write_pg_spice  →  PDN graph (R mesh, bump V, I_avg)
   activity layer (STA arrival t50 in clock; VCD/SAIF name-join; else synthetic)
-  current layer (triangle; CCS interpolator if tables+slew)
+  current layer (triangle; CCS interpolator if tables+slew; ECSM |C dV/dt| if waveforms+c_load)
   Solver A: direct backward-Euler + sparse LU (golden)
   Solver B: SA-AMG + CG on the same SPD companion operator
   Solver C: rational Krylov MOR — RC on δv, or descriptor RLC on x=[v; i_L]
@@ -66,7 +66,9 @@ from pdn_activity import (  # noqa: E402
 from pdn_current import (  # noqa: E402
     current_source_for_event,
     events_use_ccs,
+    events_use_ecsm,
     parse_ccs_output_current,
+    parse_ecsm_waveforms,
     probe_liberty_current_model,
     triangle_above_leak,
 )
@@ -192,9 +194,11 @@ def timestep_be(
     t_end: float,
     adaptive: bool = False,
     ccs_tables: list | None = None,
+    ecsm_tables: list | None = None,
 ):
     native = None
     use_ccs = events_use_ccs(events, ccs_tables)
+    use_ecsm = events_use_ecsm(events, ecsm_tables)
     if adaptive:
         native = native_adaptive(sys, events, vdd, t_end)
         if native is not None:
@@ -208,7 +212,7 @@ def timestep_be(
             file=__import__("sys").stderr,
         )
         adaptive = False
-    elif not use_ccs:
+    elif not use_ccs and not use_ecsm:
         native = native_timestep(solver, sys, events, vdd, t_end)
         if native is not None:
             native["pkg_r"] = sys["pkg_r"]
@@ -239,7 +243,8 @@ def timestep_be(
         I_draw = leak.copy()
         for ev in events:
             I_draw[ev["idx"]] += current_source_for_event(
-                ev, t, ccs_tables=ccs_tables, vout=float(V[ev["idx"]])
+                ev, t, ccs_tables=ccs_tables, vout=float(V[ev["idx"]]),
+                ecsm_tables=ecsm_tables,
             )
         rhs = (C / dt) * V - I_draw
         for k, b in enumerate(bump):
@@ -269,6 +274,8 @@ def timestep_be(
     loop = "python_hist" if bump else "python"
     if use_ccs:
         loop = loop.replace("python", "python_ccs")
+    elif use_ecsm:
+        loop = loop.replace("python", "python_ecsm")
 
     return {
         "worst_voltage": worst_v,
@@ -296,6 +303,7 @@ def timestep_be(
         "backend": getattr(solver, "backend", "python"),
         "timestep_loop": loop,
         "ccs_in_loop": bool(use_ccs),
+        "ecsm_in_loop": bool(use_ecsm),
     }
 
 
@@ -310,6 +318,7 @@ def windowed_timestep_be(
     wave_itot,
     dyn_full: dict,
     ccs_tables: list | None = None,
+    ecsm_tables: list | None = None,
     frac: float = 0.5,
 ) -> dict:
     """Solver A on high-I windows. Isolated restart only when L=0 (or idle ≫ L/R).
@@ -390,7 +399,7 @@ def windowed_timestep_be(
             if not evw:
                 continue
             span = max(t1 - t0, 2 * dt)
-            r = timestep_be(sys, evw, solver, vdd, order, span, ccs_tables=ccs_tables)
+            r = timestep_be(sys, evw, solver, vdd, order, span, ccs_tables=ccs_tables, ecsm_tables=ecsm_tables)
             t_abs = r["worst_time_s"] + t0
             steps += int(r["steps"])
             per.append(
@@ -438,7 +447,7 @@ def windowed_timestep_be(
                 f"pkg L/R={lr*1e9:.2f} ns; isolated restart would drop i_L history"
             ),
         }
-    r = timestep_be(sys, events, solver, vdd, order, t_cut, ccs_tables=ccs_tables)
+    r = timestep_be(sys, events, solver, vdd, order, t_cut, ccs_tables=ccs_tables, ecsm_tables=ecsm_tables)
     err_mv = abs(r["worst_droop"] - gold_droop) * 1e3
     return {
         **base,
@@ -1235,8 +1244,13 @@ def main() -> int:
 
     current_model = probe_liberty_current_model(args.liberty)
     ccs_tables: list = []
-    if args.liberty and Path(args.liberty).is_file() and current_model.get("n_ccs_tables"):
-        ccs_tables = parse_ccs_output_current(Path(args.liberty).read_text(errors="replace")[:2_000_000])
+    ecsm_tables: list = []
+    if args.liberty and Path(args.liberty).is_file():
+        lib_text = Path(args.liberty).read_text(errors="replace")[:2_000_000]
+        if current_model.get("n_ccs_tables"):
+            ccs_tables = parse_ccs_output_current(lib_text)
+        if current_model.get("n_ecsm_tables"):
+            ecsm_tables = parse_ecsm_waveforms(lib_text)
 
     ext = extract_pdn(args.spice, lef=args.lef, spef=args.spef)
     extract_report = summarize_extract(ext)
@@ -1368,6 +1382,7 @@ def main() -> int:
     activity_model["t50_via"] = via_n
     activity_model["n_with_inst"] = sum(1 for e in events if e.get("inst"))
     current_model["ccs_in_loop"] = events_use_ccs(events, ccs_tables)
+    current_model["ecsm_in_loop"] = events_use_ecsm(events, ecsm_tables)
 
     static = solve_static(G, idx, order, currents, voltages, vdd)
     Vstat = static.pop("V")
@@ -1385,7 +1400,7 @@ def main() -> int:
         spef_c=(ext.get("spef") or {}).get("node_c"),
     )
     solver_a = DirectLU(sys_be["A"])
-    dyn = timestep_be(sys_be, events, solver_a, vdd, order, t_end, ccs_tables=ccs_tables)
+    dyn = timestep_be(sys_be, events, solver_a, vdd, order, t_end, ccs_tables=ccs_tables, ecsm_tables=ecsm_tables)
     win_run = windowed_timestep_be(
         sys_be,
         events,
@@ -1397,13 +1412,14 @@ def main() -> int:
         dyn["wave_itot"],
         dyn,
         ccs_tables=ccs_tables,
+        ecsm_tables=ecsm_tables,
     )
 
     amg_meta = None
     solver_b = None
     if not args.no_amg:
         solver_b = SAAMG(sys_be["A"])
-        dyn_b = timestep_be(sys_be, events, solver_b, vdd, order, t_end, ccs_tables=ccs_tables)
+        dyn_b = timestep_be(sys_be, events, solver_b, vdd, order, t_end, ccs_tables=ccs_tables, ecsm_tables=ecsm_tables)
         err_mv = abs(dyn["worst_droop"] - dyn_b["worst_droop"]) * 1e3
         amg_meta = {
             "ok": err_mv < 5.0,
@@ -1427,7 +1443,7 @@ def main() -> int:
     ras_meta = None
     if not args.no_ras:
         solver_d = RASDD(sys_be["A"])
-        dyn_d = timestep_be(sys_be, events, solver_d, vdd, order, t_end, ccs_tables=ccs_tables)
+        dyn_d = timestep_be(sys_be, events, solver_d, vdd, order, t_end, ccs_tables=ccs_tables, ecsm_tables=ecsm_tables)
         err_d = abs(dyn["worst_droop"] - dyn_d["worst_droop"]) * 1e3
         ras_meta = {
             "ok": err_d < 5.0,
@@ -1819,15 +1835,23 @@ def main() -> int:
         f"CCS interpolator {current_model['n_ccs_tables']} tables in TRAN (lagged I(slew,V^n)) — not native triangle"
         if events_use_ccs(events, ccs_tables)
         else (
-            f"CCS interpolator {current_model['n_ccs_tables']} tables — mesh still triangle (no cell Vout(t)/slew on events)"
-            if current_model.get("n_ccs_tables")
-            else f"per-ITerm triangle PWL ({current_model['kind']})"
+            f"ECSM interpolator {current_model['n_ecsm_tables']} waveforms in TRAN (I=|C dV/dt|) — not native triangle"
+            if events_use_ecsm(events, ecsm_tables)
+            else (
+                f"CCS interpolator {current_model['n_ccs_tables']} tables — mesh still triangle (no cell Vout(t)/slew on events)"
+                if current_model.get("n_ccs_tables")
+                else (
+                    f"ECSM interpolator {current_model['n_ecsm_tables']} waveforms — mesh still triangle (no c_load on events)"
+                    if current_model.get("n_ecsm_tables")
+                    else f"per-ITerm triangle PWL ({current_model['kind']})"
+                )
+            )
         )
     )
     path_ok = (timing.get("path") or {}).get("status") == "READY"
     em_via = (
         f"heatmap + windows + {'path STA delay' if path_ok else 'tap delay scaling'} + J={em.get('j_absmax_a_m2', 0):.3e} A/m² "
-        f"+ relative Black TTF + lumped R(T) N1 restamp"
+        f"+ relative Black TTF + metal-graph R(T) N1 restamp"
         if em.get("n_with_j")
         else (
             f"heatmap + windows + {'path STA delay' if path_ok else 'tap delay scaling'} + branch I (no same-layer coords for J)"
@@ -1915,9 +1939,15 @@ def main() -> int:
     )
     em_note = (
         f" · J {em['j_absmax_a_m2']:.3e} A/m² TTF_rel {em.get('ttf_rel_min')}"
+        + (
+            f" · ΔT mesh {em['dT_mesh_absmax_k']:.3f} K ({(em.get('thermal_mesh') or {}).get('n_vias', 0)} via)"
+            if (em.get("thermal_mesh") or {}).get("status") == "READY" and em.get("dT_mesh_absmax_k") is not None
+            else ""
+        )
         if em.get("n_with_j")
         else ""
     )
+    sta_note_sum = f" · STA {n_sta}/{len(events)}" if n_sta else ""
     vss_note = (
         f" · VSS bounce {vss_meta['worst_bounce_mv']:.3f} mV ({vss_meta['n_pairs']} pairs)"
         if vss_meta and vss_meta.get("status") == "READY"
@@ -1959,7 +1989,7 @@ def main() -> int:
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C READY only when *CAP is stamped",
             "activity": "pdn_activity: OpenSTA report_arrival t50 (clock); VCD/SAIF name-join only; windowed BE",
-            "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, lumped ΔT → R(T) N1 restamp — not foundry hours",
+            "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, metal-graph ΔT (straps+vias) → R(T) N1 restamp — not foundry hours",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
             "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",

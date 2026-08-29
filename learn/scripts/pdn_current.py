@@ -152,6 +152,13 @@ def events_use_ccs(events, ccs_tables: list | None) -> bool:
     return any(ev.get("slew_s") is not None for ev in events)
 
 
+def events_use_ecsm(events, ecsm_tables: list | None) -> bool:
+    """True when the TRAN loop must evaluate ECSM |C dV/dt|, not triangle."""
+    if not ecsm_tables:
+        return False
+    return any(ev.get("c_load") is not None for ev in events)
+
+
 def current_source_for_event(
     ev: dict, t: float, *, ccs_tables: list[dict] | None = None, vout: float | None = None,
     ecsm_tables: list[dict] | None = None,
