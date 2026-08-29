@@ -272,6 +272,11 @@ export function inspectStage(
       detail: "run_vyges_em_ir.sh · CG + backward Euler su write_pg_spice",
     },
     {
+      id: "dynamic-ir",
+      label: "Dynamic IR I(t)",
+      detail: "run_dynamic_ir.sh · PWL per pin + BE + heatmap",
+    },
+    {
       id: "yosys-equiv",
       label: "Yosys equiv (EQY-class)",
       detail: "run_yosys_equiv.sh · RTL ↔ synth",

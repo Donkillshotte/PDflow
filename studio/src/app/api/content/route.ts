@@ -13,6 +13,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Percorso non consentito" }, { status: 404 });
   }
   const ext = path.extname(abs).toLowerCase();
+  if (ext === ".svg") {
+    const buf = fs.readFileSync(abs);
+    return new NextResponse(buf, {
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=60",
+      },
+    });
+  }
   if (ext === ".png" || ext === ".jpg" || ext === ".jpeg" || ext === ".webp") {
     const buf = fs.readFileSync(abs);
     const type =

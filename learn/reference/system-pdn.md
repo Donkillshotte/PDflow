@@ -6,7 +6,7 @@ Vedi anche la **catena completa fasi**: [spice-power-chain.md](./spice-power-cha
 
 | Livello | Domanda | Cosa usa Studio |
 |---|---|---|
-| **Chip PDN** | Griglia on-die regge IR statico / droop mesh? | OpenROAD **PDNSim** + `write_pg_spice` + `pdn_transient.py` + **vyges-em-ir** |
+| **Chip PDN** | Griglia on-die regge IR statico / droop mesh? | OpenROAD **PDNSim** + `write_pg_spice` + `pdn_transient.py` + **vyges-em-ir** + **dynamic_ir** |
 | **System PDN** | Catena VRM → board → package → die: Z(f) e load-step? | **ngspice** ladder gerarchico → `run_system_pdn.sh` / FlowLab **PKG** |
 
 Non sono la stessa cosa: package R su PDNSim è ancora un modello *chip-centric*.
@@ -46,7 +46,8 @@ Validazione GCD flowlab: static IR engine ≈ **4.56 mV** vs OpenROAD ≈ **4.47
 
 1. **OpenROAD PDNSim** — static IR on-die, `write_pg_spice`
 2. **ngspice** — System PDN AC/TRAN sul ladder (quello usato in PKG)
-3. **vyges-em-ir** — engine Apache-2.0 (binario) sulla stessa mesh: azione `vyges_em_ir`. `pdn_transient.py` resta il solver di laboratorio con waveform. Dettagli: [vyges-em-ir.md](./vyges-em-ir.md)
+3. **vyges-em-ir** — engine Apache-2.0 (binario) sulla stessa mesh: azione `vyges_em_ir`. `pdn_transient.py` resta il solver di laboratorio con waveform globale. Dettagli: [vyges-em-ir.md](./vyges-em-ir.md)
+4. **dynamic_ir** — I(t) per ITerm + BE + heatmap: azione `dynamic_ir`. [dynamic-ir.md](./dynamic-ir.md)
 4. Board SI/PI full-wave — tipicamente tool commerciali (ADS, SIwave, …)
 
 ## Limiti onesti

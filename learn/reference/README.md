@@ -40,6 +40,8 @@ Dopo le lezioni 00–07, per integrità di alimentazione end-to-end:
 1. [spice-power-chain.md](./spice-power-chain.md) — **catena RTL→PKG** (leggi per primo)
 2. [spice-chip-mesh.md](./spice-chip-mesh.md) — mesh on-die `write_pg_spice`
 3. [vyges-em-ir.md](./vyges-em-ir.md) — engine IR/EM Apache-2.0 sulla mesh GCD
+4. [dynamic-ir.md](./dynamic-ir.md) — I(t) per pin + heatmap
+5. [dynamic-ir-landscape.md](./dynamic-ir-landscape.md) — PDNSim / vyges / EMSim / ngspice
 4. [spice-ngspice-primer.md](./spice-ngspice-primer.md) — System PDN ngspice
 5. [system-pdn.md](./system-pdn.md) — landscape tool
 6. [pkg-design-package.md](./pkg-design-package.md) — packaging

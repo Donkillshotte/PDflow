@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
+import { DynamicIrHeatmap } from "./DynamicIrHeatmap";
 
 type SignoffAction = {
   id: string;
@@ -47,6 +48,13 @@ const POWER_ACTIONS: SignoffAction[] = [
     id: "vyges_em_ir",
     label: "vyges-em-ir",
     hint: "engine Apache-2.0 · CG + BE",
+    icon: Zap,
+    long: false,
+  },
+  {
+    id: "dynamic_ir",
+    label: "Dynamic IR I(t)",
+    hint: "PWL per pin · heatmap t_worst",
     icon: Zap,
     long: false,
   },
@@ -253,14 +261,18 @@ export function FlowLabSignoff({
           <div className="fl-signoff-head">
             <strong>Signoff power &amp; SPICE</strong>
             <p>
-              Catena: VCD/activity → <strong>vectorless/dynamic</strong> → chip mesh → vyges-em-ir → System PDN. Docs{" "}
+              Catena: VCD/activity → <strong>vectorless</strong> → chip mesh → vyges-em-ir →{" "}
+              <strong>dynamic IR I(t)</strong> → System PDN. Docs{" "}
               <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>
               {" · "}
               <a href="/materiali/reference/vectorless-power.md">vectorless-power</a>
               {" · "}
-              <a href="/materiali/reference/vyges-em-ir.md">vyges-em-ir</a>.
+              <a href="/materiali/reference/vyges-em-ir.md">vyges-em-ir</a>
+              {" · "}
+              <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>.
             </p>
           </div>
+          <DynamicIrHeatmap />
           <ActionGrid
             actions={POWER_ACTIONS}
             disabled={disabled}

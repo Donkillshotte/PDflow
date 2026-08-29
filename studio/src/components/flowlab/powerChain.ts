@@ -138,6 +138,14 @@ export const SPICE_ANALYSES = [
     action: "vyges_em_ir",
   },
   {
+    id: "dynamic_ir",
+    label: "Dynamic IR I(t)",
+    produces: ["dynamic_ir_*.json", "dynamic_ir_*.svg"],
+    spice: "per-ITerm PWL + backward Euler + heatmap t_worst",
+    doc: "/materiali/reference/dynamic-ir.md",
+    action: "dynamic_ir",
+  },
+  {
     id: "system_pdn",
     label: "System PDN",
     produces: ["system_pdn_*.json", "Z(f)", "droop"],

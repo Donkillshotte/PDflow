@@ -121,6 +121,14 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         stampRel: ".vyges_em_ir.ok",
       },
       {
+        id: "dynamic_ir",
+        label: "Dynamic IR I(t)",
+        action: "dynamic_ir",
+        script: "learn/scripts/run_dynamic_ir.sh",
+        reportRel: "sim/reports/dynamic_ir_{variant}.json",
+        stampRel: ".dynamic_ir.ok",
+      },
+      {
         id: "system_pdn",
         label: "System PDN",
         action: "system_pdn",

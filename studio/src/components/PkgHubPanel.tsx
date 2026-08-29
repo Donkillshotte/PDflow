@@ -35,6 +35,8 @@ export function PkgHubPanel() {
       [
         "activity",
         "chip_pdn_ir",
+        "vyges_em_ir",
+        "dynamic_ir",
         "system_pdn",
         "power_chain",
         "spice_lab",

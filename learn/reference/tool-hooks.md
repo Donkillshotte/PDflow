@@ -123,7 +123,7 @@ Vedi la matrice in [oss-integrations.md](./oss-integrations.md).
 | `/api/inspect` | OpenROAD `-python`, OpenSTA, Yosys |
 | `/api/suite` | matrice hook collaborativa (toolchain → signoff) |
 | `/api/results` | File results/reports/logs ORFS |
-| `/api/run/stream` | ORFS make + `rtl_sim` / `vectorless` / `vyges_em_ir` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `klayout_drc` |
+| `/api/run/stream` | ORFS make + `rtl_sim` / `vectorless` / `vyges_em_ir` / `dynamic_ir` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `klayout_drc` |
 | Ctrl+K | dashboard, run extended, Qt GUI, web viewer |
 | Suite hub (`/` · `/strumenti#suite`) | stato hook live + Apri/Run |
 
@@ -134,6 +134,7 @@ Deep-link utili:
 - `/strumenti?tab=run&action=gridcheck`
 - `/strumenti?tab=run&action=chip_pdn_ir`
 - `/strumenti?tab=run&action=vyges_em_ir`
+- `/strumenti?tab=run&action=dynamic_ir`
 - `/strumenti?tab=run&action=system_pdn`
 - `/strumenti?tab=run&action=power_chain`
 - `/strumenti#suite`

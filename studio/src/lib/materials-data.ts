@@ -12,13 +12,25 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materiali/reference/oss-integrations.md",
     title: "Integrazioni OSS",
     group: "Riferimento",
-    description: "Stack integrato, gap commerciali, Magic/Netgen, vectorless, vyges-em-ir.",
+    description: "Stack integrato, gap commerciali, Magic/Netgen, vectorless, vyges-em-ir, dynamic IR.",
   },
   {
     href: "/materiali/reference/vyges-em-ir.md",
     title: "vyges-em-ir",
     group: "Riferimento",
     description: "Engine Apache-2.0 IR/EM sulla mesh PDNSim del GCD.",
+  },
+  {
+    href: "/materiali/reference/dynamic-ir.md",
+    title: "Dynamic IR I(t)",
+    group: "Riferimento",
+    description: "PWL per pin, backward Euler, waveform e heatmap sul GCD.",
+  },
+  {
+    href: "/materiali/reference/dynamic-ir-landscape.md",
+    title: "Landscape Dynamic IR",
+    group: "Riferimento",
+    description: "PDNSim, vyges, EMSim, ngspice — cosa è OSS e cosa no.",
   },
   {
     href: "/materiali/reference/signoff-matrix.md",

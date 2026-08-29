@@ -33,7 +33,7 @@ done
 
 echo "== Azioni power in run.ts =="
 for action in rtl_sim synth floorplan gridcheck place cts route finish \
-  activity_power vectorless vyges_em_ir chip_pdn_ir system_pdn export_spice_lab power_chain \
+  activity_power vectorless vyges_em_ir dynamic_ir chip_pdn_ir system_pdn export_spice_lab power_chain \
   yosys_equiv formal_gcd openrcx_report analytical_pex layout_tools tool_matrix; do
   rg -q "\"${action}\"" "${ROOT}/studio/src/lib/run.ts" \
     && ok "action ${action}" || bad "run.ts senza ${action}"
@@ -85,13 +85,14 @@ echo "== Script catena power =="
 for s in run_rtl_sim.sh run_activity_power.sh run_vectorless.sh run_chip_pdn_ir.sh run_system_pdn.sh \
   run_power_chain.sh export_spice_lab.sh run_gridcheck.sh run_yosys_equiv.sh run_formal_gcd.sh \
   run_openrcx_report.sh run_layout_tools_probe.sh run_spice_engines.sh run_tool_matrix.sh \
-  run_vyges_em_ir.sh ensure_vyges_em_ir.sh; do
+  run_vyges_em_ir.sh ensure_vyges_em_ir.sh run_dynamic_ir.sh; do
   f="${ROOT}/learn/scripts/${s}"
   [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
 done
 [[ -f "${ROOT}/learn/lib/power_vcd.sh" ]] && bash -n "${ROOT}/learn/lib/power_vcd.sh" && ok "power_vcd.sh" || bad "power_vcd.sh"
 python3 -m py_compile "${ROOT}/learn/scripts/spice_to_pdn.py" && ok "spice_to_pdn.py" || bad "spice_to_pdn.py"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_transient.py" && ok "pdn_transient.py compile" || bad "pdn_transient.py compile"
+python3 -m py_compile "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic.py compile" || bad "pdn_dynamic.py compile"
 
 echo "== powerChainLessons signoff hooks =="
 rg -q 'drc_signoff' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
@@ -102,7 +103,7 @@ rg -q 'signoff-matrix' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
   && ok "powerChain signoff-matrix doc" || bad "powerChain senza signoff-matrix link"
 
 echo "== LiveRunConsole signoff chips =="
-for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2 vectorless yosys_equiv formal_gcd vyges_em_ir; do
+for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2 vectorless yosys_equiv formal_gcd vyges_em_ir dynamic_ir; do
   rg -q "id: \"${action}\"" "${ROOT}/studio/src/components/LiveRunConsole.tsx" \
     && ok "LiveRunConsole ${action}" || bad "LiveRunConsole senza ${action}"
 done
@@ -111,7 +112,7 @@ echo "== STAGE_DEPS power =="
 python3 - <<PY || bad "STAGE_DEPS power incompleti"
 import re, sys
 text = open("${ROOT}/studio/src/lib/jobs.ts").read()
-need = ["gridcheck", "system_pdn", "chip_pdn_ir", "vyges_em_ir", "power_chain", "activity_power", "export_spice_lab", "vectorless"]
+need = ["gridcheck", "system_pdn", "chip_pdn_ir", "vyges_em_ir", "dynamic_ir", "power_chain", "activity_power", "export_spice_lab", "vectorless"]
 for a in need:
     m = re.search(rf'{a}:\s*"(\w+)"', text)
     assert m, f"missing {a}"
@@ -123,7 +124,7 @@ ok "STAGE_DEPS power chain"
 echo "== Artefatti flowlab (se presenti) =="
 RES="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab"
 if [[ -f "${RES}/6_final.odb" ]]; then
-  for stamp in .gridcheck_pdn.ok .system_pdn.ok .chip_pdn_ir.ok .vyges_em_ir.ok; do
+  for stamp in .gridcheck_pdn.ok .system_pdn.ok .chip_pdn_ir.ok .vyges_em_ir.ok .dynamic_ir.ok; do
     [[ -f "${RES}/${stamp}" ]] && ok "stamp ${stamp}" || bad "manca ${stamp} (esegui signoff)"
   done
   if [[ -f "${ROOT}/learn/sim/reports/vyges_em_ir_flowlab.json" ]]; then
@@ -136,6 +137,20 @@ print(r["summary"][:100])
 PY
   else
     bad "manca vyges_em_ir_flowlab.json"
+  fi
+  if [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json" ]]; then
+    python3 - <<PY && ok "dynamic_ir report parse" || bad "dynamic_ir report"
+import json
+r=json.load(open("${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json"))
+assert r["ok"] is True and r["kind"]=="dynamic_ir"
+assert r["static"]["worst_ir"] < 0.05
+assert r["dynamic"]["worst_droop"] > r["static"]["worst_ir"] * 0.5
+assert (r.get("ngspice_gold") or {}).get("ok") is not False or r.get("ngspice_gold") is None
+print(r["summary"][:120])
+PY
+    [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.svg" ]] && ok "dynamic_ir svg" || bad "manca dynamic_ir svg"
+  else
+    bad "manca dynamic_ir_flowlab.json"
   fi
   [[ -f "${ROOT}/learn/sim/reports/power_chain_flowlab.log" ]] \
     && rg -q 'POWER_CHAIN_DONE' "${ROOT}/learn/sim/reports/power_chain_flowlab.log" \

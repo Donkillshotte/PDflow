@@ -76,6 +76,8 @@ Report: `pdn_chip_ir_<variant>.json`
 
 Engine reale **vyges-em-ir** (stesso `.sp`): [vyges-em-ir.md](./vyges-em-ir.md). Static IR coincide (~0.4 %); il droop dinamico no (waveform diversa).
 
+Engine **I(t) per pin** (waveform + heatmap): [dynamic-ir.md](./dynamic-ir.md).
+
 ---
 
 ## Confronto con System PDN

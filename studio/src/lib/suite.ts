@@ -229,6 +229,17 @@ export async function getSuiteStatus() {
       href: "/strumenti?tab=run&action=vyges_em_ir",
     },
     {
+      id: "dynamic_ir",
+      label: "Dynamic IR I(t)",
+      group: "Power",
+      ok:
+        signoffReportPass("flowlab", "dynamic_ir") ||
+        signoffReportPass("learn", "dynamic_ir"),
+      detail: "PWL per ITerm · BE LU · heatmap V(x,y) a t_worst",
+      action: "dynamic_ir",
+      href: "/strumenti?tab=run&action=dynamic_ir",
+    },
+    {
       id: "power_chain",
       label: "Catena SPICE",
       group: "Power",

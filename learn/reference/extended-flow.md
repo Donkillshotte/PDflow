@@ -182,6 +182,7 @@ OpenROAD espone:
 | System PDN (VRM→board→pkg→die) | FlowLab fase **PKG** · `system_pdn` · `run_system_pdn.sh` · ngspice |
 | Chip IR static+transient (opzionale) | `run_chip_pdn_ir.sh` · PDNSim + `pdn_transient.py` |
 | vyges-em-ir (engine) | `run_vyges_em_ir.sh` · CG + backward Euler |
+| Dynamic IR I(t) | `run_dynamic_ir.sh` · PWL per pin + heatmap |
 | Hub packaging | [`/pkg`](/pkg) · [spice-power-chain.md](./spice-power-chain.md) · `system-pdn.md` + `pkg-design-package.md` |
 
 **Guida esaustiva catena fasi:** [spice-power-chain.md](./spice-power-chain.md) — mappa lezioni 00–07 ↔ FlowLab ↔ SPICE.
@@ -228,6 +229,7 @@ Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 | `system_pdn` | ngspice System PDN · VRM→board→pkg→die |
 | `chip_pdn_ir` | PDNSim + write_pg_spice + pdn_transient |
 | `vyges_em_ir` | vyges-em-ir binario su `.pdn` dalla stessa mesh |
+| `dynamic_ir` | PWL per ITerm + BE LU + heatmap SVG |
 | `power_chain` | activity → chip IR → system → export lab |
 | `activity_power` | `read_vcd` / `set_power_activity` + `report_power` |
 | `vectorless` | Vectorless vs dynamic IR (Najm + Kouroussis) |

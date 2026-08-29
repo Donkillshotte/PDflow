@@ -221,6 +221,7 @@ Mappa completa: [`learn/reference/extended-flow.md`](./reference/extended-flow.m
 | System PDN (hier) | `run_system_pdn.sh` · FlowLab PKG · ngspice | READY |
 | Chip IR mesh | `run_chip_pdn_ir.sh` · write_pg_spice | READY |
 | vyges-em-ir | `run_vyges_em_ir.sh` · binario CG+BE | READY |
+| Dynamic IR I(t) | `run_dynamic_ir.sh` · PWL + heatmap | READY |
 | Catena SPICE | `run_power_chain.sh` · signoff FlowLab | READY |
 | Docs catena fasi | `spice-power-chain.md` + lab `sim/spice/` | READY |
 | Activity → power | `run_activity_power.sh` · `activity_power` | READY (VCD `read_vcd`) |

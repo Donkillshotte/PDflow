@@ -102,8 +102,9 @@ Finish produce `6_final.odb`, heatmap IR e abilita la **catena SPICE** completa:
 1. `activity_power` → I_avg  
 2. `chip_pdn_ir` → mesh `write_pg_spice`  
 3. `vyges_em_ir` → engine CG + backward Euler sulla stessa mesh  
-4. `system_pdn` → ngspice ladder  
-4. `power_chain` → tutto + export lab  
+4. `dynamic_ir` → I(t) per pin + heatmap t_worst  
+5. `system_pdn` → ngspice ladder  
+6. `power_chain` → tutto + export lab  
 
 Guida master: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-07-finish) · Hub [PKG](/pkg) · FlowLab [finish](/flusso?phase=finish) · [PKG phase](/flusso?phase=pkg).
 

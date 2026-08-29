@@ -203,10 +203,17 @@ rg -q 'id: "pkg"' "${ROOT}/studio/src/components/flowlab/phases.ts" && ok "FlowL
 [[ -f "${ROOT}/learn/scripts/pdn_transient.py" ]] && ok "pdn_transient.py" || bad "manca pdn_transient.py"
 [[ -f "${ROOT}/learn/scripts/run_chip_pdn_ir.sh" ]] && ok "run_chip_pdn_ir.sh" || bad "manca chip PDN script"
 [[ -f "${ROOT}/learn/scripts/run_vyges_em_ir.sh" ]] && ok "run_vyges_em_ir.sh" || bad "manca vyges-em-ir script"
-[[ -f "${ROOT}/learn/scripts/spice_to_pdn.py" ]] && ok "spice_to_pdn.py" || bad "manca spice_to_pdn.py"
+[[ -f "${ROOT}/learn/scripts/run_dynamic_ir.sh" ]] && ok "run_dynamic_ir.sh" || bad "manca dynamic_ir script"
+[[ -f "${ROOT}/learn/scripts/pdn_dynamic.py" ]] && ok "pdn_dynamic.py" || bad "manca pdn_dynamic.py"
 [[ -f "${ROOT}/learn/reference/vyges-em-ir.md" ]] && ok "vyges-em-ir.md" || bad "manca vyges-em-ir.md"
+[[ -f "${ROOT}/learn/reference/dynamic-ir.md" ]] && ok "dynamic-ir.md" || bad "manca dynamic-ir.md"
+[[ -f "${ROOT}/learn/reference/dynamic-ir-landscape.md" ]] && ok "dynamic-ir-landscape.md" || bad "manca landscape"
+[[ -f "${ROOT}/learn/scripts/spice_to_pdn.py" ]] && ok "spice_to_pdn.py" || bad "manca spice_to_pdn.py"
 python3 -m py_compile "${ROOT}/learn/scripts/spice_to_pdn.py" && ok "spice_to_pdn compile" || bad "spice_to_pdn compile"
+python3 -m py_compile "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic compile" || bad "pdn_dynamic compile"
 rg -q 'vyges_em_ir' "${ROOT}/studio/src/lib/run.ts" && ok "studio vyges_em_ir action" || bad "studio senza vyges_em_ir"
+rg -q 'dynamic_ir' "${ROOT}/studio/src/lib/run.ts" && ok "studio dynamic_ir action" || bad "studio senza dynamic_ir"
+rg -F -q 'image/svg+xml' "${ROOT}/studio/src/app/api/content/route.ts" && ok "content SVG mime" || bad "content senza SVG"
 # Tiny mesh: adapter + real binary (if present)
 mkdir -p /tmp/vyges-course-smoke
 cat > /tmp/vyges-course-smoke/mesh.sp <<'SP'
@@ -242,6 +249,32 @@ if [[ -n "${VYGES_BIN}" && -x "${VYGES_BIN}" ]]; then
   fi
 else
   ok "skip vyges-em-ir binary (not installed yet)"
+fi
+# Tiny mesh: pdn_dynamic BE + ngspice gold
+mkdir -p /tmp/dynir-course-smoke
+cat > /tmp/dynir-course-smoke/mesh.sp <<'SP'
+R0 p1 ITermNode_metal1_0_0 R=0.05
+R1 ITermNode_metal1_0_0 ITermNode_metal1_100_0 R=0.20
+I0 ITermNode_metal1_100_0 0 DC 0.001
+V0 p1 0 DC 1.1
+SP
+if PYTHONPATH=/usr/lib/python3/dist-packages python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
+  --spice /tmp/dynir-course-smoke/mesh.sp --out /tmp/dynir-course-smoke/out.json \
+  --mode simultaneous --dt-ps 20 --t-end-ns 0.5 \
+  >/tmp/dynir-course-smoke.log 2>&1 && rg -q 'DYNAMIC_IR_DONE' /tmp/dynir-course-smoke.log
+then
+  python3 - <<PY && ok "pdn_dynamic tiny mesh" || bad "pdn_dynamic tiny parse"
+import json
+r=json.load(open("/tmp/dynir-course-smoke/out.json"))
+assert r["ok"] and r["kind"]=="dynamic_ir"
+assert r["static"]["worst_ir"] > 0
+g=r.get("ngspice_gold")
+assert g is None or g.get("ok") is True, g
+print(r["summary"][:100])
+PY
+else
+  bad "pdn_dynamic tiny mesh"
+  tail -20 /tmp/dynir-course-smoke.log || true
 fi
 # Hierarchical System PDN smoke (ngspice)
 REP_SYS="${ROOT}/learn/sim/reports/system_pdn_flowlab.json"

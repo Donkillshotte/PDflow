@@ -30,6 +30,7 @@ const RUN_ACTIONS = new Set([
   "system_pdn",
   "chip_pdn_ir",
   "vyges_em_ir",
+  "dynamic_ir",
   "power_chain",
   "activity_power",
   "vectorless",

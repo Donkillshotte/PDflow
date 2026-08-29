@@ -98,6 +98,7 @@ const ALLOWED_ACTIONS = new Set([
   "layout_tools",
   "spice_engines",
   "vyges_em_ir",
+  "dynamic_ir",
   "tool_matrix",
 ]);
 
@@ -257,6 +258,7 @@ function resolveCommand(
     layout_tools: { script: "run_layout_tools_probe.sh" },
     spice_engines: { script: "run_spice_engines.sh" },
     vyges_em_ir: { script: "run_vyges_em_ir.sh", pythonpath: true },
+    dynamic_ir: { script: "run_dynamic_ir.sh", pythonpath: true },
     tool_matrix: { script: "run_tool_matrix.sh", pythonpath: true },
   };
   if (action in analysisScripts) {

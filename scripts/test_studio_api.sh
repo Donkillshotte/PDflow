@@ -249,6 +249,32 @@ PY
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/vyges-em-ir.md")"
 [[ "${c}" == "200" ]] && ok "vyges-em-ir.md page" || bad "vyges-em-ir page → ${c}"
 
+code="$(curl -s --max-time 60 -o /tmp/studio-dynir.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=dynamic_ir&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "dynamic_ir stream → 200" || bad "dynamic_ir → ${code}"
+rg -q '"ok":true' /tmp/studio-dynir.sse && ok "dynamic_ir pass" || bad "dynamic_ir fail"
+[[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json" ]] && ok "dynamic_ir json artifact" || bad "manca dynamic_ir json"
+[[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.svg" ]] && ok "dynamic_ir svg artifact" || bad "manca dynamic_ir svg"
+python3 - <<PY || bad "dynamic_ir json parse"
+import json
+r=json.load(open("${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json"))
+assert r["ok"] is True
+assert r["kind"] == "dynamic_ir"
+assert r["static"]["worst_ir"] > 0
+assert r["dynamic"]["worst_droop"] > 0
+g = r.get("ngspice_gold")
+assert g is None or g.get("ok") is True, g
+print(r["summary"][:120])
+PY
+code="$(curl -s -o /tmp/studio-dynir.svg -w '%{http_code}' \
+  "${BASE}/api/content?path=sim/reports/dynamic_ir_flowlab.svg")"
+[[ "${code}" == "200" ]] && ok "content dynamic_ir svg → 200" || bad "content svg → ${code}"
+rg -q '<svg' /tmp/studio-dynir.svg && ok "content svg payload" || bad "content svg vuoto"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/dynamic-ir.md")"
+[[ "${c}" == "200" ]] && ok "dynamic-ir.md page" || bad "dynamic-ir page → ${c}"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/dynamic-ir-landscape.md")"
+[[ "${c}" == "200" ]] && ok "dynamic-ir-landscape.md page" || bad "landscape page → ${c}"
+
 code="$(curl -s --max-time 180 -o /tmp/studio-vectorless.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=vectorless&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "vectorless stream → 200" || bad "vectorless → ${code}"
@@ -296,7 +322,7 @@ if python3 - <<'PY'
 import json, sys
 d = json.load(open("/tmp/studio-suite.json"))
 ids = {h["id"] for h in d["hooks"]}
-need = {"ngspice", "activity", "chip_pdn_ir", "vyges_em_ir", "power_chain", "spice_lab", "system_pdn"}
+need = {"ngspice", "activity", "chip_pdn_ir", "vyges_em_ir", "dynamic_ir", "power_chain", "spice_lab", "system_pdn"}
 miss = sorted(need - ids)
 if miss:
     print("missing", miss)
@@ -315,6 +341,7 @@ else
 fi
 
 rg -q '"id":"run-chip-ir"' /tmp/studio-open.json && ok "open run-chip-ir" || bad "open senza chip ir"
+rg -q '"id":"run-dynamic-ir"' /tmp/studio-open.json && ok "open run-dynamic-ir" || bad "open senza dynamic ir"
 rg -q '"id":"run-power-chain"' /tmp/studio-open.json && ok "open run-power-chain" || bad "open senza power chain"
 rg -q '"id":"run-export-spice"' /tmp/studio-open.json && ok "open run-export-spice" || bad "open senza export spice"
 

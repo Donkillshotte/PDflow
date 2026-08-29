@@ -26,6 +26,12 @@ if [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIA
 else
   echo "skip vyges-em-ir (no finish / spice mesh)"
 fi
+if [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/pdn/pg_vdd_bumps.sp" ]] \
+  || [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/6_final.odb" ]]; then
+  "${ROOT}/learn/scripts/run_dynamic_ir.sh"
+else
+  echo "skip dynamic_ir (no finish / spice mesh)"
+fi
 
 python3 - <<PY
 import json, shutil
@@ -49,6 +55,7 @@ parts = {
     "spice_engines": load("spice_engines"),
     "vectorless": load("vectorless"),
     "vyges_em_ir": load("vyges_em_ir"),
+    "dynamic_ir": load("dynamic_ir"),
 }
 tools = {
     "yosys": {"status": "INTEGRATED", "bin": shutil.which("yosys"), "role": "synth + equiv + formal sat"},
@@ -65,9 +72,10 @@ tools = {
     "starrc": {"status": "GAP", "bin": None, "role": "Synopsys commercial — OpenRCX SPEF is the extract"},
     "open_pdks": {"status": "GAP", "bin": None, "role": "Sky130/gf180; this course is pinned Nangate45/FreePDK45"},
     "vyges_em_ir": {"status": "INTEGRATED", "bin": shutil.which("vyges-em-ir") or str(root / "tools/vyges-em-ir/vyges-em-ir"), "role": "CG + backward Euler on write_pg_spice mesh"},
+    "dynamic_ir": {"status": "INTEGRATED", "bin": str(root / "learn/scripts/pdn_dynamic.py"), "role": "per-ITerm PWL + BE LU + heatmap on write_pg_spice mesh"},
 }
 odb = root / f"tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/{variant}/6_final.odb"
-skip_optional = set() if odb.exists() else {"vectorless", "vyges_em_ir"}
+skip_optional = set() if odb.exists() else {"vectorless", "vyges_em_ir", "dynamic_ir"}
 ok = all(v.get("ok") for k, v in parts.items() if k not in skip_optional)
 out = {
     "ok": ok,

@@ -74,4 +74,4 @@ Energia `switch` (pJ) dallo stesso inviluppo di `pdn_transient`:
 4. DEF+LEF extraction esiste nell’engine (Sky130 `RPERSQ`); su questo corso il path onesto è la mesh PDNSim già usata dal GCD.
 5. Nessuna correlazione commerciale; educativo, non sign-off foundry.
 
-Cross-ref: [spice-chip-mesh.md](./spice-chip-mesh.md) · [vectorless-power.md](./vectorless-power.md) · [oss-integrations.md](./oss-integrations.md) · [system-pdn.md](./system-pdn.md)
+Cross-ref: [spice-chip-mesh.md](./spice-chip-mesh.md) · [vectorless-power.md](./vectorless-power.md) · [oss-integrations.md](./oss-integrations.md) · [system-pdn.md](./system-pdn.md) · [dynamic-ir.md](./dynamic-ir.md)

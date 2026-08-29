@@ -11,7 +11,7 @@ Legenda:
 | **PARTIAL** | Binario presente, ma PDK/tech incompatibile con Nangate45 |
 | **GAP** | Commerciale o PDK sbagliato — non si finge l’integrazione |
 
-Azioni Studio: `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `layout_tools`, `spice_engines`, `vyges_em_ir`, `tool_matrix`.
+Azioni Studio: `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `layout_tools`, `spice_engines`, `vyges_em_ir`, `dynamic_ir`, `tool_matrix`.
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
@@ -37,6 +37,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 | **StarRC** | GAP | Synopsys commerciale, no licenza | documentato | **OpenRCX** SPEF a finish |
 | **open_pdks** | GAP | Sky130 / gf180, **altro PDK** | corso pinnato Nangate45 | Non si mescola con FreePDK45 |
 | **vyges-em-ir** | INTEGRATED | IR statico CG + transiente BE sulla mesh `write_pg_spice` | azione `vyges_em_ir` · `sim/reports/vyges_em_ir_flowlab.json` · binario v0.1.33 | — |
+| **dynamic_ir (questo corso)** | INTEGRATED | I(t) per ITerm + BE LU + heatmap t_worst | azione `dynamic_ir` · `sim/reports/dynamic_ir_flowlab.json` + `.svg` | — |
 
 ---
 
@@ -69,6 +70,7 @@ KLayout è l’unico percorso **signoff** su questo PDK (runset vendored `learn/
 Vedi [vectorless-power.md](./vectorless-power.md). OpenSTA 26Q2: usare `read_vcd`, **non** `read_power_activities` (arity rotta).
 
 Engine IR/EM Apache-2.0 sulla stessa mesh: [vyges-em-ir.md](./vyges-em-ir.md) (binario reale, non un reimplement).
+I(t) per pin + waveform + heatmap: [dynamic-ir.md](./dynamic-ir.md). Landscape OSS: [dynamic-ir-landscape.md](./dynamic-ir-landscape.md).
 
 ---
 
@@ -79,6 +81,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 test -f learn/sim/reports/vectorless_flowlab.json
 test -f learn/sim/reports/yosys_equiv_flowlab.json
 test -f learn/sim/reports/vyges_em_ir_flowlab.json
+test -f learn/sim/reports/dynamic_ir_flowlab.json
 test -f learn/platforms/nangate45/lvs/FreePDK45.lylvs
 ```
 

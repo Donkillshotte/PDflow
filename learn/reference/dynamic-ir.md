@@ -1,0 +1,80 @@
+# Dynamic IR sul GCD (I(t) per pin + backward Euler)
+
+Slice eseguibile, non un RedHawk. Stesso mesh OpenROAD `write_pg_spice` di `chip_pdn_ir` / vyges-em-ir, ma con **correnti PWL per ITerm**, timestep esplicito, **waveform** e **heatmap V(x,y)** all’istante di droop peggiore.
+
+```text
+6_final.odb
+    │  OpenROAD PDNSim  write_pg_spice -source_type BUMPS
+    ▼
+pg_vdd_bumps.sp                 R + I_avg + bump V
+inst_power_map.json             placement, seq vs combo (opzionale)
+    │
+    ▼
+pdn_dynamic.py
+    per-ITerm triangle I(t)     simultaneous | spatial | clock
+    (G + C/Δt) V_{n+1} = I_{n+1} + (C/Δt) V_n
+    sparse LU una volta, poi timestep
+    ▼
+sim/reports/dynamic_ir_<variant>.json
+                  .wave.csv     Vmin(t), I_tot(t)
+                  .map.csv      V, IR per tap
+                  .svg          heatmap ITerm
+```
+
+```bash
+FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
+# Studio: azione dynamic_ir  ·  /strumenti?tab=run&action=dynamic_ir
+# Env: DYNAMIC_IR_MODE=clock|spatial|simultaneous
+```
+
+## Cosa fa (e cosa no)
+
+| Pezzo | Questo engine | vyges-em-ir | `pdn_transient.py` | PDNSim |
+|---|---|---|---|---|
+| Static IR | sì (stesso G) | sì (CG) | sì | sì |
+| I(t) | **per pin**, triangolo leak+switch | **un** `switch_t_ns` per tutte | load-step globale × peak_factor | I_avg DC |
+| t50 | clock / spatial / simultaneous | simultaneo | n/a | n/a |
+| Waveform | **CSV** Vmin(t) | no | CSV | no |
+| Heatmap t_worst | **SVG + CSV** | no | no | PNG statico ORFS |
+| Gold | ngspice 1-nodo (gear BE) | — | — | — |
+| CCS Liberty / VCD pin | **no** (Nangate è NLDM) | no | no | no |
+
+Non è sign-off Ansys RedHawk / Cadence Voltus. Nangate45 non ha tabelle CCS di corrente. Il VCD RTL (`tb_gcd`, 10 ns) **non** nomina i pin gate del netlist 0.46 ns — non si finge un mapping.
+
+## Modi I(t)
+
+Per ogni load ITerm: \(I_\mathrm{leak}=f_\mathrm{leak}\,I_\mathrm{avg}\), impulso triangolare di durata `DUR_NS` con carica circa \((I_\mathrm{avg}-I_\mathrm{leak})\,T_\mathrm{clk}\), clip a `PEAK_FACTOR·I_avg`.
+
+| `DYNAMIC_IR_MODE` | Quando commuta |
+|---|---|
+| `simultaneous` | tutte a `T50_NS` — upper bound, confrontabile con vyges |
+| `spatial` | stagger sull’asse X |
+| `clock` (default) | flip-flop sul fronte; combo ritardata + stagger X |
+
+## Numeri GCD flowlab (verificati)
+
+Stesso `pg_vdd_bumps.sp` (~3972 nodi, 13 pad, 601 load, Vdd = 1.1 V, periodo SDC 0.46 ns).
+
+| Engine | Static IR | Dynamic droop |
+|---|---|---|
+| `pdn_transient.py` | 17.52 mV | 154 mV (step ×8 + pkg R/L) |
+| vyges-em-ir 0.1.33 | 17.46 mV | 78.8 mV @ 1.016 ns (simultaneous) |
+| **questo engine `clock`** | **17.52 mV** | **~75 mV @ ~0.34 ns** (stagger; I_peak ~22 mA) |
+
+Lo statico coincide. Il dinamico `clock` è **sotto** vyges simultaneous perché i t50 non sono allineati. Non è un FAIL di tapeout: è un laboratorio di droop.
+
+Gold ngspice: circuito **1 nodo** RC + triangolo (non il chip). `|V_BE − V_ngspice| ≈ 0.03 mV` sul GCD run con `method=gear maxord=1` (soglia 5 mV).
+
+## File
+
+| Path | Ruolo |
+|---|---|
+| `learn/scripts/pdn_dynamic.py` | I(t) + BE + SVG |
+| `learn/scripts/run_dynamic_ir.sh` | GCD + stamp `.dynamic_ir.ok` |
+| `sim/reports/dynamic_ir_<variant>.*` | JSON / wave / map / SVG |
+
+Limiti in aula: triangolo ≠ CCS; nessun AMG/Krylov/GPU; package R/L come in `pdn_transient`; pad PDNSim su metal4.
+
+Landscape OSS e perché **non** forkare vyges/EMSim/PSM: [dynamic-ir-landscape.md](./dynamic-ir-landscape.md).
+
+Cross-ref: [vyges-em-ir.md](./vyges-em-ir.md) · [spice-chip-mesh.md](./spice-chip-mesh.md) · [vectorless-power.md](./vectorless-power.md) · [oss-integrations.md](./oss-integrations.md)

@@ -35,6 +35,8 @@ Attenzione **STA-1452**: il testbench usa periodo 10 ns, l’SDC 0.46 ns. I watt
 
 Lo stesso mesh alimenta l’engine **vyges-em-ir** (`run_vyges_em_ir.sh`): IR statico CG confrontabile con `pdn_transient`, droop dinamico simultaneous-switch. Vedi [vyges-em-ir.md](./vyges-em-ir.md).
 
+Il path **I(t) per pin** (stagger clock, waveform, heatmap) è `dynamic_ir` — [dynamic-ir.md](./dynamic-ir.md). PDNSim resta statico.
+
 PDNSim (`analyze_power_grid -source_type STRAPS`) gira in entrambi i modi: IR straps sul report.
 
 ## Come lanciare

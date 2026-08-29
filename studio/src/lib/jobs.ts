@@ -29,6 +29,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   system_pdn: "finish",
   chip_pdn_ir: "finish",
   vyges_em_ir: "finish",
+  dynamic_ir: "finish",
   power_chain: "finish",
   activity_power: "finish",
   vectorless: "finish",
@@ -367,6 +368,10 @@ export function preflightAction(
     vyges_em_ir: {
       rel: "6_final.odb",
       hint: "esegui prima finish (vyges-em-ir sulla mesh PDN)",
+    },
+    dynamic_ir: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (dynamic IR I(t) sulla mesh PDN)",
     },
     power_chain: {
       rel: "6_final.odb",

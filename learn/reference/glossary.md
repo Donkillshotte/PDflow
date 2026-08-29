@@ -200,6 +200,8 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **vyges-em-ir** — Engine Apache-2.0 ([vyges-tools/em-ir](https://github.com/vyges-tools/em-ir)): IR statico CG + transiente backward-Euler su un `.pdn`. Integrato sul GCD via `run_vyges_em_ir.sh`. Non è RedHawk.
 
+**Dynamic IR (I(t))** — Engine del corso (`pdn_dynamic.py`): correnti PWL per power pin, backward Euler, waveform e heatmap all’istante di droop. Non è CCS né VCD pin-accurate.
+
 ---
 
 ## W
@@ -208,7 +210,7 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **Wirelength** — Lunghezza totale interconnessioni (obiettivo placement/routing).
 
-**write_pg_spice** — Export OpenROAD PDNSim: rete R + correnti I per pin cella → input `pdn_transient.py` e `spice_to_pdn.py` (vyges-em-ir).
+**write_pg_spice** — Export OpenROAD PDNSim: rete R + correnti I per pin cella → input `pdn_transient.py`, `spice_to_pdn.py` (vyges-em-ir) e `pdn_dynamic.py`.
 
 ---
 
