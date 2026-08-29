@@ -268,6 +268,9 @@ import json
 r=json.load(open("/tmp/dynir-course-smoke/out.json"))
 assert r["ok"] and r["kind"]=="dynamic_ir"
 assert r["static"]["worst_ir"] > 0
+assert r["sim_levels"]["L0_static"]["status"]=="READY"
+assert r["sim_levels"]["L2_vcd_dynamic"]["status"]=="GAP"
+assert r["hotspot"]["droop_mv"] > 0
 g=r.get("ngspice_gold")
 assert g is None or g.get("ok") is True, g
 print(r["summary"][:100])

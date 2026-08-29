@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 
 type Hottest = { node?: string; ir_mv?: number; x?: number; y?: number };
+type Window = { t_start_ns?: number; t_end_ns?: number; t_peak_ns?: number; i_peak_a?: number };
+type Level = { status?: string; mode?: string; note?: string; reason?: string; windows?: Window[] };
+type PipelineStep = { id: number; name: string; status: string; via: string };
 type DynReport = {
   ok?: boolean;
   summary?: string;
@@ -12,6 +15,20 @@ type DynReport = {
   static?: { worst_ir?: number };
   heatmap?: { taps?: number; ir_max_mv?: number; hottest?: Hottest[] };
   ngspice_gold?: { ok?: boolean; abs_err_mv?: number } | null;
+  sim_levels?: {
+    L0_static?: Level;
+    L1_vectorless_dynamic?: Level;
+    L2_vcd_dynamic?: Level;
+    L3_windowed?: Level;
+  };
+  pipeline?: PipelineStep[];
+  hotspot?: {
+    node?: string;
+    t_ns?: number;
+    droop_mv?: number;
+    vmin?: number;
+    contributors?: { seq_frac?: number; combo_frac?: number };
+  };
 };
 
 export function DynamicIrHeatmap({
@@ -50,13 +67,19 @@ export function DynamicIrHeatmap({
   const tNs = (report?.dynamic?.worst_time_s ?? 0) * 1e9;
   const gold = report?.ngspice_gold;
   const svgSrc = `/api/content?path=sim/reports/dynamic_ir_${variant}.svg`;
+  const levels = report?.sim_levels;
+  const win = levels?.L3_windowed?.windows?.[0];
+  const contrib = report?.hotspot?.contributors;
+  const seqPct = ((contrib?.seq_frac ?? 0) * 100).toFixed(0);
+  const comboPct = ((contrib?.combo_frac ?? 0) * 100).toFixed(0);
 
   return (
     <section className="fl-dynir" aria-label="Dynamic IR heatmap">
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
-          OpenROAD mesh + PWL + backward Euler · non è RedHawk ·{" "}
+          Pipeline 6 livelli · L0 statico + L1 sintetico READY · L2 VCD e CCS = GAP ·
+          vyges = riferimento simultaneous-switch, non il core ·{" "}
           <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>
           {" · "}
           <a href="/materiali/reference/dynamic-ir-landscape.md">landscape</a>
@@ -102,6 +125,25 @@ export function DynamicIrHeatmap({
               </dd>
             </div>
           </dl>
+          {levels && (
+            <ul className="fl-dynir-levels">
+              <li data-status={levels.L0_static?.status ?? "GAP"}>L0 static</li>
+              <li data-status={levels.L1_vectorless_dynamic?.status ?? "GAP"}>
+                L1 {report.mode ?? "synth"}
+              </li>
+              <li data-status={levels.L2_vcd_dynamic?.status ?? "GAP"}>L2 VCD</li>
+              <li data-status={levels.L3_windowed?.status ?? "GAP"}>
+                L3 window
+                {win?.t_peak_ns != null ? ` ${win.t_peak_ns.toFixed(2)} ns` : ""}
+              </li>
+            </ul>
+          )}
+          {report.hotspot && (
+            <p className="fl-dynir-hotspot">
+              Hotspot {report.hotspot.node ?? "—"} · {report.hotspot.droop_mv?.toFixed(2)} mV @{" "}
+              {report.hotspot.t_ns?.toFixed(2)} ns · I seq {seqPct}% / combo {comboPct}%
+            </p>
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="fl-dynir-svg"

@@ -21,6 +21,30 @@ sim/reports/dynamic_ir_<variant>.json
                   .svg          heatmap ITerm
 ```
 
+## Gerarchia di simulazione (L0–L3)
+
+vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch_t_ns`). Qui:
+
+| Livello | Idea | Stato GCD |
+|---|---|---|
+| **L0 Static** | \(G V = I_\mathrm{avg}\) | READY — stesso mesh di PDNSim |
+| **L1 Vectorless dynamic** | t50 sintetici (clock / spatial / simultaneous) | READY — non finestre STA |
+| **L2 VCD dynamic** | tempi reali di pin | **GAP** — VCD RTL ≠ ITerm gate |
+| **L3 Windowed** | simula solo finestre ad alta corrente | PARTIAL — finestre su `I_tot(t)` di **questo** run |
+
+Il cuore del prodotto futuro è il modello **cella → I(t)** da Liberty CCS + VCD/SAIF, non il solver. BE+LU sul GCD (~4k nodi) è il laboratorio; PCG/AMG/Krylov non sono in questa slice. **Non** si forka vyges-em-ir: resta riferimento simultaneous-switch e formato `.pdn`.
+
+## Pipeline a 6 livelli (oggi)
+
+| # | Livello | Oggi | Gap onesto |
+|---|---|---|---|
+| 1 | PDN extract | OpenROAD `write_pg_spice` | non DEF+LEF nativo vyges su Nangate |
+| 2 | Power model | I_avg nel `.sp` (NLDM) | no CCS I(t) |
+| 3 | Activity | clock/spatial/simultaneous | no VCD pin, no SAIF |
+| 4 | Current waveform | triangolo per ITerm | no slew/load/arc |
+| 5 | Transient solver | BE + sparse LU | non SPICE full-chip; ngspice = gold 1-nodo |
+| 6 | Analysis | heatmap, Vmin(t), finestre, hotspot seq/combo | no EM, no delay vs V |
+
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 # Studio: azione dynamic_ir  ·  /strumenti?tab=run&action=dynamic_ir

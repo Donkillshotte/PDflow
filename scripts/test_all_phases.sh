@@ -145,6 +145,8 @@ r=json.load(open("${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json"))
 assert r["ok"] is True and r["kind"]=="dynamic_ir"
 assert r["static"]["worst_ir"] < 0.05
 assert r["dynamic"]["worst_droop"] > r["static"]["worst_ir"] * 0.5
+assert r["sim_levels"]["L1_vectorless_dynamic"]["status"]=="READY"
+assert r["hotspot"]["droop_mv"] > 0
 assert (r.get("ngspice_gold") or {}).get("ok") is not False or r.get("ngspice_gold") is None
 print(r["summary"][:120])
 PY

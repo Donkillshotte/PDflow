@@ -49,6 +49,19 @@ Dipendenze commerciali: non si “portano” nel corso. Al loro posto:
 
 vyges resta il **check simultaneous-switch** (binario Apache-2.0). Questo engine è il path I(t)+waveform. ngspice non è il motore full-chip.
 
+## Classifica (obiettivo RedHawk Dynamic OSS)
+
+| Approccio | Voto | Ruolo in questo repo |
+|---|---|---|
+| OpenROAD PSM + nuovo transient + I(t) | ⭐⭐⭐⭐⭐ | **slice attuale** (`dynamic_ir`) |
+| vyges-em-ir + estensione I(t) | ⭐⭐⭐⭐⭐ come *idea*; ⭐⭐⭐⭐ come binario | prototipo, **non forkato** |
+| OpenROAD + ngspice | ⭐⭐⭐⭐ | gold 1-nodo; non full-chip |
+| ngspice puro | ⭐⭐⭐ | impraticabile a 10M nodi |
+| PDNSim da modificare | ⭐⭐⭐ | resta static analyzer |
+| Solver da zero senza mesh OpenROAD | ⭐⭐ | scartato |
+
+Il salto qualitativo non è «un CG più veloce»: è \(I(t)=f(\mathrm{cell},\mathrm{slew},\mathrm{load},\mathrm{transition})\) + correlazione temporale VCD. Nangate45 non ha CCS; il VCD del testbench non mappa i pin gate — quindi L2 è GAP dichiarato, non un fake.
+
 ## Cosa non fare (questa slice e oltre, nel repo)
 
 - Non forkare vyges-em-ir, EMSim o PSM per farci AMG/CCS/GPU.

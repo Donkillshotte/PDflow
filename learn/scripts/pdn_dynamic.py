@@ -275,6 +275,65 @@ def heatmap_points(order, V, vdd, events) -> list[dict]:
     return pts
 
 
+def current_windows(wave_t: list[float], wave_itot: list[float], frac: float = 0.5) -> list[dict]:
+    """L3-lite: intervals where I_tot >= frac * I_peak (this run, not 100k-cycle scan)."""
+    if not wave_itot:
+        return []
+    peak = max(wave_itot)
+    thresh = frac * peak
+    out: list[dict] = []
+    in_win = False
+    t0 = peak_t = 0.0
+    peak_i = 0.0
+    for t, i in zip(wave_t, wave_itot):
+        if i >= thresh:
+            if not in_win:
+                in_win = True
+                t0 = t
+                peak_t, peak_i = t, i
+            elif i > peak_i:
+                peak_t, peak_i = t, i
+        elif in_win:
+            out.append(
+                {
+                    "t_start_ns": t0 * 1e9,
+                    "t_end_ns": t * 1e9,
+                    "t_peak_ns": peak_t * 1e9,
+                    "i_peak_a": peak_i,
+                    "threshold_frac": frac,
+                }
+            )
+            in_win = False
+    if in_win and wave_t:
+        out.append(
+            {
+                "t_start_ns": t0 * 1e9,
+                "t_end_ns": wave_t[-1] * 1e9,
+                "t_peak_ns": peak_t * 1e9,
+                "i_peak_a": peak_i,
+                "threshold_frac": frac,
+            }
+        )
+    return out
+
+
+def contributors_at(events: list[dict], t: float) -> dict:
+    seq_a = combo_a = 0.0
+    for ev in events:
+        i = ev["i_leak"] + triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
+        if ev.get("seq"):
+            seq_a += i
+        else:
+            combo_a += i
+    tot = seq_a + combo_a
+    return {
+        "seq_a": seq_a,
+        "combo_a": combo_a,
+        "seq_frac": (seq_a / tot) if tot else 0.0,
+        "combo_frac": (combo_a / tot) if tot else 0.0,
+    }
+
+
 def write_heatmap_svg(pts: list[dict], path: Path, vdd: float, title: str) -> None:
     if not pts:
         path.write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
@@ -539,6 +598,47 @@ def main() -> int:
     i_tot_peak = max(dyn["wave_itot"]) if dyn["wave_itot"] else 0.0
     n_seq = sum(1 for e in events if e["seq"])
     t50s = [e["t50_s"] for e in events]
+    windows = current_windows(dyn["wave_t"], dyn["wave_itot"])
+    contrib = contributors_at(events, dyn["worst_time_s"])
+    hot = hottest[0] if hottest else {}
+    hotspot = {
+        "node": dyn["worst_node"],
+        "x_dbu": hot.get("x"),
+        "y_dbu": hot.get("y"),
+        "t_ns": dyn["worst_time_s"] * 1e9,
+        "vmin": dyn["worst_voltage"],
+        "droop_mv": dyn["worst_droop"] * 1e3,
+        "seq": bool(hot.get("seq")),
+        "contributors": contrib,
+    }
+    sim_levels = {
+        "L0_static": {
+            "status": "READY",
+            "worst_ir_mv": static["worst_ir"] * 1e3,
+        },
+        "L1_vectorless_dynamic": {
+            "status": "READY",
+            "mode": args.mode,
+            "note": "synthetic t50 (clock/spatial/simultaneous), not STA arrival windows",
+        },
+        "L2_vcd_dynamic": {
+            "status": "GAP",
+            "reason": "RTL VCD (tb_gcd, 10 ns) does not name gate ITerms; SDC is 0.46 ns",
+        },
+        "L3_windowed": {
+            "status": "PARTIAL",
+            "windows": windows,
+            "note": "high-I windows on this run's I_tot(t), not 100k-cycle screening",
+        },
+    }
+    pipeline = [
+        {"id": 1, "name": "PDN extraction", "status": "READY", "via": "OpenROAD write_pg_spice"},
+        {"id": 2, "name": "Power model", "status": "PARTIAL", "via": "I_avg from mesh (NLDM, not CCS I(t))"},
+        {"id": 3, "name": "Activity engine", "status": "PARTIAL", "via": f"synthetic {args.mode}; VCD pin-accurate = GAP"},
+        {"id": 4, "name": "Current waveform", "status": "PARTIAL", "via": "per-ITerm triangle PWL"},
+        {"id": 5, "name": "Transient solver", "status": "READY", "via": "backward-Euler sparse LU (not AMG/PCG product core)"},
+        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + Vmin(t) + windows; no EM/timing coupling"},
+    ]
     report = {
         "ok": True,
         "kind": "dynamic_ir",
@@ -554,7 +654,17 @@ def main() -> int:
             "gate-level VCD pin times",
             "AMG / rational Krylov / MOR",
             "RedHawk / Voltus / Totem sign-off",
+            "vyges-em-ir fork",
         ],
+        "roles": {
+            "openroad": "PDN extract (layer 1)",
+            "vyges_em_ir": "simultaneous-switch prototype / CG+BE reference — not the product core",
+            "this_engine": "I(t) per pin + explicit dt + waveform + map (layers 4–6 slice)",
+            "ngspice": "1-node golden, not full-chip solver",
+        },
+        "pipeline": pipeline,
+        "sim_levels": sim_levels,
+        "hotspot": hotspot,
         "spice": str(args.spice),
         "vdd": vdd,
         "mode": args.mode,
