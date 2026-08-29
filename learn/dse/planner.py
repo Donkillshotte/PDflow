@@ -126,6 +126,29 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "region" if region else "chip",
         }
     )
+    if region or (isinstance(attr.get("x_dbu"), (int, float)) and isinstance(attr.get("y_dbu"), (int, float))):
+        steps.append(
+            {
+                "level": "f2_region",
+                "reason": (
+                    f"IR hotspot region {region or 'xy'} — OpenROAD density cap on that bin, "
+                    "not more ABC, not a chip restart"
+                ),
+                "scope": "region",
+                "region": region,
+            }
+        )
+        steps.append(
+            {
+                "level": "f4_region_extract",
+                "reason": (
+                    f"write_pg_spice under the {region or 'IR'} density cap — new R-graph, "
+                    "not the unconstrained extract, not gold"
+                ),
+                "scope": "region",
+                "region": region,
+            }
+        )
     ir_up = _ir_rose(mem)
     steps.append(
         {
@@ -207,7 +230,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
         src = (c.knobs or {}).get("source")
         if src == "ingest_pdn":
             ingest = float(c.qor.dynamic_ir_mv)
-        elif src in ("f4_iscale", "f4_solver_a", "f4_candidate_extract"):
+        elif src in ("f4_iscale", "f4_solver_a", "f4_candidate_extract", "f4_region_extract"):
             v = float(c.qor.dynamic_ir_mv)
             cand = v if cand is None else max(cand, v)
     return ingest is not None and cand is not None and cand > ingest + 0.05

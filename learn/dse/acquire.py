@@ -280,6 +280,90 @@ def should_pay_f4_scale(
     return True, f"Solver A with I(t)×P_F3/P_base on {mesh} — not a new VCD map"
 
 
+def should_pay_f2_region(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_region: int = 0,
+    region_max: int = 1,
+    min_s: float = 4.0,
+    region: str | None = None,
+    x_dbu: float | None = None,
+    y_dbu: float | None = None,
+) -> tuple[bool, str]:
+    """Pay one GPL with an IR-bin density cap. Not more ABC, not finish."""
+    if n_region >= region_max:
+        return False, "region GPL shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover region GPL"
+    if x_dbu is None and not region:
+        return False, "no IR region / hotspot to place against"
+    from .openroad_f2 import available as gpl_ok
+
+    if not gpl_ok():
+        return False, "openroad missing — not launching finish"
+    winners = [
+        c
+        for c in mem.all()
+        if c.status == "ok"
+        and c.fidelity == "F1"
+        and c.qor.area_um2 is not None
+        and (c.artifacts or {}).get("mapped_v")
+    ]
+    if not winners:
+        return False, "no F1 mapped netlist for region GPL"
+    have = any(
+        (c.knobs or {}).get("source") == "f2_openroad_gpl_region" and c.status == "ok"
+        for c in mem.by_level("physical")
+    )
+    if have:
+        return False, "already have a region-local GPL child"
+    tag = region or f"xy={x_dbu:.0f},{y_dbu:.0f}"
+    return True, f"OpenROAD density cap on IR bin {tag} — region-local place, not more ABC"
+
+
+def should_pay_f4_region_extract(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_extract: int = 0,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+    region: str | None = None,
+    x_dbu: float | None = None,
+    y_dbu: float | None = None,
+) -> tuple[bool, str]:
+    """Pay one write_pg_spice under the IR-bin density cap. Not gold."""
+    if n_extract >= extract_max:
+        return False, "region PDN extract already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover region write_pg_spice"
+    if x_dbu is None and not region:
+        return False, "no IR region / hotspot to extract against"
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    winners = [
+        c
+        for c in mem.all()
+        if c.status == "ok"
+        and c.fidelity == "F1"
+        and c.qor.area_um2 is not None
+        and (c.artifacts or {}).get("mapped_v")
+    ]
+    if not winners:
+        return False, "no F1 mapped netlist for region extract"
+    have = any(
+        (c.knobs or {}).get("source") == "f4_region_extract" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    )
+    if have:
+        return False, "already have a region-local extract"
+    tag = region or f"xy={x_dbu:.0f},{y_dbu:.0f}"
+    return True, f"write_pg_spice under IR-bin density cap {tag} — new mesh, not gold"
+
+
 def should_pay_f5_drt(
     mem: DesignMemory,
     *,
@@ -416,9 +500,11 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F3"
     if level == "f5_drt":
         return "F5"
+    if level == "f2_region":
+        return "F2"
     if level == "f4_amg":
         return "F4"
-    if level in ("pdn", "f4_extract", "f4_scale"):
+    if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract"):
         return "F4"
     need = float(cost_hint.get("F1", 2.0))
     if budget_left < need:

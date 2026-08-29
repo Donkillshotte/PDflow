@@ -388,6 +388,10 @@ def evaluate_f4_extract(
     pkg_r: float = 0.05,
     pkg_l: float = 2e-10,
     c_decap: float = 50e-15,
+    x_dbu: float | None = None,
+    y_dbu: float | None = None,
+    region: str | None = None,
+    region_density: float | None = None,
 ) -> Candidate | None:
     """New write_pg_spice after legalized place, then Solver A. Not finish, not gold."""
     from .attribute import attribute_dynamic_ir
@@ -410,12 +414,29 @@ def evaluate_f4_extract(
         "i_scale": 1.0,
         "name": f"extract_{parent.knobs.get('name')}",
     }
+    if region or x_dbu is not None:
+        knobs["source"] = "f4_region_extract"
+        knobs["region"] = region
+        knobs["x_dbu"] = x_dbu
+        knobs["y_dbu"] = y_dbu
+        knobs["region_density"] = region_density if region_density is not None else 0.30
+        knobs["name"] = f"extract_region_{parent.knobs.get('name')}"
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
         return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
     cid = DesignMemory.new_id()
     out_dir = REPO / "learn" / "sim" / "dse" / "extracts" / cid
-    ext = extract_pdn(Path(mapped), out_dir, util=util, density=density, timeout_s=timeout_s)
+    ext = extract_pdn(
+        Path(mapped),
+        out_dir,
+        util=util,
+        density=density,
+        timeout_s=timeout_s,
+        x_dbu=x_dbu,
+        y_dbu=y_dbu,
+        region=region,
+        region_density=region_density,
+    )
     spice, insts = ext.get("spice"), ext.get("insts")
     dyn: dict = {}
     extract_cost = float(ext.get("cost_s") or 0.0)
@@ -931,14 +952,33 @@ def evaluate_f2_gpl(
         "skip_io": True,
     }
     if extra_knobs:
-        # Catalog tags only — never ABC/PDN knobs on this fingerprint.
-        for k in ("catalog", "coreUtilization", "placeDensityAddon"):
+        # Catalog / region tags only — never ABC/PDN knobs on this fingerprint.
+        for k in (
+            "catalog",
+            "coreUtilization",
+            "placeDensityAddon",
+            "region",
+            "x_dbu",
+            "y_dbu",
+            "region_density",
+        ):
             if k in extra_knobs:
                 knobs[k] = extra_knobs[k]
+    if knobs.get("region") or knobs.get("x_dbu") is not None:
+        knobs["source"] = "f2_openroad_gpl_region"
     fp = knobs_fp("physical", knobs)
     if fp in mem.seen_knobs("physical"):
         return next(c for c in mem.by_level("physical") if c.knobs_fp == fp)
-    gpl = evaluate_gpl(Path(mapped), util=util, density=density, timeout_s=timeout_s)
+    gpl = evaluate_gpl(
+        Path(mapped),
+        util=util,
+        density=density,
+        timeout_s=timeout_s,
+        x_dbu=knobs.get("x_dbu"),
+        y_dbu=knobs.get("y_dbu"),
+        region=knobs.get("region"),
+        region_density=knobs.get("region_density"),
+    )
     q = QoR(
         area_um2=gpl.get("inst_area_um2") or parent.qor.area_um2,
         n_cells=gpl.get("n_inst") or parent.qor.n_cells,

@@ -53,6 +53,66 @@ _ROW = re.compile(
 )
 _AREA = re.compile(r"Placed Cell Area\s+([0-9.]+)")
 _INST = re.compile(r"Number of instances:\s+(\d+)")
+_REGION_BIN = re.compile(
+    r"DSE_REGION_BIN\s+(r\d+)\s+([0-9.eE+\-]+)\s+([0-9.eE+\-]+)\s+([0-9.eE+\-]+)\s+([0-9.eE+\-]+)"
+)
+
+
+def region_blockage_tcl(
+    *,
+    x_dbu: float | None = None,
+    y_dbu: float | None = None,
+    region: str | None = None,
+    bins: int = 4,
+    max_density: float = 0.30,
+) -> str:
+    """After floorplan: density cap on the IR bin. Not a chip restart.
+
+    Uses the live core bbox. Prefer hotspot dbu; fall back to ``r{nx}{ny}``.
+    """
+    if (x_dbu is None or y_dbu is None) and not region:
+        return ""
+    nx = ny = 0
+    if region and re.fullmatch(r"r\d{2}", str(region)):
+        nx, ny = int(region[1]), int(region[2])
+    use_xy = x_dbu is not None and y_dbu is not None
+    hx = float(x_dbu) if use_xy else 0.0
+    hy = float(y_dbu) if use_xy else 0.0
+    flag = 1 if use_xy else 0
+    return f"""
+lassign [ord::get_core_area] _cx1 _cy1 _cx2 _cy2
+set _bins {int(bins)}
+set _wx [expr {{($_cx2-$_cx1)/double($_bins)}}]
+set _wy [expr {{($_cy2-$_cy1)/double($_bins)}}]
+set _nx {int(nx)}
+set _ny {int(ny)}
+if {{{int(flag)}}} {{
+  set _hx [ord::dbu_to_microns {hx}]
+  set _hy [ord::dbu_to_microns {hy}]
+  set _nx [expr {{int(($_hx-$_cx1)/$_wx)}}]
+  set _ny [expr {{int(($_hy-$_cy1)/$_wy)}}]
+}}
+if {{$_nx < 0}} {{ set _nx 0 }}
+if {{$_ny < 0}} {{ set _ny 0 }}
+if {{$_nx > $_bins-1}} {{ set _nx [expr {{$_bins-1}}] }}
+if {{$_ny > $_bins-1}} {{ set _ny [expr {{$_bins-1}}] }}
+set _rx1 [expr {{$_cx1 + $_nx*$_wx}}]
+set _ry1 [expr {{$_cy1 + $_ny*$_wy}}]
+set _rx2 [expr {{$_rx1 + $_wx}}]
+set _ry2 [expr {{$_ry1 + $_wy}}]
+create_blockage -region [list $_rx1 $_ry1 $_rx2 $_ry2] -max_density {float(max_density)}
+puts "DSE_REGION_BIN r$_nx$_ny $_rx1 $_ry1 $_rx2 $_ry2"
+"""
+
+
+def _parse_region_bin(log: str) -> dict:
+    m = _REGION_BIN.search(log or "")
+    if not m:
+        return {}
+    return {
+        "region_bin": m.group(1),
+        "region_box_um": [float(m.group(i)) for i in range(2, 6)],
+    }
 
 
 def available() -> bool:
@@ -93,13 +153,25 @@ def evaluate_gpl(
     util: float = 35.0,
     density: float = 0.55,
     timeout_s: float = 45.0,
+    x_dbu: float | None = None,
+    y_dbu: float | None = None,
+    region: str | None = None,
+    region_density: float | None = None,
 ) -> dict:
-    """Place the candidate. Returns HPWL in microns + overflow. Not Dynamic IR."""
+    """Place the candidate. Returns HPWL in microns + overflow. Not Dynamic IR.
+
+    Optional IR-bin ``create_blockage -max_density`` is a region-local
+    physical transform — not more ABC, not a chip restart.
+    """
     if not available():
         return {"status": "GAP", "reason": "openroad or Nangate45 LEF/lib missing", "via": "openroad_gpl"}
     verilog = Path(verilog)
     if not verilog.is_file():
         return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_gpl"}
+    cap = float(region_density) if region_density is not None else 0.30
+    blk = region_blockage_tcl(
+        x_dbu=x_dbu, y_dbu=y_dbu, region=region, max_density=cap
+    )
     tcl = f"""
 set_thread_count 1
 read_lef {TECH_LEF}
@@ -109,6 +181,7 @@ read_verilog {verilog}
 link_design {top}
 initialize_floorplan -utilization {float(util)} -aspect_ratio 1.0 -core_space 2.0 -site {SITE}
 source {TRACKS}
+{blk}
 global_placement -skip_io -density {float(density)}
 puts DSE_GPL_OK
 exit
@@ -149,9 +222,24 @@ exit
         "util": float(util),
         "density": float(density),
         "skip_io": True,
-        "via": "openroad_gpl_skip_io — F2, not GRT, not finish/F5, not IR",
+        "via": (
+            "openroad_gpl_skip_io + IR-bin density cap — region-local F2, not finish/F5"
+            if blk
+            else "openroad_gpl_skip_io — F2, not GRT, not finish/F5, not IR"
+        ),
         "cost_s": time.time() - t0,
         "n_iters": int(rows[-1][0]) if rows else 0,
+        **_parse_region_bin(log),
+        **(
+            {
+                "region": region,
+                "x_dbu": x_dbu,
+                "y_dbu": y_dbu,
+                "region_density": cap,
+            }
+            if blk
+            else {}
+        ),
     }
 
 
@@ -376,6 +464,10 @@ def extract_pdn(
     density: float = 0.55,
     pkg_r: float = 0.05,
     timeout_s: float = 60.0,
+    x_dbu: float | None = None,
+    y_dbu: float | None = None,
+    region: str | None = None,
+    region_density: float | None = None,
 ) -> dict:
     """Place + legalize + pdngen + write_pg_spice. Not finish, not gold.
 
@@ -399,6 +491,10 @@ def extract_pdn(
     odb = out_dir / "candidate.odb"
     insts = out_dir / "inst_power_map.json"
     logp = out_dir / "extract.log"
+    cap = float(region_density) if region_density is not None else 0.30
+    blk = region_blockage_tcl(
+        x_dbu=x_dbu, y_dbu=y_dbu, region=region, max_density=cap
+    )
     tcl = f"""
 set_thread_count 1
 read_lef {TECH_LEF}
@@ -413,6 +509,7 @@ tapcell -distance 25 -tapcell_master {TAP_MASTER} -endcap_master {TAP_MASTER}
 source {PDN_TCL}
 pdngen
 place_pins -hor_layers {IO_H} -ver_layers {IO_V}
+{blk}
 global_placement -density {float(density)}
 detailed_placement
 global_connect
@@ -497,8 +594,20 @@ exit
         "legalize": "detailed_placement",
         "gold": False,
         "via": (
-            "openroad write_pg_spice after place_pins+tapcell+pdngen+GPL+DP "
-            "— candidate mesh, not finish, not gold"
+            "openroad write_pg_spice after place_pins+tapcell+pdngen+GPL+DP"
+            + (" + IR-bin density cap" if blk else "")
+            + " — candidate mesh, not finish, not gold"
         ),
         "cost_s": time.time() - t0,
+        **_parse_region_bin(log),
+        **(
+            {
+                "region": region,
+                "x_dbu": x_dbu,
+                "y_dbu": y_dbu,
+                "region_density": cap,
+            }
+            if blk
+            else {}
+        ),
     }

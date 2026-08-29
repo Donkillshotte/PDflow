@@ -288,6 +288,13 @@ def _f1_to_metric(all_cands: list[Candidate], *, source: str, field: str, metric
     }
 
 
+def predict_f5_from_f1(all_cands: list[Candidate]) -> dict:
+    """F1 area → OpenRCX SPEF wns_cost. Separate from ideal STA and from IR."""
+    return _f1_to_metric(
+        all_cands, source="f5_openroad_drt_rcx", field="wns_cost", metric="wns_spef"
+    )
+
+
 def predict_wns_from_f1(all_cands: list[Candidate]) -> dict:
     """F1 area → ideal-STA wns_cost. Separate from placed/GRT WNS and from IR."""
     return _f1_to_metric(

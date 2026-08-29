@@ -5,8 +5,8 @@ congestion proxies, then promotes Pareto points to an expensive EDA flow.
 We keep that *shape* without launching DREAMPlace or `make finish`:
 
   physical F0  — analytical RUDY-class congestion proxy
-  physical F2  — ingest OpenROAD place / GRT reports (no new P&R)
-  physical F5  — GAP (controller refuses to launch finish)
+  physical F2  — ingest + GPL + IR-bin density cap (no make finish)
+  physical F5  — F5-lite DRT/OpenRCX (controller refuses to launch finish)
 
 Synthesis knobs (ABC_AREA) stay on the synthesis level.
 """

@@ -41,7 +41,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "physical_gpl": {
         "via": "dse.openroad_f2.evaluate_gpl",
-        "note": "OpenROAD global_placement -skip_io; AutoDMP catalog util/density is measured here, not as F0 truth",
+        "note": "OpenROAD GPL -skip_io; AutoDMP catalog and IR-bin create_blockage -max_density are measured here, not as F0 truth",
     },
     "routing": {
         "via": "dse.openroad_f2.evaluate_grt + evaluate_f5_drt",

@@ -26,12 +26,14 @@ from .acquire import (
     latest_ok_extract,
     should_pay_f2_fast,
     should_pay_f2_gpl,
+    should_pay_f2_region,
     should_pay_f2_grt,
     should_pay_f3_sdf,
     should_pay_f3_spef,
     should_pay_f3_sta,
     should_pay_f4_amg,
     should_pay_f4_extract,
+    should_pay_f4_region_extract,
     should_pay_f5_drt,
     should_pay_f4_pdn,
     should_pay_f4_scale,
@@ -79,6 +81,7 @@ from .surrogate import (
     predict_gpl_from_f1,
     predict_power_from_f1,
     predict_wns_from_f1,
+    predict_f5_from_f1,
     residual,
 )
 
@@ -692,6 +695,60 @@ def run_controller(
                     overflow=child.qor.congestion,
                     status=child.status,
                 )
+
+    n_reg = sum(
+        1
+        for c in mem.by_level("physical")
+        if (c.knobs or {}).get("source") == "f2_openroad_gpl_region" and c.status == "ok"
+    )
+    pay_reg, why_reg = should_pay_f2_region(
+        mem,
+        budget_left=t_end - time.time(),
+        n_region=n_reg,
+        region=attr.get("region"),
+        x_dbu=attr.get("x_dbu"),
+        y_dbu=attr.get("y_dbu"),
+    )
+    step("acquire", fidelity="F2_REGION", pay=pay_reg, why=why_reg)
+    if any(s["level"] == "f2_region" for s in plan["steps"]) and pay_reg and time.time() < t_end:
+        pick = _mapped_pick(
+            [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+            rtl=rtl,
+            liberty=lib,
+        )
+        if pick:
+            mem.touch(pick)
+            params = flowlab_params()
+            util_r = float(params.get("coreUtilization") or 35.0)
+            den_r = gpl_density(util_r, params.get("placeDensityAddon") or 0.2)
+            child = evaluate_f2_gpl(
+                pick,
+                mem,
+                design_id=design_id,
+                util=util_r,
+                density=den_r,
+                extra_knobs={
+                    "region": attr.get("region"),
+                    "x_dbu": attr.get("x_dbu"),
+                    "y_dbu": attr.get("y_dbu"),
+                    "region_density": 0.30,
+                },
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="physical",
+                    fidelity="F2",
+                    via="f2_openroad_gpl_region",
+                    parent=pick.id,
+                    region=attr.get("region"),
+                    hpwl_um=(child.artifacts or {}).get("hpwl_um"),
+                    region_bin=(child.artifacts or {}).get("region_bin"),
+                    overflow=child.qor.congestion,
+                    status=child.status,
+                )
+
     n_ext = sum(
         1
         for c in mem.by_level("pdn")
@@ -748,6 +805,59 @@ def run_controller(
                     n_r=(child.artifacts or {}).get("n_r"),
                     droop_mv=child.qor.dynamic_ir_mv,
                     em_j=(child.qor.em_j_a_m2),
+                    gold=False,
+                    status=child.status,
+                )
+
+    n_reg_ext = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_region_extract" and c.status == "ok"
+    )
+    pay_rext, why_rext = should_pay_f4_region_extract(
+        mem,
+        budget_left=t_end - time.time(),
+        n_extract=n_reg_ext,
+        region=attr.get("region"),
+        x_dbu=attr.get("x_dbu"),
+        y_dbu=attr.get("y_dbu"),
+    )
+    step("acquire", fidelity="F4_REGION_EXTRACT", pay=pay_rext, why=why_rext)
+    if any(s["level"] == "f4_region_extract" for s in plan["steps"]) and pay_rext and time.time() < t_end:
+        pick = _mapped_pick(
+            [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+            rtl=rtl,
+            liberty=lib,
+        )
+        if pick:
+            mem.touch(pick)
+            params = flowlab_params()
+            util_e = float(params.get("coreUtilization") or 35.0)
+            den_e = gpl_density(util_e, params.get("placeDensityAddon") or 0.2)
+            child = evaluate_f4_extract(
+                pick,
+                mem,
+                design_id=design_id,
+                variant=variant,
+                util=util_e,
+                density=den_e,
+                region=attr.get("region"),
+                x_dbu=attr.get("x_dbu"),
+                y_dbu=attr.get("y_dbu"),
+                region_density=0.30,
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_region_extract",
+                    parent=pick.id,
+                    region=attr.get("region"),
+                    region_bin=(child.artifacts or {}).get("region_bin"),
+                    n_r=(child.artifacts or {}).get("n_r"),
+                    droop_mv=child.qor.dynamic_ir_mv,
                     gold=False,
                     status=child.status,
                 )
@@ -923,12 +1033,12 @@ def run_controller(
             "layered search: architecture ≠ logic ≠ synthesis ≠ physical ≠ routing ≠ PDN",
             "F0 SSK-GP area + RUDY-class congestion; not IR",
             "F1 chip flatten-first (area teacher 409.108) · cone-local ABC on dpath when IR focuses the cone",
-            "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + budgeted GRT",
+            "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + IR-bin region GPL + GRT",
             "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF + OpenRCX SPEF",
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; F3 WNS reorders remaining, no chip restart",
-            "hierarchy chip→block→region→cone; attributed cells/region from hotspot",
+            "hierarchy chip→block→region→cone; IR rXY → OpenROAD density cap on that bin → optional extract",
             "Pareto per level — EHVI acquires, it does not replace the front",
             "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · MF PDN solver residual",
         ],
@@ -960,6 +1070,11 @@ def run_controller(
             for c in mem.by_level("physical")
             if (c.knobs or {}).get("catalog")
         ),
+        "n_f2_region": sum(
+            1
+            for c in mem.by_level("physical")
+            if (c.knobs or {}).get("source") == "f2_openroad_gpl_region" and c.status == "ok"
+        ),
         "n_f3": sum(1 for c in mem.all() if c.fidelity == "F3"),
         "n_f3_sdf": sum(
             1
@@ -987,6 +1102,11 @@ def run_controller(
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_candidate_extract" and c.status == "ok"
         ),
+        "n_f4_region_extract": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_region_extract" and c.status == "ok"
+        ),
         "n_f4_amg": sum(
             1
             for c in mem.by_level("pdn")
@@ -996,7 +1116,13 @@ def run_controller(
             1
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source")
-            in ("f4_solver_a", "f4_iscale", "f4_candidate_extract", "f4_solver_amg")
+            in (
+                "f4_solver_a",
+                "f4_iscale",
+                "f4_candidate_extract",
+                "f4_region_extract",
+                "f4_solver_amg",
+            )
         ),
         "memory": str(mem_path),
         "surrogate_f0": pred,
@@ -1006,6 +1132,7 @@ def run_controller(
         "surrogate_f1_to_wns": predict_wns_from_f1(mem.all()),
         "surrogate_f1_to_power": predict_power_from_f1(mem.all()),
         "surrogate_f1_to_f4": f4s,
+        "surrogate_f1_to_f5": predict_f5_from_f1(mem.all()),
         "plan": plan,
         "attribution": attr,
         "focus": focus,
@@ -1071,6 +1198,11 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if c.status != "ok" or c.qor.dynamic_ir_mv is None:
             continue
         src = (c.knobs or {}).get("source")
+        if src == "f4_region_extract" and not ir:
+            ir = (
+                f" · F4 region extract {c.qor.dynamic_ir_mv:.3f} mV "
+                f"bin={(c.artifacts or {}).get('region_bin')} n_r={(c.artifacts or {}).get('n_r')} (not gold)"
+            )
         if src == "f4_candidate_extract":
             ir = (
                 f" · F4 candidate extract {c.qor.dynamic_ir_mv:.3f} mV "

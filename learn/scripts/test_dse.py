@@ -326,6 +326,16 @@ def main() -> int:
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
+    check(any(s["level"] == "f2_region" for s in planned["steps"]), "planner schedules IR-bin region GPL")
+    check(any(s["level"] == "f4_region_extract" for s in planned["steps"]), "planner schedules region write_pg_spice")
+    check(
+        knobs_fp("physical", {"source": "f2_openroad_gpl", "util": 35, "density": 0.55})
+        != knobs_fp(
+            "physical",
+            {"source": "f2_openroad_gpl_region", "util": 35, "density": 0.55, "region": "r31"},
+        ),
+        "region GPL is not flattened into the global GPL fingerprint",
+    )
     check(
         knobs_fp("routing", {"source": "f2_openroad_grt"})
         != knobs_fp("physical", {"source": "f2_openroad_grt"}),
@@ -339,6 +349,8 @@ def main() -> int:
     from dse.acquire import next_fidelity
 
     check(next_fidelity(level="f5_drt", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-lite is its own fidelity")
+    check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
+    check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
     check(ucb_next_op(mem2, last="∅", focus="dpath") is None, "UCB is silent without transitions")
 
@@ -391,6 +403,14 @@ def main() -> int:
         check((gpl.get("hpwl_um") or 0) > 100, f"GPL HPWL in microns, got {gpl.get('hpwl_um')}")
         check(gpl.get("overflow") is not None, "GPL reports overflow")
         print(f"    F2 GPL HPWL={gpl['hpwl_um']:.1f} um overflow={gpl['overflow']:.3f} ({gpl['cost_s']:.2f}s)")
+        gpl_r = evaluate_gpl(mapped_ok, timeout_s=40, x_dbu=70896.0, y_dbu=39429.0, region="r31")
+        check(gpl_r.get("status") == "ok", f"region GPL on IR hotspot ({gpl_r.get('reason')})")
+        check(gpl_r.get("region_bin"), f"region GPL names the bin, got {gpl_r.get('region_bin')}")
+        check((gpl_r.get("hpwl_um") or 0) > 100, f"region GPL HPWL in microns, got {gpl_r.get('hpwl_um')}")
+        print(
+            f"    F2 region GPL bin={gpl_r.get('region_bin')} HPWL={gpl_r['hpwl_um']:.1f} um "
+            f"overflow={gpl_r.get('overflow')} ({gpl_r['cost_s']:.2f}s)"
+        )
 
     from dse.sta_f3 import available as sta_available, evaluate_sta, export_arrivals
     from dse.openroad_f2 import evaluate_f5_drt as run_f5_drt, evaluate_grt, f5_available
@@ -685,6 +705,19 @@ def main() -> int:
                 f"    F4 candidate extract n_r={ext['n_r']} n_i={ext.get('n_i')} "
                 f"droop={cand['worst_droop_mv']:.3f} mV J={cem.get('j_absmax_a_m2'):.3e} "
                 f"({ext['cost_s']:.2f}+{cand.get('cost_s', 0):.2f}s)"
+            )
+            dest_r = Path(tempfile.mkdtemp(prefix="dse-rext-"))
+            ext_r = extract_pdn(
+                mapped_ext, dest_r, timeout_s=60, x_dbu=70896.0, y_dbu=39429.0, region="r31"
+            )
+            check(ext_r.get("status") == "ok", f"region write_pg_spice ({ext_r.get('reason')})")
+            check(ext_r.get("region_bin"), f"region extract names the bin, got {ext_r.get('region_bin')}")
+            check((ext_r.get("n_r") or 0) > 200, f"region spice has an R mesh, n_r={ext_r.get('n_r')}")
+            check(ext_r.get("gold") is False, "region extract is not gold")
+            check(ext_r.get("n_r") != base.get("n_r"), "region extract is not the finish mesh")
+            print(
+                f"    F4 region extract bin={ext_r.get('region_bin')} n_r={ext_r['n_r']} "
+                f"({ext_r['cost_s']:.2f}s)"
             )
         else:
             print("    skip candidate PDN extract (no openroad or mapped netlist)")

@@ -22,7 +22,7 @@ _REPO = _SCRIPTS.parent.parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from pdn_activity import load_insts, load_sta_arrivals, node_xy, plan_events  # noqa: E402
+from pdn_activity import load_insts, load_sta_arrivals, node_xy, plan_events, t50_via_counts  # noqa: E402
 from pdn_dynamic import assemble_be, contributors_at, timestep_be  # noqa: E402
 from pdn_em import em_thermal_snapshot  # noqa: E402
 from pdn_extract import extract_pdn  # noqa: E402
@@ -228,6 +228,8 @@ def main() -> int:
                 "n_r": ext.get("n_r"),
                 "n_i": ext.get("n_i"),
                 "n_events": len(events),
+                "n_sta_applied": t50_via_counts(events).get("sta_arrival", 0),
+                "t50_via": t50_via_counts(events),
                 "solver": dyn.get("solver") or args.solver,
                 "solver_kind": args.solver,
                 "backend": dyn.get("backend"),

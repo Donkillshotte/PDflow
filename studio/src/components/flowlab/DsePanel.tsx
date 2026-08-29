@@ -43,6 +43,8 @@ type DseReport = {
   n_f2_fast?: number;
   n_f2_gpl?: number;
   n_f2_gpl_catalog?: number;
+  n_f2_region?: number;
+  n_f4_region_extract?: number;
   n_f3?: number;
   n_f3_sdf?: number;
   n_f3_spef?: number;
@@ -141,6 +143,7 @@ export function DsePanel() {
                 fast {report.n_f2_fast ?? 0}
                 {report.n_f2_gpl != null ? ` · GPL ${report.n_f2_gpl}` : ""}
                 {report.n_f2_gpl_catalog != null ? ` · cat ${report.n_f2_gpl_catalog}` : ""}
+                {report.n_f2_region != null ? ` · reg ${report.n_f2_region}` : ""}
                 {report.n_f2_grt != null ? ` · GRT ${report.n_f2_grt}` : ""}
                 {report.n_f5 != null ? ` · F5 ${report.n_f5}` : ""}
               </dd>
@@ -158,6 +161,7 @@ export function DsePanel() {
               <dd>
                 {report.n_f4 ?? 0}
                 {report.n_f4_extract != null ? ` · ext ${report.n_f4_extract}` : ""}
+                {report.n_f4_region_extract != null ? ` · r-ext ${report.n_f4_region_extract}` : ""}
                 {report.n_f4_amg != null ? ` · AMG ${report.n_f4_amg}` : ""}
                 {report.n_f4_solve != null ? ` · solve ${report.n_f4_solve}` : ""}
               </dd>
@@ -199,6 +203,7 @@ export function DsePanel() {
                 c.knobs?.source === "f2_fast_netgraph" ||
                 c.knobs?.source === "f2_openroad_gpl" ||
                 c.knobs?.source === "f2_openroad_grt" ||
+                c.knobs?.source === "f2_openroad_gpl_region" ||
                 c.knobs?.source === "f5_openroad_drt_rcx" ||
                 c.knobs?.source === "f3_opensta_spef" ||
                 c.knobs?.source === "f2_fast_barycenter",
