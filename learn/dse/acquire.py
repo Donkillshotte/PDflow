@@ -525,6 +525,27 @@ def should_pay_residual_steer(
     return True, str(steer.get("reason") or "F3→F5 residual steers the next level")
 
 
+def should_pay_ir_steer(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay one F4 residual-steered PDN action. Not a mixed ABC+PDN vector."""
+    if n_steer >= steer_max:
+        return False, "IR-residual-steered shot already spent"
+    if any((c.attr or {}).get("via") == "active_f4_ir" and c.status == "ok" for c in mem.all()):
+        return False, "already have an IR-residual-steered child"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-steered Solver A"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no IR-residual-steered PDN action (need candidate vs gold or a catalog pair)"
+    return True, str(steer.get("reason") or "F4 IR residual steers the next PDN action")
+
+
 def should_pay_f3_spef(
     mem: DesignMemory,
     *,
@@ -863,10 +884,19 @@ def should_pay_f4_krylov(
 
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
+    return _latest_extract(mem, source="f4_candidate_extract")
+
+
+def latest_ok_region_extract(mem: DesignMemory) -> dict | None:
+    """Most recent successful IR-bin write_pg_spice (spice+insts on disk)."""
+    return _latest_extract(mem, source="f4_region_extract")
+
+
+def _latest_extract(mem: DesignMemory, *, source: str) -> dict | None:
     from pathlib import Path
 
     for c in reversed(list(mem.by_level("pdn"))):
-        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_candidate_extract":
+        if c.status != "ok" or (c.knobs or {}).get("source") != source:
             continue
         art = c.artifacts or {}
         spice, insts = art.get("spice"), art.get("insts")
@@ -875,6 +905,38 @@ def latest_ok_extract(mem: DesignMemory) -> dict | None:
                 "spice": spice,
                 "insts": insts,
                 "extract_id": (c.knobs or {}).get("extract_id") or c.id,
+                "parent_id": (c.knobs or {}).get("parent_id"),
+                "n_r": art.get("n_r"),
+                "sta": art.get("sta_arrivals"),
+                "candidate": c,
+            }
+    return None
+
+
+def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
+    """Resolve spice+insts for a named extract (candidate or region)."""
+    want = str(extract_id)
+    for src in ("f4_region_extract", "f4_candidate_extract"):
+        hit = _latest_extract(mem, source=src)
+        if hit and str(hit["extract_id"]) == want:
+            return hit
+        # _latest_extract only returns the newest of that source; scan all.
+    from pathlib import Path
+
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status != "ok":
+            continue
+        if str((c.knobs or {}).get("extract_id") or c.id) != want:
+            continue
+        if (c.knobs or {}).get("source") not in ("f4_candidate_extract", "f4_region_extract"):
+            continue
+        art = c.artifacts or {}
+        spice, insts = art.get("spice"), art.get("insts")
+        if spice and insts and Path(spice).is_file() and Path(insts).is_file():
+            return {
+                "spice": spice,
+                "insts": insts,
+                "extract_id": want,
                 "parent_id": (c.knobs or {}).get("parent_id"),
                 "n_r": art.get("n_r"),
                 "sta": art.get("sta_arrivals"),
@@ -916,7 +978,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level in ("f4_krylov", "f4_mor"):
         return "F4"
-    if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract"):
+    if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract", "ir_steer"):
         return "F4"
     if level in ("synthesis", "f1_synth"):
         return "F1"

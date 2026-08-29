@@ -424,3 +424,127 @@ def predict_power_from_f1(all_cands: list[Candidate]) -> dict:
     return _f1_to_metric(
         all_cands, source="f3_opensta_ideal", field="power_w", metric="power_w"
     )
+
+
+def residual_f4_mesh(all_cands: list[Candidate]) -> dict:
+    """Finish-gold droop vs candidate-extract DirectLU. Not a solver residual."""
+    gold = cand = None
+    cand_id = None
+    for c in all_cands:
+        if c.status != "ok" or c.qor.dynamic_ir_mv is None:
+            continue
+        src = (c.knobs or {}).get("source")
+        if src == "ingest_pdn":
+            gold = float(c.qor.dynamic_ir_mv)
+        elif src == "f4_candidate_extract":
+            cand = float(c.qor.dynamic_ir_mv)
+            cand_id = (c.knobs or {}).get("extract_id") or c.id
+    if gold is None or cand is None:
+        return {
+            "metric": "dynamic_ir_mv",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no finish-gold ↔ candidate-extract pair",
+            "not": "a solver residual or Dynamic IR gold restamp",
+        }
+    return {
+        "metric": "dynamic_ir_mv",
+        "mean_residual_mv": cand - gold,
+        "gold_mv": gold,
+        "candidate_mv": cand,
+        "extract_id": cand_id,
+        "n": 1,
+        "uncertainty": "medium",
+        "via": "F4 candidate mesh vs finish gold — different R-graph, not a solver residual",
+        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+    }
+
+
+def residual_f4_knob(all_cands: list[Candidate]) -> dict:
+    """PDN catalog DirectLU vs gold-knob DirectLU on the same candidate extract."""
+    base: dict[str, float] = {}
+    catalogs: list[dict] = []
+    for c in all_cands:
+        if c.status != "ok" or c.qor.dynamic_ir_mv is None:
+            continue
+        k = c.knobs or {}
+        src = k.get("source")
+        if src == "f4_candidate_extract":
+            base[str(k.get("extract_id") or c.id)] = float(c.qor.dynamic_ir_mv)
+        elif src == "f4_solver_a" and k.get("name") in ("decap_200f", "pkg_l_100p"):
+            catalogs.append(
+                {
+                    "extract_id": str(k.get("extract_id") or ""),
+                    "name": k.get("name"),
+                    "mv": float(c.qor.dynamic_ir_mv),
+                }
+            )
+    pairs = []
+    for cat in catalogs:
+        eid = cat["extract_id"]
+        if eid not in base:
+            continue
+        pairs.append(
+            {
+                "extract_id": eid,
+                "catalog": cat["name"],
+                "base_mv": base[eid],
+                "catalog_mv": cat["mv"],
+                "residual_mv": cat["mv"] - base[eid],
+            }
+        )
+    if not pairs:
+        return {
+            "metric": "dynamic_ir_mv",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no PDN catalog ↔ gold-knob pair on the same extract",
+            "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+        }
+    rs = [p["residual_mv"] for p in pairs]
+    mean_r = sum(rs) / len(rs)
+    return {
+        "metric": "dynamic_ir_mv",
+        "mean_residual_mv": mean_r,
+        "n": len(pairs),
+        "pairs": pairs,
+        "catalog": pairs[0]["catalog"],
+        "extract_id": pairs[0]["extract_id"],
+        "uncertainty": "medium" if len(pairs) < 2 else "low",
+        "via": "F4 PDN catalog vs gold knobs on the named candidate extract",
+        "not": "Dynamic IR gold / more ABC",
+    }
+
+
+def residual_f4_region(all_cands: list[Candidate]) -> dict:
+    """IR-bin density-cap extract vs unconstrained candidate, gold knobs."""
+    cand = region = None
+    region_id = None
+    for c in all_cands:
+        if c.status != "ok" or c.qor.dynamic_ir_mv is None:
+            continue
+        src = (c.knobs or {}).get("source")
+        if src == "f4_candidate_extract":
+            cand = float(c.qor.dynamic_ir_mv)
+        elif src == "f4_region_extract":
+            region = float(c.qor.dynamic_ir_mv)
+            region_id = (c.knobs or {}).get("extract_id") or c.id
+    if cand is None or region is None:
+        return {
+            "metric": "dynamic_ir_mv",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no region-extract ↔ candidate-extract pair",
+            "not": "Dynamic IR gold",
+        }
+    return {
+        "metric": "dynamic_ir_mv",
+        "mean_residual_mv": region - cand,
+        "candidate_mv": cand,
+        "region_mv": region,
+        "extract_id": region_id,
+        "n": 1,
+        "uncertainty": "medium",
+        "via": "F4 region mesh vs unconstrained candidate — density cap, not gold",
+        "not": "a solver residual or a mixed ABC+PDN vector",
+    }

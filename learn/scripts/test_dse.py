@@ -350,6 +350,7 @@ def main() -> int:
     check(any(s["level"] == "f5_cts" for s in planned["steps"]), "planner schedules F5-CTS")
     check(any(s["level"] == "f5_local" for s in planned["steps"]), "planner schedules F5-local SPEF")
     check(any(s["level"] == "residual_steer" for s in planned["steps"]), "planner schedules residual-steered next level")
+    check(any(s["level"] == "ir_steer" for s in planned["steps"]), "planner schedules F4 IR residual steer")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -416,6 +417,7 @@ def main() -> int:
     check(next_fidelity(level="f5_cts", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-CTS measures at F5")
     check(next_fidelity(level="f5_local", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-local measures at F5")
     check(next_fidelity(level="residual_steer", pred=None, budget_left=20, cost_hint={}) == "F5", "residual steer measures at F5")
+    check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
@@ -454,6 +456,11 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "finish"})
         != knobs_fp("pdn", {"source": "f4_solver_amg", "extract_id": "finish"}),
         "RAS residual is not flattened into the AMG fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_solver_a", "name": "decap_200f", "extract_id": "regionX", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 200e-15})
+        != knobs_fp("pdn", {"source": "f4_solver_a", "name": "decap_200f", "extract_id": "candY", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 200e-15}),
+        "region-mesh decap restamp is not flattened into the candidate-mesh decap fingerprint",
     )
     from dse.net_space import buffer_path_nets, buffer_port_nets, hop_is_block_port, hop_is_cross_module
 
@@ -672,6 +679,7 @@ def main() -> int:
     check("local" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-local")
     check("f5-local" in (adapter_status()["surrogate"]["note"] or "").lower() or "F3→F5" in (adapter_status()["surrogate"]["note"] or ""), "surrogate adapter names the F3→F5-local residual")
     check("residual" in (adapter_status()["active"]["note"] or ""), "active adapter steers from the F3→F5 residual")
+    check("F4" in (adapter_status()["active"]["note"] or "") or "IR" in (adapter_status()["active"]["note"] or ""), "active adapter steers from the F4 IR residual")
     check(adapter_status()["active"].get("ready") is True, "active adapter is ready")
     check("propagated" in (adapter_status()["timing"]["note"] or ""), "timing adapter names propagated-clock CTS SPEF")
     check("arrival" in (adapter_status()["activity"]["via"] or "").lower(), "activity adapter is candidate STA arrivals")
@@ -1081,6 +1089,7 @@ def main() -> int:
         should_pay_net_buffer,
         should_pay_net_port,
         should_pay_residual_steer,
+        should_pay_ir_steer,
     )
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
@@ -1463,6 +1472,134 @@ def main() -> int:
     st3 = steer_from_residual(mem_al)
     check(st3 is not None and st3.get("level") == "net", f"wire local residual steers net BUF, got {st3}")
     check((st3.get("hops") or ["p->q"])[0], "wire steer names SPEF hops")
+
+    from dse.active import steer_from_ir_residual
+    from dse.surrogate import residual_f4_knob, residual_f4_mesh, residual_f4_region
+
+    mem_ir = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-ir-")) / "i.jsonl")
+    mem_ir.add(
+        Candidate(
+            id="gold",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "ingest_pdn"},
+            knobs_fp="gold",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=45.298, fidelity="F4"),
+            cost_s=0.0,
+            status="ok",
+        )
+    )
+    mem_ir.add(
+        Candidate(
+            id="candext",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "f4_candidate_extract", "extract_id": "candext"},
+            knobs_fp="candext",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=16.616, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    mesh_r = residual_f4_mesh(list(mem_ir.all()))
+    check((mesh_r.get("n") or 0) == 1, f"F4 mesh residual has a pair, got {mesh_r}")
+    check(abs(float(mesh_r["mean_residual_mv"]) - (16.616 - 45.298)) < 1e-6, f"mesh residual cand−gold, got {mesh_r.get('mean_residual_mv')}")
+    mem_ir.add(
+        Candidate(
+            id="decapc",
+            design_id="gcd",
+            parent_id="candext",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "decap_200f",
+                "extract_id": "candext",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 200e-15,
+            },
+            knobs_fp="decapc",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=8.842, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    knob_r = residual_f4_knob(list(mem_ir.all()))
+    check((knob_r.get("n") or 0) == 1, f"F4 knob residual has a pair, got {knob_r}")
+    check(abs(float(knob_r["mean_residual_mv"]) - (8.842 - 16.616)) < 1e-6, f"knob residual decap−base, got {knob_r.get('mean_residual_mv')}")
+    mem_ir.add(
+        Candidate(
+            id="regext",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "f4_region_extract", "extract_id": "regext", "region": "r32"},
+            knobs_fp="regext",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=14.202, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    reg_r = residual_f4_region(list(mem_ir.all()))
+    check((reg_r.get("n") or 0) == 1, f"F4 region residual has a pair, got {reg_r}")
+    check(abs(float(reg_r["mean_residual_mv"]) - (14.202 - 16.616)) < 1e-6, f"region residual vs candidate, got {reg_r.get('mean_residual_mv')}")
+    st_ir = steer_from_ir_residual(mem_ir)
+    check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
+    check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")
+    check(st_ir.get("host_source") == "f4_region_extract", "IR steer names the region extract host")
+    pay_ir0, why_ir0 = should_pay_ir_steer(mem_ir, budget_left=80, steer=None)
+    check(not pay_ir0, f"IR steer waits for a steer dict ({why_ir0})")
+    pay_ir1, why_ir1 = should_pay_ir_steer(mem_ir, budget_left=80, steer=st_ir)
+    check(pay_ir1, f"IR steer is paid after F4 residuals ({why_ir1})")
+    pay_ir2, why_ir2 = should_pay_ir_steer(mem_ir, budget_left=80, steer=st_ir, n_steer=1)
+    check(not pay_ir2, f"IR steer is a single shot ({why_ir2})")
+    # Small decap residual → unused pkg L on the candidate, not the region.
+    mem_small = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-irs-")) / "s.jsonl")
+    for cid, src, eid, mv, extra in (
+        ("g", "ingest_pdn", "finish", 45.298, {}),
+        ("c", "f4_candidate_extract", "c", 16.616, {}),
+        (
+            "d",
+            "f4_solver_a",
+            "c",
+            16.500,
+            {"name": "decap_200f", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 200e-15},
+        ),
+    ):
+        kn = {"source": src, "extract_id": eid, **extra}
+        mem_small.add(
+            Candidate(
+                id=cid,
+                design_id="gcd",
+                parent_id=None,
+                level="pdn",
+                knobs=kn,
+                knobs_fp=cid,
+                rtl_fp="x",
+                netlist_fp=None,
+                fidelity="F4",
+                qor=QoR(dynamic_ir_mv=mv, fidelity="F4"),
+                cost_s=0.1,
+                status="ok",
+            )
+        )
+    st_small = steer_from_ir_residual(mem_small)
+    check(st_small is not None and (st_small.get("spec") or {}).get("name") == "pkg_l_100p", f"small knob residual steers pkg L, got {st_small}")
+    check(st_small.get("extract_id") == "c", f"small knob residual stays on the candidate extract, got {st_small}")
 
     gold_json = _ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     gold_before = gold_json.read_text() if gold_json.is_file() else None

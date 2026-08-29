@@ -270,6 +270,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "logic_cone" if focus != "chip" else "chip",
         }
     )
+    steps.append(
+        {
+            "level": "ir_steer",
+            "reason": (
+                "F4 mesh/knob/region residual picks the next PDN action "
+                "(winning decap on the region mesh, or unused pkg L) — not ABC, not a mixed vector"
+            ),
+            "scope": "region" if region else "chip",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

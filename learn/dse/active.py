@@ -1,11 +1,14 @@
-"""Active learning: F3→F5 residual + uncertainty pick the next *level*.
+"""Active learning: residuals pick the next *level*, not a mixed knob vector.
 
-Does not flatten cell / net / cone / F5 knobs into one acquisition vector.
-The residual chooses *where* to search; that level keeps its own knobs.
-
+F3→F5 residual + uncertainty:
   large |SPEF − ideal|  → interconnect-dominated → net host / net BUF
   small |SPEF − ideal|  → cell/logic delay       → cell host / cell size-up
   n<2 local pairs       → measure the other host  (reduce uncertainty)
+
+F4 IR residual (mesh / PDN knob / region):
+  large |catalog − gold-knob| → that PDN family on the region mesh
+  small |catalog − gold-knob| → unused pkg L on the candidate extract
+  never flatten ABC + c_decap + util into one box
 """
 
 from __future__ import annotations
@@ -142,4 +145,96 @@ def steer_from_residual(mem: DesignMemory) -> dict | None:
             "via": "active_f3_to_f5_residual",
             "not": "a flattened black-box of cell+net+ABC",
         }
+    return None
+
+
+# |catalog − gold-knob| ≥ 1 mV on the same extract → that PDN family works.
+KNOB_MV = 1.0
+
+
+def steer_from_ir_residual(mem: DesignMemory) -> dict | None:
+    """Next PDN/region action from F4 mesh/knob/region residuals. Not ABC."""
+    from .pdn_space import PDN_CATALOG, measured_pdn_keys
+    from .surrogate import residual_f4_knob, residual_f4_mesh, residual_f4_region
+
+    mesh = residual_f4_mesh(list(mem.all()))
+    knob = residual_f4_knob(list(mem.all()))
+    region = residual_f4_region(list(mem.all()))
+    if int(mesh.get("n") or 0) < 1 and int(knob.get("n") or 0) < 1:
+        return None
+
+    def _latest(src: str):
+        for c in reversed(list(mem.by_level("pdn"))):
+            if c.status == "ok" and (c.knobs or {}).get("source") == src:
+                return c
+        return None
+
+    cand = _latest("f4_candidate_extract")
+    reg = _latest("f4_region_extract")
+    knob_r = knob.get("mean_residual_mv")
+    winning = str(knob.get("catalog") or "")
+    spec_win = next((s for s in PDN_CATALOG if s["name"] == winning), None)
+
+    # Large knob residual (decap moved IR) → transfer that family to the region mesh.
+    if (
+        knob_r is not None
+        and abs(float(knob_r)) >= KNOB_MV
+        and spec_win is not None
+        and reg is not None
+    ):
+        rid = str((reg.knobs or {}).get("extract_id") or reg.id)
+        have = measured_pdn_keys(mem, extract_id=rid)
+        key = (float(spec_win["pkg_r"]), float(spec_win["pkg_l"]), float(spec_win["c_decap"]))
+        if key not in have:
+            return {
+                "level": "pdn",
+                "spec": spec_win,
+                "extract_id": rid,
+                "host_id": reg.id,
+                "host_source": "f4_region_extract",
+                "reason": (
+                    f"F4 knob residual {float(knob_r):+.3f} mV ({winning} on candidate) "
+                    "— restamp that PDN family on the region mesh, not pkg L, not ABC"
+                ),
+                "mesh_residual_mv": mesh.get("mean_residual_mv"),
+                "knob_residual_mv": float(knob_r),
+                "region_residual_mv": region.get("mean_residual_mv"),
+                "via": "active_f4_ir_residual",
+                "not": "a flattened black-box of ABC+PDN knobs",
+            }
+
+    # Small / missing knob residual → IR is not decap-dominated → unused pkg L on candidate.
+    if cand is not None:
+        cid = str((cand.knobs or {}).get("extract_id") or cand.id)
+        have = measured_pdn_keys(mem, extract_id=cid)
+        unused = [
+            s
+            for s in PDN_CATALOG
+            if (float(s["pkg_r"]), float(s["pkg_l"]), float(s["c_decap"])) not in have
+        ]
+        small = knob_r is not None and abs(float(knob_r)) < KNOB_MV
+        if unused and (small or knob_r is None):
+            spec = unused[0]
+            why = (
+                f"F4 knob residual {float(knob_r):+.3f} mV (small) — pay {spec['name']} "
+                "on the candidate extract, not more decap, not ABC"
+                if small
+                else (
+                    f"F4 mesh residual {mesh.get('mean_residual_mv')} mV vs gold — "
+                    f"pay {spec['name']} on the candidate extract, not ABC"
+                )
+            )
+            return {
+                "level": "pdn",
+                "spec": spec,
+                "extract_id": cid,
+                "host_id": cand.id,
+                "host_source": "f4_candidate_extract",
+                "reason": why,
+                "mesh_residual_mv": mesh.get("mean_residual_mv"),
+                "knob_residual_mv": knob_r,
+                "region_residual_mv": region.get("mean_residual_mv"),
+                "via": "active_f4_ir_residual",
+                "not": "a flattened black-box of ABC+PDN knobs",
+            }
     return None

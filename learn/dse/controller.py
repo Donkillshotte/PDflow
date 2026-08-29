@@ -13,7 +13,7 @@ Optimizers (each on its own level):
   net_port     — parent-scoped BUF on ctrl↔dpath port nets (not intra-module hops)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
-  active       — F3→F5 residual + uncertainty pick the next local level (not a mixed vector)
+  active       — F3→F5 residual + F4 IR residual pick the next level (not a mixed vector)
   pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS/Krylov restamp (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
@@ -52,12 +52,14 @@ from .acquire import (
     should_pay_f5_drt,
     should_pay_f5_local,
     should_pay_residual_steer,
+    should_pay_ir_steer,
+    extract_on_disk,
     local_hosts,
     should_pay_f4_pdn,
     should_pay_f4_scale,
     should_pay_physical_catalog,
 )
-from .active import order_local_hosts, steer_from_residual
+from .active import order_local_hosts, steer_from_ir_residual, steer_from_residual
 from .arch_space import emit_gcd_variant, stamp_cone_knobs
 from .attribute import attribute_from_path, local_scope
 from .boils import propose_logic_boils, should_pay_f1
@@ -110,6 +112,9 @@ from .surrogate import (
     predict_f5_cts_from_f1,
     residual_f3_to_f5_lite,
     residual_f3_to_f5_local,
+    residual_f4_knob,
+    residual_f4_mesh,
+    residual_f4_region,
     residual,
 )
 
@@ -1474,6 +1479,48 @@ def run_controller(
                     status=child.status,
                 )
 
+    steer_ir = steer_from_ir_residual(mem)
+    n_ir_st = sum(1 for c in mem.all() if (c.attr or {}).get("via") == "active_f4_ir" and c.status == "ok")
+    pay_ir, why_ir = should_pay_ir_steer(
+        mem, budget_left=t_end - time.time(), steer=steer_ir, n_steer=n_ir_st
+    )
+    step("acquire", fidelity="IR_STEER", pay=pay_ir, why=why_ir, steer=steer_ir)
+    if any(s["level"] == "ir_steer" for s in plan["steps"]) and pay_ir and steer_ir and time.time() < t_end:
+        spec = steer_ir.get("spec") or {}
+        eid = str(steer_ir.get("extract_id") or "")
+        hit = extract_on_disk(mem, eid) if eid else None
+        if spec and hit:
+            child = evaluate_f4_pdn(
+                mem,
+                spec,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit["candidate"].id,
+                spice=hit["spice"],
+                insts=hit["insts"],
+                extract_id=eid,
+                sta=hit.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "active_f4_ir"
+                child.attr["steer"] = {k: steer_ir[k] for k in steer_ir if k != "spec"}
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="active_f4_ir",
+                    parent=hit["candidate"].id,
+                    catalog=spec.get("name"),
+                    extract_id=eid,
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    gold=False,
+                    status=child.status,
+                    reason=steer_ir.get("reason"),
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -1504,6 +1551,7 @@ def run_controller(
             "F5-CTS clock_tree_synthesis + DRT + OpenRCX + OpenSTA set_propagated_clock — not make finish",
             "F5-local OpenRCX SPEF on the cell/net netlist — F3→F5 residual, not a reused F1 SPEF",
             "active learning: F3→F5-lite residual orders cell vs net host; F3→F5-local residual + uncertainty pick the next level",
+            "F4 IR residual (mesh/knob/region) picks the next PDN action on the named extract — not ABC, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -1594,6 +1642,9 @@ def run_controller(
         "n_residual_steer": sum(
             1 for c in mem.all() if (c.attr or {}).get("via") == "active_residual" and c.status == "ok"
         ),
+        "n_ir_steer": sum(
+            1 for c in mem.all() if (c.attr or {}).get("via") == "active_f4_ir" and c.status == "ok"
+        ),
         "n_f2_grt": sum(
             1
             for c in mem.by_level("routing")
@@ -1651,6 +1702,9 @@ def run_controller(
         "surrogate_f1_to_f5_cts": predict_f5_cts_from_f1(mem.all()),
         "surrogate_f3_to_f5_lite": residual_f3_to_f5_lite(mem.all()),
         "surrogate_f3_to_f5_local": residual_f3_to_f5_local(mem.all()),
+        "surrogate_f4_mesh": residual_f4_mesh(mem.all()),
+        "surrogate_f4_knob": residual_f4_knob(mem.all()),
+        "surrogate_f4_region": residual_f4_region(mem.all()),
         "plan": plan,
         "attribution": attr,
         "focus": focus,
@@ -1817,8 +1871,20 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if c.status == "ok" and (c.attr or {}).get("via") == "active_residual":
             steers = f" · residual-steer {c.level}"
             break
+    irst = ""
+    for c in mem.all():
+        if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_ir":
+            w = c.qor.dynamic_ir_mv
+            cat = (c.knobs or {}).get("name")
+            eid = (c.knobs or {}).get("extract_id")
+            irst = (
+                f" · IR-steer {cat} on {eid} {float(w):.3f} mV"
+                if w is not None
+                else f" · IR-steer {cat}"
+            )
+            break
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{wns}{f5}{f5cts}{f5loc}{steers} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{wns}{f5}{f5cts}{f5loc}{steers}{irst} · IR cone {mods}{ir}{ras}{kry}"
     )
