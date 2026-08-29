@@ -1018,6 +1018,48 @@ def should_pay_cell_size(
     return True, f"upsize {len(cells)} attributed worst-path cells — not ABC, not a chip restart"
 
 
+def should_pay_ir_cell(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_cell: int = 0,
+    cell_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay one drive-up on IR-hotspot ODB instances. Not STA-path cell size-up, not ABC."""
+    if n_cell >= cell_max:
+        return False, "IR-hotspot cell size shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-hotspot cell STA"
+    if any((c.knobs or {}).get("source") == "cell_size_ir" and c.status == "ok" for c in mem.by_level("cell")):
+        return False, "already have an IR-hotspot cell-local size child"
+    from pathlib import Path
+
+    from .active import ir_hotspot_cells, iscale_parent
+
+    spec = ir_hotspot_cells(mem)
+    if spec is None or int(spec.get("n") or 0) < 1:
+        return False, "no IR hotspot instance join (need I-scale-win / host extract insts)"
+    if not spec.get("modules"):
+        return False, "IR hotspot join has no module — not inventing a cone"
+    host = iscale_parent(mem)
+    mapped = None
+    if host:
+        mapped = (host.artifacts or {}).get("mapped_hier_v") or (host.artifacts or {}).get("mapped_v")
+    if not host or not mapped or not Path(mapped).is_file():
+        return False, "attributed host has no mapped netlist for IR-cell upsize"
+    sta_cells = set(_attributed_path_cells(mem))
+    ir_cells = [str(x) for x in spec.get("cells") or []]
+    if sta_cells and ir_cells and set(ir_cells) <= sta_cells:
+        return False, "IR hotspot cells already covered by STA cell size-up"
+    mods = ",".join(spec.get("modules") or [])
+    region = spec.get("region") or "unjoined"
+    return True, (
+        f"upsize {len(ir_cells)} IR-hotspot cells on {mods} region {region} — "
+        "ODB join, not STA path, not ABC, not a VCD remap"
+    )
+
+
 def should_pay_net_buffer(
     mem: DesignMemory,
     *,
@@ -1340,7 +1382,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level in ("synthesis", "f1_synth"):
         return "F1"
-    if level in ("cell", "cell_size"):
+    if level in ("cell", "cell_size", "ir_cell"):
         return "F3"
     if level in ("net", "net_buffer", "net_port", "net_buffer_port"):
         return "F3"

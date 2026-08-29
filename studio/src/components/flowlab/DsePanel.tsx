@@ -59,6 +59,7 @@ type DseReport = {
   n_f4_amg?: number;
   n_f4_iscale?: number;
   n_f4_iscale_win?: number;
+  n_ir_cell?: number;
   n_host_ir_steer?: number;
   n_port_steer?: number;
   n_f4_solve?: number;
@@ -153,6 +154,7 @@ export function DsePanel() {
                 {report.n_f3 ?? 0}
                 {report.n_f3_sdf != null ? ` · SDF ${report.n_f3_sdf}` : ""}
                 {report.n_f3_spef != null ? ` · SPEF ${report.n_f3_spef}` : ""}
+                {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
               </dd>
             </div>
             <div>

@@ -353,6 +353,17 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "region",
         }
     )
+    steps.append(
+        {
+            "level": "ir_cell",
+            "reason": (
+                "I-scale-win IR hotspot → nearest ODB instances (geometric join) "
+                "→ module-scoped drive-up — not STA-path cell size-up, not ABC, "
+                "not a VCD remap"
+            ),
+            "scope": "cell",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

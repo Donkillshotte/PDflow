@@ -355,6 +355,7 @@ def main() -> int:
     check(any(s["level"] == "ir_steer" for s in planned["steps"]), "planner schedules F4 IR residual steer")
     check(any(s["level"] == "host_ir_steer" for s in planned["steps"]), "planner schedules host IR residual steer")
     check(any(s["level"] == "f4_scale_win" for s in planned["steps"]), "planner schedules winning-host I-scale")
+    check(any(s["level"] == "ir_cell" for s in planned["steps"]), "planner schedules IR-hotspot cell size-up")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -444,6 +445,7 @@ def main() -> int:
     check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
     check(next_fidelity(level="host_ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "host IR residual steer measures at F4")
     check(next_fidelity(level="f4_scale_win", pred=None, budget_left=20, cost_hint={}) == "F4", "winning-host I-scale measures at F4")
+    check(next_fidelity(level="ir_cell", pred=None, budget_left=20, cost_hint={}) == "F3", "IR-hotspot cell size measures at F3")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -466,6 +468,11 @@ def main() -> int:
         knobs_fp("cell", {"source": "cell_size_up", "cells": ["dpath/a_lt_b/_142_"]})
         != knobs_fp("logic", {"source": "cell_size_up", "cells": ["dpath/a_lt_b/_142_"]}),
         "cell-local knobs are not flattened into the logic fingerprint",
+    )
+    check(
+        knobs_fp("cell", {"source": "cell_size_ir", "cells": ["ctrl/_11_"], "ir_join": 1})
+        != knobs_fp("cell", {"source": "cell_size_up", "cells": ["dpath/a_lt_b/_142_"]}),
+        "IR-hotspot cell knobs are not flattened into the STA cell size-up fingerprint",
     )
     check(
         knobs_fp("net", {"source": "net_buffer", "hops": ["_586_->_587_"], "buf": "BUF_X2"})
@@ -1232,6 +1239,7 @@ def main() -> int:
         should_pay_host_ir_steer,
         should_pay_f4_scale,
         should_pay_f4_scale_win,
+        should_pay_ir_cell,
         should_pay_host_arrivals,
         should_pay_f4_host_extract,
         should_pay_f4_host_region,
@@ -2164,6 +2172,73 @@ def main() -> int:
         )
     pay_same_m, why_same_m = should_pay_f4_scale_win(mem_same, budget_left=80, n_scale=0)
     check(not pay_same_m, f"winning I-scale skips when the host mesh already is the I-scale ({why_same_m})")
+    from dse.attribute import join_hotspot_insts
+
+    inst_dir = Path(tempfile.mkdtemp(prefix="dse-irj-"))
+    inst_json = inst_dir / "inst_power_map.json"
+    inst_json.write_text(
+        json.dumps(
+            {
+                "insts": [
+                    {"name": "ctrl/_11_", "cell": "NOR2_X1", "x": 38950, "y": 15400, "seq": False, "filler": False},
+                    {"name": "ctrl/_14_", "cell": "AOI21_X1", "x": 40280, "y": 15400, "seq": False, "filler": False},
+                    {"name": "dpath/a_lt_b/_142_", "cell": "NAND2_X1", "x": 1000, "y": 1000, "seq": False, "filler": False},
+                    {"name": "FILLCELL_X1", "cell": "FILLCELL_X1", "x": 38755, "y": 14170, "seq": False, "filler": True},
+                ]
+            }
+        )
+        + "\n"
+    )
+    joined = join_hotspot_insts(inst_json, 38755.0, 14170.0, k=3, max_dbu=8000.0)
+    check(joined.get("n") == 2, f"IR join skips filler and far dpath, got {joined}")
+    check(joined.get("cells") == ["ctrl/_11_", "ctrl/_14_"], f"IR join prefers nearby ctrl combo, got {joined}")
+    check(joined.get("modules") == ["ctrl"], f"IR join names ctrl, got {joined}")
+    check("VCD" in str(joined.get("via") or joined.get("not")), f"IR join refuses a VCD remap ({joined})")
+    pay_ic0, why_ic0 = should_pay_ir_cell(mem_hr, budget_left=80, n_cell=0)
+    check(not pay_ic0, f"IR-cell waits for an I-scale-win inst map ({why_ic0})")
+    dummy_host = inst_dir / "host.v"
+    dummy_host.write_text("module gcd(clk); input clk; endmodule\n")
+    mem_hr.add(
+        Candidate(
+            id="psteer",
+            design_id="gcd",
+            parent_id=None,
+            level="net",
+            knobs={"source": "net_buffer_spef"},
+            knobs_fp="psteer2",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(area_um2=560.728, power_w=0.00531, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": str(dummy_host)},
+        )
+    )
+    mem_hr.add(
+        Candidate(
+            id="isw",
+            design_id="gcd",
+            parent_id="psteer",
+            level="pdn",
+            knobs={"source": "f4_iscale_win", "parent_id": "psteer", "extract_id": "hreg"},
+            knobs_fp="isw",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=16.924, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"x_dbu": 38755.0, "y_dbu": 14170.0, "region": "r10", "combo_frac": 0.78, "via": "f4_iscale_win"},
+            artifacts={"insts": str(inst_json), "x_dbu": 38755.0, "y_dbu": 14170.0},
+        )
+    )
+    pay_ic1, why_ic1 = should_pay_ir_cell(mem_hr, budget_left=80, n_cell=0)
+    check(pay_ic1, f"IR-cell is paid after I-scale-win join ({why_ic1})")
+    check("ctrl" in why_ic1, f"IR-cell acquire names the joined module ({why_ic1})")
+    check("STA path" in why_ic1, f"IR-cell acquire refuses STA-path flatten ({why_ic1})")
+    pay_ic2, why_ic2 = should_pay_ir_cell(mem_hr, budget_left=80, n_cell=1)
+    check(not pay_ic2, f"IR-cell is a single shot ({why_ic2})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

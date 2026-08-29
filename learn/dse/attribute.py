@@ -128,6 +128,79 @@ def attribute_dynamic_ir(report: dict) -> dict:
     }
 
 
+def join_hotspot_insts(
+    insts_path: Path | str | None,
+    x_dbu: float | None,
+    y_dbu: float | None,
+    *,
+    k: int = 5,
+    max_dbu: float = 8000.0,
+    prefer_combo: bool = True,
+) -> dict:
+    """Nearest ODB instances to an IR hotspot. Same-extract geometry, not a VCD remap."""
+    if not insts_path or x_dbu is None or y_dbu is None:
+        return {
+            "n": 0,
+            "cells": [],
+            "modules": [],
+            "via": "no hotspot / inst map",
+            "not": "an invented RTL→ITerm map",
+        }
+    p = Path(insts_path)
+    if not p.is_file():
+        return {
+            "n": 0,
+            "cells": [],
+            "modules": [],
+            "via": "inst_power_map missing",
+            "not": "an invented RTL→ITerm map",
+        }
+    data = json.loads(p.read_text())
+    hx, hy = float(x_dbu), float(y_dbu)
+
+    def _rank(*, combo_only: bool) -> list[tuple[float, dict]]:
+        out: list[tuple[float, dict]] = []
+        for i in data.get("insts") or []:
+            if i.get("filler"):
+                continue
+            if combo_only and i.get("seq"):
+                continue
+            dx = float(i.get("x") or 0.0) - hx
+            dy = float(i.get("y") or 0.0) - hy
+            dist = (dx * dx + dy * dy) ** 0.5
+            if dist > max_dbu:
+                continue
+            out.append((dist, i))
+        out.sort(key=lambda t: t[0])
+        return out
+
+    ranked = _rank(combo_only=prefer_combo)
+    if not ranked and prefer_combo:
+        ranked = _rank(combo_only=False)
+    picked = [i for _, i in ranked[:k]]
+    cells = [str(i.get("name") or "") for i in picked if i.get("name")]
+    modules: list[str] = []
+    cones: list[str] = []
+    for n in cells:
+        m = _module_of(n)
+        if m and m not in modules:
+            modules.append(m)
+        for cone in _cones_of(n):
+            if cone not in cones:
+                cones.append(cone)
+    return {
+        "n": len(cells),
+        "cells": cells,
+        "modules": modules,
+        "cones": cones,
+        "nearest_dbu": ranked[0][0] if ranked else None,
+        "region": _region(hx, hy),
+        "insts": str(p),
+        "via": "ODB inst_power_map geometric join — not a VCD remap",
+        "not": "an invented RTL→ITerm map",
+    }
+
+
 def local_scope(attr: dict) -> dict:
     """chip → block → region → cone. Do not flatten back into a global restart."""
     modules = list(attr.get("modules") or [])

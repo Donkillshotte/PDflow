@@ -1270,8 +1270,9 @@ def evaluate_cell_size(
     design_id: str = "gcd",
     cells: list[str] | None = None,
     top: str = "gcd",
+    source: str = "cell_size_up",
 ) -> Candidate | None:
-    """Upsize attributed worst-path cells. Not ABC, not a chip restart."""
+    """Upsize attributed cells. source=cell_size_ir is the IR-hotspot ODB join."""
     from .attribute import attribute_sta
     from .cell_space import upsize_file
     from .sta_f3 import evaluate_sta
@@ -1301,12 +1302,14 @@ def evaluate_cell_size(
                 if v:
                     targets.append(str(v))
     knobs = {
-        "source": "cell_size_up",
+        "source": source,
         "parent_id": parent.id,
-        "parent_name": parent.knobs.get("name"),
+        "parent_name": parent.knobs.get("name") or parent.knobs.get("source"),
         "cells": targets,
         "step": 1,
     }
+    if source == "cell_size_ir":
+        knobs["ir_join"] = 1
     fp = knobs_fp("cell", knobs)
     if fp in mem.seen_knobs("cell"):
         return next(c for c in mem.by_level("cell") if c.knobs_fp == fp)
@@ -1352,17 +1355,26 @@ def evaluate_cell_size(
             pass
     attr = attribute_sta(sta, inherit=parent.attr or {})
     attr["cells_changed"] = sized["changed"]
-    attr["transform"] = "cell_size_up"
+    attr["transform"] = source
+    if source == "cell_size_ir":
+        attr["via"] = "active_f4_ir_cell"
+        attr["cells"] = list(targets)
+        note = (
+            f"IR-hotspot cell upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
+            "— ODB join, not STA path, not ABC"
+        )
+    else:
+        note = (
+            f"cell-local upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
+            "— attributed path, not ABC, not IR"
+        )
     q = QoR(
         area_um2=area,
         n_cells=n_cells,
         wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
         power_w=sta.get("power_w"),
         fidelity="F3",
-        note=(
-            f"cell-local upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
-            "— attributed path, not ABC, not IR"
-        ),
+        note=note,
     )
     return mem.add(
         Candidate(

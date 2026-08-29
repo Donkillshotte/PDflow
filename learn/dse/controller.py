@@ -44,6 +44,7 @@ from .acquire import (
     should_pay_f3_spef,
     should_pay_f3_sta,
     should_pay_cell_size,
+    should_pay_ir_cell,
     should_pay_ctrl_cone,
     should_pay_net_buffer,
     should_pay_net_port,
@@ -74,6 +75,7 @@ from .active import (
     iscale_host,
     iscale_parent,
     winning_host_pdn,
+    ir_hotspot_cells,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -1855,6 +1857,47 @@ def run_controller(
                     reason=why_sw,
                 )
 
+    n_irc = sum(
+        1
+        for c in mem.by_level("cell")
+        if (c.knobs or {}).get("source") == "cell_size_ir" and c.status == "ok"
+    )
+    pay_irc, why_irc = should_pay_ir_cell(
+        mem, budget_left=t_end - time.time(), n_cell=n_irc
+    )
+    step("acquire", fidelity="IR_CELL", pay=pay_irc, why=why_irc)
+    if any(s["level"] == "ir_cell" for s in plan["steps"]) and pay_irc and time.time() < t_end:
+        host_ic = iscale_parent(mem)
+        spec_ic = ir_hotspot_cells(mem)
+        if host_ic and spec_ic and spec_ic.get("cells"):
+            if not (host_ic.artifacts or {}).get("mapped_v"):
+                host_ic = ensure_mapped_netlist(host_ic, rtl=rtl, liberty=lib)
+                mem.touch(host_ic)
+            child = evaluate_cell_size(
+                host_ic,
+                mem,
+                design_id=design_id,
+                cells=list(spec_ic["cells"]),
+                source="cell_size_ir",
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="cell",
+                    fidelity="F3",
+                    via="active_f4_ir_cell",
+                    parent=host_ic.id,
+                    modules=spec_ic.get("modules"),
+                    region=spec_ic.get("region"),
+                    n_changed=(child.artifacts or {}).get("n_changed"),
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    area_um2=child.qor.area_um2,
+                    gold=False,
+                    status=child.status,
+                    reason=why_irc,
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -1877,6 +1920,7 @@ def run_controller(
             "F1 chip flatten-first (area teacher 409.108) · cone-local ABC on dpath and on ctrl when STA names the FSM",
             "synthesis F1 = ORFS abc_speed.script (ABC_AREA=0); abc_area stays F0-only; not abc_ops",
             "cell-local drive-up on the attributed OpenSTA worst path (module-scoped); not ABC",
+            "IR-hotspot cell drive-up: I-scale-win xy → ODB inst_power_map join → module-scoped size-up — not STA path, not VCD",
             "net-local BUF on attributed worst-path hops (module-scoped); not ABC",
             "port-net BUF on attributed ctrl↔dpath hops at the parent (scope=port); not intra-module hops",
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + IR-bin region GPL + GRT",
@@ -1925,6 +1969,9 @@ def run_controller(
         ),
         "n_cell": sum(
             1 for c in mem.by_level("cell") if (c.knobs or {}).get("source") == "cell_size_up" and c.status == "ok"
+        ),
+        "n_ir_cell": sum(
+            1 for c in mem.by_level("cell") if (c.knobs or {}).get("source") == "cell_size_ir" and c.status == "ok"
         ),
         "n_net": sum(
             1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"
@@ -2206,6 +2253,20 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nch = (c.artifacts or {}).get("n_changed")
             cell = f" · cell size-up n={nch} WNS={w:+.3f} ns" if w is not None else f" · cell size-up n={nch}"
             break
+    ircell = ""
+    for c in mem.by_level("cell"):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir":
+            w = (c.artifacts or {}).get("wns_ns")
+            nch = (c.artifacts or {}).get("n_changed")
+            mods = ",".join((c.attr or {}).get("modules") or []) or ",".join(
+                {str(x).split("/")[0] for x in (c.knobs or {}).get("cells") or [] if "/" in str(x)}
+            )
+            ircell = (
+                f" · IR-cell size-up n={nch} {mods} WNS={w:+.3f} ns"
+                if w is not None
+                else f" · IR-cell size-up n={nch} {mods}"
+            )
+            break
     netb = ""
     for c in mem.by_level("net"):
         if c.status == "ok" and (c.knobs or {}).get("source") == "net_buffer":
@@ -2344,5 +2405,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )

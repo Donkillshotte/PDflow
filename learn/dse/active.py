@@ -523,3 +523,32 @@ def winning_host_pdn(mem: DesignMemory):
         if best_mv is None or mv < best_mv:
             best, best_mv = c, mv
     return best
+
+
+def ir_hotspot_cells(mem: DesignMemory) -> dict | None:
+    """I-scale-win (else winning host PDN) hotspot → nearest ODB instances."""
+    from .attribute import join_hotspot_insts
+
+    host = None
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_iscale_win":
+            host = c
+            break
+    if host is None:
+        host = winning_host_pdn(mem)
+    if host is None:
+        return None
+    attr = host.attr or {}
+    art = host.artifacts or {}
+    j = join_hotspot_insts(
+        art.get("insts"),
+        attr.get("x_dbu") if attr.get("x_dbu") is not None else art.get("x_dbu"),
+        attr.get("y_dbu") if attr.get("y_dbu") is not None else art.get("y_dbu"),
+    )
+    if int(j.get("n") or 0) < 1:
+        return None
+    j["parent"] = host
+    j["region"] = attr.get("region") or j.get("region")
+    j["combo_frac"] = attr.get("combo_frac")
+    j["seq_frac"] = attr.get("seq_frac")
+    return j
