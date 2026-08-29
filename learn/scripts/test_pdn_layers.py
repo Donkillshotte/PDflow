@@ -341,7 +341,13 @@ $end
     check(n4.get("ok") is True, f"N4 compact vs ngspice ({n4})")
     print(f"    N4 compact |BE−ng|={n4.get('abs_err_mv'):.4f} mV droop={n4.get('be_droop_mv'):.3f} mV")
 
-    from pdn_solvers import RASDD
+    from pdn_solvers import RASDD, native_index_width
+
+    widx = native_index_width()
+    if widx is None:
+        print("    skip native Index width (no libdpn)")
+    else:
+        check(widx == 64, f"native Index width is 64 (got {widx})")
 
     n_poi = 200
     A_poi = sparse.diags(

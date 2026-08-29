@@ -77,6 +77,7 @@ from pdn_solvers import (  # noqa: E402
     SAAMG,
     mor_starts,
     native_adaptive,
+    native_index_width,
     native_timestep,
     residual_rel,
     rl_companion,
@@ -527,9 +528,16 @@ def platform_block(
         if n_sta
         else f"synthetic {mode} t50 + Solver B SA-AMG"
     )
+    idx_bits = native_index_width()
     return {
         "name": "hierarchical multi-fidelity power-integrity engine",
         "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + D RAS Schwarz + descriptor N4) + extract/EM layers + OpenROAD + triangle/CCS I(t)",
+        "native_index_bits": idx_bits,
+        "native_index": {
+            "status": "READY" if idx_bits == 64 else "GAP",
+            "bits": idx_bits,
+            "via": "libdpn Index = int64_t (Eigen StorageIndex + C API); SciPy fallback CSR may still be int32",
+        },
         "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
         "do_not_implement_this_slice": [
             "silent RTL VCD → gate ITerm mapping (name-join only)",
@@ -1559,7 +1567,7 @@ def main() -> int:
             "Solver D: restricted additive Schwarz on the BE operator (graph partition, local LU, GMRES)",
             "N4: native descriptor BE on Eẋ+Ax=u (VRM + bump R+L + die mesh); SparseLU, not AMG",
             "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; lumped R(T) N1 restamp",
-            "Native BE/MOR/RAS/N4 in libdpn; Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
+            "Native BE/MOR/RAS/N4 in libdpn (Index=int64); Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
             "V(x,y) heatmap at t_worst + delay scaling at worst tap",
         ],
         "not": [

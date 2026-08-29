@@ -7,7 +7,8 @@
 
 namespace dpn {
 
-using Index = int32_t;
+/* Mesh n and nnz are not capped at 2^31-1. Eigen sparse StorageIndex matches. */
+using Index = int64_t;
 
 struct Csr {
   Index nrows = 0;

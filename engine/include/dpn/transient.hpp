@@ -65,7 +65,7 @@ Csr form_be_operator(const Csr& Gmesh, const double* C, double dt, const Index* 
    die_idx>=0: scalar I_draw on that node. die_idx<0: I_draw[0:n_die] on the first n_die nodes.
    u[iv] += vdd (VRM inductor KVL). */
 TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double t_end, double vdd,
-                               int n_v, int n_die, int die_idx, int iv, const double* leak,
+                               int n_v, int n_die, Index die_idx, int iv, const double* leak,
                                const TriangleSrc* ev, int n_ev);
 
 }  // namespace dpn

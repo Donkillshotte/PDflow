@@ -6,6 +6,8 @@
 #include "dpn/transient.hpp"
 
 #include <algorithm>
+#include <climits>
+#include <cstdint>
 #include <memory>
 #include <new>
 #include <vector>
@@ -21,11 +23,22 @@ struct DpnMor {
 
 namespace {
 
-std::vector<dpn::TriangleSrc> pack_events(int n_events, const int* ev_idx, const double* ev_t50,
+int n_ev_ok(int64_t n_events) {
+  if (n_events < 0) {
+    return -1;
+  }
+  if (n_events > static_cast<int64_t>(INT_MAX)) {
+    return -1;
+  }
+  return static_cast<int>(n_events);
+}
+
+std::vector<dpn::TriangleSrc> pack_events(int64_t n_events, const int64_t* ev_idx, const double* ev_t50,
                                          const double* ev_dur, const double* ev_ipulse) {
-  std::vector<dpn::TriangleSrc> ev(static_cast<size_t>(std::max(n_events, 0)));
-  for (int i = 0; i < n_events; ++i) {
-    ev[i].idx = ev_idx ? ev_idx[i] : 0;
+  const int ne = n_ev_ok(n_events);
+  std::vector<dpn::TriangleSrc> ev(static_cast<size_t>(std::max(ne, 0)));
+  for (int i = 0; i < ne; ++i) {
+    ev[i].idx = ev_idx ? static_cast<dpn::Index>(ev_idx[i]) : 0;
     ev[i].t50 = ev_t50 ? ev_t50[i] : 0.0;
     ev[i].dur = ev_dur ? ev_dur[i] : 0.0;
     ev[i].ipulse = ev_ipulse ? ev_ipulse[i] : 0.0;
@@ -33,11 +46,11 @@ std::vector<dpn::TriangleSrc> pack_events(int n_events, const int* ev_idx, const
   return ev;
 }
 
-int copy_tran(const dpn::TranResult& r, int n, double* V_worst, int* worst_node, double* worst_v,
-              double* worst_t, double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
-              double* wave_vmin, double* wave_itot, int* n_steps) {
+int copy_tran(const dpn::TranResult& r, int64_t n, double* V_worst, int64_t* worst_node,
+              double* worst_v, double* worst_t, double* rel_res_max, double* solve_s, int max_steps,
+              double* wave_t, double* wave_vmin, double* wave_itot, int64_t* n_steps) {
   if (worst_node) {
-    *worst_node = static_cast<int>(r.worst_node);
+    *worst_node = static_cast<int64_t>(r.worst_node);
   }
   if (worst_v) {
     *worst_v = r.worst_v;
@@ -52,9 +65,9 @@ int copy_tran(const dpn::TranResult& r, int n, double* V_worst, int* worst_node,
     *solve_s = r.solve_s;
   }
   if (V_worst) {
-    const int nn = static_cast<int>(r.V_worst.size());
-    for (int i = 0; i < n && i < nn; ++i) {
-      V_worst[i] = r.V_worst[i];
+    const int64_t nn = static_cast<int64_t>(r.V_worst.size());
+    for (int64_t i = 0; i < n && i < nn; ++i) {
+      V_worst[i] = r.V_worst[static_cast<size_t>(i)];
     }
   }
   const int ns = r.steps;
@@ -85,14 +98,19 @@ int copy_tran(const dpn::TranResult& r, int n, double* V_worst, int* worst_node,
 
 extern "C" {
 
-DpnHandle* dpn_setup(int kind, int n, int nnz, const int* rowptr, const int* col,
+int dpn_index_width(void) { return static_cast<int>(8 * sizeof(dpn::Index)); }
+
+DpnHandle* dpn_setup(int kind, int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
                      const double* val) {
-  if (!rowptr || !col || !val || n <= 0 || nnz < 0 || rowptr[n] != nnz) {
+  if (!rowptr || n <= 0 || nnz < 0 || rowptr[n] != nnz) {
+    return nullptr;
+  }
+  if (nnz > 0 && (!col || !val)) {
     return nullptr;
   }
   try {
     auto* h = new DpnHandle();
-    h->A = dpn::from_csr(n, rowptr, col, val);
+    h->A = dpn::from_csr(static_cast<dpn::Index>(n), rowptr, col, val);
     if (kind == 1) {
       h->solver = dpn::make_amg(h->A);
     } else if (kind == 2) {
@@ -117,7 +135,7 @@ int dpn_solve(DpnHandle* h, const double* b, double* x, const double* x0, double
   return 0;
 }
 
-int dpn_n(DpnHandle* h) { return h && h->solver ? static_cast<int>(h->solver->n()) : 0; }
+int64_t dpn_n(DpnHandle* h) { return h && h->solver ? static_cast<int64_t>(h->solver->n()) : 0; }
 
 int dpn_n_levels(DpnHandle* h) { return h && h->solver ? h->solver->n_levels() : 0; }
 
@@ -128,12 +146,12 @@ const char* dpn_name(DpnHandle* h) { return h && h->solver ? h->solver->name() :
 void dpn_free(DpnHandle* h) { delete h; }
 
 int dpn_timestep_be(DpnHandle* h, const double* C, const double* leak, const double* pad, double dt,
-                    double t_end, double vdd, int n_events, const int* ev_idx, const double* ev_t50,
-                    const double* ev_dur, const double* ev_ipulse, double* V_worst, int* worst_node,
-                    double* worst_v, double* worst_t, double* rel_res_max, double* solve_s,
-                    int max_steps, double* wave_t, double* wave_vmin, double* wave_itot,
-                    int* n_steps) {
-  if (!h || !h->solver || !C || !leak || !pad || dt <= 0.0) {
+                    double t_end, double vdd, int64_t n_events, const int64_t* ev_idx,
+                    const double* ev_t50, const double* ev_dur, const double* ev_ipulse,
+                    double* V_worst, int64_t* worst_node, double* worst_v, double* worst_t,
+                    double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
+                    double* wave_vmin, double* wave_itot, int64_t* n_steps) {
+  if (!h || !h->solver || !C || !leak || !pad || dt <= 0.0 || n_ev_ok(n_events) < 0) {
     return -1;
   }
   try {
@@ -148,27 +166,31 @@ int dpn_timestep_be(DpnHandle* h, const double* C, const double* leak, const dou
 }
 
 int dpn_timestep_be_hist(DpnHandle* h, const double* C, const double* leak, double dt, double t_end,
-                         const int* bumps, int n_bumps, const double* bump_v, double pkg_r,
-                         double pkg_l, int n_events, const int* ev_idx, const double* ev_t50,
+                         const int64_t* bumps, int64_t n_bumps, const double* bump_v, double pkg_r,
+                         double pkg_l, int64_t n_events, const int64_t* ev_idx, const double* ev_t50,
                          const double* ev_dur, const double* ev_ipulse, double* V_worst,
-                         int* worst_node, double* worst_v, double* worst_t, double* rel_res_max,
+                         int64_t* worst_node, double* worst_v, double* worst_t, double* rel_res_max,
                          double* solve_s, int max_steps, double* wave_t, double* wave_vmin,
-                         double* wave_itot, int* n_steps, double* i_L_absmax, double* i_L_worst) {
-  if (!h || !h->solver || !C || !leak || dt <= 0.0 || n_bumps <= 0 || !bumps || !bump_v) {
+                         double* wave_itot, int64_t* n_steps, double* i_L_absmax, double* i_L_worst) {
+  if (!h || !h->solver || !C || !leak || dt <= 0.0 || n_bumps <= 0 || !bumps || !bump_v ||
+      n_ev_ok(n_events) < 0) {
+    return -1;
+  }
+  if (n_bumps > static_cast<int64_t>(INT_MAX)) {
     return -1;
   }
   try {
     auto ev = pack_events(n_events, ev_idx, ev_t50, ev_dur, ev_ipulse);
     auto r = dpn::timestep_be_hist(*h->solver, h->A, C, leak, dt, t_end, ev.data(),
-                                   static_cast<int>(ev.size()), bumps, n_bumps, bump_v, pkg_r,
-                                   pkg_l);
+                                   static_cast<int>(ev.size()), bumps, static_cast<int>(n_bumps),
+                                   bump_v, pkg_r, pkg_l);
     if (i_L_absmax) {
       *i_L_absmax = r.i_L_absmax;
     }
     if (i_L_worst) {
-      const int nb = static_cast<int>(r.i_L_worst.size());
-      for (int i = 0; i < n_bumps && i < nb; ++i) {
-        i_L_worst[i] = r.i_L_worst[i];
+      const int64_t nb = static_cast<int64_t>(r.i_L_worst.size());
+      for (int64_t i = 0; i < n_bumps && i < nb; ++i) {
+        i_L_worst[i] = r.i_L_worst[static_cast<size_t>(i)];
       }
     }
     return copy_tran(r, h->solver->n(), V_worst, worst_node, worst_v, worst_t, rel_res_max, solve_s,
@@ -178,28 +200,36 @@ int dpn_timestep_be_hist(DpnHandle* h, const double* C, const double* leak, doub
   }
 }
 
-int dpn_timestep_be_adaptive(int n, int nnz, const int* rowptr, const int* col, const double* Gval,
-                             const double* C, const int* bumps, int n_bumps, const double* bump_v,
-                             double pkg_r, double pkg_l, double vdd, const double* leak, double dt0,
-                             double t_end, double atol, double rtol, int n_events, const int* ev_idx,
+int dpn_timestep_be_adaptive(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
+                             const double* Gval, const double* C, const int64_t* bumps,
+                             int64_t n_bumps, const double* bump_v, double pkg_r, double pkg_l,
+                             double vdd, const double* leak, double dt0, double t_end, double atol,
+                             double rtol, int64_t n_events, const int64_t* ev_idx,
                              const double* ev_t50, const double* ev_dur, const double* ev_ipulse,
-                             double* V_worst, int* worst_node, double* worst_v, double* worst_t,
+                             double* V_worst, int64_t* worst_node, double* worst_v, double* worst_t,
                              double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
-                             double* wave_vmin, double* wave_itot, int* n_steps) {
-  if (!rowptr || !col || !Gval || !C || !leak || n <= 0 || dt0 <= 0.0) {
+                             double* wave_vmin, double* wave_itot, int64_t* n_steps) {
+  if (!rowptr || !C || !leak || n <= 0 || dt0 <= 0.0 || n_ev_ok(n_events) < 0) {
+    return -1;
+  }
+  if (nnz > 0 && (!col || !Gval)) {
+    return -1;
+  }
+  if (n_bumps > static_cast<int64_t>(INT_MAX)) {
     return -1;
   }
   try {
-    dpn::Csr G = dpn::from_csr(n, rowptr, col, Gval);
+    dpn::Csr G = dpn::from_csr(static_cast<dpn::Index>(n), rowptr, col, Gval);
     auto ev = pack_events(n_events, ev_idx, ev_t50, ev_dur, ev_ipulse);
-    std::vector<double> vs(static_cast<size_t>(std::max(n_bumps, 0)), vdd);
+    const int nb = static_cast<int>(std::max(n_bumps, int64_t{0}));
+    std::vector<double> vs(static_cast<size_t>(nb), vdd);
     if (bump_v) {
-      for (int k = 0; k < n_bumps; ++k) {
+      for (int k = 0; k < nb; ++k) {
         vs[static_cast<size_t>(k)] = bump_v[k];
       }
     }
-    auto r = dpn::timestep_be_adaptive(G, C, bumps, n_bumps, vs.data(), pkg_r, pkg_l, vdd, leak,
-                                       dt0, t_end, atol, rtol, ev.data(), static_cast<int>(ev.size()));
+    auto r = dpn::timestep_be_adaptive(G, C, bumps, nb, vs.data(), pkg_r, pkg_l, vdd, leak, dt0,
+                                       t_end, atol, rtol, ev.data(), static_cast<int>(ev.size()));
     return copy_tran(r, n, V_worst, worst_node, worst_v, worst_t, rel_res_max, solve_s, max_steps,
                      wave_t, wave_vmin, wave_itot, n_steps);
   } catch (...) {
@@ -207,29 +237,11 @@ int dpn_timestep_be_adaptive(int n, int nnz, const int* rowptr, const int* col, 
   }
 }
 
-DpnMor* dpn_mor_setup(int n, int nnz, const int* rowptr, const int* col, const double* Gval,
-                      const double* C, int n_starts, const double* starts, int n_shifts,
-                      const double* shifts, int n_moments) {
-  if (!rowptr || !col || !Gval || !C || !starts || !shifts || n <= 0 || n_starts <= 0 ||
-      n_shifts <= 0 || rowptr[n] != nnz) {
-    return nullptr;
-  }
-  try {
-    auto* h = new DpnMor();
-    dpn::Csr G = dpn::from_csr(n, rowptr, col, Gval);
-    h->mor = dpn::make_mor(G, C, n_starts, starts, n_shifts, shifts, n_moments);
-    return h;
-  } catch (...) {
-    return nullptr;
-  }
-}
-
-DpnMor* dpn_mor_setup_rlc(int n, int nnz, const int* rowptr, const int* col, const double* Gval,
-                          const double* C, const int* bumps, int n_bumps, const double* bump_v,
-                          double pkg_r, double pkg_l, int n_starts, const double* starts,
-                          int n_shifts, const double* shifts, int n_moments) {
+DpnMor* dpn_mor_setup(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
+                      const double* Gval, const double* C, int n_starts, const double* starts,
+                      int n_shifts, const double* shifts, int n_moments) {
   if (!rowptr || !C || !starts || !shifts || n <= 0 || n_starts <= 0 || n_shifts <= 0 ||
-      n_bumps <= 0 || !bumps || !bump_v || rowptr[n] != nnz) {
+      rowptr[n] != nnz) {
     return nullptr;
   }
   if (nnz > 0 && (!col || !Gval)) {
@@ -237,9 +249,33 @@ DpnMor* dpn_mor_setup_rlc(int n, int nnz, const int* rowptr, const int* col, con
   }
   try {
     auto* h = new DpnMor();
-    dpn::Csr G = dpn::from_csr(n, rowptr, col, Gval);
-    h->mor = dpn::make_mor_rlc(G, C, bumps, n_bumps, bump_v, pkg_r, pkg_l, n_starts, starts,
-                               n_shifts, shifts, n_moments);
+    dpn::Csr G = dpn::from_csr(static_cast<dpn::Index>(n), rowptr, col, Gval);
+    h->mor = dpn::make_mor(G, C, n_starts, starts, n_shifts, shifts, n_moments);
+    return h;
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+DpnMor* dpn_mor_setup_rlc(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
+                          const double* Gval, const double* C, const int64_t* bumps, int64_t n_bumps,
+                          const double* bump_v, double pkg_r, double pkg_l, int n_starts,
+                          const double* starts, int n_shifts, const double* shifts, int n_moments) {
+  if (!rowptr || !C || !starts || !shifts || n <= 0 || n_starts <= 0 || n_shifts <= 0 ||
+      n_bumps <= 0 || !bumps || !bump_v || rowptr[n] != nnz) {
+    return nullptr;
+  }
+  if (nnz > 0 && (!col || !Gval)) {
+    return nullptr;
+  }
+  if (n_bumps > static_cast<int64_t>(INT_MAX)) {
+    return nullptr;
+  }
+  try {
+    auto* h = new DpnMor();
+    dpn::Csr G = dpn::from_csr(static_cast<dpn::Index>(n), rowptr, col, Gval);
+    h->mor = dpn::make_mor_rlc(G, C, bumps, static_cast<int>(n_bumps), bump_v, pkg_r, pkg_l, n_starts,
+                               starts, n_shifts, shifts, n_moments);
     return h;
   } catch (...) {
     return nullptr;
@@ -255,12 +291,12 @@ const char* dpn_mor_name(DpnMor* h) { return h && h->mor ? h->mor->name() : ""; 
 void dpn_mor_free(DpnMor* h) { delete h; }
 
 int dpn_mor_timestep(DpnMor* h, const double* leak, const double* pad, double dt, double t_end,
-                     double vdd, int n_events, const int* ev_idx, const double* ev_t50,
-                     const double* ev_dur, const double* ev_ipulse, double* V_worst, int* worst_node,
-                     double* worst_v, double* worst_t, double* rel_res_max, double* solve_s,
-                     int max_steps, double* wave_t, double* wave_vmin, double* wave_itot,
-                     int* n_steps) {
-  if (!h || !h->mor || !leak || dt <= 0.0) {
+                     double vdd, int64_t n_events, const int64_t* ev_idx, const double* ev_t50,
+                     const double* ev_dur, const double* ev_ipulse, double* V_worst,
+                     int64_t* worst_node, double* worst_v, double* worst_t, double* rel_res_max,
+                     double* solve_s, int max_steps, double* wave_t, double* wave_vmin,
+                     double* wave_itot, int64_t* n_steps) {
+  if (!h || !h->mor || !leak || dt <= 0.0 || n_ev_ok(n_events) < 0) {
     return -1;
   }
   if (!pad && !h->mor->rlc()) {
@@ -276,26 +312,27 @@ int dpn_mor_timestep(DpnMor* h, const double* leak, const double* pad, double dt
   }
 }
 
-int dpn_timestep_descriptor(int n, int nnz, const int* rowptr, const int* col, const double* Aval,
-                            const double* E, int n_v, int n_die, int die_idx, int iv, double dt,
-                            double t_end, double vdd, const double* leak, int n_events,
-                            const int* ev_idx, const double* ev_t50, const double* ev_dur,
-                            const double* ev_ipulse, double* V_worst, int* worst_node,
-                            double* worst_v, double* worst_t, double* rel_res_max, double* solve_s,
-                            int max_steps, double* wave_t, double* wave_vmin, double* wave_itot,
-                            int* n_steps) {
-  if (!rowptr || !E || n <= 0 || dt <= 0.0 || n_v <= 0 || rowptr[n] != nnz) {
+int dpn_timestep_descriptor(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
+                            const double* Aval, const double* E, int n_v, int n_die, int64_t die_idx,
+                            int iv, double dt, double t_end, double vdd, const double* leak,
+                            int64_t n_events, const int64_t* ev_idx, const double* ev_t50,
+                            const double* ev_dur, const double* ev_ipulse, double* V_worst,
+                            int64_t* worst_node, double* worst_v, double* worst_t,
+                            double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
+                            double* wave_vmin, double* wave_itot, int64_t* n_steps) {
+  if (!rowptr || !E || n <= 0 || dt <= 0.0 || n_v <= 0 || rowptr[n] != nnz || n_ev_ok(n_events) < 0) {
     return -1;
   }
   if (nnz > 0 && (!col || !Aval)) {
     return -1;
   }
   try {
-    dpn::Csr A = dpn::from_csr(n, rowptr, col, Aval);
+    dpn::Csr A = dpn::from_csr(static_cast<dpn::Index>(n), rowptr, col, Aval);
     auto ev = pack_events(n_events, ev_idx, ev_t50, ev_dur, ev_ipulse);
-    auto r = dpn::timestep_descriptor(A, E, dt, t_end, vdd, n_v, n_die, die_idx, iv, leak, ev.data(),
+    auto r = dpn::timestep_descriptor(A, E, dt, t_end, vdd, n_v, n_die,
+                                      static_cast<dpn::Index>(die_idx), iv, leak, ev.data(),
                                       static_cast<int>(ev.size()));
-    const int n_out = (die_idx >= 0) ? 1 : std::max(n_die, 0);
+    const int64_t n_out = (die_idx >= 0) ? 1 : static_cast<int64_t>(std::max(n_die, 0));
     return copy_tran(r, n_out > 0 ? n_out : n, V_worst, worst_node, worst_v, worst_t, rel_res_max,
                      solve_s, max_steps, wave_t, wave_vmin, wave_itot, n_steps);
   } catch (...) {

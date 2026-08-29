@@ -13,7 +13,7 @@
 namespace dpn {
 namespace {
 
-using SpMat = Eigen::SparseMatrix<double, Eigen::ColMajor, int>;
+using SpMat = Eigen::SparseMatrix<double, Eigen::ColMajor, Index>;
 using SpLU = Eigen::SparseLU<SpMat>;
 
 constexpr Index kCoarseN = 64;
@@ -24,14 +24,14 @@ constexpr int kPreSweeps = 2;
 constexpr int kPostSweeps = 2;
 
 SpMat to_eigen(const Csr& A) {
-  std::vector<Eigen::Triplet<double>> t;
+  std::vector<Eigen::Triplet<double, Index>> t;
   t.reserve(static_cast<size_t>(A.nnz()));
   for (Index i = 0; i < A.nrows; ++i) {
     for (Index k = A.rowptr[i]; k < A.rowptr[i + 1]; ++k) {
       t.emplace_back(i, A.col[k], A.val[k]);
     }
   }
-  SpMat M(A.nrows, A.ncols);
+  SpMat M(static_cast<Eigen::Index>(A.nrows), static_cast<Eigen::Index>(A.ncols));
   M.setFromTriplets(t.begin(), t.end());
   M.makeCompressed();
   return M;

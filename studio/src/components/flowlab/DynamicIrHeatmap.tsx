@@ -93,6 +93,8 @@ type DynReport = {
     contributors?: { seq_frac?: number; combo_frac?: number };
   };
   platform?: {
+    native_index_bits?: number | null;
+    native_index?: StatusChip & { bits?: number | null };
     solvers?: {
       A_direct_be?: StatusChip;
       B_sa_amg?: StatusChip;
@@ -379,6 +381,15 @@ export function DynamicIrHeatmap({
                     ? "< 1 µV"
                     : `${l3.abs_err_vs_A_mv.toFixed(3)} mV`}
                   {l3.n_windows != null ? ` · ${l3.n_windows} win` : ""}
+                </dd>
+              </div>
+            ) : null}
+            {plat?.native_index_bits != null ? (
+              <div>
+                <dt>Index</dt>
+                <dd>
+                  {plat.native_index_bits}-bit
+                  {plat.native_index?.status ? ` · ${plat.native_index.status}` : ""}
                 </dd>
               </div>
             ) : null}

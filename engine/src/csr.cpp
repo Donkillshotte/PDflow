@@ -23,7 +23,7 @@ Csr from_triplets(Index n, const Index* ti, const Index* tj, const double* tv, I
     Index i, j;
     double v;
   };
-  std::vector<T> a(static_cast<size_t>(std::max(ntrips, 0)));
+  std::vector<T> a(static_cast<size_t>(std::max(ntrips, Index{0})));
   for (Index k = 0; k < ntrips; ++k) {
     a[static_cast<size_t>(k)] = {ti[k], tj[k], tv[k]};
   }

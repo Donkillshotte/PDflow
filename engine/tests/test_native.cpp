@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -191,6 +192,16 @@ static void check(bool ok, const char* msg) {
 }
 
 int main() {
+  check(sizeof(Index) == 8, "Index is 8 bytes");
+  check(dpn_index_width() == 64, "dpn_index_width is 64");
+  {
+    Index rp0[2] = {0, 0};
+    Csr Z = dpn::from_csr(1, rp0, nullptr, nullptr);
+    check(Z.nrows == 1 && Z.nnz() == 0, "from_csr nnz=0 allows null col/val");
+    Index rp1[2] = {0, 1};
+    DpnHandle* bad = dpn_setup(0, 1, 1, rp1, nullptr, nullptr);
+    check(bad == nullptr, "c_api nnz>0 rejects null col/val");
+  }
   {
     Csr A = poisson_1d(8);
     auto lu = dpn::make_direct(A);
@@ -280,11 +291,12 @@ int main() {
     const double vprev = vdd;
     const double rhs = g * vdd - i + (c / dt) * vprev;
     const double v_closed = rhs / a;
-    int rowptr[2] = {0, 1};
-    int col[1] = {0};
+    Index rowptr[2] = {0, 1};
+    Index col[1] = {0};
     double val[1] = {a};
     DpnHandle* h = dpn_setup(0, 1, 1, rowptr, col, val);
     check(h != nullptr, "c_api setup direct 1-node");
+    check(dpn_n(h) == 1, "c_api dpn_n is int64");
     double b = rhs, x = 0.0, rel = 0.0;
     check(dpn_solve(h, &b, &x, nullptr, &rel) == 0, "c_api solve 1-node");
     check(std::abs(x - v_closed) < 1e-12, "1-node BE matches closed form");
@@ -296,18 +308,18 @@ int main() {
     const double t50 = 0.2e-9, dur = 0.2e-9, t_end = 0.8e-9;
     const double g = 1.0 / r;
     const double a = g + c / dt;
-    int rowptr[2] = {0, 1};
-    int col[1] = {0};
+    Index rowptr[2] = {0, 1};
+    Index col[1] = {0};
     double val[1] = {a};
     double C[1] = {c};
     double leak[1] = {0.0};
     double pad[1] = {g * vdd};
-    int ev_idx[1] = {0};
+    Index ev_idx[1] = {0};
     double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
     DpnHandle* h = dpn_setup(0, 1, 1, rowptr, col, val);
     const int maxs = 128;
     std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
-    int worst_node = 0, n_steps = 0;
+    Index worst_node = 0, n_steps = 0;
     double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
     check(dpn_timestep_be(h, C, leak, pad, dt, t_end, vdd, 1, ev_idx, ev_t50, ev_dur, ev_ip,
                           Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
@@ -325,10 +337,10 @@ int main() {
     check(std::abs(worst_v - worst_cf) < 1e-12, "native timestep vs closed-form BE");
     dpn_free(h);
 
-    int bumps[1] = {0};
+    Index bumps[1] = {0};
     double bump_v[1] = {vdd};
-    int growptr[2] = {0, 0};
-    int gcol[1] = {0};
+    Index growptr[2] = {0, 0};
+    Index gcol[1] = {0};
     double Gempty[1] = {0.0};
     check(dpn_timestep_be_adaptive(1, 0, growptr, gcol, Gempty, C, bumps, 1, bump_v, r, 0.0, vdd,
                                    leak, dt, t_end, 1e-5, 1e-3, 1, ev_idx, ev_t50, ev_dur, ev_ip,
@@ -336,14 +348,15 @@ int main() {
                                    wt.data(), wv.data(), wi.data(), &n_steps) == 0,
           "adaptive timestep 1-node");
     check(std::abs(worst_v - worst_cf) < 2e-3, "adaptive vs fine BE (1 mV-class)");
-    std::printf("    adaptive steps=%d vmin=%.6f closed=%.6f\n", n_steps, worst_v, worst_cf);
+    std::printf("    adaptive steps=%ld vmin=%.6f closed=%.6f\n", static_cast<long>(n_steps), worst_v,
+                worst_cf);
   }
   {
     // Rational Krylov: 1-node is exact with m=1.
     const double vdd = 1.1, r = 2.0, c = 50e-12, dt = 10e-12, ipulse = 5e-3;
     const double t50 = 0.2e-9, dur = 0.2e-9, t_end = 0.8e-9, g = 1.0 / r;
-    int rowptr[2] = {0, 1};
-    int col[1] = {0};
+    Index rowptr[2] = {0, 1};
+    Index col[1] = {0};
     double Gval[1] = {g};
     double C[1] = {c};
     double start[1] = {1.0};
@@ -352,11 +365,11 @@ int main() {
     check(mor != nullptr && dpn_mor_m(mor) >= 1, "mor setup 1-node");
     double leak[1] = {0.0};
     double pad[1] = {g * vdd};
-    int ev_idx[1] = {0};
+    Index ev_idx[1] = {0};
     double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
     const int maxs = 128;
     std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
-    int worst_node = 0, n_steps = 0;
+    Index worst_node = 0, n_steps = 0;
     double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
     check(dpn_mor_timestep(mor, leak, pad, dt, t_end, vdd, 1, ev_idx, ev_t50, ev_dur, ev_ip,
                            Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
@@ -418,12 +431,12 @@ int main() {
     double g_eq = 0.0, hsc = 0.0;
     dpn::rl_companion(R, L, dt, &g_eq, &hsc);
     check(g_eq > 0.0 && hsc > 0.0, "RL companion g_eq and history scale");
-    int growptr[2] = {0, 0};
-    int gcol[1] = {0};
+    Index growptr[2] = {0, 0};
+    Index gcol[1] = {0};
     double Gempty[1] = {0.0};
     Csr Gmesh = dpn::from_csr(1, growptr, gcol, Gempty);
     double C[1] = {c};
-    int bumps[1] = {0};
+    Index bumps[1] = {0};
     double bump_v[1] = {vdd};
     std::vector<double> pad;
     Csr A = dpn::form_be_operator(Gmesh, C, dt, bumps, 1, bump_v, R, L, pad);
@@ -462,15 +475,13 @@ int main() {
     check(std::abs(worst - worst_r) > 1e-6, "RL history differs from memoryless L/dt");
     std::printf("    RL hist vmin=%.6f resistive=%.6f iLmax=%.4e\n", hist.worst_v, worst_r,
                 hist.i_L_absmax);
-    std::vector<int> rp(A.rowptr.begin(), A.rowptr.end());
-    std::vector<int> ci(A.col.begin(), A.col.end());
-    DpnHandle* hh = dpn_setup(0, 1, A.nnz(), rp.data(), ci.data(), A.val.data());
+    DpnHandle* hh = dpn_setup(0, 1, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data());
     check(hh != nullptr, "c_api hist setup");
     const int maxs = 128;
     std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
-    int worst_node = 0, n_steps = 0;
+    Index worst_node = 0, n_steps = 0;
     double worst_v = 0, worst_t = 0, rel = 0, ts = 0, ilabs = 0, ilw[1] = {0};
-    int ev_idx[1] = {0};
+    Index ev_idx[1] = {0};
     double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
     check(dpn_timestep_be_hist(hh, C, leak, dt, t_end, bumps, 1, bump_v, R, L, 1, ev_idx, ev_t50,
                                ev_dur, ev_ip, Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts,
@@ -496,7 +507,7 @@ int main() {
     Csr G = r_chain(n, 0.2);
     std::vector<double> C(n, 50e-12);
     const double vdd = 1.1, dt = 10e-12, t_end = 0.4e-9, R = 0.05, L = 2e-10;
-    int bumps[1] = {0};
+    Index bumps[1] = {0};
     double bump_v[1] = {vdd};
     std::vector<double> pad;
     Csr A = dpn::form_be_operator(G, C.data(), dt, bumps, 1, bump_v, R, L, pad);
@@ -573,15 +584,14 @@ int main() {
     std::printf("    N4 descriptor vmin=%.9f gold=%.9f |err|=%.3e V\n", desc.worst_v, worst,
                 std::abs(desc.worst_v - worst));
 
-    std::vector<int> rp(A.rowptr.begin(), A.rowptr.end());
-    std::vector<int> ci(A.col.begin(), A.col.end());
     const int maxs = 128;
     std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
-    int worst_node = 0, n_steps = 0;
+    Index worst_node = 0, n_steps = 0;
     double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
-    int ev_idx[1] = {0};
+    Index ev_idx[1] = {0};
     double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
-    check(dpn_timestep_descriptor(4, A.nnz(), rp.data(), ci.data(), A.val.data(), E, 2, 1, 1, 2, dt,
+    check(dpn_timestep_descriptor(4, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data(), E, 2, 1, 1,
+                                  2, dt,
                                   t_end, vdd, nullptr, 1, ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(),
                                   &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
                                   wv.data(), wi.data(), &n_steps) == 0,

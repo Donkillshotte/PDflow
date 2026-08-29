@@ -20,7 +20,7 @@ This library owns the numerically hot path:
 
 - The companion operator \(A=G+C/\Delta t+g_\mathrm{eq}\) is real, sparse, SPD / M-matrix (RC PDN + implicit BE). AMG applies **only** to that operator.
 - The RLC descriptor \(A\) is **unsymmetric**. Krylov expansions factor \((A+sE)\) with SparseLU, never AMG.
-- Indices are `int32` (nnz and n up to \(2^{31}-1\)). Switch the `Index` alias to `int64_t` before 2e9 nonzeros.
+- Mesh `n` and `nnz` use `int64_t` (`dpn::Index`, Eigen `SparseMatrix` StorageIndex). Call `dpn_index_width()` (returns 64) before `dpn_setup`. SciPy fallback CSR may still be int32 internally; the native path copies to int64. Event counts still reject `n_events > INT_MAX` (internal `timestep_*` take `int n_ev`).
 - AMG uses Vaněk–Mandel–Brezina smoothed aggregation, damped Jacobi, Eigen SparseLU on the coarsest level. Not Ginkgo, not a GPU backend yet.
 - RAS (Solver D) partitions the **sparsity graph**, not index stripes. Overlap is a 2-hop halo; the correction is restricted to the interior (classical RAS). The outer iteration is GMRES because the RAS operator is not SPD. `n<8` uses one LU of the full matrix (exact). This is domain decomposition on the BE companion, not a second physics model.
 - Package inductance is a **BE series-R+L companion** at the bumps: \(g_\mathrm{eq}=1/(R+L/\Delta t)\), \(i^{n+1}=g_\mathrm{eq}(V_\mathrm{src}-v^{n+1})+g_\mathrm{eq}(L/\Delta t)\,i^n\). The companion stays SPD (AMG applies). Adaptive steps recompute \(g_\mathrm{eq}\) at the current \(\Delta t\) and carry \(i_L\). This is lumped package R+L, not extracted on-die \(L\).
@@ -42,6 +42,7 @@ Requires **g++-13** (Clang as `/usr/bin/c++` fails `-lstdc++` here). Produces `e
 
 `dpn_test` checks:
 
+- `sizeof(Index)==8` and `dpn_index_width()==64`; nnz=0 CSR copy allows null col/val; nnz>0 rejects them
 - 1D/2D Poisson AMG vs SparseLU
 - 1D/2D Poisson RAS vs SparseLU (and C API `kind=2`)
 - 1-node BE vs closed-form implicit Euler (C API and native timestep)

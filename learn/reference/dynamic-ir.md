@@ -41,6 +41,7 @@ vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch
 Il salto qualitativo restante è il modello **cella → I(t)** sul GCD (Nangate è NLDM).
 L’interpolatore CCS esiste (`pdn_current.py`) e si testa su Liberty sintetica — **non** si inventa un mapping NLDM→CCS.
 I solver A/B/C/D ci sono. **Non** si forka vyges, EMSim o PSM. Ginkgo GPU resta GAP.
+Indici nativi: `int64_t` (`dpn_index_width()==64`). SciPy fallback può restare int32.
 
 ## Solver A / B / C / D e livelli prodotto
 
@@ -70,7 +71,7 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 | 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
 | 3 | Activity | STA `report_arrival` t50 (clock) | VCD RTL name-join GAP; ranking extra I(t) resta sintetico |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) in Python TRAN se tabelle + slew; Nangate = GAP |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS + **N4** descriptor BE nativo | ngspice = gold 1-nodo RC, R+L, VRM+die |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS + **N4** descriptor BE nativo | ngspice = gold 1-nodo RC, R+L, VRM+die; Index nativo int64 |
 | 6 | Analysis | heatmap, finestre, ranking, delay scaling, \(J=I/(wt)\) | TTF relativo (no A foundry); R(T) lumpato one-shot N1, non mesh 3D |
 
 ```bash

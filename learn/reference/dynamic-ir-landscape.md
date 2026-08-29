@@ -19,6 +19,7 @@ Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Pytho
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
 | **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=96 · \|A−C\| 0.401 mV sul GCD clock STA (descriptor RLC); ranking scenari = Solver A |
 | **Solver D** RAS Schwarz | decomposizione di dominio | **READY** · ndom=8 · \|A−D\| 0.013 mV sul GCD clock STA (grafo, non stripe) |
+| libdpn Index | mesh n/nnz | **READY** int64 (C API + Eigen StorageIndex); SciPy fallback può restare int32 |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
 | ngspice | unit test fisico 1-nodo RC e R+L | READY |

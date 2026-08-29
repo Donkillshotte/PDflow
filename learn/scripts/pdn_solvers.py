@@ -34,6 +34,9 @@ from scipy.sparse.linalg import LinearOperator, cg, splu
 
 _LIB = None
 _LIB_TRIED = False
+_C_IDX = ctypes.c_int64
+_P_IDX = ctypes.POINTER(_C_IDX)
+_NP_IDX = np.int64
 
 
 def rl_companion(pkg_r: float, pkg_l: float, dt: float) -> tuple[float, float]:
@@ -56,13 +59,19 @@ def _libdpn():
     if not path.is_file():
         return None
     lib = ctypes.CDLL(str(path))
+    if not hasattr(lib, "dpn_index_width"):
+        return None
+    lib.dpn_index_width.restype = ctypes.c_int
+    lib.dpn_index_width.argtypes = []
+    if int(lib.dpn_index_width()) != 64:
+        return None
     lib.dpn_setup.restype = ctypes.c_void_p
     lib.dpn_setup.argtypes = [
         ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
+        _C_IDX,
+        _C_IDX,
+        _P_IDX,
+        _P_IDX,
         ctypes.POINTER(ctypes.c_double),
     ]
     lib.dpn_solve.restype = ctypes.c_int
@@ -73,7 +82,7 @@ def _libdpn():
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
     ]
-    lib.dpn_n.restype = ctypes.c_int
+    lib.dpn_n.restype = _C_IDX
     lib.dpn_n.argtypes = [ctypes.c_void_p]
     lib.dpn_n_levels.restype = ctypes.c_int
     lib.dpn_n_levels.argtypes = [ctypes.c_void_p]
@@ -90,22 +99,22 @@ def _libdpn():
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
+        _C_IDX,
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
         ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
+        _P_IDX,
     ]
     lib.dpn_timestep_be.restype = ctypes.c_int
     lib.dpn_timestep_be.argtypes = _TRAN_ARGS
@@ -116,36 +125,36 @@ def _libdpn():
         ctypes.POINTER(ctypes.c_double),
         ctypes.c_double,
         ctypes.c_double,
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.c_int,
+        _P_IDX,
+        _C_IDX,
         ctypes.POINTER(ctypes.c_double),
         ctypes.c_double,
         ctypes.c_double,
+        _C_IDX,
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
         ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
+        _P_IDX,
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
     ]
     lib.dpn_mor_setup.restype = ctypes.c_void_p
     lib.dpn_mor_setup.argtypes = [
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
+        _C_IDX,
+        _C_IDX,
+        _P_IDX,
+        _P_IDX,
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
         ctypes.c_int,
@@ -156,14 +165,14 @@ def _libdpn():
     ]
     lib.dpn_mor_setup_rlc.restype = ctypes.c_void_p
     lib.dpn_mor_setup_rlc.argtypes = [
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
+        _C_IDX,
+        _C_IDX,
+        _P_IDX,
+        _P_IDX,
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.c_int,
+        _P_IDX,
+        _C_IDX,
         ctypes.POINTER(ctypes.c_double),
         ctypes.c_double,
         ctypes.c_double,
@@ -188,82 +197,82 @@ def _libdpn():
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
+        _C_IDX,
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
         ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
+        _P_IDX,
     ]
     lib.dpn_timestep_be_adaptive.restype = ctypes.c_int
     lib.dpn_timestep_be_adaptive.argtypes = [
+        _C_IDX,
+        _C_IDX,
+        _P_IDX,
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        _P_IDX,
+        _C_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        _C_IDX,
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        _P_IDX,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
         ctypes.c_int,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_int),
+        _P_IDX,
     ]
     lib.dpn_timestep_descriptor.restype = ctypes.c_int
     lib.dpn_timestep_descriptor.argtypes = [
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
+        _C_IDX,
+        _C_IDX,
+        _P_IDX,
+        _P_IDX,
         ctypes.POINTER(ctypes.c_double),  # Aval
         ctypes.POINTER(ctypes.c_double),  # E
         ctypes.c_int,  # n_v
         ctypes.c_int,  # n_die
-        ctypes.c_int,  # die_idx
+        _C_IDX,  # die_idx
         ctypes.c_int,  # iv
         ctypes.c_double,  # dt
         ctypes.c_double,  # t_end
         ctypes.c_double,  # vdd
         ctypes.POINTER(ctypes.c_double),  # leak
-        ctypes.c_int,  # n_events
-        ctypes.POINTER(ctypes.c_int),  # ev_idx
+        _C_IDX,  # n_events
+        _P_IDX,  # ev_idx
         ctypes.POINTER(ctypes.c_double),  # ev_t50
         ctypes.POINTER(ctypes.c_double),  # ev_dur
         ctypes.POINTER(ctypes.c_double),  # ev_ipulse
         ctypes.POINTER(ctypes.c_double),  # V_worst
-        ctypes.POINTER(ctypes.c_int),  # worst_node
+        _P_IDX,  # worst_node
         ctypes.POINTER(ctypes.c_double),  # worst_v
         ctypes.POINTER(ctypes.c_double),  # worst_t
         ctypes.POINTER(ctypes.c_double),  # rel_res_max
@@ -272,10 +281,18 @@ def _libdpn():
         ctypes.POINTER(ctypes.c_double),  # wave_t
         ctypes.POINTER(ctypes.c_double),  # wave_vmin
         ctypes.POINTER(ctypes.c_double),  # wave_itot
-        ctypes.POINTER(ctypes.c_int),  # n_steps
+        _P_IDX,  # n_steps
     ]
     _LIB = lib
     return _LIB
+
+
+def native_index_width() -> int | None:
+    """libdpn StorageIndex width in bits, or None if the native library is missing."""
+    lib = _libdpn()
+    if lib is None or not hasattr(lib, "dpn_index_width"):
+        return None
+    return int(lib.dpn_index_width())
 
 
 class NativeSolver:
@@ -285,17 +302,19 @@ class NativeSolver:
         Ac = A.tocsr()
         n = int(Ac.shape[0])
         nnz = int(Ac.nnz)
-        rp = np.ascontiguousarray(Ac.indptr, dtype=np.int32)
-        ci = np.ascontiguousarray(Ac.indices, dtype=np.int32)
+        rp = np.ascontiguousarray(Ac.indptr, dtype=_NP_IDX)
+        ci = np.ascontiguousarray(Ac.indices, dtype=_NP_IDX)
         va = np.ascontiguousarray(Ac.data, dtype=np.float64)
+        if ci.size == 0:
+            ci = np.zeros(1, dtype=_NP_IDX)
         if int(rp[-1]) != nnz:
             raise ValueError("CSR nnz mismatch")
         h = lib.dpn_setup(
             kind,
             n,
             nnz,
-            rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-            ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            rp.ctypes.data_as(_P_IDX),
+            ci.ctypes.data_as(_P_IDX),
             va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         )
         if not h:
@@ -683,19 +702,21 @@ def _csr_ct(A):
     Ac = A.tocsr()
     n = int(Ac.shape[0])
     nnz = int(Ac.nnz)
-    rp = np.ascontiguousarray(Ac.indptr, dtype=np.int32)
-    ci = np.ascontiguousarray(Ac.indices, dtype=np.int32)
+    rp = np.ascontiguousarray(Ac.indptr, dtype=_NP_IDX)
+    ci = np.ascontiguousarray(Ac.indices, dtype=_NP_IDX)
     va = np.ascontiguousarray(Ac.data, dtype=np.float64)
+    if ci.size == 0:
+        ci = np.zeros(1, dtype=_NP_IDX)
     return n, nnz, rp, ci, va
 
 
 def _events_ct(events):
     n = len(events)
     if n == 0:
-        z = np.zeros(1, dtype=np.int32)
+        z = np.zeros(1, dtype=_NP_IDX)
         d = np.zeros(1, dtype=np.float64)
         return 0, z, d, d, d
-    idx = np.ascontiguousarray([int(e["idx"]) for e in events], dtype=np.int32)
+    idx = np.ascontiguousarray([int(e["idx"]) for e in events], dtype=_NP_IDX)
     t50 = np.ascontiguousarray([float(e["t50_s"]) for e in events], dtype=np.float64)
     dur = np.ascontiguousarray([float(e["dur_s"]) for e in events], dtype=np.float64)
     ip = np.ascontiguousarray([float(e["i_pulse"]) for e in events], dtype=np.float64)
@@ -722,17 +743,17 @@ def _tran_kwargs(n, events, dt, t_end, adaptive=False):
         "dur": dur,
         "ip": ip,
         "max_steps": steps,
-        "worst_node": ctypes.c_int(0),
+        "worst_node": _C_IDX(0),
         "worst_v": ctypes.c_double(0.0),
         "worst_t": ctypes.c_double(0.0),
         "rel": ctypes.c_double(0.0),
         "solve_s": ctypes.c_double(0.0),
-        "n_steps": ctypes.c_int(0),
+        "n_steps": _C_IDX(0),
     }
 
 
 def _bump_arrays(sys: dict, vdd: float):
-    bumps = np.ascontiguousarray(sys.get("bump") or [], dtype=np.int32)
+    bumps = np.ascontiguousarray(sys.get("bump") or [], dtype=_NP_IDX)
     n_bumps = int(bumps.size)
     raw = sys.get("bump_v")
     if n_bumps <= 0:
@@ -799,13 +820,13 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
             leak.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             dt,
             float(t_end),
-            bumps.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            bumps.ctypes.data_as(_P_IDX),
             n_bumps,
             bump_v.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             float(sys.get("pkg_r") or 0.0),
             float(sys.get("pkg_l") or 0.0),
             kw["n_ev"],
-            kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            kw["idx"].ctypes.data_as(_P_IDX),
             kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -839,7 +860,7 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
             float(t_end),
             float(vdd),
             kw["n_ev"],
-            kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            kw["idx"].ctypes.data_as(_P_IDX),
             kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -885,18 +906,18 @@ def native_adaptive(sys, events, vdd: float, t_end: float, atol: float = 1e-4, r
     leak = np.ascontiguousarray(sys["leak"], dtype=np.float64)
     bumps, n_bumps, bump_v = _bump_arrays(sys, vdd)
     if n_bumps == 0:
-        bumps = np.zeros(1, dtype=np.int32)
+        bumps = np.zeros(1, dtype=_NP_IDX)
         bump_v = np.array([vdd], dtype=np.float64)
     dt = float(sys["dt"])
     kw = _tran_kwargs(n, events, dt, t_end, adaptive=True)
     rc = lib.dpn_timestep_be_adaptive(
         n,
         nnz,
-        rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        rp.ctypes.data_as(_P_IDX),
+        ci.ctypes.data_as(_P_IDX),
         va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        bumps.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        bumps.ctypes.data_as(_P_IDX),
         n_bumps,
         bump_v.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         float(sys["pkg_r"]),
@@ -908,7 +929,7 @@ def native_adaptive(sys, events, vdd: float, t_end: float, atol: float = 1e-4, r
         float(atol),
         float(rtol),
         kw["n_ev"],
-        kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        kw["idx"].ctypes.data_as(_P_IDX),
         kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -955,8 +976,8 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
     rc = lib.dpn_timestep_descriptor(
         n,
         nnz,
-        rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        rp.ctypes.data_as(_P_IDX),
+        ci.ctypes.data_as(_P_IDX),
         va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         E.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         n_v,
@@ -968,7 +989,7 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
         float(vdd),
         leak_a.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         kw["n_ev"],
-        kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        kw["idx"].ctypes.data_as(_P_IDX),
         kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -1024,7 +1045,7 @@ class NativeMor:
         Gc = G.tocsr()
         n, nnz, rp, ci, va = _csr_ct(Gc)
         if nnz == 0:
-            ci = np.zeros(1, dtype=np.int32)
+            ci = np.zeros(1, dtype=_NP_IDX)
             va = np.zeros(1, dtype=np.float64)
         C = np.ascontiguousarray(C, dtype=np.float64)
         starts = np.asfortranarray(starts, dtype=np.float64)
@@ -1038,11 +1059,11 @@ class NativeMor:
             h = lib.dpn_mor_setup_rlc(
                 n,
                 nnz,
-                rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                rp.ctypes.data_as(_P_IDX),
+                ci.ctypes.data_as(_P_IDX),
                 va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
                 C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                bumps.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                bumps.ctypes.data_as(_P_IDX),
                 n_bumps,
                 bump_v.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
                 float(sys.get("pkg_r") or 0.0),
@@ -1059,8 +1080,8 @@ class NativeMor:
             h = lib.dpn_mor_setup(
                 n,
                 nnz,
-                rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                rp.ctypes.data_as(_P_IDX),
+                ci.ctypes.data_as(_P_IDX),
                 va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
                 C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
                 int(starts.shape[1]),
@@ -1093,7 +1114,7 @@ class NativeMor:
             float(t_end),
             float(vdd),
             kw["n_ev"],
-            kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            kw["idx"].ctypes.data_as(_P_IDX),
             kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
