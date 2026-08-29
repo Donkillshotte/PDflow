@@ -451,7 +451,7 @@ quit
         / "lef"
         / "NangateOpenCellLibrary.tech.lef"
     )
-    from pdn_extract import extract_pdn, parse_tech_lef, probe_spef
+    from pdn_extract import extract_pdn, parse_tech_lef, probe_spef, stamp_spef_pg_c
     from pdn_em import em_thermal_snapshot
 
     tech = parse_tech_lef(lef)
@@ -487,6 +487,56 @@ quit
     check(ext["backend"] == "write_pg_spice", "extract backend write_pg_spice")
     check(ext["spef"]["status"] == "GAP", "extract SPEF status GAP")
     check(ext["n_r"] == 2, "extract two resistors")
+
+    syn_spef = Path(tempfile.mkdtemp(prefix="spef-pg-")) / "vdd.spef"
+    syn_spef.write_text(
+        '*SPEF "ieee 1481-1999"\n'
+        "*C_UNIT 1 PF\n"
+        "*D_NET VDD 0.002\n"
+        "*CONN\n"
+        "*CAP\n"
+        "1 ITermNode_metal1_0_0 0.001\n"
+        "2 ITermNode_metal1_2000_0 0.001\n"
+        "3 ITermNode_metal1_0_0 ITermNode_metal1_2000_0 0.0004\n"
+        "*END\n"
+        "*D_NET req_val 9.0\n"
+        "*CAP\n"
+        "1 ITermNode_metal1_0_0 9.0\n"
+        "*END\n"
+    )
+    from pdn_transient import build_system
+
+    stamped = stamp_spef_pg_c(
+        syn_spef, {"ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", "p1"}
+    )
+    check(stamped["status"] == "READY", "synthetic PG SPEF stamps READY")
+    check(stamped["n_stamped"] == 2, "two PDN nodes received PG C")
+    check(abs(stamped["node_c"]["ITermNode_metal1_0_0"] - 0.0012e-12) < 1e-24, "grounded + half coupling on node 0")
+    check(abs(stamped["node_c"]["ITermNode_metal1_2000_0"] - 0.0012e-12) < 1e-24, "grounded + half coupling on node 1")
+    check(stamped["n_pg_net"] == 1, "only VDD counts as PG *D_NET")
+    check(abs(stamped["c_sum_f"] - 0.0024e-12) < 1e-24, "signal *D_NET C is not in the sum")
+    ext_pg = extract_pdn(tmp_sp, lef=lef, spef=syn_spef)
+    check(ext_pg["spef"]["status"] == "READY", "extract_pdn READY when C is stamped")
+    _, idx_be, G_be = build_system(ext_pg["resistors"], ext_pg["currents"], ext_pg["voltages"])
+    ev_be = [{"idx": idx_be["ITermNode_metal1_2000_0"], "i_leak": 0.0}]
+    sys_lumped = assemble_be(
+        G_be, idx_be, ext_pg["voltages"], 1.1, ev_be, pkg_r=0.05, pkg_l=0.0, c_decap=50e-15, dt=10e-12
+    )
+    sys_pgc = assemble_be(
+        G_be,
+        idx_be,
+        ext_pg["voltages"],
+        1.1,
+        ev_be,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        spef_c=ext_pg["spef"]["node_c"],
+    )
+    i0 = idx_be["ITermNode_metal1_0_0"]
+    check(sys_pgc["C"][i0] > sys_lumped["C"][i0], "SPEF C is added to lumped c_decap, not a replacement")
+    check(abs(sys_pgc["C"][i0] - sys_lumped["C"][i0] - 0.0012e-12) < 1e-24, "assemble_be adds stamped Farads")
 
     # w = RPERSQ·L/R. L = 2000 dbu / 2000 dbu_per_um = 1 µm → w = 1 µm (not min WIDTH 0.07).
     order = ["ITermNode_metal1_0_0", "ITermNode_metal1_2000_0"]

@@ -107,11 +107,13 @@ def viridis(t: float) -> str:
     return "#fde725"
 
 
-def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
+def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt, spef_c=None):
     """A = G + C/Δt + pad conductance. Independent of I(t) / t50.
 
     Pad stamp is the BE companion of lumped package R+L: g_eq = 1/(R+L/Δt).
     Inductor current i_L is *not* in A — it lives on the RHS of the time loop.
+    spef_c is extra interconnect C (Farads) on named spice nodes, added to
+    lumped c_decap — not a replacement, and never taken from signal SPEF.
     """
     n = G.shape[0]
     bump = []
@@ -131,6 +133,14 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
     for ev in events:
         C[ev["idx"]] = c_decap
         leak[ev["idx"]] += ev["i_leak"]
+    n_spef = 0
+    c_spef = 0.0
+    if spef_c:
+        for nm, cf in spef_c.items():
+            if nm in idx:
+                C[idx[nm]] += float(cf)
+                n_spef += 1
+                c_spef += float(cf)
 
     A = (Gsoft + sparse.diags(C / dt)).tocsc()
     pad = np.zeros(n)
@@ -149,6 +159,8 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
         "pkg_r": pkg_r,
         "pkg_l": pkg_l,
         "c_decap": c_decap,
+        "spef_n": n_spef,
+        "spef_c_sum_f": c_spef,
         "dt": dt,
         "g_pad": g_eq,
         "hist_scale": hsc,
@@ -459,7 +471,7 @@ def solve_be(
     backend: str = "a",
 ):
     sys = assemble_be(
-        G, idx, voltages, vdd, events, pkg_r=pkg_r, pkg_l=pkg_l, c_decap=c_decap, dt=dt
+        G, idx, voltages, vdd, events, pkg_r=pkg_r, pkg_l=pkg_l, c_decap=c_decap, dt=dt, spef_c=None
     )
     solver = DirectLU(sys["A"]) if backend in ("a", "direct", "lu") else SAAMG(sys["A"])
     return timestep_be(sys, events, solver, vdd, order, t_end)
@@ -600,8 +612,13 @@ def platform_block(
             "N2_RC": {
                 "status": "READY",
                 "eq": "G V + C dV/dt = I(t)",
-                "via": "lumped c_decap on ITerm nodes",
+                "via": (
+                    f"lumped c_decap + SPEF PG C on {((extract or {}).get('spef') or {}).get('n_stamped')} nodes"
+                    if ((extract or {}).get("spef") or {}).get("status") == "READY"
+                    else "lumped c_decap on ITerm nodes"
+                ),
                 "c_decap": c_decap,
+                "spef": None if not extract else ((extract.get("spef") or {}).get("status")),
             },
             "N3_RC_pkg": {
                 "status": "READY",
@@ -652,7 +669,7 @@ def platform_block(
         or {
             "status": "READY",
             "backend": "write_pg_spice",
-            "idea": "OpenROAD SPICE + tech LEF; SPEF PG C never mapped from signal nets",
+            "idea": "OpenROAD SPICE + tech LEF; SPEF PG C stamped from PG *D_NET by name-join",
         },
     }
 
@@ -1004,7 +1021,7 @@ def main() -> int:
     ap.add_argument("--no-vrm", action="store_true", help="skip coupled N4 VRM+die descriptor BE")
     ap.add_argument("--vrm-cfg", type=Path, default=None, help="system_pdn JSON for lumped VRM")
     ap.add_argument("--lef", type=Path, default=None, help="tech LEF for metal WIDTH/THICKNESS/RPERSQ (EM J)")
-    ap.add_argument("--spef", type=Path, default=None, help="SPEF to probe for PDN C (never mapped from signal nets)")
+    ap.add_argument("--spef", type=Path, default=None, help="SPEF PG *D_NET *CAP stamped by name-join (never mapped from signal nets)")
     args = ap.parse_args()
 
     current_model = probe_liberty_current_model(args.liberty)
@@ -1095,6 +1112,7 @@ def main() -> int:
         pkg_l=args.pkg_l,
         c_decap=args.c_decap,
         dt=dt,
+        spef_c=(ext.get("spef") or {}).get("node_c"),
     )
     solver_a = DirectLU(sys_be["A"])
     dyn = timestep_be(sys_be, events, solver_a, vdd, order, t_end, ccs_tables=ccs_tables)
@@ -1559,7 +1577,7 @@ def main() -> int:
         "engine": "studio-dynamic-ir",
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
-            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C never mapped from signal nets",
+            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C stamped only from PG *D_NET name-join",
             "replaceable activity (STA arrival t50 in clock mode, VCD name-join, else synthetic) + current (triangle; CCS interpolator when tables exist)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
@@ -1581,7 +1599,7 @@ def main() -> int:
         ],
         "roles": {
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
-            "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C is GAP (signal SPEF has no VDD)",
+            "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C READY only when *CAP is stamped",
             "activity": "pdn_activity: OpenSTA report_arrival t50 (clock); VCD name-join only; windowed BE",
             "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, lumped ΔT → R(T) N1 restamp — not foundry hours",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",

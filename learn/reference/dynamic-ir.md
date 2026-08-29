@@ -67,7 +67,7 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 
 | # | Livello | Oggi | Gap onesto |
 |---|---|---|---|
-| 1 | PDN extract | OpenROAD `write_pg_spice` + tech LEF | SPEF PG C never mapped from signal nets |
+| 1 | PDN extract | OpenROAD `write_pg_spice` + tech LEF + SPEF PG C name-join | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped |
 | 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
 | 3 | Activity | STA `report_arrival` t50 (clock) | VCD RTL name-join GAP; ranking extra I(t) resta sintetico |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) in Python TRAN se tabelle + slew; Nangate = GAP |

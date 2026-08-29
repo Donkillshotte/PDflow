@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Dynamic IR engine on the GCD write_pg_spice mesh.
 # Per-ITerm PWL + A LU gold + B SA-AMG + C Krylov MOR + D RAS Schwarz.
-# Extract = SPICE + tech LEF (EM J); SPEF is probed, never mapped onto PDN C.
+# Extract = SPICE + tech LEF (EM J); SPEF PG *D_NET *CAP is stamped by name-join
+# (GCD OpenRCX has no VDD — GAP; signal nets are never mapped).
 # Activity = OpenSTA arrival t50 (clock) + VCD name-join (GAP on RTL tb_gcd).
 # Ranking of extra I(t) stays Solver A (synthetic). vyges-em-ir is bootstrap.
 #

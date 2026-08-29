@@ -4,7 +4,7 @@
 Backends:
   write_pg_spice  — OpenROAD PDNSim R mesh + I_avg + bump V (GCD default)
   tech LEF        — metal WIDTH / THICKNESS / RPERSQ for EM J
-  SPEF            — probed; signal OpenRCX on this GCD has no VDD PDN C
+  SPEF            — PG *D_NET *CAP name-joined onto write_pg_spice nodes (GCD OpenRCX has no VDD)
 
 Not a DEF+LEF Rsq extractor and not a fork of OpenROAD PSM.
 Never synthesizes PDN C from signal SPEF names.
@@ -21,7 +21,19 @@ I_RE = re.compile(r"^\S+\s+(\S+)\s+\S+\s+DC\s+([0-9eE.+-]+)", re.I)
 V_RE = re.compile(r"^\S+\s+(\S+)\s+\S+\s+DC\s+([0-9eE.+-]+)", re.I)
 COORD_RE = re.compile(r"(ITermNode|Node)_metal(\d+)_(-?\d+)_(-?\d+)")
 LAYER_HDR = re.compile(r"^LAYER\s+(\S+)\s*$", re.I)
-SPEF_VDD = re.compile(r"\bVDD\b|\bVSS\b|\bVDDE\b", re.I)
+PG_BARE = re.compile(r"^(?:VDD|VSS|VDDE|VCC|GND|VPWR|VGND)(?:\[\d+\])?$", re.I)
+NAME_MAP_RE = re.compile(r"^\*(\d+)\s+(\S+)\s*$")
+D_NET_RE = re.compile(r"^\*D_NET\s+(\S+)\s+", re.I)
+C_UNIT_RE = re.compile(r"^\*C_UNIT\s+([0-9.eE+-]+)\s+(\S+)", re.I)
+MAPPED_NODE_RE = re.compile(r"^(\*\d+)(.*)$")
+
+_C_UNIT_F = {
+    "F": 1.0,
+    "UF": 1e-6,
+    "NF": 1e-9,
+    "PF": 1e-12,
+    "FF": 1e-15,
+}
 
 _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_LEF = (
@@ -133,32 +145,182 @@ def parse_tech_lef(path: Path | None) -> dict:
     }
 
 
-def probe_spef(path: Path | None) -> dict:
-    """Signal SPEF is not a PDN extract. Do not map pin C onto write_pg_spice nodes."""
-    if path is None or not Path(path).is_file():
-        return {
-            "status": "GAP",
-            "path": None,
-            "has_pg_net": False,
-            "note": "no SPEF — N2 C stays lumped c_decap, not OpenRCX PDN C",
-        }
-    p = Path(path)
-    text = p.read_text(errors="replace")[:400_000]
-    has_pg = bool(SPEF_VDD.search(text))
-    n_dnet = text.upper().count("*D_NET")
-    return {
-        # GAP until a backend actually stamps PG C onto write_pg_spice nodes.
-        # A VDD string in SPEF is not an extract.
+def spice_node_set(resistors, currents, voltages) -> set[str]:
+    nodes: set[str] = set()
+    for a, b, _ in resistors:
+        if a != "0":
+            nodes.add(a)
+        if b != "0":
+            nodes.add(b)
+    nodes.update(n for n in currents if n != "0")
+    nodes.update(n for n in voltages if n != "0")
+    return nodes
+
+
+def _c_unit_to_f(scale: float, unit: str) -> float:
+    u = unit.upper().rstrip(";")
+    return float(scale) * _C_UNIT_F.get(u, 1e-12)
+
+
+def _is_pg_net(name: str) -> bool:
+    if not name:
+        return False
+    bare = name.replace("\\", "").split("/")[-1].split(":")[0]
+    return bool(PG_BARE.fullmatch(bare))
+
+
+def _resolve_spef_token(tok: str, namemap: dict[str, str]) -> str:
+    m = MAPPED_NODE_RE.match(tok)
+    if m and m.group(1) in namemap:
+        return namemap[m.group(1)] + m.group(2)
+    return namemap.get(tok, tok)
+
+
+def _join_spice(name: str, spice: set[str]) -> str | None:
+    """Name-join only. Never coordinate-map a signal pin onto a PDN node."""
+    if not name or not spice:
+        return None
+    for cand in (name, name.replace("\\", "")):
+        if cand in spice:
+            return cand
+    return None
+
+
+def stamp_spef_pg_c(path: Path | None, spice_nodes: set[str] | None = None) -> dict:
+    """Stamp *CAP from PG *D_NET onto matching write_pg_spice nodes.
+
+    READY only when at least one Farad is added to a spice node. Signal *D_NET
+    is ignored (no silent OpenRCX pin-C → PDN map). Two-node CAP on two PDN
+    nodes is lumped C/2 on each (the BE operator is diagonal C). Coupling to an
+    unmapped node is treated as grounded C on the mapped end.
+    """
+    spice = set(spice_nodes or ())
+    empty = {
         "status": "GAP",
-        "path": str(p),
-        "has_pg_net": has_pg,
-        "n_d_net_head": n_dnet,
-        "note": (
-            "SPEF mentions VDD/VSS — still not stamped onto the PDN; lumped c_decap remains"
-            if has_pg
-            else "signal SPEF (no VDD net) — not PDN capacitance; lumped c_decap remains"
-        ),
+        "path": None if path is None else str(path),
+        "has_pg_net": False,
+        "n_pg_net": 0,
+        "n_stamped": 0,
+        "c_sum_f": 0.0,
+        "c_unit_f": 1e-12,
+        "node_c": {},
+        "via": "SPEF PG *D_NET *CAP name-joined onto write_pg_spice nodes",
+        "note": "no SPEF — N2 C stays lumped c_decap, not OpenRCX PDN C",
     }
+    if path is None or not Path(path).is_file():
+        return empty
+
+    namemap: dict[str, str] = {}
+    in_name_map = False
+    in_cap = False
+    net_is_pg = False
+    n_pg_net = 0
+    c_scale = 1e-12
+    node_c: dict[str, float] = {}
+
+    def add_c(spice_name: str, farad: float) -> None:
+        if farad == 0.0:
+            return
+        node_c[spice_name] = node_c.get(spice_name, 0.0) + farad
+
+    with Path(path).open(errors="replace") as fh:
+        for raw in fh:
+            s = raw.strip()
+            if not s:
+                continue
+            if s.startswith("*C_UNIT"):
+                um = C_UNIT_RE.match(s)
+                if um:
+                    c_scale = _c_unit_to_f(float(um.group(1)), um.group(2))
+                continue
+            if s.startswith("*NAME_MAP"):
+                in_name_map = True
+                in_cap = False
+                continue
+            if in_name_map:
+                mm = NAME_MAP_RE.match(s)
+                if mm:
+                    namemap[f"*{mm.group(1)}"] = mm.group(2)
+                    continue
+                in_name_map = False
+            dm = D_NET_RE.match(s)
+            if dm:
+                net = _resolve_spef_token(dm.group(1), namemap)
+                net_is_pg = _is_pg_net(net)
+                if net_is_pg:
+                    n_pg_net += 1
+                in_cap = False
+                continue
+            up = s.upper()
+            if up.startswith("*CAP"):
+                in_cap = True
+                continue
+            if up.startswith("*RES") or up.startswith("*END") or up.startswith("*CONN") or up.startswith("*D_NET"):
+                in_cap = False
+                if up.startswith("*END"):
+                    net_is_pg = False
+                continue
+            if not in_cap or not net_is_pg:
+                continue
+            parts = s.split()
+            if len(parts) < 3:
+                continue
+            try:
+                val = float(parts[-1]) * c_scale
+            except ValueError:
+                continue
+            if val == 0.0:
+                continue
+            toks = parts[1:-1]
+            mapped = []
+            for tok in toks:
+                joined = _join_spice(_resolve_spef_token(tok, namemap), spice)
+                if joined:
+                    mapped.append(joined)
+            if len(toks) == 1 and len(mapped) == 1:
+                add_c(mapped[0], val)
+            elif len(toks) == 2 and len(mapped) == 2:
+                add_c(mapped[0], 0.5 * val)
+                add_c(mapped[1], 0.5 * val)
+            elif len(toks) == 2 and len(mapped) == 1:
+                add_c(mapped[0], val)
+
+    n_stamped = len(node_c)
+    c_sum = float(sum(node_c.values()))
+    has_pg = n_pg_net > 0
+    if n_stamped > 0:
+        status = "READY"
+        note = (
+            f"stamped {n_stamped} PG nodes, C_sum={c_sum:.4e} F "
+            f"({n_pg_net} PG *D_NET); added to lumped c_decap, not a replacement"
+        )
+    elif has_pg:
+        status = "GAP"
+        note = (
+            f"{n_pg_net} PG *D_NET in SPEF but 0 name-joins to write_pg_spice nodes "
+            "— lumped c_decap remains; no coordinate map"
+        )
+    else:
+        status = "GAP"
+        note = "signal SPEF (no VDD/VSS *D_NET) — not PDN capacitance; lumped c_decap remains"
+
+    return {
+        "status": status,
+        "path": str(path),
+        "has_pg_net": has_pg,
+        "n_pg_net": n_pg_net,
+        "n_stamped": n_stamped,
+        "c_sum_f": c_sum,
+        "c_unit_f": c_scale,
+        "node_c": node_c,
+        "via": "SPEF PG *D_NET *CAP name-joined onto write_pg_spice nodes",
+        "note": note,
+    }
+
+
+def probe_spef(path: Path | None, spice_nodes: set[str] | None = None) -> dict:
+    """SPEF PDN C. GAP until *CAP from a PG *D_NET is stamped onto spice nodes."""
+    return stamp_spef_pg_c(path, spice_nodes)
 
 
 def extract_pdn(
@@ -170,7 +332,9 @@ def extract_pdn(
     """One extract record. Callers should not parse SPICE themselves."""
     resistors, currents, voltages = parse_spice(spice)
     tech = parse_tech_lef(lef)
-    spef_m = probe_spef(spef)
+    nodes = spice_node_set(resistors, currents, voltages)
+    spef_m = stamp_spef_pg_c(spef, nodes)
+    spef_ready = spef_m.get("status") == "READY"
     return {
         "backend": "write_pg_spice",
         "spice": str(spice),
@@ -184,7 +348,14 @@ def extract_pdn(
         "tech": tech,
         "spef": spef_m,
         "status": "READY",
-        "note": "OpenROAD write_pg_spice R mesh; LEF for EM J; SPEF PDN C is GAP (never mapped from signal nets)",
+        "note": (
+            "OpenROAD write_pg_spice R mesh; LEF for EM J; "
+            + (
+                f"SPEF PG C stamped on {spef_m.get('n_stamped')} nodes"
+                if spef_ready
+                else "SPEF PG C is GAP (never mapped from signal nets)"
+            )
+        ),
     }
 
 
@@ -211,6 +382,6 @@ def summarize_extract(ext: dict) -> dict:
                 k: v.get("thickness_um") for k, v in layers.items() if v.get("thickness_um") is not None
             },
         },
-        "spef": ext.get("spef"),
+        "spef": {k: v for k, v in (ext.get("spef") or {}).items() if k != "node_c"},
         "note": ext.get("note"),
     }
