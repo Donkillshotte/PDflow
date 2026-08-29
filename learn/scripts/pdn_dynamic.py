@@ -868,29 +868,15 @@ def main() -> int:
     scenarios = None
     if not args.no_scenarios:
         scenarios = []
-        runner = mor if mor is not None else solver_b
-        via_name = getattr(runner, "name", None) if runner is not None else None
         for m in ("clock", "spatial", "simultaneous"):
-            if m == args.mode and mor_meta is not None:
+            if m == args.mode:
                 scenarios.append(
                     {
                         "mode": m,
-                        "droop_mv": mor_meta["worst_droop_mv"],
-                        "t_ns": mor_meta["worst_time_ns"],
+                        "droop_mv": dyn["worst_droop"] * 1e3,
+                        "t_ns": dyn["worst_time_s"] * 1e9,
                         "i_peak_a": max(dyn["wave_itot"]) if dyn["wave_itot"] else 0.0,
-                        "via": via_name,
-                        "primary": True,
-                    }
-                )
-                continue
-            if m == args.mode and amg_meta is not None and mor is None:
-                scenarios.append(
-                    {
-                        "mode": m,
-                        "droop_mv": amg_meta["worst_droop_mv"],
-                        "t_ns": amg_meta["worst_time_ns"],
-                        "i_peak_a": max(dyn["wave_itot"]) if dyn["wave_itot"] else 0.0,
-                        "via": via_name,
+                        "via": solver_a.name,
                         "primary": True,
                     }
                 )
@@ -906,25 +892,61 @@ def main() -> int:
                 dur_s=dur_s,
                 t50_s=t50_s,
             )
-            if mor is not None:
-                r_m = mor.timestep(sys_be, ev_m, vdd, t_end)
-                r_m = _map_worst_node(r_m, order)
-            elif solver_b is not None:
-                r_m = timestep_be(sys_be, ev_m, solver_b, vdd, order, t_end)
-            else:
-                continue
+            r_m = timestep_be(sys_be, ev_m, solver_a, vdd, order, t_end)
             scenarios.append(
                 {
                     "mode": m,
                     "droop_mv": r_m["worst_droop"] * 1e3,
                     "t_ns": r_m["worst_time_s"] * 1e9,
                     "i_peak_a": max(r_m["wave_itot"]) if r_m["wave_itot"] else 0.0,
-                    "via": via_name,
+                    "via": solver_a.name,
                     "primary": False,
                 }
             )
-        if scenarios:
-            scenarios.sort(key=lambda s: -s["droop_mv"])
+        scenarios.sort(key=lambda s: -s["droop_mv"])
+        if mor is not None and mor_meta is not None:
+            mor_scen = []
+            for m in ("clock", "spatial", "simultaneous"):
+                if m == args.mode:
+                    mor_scen.append(
+                        {
+                            "mode": m,
+                            "droop_mv": mor_meta["worst_droop_mv"],
+                            "t_ns": mor_meta["worst_time_ns"],
+                            "via": mor.name,
+                            "role": "screening",
+                            "primary": True,
+                        }
+                    )
+                    continue
+                ev_m = plan_events(
+                    currents,
+                    idx,
+                    insts,
+                    mode=m,
+                    peak_factor=args.peak_factor,
+                    leak_frac=args.leak_frac,
+                    period_s=period_s,
+                    dur_s=dur_s,
+                    t50_s=t50_s,
+                )
+                r_m = mor.timestep(sys_be, ev_m, vdd, t_end)
+                mor_scen.append(
+                    {
+                        "mode": m,
+                        "droop_mv": r_m["worst_droop"] * 1e3,
+                        "t_ns": r_m["worst_time_s"] * 1e9,
+                        "via": mor.name,
+                        "role": "screening",
+                        "primary": False,
+                    }
+                )
+            mor_scen.sort(key=lambda s: -s["droop_mv"])
+            mor_meta["scenarios"] = mor_scen
+            mor_meta["note"] = (
+                "MOR is the reduced ODE (screening). Ranking below is Solver A gold — "
+                "MOR can invert clock vs simultaneous on this mesh."
+            )
     Vw = dyn.pop("V_worst")
     pts = heatmap_points(order, Vw, vdd, events)
     hottest = sorted(pts, key=lambda p: p["ir_mv"], reverse=True)[:8]

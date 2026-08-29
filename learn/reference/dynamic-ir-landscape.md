@@ -17,7 +17,7 @@ Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo, Δt adatti
 | Scenario / window engine | non simulare 100k cicli | PARTIAL (`I_tot(t)` di questo run) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
-| **Solver C** rational Krylov MOR | riuso tra scenari | **READY/PARTIAL** — ODE ridotto su \(\delta v=v-V_\mathrm{dd}\); gold resta A |
+| **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=24 · \|A−C\| 1.20 mV sul GCD clock; ranking scenari = Solver A |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
 | ngspice | unit test fisico 1-nodo | READY |
