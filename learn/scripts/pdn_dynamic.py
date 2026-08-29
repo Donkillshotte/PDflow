@@ -1071,6 +1071,7 @@ def main() -> int:
     activity_model["sta"] = sta_meta
     activity_model["vcd"] = vcd_meta
     activity_model["t50_via"] = via_n
+    activity_model["n_with_inst"] = sum(1 for e in events if e.get("inst"))
     current_model["ccs_in_loop"] = events_use_ccs(events, ccs_tables)
 
     static = solve_static(G, idx, order, currents, voltages, vdd)

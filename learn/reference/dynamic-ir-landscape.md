@@ -17,8 +17,8 @@ Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Pytho
 | Scenario / window engine | non simulare 100k cicli | L3 READY/PARTIAL — BE sulle finestre `I_tot` (restart isolato solo se L=0; con pkg L si taglia il trailing idle) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
-| **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=96 · \|A−C\| 0.129 mV sul GCD clock (descriptor RLC); ranking scenari = Solver A |
-| **Solver D** RAS Schwarz | decomposizione di dominio | **READY** · ndom=8 · \|A−D\| 0.004 mV sul GCD clock (grafo, non stripe) |
+| **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=96 · \|A−C\| 0.401 mV sul GCD clock STA (descriptor RLC); ranking scenari = Solver A |
+| **Solver D** RAS Schwarz | decomposizione di dominio | **READY** · ndom=8 · \|A−D\| 0.013 mV sul GCD clock STA (grafo, non stripe) |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
 | ngspice | unit test fisico 1-nodo RC e R+L | READY |
@@ -53,8 +53,8 @@ Lo split da copiare è quello di EMSim *current analysis*, non il passo EM probe
 |---|---|---|---|
 | **A — Direct BE** | \((G + C/\Delta t) V_{n+1} = \mathrm{rhs}\) · LU sparso | gold, lento, indispensabile per validare | **READY** |
 | **B — SA-AMG** | V-cycle Jacobi + CG, LU sul coarse | workhorse (ESPSim-class) | **READY** |
-| **C — rational Krylov** | RC: \(C_r \dot z + G_r z = -V^\top I\); RLC: \(E_r \dot z + A_r z = V^\top u\), \(x=[v;i_L]\) | tante TRAN sulla stessa PDN | **READY** sul GCD (\|A−C\| 0.129 mV, m=96) |
-| **D — RAS Schwarz** | subdomain LU + RAS + GMRES su \(A\) | domain decomposition, non stripe | **READY** sul GCD (\|A−D\| 0.004 mV, ndom=8) |
+| **C — rational Krylov** | RC: \(C_r \dot z + G_r z = -V^\top I\); RLC: \(E_r \dot z + A_r z = V^\top u\), \(x=[v;i_L]\) | tante TRAN sulla stessa PDN | **READY** sul GCD (\|A−C\| 0.401 mV, m=96) |
+| **D — RAS Schwarz** | subdomain LU + RAS + GMRES su \(A\) | domain decomposition, non stripe | **READY** sul GCD (\|A−D\| 0.013 mV, ndom=8) |
 
 Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. Non si scrive una GPU fork: un giorno `LinearSolver` → Ginkgo.
 
@@ -67,7 +67,7 @@ Il prototipo stampava \(L/\Delta t\) memoryless. N3 ora è un **companion BE ser
 | **N1 R** | \(GV = I\) | READY — `solve_static` |
 | **N2 R+C** | decap lumpato sui tap | READY — `c_decap` |
 | **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\) (non L on-die estratta) |
-| **N4 on-die + pkg + bumps + VRM** | gerarchia completa | **READY** nativo (`libdpn` descriptor BE, \|N3−N4\| ≈ 18 nV sul clock GCD). Il load-step µs VRM resta `system_pdn` ngspice |
+| **N4 on-die + pkg + bumps + VRM** | gerarchia completa | **READY** nativo (`libdpn` descriptor BE, \|N3−N4\| ≈ 23 nV sul clock STA GCD). Il load-step µs VRM resta `system_pdn` ngspice |
 
 ## Tre livelli di prodotto
 
