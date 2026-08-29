@@ -22,6 +22,7 @@ from dse.memory import Candidate, DesignMemory
 from dse.metrics import QoR, dominates, pareto_front, wns_cost_from_slack_ns
 from dse.mo import ehvi_2d, hypervolume_2d
 from dse.physical_space import PHYSICAL_CATALOG, gpl_density, next_catalog_spec, rudy_congestion
+from dse.pdn_space import PDN_CATALOG, next_pdn_spec
 
 
 def check(ok: bool, msg: str) -> None:
@@ -172,6 +173,13 @@ def main() -> int:
     check(rudy_congestion(45, 0.3) > rudy_congestion(30, 0.1), "higher util/density → higher proxy congestion")
     check(abs(gpl_density(35, 0.2) - 0.55) < 1e-9, "ORFS place density = util/100 + addon")
     check(next_catalog_spec(mem).get("name") == "util30_den010", "empty memory proposes first catalog point")
+    check(len(PDN_CATALOG) >= 2, "PDN catalog has more than the gold knobs")
+    check(next_pdn_spec(mem).get("name") == "decap_200f", "empty PDN memory proposes extra decap first")
+    check(
+        knobs_fp("pdn", {"pkg_l": 2e-10, "c_decap": 50e-15})
+        != knobs_fp("logic", {"pkg_l": 2e-10, "c_decap": 50e-15}),
+        "PDN knobs are not flattened into the logic fingerprint",
+    )
     check(
         knobs_fp("physical", {"coreUtilization": 35})
         != knobs_fp("logic", {"coreUtilization": 35}),
@@ -388,7 +396,8 @@ def main() -> int:
     props = dse_propose(mem2, focus="dpath", attr=attr)
     check(props, "symbolic proposer returns at least one idea")
     check(all("pkg_l" not in p and "coreUtilization" not in p for p in props), "proposer stays off PDN/physical knobs")
-    check(adapter_status()["solver"]["via"] == "ingest F4", "solver adapter stays ingest-only")
+    check("gold" in (adapter_status()["solver"]["note"] or "").lower(), "solver adapter keeps gold unrestamped")
+    check("restamp" in (adapter_status()["solver"]["via"] or ""), "solver adapter can restamp on the cached extract")
 
     from dse.controller import propose_logic
 
@@ -455,6 +464,28 @@ def main() -> int:
             print("    skip F1 yosys (no liberty)")
     else:
         print("    skip F1 yosys")
+
+    from dse.f4_oracle import GOLD_MV, available as f4_ok, solve_f4
+
+    gold_json = _ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
+    gold_before = gold_json.read_text() if gold_json.is_file() else None
+    if f4_ok("flowlab"):
+        base = solve_f4(variant="flowlab")
+        check(base.get("status") == "ok", f"F4 oracle Solver A ({base.get('reason')})")
+        check(base.get("gold") is False, "candidate F4 is not marked gold")
+        check(abs(float(base["worst_droop_mv"]) - GOLD_MV) < 0.05, f"i_scale=1 reproduces gold {base.get('worst_droop_mv')}")
+        extra_c = solve_f4(variant="flowlab", c_decap=200e-15)
+        check(extra_c["worst_droop_mv"] < base["worst_droop_mv"] - 0.5, "more decap lowers droop on the same extract")
+        hot = solve_f4(variant="flowlab", i_scale=1.2)
+        check(hot["worst_droop_mv"] > base["worst_droop_mv"] + 0.5, "I(t)×1.2 raises droop (same spatial pattern)")
+        print(
+            f"    F4 oracle base {base['worst_droop_mv']:.3f}  decap200 {extra_c['worst_droop_mv']:.3f}  "
+            f"iscale1.2 {hot['worst_droop_mv']:.3f} mV ({base['cost_s']:.2f}s)"
+        )
+    else:
+        print("    skip F4 oracle (no cached extract)")
+    if gold_before is not None:
+        check(gold_json.read_text() == gold_before, "F4 oracle does not restamp dynamic_ir_flowlab.json gold")
 
     print("ALL test_dse PASSED")
     return 0

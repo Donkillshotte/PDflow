@@ -32,7 +32,7 @@ RTL
 | **synthesis** | `ABC_AREA` ORFS | catalogo F0 (non mescolato alle ops ABC) |
 | **physical** | util, densità, netlist del candidato | F0 proxy + F2-fast + **GPL** + **catalogo GPL** + ingest — non lancia finish |
 | **routing** | GRT dopo place_pins | READY F2 budgetato — non detailed route / F5 |
-| **pdn** | `c_decap`, pkg L | **ingest** F4 |
+| **pdn** | `c_decap`, pkg L, I(t)×power | ingest gold + **Solver A restamp** (non gold) |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
 
@@ -44,7 +44,7 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F1 | Yosys synth + ABC (script *file* ending with `map`) + `equiv_*` + `write_verilog -noexpr` | READY |
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` | READY (GPL budgetato) |
 | F3 | OpenSTA sul candidato (ideale) + ingest signoff | READY sul netlist F1 |
-| F4 | Dynamic IR/EM (libdpn A/B/C/D) | ingest — **non** sostituisce il gold |
+| F4 | Dynamic IR/EM (libdpn A/B/C/D) | ingest gold + restamp budgetato sulla mesh cached — **non** sostituisce il gold |
 | F5 | P&R signoff | GAP: il controller non lancia finish |
 
 F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.

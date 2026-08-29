@@ -150,12 +150,35 @@ def ehvi_2d(
     return acc / max(int(n_mc), 8)
 
 
-def mo_scalar(area: float, wns: float | None, *, area_ref: float, wns_ref: float | None) -> float:
+def ir_of(mem: DesignMemory, cand: Candidate) -> float | None:
+    if cand.qor.dynamic_ir_mv is not None:
+        return float(cand.qor.dynamic_ir_mv)
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or (c.knobs or {}).get("parent_id") != cand.id:
+            continue
+        if c.qor.dynamic_ir_mv is not None:
+            return float(c.qor.dynamic_ir_mv)
+    return None
+
+
+def mo_scalar(
+    area: float,
+    wns: float | None,
+    *,
+    area_ref: float,
+    wns_ref: float | None,
+    ir_mv: float | None = None,
+    ir_ref: float | None = None,
+) -> float:
     """Unitless sum of normalized deltas vs a teacher. Lower is better.
 
     Used only as a *bandit reward*, not as the Pareto ranking.
     """
     sa = (area - area_ref) / max(abs(area_ref), 1.0)
-    if wns is None or wns_ref is None:
-        return sa
-    return sa + (wns - wns_ref) / max(abs(wns_ref), 0.02)
+    sw = 0.0
+    if wns is not None and wns_ref is not None:
+        sw = (wns - wns_ref) / max(abs(wns_ref), 0.02)
+    si = 0.0
+    if ir_mv is not None and ir_ref is not None:
+        si = (ir_mv - ir_ref) / max(abs(ir_ref), 1.0)
+    return sa + sw + si

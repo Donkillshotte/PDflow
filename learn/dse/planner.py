@@ -96,6 +96,21 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "region" if region else "chip",
         }
     )
+    ir_up = _ir_rose(mem)
+    pdn_why = "Solver A restamp on cached extract (c_decap/pkg L) — not gold, not finish"
+    if ir_up:
+        pdn_why += "; scaled I(t) IR rose — keep PDN knobs off the ABC vector"
+    steps.append({"level": "pdn", "reason": pdn_why, "scope": "chip"})
+    steps.append(
+        {
+            "level": "f4_scale",
+            "reason": (
+                "I(t)×P_F3/P_base on the WNS/power incumbent — same mesh, not a VCD remap"
+                + ("; IR feedback to the cone, no chip restart" if focus != "chip" else "")
+            ),
+            "scope": "logic_cone" if focus != "chip" else "chip",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
@@ -104,6 +119,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         "region": region,
         "scope": scope,
         "timing_bound": bound,
+        "ir_rose": ir_up,
         "restart_chip": False,
         "hierarchy": ["chip", "block", "region", "logic_cone"],
         "steps": steps,
@@ -138,6 +154,22 @@ def _ir_prefer(extracts: list[str], *, combo: float) -> list[str]:
         if e not in out:
             out.append(e)
     return out
+
+
+def _ir_rose(mem: DesignMemory) -> bool:
+    """True when a candidate F4 droop exceeds the ingested gold observation."""
+    ingest = None
+    cand = None
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or c.qor.dynamic_ir_mv is None:
+            continue
+        src = (c.knobs or {}).get("source")
+        if src == "ingest_pdn":
+            ingest = float(c.qor.dynamic_ir_mv)
+        elif src in ("f4_iscale", "f4_solver_a"):
+            v = float(c.qor.dynamic_ir_mv)
+            cand = v if cand is None else max(cand, v)
+    return ingest is not None and cand is not None and cand > ingest + 0.05
 
 
 def _prefer_extracts(extracts: list[str], *, combo: float) -> list[str]:

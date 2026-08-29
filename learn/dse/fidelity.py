@@ -45,7 +45,7 @@ COST_HINT = {
     "F2_GPL": 8.0,
     "F2_GRT": 8.0,
     "F3": 2.0,
-    "F4": 35.0,
+    "F4": 12.0,
     "F5": 600.0,
 }
 
@@ -165,6 +165,168 @@ def ingest_pdn(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candi
         qor=q,
         cost_s=0.0,
         note="F4 PDN ingest — does not re-run TRAN",
+    )
+    return mem.add(c)
+
+
+def evaluate_f4_pdn(
+    mem: DesignMemory,
+    spec: dict,
+    *,
+    variant: str = "flowlab",
+    design_id: str = "gcd",
+    parent_id: str | None = None,
+) -> Candidate | None:
+    """PDN-level Solver A restamp. Different c_decap/pkg L; same extract. Not gold."""
+    from .attribute import attribute_dynamic_ir
+    from .f4_oracle import solve_f4
+
+    knobs = {
+        "name": spec.get("name"),
+        "pkg_r": spec["pkg_r"],
+        "pkg_l": spec["pkg_l"],
+        "c_decap": spec["c_decap"],
+        "i_scale": 1.0,
+        "source": "f4_solver_a",
+    }
+    fp = knobs_fp("pdn", knobs)
+    if fp in mem.seen_knobs("pdn"):
+        return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
+    dyn = solve_f4(
+        variant=variant,
+        pkg_r=float(spec["pkg_r"]),
+        pkg_l=float(spec["pkg_l"]),
+        c_decap=float(spec["c_decap"]),
+        i_scale=1.0,
+    )
+    attr = attribute_dynamic_ir(
+        {
+            "hotspot": {
+                "node": dyn.get("worst_node"),
+                "droop_mv": dyn.get("worst_droop_mv"),
+                "x_dbu": dyn.get("x_dbu"),
+                "y_dbu": dyn.get("y_dbu"),
+                "contributors": {
+                    "seq_frac": dyn.get("seq_frac"),
+                    "combo_frac": dyn.get("combo_frac"),
+                },
+            }
+        }
+    )
+    q = QoR(
+        dynamic_ir_mv=dyn.get("worst_droop_mv"),
+        fidelity="F4",
+        note=dyn.get("note") or "Solver A restamp — not gold",
+    )
+    c = Candidate(
+        id=DesignMemory.new_id(),
+        design_id=design_id,
+        parent_id=parent_id,
+        level="pdn",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=sha256_file(REPO / "learn" / "flowlab" / "gcd.v"),
+        netlist_fp=None,
+        fidelity="F4",
+        qor=q,
+        cost_s=float(dyn.get("cost_s") or 0.0),
+        artifacts=dyn,
+        attr=attr,
+        status="ok" if dyn.get("status") == "ok" else "fail",
+        failure=dyn.get("reason") if dyn.get("status") != "ok" else None,
+        note=f"F4 PDN {spec.get('name')} droop={dyn.get('worst_droop_mv')} — not gold",
+    )
+    return mem.add(c)
+
+
+def evaluate_f4_scale(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    variant: str = "flowlab",
+    design_id: str = "gcd",
+    baseline_power_w: float,
+    pkg_r: float = 0.05,
+    pkg_l: float = 2e-10,
+    c_decap: float = 50e-15,
+) -> Candidate | None:
+    """Same extract + PDN knobs; I(t) × (F3 power / baseline). Not a new VCD map."""
+    from .attribute import attribute_dynamic_ir
+    from .f4_oracle import solve_f4
+    from .mo import timing_of
+
+    _wns, pwr = timing_of(mem, parent)
+    if pwr is None or baseline_power_w <= 0:
+        return None
+    scale = float(pwr) / float(baseline_power_w)
+    knobs = {
+        "name": f"iscale_{parent.knobs.get('name')}",
+        "pkg_r": pkg_r,
+        "pkg_l": pkg_l,
+        "c_decap": c_decap,
+        "i_scale": scale,
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "source": "f4_iscale",
+    }
+    fp = knobs_fp("pdn", knobs)
+    if fp in mem.seen_knobs("pdn"):
+        return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
+    dyn = solve_f4(
+        variant=variant,
+        pkg_r=pkg_r,
+        pkg_l=pkg_l,
+        c_decap=c_decap,
+        i_scale=scale,
+    )
+    attr = attribute_dynamic_ir(
+        {
+            "hotspot": {
+                "node": dyn.get("worst_node"),
+                "droop_mv": dyn.get("worst_droop_mv"),
+                "x_dbu": dyn.get("x_dbu"),
+                "y_dbu": dyn.get("y_dbu"),
+                "contributors": {
+                    "seq_frac": dyn.get("seq_frac"),
+                    "combo_frac": dyn.get("combo_frac"),
+                },
+            }
+        }
+    )
+    attr["transform"] = parent.knobs.get("name")
+    attr["i_scale"] = scale
+    attr["inherited_from"] = parent.id
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=parent.qor.wns_cost,
+        power_w=pwr,
+        dynamic_ir_mv=dyn.get("worst_droop_mv"),
+        fidelity="F4",
+        note=f"I(t)×{scale:.3f} on cached extract — not gold, not a new VCD map",
+    )
+    if dyn.get("status") == "ok" and dyn.get("worst_droop_mv") is not None:
+        parent.qor.dynamic_ir_mv = float(dyn["worst_droop_mv"])
+        parent.attr = dict(parent.attr or {})
+        parent.attr["f4_iscale"] = {"i_scale": scale, "droop_mv": dyn["worst_droop_mv"]}
+        mem.touch(parent)
+    c = Candidate(
+        id=DesignMemory.new_id(),
+        design_id=design_id,
+        parent_id=parent.id,
+        level="pdn",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F4",
+        qor=q,
+        cost_s=float(dyn.get("cost_s") or 0.0),
+        artifacts=dyn,
+        attr=attr,
+        status="ok" if dyn.get("status") == "ok" else "fail",
+        failure=dyn.get("reason") if dyn.get("status") != "ok" else None,
+        note=f"F4 I-scale of {parent.knobs.get('name')} ×{scale:.3f} droop={dyn.get('worst_droop_mv')}",
     )
     return mem.add(c)
 

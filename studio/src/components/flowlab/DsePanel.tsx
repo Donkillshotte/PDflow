@@ -30,6 +30,8 @@ type DseReport = {
   n_f2_gpl_catalog?: number;
   n_f3?: number;
   n_f2_grt?: number;
+  n_f4?: number;
+  n_f4_solve?: number;
   surrogate_f1_to_f2_gnn?: { n?: number; uncertainty?: string; via?: string };
   pareto?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
   attribution?: Attr;
@@ -125,6 +127,13 @@ export function DsePanel() {
             <div>
               <dt>F3 STA</dt>
               <dd>{report.n_f3 ?? 0}</dd>
+            </div>
+            <div>
+              <dt>F4 IR</dt>
+              <dd>
+                {report.n_f4 ?? 0}
+                {report.n_f4_solve != null ? ` · solve ${report.n_f4_solve}` : ""}
+              </dd>
             </div>
             <div>
               <dt>Pareto logic</dt>

@@ -9,7 +9,7 @@ Optimizers (each on its own level):
   synthesis    — ORFS ABC_AREA catalog (F0)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT (not detailed route / F5)
-  pdn          — F4 ingest only
+  pdn          — F4 ingest + budgeted Solver A restamp (knobs / I-scale; not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -27,6 +27,8 @@ from .acquire import (
     should_pay_f2_gpl,
     should_pay_f2_grt,
     should_pay_f3_sta,
+    should_pay_f4_pdn,
+    should_pay_f4_scale,
     should_pay_physical_catalog,
 )
 from .arch_space import emit_gcd_variant
@@ -39,6 +41,8 @@ from .fidelity import (
     evaluate_f2_gpl,
     evaluate_f2_grt,
     evaluate_f3_sta,
+    evaluate_f4_pdn,
+    evaluate_f4_scale,
     ensure_mapped_netlist,
     flowlab_params,
     ingest_f2,
@@ -53,6 +57,7 @@ from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front
 from .mo import baseline_wns, timing_of
+from .pdn_space import next_pdn_spec
 from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
 from .planner import plan_search, rank_extracts
 from .proposer import propose as propose_from_attr
@@ -581,6 +586,81 @@ def run_controller(
                     overflow=child.qor.congestion,
                     status=child.status,
                 )
+    n_pdn_f4 = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_solver_a" and c.status == "ok"
+    )
+    pay_pdn, why_pdn = should_pay_f4_pdn(
+        mem, budget_left=t_end - time.time(), n_pdn=n_pdn_f4, variant=variant
+    )
+    step("acquire", fidelity="F4_PDN", pay=pay_pdn, why=why_pdn)
+    spec_pdn = next_pdn_spec(mem) if pay_pdn else None
+    if spec_pdn and time.time() < t_end:
+        ingest = next(
+            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
+            None,
+        )
+        child = evaluate_f4_pdn(
+            mem, spec_pdn, variant=variant, design_id=design_id, parent_id=ingest.id if ingest else None
+        )
+        if child:
+            step(
+                "evaluate",
+                id=child.id,
+                level="pdn",
+                fidelity="F4",
+                via="f4_solver_a",
+                catalog=spec_pdn.get("name"),
+                droop_mv=child.qor.dynamic_ir_mv,
+                gold=False,
+                status=child.status,
+            )
+
+    n_scale = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_iscale" and c.status == "ok"
+    )
+    pay_sc, why_sc = should_pay_f4_scale(
+        mem, budget_left=t_end - time.time(), n_scale=n_scale, variant=variant
+    )
+    step("acquire", fidelity="F4_ISCALE", pay=pay_sc, why=why_sc)
+    if pay_sc and time.time() < t_end:
+        base_p = None
+        for c in mem.by_level("logic"):
+            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
+                _w, p = timing_of(mem, c)
+                if p:
+                    base_p = p
+                    break
+        pick = None
+        for cand in (f1_wns_winner(mem), f1_area_winner(mem), *f1_ok(mem)):
+            if cand is None or base_p is None:
+                continue
+            _w, p = timing_of(mem, cand)
+            if p is None or abs(float(p) / float(base_p) - 1.0) < 0.03:
+                continue
+            pick = cand
+            break
+        if pick and base_p:
+            child = evaluate_f4_scale(
+                pick, mem, variant=variant, design_id=design_id, baseline_power_w=base_p
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_iscale",
+                    parent=pick.id,
+                    i_scale=(child.knobs or {}).get("i_scale"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    gold=False,
+                    status=child.status,
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -603,11 +683,11 @@ def run_controller(
             "F1 Yosys+ABC+equiv (script file, write_verilog -noexpr) on logic and dpath extracts",
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + budgeted GRT",
             "F3 OpenSTA interleaved after each F1 (ideal) + ingest signoff STA",
-            "F4 ingest Dynamic IR (Solver A gold unrestamped)",
+            "F4 ingest gold + Solver A restamp (PDN knobs / I(t)×power) — gold unrestamped",
             "IR combo on dpath → cone extracts; F3 WNS reorders remaining, no chip restart",
             "hierarchy chip→block→region→cone; attributed cells/region from hotspot",
             "Pareto per level — EHVI acquires, it does not replace the front",
-            "BOiLS SSK-GP + EHVI(area,WNS) · DRiLLS UCB · GNN HPWL · AutoDMP catalog GPL",
+            "BOiLS EHVI(area,WNS) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · PDN F4",
         ],
         "not": [
             "flattened black-box of all knobs",
@@ -641,6 +721,12 @@ def run_controller(
             1
             for c in mem.by_level("routing")
             if c.knobs.get("source") == "f2_openroad_grt"
+        ),
+        "n_f4": sum(1 for c in mem.by_level("pdn") if c.fidelity == "F4"),
+        "n_f4_solve": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") in ("f4_solver_a", "f4_iscale")
         ),
         "memory": str(mem_path),
         "surrogate_f0": pred,

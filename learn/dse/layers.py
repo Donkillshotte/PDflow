@@ -20,8 +20,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "STA/VCD/SAIF via PI reports; no invented RTL→ITerm map",
     },
     "current": {
-        "via": "ingest",
-        "note": "CCS/ECSM GAP on Nangate45; triangle I(t) stays Solver A",
+        "via": "ingest + F3 power scale",
+        "note": "triangle I(t) on cached extract; amplitude × P_F3/P_base — no invented RTL→ITerm map",
     },
     "dse": {
         "via": "dse.controller",
@@ -32,8 +32,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "SSK-GP / residual / GNN readout — never Dynamic IR gold",
     },
     "solver": {
-        "via": "ingest F4",
-        "note": "libdpn A/B/C/D; GCD gold 45.298 mV unrestamped",
+        "via": "ingest F4 + budgeted Solver A restamp",
+        "note": "libdpn A on cached extract; GCD gold 45.298 mV unrestamped",
     },
     "physical_fast": {
         "via": "dse.netgraph",
@@ -55,6 +55,7 @@ ADAPTERS: dict[str, dict] = {
 
 
 def adapter_status() -> dict:
+    from .f4_oracle import available as f4_ok
     from .openroad_f2 import available as gpl_ok
     from .sta_f3 import available as sta_ok
 
@@ -62,4 +63,6 @@ def adapter_status() -> dict:
     out["physical_gpl"]["ready"] = bool(gpl_ok())
     out["routing"]["ready"] = bool(gpl_ok())
     out["timing"]["ready"] = bool(sta_ok())
+    out["solver"]["ready"] = bool(f4_ok())
+    out["current"]["ready"] = bool(f4_ok())
     return out
