@@ -145,10 +145,41 @@ int dpn_timestep_be(DpnHandle* h, const double* C, const double* leak, const dou
   }
 }
 
+int dpn_timestep_be_hist(DpnHandle* h, const double* C, const double* leak, double dt, double t_end,
+                         const int* bumps, int n_bumps, const double* bump_v, double pkg_r,
+                         double pkg_l, int n_events, const int* ev_idx, const double* ev_t50,
+                         const double* ev_dur, const double* ev_ipulse, double* V_worst,
+                         int* worst_node, double* worst_v, double* worst_t, double* rel_res_max,
+                         double* solve_s, int max_steps, double* wave_t, double* wave_vmin,
+                         double* wave_itot, int* n_steps, double* i_L_absmax, double* i_L_worst) {
+  if (!h || !h->solver || !C || !leak || dt <= 0.0 || n_bumps <= 0 || !bumps || !bump_v) {
+    return -1;
+  }
+  try {
+    auto ev = pack_events(n_events, ev_idx, ev_t50, ev_dur, ev_ipulse);
+    auto r = dpn::timestep_be_hist(*h->solver, h->A, C, leak, dt, t_end, ev.data(),
+                                   static_cast<int>(ev.size()), bumps, n_bumps, bump_v, pkg_r,
+                                   pkg_l);
+    if (i_L_absmax) {
+      *i_L_absmax = r.i_L_absmax;
+    }
+    if (i_L_worst) {
+      const int nb = static_cast<int>(r.i_L_worst.size());
+      for (int i = 0; i < n_bumps && i < nb; ++i) {
+        i_L_worst[i] = r.i_L_worst[i];
+      }
+    }
+    return copy_tran(r, h->solver->n(), V_worst, worst_node, worst_v, worst_t, rel_res_max, solve_s,
+                     max_steps, wave_t, wave_vmin, wave_itot, n_steps);
+  } catch (...) {
+    return -3;
+  }
+}
+
 int dpn_timestep_be_adaptive(int n, int nnz, const int* rowptr, const int* col, const double* Gval,
-                             const double* C, const int* bumps, int n_bumps, double pkg_r,
-                             double pkg_l, double vdd, const double* leak, double dt0, double t_end,
-                             double atol, double rtol, int n_events, const int* ev_idx,
+                             const double* C, const int* bumps, int n_bumps, const double* bump_v,
+                             double pkg_r, double pkg_l, double vdd, const double* leak, double dt0,
+                             double t_end, double atol, double rtol, int n_events, const int* ev_idx,
                              const double* ev_t50, const double* ev_dur, const double* ev_ipulse,
                              double* V_worst, int* worst_node, double* worst_v, double* worst_t,
                              double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
@@ -159,8 +190,14 @@ int dpn_timestep_be_adaptive(int n, int nnz, const int* rowptr, const int* col, 
   try {
     dpn::Csr G = dpn::from_csr(n, rowptr, col, Gval);
     auto ev = pack_events(n_events, ev_idx, ev_t50, ev_dur, ev_ipulse);
-    auto r = dpn::timestep_be_adaptive(G, C, bumps, n_bumps, pkg_r, pkg_l, vdd, leak, dt0, t_end,
-                                       atol, rtol, ev.data(), static_cast<int>(ev.size()));
+    std::vector<double> vs(static_cast<size_t>(std::max(n_bumps, 0)), vdd);
+    if (bump_v) {
+      for (int k = 0; k < n_bumps; ++k) {
+        vs[static_cast<size_t>(k)] = bump_v[k];
+      }
+    }
+    auto r = dpn::timestep_be_adaptive(G, C, bumps, n_bumps, vs.data(), pkg_r, pkg_l, vdd, leak,
+                                       dt0, t_end, atol, rtol, ev.data(), static_cast<int>(ev.size()));
     return copy_tran(r, n, V_worst, worst_node, worst_v, worst_t, rel_res_max, solve_s, max_steps,
                      wave_t, wave_vmin, wave_itot, n_steps);
   } catch (...) {

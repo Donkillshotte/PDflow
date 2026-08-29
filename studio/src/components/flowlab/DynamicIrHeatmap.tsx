@@ -23,6 +23,11 @@ type Mor = {
   m?: number;
   backend?: string;
 };
+type Em = {
+  status?: string;
+  i_absmax_a?: number;
+  hottest?: { a?: string; b?: string; i_abs?: number };
+};
 type DynReport = {
   ok?: boolean;
   summary?: string;
@@ -32,6 +37,7 @@ type DynReport = {
   static?: { worst_ir?: number };
   heatmap?: { taps?: number; ir_max_mv?: number; hottest?: Hottest[] };
   ngspice_gold?: { ok?: boolean; abs_err_mv?: number } | null;
+  ngspice_rl_gold?: { ok?: boolean; abs_err_mv?: number } | null;
   sim_levels?: {
     L0_static?: Level;
     L1_vectorless_dynamic?: Level;
@@ -68,11 +74,13 @@ type DynReport = {
       SIGNOFF?: StatusChip;
     };
     timing_impact?: Timing;
+    em_thermal?: Em;
   };
   solver_b?: Amg;
   solver_c?: Mor;
   scenarios?: Scenario[];
   timing_impact?: Timing;
+  em?: Em;
 };
 
 function ChipList({
@@ -131,6 +139,7 @@ export function DynamicIrHeatmap({
   const staticMv = (report?.static?.worst_ir ?? 0) * 1e3;
   const tNs = (report?.dynamic?.worst_time_s ?? 0) * 1e9;
   const gold = report?.ngspice_gold;
+  const goldRl = report?.ngspice_rl_gold;
   const svgSrc = `/api/content?path=sim/reports/dynamic_ir_${variant}.svg`;
   const levels = report?.sim_levels;
   const win = levels?.L3_windowed?.windows?.[0];
@@ -138,6 +147,7 @@ export function DynamicIrHeatmap({
   const seqPct = ((contrib?.seq_frac ?? 0) * 100).toFixed(0);
   const comboPct = ((contrib?.combo_frac ?? 0) * 100).toFixed(0);
   const plat = report?.platform;
+  const em = report?.em ?? plat?.em_thermal;
   const solvers = plat?.solvers;
   const nets = plat?.network_levels;
   const tiers = plat?.product_tiers;
@@ -198,6 +208,16 @@ export function DynamicIrHeatmap({
                     : `CHECK · ${gold.abs_err_mv?.toFixed(2) ?? "?"} mV`}
               </dd>
             </div>
+            {goldRl && (
+              <div>
+                <dt>ngspice R+L</dt>
+                <dd>
+                  {goldRl.ok
+                    ? `PASS · ${goldRl.abs_err_mv?.toFixed(2) ?? "?"} mV`
+                    : `CHECK · ${goldRl.abs_err_mv?.toFixed(2) ?? "?"} mV`}
+                </dd>
+              </div>
+            )}
             {amg && (
               <div>
                 <dt>|A−B| AMG</dt>
@@ -219,6 +239,15 @@ export function DynamicIrHeatmap({
                     : `${(mor.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
                   {mor.m != null ? ` · m=${mor.m}` : ""}
                   {mor.backend ? ` · ${mor.backend}` : ""}
+                </dd>
+              </div>
+            )}
+            {em?.i_absmax_a != null && (
+              <div>
+                <dt>|I| branch</dt>
+                <dd>
+                  {(em.i_absmax_a * 1e3).toFixed(2)} mA
+                  {em.status ? ` · ${em.status}` : ""}
                 </dd>
               </div>
             )}
@@ -278,7 +307,7 @@ export function DynamicIrHeatmap({
                 {
                   key: "N3",
                   status: nets.N3_RC_pkg?.status,
-                  text: "N3 RC+pkg",
+                  text: "N3 RC+pkg i_L",
                 },
                 { key: "N4", status: nets.N4_vrm?.status, text: "N4 VRM" },
               ]}
@@ -337,6 +366,9 @@ export function DynamicIrHeatmap({
               {report.hotspot.t_ns?.toFixed(2)} ns · I seq {seqPct}% / combo {comboPct}%
               {timing?.degradation_ps != null
                 ? ` · delay +${timing.degradation_ps.toFixed(2)} ps`
+                : ""}
+              {em?.hottest?.i_abs != null
+                ? ` · |I| ${(em.hottest.i_abs * 1e3).toFixed(2)} mA`
                 : ""}
             </p>
           )}

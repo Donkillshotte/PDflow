@@ -17,7 +17,7 @@ pdn_dynamic.py
     Solver A: LU                gold
     Solver B: SA-AMG + CG       workhorse, |A−B| sul GCD < 1 µV
     Solver C: rational Krylov MOR  reduced ODE, |A−C| sul GCD in report
-    Native BE loop in libdpn
+    Native BE loop in libdpn (R+L companion + i_L)
     ▼
 sim/reports/dynamic_ir_<variant>.json
                   .wave.csv     Vmin(t), I_tot(t)
@@ -51,7 +51,7 @@ Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A
 |---|---|---|
 | N1 R | \(GV=I\) | READY |
 | N2 R+C | + `c_decap` | READY |
-| N3 + pkg R/L | `pkg_r` / `pkg_l` sui bump | READY (L on-die non estratta) |
+| N3 + pkg R/L | companion \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\) | READY (L on-die non estratta) |
 | N4 + VRM | on-die + package + VRM | PARTIAL (`system_pdn` non accoppiato) |
 
 FAST = vectorless + AMG = **READY** (t50 sintetici). ACCURATE e SIGNOFF = GAP.
@@ -66,8 +66,8 @@ Sul GCD Nangate45 LU è più veloce di AMG (4k nodi). AMG è il path che tiene s
 | 2 | Power model | I_avg nel `.sp` (NLDM) | no CCS I(t) |
 | 3 | Activity | clock/spatial/simultaneous | no VCD pin, no SAIF |
 | 4 | Current waveform | triangolo per ITerm | no slew/load/arc |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** Krylov | ngspice = gold 1-nodo; MOR congela L/Δt |
-| 6 | Analysis | heatmap, finestre, ranking scenari, delay scaling | no EM, no path STA |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** Krylov | ngspice = gold 1-nodo RC e R+L; MOR senza \(i_L\) |
+| 6 | Analysis | heatmap, finestre, ranking scenari, delay scaling, \(I_\mathrm{branch}\) | no J/TTF (manca width), no path STA |
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
@@ -84,7 +84,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 | t50 | clock / spatial / simultaneous | simultaneo | n/a | n/a |
 | Waveform | **CSV** Vmin(t) | no | CSV | no |
 | Heatmap t_worst | **SVG + CSV** | no | no | PNG statico ORFS |
-| Gold | ngspice 1-nodo (gear BE) | — | — | — |
+| Gold | ngspice 1-nodo RC + serie R+L | — | — | — |
 | CCS Liberty / VCD pin | **no** (Nangate è NLDM) | no | no | no |
 
 Non è sign-off Ansys RedHawk / Cadence Voltus. Nangate45 non ha tabelle CCS di corrente. Il VCD RTL (`tb_gcd`, 10 ns) **non** nomina i pin gate del netlist 0.46 ns — non si finge un mapping.
@@ -102,16 +102,21 @@ Per ogni load ITerm: \(I_\mathrm{leak}=f_\mathrm{leak}\,I_\mathrm{avg}\), impuls
 ## Numeri GCD flowlab (verificati)
 
 Stesso `pg_vdd_bumps.sp` (~3972 nodi, 13 pad, 601 load, Vdd = 1.1 V, periodo SDC 0.46 ns).
+N3 usa il companion BE con **storia di \(i_L\)** (non \(L/\Delta t\) memoryless): il droop **non** è il numero 74.715 mV della slice precedente.
+
+I numeri sotto sono quelli dell’ultimo `FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh` (clock, `PKG_L=2e-10`).
 
 | Engine | Static IR | Dynamic droop |
 |---|---|---|
-| `pdn_transient.py` | 17.52 mV | 154 mV (step ×8 + pkg R/L) |
+| `pdn_transient.py` | 17.52 mV | 154 mV (step ×8 + pkg R/L memoryless) |
 | vyges-em-ir 0.1.33 | 17.46 mV | 78.8 mV @ 1.016 ns (simultaneous) |
-| **questo engine `clock`** | **17.52 mV** | **~75 mV @ ~0.34 ns** (stagger; I_peak ~22 mA) |
+| **questo engine `clock` + \(i_L\)** | **17.52 mV** | **vedi report JSON** (`sim/reports/dynamic_ir_flowlab.json`) |
 
 Lo statico coincide. Il dinamico `clock` è **sotto** vyges simultaneous perché i t50 non sono allineati. Non è un FAIL di tapeout: è un laboratorio di droop.
 
-Gold ngspice: circuito **1 nodo** RC + triangolo (non il chip). `|V_BE − V_ngspice| ≈ 0.03 mV` sul GCD run con `method=gear maxord=1` (soglia 5 mV).
+Gold ngspice: **1 nodo RC** + triangolo, e **1 nodo pad–R–L–C** vs companion (non il chip). Soglia 5 mV, `method=gear maxord=1`.
+
+EM: \(I=(V_a-V_b)/R\) a \(t_\mathrm{worst}\) = PARTIAL. Manca width → niente J né Black TTF.
 
 ## File
 

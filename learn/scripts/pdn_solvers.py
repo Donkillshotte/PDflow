@@ -3,9 +3,8 @@
 
 Solver A — sparse LU (golden).
 Solver B — smoothed-aggregation AMG V-cycle + CG (workhorse).
-The BE matrix A = G + C/Δt is SPD and independent of I(t), so one setup
-serves every current scenario (the multi-scenario reuse of Solver C, without
-a rational-Krylov reduced ODE).
+The BE matrix A = G + C/Δt + g_eq is SPD. Package R+L uses a companion
+g_eq=1/(R+L/Δt) with inductor current i_L on the RHS (not memoryless L/Δt).
 
 Not Ginkgo, not pyamg, not a fork of ESPSim. Classic Vaněk–Mandel–Brezina
 SA plus damped Jacobi, coarse LU when n is small.
@@ -28,6 +27,13 @@ from scipy.sparse.linalg import LinearOperator, cg, splu
 
 _LIB = None
 _LIB_TRIED = False
+
+
+def rl_companion(pkg_r: float, pkg_l: float, dt: float) -> tuple[float, float]:
+    """BE series R+L companion: g_eq = 1/(R+L/Δt), hist_scale = g_eq·L/Δt."""
+    ldt = (pkg_l / dt) if pkg_l > 0.0 and dt > 0.0 else 0.0
+    g_eq = 1.0 / max(pkg_r + ldt, 1e-9)
+    return g_eq, g_eq * ldt
 
 
 def _libdpn():
@@ -96,6 +102,37 @@ def _libdpn():
     ]
     lib.dpn_timestep_be.restype = ctypes.c_int
     lib.dpn_timestep_be.argtypes = _TRAN_ARGS
+    lib.dpn_timestep_be_hist.restype = ctypes.c_int
+    lib.dpn_timestep_be_hist.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+    ]
     lib.dpn_mor_setup.restype = ctypes.c_void_p
     lib.dpn_mor_setup.argtypes = [
         ctypes.c_int,
@@ -152,6 +189,7 @@ def _libdpn():
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_int),
         ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
@@ -499,11 +537,24 @@ def _tran_kwargs(n, events, dt, t_end, adaptive=False):
     }
 
 
-def _tran_result(kw, n, solver_name, setup_s, n_levels, vdd, dt, t_end, backend, loop):
+def _bump_arrays(sys: dict, vdd: float):
+    bumps = np.ascontiguousarray(sys.get("bump") or [], dtype=np.int32)
+    n_bumps = int(bumps.size)
+    raw = sys.get("bump_v")
+    if n_bumps <= 0:
+        bump_v = np.zeros(1, dtype=np.float64)
+    elif raw is None or len(raw) != n_bumps:
+        bump_v = np.full(n_bumps, float(vdd), dtype=np.float64)
+    else:
+        bump_v = np.ascontiguousarray(raw, dtype=np.float64)
+    return bumps, n_bumps, bump_v
+
+
+def _tran_result(kw, n, solver_name, setup_s, n_levels, vdd, dt, t_end, backend, loop, extra=None):
     ns = int(kw["n_steps"].value)
     Vw = kw["Vw"]
     worst_v = float(kw["worst_v"].value)
-    return {
+    out = {
         "worst_voltage": worst_v,
         "worst_droop": vdd - worst_v,
         "worst_droop_pct": 100.0 * (vdd - worst_v) / vdd,
@@ -524,10 +575,13 @@ def _tran_result(kw, n, solver_name, setup_s, n_levels, vdd, dt, t_end, backend,
         "backend": backend,
         "timestep_loop": loop,
     }
+    if extra:
+        out.update(extra)
+    return out
 
 
 def native_timestep(solver, sys, events, vdd: float, t_end: float):
-    """BE loop inside libdpn. None if the solver is not native."""
+    """BE loop inside libdpn. Uses inductor-current history when bumps exist."""
     if getattr(solver, "backend", "") != "native" or not hasattr(solver, "_h"):
         return None
     lib = getattr(solver, "_lib", None)
@@ -536,34 +590,79 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
     n = int(sys["n"])
     C = np.ascontiguousarray(sys["C"], dtype=np.float64)
     leak = np.ascontiguousarray(sys["leak"], dtype=np.float64)
-    pad = np.ascontiguousarray(sys["pad"], dtype=np.float64)
     dt = float(sys["dt"])
     kw = _tran_kwargs(n, events, dt, t_end)
-    rc = lib.dpn_timestep_be(
-        solver._h,
-        C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        leak.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        pad.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        dt,
-        float(t_end),
-        float(vdd),
-        kw["n_ev"],
-        kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        ctypes.byref(kw["worst_node"]),
-        ctypes.byref(kw["worst_v"]),
-        ctypes.byref(kw["worst_t"]),
-        ctypes.byref(kw["rel"]),
-        ctypes.byref(kw["solve_s"]),
-        kw["max_steps"],
-        kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        ctypes.byref(kw["n_steps"]),
-    )
+    bumps, n_bumps, bump_v = _bump_arrays(sys, vdd)
+    extra = {}
+    rc = -1
+    loop = "native"
+    if n_bumps > 0 and hasattr(lib, "dpn_timestep_be_hist"):
+        ilabs = ctypes.c_double(0.0)
+        ilw = np.zeros(n_bumps, dtype=np.float64)
+        rc = lib.dpn_timestep_be_hist(
+            solver._h,
+            C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            leak.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            dt,
+            float(t_end),
+            bumps.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            n_bumps,
+            bump_v.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            float(sys.get("pkg_r") or 0.0),
+            float(sys.get("pkg_l") or 0.0),
+            kw["n_ev"],
+            kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["worst_node"]),
+            ctypes.byref(kw["worst_v"]),
+            ctypes.byref(kw["worst_t"]),
+            ctypes.byref(kw["rel"]),
+            ctypes.byref(kw["solve_s"]),
+            kw["max_steps"],
+            kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["n_steps"]),
+            ctypes.byref(ilabs),
+            ilw.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        )
+        if rc == 0:
+            loop = "native_hist"
+            extra = {"i_L_absmax": float(ilabs.value), "i_L_worst": ilw.copy()}
+        else:
+            print(f"dpn_timestep_be_hist rc={rc}; falling back to memoryless BE", file=sys.stderr)
+    if rc != 0:
+        pad = np.ascontiguousarray(sys["pad"], dtype=np.float64)
+        rc = lib.dpn_timestep_be(
+            solver._h,
+            C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            leak.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            pad.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            dt,
+            float(t_end),
+            float(vdd),
+            kw["n_ev"],
+            kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["worst_node"]),
+            ctypes.byref(kw["worst_v"]),
+            ctypes.byref(kw["worst_t"]),
+            ctypes.byref(kw["rel"]),
+            ctypes.byref(kw["solve_s"]),
+            kw["max_steps"],
+            kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["n_steps"]),
+        )
+        loop = "native"
+        extra = {}
     if rc != 0:
         print(f"dpn_timestep_be rc={rc}", file=sys.stderr)
         return None
@@ -577,7 +676,8 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
         dt,
         t_end,
         "native",
-        "native",
+        loop,
+        extra=extra,
     )
 
 
@@ -589,12 +689,10 @@ def native_adaptive(sys, events, vdd: float, t_end: float, atol: float = 1e-4, r
     n, nnz, rp, ci, va = _csr_ct(G)
     C = np.ascontiguousarray(sys["C"], dtype=np.float64)
     leak = np.ascontiguousarray(sys["leak"], dtype=np.float64)
-    bumps = np.ascontiguousarray(sys.get("bump") or [], dtype=np.int32)
-    if bumps.size == 0:
+    bumps, n_bumps, bump_v = _bump_arrays(sys, vdd)
+    if n_bumps == 0:
         bumps = np.zeros(1, dtype=np.int32)
-        n_bumps = 0
-    else:
-        n_bumps = int(bumps.size)
+        bump_v = np.array([vdd], dtype=np.float64)
     dt = float(sys["dt"])
     kw = _tran_kwargs(n, events, dt, t_end, adaptive=True)
     rc = lib.dpn_timestep_be_adaptive(
@@ -606,6 +704,7 @@ def native_adaptive(sys, events, vdd: float, t_end: float, atol: float = 1e-4, r
         C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         bumps.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
         n_bumps,
+        bump_v.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         float(sys["pkg_r"]),
         float(sys["pkg_l"]),
         float(vdd),

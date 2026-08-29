@@ -8,6 +8,7 @@
 #   DYNAMIC_IR_MODE=clock|spatial|simultaneous
 #   PEAK_FACTOR=8  C_DECAP=50e-15  PKG_R=0.05  PKG_L=2e-10
 #   PERIOD_NS=0.46  DUR_NS=0.08  DT_PS=10
+#   DYNAMIC_IR_ADAPTIVE=1  also run adaptive-Δt BE (different L discretization)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${ROOT}/learn/lib/power_vcd.sh"
@@ -72,6 +73,10 @@ fi
 [[ -f "${SPICE}" ]] || { echo "FAIL manca ${SPICE}"; exit 1; }
 
 echo "=== pdn_dynamic.py mode=${MODE} ===" | tee -a "${LOG}"
+ADAPT=()
+if [[ "${DYNAMIC_IR_ADAPTIVE:-}" == "1" ]]; then
+  ADAPT=(--adaptive)
+fi
 python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   --spice "${SPICE}" \
   --insts "${INSTS}" \
@@ -85,6 +90,7 @@ python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   --pkg-l "${PKG_L}" \
   --c-decap "${C_DECAP}" \
   --dt-ps "${DT_PS}" \
+  "${ADAPT[@]}" \
   2>&1 | tee -a "${LOG}"
 
 rg -q 'DYNAMIC_IR_DONE' "${LOG}"

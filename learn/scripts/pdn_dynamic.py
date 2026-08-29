@@ -53,6 +53,7 @@ from pdn_solvers import (  # noqa: E402
     native_adaptive,
     native_timestep,
     residual_rel,
+    rl_companion,
 )
 from pdn_transient import build_system, parse_spice, solve_static  # noqa: E402
 
@@ -180,14 +181,22 @@ def plan_events(
 
 
 def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
-    """A = G + C/Δt + pad conductance. Independent of I(t) / t50."""
+    """A = G + C/Δt + pad conductance. Independent of I(t) / t50.
+
+    Pad stamp is the BE companion of lumped package R+L: g_eq = 1/(R+L/Δt).
+    Inductor current i_L is *not* in A — it lives on the RHS of the time loop.
+    """
     n = G.shape[0]
-    bump = [idx[nm] for nm in voltages if nm in idx]
-    r_series = max(pkg_r + (pkg_l / dt if pkg_l > 0 else 0.0), 1e-9)
-    g_pad = 1.0 / r_series
+    bump = []
+    bump_v = []
+    for nm, volt in voltages.items():
+        if nm in idx:
+            bump.append(idx[nm])
+            bump_v.append(float(volt))
+    g_eq, hsc = rl_companion(pkg_r, pkg_l, dt)
     Gsoft = G.tolil()
     for i in bump:
-        Gsoft[i, i] += g_pad
+        Gsoft[i, i] += g_eq
     Gsoft = Gsoft.tocsr()
 
     C = np.full(n, max(c_decap * 0.02, 1e-18))
@@ -198,8 +207,8 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
 
     A = (Gsoft + sparse.diags(C / dt)).tocsc()
     pad = np.zeros(n)
-    for i in bump:
-        pad[i] = g_pad * vdd
+    for i, vs in zip(bump, bump_v):
+        pad[i] = g_eq * vs
     return {
         "A": A,
         "G": Gsoft.tocsr(),
@@ -208,12 +217,14 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
         "leak": leak,
         "pad": pad,
         "bump": bump,
+        "bump_v": np.asarray(bump_v, dtype=np.float64),
         "n": n,
         "pkg_r": pkg_r,
         "pkg_l": pkg_l,
         "c_decap": c_decap,
         "dt": dt,
-        "g_pad": g_pad,
+        "g_pad": g_eq,
+        "hist_scale": hsc,
     }
 
 
@@ -224,6 +235,9 @@ def _map_worst_node(result: dict, order) -> dict:
     result.setdefault("pkg_r", None)
     result.setdefault("pkg_l", None)
     result.setdefault("c_decap", None)
+    ilw = result.get("i_L_worst")
+    if isinstance(ilw, np.ndarray):
+        result["i_L_worst"] = ilw.tolist()
     return result
 
 
@@ -252,14 +266,19 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adap
 
     C = sys["C"]
     leak = sys["leak"]
-    pad = sys["pad"]
     dt = sys["dt"]
     A = sys["A"]
     n = sys["n"]
+    bump = sys.get("bump") or []
+    bump_v = np.asarray(sys.get("bump_v") if sys.get("bump_v") is not None else [vdd] * len(bump), dtype=np.float64)
+    g_eq, hsc = rl_companion(sys["pkg_r"], sys["pkg_l"], dt)
     steps = max(2, int(math.ceil(t_end / dt)))
     V = np.full(n, vdd)
+    i_L = np.zeros(len(bump), dtype=np.float64)
     wave_t, wave_vmin, wave_itot = [], [], []
     worst_v, worst_t, worst_node, worst_V = vdd, 0.0, None, V.copy()
+    i_L_worst = i_L.copy()
+    i_L_absmax = 0.0
     res_max = 0.0
     t_solve = 0.0
 
@@ -268,11 +287,19 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adap
         I_draw = leak.copy()
         for ev in events:
             I_draw[ev["idx"]] += triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
-        rhs = (C / dt) * V - I_draw + pad
+        rhs = (C / dt) * V - I_draw
+        for k, b in enumerate(bump):
+            vs = float(bump_v[k]) if k < bump_v.size else vdd
+            rhs[b] += g_eq * vs + hsc * i_L[k]
         t0 = time.perf_counter()
         V = solver.solve(rhs, x0=V)
         t_solve += time.perf_counter() - t0
         res_max = max(res_max, residual_rel(A, V, rhs))
+        i_new = np.zeros_like(i_L)
+        for k, b in enumerate(bump):
+            vs = float(bump_v[k]) if k < bump_v.size else vdd
+            i_new[k] = g_eq * (vs - V[b]) + hsc * i_L[k]
+        i_L = i_new
         vmin = float(np.min(V))
         wave_t.append(float(t))
         wave_vmin.append(vmin)
@@ -282,6 +309,8 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adap
             worst_t = float(t)
             worst_node = order[int(np.argmin(V))]
             worst_V = V.copy()
+            i_L_worst = i_L.copy()
+            i_L_absmax = float(np.max(np.abs(i_L))) if i_L.size else 0.0
 
     return {
         "worst_voltage": worst_v,
@@ -304,8 +333,10 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adap
         "wave_vmin": wave_vmin,
         "wave_itot": wave_itot,
         "V_worst": worst_V,
+        "i_L_worst": i_L_worst,
+        "i_L_absmax": i_L_absmax,
         "backend": getattr(solver, "backend", "python"),
-        "timestep_loop": "python",
+        "timestep_loop": "python_hist" if bump else "python",
     }
 
 
@@ -362,6 +393,7 @@ def platform_block(
     timing: dict | None,
     mor: dict | None = None,
     adaptive: dict | None = None,
+    em: dict | None = None,
 ) -> dict:
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
     if mor and mor.get("ok"):
@@ -400,7 +432,7 @@ def platform_block(
             "idea": "one LinearSolver API → CPU AMG / CPU Krylov / GPU AMG / GPU Krylov (Ginkgo)",
         },
         "gold": {
-            "tiny": {"tool": "ngspice", "status": "READY", "scope": "1-node RC + triangle"},
+            "tiny": {"tool": "ngspice", "status": "READY", "scope": "1-node RC + 1-node series R+L companion"},
             "medium": {
                 "tool": "Xyce",
                 "status": "GAP",
@@ -444,11 +476,11 @@ def platform_block(
             },
             "N3_RC_pkg": {
                 "status": "READY",
-                "eq": "RC + lumped package R/L at bumps",
-                "via": "pkg_r + pkg_l/dt series on pad nodes",
+                "eq": "RC + lumped package R+L companion at bumps",
+                "via": "g_eq=1/(R+L/Δt) on pad diagonals; i_L history on the RHS",
                 "pkg_r": pkg_r,
                 "pkg_l": pkg_l,
-                "note": "not extracted on-die inductance",
+                "note": "not extracted on-die inductance; companion stays SPD so AMG applies",
             },
             "N4_vrm": {
                 "status": "PARTIAL",
@@ -465,7 +497,7 @@ def platform_block(
             "ACCURATE": {
                 "status": accurate,
                 "intended": "VCD/FSDB + CCS I(t) + AMG + adaptive timestep",
-                "this_slice": "adaptive BE LTE is PARTIAL; CCS/VCD still GAP",
+                "this_slice": "adaptive BE with i_L history; CCS/VCD still GAP",
                 "adaptive": adaptive,
             },
             "SIGNOFF": {
@@ -478,7 +510,8 @@ def platform_block(
             "status": "GAP",
             "idea": "V(t) → delay(V) → STA path degradation",
         },
-        "em_thermal": {
+        "em_thermal": em
+        or {
             "status": "GAP",
             "idea": "I(t)→J→EM and P→T→R(T) as later coupling",
         },
@@ -637,6 +670,71 @@ def _parse_wrdata_vmin(path: Path) -> float | None:
     return worst
 
 
+def em_snapshot(
+    resistors,
+    idx: dict,
+    order,
+    V: np.ndarray,
+    *,
+    bump,
+    bump_v,
+    i_L,
+    pkg_r: float,
+    pkg_l: float,
+) -> dict:
+    """Branch currents at t_worst from I = (Va−Vb)/R. Physics screening, not ML.
+
+    No conductor width in write_pg_spice → no J (A/m²) and no Black TTF.
+    Package inductor current is the BE companion i_L at the same instant.
+    """
+    def vnode(name: str) -> float | None:
+        if name == "0":
+            return 0.0
+        i = idx.get(name)
+        if i is None or i < 0 or i >= len(V):
+            return None
+        return float(V[i])
+
+    branches = []
+    for a, b, r in resistors:
+        va, vb = vnode(a), vnode(b)
+        if va is None or vb is None:
+            continue
+        i_br = (va - vb) / max(r, 1e-18)
+        branches.append({"a": a, "b": b, "r_ohm": r, "i_a": i_br, "i_abs": abs(i_br)})
+    branches.sort(key=lambda x: -x["i_abs"])
+    top = branches[:12]
+    hottest = top[0] if top else None
+    pkg = []
+    i_L_list = []
+    if i_L is not None:
+        i_L_list = np.asarray(i_L, dtype=np.float64).tolist()
+    for k, bi in enumerate(bump or []):
+        node = order[int(bi)] if order is not None and 0 <= int(bi) < len(order) else str(bi)
+        pkg.append(
+            {
+                "node": node,
+                "v_src": float(bump_v[k]) if bump_v is not None and k < len(bump_v) else None,
+                "i_L_a": float(i_L_list[k]) if k < len(i_L_list) else None,
+            }
+        )
+    pkg.sort(key=lambda p: -abs(p["i_L_a"] or 0.0))
+    i_absmax = float(hottest["i_abs"]) if hottest else 0.0
+    return {
+        "status": "PARTIAL",
+        "model": "I_branch=(Va-Vb)/R at t_worst; package i_L from BE R+L companion",
+        "not": ["current density J (no width in SPICE)", "Black TTF", "thermal R(T)"],
+        "n_branches": len(branches),
+        "i_absmax_a": i_absmax,
+        "hottest": hottest,
+        "top": top[:8],
+        "package_i_L": pkg[:8],
+        "pkg_r": pkg_r,
+        "pkg_l": pkg_l,
+        "note": "EM screening from physics I(t), not ML. Width/J/TTF remain GAP.",
+    }
+
+
 def ngspice_gold(
     vdd: float = 1.1,
     r: float = 2.0,
@@ -730,6 +828,96 @@ quit
         "c": c,
         "i_peak": i_peak,
         "method": "ngspice gear maxord=1 vs studio BE",
+    }
+
+
+def ngspice_rl_gold(
+    vdd: float = 1.1,
+    r: float = 0.05,
+    l: float = 2e-10,
+    c: float = 50e-12,
+    i_peak: float = 5e-3,
+    dur: float = 0.2e-9,
+    dt: float = 10e-12,
+) -> dict | None:
+    """Pad --R-- L -- n -- C vs BE companion with i_L history (gear maxord=1)."""
+    if not shutil_which("ngspice"):
+        return None
+    t_end = dur * 4
+    steps = max(8, int(math.ceil(t_end / dt)))
+    g_eq, hsc = rl_companion(r, l, dt)
+    t50 = dur
+    v = vdd
+    i_L = 0.0
+    worst = vdd
+    for s in range(steps):
+        t = s * dt
+        idraw = triangle_above_leak(t, t50, dur, i_peak)
+        rhs = (c / dt) * v - idraw + g_eq * vdd + hsc * i_L
+        a = c / dt + g_eq
+        vn = rhs / a
+        i_L = g_eq * (vdd - vn) + hsc * i_L
+        v = vn
+        worst = min(worst, v)
+
+    t0 = max(t50 - 0.5 * dur, 0.0)
+    t1 = t50 + 0.5 * dur
+    tmp = Path(tempfile.mkdtemp(prefix="dynir-rl-gold-"))
+    sp_path = tmp / "gold_rl.sp"
+    dat_path = tmp / "gold_rl.dat"
+    sp_path.write_text(
+        f"""* dynamic_ir 1-node series R+L gold (gear maxord=1 ≈ backward Euler)
+Vpad pad 0 DC {vdd}
+R1 pad mid {r}
+L1 mid n {l}
+C1 n 0 {c}
+Iload n 0 PWL(0 0 {t0:.6e} 0 {t50:.6e} {i_peak:.6e} {t1:.6e} 0 {t_end:.6e} 0)
+.control
+option method=gear maxord=1
+set filetype=ascii
+tran {dt:.6e} {t_end:.6e}
+wrdata {dat_path} v(n)
+quit
+.endc
+.end
+"""
+    )
+    log = subprocess.run(
+        ["ngspice", "-b", str(sp_path)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    blob = (log.stdout or "") + "\n" + (log.stderr or "")
+    vmin_ng = _parse_wrdata_vmin(dat_path)
+    if vmin_ng is None:
+        for extra in sorted(tmp.glob("gold_rl.dat*")):
+            vmin_ng = _parse_wrdata_vmin(extra)
+            if vmin_ng is not None:
+                break
+    if vmin_ng is None or vmin_ng < 0.05:
+        return {
+            "ok": False,
+            "be_vmin": worst,
+            "ngspice_present": True,
+            "ngspice_vmin": vmin_ng,
+            "raw": blob[-800:],
+            "r": r,
+            "l": l,
+            "c": c,
+            "i_peak": i_peak,
+        }
+    err_mv = abs(worst - vmin_ng) * 1e3
+    return {
+        "ok": err_mv < 5.0,
+        "be_vmin": worst,
+        "ngspice_vmin": vmin_ng,
+        "abs_err_mv": err_mv,
+        "r": r,
+        "l": l,
+        "c": c,
+        "i_peak": i_peak,
+        "method": "ngspice gear maxord=1 vs BE R+L companion with i_L",
     }
 
 
@@ -847,7 +1035,10 @@ def main() -> int:
             "step_s": dyn_c.get("solver_step_s"),
             "backend": getattr(mor, "backend", dyn_c.get("backend")),
             "via": "rational Krylov + reduced BE on δv=v-Vdd",
-            "note": "MOR uses Gsoft at analysis Δt (package L/Δt frozen); not RLC MNA",
+            "note": (
+                "MOR uses Gsoft (g_eq at analysis Δt) with no i_L. When pkg_l>0 it is an "
+                "RC-equivalent screening model, not RLC gold. Ranking stays Solver A."
+            ),
         }
         dyn["mor"] = {k: v for k, v in dyn_c.items() if not k.startswith("wave_") and k != "V_worst"}
 
@@ -862,7 +1053,7 @@ def main() -> int:
             "abs_err_vs_A_mv": err_ad,
             "steps": dyn_ad["steps"],
             "timestep_loop": dyn_ad.get("timestep_loop"),
-            "via": "BE LTE ½|Δ²V|; pad G frozen at analysis Δt (no MNA inductor history)",
+            "via": "BE LTE ½|Δ²V|; g_eq(Δt)+i_L (different L discretization than fixed-Δt gold)",
         }
 
     scenarios = None
@@ -950,6 +1141,17 @@ def main() -> int:
     Vw = dyn.pop("V_worst")
     pts = heatmap_points(order, Vw, vdd, events)
     hottest = sorted(pts, key=lambda p: p["ir_mv"], reverse=True)[:8]
+    em = em_snapshot(
+        resistors,
+        idx,
+        order,
+        Vw,
+        bump=sys_be["bump"],
+        bump_v=sys_be["bump_v"],
+        i_L=dyn.get("i_L_worst"),
+        pkg_r=args.pkg_r,
+        pkg_l=args.pkg_l,
+    )
 
     out = args.out
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -976,8 +1178,10 @@ def main() -> int:
     write_heatmap_svg(pts, svg_path, vdd, title)
 
     gold = None
+    gold_rl = None
     if not args.skip_ngspice:
         gold = ngspice_gold(vdd=vdd)
+        gold_rl = ngspice_rl_gold(vdd=vdd)
 
     i_tot_peak = max(dyn["wave_itot"]) if dyn["wave_itot"] else 0.0
     n_seq = sum(1 for e in events if e["seq"])
@@ -1026,7 +1230,7 @@ def main() -> int:
         {"id": 3, "name": "Activity engine", "status": "PARTIAL", "via": f"synthetic {args.mode}; VCD pin-accurate = GAP"},
         {"id": 4, "name": "Current waveform", "status": "PARTIAL", "via": "per-ITerm triangle PWL"},
         {"id": 5, "name": "Transient solver", "status": "READY", "via": "A LU gold + B SA-AMG + C rational Krylov MOR"},
-        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + windows + delay scaling; EM = GAP"},
+        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + windows + delay scaling + branch I EM screen; J/TTF = GAP"},
     ]
     plat = platform_block(
         mode=args.mode,
@@ -1038,6 +1242,7 @@ def main() -> int:
         timing=timing,
         mor=mor_meta,
         adaptive=adaptive_meta,
+        em=em,
     )
     amg_note = (
         f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
@@ -1059,7 +1264,7 @@ def main() -> int:
             "Solver A: direct backward-Euler sparse LU (golden)",
             "Solver B: smoothed-aggregation AMG + CG (workhorse)",
             "Solver C: rational Krylov reduced BE ODE (δv = v − Vdd)",
-            "Native BE timestep loop in libdpn; Python orchestrates I(t)",
+            "Native BE timestep with R+L companion i_L history in libdpn; Python orchestrates I(t)",
             "V(x,y) heatmap at t_worst + delay scaling at worst tap",
         ],
         "not": [
@@ -1074,7 +1279,7 @@ def main() -> int:
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
             "this_engine": "A gold + B SA-AMG + C Krylov MOR on write_pg_spice; triangle I(t)",
-            "ngspice": "unit-test gold for BE on a 1-node RC",
+            "ngspice": "unit-test gold for BE on 1-node RC and 1-node series R+L",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
         "platform": plat,
@@ -1093,7 +1298,7 @@ def main() -> int:
                 "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor",
                 "replaces": "HSpice TRAN on Calibre DSPF",
                 "via": "Solver A LU golden + B SA-AMG + C reduced ODE on write_pg_spice",
-                "gold": "ngspice 1-node gear/BE; A vs B vs C droop on the chip mesh",
+                "gold": "ngspice 1-node RC + series R+L companion; A vs B vs C droop on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
@@ -1126,6 +1331,8 @@ def main() -> int:
         },
         "waveform": str(wave_path),
         "ngspice_gold": gold,
+        "ngspice_rl_gold": gold_rl,
+        "em": em,
         "solver_b": amg_meta,
         "solver_c": mor_meta,
         "adaptive": adaptive_meta,
@@ -1146,6 +1353,8 @@ def main() -> int:
     def _json(o):
         if isinstance(o, np.generic):
             return o.item()
+        if isinstance(o, np.ndarray):
+            return o.tolist()
         raise TypeError(type(o))
 
     out.write_text(json.dumps(report, indent=2, default=_json) + "\n")
@@ -1156,6 +1365,8 @@ def main() -> int:
     print(f"map → {svg_path}")
     if gold:
         print("ngspice_gold", gold)
+    if gold_rl:
+        print("ngspice_rl_gold", gold_rl)
     return 0
 
 

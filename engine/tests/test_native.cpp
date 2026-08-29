@@ -252,13 +252,14 @@ int main() {
     dpn_free(h);
 
     int bumps[1] = {0};
+    double bump_v[1] = {vdd};
     int growptr[2] = {0, 0};
     int gcol[1] = {0};
     double Gempty[1] = {0.0};
-    check(dpn_timestep_be_adaptive(1, 0, growptr, gcol, Gempty, C, bumps, 1, r, 0.0, vdd, leak, dt,
-                                   t_end, 1e-5, 1e-3, 1, ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(),
-                                   &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
-                                   wv.data(), wi.data(), &n_steps) == 0,
+    check(dpn_timestep_be_adaptive(1, 0, growptr, gcol, Gempty, C, bumps, 1, bump_v, r, 0.0, vdd,
+                                   leak, dt, t_end, 1e-5, 1e-3, 1, ev_idx, ev_t50, ev_dur, ev_ip,
+                                   Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts, maxs,
+                                   wt.data(), wv.data(), wi.data(), &n_steps) == 0,
           "adaptive timestep 1-node");
     check(std::abs(worst_v - worst_cf) < 2e-3, "adaptive vs fine BE (1 mV-class)");
     std::printf("    adaptive steps=%d vmin=%.6f closed=%.6f\n", n_steps, worst_v, worst_cf);
@@ -335,6 +336,74 @@ int main() {
     check(err < 5e-3, "RC line MOR vs LU BE (< 5 mV)");
     std::printf("    RC n=20 m=%d |A-C|=%.3e V  full=%.4f red=%.4f\n", mor->m(), err, full.worst_v,
                 red.worst_v);
+  }
+  {
+    // Series R+L companion with history: 1-node vs hand BE (two steps differ from resistive L/dt).
+    const double vdd = 1.1, R = 0.05, L = 2e-10, c = 50e-12, dt = 10e-12, ipulse = 5e-3;
+    const double t50 = 0.2e-9, dur = 0.2e-9, t_end = 0.4e-9;
+    double g_eq = 0.0, hsc = 0.0;
+    dpn::rl_companion(R, L, dt, &g_eq, &hsc);
+    check(g_eq > 0.0 && hsc > 0.0, "RL companion g_eq and history scale");
+    int growptr[2] = {0, 0};
+    int gcol[1] = {0};
+    double Gempty[1] = {0.0};
+    Csr Gmesh = dpn::from_csr(1, growptr, gcol, Gempty);
+    double C[1] = {c};
+    int bumps[1] = {0};
+    double bump_v[1] = {vdd};
+    std::vector<double> pad;
+    Csr A = dpn::form_be_operator(Gmesh, C, dt, bumps, 1, bump_v, R, L, pad);
+    auto lu = dpn::make_direct(A);
+    dpn::TriangleSrc ev;
+    ev.idx = 0;
+    ev.t50 = t50;
+    ev.dur = dur;
+    ev.ipulse = ipulse;
+    double leak[1] = {0.0};
+    auto hist = dpn::timestep_be_hist(*lu, A, C, leak, dt, t_end, &ev, 1, bumps, 1, bump_v, R, L);
+    // Hand companion
+    double v = vdd, iL = 0.0, worst = vdd;
+    const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+    for (int s = 0; s < steps; ++s) {
+      const double t = s * dt;
+      const double id = dpn::triangle(t, t50, dur, ipulse);
+      const double rhs = (c / dt) * v - id + g_eq * vdd + hsc * iL;
+      const double a = c / dt + g_eq;
+      const double vn = rhs / a;
+      iL = g_eq * (vdd - vn) + hsc * iL;
+      v = vn;
+      worst = std::min(worst, v);
+    }
+    check(std::abs(hist.worst_v - worst) < 1e-12, "1-node RL history vs hand companion");
+    // Resistive L/dt (no history) must differ once the inductor has current.
+    double v_r = vdd, worst_r = vdd;
+    const double g_res = 1.0 / std::max(R + L / dt, 1e-9);
+    const double a_r = c / dt + g_res;
+    for (int s = 0; s < steps; ++s) {
+      const double t = s * dt;
+      const double id = dpn::triangle(t, t50, dur, ipulse);
+      v_r = ((c / dt) * v_r - id + g_res * vdd) / a_r;
+      worst_r = std::min(worst_r, v_r);
+    }
+    check(std::abs(worst - worst_r) > 1e-6, "RL history differs from memoryless L/dt");
+    std::printf("    RL hist vmin=%.6f resistive=%.6f iLmax=%.4e\n", hist.worst_v, worst_r,
+                hist.i_L_absmax);
+    std::vector<int> rp(A.rowptr.begin(), A.rowptr.end());
+    std::vector<int> ci(A.col.begin(), A.col.end());
+    DpnHandle* hh = dpn_setup(0, 1, A.nnz(), rp.data(), ci.data(), A.val.data());
+    check(hh != nullptr, "c_api hist setup");
+    const int maxs = 128;
+    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
+    int worst_node = 0, n_steps = 0;
+    double worst_v = 0, worst_t = 0, rel = 0, ts = 0, ilabs = 0, ilw[1] = {0};
+    int ev_idx[1] = {0};
+    double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
+    check(dpn_timestep_be_hist(hh, C, leak, dt, t_end, bumps, 1, bump_v, R, L, 1, ev_idx, ev_t50,
+                               ev_dur, ev_ip, Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts,
+                               maxs, wt.data(), wv.data(), wi.data(), &n_steps, &ilabs, ilw) == 0,
+          "c_api timestep_be_hist");
+    check(std::abs(worst_v - worst) < 1e-12, "c_api RL hist vs hand companion");
+    dpn_free(hh);
   }
   if (fails) {
     std::fprintf(stderr, "%d checks failed\n", fails);

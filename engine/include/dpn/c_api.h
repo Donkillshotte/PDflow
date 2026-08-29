@@ -32,10 +32,22 @@ int dpn_timestep_be(DpnHandle* h, const double* C, const double* leak, const dou
                     int max_steps, double* wave_t, double* wave_vmin, double* wave_itot,
                     int* n_steps);
 
-/* Adaptive BE. G is the mesh without package pad. bumps[n_bumps] are V-source nodes. */
+/* BE with series R+L companion *and* inductor current history.
+   A must include g_eq=1/(R+L/Δt) on bump diagonals. bump_v[n_bumps] are ideal sources. */
+int dpn_timestep_be_hist(DpnHandle* h, const double* C, const double* leak, double dt, double t_end,
+                         const int* bumps, int n_bumps, const double* bump_v, double pkg_r,
+                         double pkg_l, int n_events, const int* ev_idx, const double* ev_t50,
+                         const double* ev_dur, const double* ev_ipulse, double* V_worst,
+                         int* worst_node, double* worst_v, double* worst_t, double* rel_res_max,
+                         double* solve_s, int max_steps, double* wave_t, double* wave_vmin,
+                         double* wave_itot, int* n_steps, double* i_L_absmax, double* i_L_worst);
+
+/* Adaptive BE. G is the mesh without package pad. bumps[n_bumps] are V-source nodes.
+   bump_v[n_bumps] are ideal sources (NULL → fill with vdd). */
 int dpn_timestep_be_adaptive(int n, int nnz, const int* rowptr, const int* col, const double* Gval,
-                             const double* C, const int* bumps, int n_bumps, double pkg_r,
-                             double pkg_l, double vdd, const double* leak, double dt0, double t_end,
+                             const double* C, const int* bumps, int n_bumps, const double* bump_v,
+                             double pkg_r, double pkg_l, double vdd, const double* leak, double dt0,
+                             double t_end,
                              double atol, double rtol, int n_events, const int* ev_idx,
                              const double* ev_t50, const double* ev_dur, const double* ev_ipulse,
                              double* V_worst, int* worst_node, double* worst_v, double* worst_t,

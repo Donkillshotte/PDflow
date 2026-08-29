@@ -5,7 +5,7 @@ Il “flow definitivo” **non** si costruisce intorno a un singolo progetto esi
 È un **sistema ibrido**: frontend fisico OpenROAD, motore di corrente dedicato,
 più solver a fedeltà diversa, screening attività, gold esterni.
 
-Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo, Δt adattivo e un ODE rational Krylov (Solver C).
+Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo con companion R+L e \(i_L\), Δt adattivo e un ODE rational Krylov (Solver C).
 **Non** implementa CCS né Ginkgo/GPU. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
 
 ## Verdetto (piattaforma, non un clone)
@@ -20,12 +20,12 @@ Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo, Δt adatti
 | **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=24 · \|A−C\| 1.20 mV sul GCD clock; ranking scenari = Solver A |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
-| ngspice | unit test fisico 1-nodo | READY |
+| ngspice | unit test fisico 1-nodo RC e R+L | READY |
 | MAVIREC / PowerNet / IR-Hunter | ML solo screening | **GAP** — mai dentro il physics |
 | vyges-em-ir | bootstrap + check simultaneous-switch | INTEGRATED, **non** il core |
 
 Killer feature **già nel codice**: modello ridotto rational Krylov (stessa G,C, molti `I(t)`).
-Il gold resta Solver A. MOR congela \(L/\Delta t\) del package all’Δt di analisi (non MNA induttivo).
+Il gold resta Solver A con \(i_L\). MOR usa \(G_\mathrm{soft}\) all’Δt di analisi **senza** corrente induttiva: screening RC-equivalente se \(L>0\).
 
 ## Matrice (ciò che esiste davvero)
 
@@ -33,7 +33,7 @@ Il gold resta Solver A. MOR congela \(L/\Delta t\) del package all’Δt di anal
 |---|---|---|---|---|---|---|
 | OpenROAD PSM / PDNSim | sì | **no** (docs: static IR analyzer) | current density | sì (ODB) | I_avg da liberty/activity | `analyze_power_grid` + `write_pg_spice` |
 | **vyges-em-ir** | sì (CG+Jacobi) | sì, BE, **un** `switch_t_ns` | sì (se `emlimit`) | DEF+LEF upstream; qui mesh SPICE | eventi, tutti allineati | bootstrap / validazione; no waveform |
-| **Questo corso `dynamic_ir`** | sì | A LU + B SA-AMG, I(t) per pin | no | mesh OpenROAD | simultaneous / spatial / **clock** + ranking | waveform + heatmap |
+| **Questo corso `dynamic_ir`** | sì | A LU + B SA-AMG, I(t) per pin | PARTIAL (\(I_\mathrm{branch}\), no J) | mesh OpenROAD | simultaneous / spatial / **clock** + ranking | waveform + heatmap |
 | `pdn_transient.py` | sì | load-step globale | no | mesh OpenROAD | peak_factor | laboratorio CSV |
 | ngspice | sì | sì | possibile | da costruire | PWL | **gold 1-nodo**, non full-chip |
 | Xyce | sì | sì (MPI) | — | da costruire | sì | **GAP** in questa VM |
@@ -58,13 +58,13 @@ Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. N
 
 ## Livelli di rete (già nel codice, etichette oneste)
 
-Il prototipo può restare \(GV + C\dot V = I(t)\). Il design finale è MNA RLC.
+Il prototipo stampava \(L/\Delta t\) memoryless. N3 ora è un **companion BE serie R+L** con stato \(i_L\) (SPD, AMG ok). L on-die estratta resta GAP.
 
 | Livello | Contenuto | GCD oggi |
 |---|---|---|
 | **N1 R** | \(GV = I\) | READY — `solve_static` |
 | **N2 R+C** | decap lumpato sui tap | READY — `c_decap` |
-| **N3 R+C+pkg** | R/L package sui bump | READY — `pkg_r` + `pkg_l/Δt` (non L on-die estratta) |
+| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\) (non L on-die estratta) |
 | **N4 on-die + pkg + bumps + VRM** | gerarchia completa | PARTIAL — bump come V in `write_pg_spice`; VRM = `system_pdn` **non** accoppiato in questa TRAN |
 
 ## Tre livelli di prodotto
@@ -114,8 +114,8 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | modi sintetici clock/spatial; VCD RTL non è pin-accurate |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm |
-| 5 Solver | B AMG + C Krylov MOR + A gold | **A + B READY**; C = reduced ODE |
-| 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG heatmap |
+| 5 Solver | B AMG + C Krylov MOR + A gold | **A + B READY** (A con \(i_L\)); C = reduced ODE screening |
+| 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG heatmap + \(I_\mathrm{branch}\) PARTIAL |
 
 ## Classifica reale
 
