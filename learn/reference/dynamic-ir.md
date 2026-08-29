@@ -78,7 +78,7 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 | 3 | Activity | STA `report_arrival` t50 (clock) + SAIF TC name-join | VCD RTL name-join GAP; ranking extra I(t) resta sintetico; SAIF non inventa t50 |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) o ECSM \(\|C\mathrm{d}V/\mathrm{d}t\|\) se tabelle + slew/c_load; Nangate = GAP |
 | 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS (companion GCD; kind=2 su \(K\) unsymmetric) + **N4** descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)) + kind=3 BiCGSTAB workhorse + Δt adattivo sul descriptor + MOR gen sparse-\(E\) (opt-in on-die L, non il gold GCD) + VSS return TRAN + opt-in coupled \(C_{rr}\) / strap Cox (sparse \(C\), native `hist_cmat`) | ngspice = gold 1-nodo RC, R+L, VRM+die, strap K, 1-nodo thermal analogue, **2-nodo \(C_{rr}\)/Cox**; Xyce = GAP in VM (deck contract); Index nativo int64; Ginkgo GPU = GAP |
-| 6 | Analysis | heatmap, finestre, ranking, path STA delay, \(J=I/(wt)\), **mesh termica** strap+via+ILD/Si lumpato | TTF relativo (no A foundry); 3D FEM/package CFD = GAP; skin δ riportato non stampato in G; path = NLDM typical-V |
+| 6 | Analysis | heatmap, finestre, ranking, path STA delay, \(J=I/(wt)\), **mesh termica** strap+via+ILD/Si lumpato + **BE termico nativo** (max \(\Delta T\)) | TTF relativo (no A foundry); 3D FEM/package CFD = GAP; skin δ riportato non stampato in G; path = NLDM typical-V; restamp R(T) resta N1 (Si escluso dalla metrica) |
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh

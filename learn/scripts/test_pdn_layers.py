@@ -1466,6 +1466,24 @@ I0 ITermNode_metal1_1200_400 0 DC 1.0e-3
             f"    GCD thermal n={th_g['n']} straps={th_g['n_straps']} vias={th_g['n_vias']} "
             f"ild={th_g.get('n_ild')} Si={th_g.get('n_si')} pads={th_g['n_pads']} rel_res={sol_g['rel_res']:.2e}"
         )
+        Cg = np.asarray(th_g["C"], dtype=np.float64)
+        gdiag = np.array(th_g["G"].diagonal(), dtype=np.float64)
+        tau_g = float(np.max(Cg / np.maximum(gdiag, 1e-18)))
+        dt_g = tau_g / 15.0
+        t_end_g = 8.0 * tau_g
+        n_met = int(th_g.get("n_metal") or th_g["n"])
+        tr_g = timestep_thermal_be(
+            {"G": th_g["G"], "C": Cg}, P_g, dt_g, t_end_g, n_track=n_met
+        )
+        tss = np.asarray(sol_g["T"], dtype=np.float64)
+        denom = max(float(np.max(np.abs(tss))), 1e-18)
+        err_be = float(np.max(np.abs(tr_g["T"] - tss))) / denom
+        check(err_be < 0.05, f"GCD thermal BE vs steady |ΔT|/Tss={err_be:.3e}")
+        check(int(tr_g["worst_node"]) < n_met, "GCD thermal max excludes lumped Si node")
+        print(
+            f"    GCD thermal BE vs steady |ΔT|/Tss={err_be:.2e} "
+            f"loop={tr_g.get('timestep_loop')} steps={tr_g['steps']}"
+        )
     else:
         print("    skip GCD thermal mesh (no pg_vdd_bumps.sp)")
 
@@ -1480,9 +1498,25 @@ I0 ITermNode_metal1_1200_400 0 DC 1.0e-3
     if gold_th.get("ok"):
         err_th = abs(gold_th["ngspice_dT_k"] - tr["dT_absmax_k"])
         check(err_th / t_inf < 0.05, f"ngspice thermal analogue |BE−ng|/T∞={err_th/t_inf:.3e}")
-        print(f"    thermal BE vs ngspice |ΔT|={err_th:.4e} K T∞={t_inf:.4f} K")
+        print(
+            f"    thermal BE vs ngspice |ΔT|={err_th:.4e} K T∞={t_inf:.4f} K "
+            f"loop={tr.get('timestep_loop')} backend={tr.get('backend')}"
+        )
     else:
         print(f"    ngspice thermal GAP ({gold_th.get('reason')})")
+    tr_py = timestep_thermal_be(
+        {"G": Gth, "C": np.array([c_th])}, lambda _t: np.array([p_w]), dt_th, t_end_th
+    )
+    check(tr_py.get("timestep_loop") == "python_thermal", "callable P stays on Python thermal loop")
+    check(abs(tr_py["T"][0] - tr["T"][0]) / t_inf < 1e-9, "native thermal vs Python |ΔT|/T∞")
+    G2 = sparse.diags([0.04, 0.01], format="csr")
+    C2 = np.array([c_th, c_th])
+    P2 = np.array([p_w, p_w])
+    tr2 = timestep_thermal_be({"G": G2, "C": C2}, P2, dt_th, t_end_th, n_track=1)
+    check(tr2["worst_node"] == 0, "n_track=1 ignores the hotter second node")
+    tr2a = timestep_thermal_be({"G": G2, "C": C2}, P2, dt_th, t_end_th)
+    check(tr2a["worst_node"] == 1, "full-track thermal max is the higher-Rth node")
+    check(tr2["dT_absmax_k"] < tr2a["dT_absmax_k"], "excluding Si-class node lowers reported max ΔT")
 
     from pdn_solvers import native_descriptor, native_descriptor_adaptive, native_mor_descriptor
 

@@ -14,6 +14,7 @@ This library owns the numerically hot path:
 | `timestep_be` | Triangle \(I(t)\) + RHS + solve loop (fixed \(\Delta t\)) |
 | `timestep_be_hist` | Same operator; package R+L companion with inductor current \(i_L\) |
 | `timestep_be_hist_cmat` | Sparse \(C\) (rail-to-rail \(C_{rr}\)) + mixed-rail UIC; tracks VDD min and VSS \(+V_\max\) |
+| `timestep_thermal_be` | Thermal BE \(C\dot T+G T=P\); tracks **max** \(\Delta T\) (optional \(n_\mathrm{track}\) excludes lumped Si). Not electrical min-V |
 | `timestep_be_adaptive` | Same physics; \(\Delta t\) from voltage LTE \(\tfrac12\|\Delta^2 V\|\); \(g_\mathrm{eq}(\Delta t)\) and \(i_L\) |
 | `timestep_descriptor` | Fixed-\(\Delta t\) BE on \(E\dot x + A x = u\) (N4 VRM+die). Diagonal \(E\) wrapper |
 | `timestep_descriptor_gen` | Same BE; sparse \(E\) (mutual L), \(n_\mathrm{iv}\) voltage sources, optional \(u_\mathrm{const}\). Unsymmetric \(A\) → SparseLU gold, never AMG |
@@ -24,7 +25,7 @@ This library owns the numerically hot path:
 
 ## Assumptions
 
-- Companion \(A=G+C/\Delta t+g_\mathrm{eq}\) stays SPD when \(C\) includes instance-pin \(C_{rr}\) or overlapping-strap Cox (SPSD capacitance matrix). AMG still applies. GCD default TRAN does **not** stamp \(C_{rr}\) (`--rail-c` / `RAIL_C=1`) or strap Cox (`--rail-c-geom` / `RAIL_C_GEOM=1`). Negative triangle \(I\) is return-rail KCL (current into VSS).
+- Companion \(A=G+C/\Delta t+g_\mathrm{eq}\) stays SPD when \(C\) includes instance-pin \(C_{rr}\) or overlapping-strap Cox (SPSD capacitance matrix). AMG still applies. GCD default TRAN does **not** stamp \(C_{rr}\) (`--rail-c` / `RAIL_C=1`) or strap Cox (`--rail-c-geom` / `RAIL_C_GEOM=1`). Negative triangle \(I\) is return-rail KCL (current into VSS). Thermal BE is a **different** operator \(C\dot T+G_\mathrm{th}T=P\) with a max-\(\Delta T\) tracker; it does not reuse the electrical min-V loop. \(DPN_NATIVE=0\) forces SciPy.
 - The RLC descriptor \(A\) is **unsymmetric**. Krylov expansions factor \((A+sE)\) with SparseLU, never AMG.
 - Mesh `n` and `nnz` use `int64_t` (`dpn::Index`, Eigen `SparseMatrix` StorageIndex). Call `dpn_index_width()` (returns 64) before `dpn_setup`. SciPy fallback CSR may still be int32 internally; the native path copies to int64. Event counts still reject `n_events > INT_MAX` (internal `timestep_*` take `int n_ev`).
 - AMG uses Vaněk–Mandel–Brezina smoothed aggregation, damped Jacobi, Eigen SparseLU on the coarsest level. Not Ginkgo, not a GPU backend yet. kind=3 is Eigen BiCGSTAB+ILUT (diagonal fallback) for **unsymmetric** operators; it is not a Ginkgo shim.

@@ -201,6 +201,28 @@ def _libdpn():
             ctypes.POINTER(ctypes.c_double),
             ctypes.POINTER(ctypes.c_double),
         ]
+    if hasattr(lib, "dpn_timestep_thermal_be"):
+        lib.dpn_timestep_thermal_be.restype = ctypes.c_int
+        lib.dpn_timestep_thermal_be.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.POINTER(ctypes.c_double),
+            _C_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            _P_IDX,
+        ]
     lib.dpn_mor_setup.restype = ctypes.c_void_p
     lib.dpn_mor_setup.argtypes = [
         _C_IDX,
@@ -1215,6 +1237,80 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
         loop,
         extra=extra,
     )
+
+
+def native_timestep_thermal(solver, C, P, dt: float, t_end: float, T0=None, n_track: int = 0):
+    """Thermal BE inside libdpn. Tracks max ΔT, not electrical min V. Constant P only."""
+    if getattr(solver, "backend", "") != "native" or not hasattr(solver, "_h"):
+        return None
+    lib = getattr(solver, "_lib", None)
+    if lib is None or not hasattr(lib, "dpn_timestep_thermal_be"):
+        return None
+    n = int(solver.n)
+    C = np.ascontiguousarray(C, dtype=np.float64)
+    P = np.ascontiguousarray(P, dtype=np.float64)
+    if C.size != n or P.size != n:
+        return None
+    dt = float(dt)
+    t_end = float(t_end)
+    steps = max(2, int(np.ceil(t_end / dt)))
+    Tf = np.zeros(n, dtype=np.float64)
+    Tw = np.zeros(n, dtype=np.float64)
+    wt = np.zeros(steps, dtype=np.float64)
+    wT = np.zeros(steps, dtype=np.float64)
+    wn = _C_IDX(0)
+    wrost = ctypes.c_double(0.0)
+    wt0 = ctypes.c_double(0.0)
+    rel = ctypes.c_double(0.0)
+    ts = ctypes.c_double(0.0)
+    ns = _C_IDX(0)
+    t0p = None
+    t0a = None
+    if T0 is not None:
+        t0a = np.ascontiguousarray(T0, dtype=np.float64)
+        if t0a.size != n:
+            return None
+        t0p = t0a.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+    rc = lib.dpn_timestep_thermal_be(
+        solver._h,
+        C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        P.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        dt,
+        t_end,
+        t0p,
+        int(n_track or 0),
+        Tf.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        Tw.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.byref(wn),
+        ctypes.byref(wrost),
+        ctypes.byref(wt0),
+        ctypes.byref(rel),
+        ctypes.byref(ts),
+        steps,
+        wt.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        wT.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.byref(ns),
+    )
+    if rc != 0:
+        print(f"dpn_timestep_thermal_be rc={rc}", file=sys.stderr)
+        return None
+    n_out = int(ns.value) if ns.value else steps
+    return {
+        "T": Tf,
+        "T_worst": Tw,
+        "dT_absmax_k": float(wrost.value),
+        "worst_time_s": float(wt0.value),
+        "worst_node": int(wn.value),
+        "steps": n_out,
+        "dt": dt,
+        "rel_res_max": float(rel.value),
+        "solve_s": float(ts.value),
+        "wave_t": wt[:n_out].tolist(),
+        "wave_tmax": wT[:n_out].tolist(),
+        "backend": "native",
+        "timestep_loop": "native_thermal",
+        "via": "thermal BE C/Δt + G_th (libdpn SparseLU; max ΔT, not min V)",
+    }
 
 
 def native_adaptive(sys, events, vdd: float, t_end: float, atol: float = 1e-4, rtol: float = 1e-3):

@@ -146,6 +146,14 @@ DpnMor* dpn_mor_setup_gen(int64_t n, int64_t nnz, const int64_t* rowptr, const i
                           const int64_t* iv, const double* u_const, int n_starts,
                           const double* starts, int n_shifts, const double* shifts, int n_moments);
 
+/* Thermal BE C Ṫ + G T = P. A = G+C/Δt already in the handle. Tracks max ΔT, not min V.
+   T0 may be NULL (UIC 0). n_track<=0 tracks all nodes. wave_* must hold max_steps. */
+int dpn_timestep_thermal_be(DpnHandle* h, const double* C, const double* P, double dt, double t_end,
+                            const double* T0, int64_t n_track, double* T_final, double* T_worst,
+                            int64_t* worst_node, double* worst_T, double* worst_t,
+                            double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
+                            double* wave_tmax, int64_t* n_steps);
+
 #ifdef __cplusplus
 }
 #endif

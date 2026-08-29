@@ -94,4 +94,24 @@ TranResult timestep_descriptor_adaptive(const Csr& A, const Csr& E, double dt0, 
                                         const double* u_const, double atol, double rtol,
                                         const TriangleSrc* ev, int n_ev, int solver_kind = 0);
 
+/* Thermal BE: C Ṫ + G T = P (P constant). A = G + diag(C/Δt) already factored.
+   Tracks max ΔT on [0, n_track) (n_track<=0 → all nodes). Not electrical min-V.
+   UIC T=T0 (nullable → 0). Thermal Δt is independent of IR TRAN Δt. */
+struct ThermalTranResult {
+  int steps = 0;
+  Index worst_node = 0;
+  double worst_T = 0.0;
+  double worst_t = 0.0;
+  double rel_res_max = 0.0;
+  double solve_s = 0.0;
+  std::vector<double> T_worst;
+  std::vector<double> T_final;
+  std::vector<double> wave_t;
+  std::vector<double> wave_tmax;
+};
+
+ThermalTranResult timestep_thermal_be(Solver& solver, const Csr& A, const double* C, const double* P,
+                                      double dt, double t_end, const double* T0 = nullptr,
+                                      Index n_track = 0);
+
 }  // namespace dpn

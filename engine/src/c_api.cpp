@@ -549,4 +549,67 @@ DpnMor* dpn_mor_setup_gen(int64_t n, int64_t nnz, const int64_t* rowptr, const i
   }
 }
 
+int dpn_timestep_thermal_be(DpnHandle* h, const double* C, const double* P, double dt, double t_end,
+                            const double* T0, int64_t n_track, double* T_final, double* T_worst,
+                            int64_t* worst_node, double* worst_T, double* worst_t,
+                            double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
+                            double* wave_tmax, int64_t* n_steps) {
+  if (!h || !h->solver || !C || !P || dt <= 0.0 || n_track < 0) {
+    return -1;
+  }
+  try {
+    auto r = dpn::timestep_thermal_be(*h->solver, h->A, C, P, dt, t_end, T0,
+                                      static_cast<dpn::Index>(n_track));
+    const int64_t n = h->solver->n();
+    if (worst_node) {
+      *worst_node = static_cast<int64_t>(r.worst_node);
+    }
+    if (worst_T) {
+      *worst_T = r.worst_T;
+    }
+    if (worst_t) {
+      *worst_t = r.worst_t;
+    }
+    if (rel_res_max) {
+      *rel_res_max = r.rel_res_max;
+    }
+    if (solve_s) {
+      *solve_s = r.solve_s;
+    }
+    if (T_final) {
+      const int64_t nf = static_cast<int64_t>(r.T_final.size());
+      for (int64_t i = 0; i < n && i < nf; ++i) {
+        T_final[i] = r.T_final[static_cast<size_t>(i)];
+      }
+    }
+    if (T_worst) {
+      const int64_t nw = static_cast<int64_t>(r.T_worst.size());
+      for (int64_t i = 0; i < n && i < nw; ++i) {
+        T_worst[i] = r.T_worst[static_cast<size_t>(i)];
+      }
+    }
+    const int ns = r.steps;
+    if (max_steps < ns) {
+      if (n_steps) {
+        *n_steps = ns;
+      }
+      return -2;
+    }
+    if (n_steps) {
+      *n_steps = ns;
+    }
+    for (int i = 0; i < ns; ++i) {
+      if (wave_t) {
+        wave_t[i] = r.wave_t[static_cast<size_t>(i)];
+      }
+      if (wave_tmax) {
+        wave_tmax[i] = r.wave_tmax[static_cast<size_t>(i)];
+      }
+    }
+    return 0;
+  } catch (...) {
+    return -3;
+  }
+}
+
 }  // extern "C"

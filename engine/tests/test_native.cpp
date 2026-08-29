@@ -1044,6 +1044,38 @@ int main() {
     check(std::abs(wv1 - cc.worst_v_rail1) < 1e-12, "c_api hist_cmat vs C++ VSS");
     dpn_free(hc);
   }
+  {
+    /* 1-node thermal analogue: C Ṫ + G_amb T = P. Tracks max ΔT, not min V. */
+    const double g_amb = 0.02, c_th = 1e-6, p_w = 0.01;
+    const double tau = c_th / g_amb;
+    const double dt = tau / 25.0, t_end = 8.0 * tau, t_inf = p_w / g_amb;
+    Index rp[2] = {0, 1};
+    Index col[1] = {0};
+    double gval[1] = {g_amb};
+    Csr G = dpn::from_csr(1, rp, col, gval);
+    double cdt[1] = {c_th / dt};
+    Csr A = dpn::plus_diag(G, cdt);
+    auto lu = dpn::make_direct(A);
+    double C[1] = {c_th}, P[1] = {p_w};
+    auto th = dpn::timestep_thermal_be(*lu, A, C, P, dt, t_end, nullptr, 0);
+    check(th.steps >= 2, "thermal BE steps");
+    check(std::abs(th.T_final[0] - t_inf) / t_inf < 0.02, "thermal BE settles to P/G_amb");
+    check(th.worst_T >= th.T_final[0] - 1e-12, "thermal tracks max ΔT");
+    check(th.worst_T > 0.0, "thermal max ΔT > 0");
+    DpnHandle* ht = dpn_setup(0, 1, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data());
+    check(ht != nullptr, "c_api thermal setup");
+    const int maxs = 512;
+    std::vector<double> wt(maxs), wT(maxs), Tf(1), Tw(1);
+    Index wn = 0, ns = 0;
+    double wrost = 0, wt0 = 0, rel = 0, ts = 0;
+    check(dpn_timestep_thermal_be(ht, C, P, dt, t_end, nullptr, 0, Tf.data(), Tw.data(), &wn, &wrost,
+                                  &wt0, &rel, &ts, maxs, wt.data(), wT.data(), &ns) == 0,
+          "c_api thermal BE");
+    check(std::abs(wrost - th.worst_T) < 1e-12, "c_api thermal vs C++ max ΔT");
+    check(std::abs(Tf[0] - th.T_final[0]) < 1e-12, "c_api thermal vs C++ T_final");
+    dpn_free(ht);
+    std::printf("    thermal BE T∞=%.4f K T_final=%.4f K steps=%d\n", t_inf, th.T_final[0], th.steps);
+  }
   if (fails) {
     std::fprintf(stderr, "%d checks failed\n", fails);
     return 1;

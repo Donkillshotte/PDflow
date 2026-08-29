@@ -602,4 +602,65 @@ TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double 
                                  n_iv, leak, nullptr, ev, n_ev, 0);
 }
 
+ThermalTranResult timestep_thermal_be(Solver& solver, const Csr& A, const double* C, const double* P,
+                                      double dt, double t_end, const double* T0, Index n_track) {
+  const Index n = solver.n();
+  ThermalTranResult out;
+  if (n <= 0 || dt <= 0.0 || !C || !P) {
+    return out;
+  }
+  const Index n0 = (n_track > 0 && n_track <= n) ? n_track : n;
+  std::vector<double> T(static_cast<size_t>(n), 0.0);
+  if (T0) {
+    std::copy(T0, T0 + n, T.begin());
+  }
+  out.worst_T = T[0];
+  out.worst_node = 0;
+  for (Index i = 1; i < n0; ++i) {
+    if (T[static_cast<size_t>(i)] > out.worst_T) {
+      out.worst_T = T[static_cast<size_t>(i)];
+      out.worst_node = i;
+    }
+  }
+  out.T_worst = T;
+  const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+  std::vector<double> rhs(static_cast<size_t>(n));
+  std::vector<double> Tnext(static_cast<size_t>(n));
+  const double inv_dt = 1.0 / dt;
+  double res_max = 0.0;
+  double t_solve = 0.0;
+  for (int s = 0; s < steps; ++s) {
+    const double t = static_cast<double>(s) * dt;
+    for (Index i = 0; i < n; ++i) {
+      rhs[static_cast<size_t>(i)] = (C[i] * inv_dt) * T[static_cast<size_t>(i)] + P[i];
+    }
+    const auto t0s = std::chrono::steady_clock::now();
+    solver.solve(rhs.data(), Tnext.data(), T.data());
+    t_solve += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0s).count();
+    res_max = std::max(res_max, residual_rel(A, Tnext.data(), rhs.data()));
+    T.swap(Tnext);
+    double tmax = T[0];
+    Index imax = 0;
+    for (Index i = 1; i < n0; ++i) {
+      if (T[static_cast<size_t>(i)] > tmax) {
+        tmax = T[static_cast<size_t>(i)];
+        imax = i;
+      }
+    }
+    out.wave_t.push_back(t);
+    out.wave_tmax.push_back(tmax);
+    if (tmax > out.worst_T) {
+      out.worst_T = tmax;
+      out.worst_t = t;
+      out.worst_node = imax;
+      out.T_worst = T;
+    }
+  }
+  out.steps = steps;
+  out.rel_res_max = res_max;
+  out.solve_s = t_solve;
+  out.T_final = T;
+  return out;
+}
+
 }  // namespace dpn

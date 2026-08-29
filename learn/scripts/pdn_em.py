@@ -884,24 +884,35 @@ def solve_thermal_steady(G, P) -> dict:
     }
 
 
-def timestep_thermal_be(sys: dict, P, dt: float, t_end: float, *, T0=None) -> dict:
+def timestep_thermal_be(sys: dict, P, dt: float, t_end: float, *, T0=None, n_track: int = 0) -> dict:
     """Implicit Euler on C Ṫ + G T = P(t). P may be a vector or f(t)->vector.
 
     Thermal Δt is independent of the IR TRAN Δt. Not a sub-ps electrical step.
+    Tracks max ΔT (optionally on [0, n_track) so a lumped Si node can be excluded
+    from the restamp metric). Constant P uses native LU in libdpn when present.
+    Callable P stays on the Python loop. DPN_NATIVE=0 forces SciPy.
     """
     import numpy as np
     from scipy import sparse
-    from pdn_solvers import DirectLU, residual_rel
+    from pdn_solvers import DirectLU, native_timestep_thermal, residual_rel
 
     G = sys["G"].tocsr()
     C = np.asarray(sys["C"], dtype=np.float64)
     n = int(G.shape[0])
     A = (G + sparse.diags(C / dt)).tocsc()
     lu = DirectLU(A)
+    if not callable(P):
+        Pv = np.asarray(P, dtype=np.float64)
+        nat = native_timestep_thermal(lu, C, Pv, dt, t_end, T0, n_track)
+        if nat is not None:
+            return nat
     T = np.zeros(n, dtype=np.float64) if T0 is None else np.asarray(T0, dtype=np.float64).copy()
     steps = max(2, int(math.ceil(t_end / dt)))
-    worst = float(np.max(T)) if T.size else 0.0
+    n0 = int(n_track) if (n_track and 0 < int(n_track) <= n) else n
+    worst = float(np.max(T[:n0])) if T.size else 0.0
     t_worst = 0.0
+    i_worst = int(np.argmax(T[:n0])) if T.size else 0
+    T_worst = T.copy()
     res_max = 0.0
     wave_t, wave_tmax = [], []
     for s in range(steps):
@@ -910,23 +921,29 @@ def timestep_thermal_be(sys: dict, P, dt: float, t_end: float, *, T0=None) -> di
         rhs = (C / dt) * T + np.asarray(rhs_p, dtype=np.float64)
         T = np.asarray(lu.solve(rhs), dtype=np.float64)
         res_max = max(res_max, residual_rel(A, T, rhs))
-        tmax = float(np.max(T))
+        tmax = float(np.max(T[:n0]))
+        imax = int(np.argmax(T[:n0]))
         wave_t.append(t)
         wave_tmax.append(tmax)
         if tmax > worst:
             worst = tmax
             t_worst = t
+            i_worst = imax
+            T_worst = T.copy()
     return {
         "T": T,
+        "T_worst": T_worst,
         "dT_absmax_k": worst,
         "worst_time_s": t_worst,
+        "worst_node": i_worst,
         "steps": steps,
         "dt": dt,
         "rel_res_max": res_max,
         "wave_t": wave_t,
         "wave_tmax": wave_tmax,
         "backend": getattr(lu, "backend", "python"),
-        "via": "thermal BE C/Δt + G_th (same native LU as electrical, different Δt)",
+        "timestep_loop": "python_thermal",
+        "via": "thermal BE C/Δt + G_th (same LU as electrical, max ΔT, different Δt)",
     }
 
 
