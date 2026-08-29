@@ -13,7 +13,17 @@ if str(_ROOT / "learn") not in sys.path:
     sys.path.insert(0, str(_ROOT / "learn"))
 
 from dse.abc_space import CATALOG, BOILS_STD_OPS, abc_script_plus, min_kernel_to_seen, subsequence_kernel
-from dse.arch_space import DPATH_MODULE, emit_gcd_variant, plan_dpath_extracts, stamp_cone_knobs
+from dse.arch_space import (
+    CTRL_CONE_MODULES,
+    CTRL_MODULE,
+    DPATH_CONE_MODULES,
+    DPATH_MODULE,
+    emit_gcd_variant,
+    is_cone_abc,
+    leftover_modules,
+    plan_dpath_extracts,
+    stamp_cone_knobs,
+)
 from dse.attribute import attribute_dynamic_ir, local_scope
 from dse.boils import ei_min, gp_predict, propose_logic_boils, should_pay_f1
 from dse.egraph import gcd_dpath_egraph
@@ -300,6 +310,18 @@ def main() -> int:
         knobs_fp("logic", chip_rb) != knobs_fp("logic", stamp_cone_knobs(chip_rb, "dpath")),
         "cone rewrite+balance is not the chip flatten-first fingerprint",
     )
+    check(
+        knobs_fp("logic", stamp_cone_knobs(chip_rb, "ctrl"))
+        != knobs_fp("logic", stamp_cone_knobs(chip_rb, "dpath")),
+        "ctrl cone is not flattened into the dpath cone fingerprint",
+    )
+    check(stamp_cone_knobs(chip_rb, "ctrl")["cone"] == "ctrl", "stamp_cone_knobs(ctrl) names the FSM")
+    check(stamp_cone_knobs(chip_rb, "ctrl")["cone_module"] == CTRL_MODULE, "ctrl cone names GcdUnitCtrlRTL")
+    check(is_cone_abc(stamp_cone_knobs(chip_rb, "ctrl")), "ctrl knobs are cone ABC")
+    check(not is_cone_abc(chip_rb), "unstamped chip knobs are not cone ABC")
+    check(CTRL_MODULE in leftover_modules(DPATH_CONE_MODULES), "dpath cone leftover still includes ctrl")
+    check(DPATH_MODULE in leftover_modules(CTRL_CONE_MODULES), "ctrl cone leftover is the dpath modules")
+    check(CTRL_MODULE not in leftover_modules(CTRL_CONE_MODULES), "paid ctrl module is not leftover of itself")
     from dse.controller import f1_area_winner, f1_wns_winner
 
     check(f1_area_winner(mem_w).id == "base", "area winner is liberty_default")
@@ -337,6 +359,22 @@ def main() -> int:
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
     check(any(s["level"] == "f2_region" for s in planned["steps"]), "planner schedules IR-bin region GPL")
     check(any(s["level"] == "f4_region_extract" for s in planned["steps"]), "planner schedules region write_pg_spice")
+    attr_both = dict(attr)
+    attr_both["modules"] = ["dpath", "ctrl"]
+    planned_ctrl = plan_search(attr_both, mem2, f2_cong=0.0)
+    check(planned_ctrl["focus"] == "dpath", "ctrl on the path does not steal dpath focus")
+    check(
+        any(s["level"] == "architecture" for s in planned_ctrl["steps"]),
+        "dpath extracts still scheduled when ctrl is also on the path",
+    )
+    check(
+        any(s["level"] == "logic_ctrl" and s.get("cone") == "ctrl" for s in planned_ctrl["steps"]),
+        "planner schedules ctrl as a first-class cone, not leftover of dpath",
+    )
+    check(
+        not any(s["level"] == "logic_ctrl" for s in planned["steps"]),
+        "IR-only dpath attribution does not invent a ctrl-cone step",
+    )
     check(
         knobs_fp("physical", {"source": "f2_openroad_gpl", "util": 35, "density": 0.55})
         != knobs_fp(
@@ -603,6 +641,10 @@ def main() -> int:
     check(not knobs.get("cone"), "chip-focus proposal is flatten-first, not cone ABC")
     knobs_d = propose_logic(mem2, focus="dpath")
     check((knobs_d or {}).get("cone") == "dpath", "dpath-focus proposal stamps cone ABC")
+    knobs_c = propose_logic(mem2, focus="ctrl")
+    check((knobs_c or {}).get("cone") == "ctrl", "ctrl-focus proposal stamps the FSM cone")
+    check((knobs_c or {}).get("cone_module") == CTRL_MODULE, "ctrl-focus names GcdUnitCtrlRTL")
+    check("ctrl" in (adapter_status()["dse"]["note"] or ""), "DSE adapter names ctrl as a first-class cone")
 
     ir_p = _ROOT / "learn" / "sim" / "reports" / "dynamic_ir_flowlab.json"
     if ir_p.is_file():
@@ -675,6 +717,34 @@ def main() -> int:
             check(
                 abs(float(cc.qor.area_um2) - float(c2.qor.area_um2)) > 1.0,
                 f"cone ABC ≠ chip flatten-first rewrite+balance ({cc.qor.area_um2} vs {c2.qor.area_um2})",
+            )
+            from dse.fidelity import _f1_yscript
+
+            kctrl = stamp_cone_knobs(dict(k2), "ctrl")
+            ys_ctrl = _f1_yscript(rtl, "gcd", str(lib), "abc -liberty LIB -script boils", Path("/tmp/n.v"), Path("/tmp/h.v"), kctrl)
+            check(f"cd {CTRL_MODULE}" in ys_ctrl, "ctrl-cone Yosys cds into GcdUnitCtrlRTL")
+            check(
+                ys_ctrl.split(f"cd {CTRL_MODULE}")[1].split("cd ..")[0].count("boils") >= 1,
+                "ctrl cone is paid with the BOiLS script",
+            )
+            check(f"cd {DPATH_MODULE}" in ys_ctrl, "dpath stays in the leftover default-map when ctrl is paid")
+            kct = dict(k2)
+            kct.update({"scope": "logic_cone", "cone": "ctrl", "cone_module": CTRL_MODULE, "cone_modules": list(CTRL_CONE_MODULES)})
+            cctrl = evaluate_f1_abc(rtl=rtl, liberty=lib, knobs=kct, mem=mm)
+            check(cctrl.status == "ok", f"ctrl-cone rewrite+balance proves equiv ({cctrl.failure})")
+            hier_c = (cctrl.artifacts or {}).get("mapped_hier_v")
+            check(hier_c and Path(hier_c).is_file(), "ctrl-cone F1 writes mapped_hier.v")
+            check(
+                abs(float(cctrl.qor.area_um2) - 409.108) > 1.0,
+                f"ctrl cone ≠ chip flatten-first teacher ({cctrl.qor.area_um2})",
+            )
+            check(
+                abs(float(cctrl.qor.area_um2) - float(cc.qor.area_um2)) > 1.0,
+                f"ctrl cone ≠ dpath cone ({cctrl.qor.area_um2} vs {cc.qor.area_um2})",
+            )
+            print(
+                f"    F1 ctrl-cone {cctrl.qor.area_um2:.3f} vs dpath-cone {cc.qor.area_um2:.3f} "
+                f"vs flatten {c2.qor.area_um2:.3f} µm²"
             )
             if sta_available():
                 hsta = evaluate_sta(Path(hier_p))
@@ -814,7 +884,8 @@ def main() -> int:
             print(
                 f"    F1 default {c0.qor.area_um2:.3f} vs fast {c1.qor.area_um2:.3f} vs "
                 f"rewrite+balance {c2.qor.area_um2:.3f} vs eqz-arch {ca.qor.area_um2:.3f} "
-                f"vs cone-rb {cc.qor.area_um2:.3f} vs synth-speed {cs.qor.area_um2:.3f} µm²"
+                f"vs cone-rb {cc.qor.area_um2:.3f} vs ctrl-cone {cctrl.qor.area_um2:.3f} "
+                f"vs synth-speed {cs.qor.area_um2:.3f} µm²"
             )
         else:
             print("    skip F1 yosys (no liberty)")
@@ -925,6 +996,7 @@ def main() -> int:
         should_pay_f1_synth,
         should_pay_f4_krylov,
         should_pay_f4_ras,
+        should_pay_ctrl_cone,
         should_pay_f5_cts,
         should_pay_f5_local,
         should_pay_net_buffer,
@@ -951,6 +1023,48 @@ def main() -> int:
     )
     pay_s1, why_s1 = should_pay_f1_synth(mem_pay, budget_left=80, n_f1=1, f1_max=6)
     check(pay_s1, f"synthesis F1 is paid after teacher ({why_s1})")
+    pay_ctrl0, why_ctrl0 = should_pay_ctrl_cone(mem_pay, budget_left=80)
+    check(not pay_ctrl0, f"ctrl cone waits for the dpath cone teacher ({why_ctrl0})")
+    mem_pay.add(
+        Candidate(
+            id="dpathc",
+            design_id="gcd",
+            parent_id=None,
+            level="logic",
+            knobs={"name": "boils_rewrite_balance", "cone": "dpath", "cone_module": DPATH_MODULE},
+            knobs_fp="dpathc",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=554.344, fidelity="F1"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    pay_ctrl1, why_ctrl1 = should_pay_ctrl_cone(mem_pay, budget_left=80)
+    check(not pay_ctrl1, f"ctrl cone waits for attributed ctrl hops ({why_ctrl1})")
+    mem_pay.add(
+        Candidate(
+            id="f3ctrl",
+            design_id="gcd",
+            parent_id="dpathc",
+            level="logic",
+            knobs={"source": "f3_opensta_ideal", "parent_id": "dpathc"},
+            knobs_fp="f3ctrl",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(wns_cost=0.21, fidelity="F3"),
+            cost_s=0.1,
+            status="ok",
+            artifacts={"path_cells": ["dpath/b_reg/_127_", "ctrl/_07_", "dpath/a_reg/_112_"]},
+            attr={"kind": "sta_path", "modules": ["dpath", "ctrl"], "cells": ["ctrl/_07_"]},
+        )
+    )
+    pay_ctrl2, why_ctrl2 = should_pay_ctrl_cone(mem_pay, budget_left=80)
+    check(pay_ctrl2, f"ctrl cone is paid after dpath cone + ctrl hops ({why_ctrl2})")
+    pay_ctrl3, why_ctrl3 = should_pay_ctrl_cone(mem_pay, budget_left=80, n_ctrl=1)
+    check(not pay_ctrl3, f"ctrl cone is a single shot ({why_ctrl3})")
     pay_r0, why_r0 = should_pay_f4_ras(mem_pay, budget_left=80, n_ras=0)
     check(not pay_r0, f"RAS waits for AMG ({why_r0})")
     mem_pay.add(

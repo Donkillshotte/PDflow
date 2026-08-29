@@ -25,7 +25,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "dse": {
         "via": "dse.controller",
-        "note": "budget-aware inspect→transform→fidelity→attribute loop",
+        "note": "budget-aware inspect→transform→fidelity→attribute loop; ctrl is a first-class cone, not leftover of dpath",
     },
     "surrogate": {
         "via": "dse.surrogate + dse.gnn",

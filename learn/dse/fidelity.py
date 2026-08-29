@@ -629,7 +629,7 @@ def _f1_yscript(
 
     Equiv is always on generic synth *before* liberty map — Nangate cells
     have no SAT model. Architecture extracts use flatten-first even when
-    `scope=logic_cone`. Cone ABC requires `cone=dpath` / `cone_module`.
+    `scope=logic_cone`. Cone ABC requires `cone=dpath|ctrl` / `cone_module`.
     """
     cone = is_cone_abc(knobs)
     if not cone:
@@ -660,10 +660,10 @@ stat -liberty {lib}
 write_verilog -noattr -noexpr {net}
 """
         return body
-    from .arch_space import DPATH_CONE_MODULES, LEFTOVER_MODULES
+    from .arch_space import cone_modules_for, leftover_modules
 
-    cone_mods = [str(m) for m in (knobs.get("cone_modules") or DPATH_CONE_MODULES)]
-    leftover = [str(m) for m in LEFTOVER_MODULES] + [top]
+    cone_mods = cone_modules_for(knobs)
+    leftover = leftover_modules(cone_mods, top=top)
     hier_w = f"write_verilog -noattr -noexpr {hier}" if hier else ""
 
     def _map_mods(mods: list[str], cmd: str) -> str:
@@ -784,7 +784,7 @@ def evaluate_f1_abc(
             "Yosys+ABC ORFS abc_speed.script (ABC_AREA=0); delay/IR not claimed from F1"
             if level == "synthesis"
             else (
-                "Yosys+ABC cone-local map on dpath modules; delay/IR not claimed from F1"
+                f"Yosys+ABC cone-local map on {knobs.get('cone') or 'named'} modules; delay/IR not claimed from F1"
                 if is_cone_abc(knobs)
                 else "Yosys+ABC mapped area; delay/IR not claimed from F1"
             )
@@ -806,7 +806,7 @@ def evaluate_f1_abc(
         status="ok" if ok else "fail",
         failure=fail,
         note=f"F1 {knobs.get('name')} equiv={'PASS' if equiv else 'FAIL'}"
-        + (" · cone dpath" if is_cone_abc(knobs) else "")
+        + (f" · cone {knobs.get('cone') or knobs.get('cone_module')}" if is_cone_abc(knobs) else "")
         + (" · ORFS abc_speed" if level == "synthesis" else "")
         + (f" · {err}" if err and not ok else ""),
     )

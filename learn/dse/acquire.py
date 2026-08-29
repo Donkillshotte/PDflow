@@ -585,6 +585,54 @@ def should_pay_f1_synth(
     return True, "ORFS abc_speed.script (ABC_AREA=0) — not logic -fast, not abc_ops"
 
 
+def _have_named_cone(mem: DesignMemory, cone: str) -> bool:
+    return any(
+        c.status == "ok"
+        and c.fidelity == "F1"
+        and (c.knobs or {}).get("cone") == cone
+        for c in mem.by_level("logic")
+    )
+
+
+def _ctrl_hops(mem: DesignMemory, attr: dict | None = None) -> bool:
+    from .attribute import ctrl_on_path
+
+    if ctrl_on_path(attr):
+        return True
+    for c in reversed(list(mem.all())):
+        if c.status != "ok":
+            continue
+        if ctrl_on_path(c.attr):
+            return True
+        cells = list((c.artifacts or {}).get("path_cells") or [])
+        if ctrl_on_path(None, cells=cells):
+            return True
+    return False
+
+
+def should_pay_ctrl_cone(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    attr: dict | None = None,
+    n_ctrl: int = 0,
+    ctrl_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay one cone-local ABC on the FSM. Not leftover of dpath, not a chip restart."""
+    if n_ctrl >= ctrl_max:
+        return False, "ctrl-cone ABC shot already spent"
+    if _have_named_cone(mem, "ctrl"):
+        return False, "already have a ctrl-cone F1"
+    if budget_left < min_s:
+        return False, "wall budget would not cover ctrl-cone F1"
+    if not _have_named_cone(mem, "dpath") and not (attr and (attr.get("modules") or [None])[0] == "ctrl"):
+        return False, "ctrl cone waits for the dpath cone teacher (or explicit ctrl focus)"
+    if not _ctrl_hops(mem, attr):
+        return False, "no attributed ctrl hops — not a leftover placeholder shot"
+    return True, "cone-local ABC on ctrl (FSM+RegRst) — not leftover of dpath, not a chip restart"
+
+
 def should_pay_cell_size(
     mem: DesignMemory,
     *,

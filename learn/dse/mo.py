@@ -10,12 +10,21 @@ from __future__ import annotations
 import random
 from typing import Iterable
 
+from .arch_space import CTRL_MODULE
 from .memory import Candidate, DesignMemory
 
 
-def is_cone_logic(cand: Candidate) -> bool:
+def is_cone_logic(cand: Candidate, cone: str | None = None) -> bool:
     k = cand.knobs or {}
-    return bool(k.get("cone_module") or k.get("cone") == "dpath")
+    named = k.get("cone")
+    mod = k.get("cone_module")
+    if cone == "ctrl":
+        return named == "ctrl" or mod == CTRL_MODULE
+    if cone == "dpath":
+        return named == "dpath" or bool(mod and named != "ctrl" and mod != CTRL_MODULE)
+    if cone:
+        return named == cone
+    return bool(mod or named in ("dpath", "ctrl"))
 
 
 def timing_of(mem: DesignMemory, cand: Candidate) -> tuple[float | None, float | None]:
@@ -62,20 +71,25 @@ def baseline_wns(mem: DesignMemory) -> float | None:
 
 
 def logic_mo_rows(
-    mem: DesignMemory, *, cone: bool | None = None
+    mem: DesignMemory, *, cone: bool | str | None = None
 ) -> list[tuple[list[str], float, float | None, float | None]]:
     """F1 logic rows joined with F3: (abc_ops, area, wns_cost, power_w).
 
     `cone=True` keeps only cone-ABC rows so the SSK-GP does not mix the
     chip flatten-first teacher (409.108) with hier-then-flatten cone maps.
+    `cone="dpath"|"ctrl"` keeps one named cone — do not mix FSM and dpath
+    maps in the same kernel.
     """
     rows = []
     for c in mem.by_level("logic"):
         if c.status != "ok" or c.qor.area_um2 is None:
             continue
-        if cone is True and not is_cone_logic(c):
+        if isinstance(cone, str):
+            if not is_cone_logic(c, cone):
+                continue
+        elif cone is True and not is_cone_logic(c):
             continue
-        if cone is False and is_cone_logic(c):
+        elif cone is False and is_cone_logic(c):
             continue
         wns, pwr = timing_of(mem, c)
         rows.append((list(c.knobs.get("abc_ops") or []), float(c.qor.area_um2), wns, pwr))

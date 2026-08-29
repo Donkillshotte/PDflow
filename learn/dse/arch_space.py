@@ -1,7 +1,11 @@
-"""Architecture-level equivalence-preserving RTL extracts for the GCD dpath.
+"""Architecture-level equivalence-preserving RTL extracts and cone stamps.
 
-Hierarchical: only the attributed cone (dpath operators) is rewritten.
-ctrl / top wiring stay untouched. Full-chip F1 equiv still runs on `gcd`.
+Hierarchical: an attributed cone is rewritten or remapped; the inverse
+modules stay default-mapped. Full-chip F1 equiv still runs on `gcd`.
+
+Architecture extracts stay on the dpath operators (e-graph). Cone ABC is
+a separate first-class transform: `dpath` or `ctrl`, never a leftover
+placeholder and never a silent flatten of the whole chip.
 
 Extracts are emitted only when the e-graph discovered the equality
 (see egraph.available_extracts). This is ROVER/ASPEN-shaped:
@@ -28,7 +32,7 @@ _LT_BORROW_BLOCK = """  wire [16:0] _dse_lt_ext;
 
 
 # Yosys modules after hierarchical `synth -top gcd` (no flatten).
-# Cone ABC remaps these with the BOiLS script; leftover stays default-map.
+# Cone ABC remaps the paid cone; leftover = known modules minus that cone.
 DPATH_MODULE = "GcdUnitDpathRTL_0x4d0fc71ead8d3d9e"
 CTRL_MODULE = "GcdUnitCtrlRTL_0x4d0fc71ead8d3d9e"
 DPATH_CONE_MODULES = (
@@ -40,28 +44,62 @@ DPATH_CONE_MODULES = (
     "Mux_0xdd6473406d1a99a",
     "Subtractor_0x422b1f52edd46a85",
 )
+# Inverse of the dpath cone: FSM + reset regs. First-class when STA
+# attributes `ctrl/` hops — not a leftover placeholder of dpath ABC.
 LEFTOVER_MODULES = (
     CTRL_MODULE,
     "RegRst_0x9f365fdf6c8998a",
 )
+CTRL_CONE_MODULES = list(LEFTOVER_MODULES)
+KNOWN_SUB_MODULES = list(dict.fromkeys(list(DPATH_CONE_MODULES) + list(CTRL_CONE_MODULES)))
 
 
 def is_cone_abc(knobs: dict | None) -> bool:
     """Explicit cone ABC — not architecture `scope=logic_cone` (flatten-first)."""
     k = knobs or {}
-    return bool(k.get("cone_module") or k.get("cone") == "dpath")
+    cone = k.get("cone")
+    return bool(k.get("cone_module") or cone in ("dpath", "ctrl"))
+
+
+def leftover_modules(cone_mods: list[str] | tuple[str, ...], top: str = "gcd") -> list[str]:
+    """Submodules that stay default-mapped, plus the top. Inverse of the paid cone."""
+    paid = set(cone_mods)
+    leftover = [m for m in KNOWN_SUB_MODULES if m not in paid]
+    leftover.append(top)
+    return leftover
+
+
+def cone_modules_for(knobs: dict | None) -> list[str]:
+    """Paid Yosys modules for a cone-ABC proposal."""
+    k = knobs or {}
+    if k.get("cone_modules"):
+        return [str(m) for m in k["cone_modules"]]
+    if k.get("cone") == "ctrl" or k.get("cone_module") == CTRL_MODULE:
+        return list(CTRL_CONE_MODULES)
+    return list(DPATH_CONE_MODULES)
 
 
 def stamp_cone_knobs(knobs: dict, focus: str) -> dict:
-    """Same ABC sequence, scoped to the IR cone. Chip flatten-first stays unstamped."""
-    if focus != "dpath":
-        return knobs
+    """Same ABC sequence, scoped to one named cone. Chip flatten-first stays unstamped.
+
+    `ctrl` is its own cone (FSM + RegRst), not a leftover of the dpath cone
+    and not a chip restart. `scope=logic_cone` without `cone`/`cone_module`
+    is not enough — that used to silently flatten the whole chip.
+    """
     out = dict(knobs)
-    out["scope"] = "logic_cone"
-    out["cone"] = "dpath"
-    out["cone_module"] = DPATH_MODULE
-    out["cone_modules"] = list(DPATH_CONE_MODULES)
-    return out
+    if focus == "dpath":
+        out["scope"] = "logic_cone"
+        out["cone"] = "dpath"
+        out["cone_module"] = DPATH_MODULE
+        out["cone_modules"] = list(DPATH_CONE_MODULES)
+        return out
+    if focus == "ctrl":
+        out["scope"] = "logic_cone"
+        out["cone"] = "ctrl"
+        out["cone_module"] = CTRL_MODULE
+        out["cone_modules"] = list(CTRL_CONE_MODULES)
+        return out
+    return knobs
 
 EXTRACTS: dict[str, dict] = {
     "sub_twos_complement": {

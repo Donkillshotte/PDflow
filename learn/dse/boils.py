@@ -176,19 +176,24 @@ def generate_candidates(seen_ops: list[list[str]], best: list[str] | None) -> li
 def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
     """Next logic knobs: DRiLLS UCB, then EHVI(area, WNS) or area EI."""
     seen_fp = mem.seen_knobs("logic")
-    want_cone = focus == "dpath"
-    rows = logic_mo_rows(mem, cone=True if want_cone else False)
+    want_cone = focus in ("dpath", "ctrl")
+    cone_key: bool | str | None = focus if want_cone else False
+    rows = logic_mo_rows(mem, cone=cone_key)
     if want_cone and not rows:
         rows = logic_mo_rows(mem, cone=False)
     train_seqs = [r[0] for r in rows]
     y = [r[1] for r in rows]
     timed = [(r[0], r[1], r[2]) for r in rows if r[2] is not None]
-    have_cone = any(is_cone_logic(c) for c in mem.by_level("logic") if c.status == "ok")
+    have_cone = any(
+        is_cone_logic(c, focus if want_cone else None)
+        for c in mem.by_level("logic")
+        if c.status == "ok"
+    )
     ired = []
     for c in mem.by_level("logic"):
         if c.status != "ok" or c.qor.area_um2 is None:
             continue
-        if want_cone and have_cone and not is_cone_logic(c):
+        if want_cone and have_cone and not is_cone_logic(c, focus):
             continue
         ir = ir_of(mem, c)
         if ir is not None:

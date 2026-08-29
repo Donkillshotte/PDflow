@@ -6,6 +6,7 @@ Loop: inspect → propose (level, knobs) → pick fidelity → evaluate → attr
 Optimizers (each on its own level):
   architecture — e-graph extract of the IR-attributed dpath cone (ROVER/ASPEN shape)
   logic        — BOiLS SSK-GP + EHVI(area, WNS) / EI, DRiLLS sequential append
+  logic_ctrl   — cone-local ABC on the attributed FSM (not leftover of dpath)
   synthesis    — ORFS ABC_AREA F0 catalog + one abc_speed.script F1 (not abc_ops)
   cell         — attributed worst-path drive-up (module-scoped; not ABC)
   net          — attributed worst-path BUF insert (module-scoped; not ABC)
@@ -34,6 +35,7 @@ from .acquire import (
     should_pay_f3_spef,
     should_pay_f3_sta,
     should_pay_cell_size,
+    should_pay_ctrl_cone,
     should_pay_net_buffer,
     should_pay_f1_synth,
     should_pay_f4_amg,
@@ -108,6 +110,17 @@ LEVELS = ("architecture", "logic", "synthesis", "cell", "net", "physical", "rout
 def propose_logic(mem: DesignMemory, focus: str = "chip") -> dict | None:
     """Public hook used by tests: a logic proposal never carries physical knobs."""
     return propose_logic_boils(mem, focus=focus)
+
+
+def _logic_cone_focus(plan: dict, attr: dict) -> str:
+    """Prefer dpath cone ABC when both modules are on the path. Ctrl is a later shot."""
+    mods = list(attr.get("modules") or [])
+    focus = str(plan.get("focus") or "chip")
+    if "dpath" in mods or focus == "dpath":
+        return "dpath"
+    if "ctrl" in mods or focus == "ctrl":
+        return "ctrl"
+    return focus
 
 
 def f1_ok(mem: DesignMemory) -> list:
@@ -372,12 +385,13 @@ def run_controller(
             time_candidate(cand, reason=f"F3 after extract {name} — reorder remaining")
 
     while n_f1 < _f1_room() and time.time() < t_end:
-        knobs = propose_logic_boils(mem, focus=str(plan.get("focus") or "chip"))
+        logic_focus = _logic_cone_focus(plan, attr)
+        knobs = propose_logic_boils(mem, focus=logic_focus)
         if knobs is None:
             extra = next(
                 (
                     p
-                    for p in propose_from_attr(mem, focus=str(plan.get("focus") or "chip"), attr=attr)
+                    for p in propose_from_attr(mem, focus=logic_focus, attr=attr)
                     if p.get("level") == "logic"
                     and knobs_fp("logic", {k: p[k] for k in ("name", "abc_args", "abc_ops", "abc_script") if k in p})
                     not in mem.seen_knobs("logic")
@@ -397,7 +411,7 @@ def run_controller(
                 break
         if knobs is None:
             break
-        knobs = stamp_cone_knobs(knobs, str(plan.get("focus") or "chip"))
+        knobs = stamp_cone_knobs(knobs, logic_focus)
         pred = predict_f1_area(mem.by_level("logic"), list(knobs.get("abc_ops") or []))
         best = _best_area(mem, "logic")
         acq = knobs.get("acq") or {}
@@ -459,6 +473,56 @@ def run_controller(
             cost_s=cand.cost_s,
         )
         time_candidate(cand, reason="F3 after ABC so EHVI sees WNS")
+
+    n_ctrl = sum(
+        1
+        for c in mem.by_level("logic")
+        if c.status == "ok" and c.fidelity == "F1" and (c.knobs or {}).get("cone") == "ctrl"
+    )
+    pay_ctrl, why_ctrl = should_pay_ctrl_cone(
+        mem, budget_left=t_end - time.time(), attr=attr, n_ctrl=n_ctrl
+    )
+    step("acquire", fidelity="F1_CTRL_CONE", pay=pay_ctrl, why=why_ctrl)
+    if pay_ctrl and time.time() < t_end:
+        knobs = propose_logic_boils(mem, focus="ctrl") or {
+            "name": "boils_rewrite_balance",
+            "abc_args": [],
+            "abc_ops": ["rewrite", "balance"],
+            "abc_script": "file",
+        }
+        knobs = stamp_cone_knobs(knobs, "ctrl")
+        if knobs_fp("logic", knobs) not in mem.seen_knobs("logic"):
+            step("propose", level="logic", knobs=knobs, fidelity="F1", why=why_ctrl)
+            cand = evaluate_f1_abc(
+                rtl=rtl,
+                liberty=lib,
+                knobs=knobs,
+                mem=mem,
+                design_id=design_id,
+                parent_id=phys.id if phys else None,
+                level="logic",
+            )
+            cand.attr = {
+                "inherited_from": "sta_path",
+                "scope": "logic_cone",
+                "modules": ["ctrl"],
+                "transform": knobs.get("name"),
+                "cone": "ctrl",
+                "note": "ctrl-cone ABC; not leftover of dpath, not a chip restart",
+            }
+            mem.touch(cand)
+            step(
+                "evaluate",
+                id=cand.id,
+                level="logic",
+                fidelity="F1",
+                status=cand.status,
+                area_um2=cand.qor.area_um2,
+                cost_s=cand.cost_s,
+                via="ctrl_cone",
+                reason="attributed-ctrl-cone-abc",
+            )
+            time_candidate(cand, reason="F3 after ctrl-cone ABC")
 
     pay_synth, why_synth = should_pay_f1_synth(
         mem, budget_left=t_end - time.time(), n_f1=n_f1, f1_max=f1_max
@@ -1324,7 +1388,7 @@ def run_controller(
         "architecture": [
             "layered search: architecture ≠ logic ≠ synthesis ≠ physical ≠ routing ≠ PDN",
             "F0 SSK-GP area + RUDY-class congestion; not IR",
-            "F1 chip flatten-first (area teacher 409.108) · cone-local ABC on dpath when IR focuses the cone",
+            "F1 chip flatten-first (area teacher 409.108) · cone-local ABC on dpath and on ctrl when STA names the FSM",
             "synthesis F1 = ORFS abc_speed.script (ABC_AREA=0); abc_area stays F0-only; not abc_ops",
             "cell-local drive-up on the attributed OpenSTA worst path (module-scoped); not ABC",
             "net-local BUF on attributed worst-path hops (module-scoped); not ABC",
@@ -1334,7 +1398,7 @@ def run_controller(
             "F5-CTS clock_tree_synthesis + DRT + OpenRCX + OpenSTA set_propagated_clock — not make finish",
             "F5-local OpenRCX SPEF on the cell/net netlist — F3→F5 residual, not a reused F1 SPEF",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
-            "IR combo on dpath → cone extracts then cone-local ABC; F3 WNS reorders remaining, no chip restart",
+            "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
             "Pareto per level — EHVI acquires, it does not replace the front",
             "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · MF PDN AMG/RAS/Krylov residual",
@@ -1352,6 +1416,16 @@ def run_controller(
         "n_candidates": len(mem),
         "n_f1": sum(1 for c in mem.all() if c.fidelity == "F1"),
         "n_f1_synth": sum(1 for c in mem.by_level("synthesis") if c.fidelity == "F1"),
+        "n_ctrl_cone": sum(
+            1
+            for c in mem.by_level("logic")
+            if c.status == "ok" and c.fidelity == "F1" and (c.knobs or {}).get("cone") == "ctrl"
+        ),
+        "n_dpath_cone": sum(
+            1
+            for c in mem.by_level("logic")
+            if c.status == "ok" and c.fidelity == "F1" and (c.knobs or {}).get("cone") == "dpath"
+        ),
         "n_cell": sum(
             1 for c in mem.by_level("cell") if (c.knobs or {}).get("source") == "cell_size_up" and c.status == "ok"
         ),
@@ -1549,6 +1623,11 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if c.status == "ok" and (c.knobs or {}).get("source") == "f4_solver_krylov" and c.qor.dynamic_ir_mv is not None:
             kry = f" · Krylov/MOR residual {c.qor.dynamic_ir_mv:.3f} mV m={(c.artifacts or {}).get('m')} (not gold)"
             break
+    ctrlc = ""
+    for c in mem.by_level("logic"):
+        if c.status == "ok" and c.fidelity == "F1" and (c.knobs or {}).get("cone") == "ctrl" and c.qor.area_um2 is not None:
+            ctrlc = f" · ctrl-cone {c.knobs.get('name')} {c.qor.area_um2:.3f} µm²"
+            break
     synth = ""
     for c in mem.by_level("synthesis"):
         if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None:
@@ -1613,5 +1692,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{synth}{cell}{netb}{wns}{f5}{f5cts}{f5loc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{wns}{f5}{f5cts}{f5loc} · IR cone {mods}{ir}{ras}{kry}"
     )

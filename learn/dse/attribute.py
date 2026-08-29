@@ -194,3 +194,16 @@ def attribute_from_path(path: Path) -> dict:
     if not path.is_file():
         return {"status": "GAP", "reason": f"missing {path}"}
     return attribute_dynamic_ir(json.loads(path.read_text()))
+
+
+def ctrl_on_path(attr: dict | None = None, *, cells: list | None = None) -> bool:
+    """True when STA/IR names the FSM — not inferred from leftover-of-dpath."""
+    if attr:
+        if "ctrl" in (attr.get("modules") or []):
+            return True
+        cells = list(attr.get("cells") or []) + list(cells or [])
+    for n in cells or []:
+        s = str(n)
+        if s.startswith("ctrl/") or s.startswith("ctrl.") or "/ctrl/" in s:
+            return True
+    return False

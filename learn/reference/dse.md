@@ -10,7 +10,8 @@ RTL
  → F1 Yosys+ABC (alfabeto BOiLS, GP+SSK, append DRiLLS) + equiv
  → F1 synthesis: ORFS `abc_speed.script` (ABC_AREA=0, `-D 460`) — non `-fast`, non `abc_ops`
    chip = flatten-first (teacher area 409.108 µm²)
-   cono dpath = ABC solo sui moduli del datapath; ctrl leftover default-map; `mapped_hier.v`
+   cono dpath = ABC solo sui moduli del datapath; leftover = moduli noti − cono pagato
+   cono ctrl = ABC su FSM+RegRst (primo classe, non leftover del dpath); `mapped_hier.v`
    write_verilog -noattr -noexpr  (celle liberty, non assign soup)
  → F2-fast netgraph (baricentro ancorato + HPWL + RUDY)
  → F2 OpenROAD GPL -skip_io (un colpo a budget, non finish)
@@ -84,9 +85,11 @@ ripetuto come se l’area fosse l’unico asse.
 Dopo il teacher chip (`liberty_default` flatten-first, 409.108 µm²) i proposal
 BOiLS con focus IR `dpath` ricevono `scope=logic_cone` + `cone=dpath` +
 `cone_module` (`knobs_fp` li distingue dal flatten-first). ABC gira sui moduli
-del datapath (`GcdUnitDpathRTL`, `sub`, `a_reg`/`b_reg`, …); ctrl resta
-default-map. Lo STA sul `mapped_hier.v` vede `dpath/b_reg/…` → `dpath/sub/…`
-senza inherit. Il netlist flattenato va a P&R/GRT/F4.
+del datapath (`GcdUnitDpathRTL`, `sub`, `a_reg`/`b_reg`, …); leftover = inverse
+del cono pagato. Se lo STA elenca hop `ctrl/`, un colpo **logic_ctrl** mappa
+`GcdUnitCtrlRTL`+`RegRst` (non è leftover del dpath e non riparte dal chip).
+Lo STA sul `mapped_hier.v` vede `dpath/b_reg/…` e `ctrl/_07_` senza inherit.
+Il netlist flattenato va a P&R/GRT/F4.
 
 ## Attributi (chip → block → region → cone → cell → net)
 

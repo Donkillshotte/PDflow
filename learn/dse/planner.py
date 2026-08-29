@@ -5,6 +5,7 @@ Physical feedback chooses *where* to search (chip→block→region→cone):
   F3 WNS on an extract  → deprioritize extracts that lost slack
   spatial IR region     → physical density, not more ABC
   high GRT congestion   → physical F0 / GPL, not more ABC
+  ctrl hops on the path → cone-local ABC on the FSM (not leftover of dpath)
   otherwise             → logic BOiLS/DRiLLS (EHVI area+WNS), then F2 / GPL
 """
 
@@ -54,15 +55,27 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         logic_why = "BOiLS SSK-GP + DRiLLS UCB on ABC sequences"
         if bound or extract_wns(mem):
             logic_why = "BOiLS EHVI(area, WNS) + DRiLLS UCB — F3 steers ABC, not area-only"
-        if focus == "dpath":
+        if focus == "dpath" or "dpath" in modules:
             logic_why += "; cone-local ABC on dpath (chip flatten-first teacher already measured)"
         steps.append(
             {
                 "level": "logic",
                 "reason": logic_why,
-                "scope": "logic_cone" if focus == "dpath" else ("block" if focus != "chip" else "chip"),
+                "scope": "logic_cone" if (focus == "dpath" or "dpath" in modules) else ("block" if focus != "chip" else "chip"),
             }
         )
+        if focus == "ctrl" or "ctrl" in modules:
+            steps.append(
+                {
+                    "level": "logic_ctrl",
+                    "reason": (
+                        "STA/IR attributes ctrl hops — cone-local ABC on the FSM "
+                        "(not leftover of dpath, not a chip restart)"
+                    ),
+                    "scope": "logic_cone",
+                    "cone": "ctrl",
+                }
+            )
     steps.append(
         {
             "level": "f2_fast",
