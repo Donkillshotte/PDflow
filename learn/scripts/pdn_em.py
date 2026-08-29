@@ -16,6 +16,69 @@ import math
 
 from pdn_extract import layer_of, node_xy_dbu
 
+MU0_2PI = 2.0e-7  # H/m = μ0/(2π)
+
+
+def grover_partial_L(l_m: float, w_m: float, t_m: float) -> float:
+    """Partial self-inductance of a rectangular bar (Grover). No mutual, no skin.
+
+    L = (mu0/2pi) * l * [ln(2l/(w+t)) + 1/2 + 0.2235 (w+t)/l].
+    The log argument is clamped to >= 1 so a stub shorter than (w+t) stays non-negative.
+    This is not loop inductance and not a PEEC mutual matrix.
+    """
+    l = max(float(l_m), 1e-18)
+    wt = max(float(w_m) + float(t_m), 1e-18)
+    return MU0_2PI * l * (math.log(max(2.0 * l / wt, 1.0)) + 0.5 + 0.2235 * wt / l)
+
+
+def estimate_on_die_L(resistors, tech: dict | None) -> dict:
+    """Grover L on same-layer write_pg_spice straps. Vias stay R (no length model)."""
+    branches = []
+    by_layer: dict[str, dict] = {}
+    tech = tech or {}
+    for a, b, r in resistors:
+        g = branch_geometry(a, b, float(r), tech)
+        if not g:
+            continue
+        Lh = grover_partial_L(g["L_m"], g["w_m"], g["t_m"])
+        rec = {
+            "a": a,
+            "b": b,
+            "r_ohm": float(r),
+            "L_h": Lh,
+            "layer": g["layer"],
+            "L_m": g["L_m"],
+            "w_m": g["w_m"],
+            "t_m": g["t_m"],
+        }
+        branches.append(rec)
+        slot = by_layer.setdefault(g["layer"], {"n": 0, "L_sum_h": 0.0, "L_max_h": 0.0})
+        slot["n"] += 1
+        slot["L_sum_h"] += Lh
+        slot["L_max_h"] = max(slot["L_max_h"], Lh)
+    Lvals = [b["L_h"] for b in branches]
+    Lvals_sorted = sorted(Lvals)
+    p50 = Lvals_sorted[len(Lvals_sorted) // 2] if Lvals_sorted else 0.0
+    return {
+        "status": "READY" if branches else "GAP",
+        "n_stamped": len(branches),
+        "n_r": len(resistors),
+        "L_sum_h": float(sum(Lvals)) if Lvals else 0.0,
+        "L_max_h": float(max(Lvals)) if Lvals else 0.0,
+        "L_p50_h": float(p50),
+        "by_layer": by_layer,
+        "branches": branches,
+        "via": "Grover partial self-L on same-layer write_pg_spice straps",
+        "note": (
+            "Σ partial self is not loop L (mesh paths are parallel). No mutual, no skin. "
+            "Vias stay resistive. Descriptor stamp is unsymmetric — not AMG. "
+            "Default TRAN stays N3 RC+pkg companion unless --on-die-l."
+            if branches
+            else "no same-layer strap with LEF geometry — on-die L stays GAP"
+        ),
+    }
+
+
 # Cu-class. Documented, not a foundry card.
 ALPHA_R = 0.0039  # 1/K
 EA_EV = 0.9

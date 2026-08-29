@@ -57,7 +57,7 @@ Indici nativi: `int64_t` (`dpn_index_width()==64`). SciPy fallback può restare 
 |---|---|---|
 | N1 R | \(GV=I\) | READY |
 | N2 R+C | + `c_decap` | READY |
-| N3 + pkg R/L | companion \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\) | READY (L on-die non estratta) |
+| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L on-die **stimata** (Σ partial self, non loop L); descriptor TRAN solo con `--on-die-l` / `ON_DIE_L=1` (non AMG) |
 | N4 + VRM | on-die + lumped VRM descriptor | **READY** (native descriptor BE; \|N3−N4\| ≈ 23 nV on this STA-clock window — 47 µF is stiff). Full VRM µs load-step resta `system_pdn` |
 
 FAST = vectorless + AMG = **READY** (STA t50 in clock). ACCURATE e SIGNOFF = GAP.
@@ -68,7 +68,7 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 
 | # | Livello | Oggi | Gap onesto |
 |---|---|---|---|
-| 1 | PDN extract | OpenROAD `write_pg_spice` + tech LEF + SPEF PG C name-join | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped |
+| 1 | PDN extract | OpenROAD `write_pg_spice` + tech LEF + SPEF PG C name-join + Grover on-die L | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped; on-die L default is estimate-only (no mutual) |
 | 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
 | 3 | Activity | STA `report_arrival` t50 (clock) + SAIF TC name-join | VCD RTL name-join GAP; ranking extra I(t) resta sintetico; SAIF non inventa t50 |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) in Python TRAN se tabelle + slew; Nangate = GAP |

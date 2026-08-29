@@ -146,6 +146,9 @@ type DynReport = {
   scenarios?: Scenario[];
   timing_impact?: Timing;
   em?: Em;
+  extract?: {
+    on_die_l?: { status?: string; n_stamped?: number; L_sum_h?: number; L_max_h?: number };
+  };
   activity_model?: Activity;
   windowed?: { status?: string; abs_err_vs_A_mv?: number; n_windows?: number; steps?: number; full_steps?: number };
 };
@@ -231,6 +234,7 @@ export function DynamicIrHeatmap({
   const saif = report?.activity_model?.saif;
   const l3 = levels?.L3_windowed;
   const pathT = timing?.path;
+  const odl = report?.extract?.on_die_l;
 
   return (
     <section className="fl-dynir" aria-label="Dynamic IR heatmap">
@@ -406,6 +410,18 @@ export function DynamicIrHeatmap({
                   {saif.status ?? "GAP"}
                   {saif.n_joined != null ? ` · ${saif.n_joined} inst` : ""}
                   {saif.n_idle ? ` · idle ${saif.n_idle}` : ""}
+                </dd>
+              </div>
+            ) : null}
+            {odl?.status ? (
+              <div>
+                <dt>On-die L</dt>
+                <dd>
+                  {odl.status}
+                  {odl.n_stamped != null ? ` · ${odl.n_stamped} straps` : ""}
+                  {odl.L_max_h != null
+                    ? ` · max ${(odl.L_max_h * 1e12).toFixed(1)} pH`
+                    : ""}
                 </dd>
               </div>
             ) : null}

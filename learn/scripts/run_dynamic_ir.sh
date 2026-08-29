@@ -3,6 +3,7 @@
 # Per-ITerm PWL + A LU gold + B SA-AMG + C Krylov MOR + D RAS Schwarz.
 # Extract = SPICE + tech LEF (EM J); SPEF PG *D_NET *CAP is stamped by name-join
 # (GCD OpenRCX has no VDD — GAP; signal nets are never mapped).
+# Grover on-die L is estimated always; descriptor TRAN is ON_DIE_L=1 (not AMG).
 # Activity = OpenSTA arrival t50 (clock) + VCD/SAIF name-join (GAP on RTL tb_gcd).
 # SAIF idle-zeros TC=0 pulses; does not invent t50 or rescale I_avg.
 # Path STA delay from OpenSTA report_checks (NLDM typical-V × (Vdd/V)^α).
@@ -107,6 +108,9 @@ fi
 EXTRA+=(--sta "${STA_JSON}")
 if [[ -f "${VCD}" ]]; then
   EXTRA+=(--vcd "${VCD}")
+fi
+if [[ "${ON_DIE_L:-}" == "1" ]]; then
+  EXTRA+=(--on-die-l)
 fi
 python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   --spice "${SPICE}" \

@@ -85,7 +85,7 @@ from pdn_solvers import (  # noqa: E402
     rl_companion,
 )
 from pdn_transient import build_system, solve_static  # noqa: E402
-from pdn_vrm import assemble_n4_mesh, load_vrm_cfg, ngspice_vrm_die_gold, timestep_descriptor  # noqa: E402
+from pdn_vrm import assemble_n4_mesh, assemble_strap_rlc, load_vrm_cfg, ngspice_vrm_die_gold, timestep_descriptor  # noqa: E402
 
 
 def viridis(t: float) -> str:
@@ -620,6 +620,7 @@ def platform_block(
     ras: dict | None = None,
     extract: dict | None = None,
     activity: dict | None = None,
+    on_die_l: dict | None = None,
 ) -> dict:
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
     if mor and mor.get("ok"):
@@ -733,7 +734,18 @@ def platform_block(
                 "via": "g_eq=1/(R+L/Δt) on pad diagonals; i_L history on the RHS",
                 "pkg_r": pkg_r,
                 "pkg_l": pkg_l,
-                "note": "not extracted on-die inductance; companion stays SPD so AMG applies",
+                "on_die_l": None if not extract else ((extract.get("on_die_l") or {}).get("status")),
+                "note": (
+                    f"Grover partial self on {((extract or {}).get('on_die_l') or {}).get('n_stamped')} straps "
+                    f"(Σ {(((extract or {}).get('on_die_l') or {}).get('L_sum_h') or 0)*1e9:.3f} nH is not loop L); "
+                    + (
+                        "descriptor TRAN stamped (--on-die-l)"
+                        if on_die_l and on_die_l.get("ok")
+                        else "default TRAN is still RC+pkg companion so AMG applies"
+                    )
+                    if ((extract or {}).get("on_die_l") or {}).get("status") == "READY"
+                    else "not extracted on-die inductance; companion stays SPD so AMG applies"
+                ),
             },
             "N4_vrm": {
                 "status": "READY" if n4 and n4.get("ok") else "PARTIAL",
@@ -1129,6 +1141,7 @@ def main() -> int:
     ap.add_argument("--vrm-cfg", type=Path, default=None, help="system_pdn JSON for lumped VRM")
     ap.add_argument("--lef", type=Path, default=None, help="tech LEF for metal WIDTH/THICKNESS/RPERSQ (EM J)")
     ap.add_argument("--spef", type=Path, default=None, help="SPEF PG *D_NET *CAP stamped by name-join (never mapped from signal nets)")
+    ap.add_argument("--on-die-l", action="store_true", help="descriptor BE with Grover strap L (unsymmetric; not AMG)")
     args = ap.parse_args()
 
     current_model = probe_liberty_current_model(args.liberty)
@@ -1429,6 +1442,51 @@ def main() -> int:
             "c_vrm": float(vrm.get("c_out") or 47e-6),
         }
 
+    ondie_meta = None
+    if args.on_die_l:
+        branches = (ext.get("on_die_l") or {}).get("branches") or []
+        if branches:
+            sys_l = assemble_strap_rlc(
+                sys_be["G_mesh"],
+                sys_be["C"],
+                idx,
+                voltages,
+                branches,
+                pkg_r=args.pkg_r,
+                pkg_l=args.pkg_l,
+                dt=dt,
+                vdd=vdd,
+                pad="companion",
+            )
+            leak_l = np.asarray(sys_be["leak"], dtype=np.float64)
+
+            def _i_strap(t, leak=leak_l, evs=events):
+                I = leak.copy()
+                for ev in evs:
+                    I[ev["idx"]] += triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
+                return I
+
+            dyn_l = timestep_descriptor(sys_l, _i_strap, dt, t_end, vdd, leak=leak_l, events=events)
+            ondie_meta = {
+                "ok": True,
+                "status": "READY",
+                "n_straps": sys_l.get("n_straps"),
+                "n": int(sys_l["A"].shape[0]),
+                "pad": sys_l.get("pad"),
+                "worst_droop_mv": dyn_l["worst_droop"] * 1e3,
+                "worst_time_ns": dyn_l["worst_time_s"] * 1e9,
+                "abs_err_vs_N3_mv": abs(dyn_l["worst_droop"] - dyn["worst_droop"]) * 1e3,
+                "backend": dyn_l.get("backend"),
+                "via": sys_l.get("via"),
+                "note": "Grover partial self, no mutual; pads stay N3 companion; unsymmetric — not AMG",
+            }
+        else:
+            ondie_meta = {
+                "ok": False,
+                "status": "GAP",
+                "note": "no Grover straps to stamp",
+            }
+
     scenarios = None
     if not args.no_scenarios:
         scenarios = []
@@ -1719,6 +1777,7 @@ def main() -> int:
         ras=ras_meta,
         extract=extract_report,
         activity=activity_model,
+        on_die_l=ondie_meta,
     )
     amg_note = (
         f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
@@ -1759,7 +1818,7 @@ def main() -> int:
         "engine": "studio-dynamic-ir",
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
-            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C stamped only from PG *D_NET name-join",
+            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in)",
             "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS interpolator when tables exist)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
@@ -1849,6 +1908,7 @@ def main() -> int:
         "solver_c": mor_meta,
         "solver_d": ras_meta,
         "n4": n4_meta,
+        "on_die_l": ondie_meta or extract_report.get("on_die_l"),
         "adaptive": adaptive_meta,
         "windowed": {k: v for k, v in win_run.items() if k != "V_worst"},
         "scenarios": scenarios,

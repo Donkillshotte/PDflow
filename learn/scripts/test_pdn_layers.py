@@ -589,7 +589,7 @@ quit
         / "lef"
         / "NangateOpenCellLibrary.tech.lef"
     )
-    from pdn_extract import extract_pdn, parse_tech_lef, probe_spef, stamp_spef_pg_c
+    from pdn_extract import extract_pdn, parse_spice, parse_tech_lef, probe_spef, stamp_spef_pg_c
     from pdn_em import em_thermal_snapshot
 
     tech = parse_tech_lef(lef)
@@ -675,6 +675,73 @@ quit
     i0 = idx_be["ITermNode_metal1_0_0"]
     check(sys_pgc["C"][i0] > sys_lumped["C"][i0], "SPEF C is added to lumped c_decap, not a replacement")
     check(abs(sys_pgc["C"][i0] - sys_lumped["C"][i0] - 0.0012e-12) < 1e-24, "assemble_be adds stamped Farads")
+
+    from pdn_em import grover_partial_L, estimate_on_die_L
+
+    Lg = grover_partial_L(1e-6, 0.07e-6, 0.13e-6)
+    check(abs(Lg - 5.6943e-13) / 5.6943e-13 < 1e-3, f"Grover 1 µm metal1 bar ({Lg:.4e} H)")
+    onl = estimate_on_die_L(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],
+        tech,
+    )
+    check(onl["status"] == "READY" and onl["n_stamped"] == 1, "estimate_on_die_L READY on one strap")
+    check(onl["L_max_h"] > 0, "Grover L_max > 0")
+    via_r = estimate_on_die_L(
+        [("ITermNode_metal1_0_0", "ITermNode_metal2_0_0", 1.0)],
+        tech,
+    )
+    check(via_r["status"] == "GAP" and via_r["n_stamped"] == 0, "vias are not Grover-stamped")
+    ext_l = extract_pdn(tmp_sp, lef=lef)
+    check((ext_l.get("on_die_l") or {}).get("status") == "READY", "extract_pdn includes Grover L")
+    gcd_sp = (
+        _ROOT
+        / "tools"
+        / "OpenROAD-flow-scripts"
+        / "flow"
+        / "results"
+        / "nangate45"
+        / "gcd"
+        / "flowlab"
+        / "pdn"
+        / "pg_vdd_bumps.sp"
+    )
+    if gcd_sp.is_file():
+        gcd_l = estimate_on_die_L(parse_spice(gcd_sp)[0], tech)
+        check(gcd_l["n_stamped"] > 1000, f"GCD Grover straps n={gcd_l['n_stamped']}")
+        check("metal1" in (gcd_l.get("by_layer") or {}), "GCD metal1 straps have Grover L")
+    else:
+        print("    skip GCD Grover (no pg_vdd_bumps.sp)")
+
+    from pdn_vrm import assemble_strap_rlc, ngspice_strap_rlc_gold
+    from pdn_transient import build_system as _bs
+    from shutil import which as _which
+
+    rs, ls = 0.38, 1e-12
+    _, idx2, G2 = _bs([("n0", "n1", rs)], {"n1": 0.0}, {"n0": 1.1})
+    C2 = np.array([50e-12, 50e-12])
+    sys_st = assemble_strap_rlc(
+        G2,
+        C2,
+        idx2,
+        {"n0": 1.1},
+        [{"a": "n0", "b": "n1", "r_ohm": rs, "L_h": ls}],
+        pkg_r=0.05,
+        pkg_l=2e-10,
+        dt=10e-12,
+        vdd=1.1,
+        pad="inductor",
+    )
+    check(sys_st["n_straps"] == 1 and sys_st["iv"] == 2, "strap descriptor: 1 L + bump L")
+    check(sys_st["A"].shape[0] == 4, "2 voltages + i_pkg + i_strap")
+    if _which("ngspice"):
+        gold_st = ngspice_strap_rlc_gold()
+        check(gold_st.get("ok") is True, f"2-node Grover strap vs ngspice ({gold_st})")
+        print(
+            f"    strap RLC |BE−ng|={gold_st.get('abs_err_mv'):.4f} mV "
+            f"backend={gold_st.get('backend')} droop={gold_st.get('be_droop_mv'):.3f} mV"
+        )
+    else:
+        print("    skip strap RLC ngspice")
 
     # w = RPERSQ·L/R. L = 2000 dbu / 2000 dbu_per_um = 1 µm → w = 1 µm (not min WIDTH 0.07).
     order = ["ITermNode_metal1_0_0", "ITermNode_metal1_2000_0"]

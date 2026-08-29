@@ -67,7 +67,7 @@ Il prototipo stampava \(L/\Delta t\) memoryless. N3 ora è un **companion BE ser
 |---|---|---|
 | **N1 R** | \(GV = I\) | READY — `solve_static` |
 | **N2 R+C** | decap lumpato sui tap | READY — `c_decap` |
-| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\) (non L on-die estratta) |
+| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L on-die stimata (descriptor `--on-die-l`, non AMG) |
 | **N4 on-die + pkg + bumps + VRM** | gerarchia completa | **READY** nativo (`libdpn` descriptor BE, \|N3−N4\| ≈ 23 nV sul clock STA GCD). Il load-step µs VRM resta `system_pdn` ngspice |
 
 ## Tre livelli di prodotto
@@ -114,7 +114,7 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 
 | Livello | Prodotto “RedHawk-like” | Cosa gira **oggi** sul GCD |
 |---|---|---|
-| 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` + tech LEF; SPEF PG C stamped only from PG `*D_NET` (GCD OpenRCX = GAP) |
+| 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` + tech LEF; SPEF PG C from PG `*D_NET` (GCD OpenRCX = GAP); Grover on-die L estimated (descriptor `--on-die-l`) |
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; SAIF TC name-join (idle-zero, no t50); extra I(t) ranking sintetico; VCD RTL name-join = GAP |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |

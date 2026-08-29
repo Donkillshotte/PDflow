@@ -9,7 +9,8 @@ for architecture (one descriptor, not a second ngspice-only world).
 Stamp (unsymmetric, same as engine RLC MOR):
   C v' + G v − i = −I
   L i' + R i + v_plus − v_minus = 0   (or = Vsrc for the VRM branch)
-Never ML. Not a replacement for extracted on-die L.
+On-die strap L uses the same descriptor (Grover partial self, no mutual).
+Never ML.
 """
 
 from __future__ import annotations
@@ -142,13 +143,137 @@ def assemble_n4_mesh(G_mesh, C_die, bumps, *, vdd: float, pkg_r: float, pkg_l: f
     }
 
 
+def assemble_strap_rlc(
+    G_mesh,
+    C,
+    idx: dict,
+    voltages: dict,
+    straps: list,
+    *,
+    pkg_r: float,
+    pkg_l: float,
+    dt: float,
+    vdd: float,
+    pad: str = "companion",
+):
+    """Descriptor Eẋ+Ax=u with Grover strap L. Unsymmetric → SparseLU, never AMG.
+
+    Unstamps converted R from G, then:
+      pad=companion: N3 g_eq on bump diagonals + u_const = g_eq·Vdd (Python TRAN).
+      pad=inductor:  one bump R+L state (native-compatible; iv = that KVL row).
+    Vias and unlisted R stay in G. No mutual L.
+    """
+    from pdn_solvers import rl_companion
+
+    G_mesh = G_mesh.tocsr().astype(np.float64)
+    C = np.asarray(C, dtype=np.float64)
+    n = G_mesh.shape[0]
+    straps = [s for s in straps if s.get("a") in idx and s.get("b") in idx and float(s.get("L_h") or 0) > 0]
+    Grest = G_mesh.tolil(copy=True)
+    for s in straps:
+        ia, ib = int(idx[s["a"]]), int(idx[s["b"]])
+        g = 1.0 / max(float(s["r_ohm"]), 1e-18)
+        Grest[ia, ia] -= g
+        Grest[ib, ib] -= g
+        Grest[ia, ib] += g
+        Grest[ib, ia] += g
+    bump = [int(idx[nm]) for nm in voltages if nm in idx]
+    m = len(straps)
+    rows, cols, data = [], [], []
+
+    def put(i, j, v):
+        rows.append(int(i))
+        cols.append(int(j))
+        data.append(float(v))
+
+    if pad == "inductor":
+        if len(bump) != 1:
+            raise ValueError("pad=inductor requires exactly one bump (native +Vdd on one KVL row)")
+        b0 = bump[0]
+        N = n + 1 + m
+        E = np.zeros(N)
+        E[:n] = C
+        E[n] = max(pkg_l, 1e-18)
+        Gcoo = Grest.tocoo()
+        for i, j, v in zip(Gcoo.row, Gcoo.col, Gcoo.data):
+            put(int(i), int(j), float(v))
+        put(b0, n, -1.0)
+        put(n, b0, 1.0)
+        put(n, n, max(pkg_r, 1e-9))
+        i0 = n + 1
+        for k, s in enumerate(straps):
+            ia, ib = int(idx[s["a"]]), int(idx[s["b"]])
+            ik = i0 + k
+            E[ik] = max(float(s["L_h"]), 1e-18)
+            put(ia, ik, -1.0)
+            put(ib, ik, 1.0)
+            put(ik, ia, 1.0)
+            put(ik, ib, -1.0)
+            put(ik, ik, max(float(s["r_ohm"]), 1e-9))
+        A = sparse.coo_matrix((data, (rows, cols)), shape=(N, N)).tocsc()
+        return {
+            "E": E,
+            "A": A,
+            "n_v": n,
+            "n_die": n,
+            "n_i": 1 + m,
+            "vdd": vdd,
+            "die_idx": None,
+            "iv": n,
+            "u_const": None,
+            "n_straps": m,
+            "pad": "inductor",
+            "via": "descriptor BE on-die Grover L + bump R+L (unsymmetric SparseLU)",
+        }
+
+    g_eq, _hsc = rl_companion(pkg_r, pkg_l, dt)
+    for i in bump:
+        Grest[i, i] += g_eq
+    N = n + m
+    E = np.zeros(N)
+    E[:n] = C
+    Gcoo = Grest.tocoo()
+    for i, j, v in zip(Gcoo.row, Gcoo.col, Gcoo.data):
+        put(int(i), int(j), float(v))
+    for k, s in enumerate(straps):
+        ia, ib = int(idx[s["a"]]), int(idx[s["b"]])
+        ik = n + k
+        E[ik] = max(float(s["L_h"]), 1e-18)
+        put(ia, ik, -1.0)
+        put(ib, ik, 1.0)
+        put(ik, ia, 1.0)
+        put(ik, ib, -1.0)
+        put(ik, ik, max(float(s["r_ohm"]), 1e-9))
+    A = sparse.coo_matrix((data, (rows, cols)), shape=(N, N)).tocsc()
+    u_const = np.zeros(N)
+    for i in bump:
+        u_const[i] = g_eq * vdd
+    return {
+        "E": E,
+        "A": A,
+        "n_v": n,
+        "n_die": n,
+        "n_i": m,
+        "vdd": vdd,
+        "die_idx": None,
+        "iv": -1,
+        "u_const": u_const,
+        "n_straps": m,
+        "g_pad": g_eq,
+        "pad": "companion",
+        "via": "descriptor BE on-die Grover L + N3 pad companion (Python; not AMG)",
+    }
+
+
 def timestep_descriptor(sys: dict, i_die, dt: float, t_end: float, vdd: float, leak=None, events=None) -> dict:
     """Fixed-Δt BE on Eẋ + A x = u(t). UIC: voltages = Vdd, currents = 0.
 
     i_die is either a callable t→float (compact 1-node) or t→ndarray of length n_die.
-    When `events` is given, libdpn descriptor BE is preferred.
+    When `events` is given, libdpn descriptor BE is preferred unless u_const/iv<0.
     """
-    if events is not None:
+    iv = int(sys.get("iv", sys.get("n_v", 0)))
+    use_native = events is not None and sys.get("u_const") is None and iv >= 0
+    if use_native:
         from pdn_solvers import native_descriptor
 
         nat = native_descriptor(sys, events, vdd, t_end, dt, leak=leak)
@@ -169,20 +294,24 @@ def timestep_descriptor(sys: dict, i_die, dt: float, t_end: float, vdd: float, l
     worst_v, worst_t, worst_i = vdd, 0.0, 0
     worst_Vdie = np.full(n_die, vdd)
     wave_t, wave_v = [], []
-    iv = int(sys.get("iv", n_v))
+    u0 = sys.get("u_const")
+    u0 = None if u0 is None else np.asarray(u0, dtype=np.float64)
     for s in range(steps):
         t = s * dt
         u = np.zeros(n)
+        if u0 is not None:
+            u += u0
         idraw = i_die(t)
         if np.isscalar(idraw) or (isinstance(idraw, np.ndarray) and idraw.ndim == 0):
             die = int(sys["die_idx"])
-            u[die] = -float(idraw)
+            u[die] -= float(idraw)
             vmin_nodes = (die,)
         else:
             idraw = np.asarray(idraw, dtype=np.float64)
-            u[:n_die] = -idraw
+            u[:n_die] -= idraw
             vmin_nodes = range(n_die)
-        u[iv] = vdd
+        if iv >= 0:
+            u[iv] += vdd
         rhs = (E / dt) * x + u
         x = lu.solve(rhs)
         vdie = x[:n_die] if sys.get("die_idx") is None else np.array([x[int(sys["die_idx"])]])
@@ -202,9 +331,107 @@ def timestep_descriptor(sys: dict, i_die, dt: float, t_end: float, vdd: float, l
         "wave_vmin": wave_v,
         "steps": steps,
         "V_worst": worst_Vdie,
-        "via": "descriptor BE VRM+pkg+die (Python SparseLU)",
+        "via": sys.get("via") or "descriptor BE VRM+pkg+die (Python SparseLU)",
         "backend": "python",
         "timestep_loop": "python_desc",
+    }
+
+
+def ngspice_strap_rlc_gold(
+    *,
+    vdd=1.1,
+    r_pkg=0.05,
+    l_pkg=2e-10,
+    r_s=0.38,
+    l_s=1e-12,
+    c0=50e-12,
+    c1=50e-12,
+    i_peak=5e-3,
+    t50=0.2e-9,
+    dur=0.2e-9,
+    dt=10e-12,
+    t_end=0.4e-9,
+) -> dict:
+    """2-node Grover strap R+L vs ngspice gear maxord=1. Pad is a descriptor inductor."""
+    from pdn_current import triangle_above_leak
+    from pdn_transient import build_system
+
+    resistors = [("n0", "n1", r_s)]
+    voltages = {"n0": vdd}
+    _, idx, G = build_system(resistors, {"n1": 0.0}, voltages)
+    C = np.array([c0, c1], dtype=np.float64)
+    straps = [{"a": "n0", "b": "n1", "r_ohm": r_s, "L_h": l_s}]
+    sysd = assemble_strap_rlc(
+        G, C, idx, voltages, straps, pkg_r=r_pkg, pkg_l=l_pkg, dt=dt, vdd=vdd, pad="inductor"
+    )
+    i1 = idx["n1"]
+
+    def i_die(t):
+        i = np.zeros(2)
+        i[i1] = triangle_above_leak(t, t50, dur, i_peak)
+        return i
+
+    be = timestep_descriptor(
+        sysd,
+        i_die,
+        dt,
+        t_end,
+        vdd,
+        events=[{"idx": i1, "t50_s": t50, "dur_s": dur, "i_pulse": i_peak, "i_leak": 0.0}],
+    )
+    t0 = max(t50 - 0.5 * dur, 0.0)
+    t1 = t50 + 0.5 * dur
+    tmp = Path(tempfile.mkdtemp(prefix="dynir-strap-l-"))
+    sp_path = tmp / "strap.sp"
+    dat_path = tmp / "strap.dat"
+    sp_path.write_text(
+        f"""* 2-node on-die R+L strap (gear maxord=1 ≈ BE)
+Vsrc src 0 DC {vdd}
+Rpkg src a {r_pkg}
+Lpkg a n0 {l_pkg}
+C0 n0 0 {c0}
+Rs n0 mid {r_s}
+Ls mid n1 {l_s}
+C1 n1 0 {c1}
+Iload n1 0 PWL(0 0 {t0:.6e} 0 {t50:.6e} {i_peak:.6e} {t1:.6e} 0 {t_end:.6e} 0)
+.control
+option method=gear maxord=1
+set filetype=ascii
+tran {dt:.6e} {t_end:.6e}
+wrdata {dat_path} v(n1)
+quit
+.endc
+.end
+"""
+    )
+    subprocess.run(["ngspice", "-b", str(sp_path)], capture_output=True, text=True, timeout=30)
+    vmin = None
+    for extra in [dat_path, *sorted(tmp.glob("strap.dat*"))]:
+        if not extra.is_file():
+            continue
+        for line in extra.read_text(errors="replace").splitlines():
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            try:
+                v = float(parts[1])
+            except ValueError:
+                continue
+            vmin = v if vmin is None else min(vmin, v)
+        if vmin is not None:
+            break
+    if vmin is None:
+        return {"ok": False, "be_vmin": be["worst_voltage"], "ngspice_vmin": None, "backend": be.get("backend")}
+    err_mv = abs(be["worst_voltage"] - vmin) * 1e3
+    return {
+        "ok": err_mv < 5.0,
+        "be_vmin": be["worst_voltage"],
+        "ngspice_vmin": vmin,
+        "abs_err_mv": err_mv,
+        "be_droop_mv": be["worst_droop"] * 1e3,
+        "n_straps": sysd.get("n_straps"),
+        "backend": be.get("backend"),
+        "method": "ngspice gear maxord=1 vs descriptor BE Grover strap R+L",
     }
 
 

@@ -8,6 +8,8 @@ Backends:
 
 Not a DEF+LEF Rsq extractor and not a fork of OpenROAD PSM.
 Never synthesizes PDN C from signal SPEF names.
+On-die L is Grover partial self on same-layer straps (no mutual); not stamped
+into the SPD companion unless the caller asks for the descriptor.
 """
 
 from __future__ import annotations
@@ -335,6 +337,9 @@ def extract_pdn(
     nodes = spice_node_set(resistors, currents, voltages)
     spef_m = stamp_spef_pg_c(spef, nodes)
     spef_ready = spef_m.get("status") == "READY"
+    from pdn_em import estimate_on_die_L
+
+    on_die = estimate_on_die_L(resistors, tech)
     return {
         "backend": "write_pg_spice",
         "spice": str(spice),
@@ -347,6 +352,7 @@ def extract_pdn(
         "n_layers": int(tech.get("n_routing_layers") or len(tech.get("layers") or {})),
         "tech": tech,
         "spef": spef_m,
+        "on_die_l": on_die,
         "status": "READY",
         "note": (
             "OpenROAD write_pg_spice R mesh; LEF for EM J; "
@@ -354,6 +360,11 @@ def extract_pdn(
                 f"SPEF PG C stamped on {spef_m.get('n_stamped')} nodes"
                 if spef_ready
                 else "SPEF PG C is GAP (never mapped from signal nets)"
+            )
+            + (
+                f"; Grover on-die L on {on_die.get('n_stamped')} straps"
+                if on_die.get("status") == "READY"
+                else "; on-die L GAP"
             )
         ),
     }
@@ -383,5 +394,6 @@ def summarize_extract(ext: dict) -> dict:
             },
         },
         "spef": {k: v for k, v in (ext.get("spef") or {}).items() if k != "node_c"},
+        "on_die_l": {k: v for k, v in (ext.get("on_die_l") or {}).items() if k != "branches"},
         "note": ext.get("note"),
     }
