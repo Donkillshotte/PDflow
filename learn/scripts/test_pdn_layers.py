@@ -39,7 +39,6 @@ from pdn_current import (  # noqa: E402
     parse_ecsm_waveforms,
     probe_liberty_current_model,
     triangle_above_leak,
-    events_use_ccs,
     events_use_ecsm,
 )
 
