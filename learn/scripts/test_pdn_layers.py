@@ -155,6 +155,97 @@ STA_ARRIVALS_DONE n=2
     )
     check(ev_clk[0]["t50_via"] == "sta_arrival", "plan_events clock applies STA")
     check(abs(ev_clk[0]["t50_s"] - 0.20e-9) < 1e-15, "clock STA t50 is rise arrival")
+
+    from pdn_extract import parse_pg_sinks, pair_pg_rails, remap_events_to_rail, extract_pdn
+
+    spice_dir = Path(tempfile.mkdtemp(prefix="dpn_vss_"))
+    vdd_sp = spice_dir / "vdd.sp"
+    vss_sp = spice_dir / "vss.sp"
+    vdd_sp.write_text(
+        """* Netlist for VDD
+R0 ITermNode_metal1_0_0 Node_pad_vdd R=1.0
+R1 ITermNode_metal1_100_0 Node_pad_vdd R=1.0
+R2 ITermNode_metal1_200_0 Node_pad_vdd R=1.0
+V0 Node_pad_vdd 0 DC 1.1
+* Sinks
+* Sink for _479_/VDD
+I0 ITermNode_metal1_0_0 0 DC 1.0e-3
+* Sink for _480_/VDD
+I1 ITermNode_metal1_100_0 0 DC 2.0e-3
+* Sink for _orphan_/VDD
+I2 ITermNode_metal1_200_0 0 DC 1.0e-6
+"""
+    )
+    vss_sp.write_text(
+        """* Netlist for VSS
+R0 ITermNode_metal1_0_1 Node_pad_vss R=1.0
+R1 ITermNode_metal1_100_1 Node_pad_vss R=1.0
+V0 Node_pad_vss 0 DC 0
+* Sinks
+* Sink for _479_/VSS
+I0 ITermNode_metal1_0_1 0 DC 1.0e-3
+* Sink for _480_/VSS
+I1 ITermNode_metal1_100_1 0 DC 2.0e-3
+"""
+    )
+    vdd_sinks = parse_pg_sinks(vdd_sp)
+    vss_sinks = parse_pg_sinks(vss_sp)
+    check(len(vdd_sinks) == 3 and vdd_sinks["ITermNode_metal1_0_0"]["inst"] == "_479_", "parse VDD Sink-for")
+    check(vss_sinks["ITermNode_metal1_0_1"]["pin"].upper() == "VSS", "parse VSS Sink-for")
+    paired = pair_pg_rails(vdd_sinks, vss_sinks)
+    check(paired["status"] == "READY" and paired["n_pairs"] == 2, "pair by instance, skip orphan")
+    vdd_idx = {"ITermNode_metal1_0_0": 0, "ITermNode_metal1_100_0": 1, "Node_pad_vdd": 2}
+    vss_idx = {"ITermNode_metal1_0_1": 10, "ITermNode_metal1_100_1": 11, "Node_pad_vss": 12}
+    remapped = remap_events_to_rail(
+        [{"idx": 0, "t50_s": 0.1e-9}, {"idx": 1, "t50_s": 0.2e-9}, {"idx": 2, "t50_s": 0.0}],
+        vdd_idx,
+        vss_idx,
+        paired["pairs"],
+    )
+    check(len(remapped) == 2 and remapped[0]["idx"] == 10 and remapped[1]["idx"] == 11, "remap VDD idx → VSS idx")
+    check(all(r.get("rail") == "VSS" for r in remapped), "remapped events tagged VSS")
+
+    from pdn_transient import build_system
+    from pdn_dynamic import run_return_rail
+
+    ext_vdd = extract_pdn(vdd_sp)
+    _ord, idx_vdd, _G = build_system(ext_vdd["resistors"], ext_vdd["currents"], ext_vdd["voltages"])
+    vss_run = run_return_rail(
+        vdd_sp,
+        vss_sp,
+        [
+            {
+                "idx": idx_vdd["ITermNode_metal1_0_0"],
+                "t50_s": 0.2e-9,
+                "dur_s": 0.2e-9,
+                "i_pulse": 5e-3,
+                "i_leak": 0.0,
+            },
+            {
+                "idx": idx_vdd["ITermNode_metal1_100_0"],
+                "t50_s": 0.2e-9,
+                "dur_s": 0.2e-9,
+                "i_pulse": 5e-3,
+                "i_leak": 0.0,
+            },
+        ],
+        idx_vdd,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        lef=None,
+        spef=None,
+    )
+    check(vss_run["status"] == "READY" and vss_run["n_pairs"] == 2, "VSS return TRAN pairs")
+    check(vss_run["n_events"] == 2, "orphan VDD sink is not remapped")
+    check(vss_run["worst_bounce_mv"] > 0.0, "VSS bounce is -Vmin > 0")
+    print(
+        f"    VSS return bounce={vss_run['worst_bounce_mv']:.4f} mV "
+        f"pairs={vss_run['n_pairs']} backend={vss_run.get('backend')}"
+    )
+
     ev_sp = plan_events(
         {"ITermNode_metal1_100_0": 1e-3},
         {"ITermNode_metal1_100_0": 0},
@@ -886,6 +977,17 @@ quit
             err_b = abs(nat_n4["worst_droop"] - bicg_n4["worst_droop"]) * 1e3
             check(err_b < 1e-5, f"descriptor BiCGSTAB vs LU |err|={err_b:.4e} mV")
             print(f"    descriptor BiCGSTAB |A-E|={err_b:.4e} mV via={bicg_n4.get('via')}")
+        ras_n4 = native_descriptor(sysd, ev_n4, vdd, t_end, dt, solver_kind=2)
+        if ras_n4 is None:
+            print("    skip descriptor RAS (no workhorse symbol)")
+        else:
+            err_r = abs(nat_n4["worst_droop"] - ras_n4["worst_droop"]) * 1e3
+            check(err_r < 1e-5, f"descriptor RAS vs LU (ndom=1 compact) |err|={err_r:.4e} mV")
+            print(f"    descriptor RAS compact |A-D|={err_r:.4e} mV via={ras_n4.get('via')}")
+        check(
+            native_descriptor(sysd, ev_n4, vdd, t_end, dt, solver_kind=1) is None,
+            "descriptor AMG kind=1 is refused",
+        )
         ad_n4 = native_descriptor_adaptive(sysd, ev_n4, vdd, t_end, dt)
         if ad_n4 is None:
             print("    skip descriptor adaptive (no symbol)")
@@ -924,6 +1026,44 @@ quit
             err_stm = abs(st_lu["worst_droop"] - red_st["worst_droop"]) * 1e3
             check(err_stm < 5.0, f"strap gen MOR vs descriptor |A-C|={err_stm:.4f} mV")
             print(f"    strap gen MOR m={mor_st.m} backend={mor_st.backend} |A-C|={err_stm:.4e} mV")
+        from scipy import sparse as sp
+
+        nv = 32
+        g = 1.0 / 0.2
+        Gch = sp.lil_matrix((nv, nv))
+        for i in range(nv):
+            if i > 0:
+                Gch[i, i] += g
+                Gch[i, i - 1] -= g
+            if i + 1 < nv:
+                Gch[i, i] += g
+                Gch[i, i + 1] -= g
+        Nch = nv + 1
+        Ach = sp.lil_matrix((Nch, Nch))
+        Ach[:nv, :nv] = Gch
+        Ach[0, nv] = -1.0
+        Ach[nv, 0] = 1.0
+        Ach[nv, nv] = 0.05
+        Ed = np.zeros(Nch)
+        Ed[:nv] = 50e-12
+        Ed[nv] = 2e-10
+        sys_ch = {
+            "A": Ach.tocsr(),
+            "E": sp.diags(Ed, format="csr"),
+            "n_v": nv,
+            "n_die": nv,
+            "die_idx": -1,
+            "iv_list": [nv],
+            "n_iv": 1,
+            "dt": dt,
+        }
+        ch_ev = [{"idx": nv - 1, "t50_s": t50, "dur_s": dur, "i_pulse": i_peak, "i_leak": 0.0}]
+        ch_lu = native_descriptor(sys_ch, ch_ev, vdd, t_end, dt)
+        ch_ras = native_descriptor(sys_ch, ch_ev, vdd, t_end, dt, solver_kind=2)
+        if ch_lu is not None and ch_ras is not None:
+            err_ch = abs(ch_lu["worst_voltage"] - ch_ras["worst_voltage"])
+            check(err_ch < 1e-6, f"32-node descriptor RAS vs LU |err|={err_ch:.3e} V")
+            print(f"    32-node descriptor RAS |A-D|={err_ch:.3e} V")
 
     print("ALL test_pdn_layers PASSED")
     return 0

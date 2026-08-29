@@ -70,7 +70,8 @@ TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double 
 
 /* Same BE; E is sparse (mutual L, non-diagonal C). iv[0:n_iv) get +Vdd each step.
    u_const (nullable, length n) is added every step (N3 pad companion).
-   solver_kind: 0 SparseLU gold, 3 BiCGSTAB workhorse. Never AMG (A unsymmetric). */
+   solver_kind: 0 SparseLU gold, 2 RAS+GMRES (undirected graph), 3 BiCGSTAB.
+   Never AMG (A unsymmetric). */
 TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double t_end, double vdd,
                                    int n_v, int n_die, Index die_idx, const Index* iv, int n_iv,
                                    const double* leak, const double* u_const, const TriangleSrc* ev,

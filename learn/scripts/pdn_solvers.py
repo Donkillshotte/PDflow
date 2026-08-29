@@ -10,8 +10,10 @@ Solver C — rational Krylov MOR. RC: reduced BE on δv. RLC: descriptor
 Eẋ + A x = u on x=[v; i_L] matching the companion (A unsymmetric).
 
 Solver D — restricted additive Schwarz on the BE operator. Graph-grown
-subdomains, overlapping local SparseLU, RAS restriction, GMRES
-(not CG: RAS is not SPD). ndom=1 falls back to one LU of A.
+subdomains on the undirected sparsity graph A∪Aᵀ (needed for unsymmetric
+descriptor K), overlapping local SparseLU of the real operator A, RAS
+restriction, GMRES (not CG: RAS is not SPD). ndom=1 falls back to one LU of A.
+kind=2 on descriptor K is the same RAS; never AMG.
 
 Not Ginkgo, not pyamg, not a fork of ESPSim. Classic Vaněk–Mandel–Brezina
 SA plus damped Jacobi, coarse LU when n is small. kind=3 is Eigen BiCGSTAB+ILUT
@@ -38,6 +40,13 @@ _LIB_TRIED = False
 _C_IDX = ctypes.c_int64
 _P_IDX = ctypes.POINTER(_C_IDX)
 _NP_IDX = np.int64
+
+
+def droop_pct(vdd: float, worst_v: float) -> float | None:
+    """(Vdd−Vmin)/Vdd as percent. None on a 0 V return rail (undefined)."""
+    if abs(float(vdd)) < 1e-18:
+        return None
+    return 100.0 * (float(vdd) - float(worst_v)) / float(vdd)
 
 
 def rl_companion(pkg_r: float, pkg_l: float, dt: float) -> tuple[float, float]:
@@ -715,14 +724,22 @@ def _ras_ndom(n: int) -> int:
     return min(8, max(2, n // 32))
 
 
-def _ras_partition(A, ndom: int) -> np.ndarray:
-    """Graph-growing owners. Not index stripes — follows the stencil."""
+def _ras_undirected_csr(A):
+    """Binary A ∪ Aᵀ for partition/halo. Unsymmetric descriptor K needs both directions."""
     A = A.tocsr()
-    n = int(A.shape[0])
+    B = (A + A.T).tocsr()
+    B.data[:] = 1.0
+    return B
+
+
+def _ras_partition(A, ndom: int) -> np.ndarray:
+    """Graph-growing owners. Not index stripes — undirected sparsity graph."""
+    G = _ras_undirected_csr(A)
+    n = int(G.shape[0])
     owner = np.full(n, -1, dtype=np.int32)
     unassigned = n
     seed = 0
-    indptr, indices = A.indptr, A.indices
+    indptr, indices = G.indptr, G.indices
     for s in range(ndom):
         if unassigned <= 0:
             break
@@ -771,6 +788,8 @@ class PyRASDD:
         self.last_iters = 0
         owner = _ras_partition(self.A, self.ndom)
         self.doms = []
+        G = _ras_undirected_csr(self.A)
+        g_indptr, g_indices = G.indptr, G.indices
         indptr, indices, data = self.A.indptr, self.A.indices, self.A.data
         for s in range(self.ndom):
             interior = np.flatnonzero(owner == s)
@@ -779,8 +798,8 @@ class PyRASDD:
             for _ in range(hops):
                 nxt = in_set.copy()
                 for i in np.flatnonzero(in_set):
-                    sl, sr = int(indptr[i]), int(indptr[i + 1])
-                    nxt[indices[sl:sr]] = True
+                    sl, sr = int(g_indptr[i]), int(g_indptr[i + 1])
+                    nxt[g_indices[sl:sr]] = True
                 in_set = nxt
             all_idx = np.flatnonzero(in_set).astype(np.int32)
             if all_idx.size == 0:
@@ -932,7 +951,7 @@ def _tran_result(kw, n, solver_name, setup_s, n_levels, vdd, dt, t_end, backend,
     out = {
         "worst_voltage": worst_v,
         "worst_droop": vdd - worst_v,
-        "worst_droop_pct": 100.0 * (vdd - worst_v) / vdd,
+        "worst_droop_pct": droop_pct(vdd, worst_v),
         "worst_time_s": float(kw["worst_t"].value),
         "worst_node_idx": int(kw["worst_node"].value),
         "dt": dt,
@@ -1231,17 +1250,17 @@ def _descriptor_wave_args(p, vdd, t_end, dt):
 
 
 def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=None, solver_kind: int = 0):
-    """Native BE on Eẋ+Ax=u. Sparse-E gen API. solver_kind 0=SparseLU gold, 3=BiCGSTAB. Never AMG."""
+    """Native BE on Eẋ+Ax=u. Sparse-E gen API. solver_kind 0=SparseLU gold, 2=RAS, 3=BiCGSTAB. Never AMG."""
     lib = _libdpn()
     if lib is None or not hasattr(lib, "dpn_timestep_descriptor"):
         return None
-    if solver_kind not in (0, 3):
+    if solver_kind not in (0, 2, 3):
         return None
     p = _descriptor_prep(sys, events, vdd, t_end, dt, leak=leak)
     if p is None:
         return None
     mid, tail = _descriptor_wave_args(p, vdd, t_end, dt)
-    use_wh = solver_kind == 3 and hasattr(lib, "dpn_timestep_descriptor_workhorse")
+    use_wh = solver_kind in (2, 3) and hasattr(lib, "dpn_timestep_descriptor_workhorse")
     use_gen = hasattr(lib, "dpn_timestep_descriptor_gen")
     if use_wh:
         rc = lib.dpn_timestep_descriptor_workhorse(
@@ -1250,13 +1269,19 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
         if rc != 0:
             print(f"dpn_timestep_descriptor_workhorse rc={rc}", file=sys.stderr)
             return None
+        label = "D_ras_schwarz_descriptor" if solver_kind == 2 else "E_bicgstab_descriptor"
+        via = (
+            "descriptor BE sparse-E (libdpn RAS+GMRES)"
+            if solver_kind == 2
+            else "descriptor BE sparse-E (libdpn BiCGSTAB)"
+        )
         out = _tran_result(
-            p["kw"], p["n_die"], "E_bicgstab_descriptor", None, 1, vdd, dt, t_end, "native",
+            p["kw"], p["n_die"], label, None, 1, vdd, dt, t_end, "native",
             "native_desc",
         )
-        out["via"] = "descriptor BE sparse-E (libdpn BiCGSTAB)"
+        out["via"] = via
         return out
-    if solver_kind == 3:
+    if solver_kind in (2, 3):
         return None
     if use_gen:
         rc = lib.dpn_timestep_descriptor_gen(*_descriptor_common_args(p), *mid, *tail)
@@ -1738,7 +1763,7 @@ class PyMorDescriptor:
         return {
             "worst_voltage": worst_v,
             "worst_droop": vdd - worst_v,
-            "worst_droop_pct": 100.0 * (vdd - worst_v) / vdd,
+            "worst_droop_pct": droop_pct(vdd, worst_v),
             "worst_time_s": worst_t,
             "worst_node_idx": worst_i,
             "dt": dt,
@@ -1950,7 +1975,7 @@ class PyMor:
         return {
             "worst_voltage": worst_v,
             "worst_droop": vdd - worst_v,
-            "worst_droop_pct": 100.0 * (vdd - worst_v) / vdd,
+            "worst_droop_pct": droop_pct(vdd, worst_v),
             "worst_time_s": worst_t,
             "worst_node_idx": worst_i,
             "dt": dt,

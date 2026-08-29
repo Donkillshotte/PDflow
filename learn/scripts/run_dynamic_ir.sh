@@ -4,6 +4,8 @@
 # Extract = SPICE + tech LEF (EM J); SPEF PG *D_NET *CAP is stamped by name-join
 # (GCD OpenRCX has no VDD — GAP; signal nets are never mapped).
 # Grover on-die L is estimated always; descriptor TRAN is ON_DIE_L=1 (not AMG).
+# Dual-rail VSS: write_pg_spice -net VSS independently of VDD; pair by Sink-for
+# inst (not RTL). VSS TRAN does not change VDD gold 45.298 mV.
 # Activity = OpenSTA arrival t50 (clock) + VCD/SAIF name-join (GAP on RTL tb_gcd).
 # SAIF idle-zeros TC=0 pulses; does not invent t50 or rescale I_avg.
 # Path STA delay from OpenSTA report_checks (NLDM typical-V × (Vdd/V)^α).
@@ -39,6 +41,7 @@ SPEF="${RES}/6_final.spef"
 ODB="${RES}/6_final.odb"
 SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
 SPICE="${RES}/pdn/pg_vdd_bumps.sp"
+SPICE_VSS="${RES}/pdn/pg_vss_bumps.sp"
 INSTS="${RES}/pdn/inst_power_map.json"
 OUT_DIR="${ROOT}/learn/sim/reports"
 JSON="${OUT_DIR}/dynamic_ir_${VARIANT}.json"
@@ -63,8 +66,11 @@ if [[ ! -f "${INSTS}" ]]; then
     2>&1 | tee -a "${LOG}"
 fi
 
-if [[ ! -f "${SPICE}" ]]; then
-  echo "=== write_pg_spice (mesh assente) ===" | tee -a "${LOG}"
+write_pg_net() {
+  local net="$1"
+  local out="$2"
+  echo "=== write_pg_spice -net ${net} ===" | tee -a "${LOG}"
+  local ACTIVITY_TCL
   ACTIVITY_TCL="$(power_activity_tcl "${ROOT}")"
   cd "${FLOW}"
   openroad -no_init -no_splash -exit <<EOF | tee -a "${LOG}"
@@ -74,13 +80,21 @@ read_sdc ${SDC}
 ${ACTIVITY_TCL}
 report_power
 set_pdnsim_source_settings -bump_dx 140 -bump_dy 140 -bump_size 70 -bump_interval 3 -external_resistance ${PKG_R}
-analyze_power_grid -net VDD -source_type BUMPS
-write_pg_spice -net VDD -source_type BUMPS ${SPICE}
-puts "DYNAMIC_IR_SPICE_EXPORT_DONE"
+analyze_power_grid -net ${net} -source_type BUMPS
+write_pg_spice -net ${net} -source_type BUMPS ${out}
+puts "DYNAMIC_IR_SPICE_${net}_DONE"
 EOF
-  rg -q 'DYNAMIC_IR_SPICE_EXPORT_DONE' "${LOG}"
+  rg -q "DYNAMIC_IR_SPICE_${net}_DONE" "${LOG}"
+}
+
+if [[ ! -f "${SPICE}" ]]; then
+  write_pg_net VDD "${SPICE}"
 fi
 [[ -f "${SPICE}" ]] || { echo "FAIL manca ${SPICE}"; exit 1; }
+
+if [[ ! -f "${SPICE_VSS}" ]]; then
+  write_pg_net VSS "${SPICE_VSS}"
+fi
 
 if ! command -v sta >/dev/null 2>&1; then
   echo "FAIL OpenSTA (sta) not in PATH — needed for arrival t50" | tee -a "${LOG}"
@@ -111,6 +125,9 @@ if [[ -f "${VCD}" ]]; then
 fi
 if [[ "${ON_DIE_L:-}" == "1" ]]; then
   EXTRA+=(--on-die-l)
+fi
+if [[ -f "${SPICE_VSS}" ]]; then
+  EXTRA+=(--spice-vss "${SPICE_VSS}")
 fi
 python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   --spice "${SPICE}" \

@@ -8,8 +8,8 @@ Backends:
 
 Not a DEF+LEF Rsq extractor and not a fork of OpenROAD PSM.
 Never synthesizes PDN C from signal SPEF names.
-On-die L is Grover partial self on same-layer straps (no mutual); not stamped
-into the SPD companion unless the caller asks for the descriptor.
+On-die L is Grover partial self plus cutoff partial mutual on same-layer straps;
+not stamped into the SPD companion unless the caller asks for the descriptor.
 """
 
 from __future__ import annotations
@@ -24,6 +24,9 @@ V_RE = re.compile(r"^\S+\s+(\S+)\s+\S+\s+DC\s+([0-9eE.+-]+)", re.I)
 COORD_RE = re.compile(r"(ITermNode|Node)_metal(\d+)_(-?\d+)_(-?\d+)")
 LAYER_HDR = re.compile(r"^LAYER\s+(\S+)\s*$", re.I)
 PG_BARE = re.compile(r"^(?:VDD|VSS|VDDE|VCC|GND|VPWR|VGND)(?:\[\d+\])?$", re.I)
+SINK_RE = re.compile(r"^\*\s*Sink for\s+(\S+)/(\S+)\s*$", re.I)
+_VSS_PINS = {"VSS", "VGND", "GND", "VSSWE", "VEE"}
+_VDD_PINS = {"VDD", "VPWR", "VCC", "VDDE", "VDDWE"}
 NAME_MAP_RE = re.compile(r"^\*(\d+)\s+(\S+)\s*$")
 D_NET_RE = re.compile(r"^\*D_NET\s+(\S+)\s+", re.I)
 C_UNIT_RE = re.compile(r"^\*C_UNIT\s+([0-9.eE+-]+)\s+(\S+)", re.I)
@@ -77,6 +80,102 @@ def parse_spice(path: Path):
     if not resistors or not voltages:
         raise SystemExit(f"SPICE incompleto: R={len(resistors)} V={len(voltages)}")
     return resistors, dict(currents), voltages
+
+
+def parse_pg_sinks(path: Path) -> dict:
+    """OpenROAD write_pg_spice '* Sink for inst/pin' joined to the next I element.
+
+    This is the PDNSim comment contract, not an RTL VCD → ITerm invention.
+    """
+    pending = None
+    sinks: dict[str, dict] = {}
+    if not Path(path).is_file():
+        return sinks
+    for raw in Path(path).read_text().splitlines():
+        s = raw.strip()
+        sm = SINK_RE.match(s)
+        if sm:
+            pending = (sm.group(1), sm.group(2))
+            continue
+        if not s or s.startswith("*") or s.startswith("."):
+            continue
+        if s[0].upper() != "I" or pending is None:
+            continue
+        m = I_RE.match(s)
+        if not m:
+            pending = None
+            continue
+        node = m.group(1)
+        inst, pin = pending
+        sinks[node] = {"inst": inst, "pin": pin, "node": node, "i_avg": abs(float(m.group(2)))}
+        pending = None
+    return sinks
+
+
+def pair_pg_rails(vdd_sinks: dict, vss_sinks: dict) -> dict:
+    """Pair VDD/VSS ITerms by spice sink instance. CMOS I_vdd returns as I_vss.
+
+    Block-diagonal dual-rail MNA: no rail-to-rail C. Not a second physics model.
+    """
+    by_inst_vdd: dict[str, dict] = {}
+    for rec in vdd_sinks.values():
+        pin = str(rec.get("pin") or "").upper()
+        if pin in _VSS_PINS:
+            continue
+        by_inst_vdd[str(rec["inst"])] = rec
+    by_inst_vss: dict[str, dict] = {}
+    for rec in vss_sinks.values():
+        pin = str(rec.get("pin") or "").upper()
+        if pin in _VDD_PINS:
+            continue
+        by_inst_vss[str(rec["inst"])] = rec
+    pairs = []
+    for inst, vd in by_inst_vdd.items():
+        vs = by_inst_vss.get(inst)
+        if vs is None:
+            continue
+        pairs.append(
+            {
+                "inst": inst,
+                "vdd_node": vd["node"],
+                "vss_node": vs["node"],
+                "vdd_pin": vd["pin"],
+                "vss_pin": vs["pin"],
+            }
+        )
+    return {
+        "status": "READY" if pairs else "GAP",
+        "n_pairs": len(pairs),
+        "n_vdd_sinks": len(vdd_sinks),
+        "n_vss_sinks": len(vss_sinks),
+        "pairs": pairs,
+        "via": "write_pg_spice '* Sink for inst/pin' on VDD and VSS (not RTL name-join)",
+        "note": (
+            "I_cell leaves VDD and enters VSS; G is block-diagonal (no rail-to-rail C). "
+            "VDD gold TRAN is unchanged."
+        ),
+    }
+
+
+def remap_events_to_rail(events: list, vdd_idx: dict, vss_idx: dict, pairs: list) -> list:
+    """Copy VDD I(t) events onto paired VSS nodes. Unpaired events are dropped."""
+    inv_vdd = {int(i): n for n, i in vdd_idx.items()}
+    vss_of_vdd = {p["vdd_node"]: p["vss_node"] for p in pairs}
+    out = []
+    for ev in events:
+        node = inv_vdd.get(int(ev["idx"]))
+        if node is None:
+            continue
+        vss_node = vss_of_vdd.get(node)
+        if vss_node is None or vss_node not in vss_idx:
+            continue
+        rec = dict(ev)
+        rec["idx"] = int(vss_idx[vss_node])
+        rec["rail"] = "VSS"
+        rec["vdd_node"] = node
+        rec["vss_node"] = vss_node
+        out.append(rec)
+    return out
 
 
 def node_xy_dbu(name: str) -> tuple[float, float] | None:

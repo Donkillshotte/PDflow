@@ -898,6 +898,67 @@ int main() {
                 gold.worst_v, std::abs(red.worst_v - gold.worst_v));
   }
   {
+    // Unsymmetric descriptor RAS vs SparseLU on an RC line + bump R+L (ndom≥2).
+    const int nv = 32;
+    Csr G = r_chain(nv, 0.2);
+    const double vdd = 1.1, dt = 10e-12, t_end = 0.4e-9, R = 0.05, L = 2e-10, C = 50e-12;
+    const Index N = nv + 1;
+    std::vector<Index> ti, tj;
+    std::vector<double> tv;
+    for (Index i = 0; i < nv; ++i) {
+      for (Index k = G.rowptr[i]; k < G.rowptr[i + 1]; ++k) {
+        ti.push_back(i);
+        tj.push_back(G.col[k]);
+        tv.push_back(G.val[k]);
+      }
+    }
+    ti.push_back(0);
+    tj.push_back(nv);
+    tv.push_back(-1.0);
+    ti.push_back(nv);
+    tj.push_back(0);
+    tv.push_back(1.0);
+    ti.push_back(nv);
+    tj.push_back(nv);
+    tv.push_back(R);
+    Csr A = dpn::from_triplets(N, ti.data(), tj.data(), tv.data(), static_cast<Index>(ti.size()));
+    std::vector<double> Ed(static_cast<size_t>(N), 0.0);
+    for (int i = 0; i < nv; ++i) {
+      Ed[static_cast<size_t>(i)] = C;
+    }
+    Ed[static_cast<size_t>(nv)] = L;
+    Csr E = dpn::diag_csr(N, Ed.data());
+    Index iv_row[1] = {nv};
+    dpn::TriangleSrc ev;
+    ev.idx = nv - 1;
+    ev.t50 = 0.2e-9;
+    ev.dur = 0.2e-9;
+    ev.ipulse = 5e-3;
+    auto gold = dpn::timestep_descriptor_gen(A, E, dt, t_end, vdd, nv, nv, -1, iv_row, 1, nullptr,
+                                            nullptr, &ev, 1, 0);
+    Csr K = dpn::plus(A, dpn::scale(E, 1.0 / dt));
+    auto ras_op = dpn::make_ras(K);
+    check(ras_op->n_levels() >= 2, "descriptor RAS multi-domain");
+    auto ras = dpn::timestep_descriptor_gen(A, E, dt, t_end, vdd, nv, nv, -1, iv_row, 1, nullptr,
+                                           nullptr, &ev, 1, 2);
+    check(std::abs(ras.worst_v - gold.worst_v) < 1e-6, "descriptor RAS vs LU TRAN");
+    std::printf("    descriptor RAS ndom=%d vmin=%.9f gold=%.9f |err|=%.3e V\n", ras_op->n_levels(),
+                ras.worst_v, gold.worst_v, std::abs(ras.worst_v - gold.worst_v));
+    const int maxs = 128;
+    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(static_cast<size_t>(nv));
+    Index worst_node = 0, n_steps = 0;
+    double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
+    Index ev_idx[1] = {nv - 1};
+    double ev_t50[1] = {ev.t50}, ev_dur[1] = {ev.dur}, ev_ip[1] = {ev.ipulse};
+    check(dpn_timestep_descriptor_workhorse(
+              N, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data(), E.nnz(), E.rowptr.data(),
+              E.col.data(), E.val.data(), nv, nv, -1, 1, iv_row, dt, t_end, vdd, nullptr, nullptr, 2,
+              1, ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(), &worst_node, &worst_v, &worst_t, &rel,
+              &ts, maxs, wt.data(), wv.data(), wi.data(), &n_steps) == 0,
+          "c_api descriptor RAS workhorse");
+    check(std::abs(worst_v - gold.worst_v) < 1e-6, "c_api descriptor RAS vs LU");
+  }
+  {
     double d[2] = {1.0, 2.0};
     Csr D = dpn::diag_csr(2, d);
     Csr S = dpn::scale(D, 0.5);

@@ -391,6 +391,32 @@ constexpr int kRasGmresM = 32;
 constexpr int kRasGmresRestart = 8;
 constexpr double kRasTol = 1e-10;
 
+/* Undirected sparsity graph A ∪ Aᵀ. Unsymmetric MNA (descriptor K) has one-way
+   stamps; partition/halo must follow both directions. SPD companion is unchanged. */
+std::vector<std::vector<Index>> undirected_adj(const Csr& A) {
+  const Index n = A.nrows;
+  Csr At = transpose(A);
+  std::vector<std::vector<Index>> adj(static_cast<size_t>(n));
+  for (Index i = 0; i < n; ++i) {
+    std::vector<Index> nb;
+    nb.reserve(static_cast<size_t>(A.rowptr[i + 1] - A.rowptr[i] + At.rowptr[i + 1] - At.rowptr[i]));
+    for (Index k = A.rowptr[i]; k < A.rowptr[i + 1]; ++k) {
+      if (A.col[k] != i) {
+        nb.push_back(A.col[k]);
+      }
+    }
+    for (Index k = At.rowptr[i]; k < At.rowptr[i + 1]; ++k) {
+      if (At.col[k] != i) {
+        nb.push_back(At.col[k]);
+      }
+    }
+    std::sort(nb.begin(), nb.end());
+    nb.erase(std::unique(nb.begin(), nb.end()), nb.end());
+    adj[static_cast<size_t>(i)] = std::move(nb);
+  }
+  return adj;
+}
+
 class RasSolver final : public Solver {
  public:
   explicit RasSolver(const Csr& A) {
@@ -398,6 +424,7 @@ class RasSolver final : public Solver {
     fine_ = A;
     const auto t0 = std::chrono::steady_clock::now();
     const Index n = n_;
+    const auto adj = undirected_adj(A);
     int ndom = 1;
     if (n >= 8) {
       ndom = 2;
@@ -424,8 +451,7 @@ class RasSolver final : public Solver {
       while (!q.empty() && taken < want) {
         const Index i = q.front();
         q.pop();
-        for (Index k = A.rowptr[i]; k < A.rowptr[i + 1]; ++k) {
-          const Index j = A.col[k];
+        for (Index j : adj[static_cast<size_t>(i)]) {
           if (owner_[static_cast<size_t>(j)] < 0) {
             owner_[static_cast<size_t>(j)] = s;
             --unassigned;
@@ -450,8 +476,8 @@ class RasSolver final : public Solver {
       for (Index i = 0; i < n; ++i) {
         if (owner_[static_cast<size_t>(i)] == s) {
           in[static_cast<size_t>(i)] = 1;
-          for (Index k = A.rowptr[i]; k < A.rowptr[i + 1]; ++k) {
-            in[static_cast<size_t>(A.col[k])] = 1;
+          for (Index j : adj[static_cast<size_t>(i)]) {
+            in[static_cast<size_t>(j)] = 1;
           }
         }
       }
@@ -461,8 +487,8 @@ class RasSolver final : public Solver {
           if (!in[static_cast<size_t>(i)]) {
             continue;
           }
-          for (Index k = A.rowptr[i]; k < A.rowptr[i + 1]; ++k) {
-            nxt[static_cast<size_t>(A.col[k])] = 1;
+          for (Index j : adj[static_cast<size_t>(i)]) {
+            nxt[static_cast<size_t>(j)] = 1;
           }
         }
         in.swap(nxt);

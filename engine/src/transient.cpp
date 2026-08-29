@@ -62,6 +62,12 @@ void record_step(TranResult& out, double t, const double* V, const double* I, In
 }
 
 std::unique_ptr<Solver> descriptor_solver(const Csr& K, int kind) {
+  if (kind == 1) {
+    throw std::runtime_error("AMG is SPD-companion only; descriptor K is unsymmetric");
+  }
+  if (kind == 2) {
+    return make_ras(K);
+  }
   if (kind == 3) {
     return make_bicgstab(K);
   }

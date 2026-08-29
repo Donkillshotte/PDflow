@@ -120,8 +120,8 @@ int run_descriptor_from_c(int64_t n, int64_t nnz, const int64_t* rowptr, const i
   if (n_iv > static_cast<int64_t>(INT_MAX)) {
     return -1;
   }
-  if (solver_kind != 0 && solver_kind != 3) {
-    return -1;  // AMG/RAS are SPD-companion only; descriptor K is unsymmetric.
+  if (solver_kind != 0 && solver_kind != 2 && solver_kind != 3) {
+    return -1;  // AMG (kind=1) is SPD-companion only; descriptor K is unsymmetric.
   }
   try {
     dpn::Csr A = dpn::from_csr(static_cast<dpn::Index>(n), rowptr, col, Aval);

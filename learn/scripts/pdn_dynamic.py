@@ -71,7 +71,7 @@ from pdn_current import (  # noqa: E402
     triangle_above_leak,
 )
 from pdn_em import em_thermal_snapshot  # noqa: E402
-from pdn_extract import extract_pdn, summarize_extract  # noqa: E402
+from pdn_extract import extract_pdn, summarize_extract, parse_pg_sinks, pair_pg_rails, remap_events_to_rail  # noqa: E402
 from pdn_solvers import (  # noqa: E402
     DirectLU,
     RASDD,
@@ -83,6 +83,7 @@ from pdn_solvers import (  # noqa: E402
     native_timestep,
     residual_rel,
     rl_companion,
+    droop_pct,
 )
 from pdn_transient import build_system, solve_static  # noqa: E402
 from pdn_vrm import assemble_n4_mesh, assemble_strap_rlc, load_vrm_cfg, ngspice_vrm_die_gold, timestep_descriptor  # noqa: E402
@@ -272,7 +273,7 @@ def timestep_be(
     return {
         "worst_voltage": worst_v,
         "worst_droop": vdd - worst_v,
-        "worst_droop_pct": 100.0 * (vdd - worst_v) / vdd,
+        "worst_droop_pct": droop_pct(vdd, worst_v),
         "worst_time_s": worst_t,
         "worst_node": worst_node,
         "dt": dt,
@@ -604,6 +605,80 @@ def path_ir_timing(
     return tap
 
 
+def run_return_rail(
+    spice_vdd: Path,
+    spice_vss: Path,
+    events: list,
+    vdd_idx: dict,
+    *,
+    pkg_r: float,
+    pkg_l: float,
+    c_decap: float,
+    dt: float,
+    t_end: float,
+    lef: Path | None,
+    spef: Path | None,
+) -> dict:
+    """VSS return-path TRAN. Same I(t) magnitude as VDD on paired sinks. Does not change VDD gold.
+
+    Block-diagonal dual-rail MNA (no rail-to-rail C). UIC and pads are 0 V.
+    Bounce = −Vmin (I DC convention: current from node to 0, same as PDNSim).
+    """
+    vdd_sinks = parse_pg_sinks(spice_vdd)
+    vss_sinks = parse_pg_sinks(spice_vss)
+    paired = pair_pg_rails(vdd_sinks, vss_sinks)
+    if paired.get("status") != "READY":
+        return {
+            "status": "GAP",
+            "reason": "no inst-pin pairs between VDD and VSS spice sinks",
+            "pair": paired,
+        }
+    ext_s = extract_pdn(spice_vss, lef=lef, spef=spef)
+    resistors, currents, voltages = ext_s["resistors"], ext_s["currents"], ext_s["voltages"]
+    order_s, idx_s, G_s = build_system(resistors, currents, voltages)
+    ev_s = remap_events_to_rail(events, vdd_idx, idx_s, paired["pairs"])
+    if not ev_s:
+        return {
+            "status": "GAP",
+            "reason": "paired sinks but no VDD events remapped",
+            "pair": {k: v for k, v in paired.items() if k != "pairs"},
+            "n_pairs": paired["n_pairs"],
+        }
+    sys_s = assemble_be(
+        G_s,
+        idx_s,
+        voltages,
+        0.0,
+        ev_s,
+        pkg_r=pkg_r,
+        pkg_l=pkg_l,
+        c_decap=c_decap,
+        dt=dt,
+        spef_c=(ext_s.get("spef") or {}).get("node_c"),
+    )
+    lu = DirectLU(sys_s["A"])
+    dyn_s = timestep_be(sys_s, ev_s, lu, 0.0, order_s, t_end)
+    bounce = -float(dyn_s["worst_voltage"])
+    return {
+        "status": "READY",
+        "ok": True,
+        "n_pairs": paired["n_pairs"],
+        "n_events": len(ev_s),
+        "n_nodes": sys_s["n"],
+        "n_pads": len(sys_s.get("bump") or []),
+        "worst_bounce_mv": bounce * 1e3,
+        "worst_voltage": dyn_s["worst_voltage"],
+        "worst_time_ns": dyn_s["worst_time_s"] * 1e9,
+        "worst_node": dyn_s.get("worst_node"),
+        "backend": dyn_s.get("backend"),
+        "timestep_loop": dyn_s.get("timestep_loop"),
+        "extract": summarize_extract(ext_s),
+        "pair": {k: v for k, v in paired.items() if k != "pairs"},
+        "via": paired["via"],
+        "note": paired["note"],
+    }
+
+
 def platform_block(
     *,
     mode: str,
@@ -621,6 +696,7 @@ def platform_block(
     extract: dict | None = None,
     activity: dict | None = None,
     on_die_l: dict | None = None,
+    vss: dict | None = None,
 ) -> dict:
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
     if mor and mor.get("ok"):
@@ -705,10 +781,17 @@ def platform_block(
             },
             "D_ras_schwarz": {
                 "status": d_status,
-                "role": "domain decomposition on the BE operator",
-                "via": "restricted additive Schwarz: graph-grown subdomains, overlapping local SparseLU, RAS restriction, GMRES",
+                "role": "domain decomposition on the BE operator and on unsymmetric descriptor K",
+                "via": "restricted additive Schwarz: undirected graph-grown subdomains, overlapping local SparseLU, RAS restriction, GMRES; kind=2 on descriptor K (never AMG)",
                 "not": "index stripes, CG (RAS is not SPD), AMG",
                 "vs_A": ras,
+            },
+            "VSS_return": {
+                "status": (vss or {}).get("status") or "GAP",
+                "role": "return-path TRAN on write_pg_spice VSS (block-diagonal dual-rail)",
+                "via": (vss or {}).get("via") or "write_pg_spice -net VSS + Sink-for inst pair",
+                "not": "rail-to-rail C, replacement of VDD gold",
+                "meta": None if not vss else {k: v for k, v in vss.items() if k not in ("extract",)},
             },
         },
         "network_levels": {
@@ -1142,7 +1225,7 @@ def main() -> int:
     ap.add_argument("--vrm-cfg", type=Path, default=None, help="system_pdn JSON for lumped VRM")
     ap.add_argument("--lef", type=Path, default=None, help="tech LEF for metal WIDTH/THICKNESS/RPERSQ (EM J)")
     ap.add_argument("--spef", type=Path, default=None, help="SPEF PG *D_NET *CAP stamped by name-join (never mapped from signal nets)")
-    ap.add_argument("--on-die-l", action="store_true", help="descriptor BE with Grover strap L (unsymmetric; not AMG)")
+    ap.add_argument("--spice-vss", type=Path, default=None, help="write_pg_spice VSS mesh; dual-rail return TRAN (does not change VDD gold)")
     args = ap.parse_args()
 
     current_model = probe_liberty_current_model(args.liberty)
@@ -1355,6 +1438,22 @@ def main() -> int:
             "via": "restricted additive Schwarz + GMRES on A=G+C/Δt+g_eq (graph partition, not stripes)",
         }
         dyn["ras"] = {k: v for k, v in dyn_d.items() if not k.startswith("wave_") and k != "V_worst"}
+
+    vss_meta = None
+    if args.spice_vss and Path(args.spice_vss).is_file():
+        vss_meta = run_return_rail(
+            args.spice,
+            args.spice_vss,
+            events,
+            idx,
+            pkg_r=args.pkg_r,
+            pkg_l=args.pkg_l,
+            c_decap=args.c_decap,
+            dt=dt,
+            t_end=t_end,
+            lef=args.lef,
+            spef=args.spef,
+        )
 
     mor_meta = None
     mor = None
@@ -1781,6 +1880,7 @@ def main() -> int:
         extract=extract_report,
         activity=activity_model,
         on_die_l=ondie_meta,
+        vss=vss_meta,
     )
     amg_note = (
         f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
@@ -1808,7 +1908,11 @@ def main() -> int:
         if em.get("n_with_j")
         else ""
     )
-    sta_note_sum = f" · STA t50 {n_sta}/{len(events)}" if n_sta else ""
+    vss_note = (
+        f" · VSS bounce {vss_meta['worst_bounce_mv']:.3f} mV ({vss_meta['n_pairs']} pairs)"
+        if vss_meta and vss_meta.get("status") == "READY"
+        else (" · VSS GAP" if args.spice_vss else "")
+    )
     win_err = win_run.get("abs_err_vs_A_mv")
     l3_note = (
         f" · L3 |A−W| {win_err:.3f} mV"
@@ -1821,7 +1925,7 @@ def main() -> int:
         "engine": "studio-dynamic-ir",
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
-            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in)",
+            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in); dual-rail VSS sink-pair",
             "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS interpolator when tables exist)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
@@ -1910,6 +2014,7 @@ def main() -> int:
         "solver_b": amg_meta,
         "solver_c": mor_meta,
         "solver_d": ras_meta,
+        "vss_rail": vss_meta,
         "n4": n4_meta,
         "on_die_l": ondie_meta or extract_report.get("on_die_l"),
         "adaptive": adaptive_meta,
@@ -1929,6 +2034,7 @@ def main() -> int:
             f"{n4_note}"
             f"{em_note}"
             f"{l3_note}"
+            f"{vss_note}"
             f" · delay +{timing['degradation_ps']:.2f} ps"
         ),
     }

@@ -5,7 +5,7 @@ Il “flow definitivo” **non** si costruisce intorno a un singolo progetto esi
 È un **sistema ibrido**: frontend fisico OpenROAD, motore di corrente dedicato,
 più solver a fedeltà diversa, screening attività, gold esterni.
 
-Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo con companion R+L e \(i_L\), Δt adattivo, MOR rational Krylov **descriptor RLC** (Solver C, \(x=[v;i_L]\)) e **RAS Schwarz** (Solver D) sull’operatore BE.
+Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo con companion R+L e \(i_L\), Δt adattivo, MOR rational Krylov **descriptor RLC** (Solver C, \(x=[v;i_L]\)), **RAS Schwarz** (Solver D) sull’operatore BE **e** su \(K\) descriptor (kind=2, grafo undirected), e **dual-rail VSS** (`write_pg_spice -net VSS`, pair Sink-for, TRAN return senza toccare il gold VDD).
 Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Python (lagged \(I(\mathrm{slew},V^n)\)); sul GCD Nangate resta il triangolo. kind=3 = Eigen BiCGSTAB+ILUT (CPU, unsymmetric). **Non** Ginkgo/GPU. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
 
 ## Verdetto (piattaforma, non un clone)
@@ -18,7 +18,8 @@ Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Pytho
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
 | **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=96 · \|A−C\| 0.401 mV sul GCD clock STA (descriptor RLC); ranking scenari = Solver A |
-| **Solver D** RAS Schwarz | decomposizione di dominio | **READY** · ndom=8 · \|A−D\| 0.013 mV sul GCD clock STA (grafo, non stripe) |
+| **Solver D** RAS Schwarz | decomposizione di dominio | **READY** · ndom=8 · \|A−D\| 0.013 mV sul GCD clock STA (grafo undirected, non stripe). kind=2 su \(K\) descriptor = 32-nodo R+L, **non** il default GCD |
+| Dual-rail VSS | return path | **READY** extract+TRAN (Sink-for inst pair, MNA block-diagonal). Non sostituisce il gold VDD |
 | kind=3 BiCGSTAB | Krylov CPU su \(A\) non simmetrica | **READY** (Eigen ILUT; non Ginkgo). Non è il gold N3 GCD |
 | libdpn Index | mesh n/nnz | **READY** int64 (C API + Eigen StorageIndex); SciPy fallback può restare int32 |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
@@ -56,7 +57,7 @@ Lo split da copiare è quello di EMSim *current analysis*, non il passo EM probe
 | **A — Direct BE** | \((G + C/\Delta t) V_{n+1} = \mathrm{rhs}\) · LU sparso | gold, lento, indispensabile per validare | **READY** |
 | **B — SA-AMG** | V-cycle Jacobi + CG, LU sul coarse | workhorse (ESPSim-class) | **READY** |
 | **C — rational Krylov** | RC: \(C_r \dot z + G_r z = -V^\top I\); RLC: \(E_r \dot z + A_r z = V^\top u\), \(x=[v;i_L]\) | tante TRAN sulla stessa PDN | **READY** sul GCD (\|A−C\| 0.401 mV, m=96) |
-| **D — RAS Schwarz** | subdomain LU + RAS + GMRES su \(A\) | domain decomposition, non stripe | **READY** sul GCD (\|A−D\| 0.013 mV, ndom=8) |
+| **D — RAS Schwarz** | subdomain LU + RAS + GMRES su \(A\) e su \(K\) | domain decomposition, grafo \(A\cup A^\top\), non stripe | **READY** sul GCD companion (\|A−D\| 0.013 mV, ndom=8); descriptor kind=2 su catena 32 nodi |
 
 Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. Non si scrive una GPU fork: un giorno `LinearSolver` → Ginkgo.
 
@@ -115,11 +116,11 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 
 | Livello | Prodotto “RedHawk-like” | Cosa gira **oggi** sul GCD |
 |---|---|---|
-| 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` + tech LEF; SPEF PG C from PG `*D_NET` (GCD OpenRCX = GAP); Grover on-die L+M estimated (descriptor `--on-die-l`) |
+| 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` VDD+VSS + tech LEF; SPEF PG C from PG `*D_NET` (GCD OpenRCX = GAP); Grover on-die L+M estimated (descriptor `--on-die-l`); dual-rail Sink-for pair |
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; SAIF TC name-join (idle-zero, no t50); extra I(t) ranking sintetico; VCD RTL name-join = GAP |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |
-| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB workhorse; Δt adattivo descriptor; MOR gen sparse-\(E\) (compact/strap, non default GCD) |
+| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB workhorse; RAS kind=2 su \(K\) unsymmetric; Δt adattivo descriptor; MOR gen sparse-\(E\) (compact/strap, non default GCD); VSS return TRAN |
 | 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + R(T) lumpato + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)) |
 
 ## Classifica reale

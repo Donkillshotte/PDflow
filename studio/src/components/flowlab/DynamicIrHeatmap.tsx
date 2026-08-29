@@ -88,6 +88,13 @@ type N4 = {
   via?: string;
   backend?: string;
 };
+type VssRail = {
+  status?: string;
+  worst_bounce_mv?: number;
+  n_pairs?: number;
+  n_events?: number;
+  reason?: string;
+};
 type DynReport = {
   ok?: boolean;
   summary?: string;
@@ -124,6 +131,7 @@ type DynReport = {
       B_sa_amg?: StatusChip;
       C_rational_krylov_mor?: StatusChip;
       D_ras_schwarz?: StatusChip;
+      VSS_return?: StatusChip;
     };
     network_levels?: {
       N1_R?: StatusChip;
@@ -143,6 +151,7 @@ type DynReport = {
   solver_c?: Mor;
   solver_d?: Ras;
   n4?: N4;
+  vss_rail?: VssRail | null;
   scenarios?: Scenario[];
   timing_impact?: Timing;
   em?: Em;
@@ -233,6 +242,7 @@ export function DynamicIrHeatmap({
   const mor = report?.solver_c;
   const ras = report?.solver_d;
   const n4 = report?.n4;
+  const vss = report?.vss_rail;
   const timing = report?.timing_impact ?? plat?.timing_impact;
   const scenarios = report?.scenarios ?? [];
   const worstScen = scenarios[0];
@@ -351,6 +361,16 @@ export function DynamicIrHeatmap({
                     ? ` · ${n4.worst_droop_mv.toFixed(2)} mV`
                     : ""}
                   {n4.backend ? ` · ${n4.backend}` : ""}
+                </dd>
+              </div>
+            )}
+            {vss && (
+              <div>
+                <dt>Rimbalzo VSS</dt>
+                <dd>
+                  {vss.status === "READY"
+                    ? `${(vss.worst_bounce_mv ?? 0).toFixed(2)} mV · ${vss.n_pairs ?? 0} coppie`
+                    : `GAP${vss.reason ? ` · ${vss.reason}` : ""}`}
                 </dd>
               </div>
             )}
@@ -501,6 +521,15 @@ export function DynamicIrHeatmap({
                   status: solvers.D_ras_schwarz?.status,
                   text: "D RAS Schwarz",
                 },
+                ...(vss
+                  ? [
+                      {
+                        key: "VSS",
+                        status: vss.status,
+                        text: "VSS return",
+                      },
+                    ]
+                  : []),
               ]}
             />
           )}
