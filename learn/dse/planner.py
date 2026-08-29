@@ -154,6 +154,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "f5_port",
+            "reason": (
+                "OpenRCX SPEF on the port-net BUF netlist — F3→F5 residual, "
+                "not the intra-module net host, not make finish"
+            ),
+            "scope": "port",
+        }
+    )
+    steps.append(
+        {
             "level": "synthesis",
             "reason": "ORFS abc_speed.script (ABC_AREA=0) — measured synthesis F1, not logic -fast",
             "scope": "chip",

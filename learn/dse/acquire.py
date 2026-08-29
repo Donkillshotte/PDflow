@@ -466,6 +466,19 @@ def latest_local_host(mem: DesignMemory):
     return hosts[0] if hosts else None
 
 
+def latest_port_host(mem: DesignMemory):
+    """Parent-scoped port-net netlist. Not the intra-module net host."""
+    from pathlib import Path
+
+    for c in reversed(list(mem.by_level("net"))):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "net_buffer_port":
+            continue
+        mapped = (c.artifacts or {}).get("mapped_v")
+        if mapped and Path(mapped).is_file():
+            return c
+    return None
+
+
 def should_pay_f5_local(
     mem: DesignMemory,
     *,
@@ -500,6 +513,44 @@ def should_pay_f5_local(
     return True, (
         f"OpenRCX SPEF on {host.level} { (host.knobs or {}).get('source') } "
         "— F3→F5 residual, not the F1 F5-lite SPEF, not make finish"
+    )
+
+
+def should_pay_f5_port(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_f5_port: int = 0,
+    f5_port_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay OpenRCX SPEF on the port-net netlist. Not the intra-module net host."""
+    from .openroad_f2 import f5_available
+
+    if n_f5_port >= f5_port_max:
+        return False, "F5 port-net SPEF shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover port-net detailed_route+OpenRCX"
+    if not f5_available():
+        return False, "OpenRCX rules missing — not launching make finish"
+    if not any(
+        (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+        for c in mem.by_level("routing")
+    ):
+        return False, "F5-lite on the F1 netlist is the baseline — port SPEF is the residual"
+    if any(
+        (c.knobs or {}).get("source") == "f5_openroad_local"
+        and (c.knobs or {}).get("host_level") == "port"
+        and c.status == "ok"
+        for c in mem.by_level("routing")
+    ):
+        return False, "already have a port-net SPEF child"
+    host = latest_port_host(mem)
+    if host is None:
+        return False, "no port-net mapped netlist for local SPEF"
+    return True, (
+        "OpenRCX SPEF on port net_buffer_port — F3→F5 residual on the "
+        "ctrl↔dpath BUF netlist, not the intra-module net host, not make finish"
     )
 
 
@@ -967,6 +1018,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
     if level == "f5_cts":
         return "F5"
     if level == "f5_local":
+        return "F5"
+    if level == "f5_port":
         return "F5"
     if level == "residual_steer":
         return "F5"

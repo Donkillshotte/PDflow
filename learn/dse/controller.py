@@ -51,6 +51,8 @@ from .acquire import (
     should_pay_f5_cts,
     should_pay_f5_drt,
     should_pay_f5_local,
+    should_pay_f5_port,
+    latest_port_host,
     should_pay_residual_steer,
     should_pay_ir_steer,
     extract_on_disk,
@@ -1021,6 +1023,36 @@ def run_controller(
                 reason=steer.get("reason"),
             )
 
+    n_f5_port = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_local"
+        and (c.knobs or {}).get("host_level") == "port"
+        and c.status == "ok"
+    )
+    pay_fp, why_fp = should_pay_f5_port(
+        mem, budget_left=t_end - time.time(), n_f5_port=n_f5_port
+    )
+    step("acquire", fidelity="F5_PORT", pay=pay_fp, why=why_fp)
+    if any(s["level"] == "f5_port" for s in plan["steps"]) and pay_fp and time.time() < t_end:
+        host = latest_port_host(mem)
+        if host:
+            mem.touch(host)
+            child = evaluate_f5_local(host, mem, design_id=design_id)
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="routing",
+                    fidelity="F5",
+                    via="f5_openroad_local",
+                    parent=host.id,
+                    host_level="port",
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
+                    status=child.status,
+                )
+
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:
         step("propose", level="physical", knobs=c.knobs, fidelity="F0")
@@ -1550,6 +1582,7 @@ def run_controller(
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
             "F5-CTS clock_tree_synthesis + DRT + OpenRCX + OpenSTA set_propagated_clock — not make finish",
             "F5-local OpenRCX SPEF on the cell/net netlist — F3→F5 residual, not a reused F1 SPEF",
+            "F5-port OpenRCX SPEF on the port-net BUF netlist — not the intra-module net host",
             "active learning: F3→F5-lite residual orders cell vs net host; F3→F5-local residual + uncertainty pick the next level",
             "F4 IR residual (mesh/knob/region) picks the next PDN action on the named extract — not ABC, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
@@ -1638,6 +1671,13 @@ def run_controller(
             1
             for c in mem.by_level("routing")
             if (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
+        ),
+        "n_f5_port": sum(
+            1
+            for c in mem.by_level("routing")
+            if (c.knobs or {}).get("source") == "f5_openroad_local"
+            and (c.knobs or {}).get("host_level") == "port"
+            and c.status == "ok"
         ),
         "n_residual_steer": sum(
             1 for c in mem.all() if (c.attr or {}).get("via") == "active_residual" and c.status == "ok"
@@ -1856,16 +1896,20 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             f5cts = f" · F5-CTS SPEF WNS {float(w):+.3f} ns (propagated, n_clkbuf={ncb})"
             break
     f5loc = ""
+    f5port = ""
     for c in mem.all():
         if c.status != "ok" or (c.knobs or {}).get("source") != "f5_openroad_local":
             continue
         w = (c.artifacts or {}).get("wns_ns")
+        if w is None:
+            continue
         ideal = (c.artifacts or {}).get("ideal_wns_ns")
         host = (c.knobs or {}).get("host_level")
-        if w is not None:
-            extra = f" vs ideal {float(ideal):+.3f}" if ideal is not None else ""
+        extra = f" vs ideal {float(ideal):+.3f}" if ideal is not None else ""
+        if host == "port" and not f5port:
+            f5port = f" · F5-port SPEF WNS {float(w):+.3f} ns{extra}"
+        elif host != "port" and not f5loc:
             f5loc = f" · F5-local SPEF WNS {float(w):+.3f} ns ({host}{extra})"
-            break
     steers = ""
     for c in mem.all():
         if c.status == "ok" and (c.attr or {}).get("via") == "active_residual":
@@ -1886,5 +1930,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{wns}{f5}{f5cts}{f5loc}{steers}{irst} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst} · IR cone {mods}{ir}{ras}{kry}"
     )

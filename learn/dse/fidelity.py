@@ -1739,12 +1739,14 @@ def evaluate_f5_local(
     mapped = (parent.artifacts or {}).get("mapped_v")
     if not mapped or not Path(mapped).is_file():
         return None
+    host_src = (parent.knobs or {}).get("source")
+    host_level = "port" if host_src == "net_buffer_port" else parent.level
     knobs = {
         "source": "f5_openroad_local",
         "parent_id": parent.id,
         "parent_name": parent.knobs.get("name") or parent.knobs.get("source"),
-        "host_level": parent.level,
-        "host_source": (parent.knobs or {}).get("source"),
+        "host_level": host_level,
+        "host_source": host_src,
         "util": util,
         "density": density,
         "droute_end_iter": 2,
@@ -1767,7 +1769,7 @@ def evaluate_f5_local(
         raw["power_w"] = sta.get("power_w")
         raw["interconnect"] = sta.get("interconnect") or "spef_openrcx"
         raw["ideal_wns_ns"] = (parent.artifacts or {}).get("wns_ns")
-        raw["host_level"] = parent.level
+        raw["host_level"] = host_level
     from .attribute import attribute_sta
 
     attr = attribute_sta(sta or raw, inherit=parent.attr or {})
@@ -1780,7 +1782,7 @@ def evaluate_f5_local(
         congestion=raw.get("grt_overflow"),
         fidelity="F5",
         note=(
-            f"local OpenRCX SPEF WNS={raw.get('wns_ns')} on {parent.level} "
+            f"local OpenRCX SPEF WNS={raw.get('wns_ns')} on {host_level} "
             f"(ideal {raw.get('ideal_wns_ns')}) — not F1 F5-lite, not make finish"
         ),
     )

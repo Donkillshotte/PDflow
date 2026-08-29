@@ -65,7 +65,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "routing": {
         "via": "dse.openroad_f2.evaluate_grt + evaluate_f5_drt + evaluate_f5_cts + evaluate_f5_local",
-        "note": "GRT + F5-lite + F5-CTS + F5-local SPEF on cell/net; not make finish",
+        "note": "GRT + F5-lite + F5-CTS + F5-local SPEF on cell/net + F5-port SPEF on port-net; not make finish",
     },
     "timing": {
         "via": "dse.sta_f3",

@@ -350,6 +350,7 @@ def main() -> int:
     check(any(s["level"] == "f5_cts" for s in planned["steps"]), "planner schedules F5-CTS")
     check(any(s["level"] == "f5_local" for s in planned["steps"]), "planner schedules F5-local SPEF")
     check(any(s["level"] == "residual_steer" for s in planned["steps"]), "planner schedules residual-steered next level")
+    check(any(s["level"] == "f5_port" for s in planned["steps"]), "planner schedules F5-port SPEF on the port-net host")
     check(any(s["level"] == "ir_steer" for s in planned["steps"]), "planner schedules F4 IR residual steer")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
@@ -411,12 +412,18 @@ def main() -> int:
         != knobs_fp("routing", {"source": "f5_openroad_local", "host_level": "net", "parent_id": "neth"}),
         "residual-steered cell SPEF is not flattened into the net F5-local fingerprint",
     )
+    check(
+        knobs_fp("routing", {"source": "f5_openroad_local", "host_level": "port", "parent_id": "porth"})
+        != knobs_fp("routing", {"source": "f5_openroad_local", "host_level": "net", "parent_id": "neth"}),
+        "port-net SPEF is not flattened into the intra-module net F5-local fingerprint",
+    )
     from dse.acquire import next_fidelity
 
     check(next_fidelity(level="f5_drt", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-lite is its own fidelity")
     check(next_fidelity(level="f5_cts", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-CTS measures at F5")
     check(next_fidelity(level="f5_local", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-local measures at F5")
     check(next_fidelity(level="residual_steer", pred=None, budget_left=20, cost_hint={}) == "F5", "residual steer measures at F5")
+    check(next_fidelity(level="f5_port", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-port measures at F5")
     check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
@@ -714,6 +721,7 @@ def main() -> int:
     check("f5" in (adapter_status()["routing"]["via"] or "").lower() or "OpenRCX" in (adapter_status()["routing"]["note"] or ""), "routing adapter includes F5-lite")
     check("cts" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-CTS")
     check("local" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-local")
+    check("port" in (adapter_status()["routing"]["note"] or "").lower(), "routing adapter includes F5-port SPEF")
     check("f5-local" in (adapter_status()["surrogate"]["note"] or "").lower() or "F3→F5" in (adapter_status()["surrogate"]["note"] or ""), "surrogate adapter names the F3→F5-local residual")
     check("residual" in (adapter_status()["active"]["note"] or ""), "active adapter steers from the F3→F5 residual")
     check("F4" in (adapter_status()["active"]["note"] or "") or "IR" in (adapter_status()["active"]["note"] or ""), "active adapter steers from the F4 IR residual")
@@ -1126,6 +1134,7 @@ def main() -> int:
         should_pay_ctrl_cone,
         should_pay_f5_cts,
         should_pay_f5_local,
+        should_pay_f5_port,
         should_pay_net_buffer,
         should_pay_net_port,
         should_pay_residual_steer,
@@ -1334,6 +1343,35 @@ def main() -> int:
         check(pay_p2, f"port-net is paid after intra-module net + crossing hops ({why_p2})")
         pay_p3, why_p3 = should_pay_net_port(mem_pay, budget_left=80, n_net=1, n_port=1)
         check(not pay_p3, f"port-net is a single shot ({why_p3})")
+        pay_fp0, why_fp0 = should_pay_f5_port(mem_pay, budget_left=80, n_f5_port=0)
+        check(not pay_fp0, f"F5-port waits for a port-net host ({why_fp0})")
+        mem_pay.add(
+            Candidate(
+                id="porth",
+                design_id="gcd",
+                parent_id="t0",
+                level="net",
+                knobs={"source": "net_buffer_port", "scope": "port", "cross_module": 1},
+                knobs_fp="porth",
+                rtl_fp="x",
+                netlist_fp="y",
+                fidelity="F3",
+                qor=QoR(wns_cost=0.23, fidelity="F3"),
+                cost_s=0.2,
+                status="ok",
+                artifacts={"mapped_v": str(mapped_ok), "wns_ns": -0.228},
+            )
+        )
+        from dse.acquire import local_hosts
+
+        check(
+            all((c.knobs or {}).get("source") != "net_buffer_port" for c in local_hosts(mem_pay)),
+            "port-net host is not flattened into the intra-module F5-local host list",
+        )
+        pay_fp1, why_fp1 = should_pay_f5_port(mem_pay, budget_left=80, n_f5_port=0)
+        check(pay_fp1, f"F5-port is paid after the port-net host ({why_fp1})")
+        pay_fp2, why_fp2 = should_pay_f5_port(mem_pay, budget_left=80, n_f5_port=1)
+        check(not pay_fp2, f"F5-port is a single shot ({why_fp2})")
         from dse.acquire import _attributed_cross_module_nets
 
         mem_pay.add(
