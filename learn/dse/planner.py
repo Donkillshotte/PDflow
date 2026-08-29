@@ -114,8 +114,22 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "synthesis",
+            "reason": "ORFS abc_speed.script (ABC_AREA=0) — measured synthesis F1, not logic -fast",
+            "scope": "chip",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_amg",
             "reason": "SA-AMG restamp on the named extract — MF solver residual vs DirectLU, not gold",
+            "scope": "chip",
+        }
+    )
+    steps.append(
+        {
+            "level": "f4_ras",
+            "reason": "RAS restamp after AMG — domain-decomp MF residual vs DirectLU, not gold",
             "scope": "chip",
         }
     )

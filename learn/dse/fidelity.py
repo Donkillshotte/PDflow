@@ -712,6 +712,9 @@ def evaluate_f1_abc(
     top: str = "gcd",
 ) -> Candidate:
     """Yosys synth + liberty ABC + equiv vs RTL. ABC script is a *file* (not -p ';')."""
+    knobs = dict(knobs)
+    if level == "synthesis":
+        knobs.pop("abc_ops", None)
     ops = list(knobs.get("abc_ops") or [])
     args = list(knobs.get("abc_args") or [])
     fp = knobs_fp(level, knobs)
@@ -772,9 +775,13 @@ def evaluate_f1_abc(
         n_cells=n_cells,
         fidelity="F1",
         note=(
-            "Yosys+ABC cone-local map on dpath modules; delay/IR not claimed from F1"
-            if is_cone_abc(knobs)
-            else "Yosys+ABC mapped area; delay/IR not claimed from F1"
+            "Yosys+ABC ORFS abc_speed.script (ABC_AREA=0); delay/IR not claimed from F1"
+            if level == "synthesis"
+            else (
+                "Yosys+ABC cone-local map on dpath modules; delay/IR not claimed from F1"
+                if is_cone_abc(knobs)
+                else "Yosys+ABC mapped area; delay/IR not claimed from F1"
+            )
         ),
     )
     c = Candidate(
@@ -794,9 +801,44 @@ def evaluate_f1_abc(
         failure=fail,
         note=f"F1 {knobs.get('name')} equiv={'PASS' if equiv else 'FAIL'}"
         + (" · cone dpath" if is_cone_abc(knobs) else "")
+        + (" · ORFS abc_speed" if level == "synthesis" else "")
         + (f" · {err}" if err and not ok else ""),
     )
     return mem.add(c)
+
+
+def evaluate_f1_synth(
+    *,
+    rtl: Path,
+    liberty: Path,
+    mem: DesignMemory,
+    design_id: str = "gcd",
+    parent_id: str | None = None,
+    timeout_s: float = 90.0,
+    top: str = "gcd",
+    knobs: dict | None = None,
+) -> Candidate:
+    """ORFS ``abc_speed.script`` + ``-D 460``. Not logic ``-fast``, not ``abc_ops``."""
+    from .synthesis import synth_f1_knobs
+
+    k = {**synth_f1_knobs(), **dict(knobs or {})}
+    k.pop("abc_ops", None)
+    k.setdefault("abc_args", synth_f1_knobs()["abc_args"])
+    k.setdefault("abc_script", "file")
+    k.setdefault("name", "orfs_abc_speed")
+    k.setdefault("abcArea", 0)
+    k.setdefault("source", "orfs_abc_script")
+    return evaluate_f1_abc(
+        rtl=rtl,
+        liberty=liberty,
+        knobs=k,
+        mem=mem,
+        design_id=design_id,
+        parent_id=parent_id,
+        timeout_s=timeout_s,
+        level="synthesis",
+        top=top,
+    )
 
 
 def ensure_mapped_netlist(

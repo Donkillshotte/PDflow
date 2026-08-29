@@ -8,6 +8,7 @@ scalare.
 RTL
  → e-graph datapath (cono IR, es. dpath)
  → F1 Yosys+ABC (alfabeto BOiLS, GP+SSK, append DRiLLS) + equiv
+ → F1 synthesis: ORFS `abc_speed.script` (ABC_AREA=0, `-D 460`) — non `-fast`, non `abc_ops`
    chip = flatten-first (teacher area 409.108 µm²)
    cono dpath = ABC solo sui moduli del datapath; ctrl leftover default-map; `mapped_hier.v`
    write_verilog -noattr -noexpr  (celle liberty, non assign soup)
@@ -24,7 +25,7 @@ RTL
  → F2 ingest place / GRT del layout corrente
  → F3 ingest STA signoff
  → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen) + `report_arrival`
- → F4 restamp DirectLU / SA-AMG (knobs PDN / I(t)×power / **static IR**) sullo extract nominato
+ → F4 restamp DirectLU / SA-AMG / RAS (knobs PDN / I(t)×power / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle → modulo RTL (dpath/ctrl)
  → surrogato F0 (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 solo se accoppiato)
@@ -38,10 +39,10 @@ RTL
 |---|---|---|
 | **architecture** | extract e-graph equivalenti sul cono `dpath` (ROVER/ASPEN-shaped) | READY F1 + equiv |
 | **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+**EHVI(area,WNS)** / EI · insert |
-| **synthesis** | `ABC_AREA` ORFS | catalogo F0 (non mescolato alle ops ABC) |
+| **synthesis** | `ABC_AREA` ORFS (`abc_speed.script` + `-D 460`) | F0 catalogo + **F1 misurato** (non mescolato alle ops ABC) |
 | **physical** | util, densità, **regione IR**, netlist del candidato | F0 proxy + F2-fast + **GPL** + catalogo + **density cap sul bin IR** + ingest — non lancia finish |
 | **routing** | GRT dopo place_pins + F5-lite DRT/OpenRCX | READY F2 GRT + F5-lite SPEF — non `make finish`, clock ideale |
-| **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato, solver MF | ingest gold + **extract `write_pg_spice`** + DirectLU/AMG (non gold) |
+| **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato, solver MF | ingest gold + **extract `write_pg_spice`** + DirectLU/AMG/RAS (non gold) |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
 
@@ -50,10 +51,10 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F | Ruolo | Stato |
 |---|---|---|
 | F0 | SSK-GP area ± std; congestion RUDY-class; skip F1 se l’ottimista è già peggiore | READY — **non** è IR |
-| F1 | Yosys synth + ABC (script *file* ending with `map`) + `equiv_*` + `write_verilog -noexpr` | READY · chip flatten-first **o** cone-local ABC (`cone=dpath`) |
+| F1 | Yosys synth + ABC (script *file*) + `equiv_*` + `write_verilog -noexpr` | READY · chip flatten-first **o** cone-local ABC **o** ORFS `abc_speed` (synthesis) |
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` · GRT+SDF | READY (GPL/GRT budgetati) |
 | F3 | OpenSTA ideale (hier sul cono) + OpenSTA+SDF GRT + OpenSTA+SPEF OpenRCX + ingest | READY — SPEF è F5-lite, non signoff CTS |
-| F4 | Dynamic IR/EM (libdpn A/B) + static IR sullo stesso extract | ingest gold + **extract candidato** + arrivals + restamp DirectLU/AMG — **non** sostituisce il gold 45.298 |
+| F4 | Dynamic IR/EM (libdpn A/B/D) + static IR sullo stesso extract | ingest gold + **extract candidato** + arrivals + restamp DirectLU/AMG/RAS — **non** sostituisce il gold 45.298 |
 | F5 | DRT + OpenRCX SPEF + OpenSTA `read_spef` | READY F5-lite (`droute_end_iter=2`, no CTS) — il controller **non** lancia `make finish` |
 
 F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.

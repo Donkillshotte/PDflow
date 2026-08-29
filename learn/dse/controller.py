@@ -6,10 +6,10 @@ Loop: inspect → propose (level, knobs) → pick fidelity → evaluate → attr
 Optimizers (each on its own level):
   architecture — e-graph extract of the IR-attributed dpath cone (ROVER/ASPEN shape)
   logic        — BOiLS SSK-GP + EHVI(area, WNS) / EI, DRiLLS sequential append
-  synthesis    — ORFS ABC_AREA catalog (F0)
+  synthesis    — ORFS ABC_AREA F0 catalog + one abc_speed.script F1 (not abc_ops)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX (not make finish)
-  pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG restamp (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS restamp (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -31,8 +31,10 @@ from .acquire import (
     should_pay_f3_sdf,
     should_pay_f3_spef,
     should_pay_f3_sta,
+    should_pay_f1_synth,
     should_pay_f4_amg,
     should_pay_f4_extract,
+    should_pay_f4_ras,
     should_pay_f4_region_extract,
     should_pay_f5_drt,
     should_pay_f4_pdn,
@@ -45,6 +47,7 @@ from .boils import propose_logic_boils, should_pay_f1
 from .fidelity import (
     COST_HINT,
     evaluate_f1_abc,
+    evaluate_f1_synth,
     evaluate_f2_fast,
     evaluate_f2_gpl,
     evaluate_f2_grt,
@@ -228,6 +231,13 @@ def run_controller(
     for s in plan["steps"]:
         step("plan_step", **s)
 
+    def _synth_f1_done() -> bool:
+        return any(c.level == "synthesis" and c.fidelity == "F1" for c in mem.all())
+
+    def _f1_room() -> int:
+        """Reserve one F1 slot for ORFS abc_speed until that layer is measured."""
+        return f1_max - (0 if _synth_f1_done() else 1)
+
     n_f1 = 0
     n_arch = 0
 
@@ -282,7 +292,7 @@ def run_controller(
         step("egraph", **{k: stats[k] for k in ("n_enodes", "n_eclasses", "rules_fired", "extracts")})
         step("arch_reason", reason=arch_step.get("reason"))
         arch_skip: set[str] = set()
-        while n_arch < arch_max and n_f1 < f1_max and time.time() < t_end:
+        while n_arch < arch_max and n_f1 < _f1_room() and time.time() < t_end:
             remaining = [
                 e
                 for e in rank_extracts(list(_ex), mem, combo=float(plan.get("combo_frac") or 0.0))
@@ -347,7 +357,7 @@ def run_controller(
             )
             time_candidate(cand, reason=f"F3 after extract {name} — reorder remaining")
 
-    while n_f1 < f1_max and time.time() < t_end:
+    while n_f1 < _f1_room() and time.time() < t_end:
         knobs = propose_logic_boils(mem, focus=str(plan.get("focus") or "chip"))
         if knobs is None:
             extra = next(
@@ -435,6 +445,46 @@ def run_controller(
             cost_s=cand.cost_s,
         )
         time_candidate(cand, reason="F3 after ABC so EHVI sees WNS")
+
+    pay_synth, why_synth = should_pay_f1_synth(
+        mem, budget_left=t_end - time.time(), n_f1=n_f1, f1_max=f1_max
+    )
+    step("acquire", fidelity="F1_SYNTH", pay=pay_synth, why=why_synth)
+    if any(s["level"] == "synthesis" for s in plan["steps"]) and pay_synth and time.time() < t_end:
+        step(
+            "propose",
+            level="synthesis",
+            knobs={"name": "orfs_abc_speed", "abcArea": 0, "source": "orfs_abc_script"},
+            fidelity="F1",
+            why=why_synth,
+        )
+        cand = evaluate_f1_synth(
+            rtl=rtl,
+            liberty=lib,
+            mem=mem,
+            design_id=design_id,
+            parent_id=phys.id if phys else None,
+        )
+        if attr.get("status") == "READY":
+            cand.attr = {
+                "inherited_from": "physical_ir",
+                "scope": "chip",
+                "transform": "orfs_abc_speed",
+                "note": "synthesis F1 is ORFS abc_speed.script; not flattened into BOiLS abc_ops",
+            }
+        mem.touch(cand)
+        n_f1 += 1
+        step(
+            "evaluate",
+            id=cand.id,
+            level="synthesis",
+            fidelity="F1",
+            status=cand.status,
+            area_um2=cand.qor.area_um2,
+            cost_s=cand.cost_s,
+            via="orfs_abc_speed",
+        )
+        time_candidate(cand, reason="F3 after ORFS abc_speed so WNS can compare to liberty_default")
 
     # F2-fast on the best F1 netlists (logic + architecture winners).
     n_f2 = 0
@@ -958,6 +1008,53 @@ def run_controller(
                 reason="mf-amg-residual-vs-direct",
             )
 
+    n_ras = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_solver_ras"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+    )
+    pay_ras, why_ras = should_pay_f4_ras(
+        mem,
+        budget_left=t_end - time.time(),
+        n_ras=n_ras,
+        variant=variant,
+        extract_id=extract_id,
+    )
+    step("acquire", fidelity="F4_RAS", pay=pay_ras, why=why_ras)
+    if any(s["level"] == "f4_ras" for s in plan["steps"]) and pay_ras and time.time() < t_end:
+        ingest = next(
+            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
+            None,
+        )
+        child = evaluate_f4_pdn(
+            mem,
+            {"name": "ras_residual", **GOLD_KNOBS},
+            variant=variant,
+            design_id=design_id,
+            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
+            spice=ext_hit["spice"] if ext_hit else None,
+            insts=ext_hit["insts"] if ext_hit else None,
+            extract_id=extract_id,
+            solver="ras",
+            sta=ext_hit.get("sta") if ext_hit else None,
+        )
+        if child:
+            step(
+                "evaluate",
+                id=child.id,
+                level="pdn",
+                fidelity="F4",
+                via="f4_solver_ras",
+                extract_id=extract_id,
+                droop_mv=child.qor.dynamic_ir_mv,
+                em_j=child.qor.em_j_a_m2,
+                gold=False,
+                status=child.status,
+                reason="mf-ras-residual-vs-direct",
+            )
+
     n_scale = sum(
         1
         for c in mem.by_level("pdn")
@@ -1033,14 +1130,15 @@ def run_controller(
             "layered search: architecture ≠ logic ≠ synthesis ≠ physical ≠ routing ≠ PDN",
             "F0 SSK-GP area + RUDY-class congestion; not IR",
             "F1 chip flatten-first (area teacher 409.108) · cone-local ABC on dpath when IR focuses the cone",
+            "synthesis F1 = ORFS abc_speed.script (ABC_AREA=0); abc_area stays F0-only; not abc_ops",
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + IR-bin region GPL + GRT",
             "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF + OpenRCX SPEF",
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
-            "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG + static IR",
+            "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; F3 WNS reorders remaining, no chip restart",
             "hierarchy chip→block→region→cone; IR rXY → OpenROAD density cap on that bin → optional extract",
             "Pareto per level — EHVI acquires, it does not replace the front",
-            "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · MF PDN solver residual",
+            "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · MF PDN AMG/RAS residual",
         ],
         "not": [
             "flattened black-box of all knobs",
@@ -1054,6 +1152,7 @@ def run_controller(
         "spent_s": sum(c.cost_s for c in mem.all()),
         "n_candidates": len(mem),
         "n_f1": sum(1 for c in mem.all() if c.fidelity == "F1"),
+        "n_f1_synth": sum(1 for c in mem.by_level("synthesis") if c.fidelity == "F1"),
         "n_arch": sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1"),
         "n_f2_fast": sum(
             1
@@ -1112,6 +1211,11 @@ def run_controller(
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_solver_amg" and c.status == "ok"
         ),
+        "n_f4_ras": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_solver_ras" and c.status == "ok"
+        ),
         "n_f4_solve": sum(
             1
             for c in mem.by_level("pdn")
@@ -1122,6 +1226,7 @@ def run_controller(
                 "f4_candidate_extract",
                 "f4_region_extract",
                 "f4_solver_amg",
+                "f4_solver_ras",
             )
         ),
         "memory": str(mem_path),
@@ -1211,6 +1316,16 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             break
         if src == "ingest_pdn" and not ir:
             ir = f" · F4 ingest {c.qor.dynamic_ir_mv:.3f} mV (gold teacher, unrestamped)"
+    ras = ""
+    for c in mem.by_level("pdn"):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_solver_ras" and c.qor.dynamic_ir_mv is not None:
+            ras = f" · RAS residual {c.qor.dynamic_ir_mv:.3f} mV (not gold)"
+            break
+    synth = ""
+    for c in mem.by_level("synthesis"):
+        if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None:
+            synth = f" · synth abc_speed {c.qor.area_um2:.3f} µm²"
+            break
     wns = ""
     timed = [
         (c.knobs.get("parent_name") or c.knobs.get("name"), c.qor.wns_cost)
@@ -1236,5 +1351,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{wns}{f5} · IR cone {mods}{ir}"
+        f"best mapped area {best}{synth}{wns}{f5} · IR cone {mods}{ir}{ras}"
     )

@@ -459,6 +459,69 @@ def should_pay_f4_amg(
     return True, f"SA-AMG restamp on {extract_id} — MF solver residual, not gold"
 
 
+def should_pay_f1_synth(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_f1: int,
+    f1_max: int = 6,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay one ORFS delay-script F1. Not logic ``-fast``; not ``abc_ops``."""
+    if any(c.level == "synthesis" and c.fidelity == "F1" for c in mem.all()):
+        return False, "synthesis F1 already measured"
+    if n_f1 >= f1_max:
+        return False, "F1 budget exhausted"
+    if budget_left < min_s:
+        return False, "wall budget would not cover ORFS abc_speed"
+    from .synthesis import available as synth_ok
+
+    if not synth_ok():
+        return False, "ORFS abc_speed.script missing"
+    if not any(c.fidelity == "F1" and c.status == "ok" for c in mem.all()):
+        return False, "no F1 teacher yet"
+    return True, "ORFS abc_speed.script (ABC_AREA=0) — not logic -fast, not abc_ops"
+
+
+def should_pay_f4_ras(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_ras: int = 0,
+    ras_max: int = 1,
+    min_s: float = 8.0,
+    variant: str = "flowlab",
+    extract_id: str = "finish",
+) -> tuple[bool, str]:
+    """Pay one RAS restamp after AMG. Residual vs DirectLU, not a PDN-catalog consume."""
+    if n_ras >= ras_max:
+        return False, "RAS F4 scout already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover RAS restamp"
+    have = any(
+        (c.knobs or {}).get("source") == "f4_solver_ras"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+        and c.status == "ok"
+        for c in mem.by_level("pdn")
+    )
+    if have:
+        return False, "this extract already has a RAS child"
+    if not any(
+        (c.knobs or {}).get("source") == "f4_solver_amg" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    ):
+        return False, "AMG residual not yet measured"
+    if extract_id != "finish":
+        if latest_ok_extract(mem) is None:
+            return False, "no candidate extract for RAS residual"
+    else:
+        from .f4_oracle import available
+
+        if not available(variant):
+            return False, "no cached finish extract for RAS residual"
+    return True, f"RAS restamp on {extract_id} — domain-decomp MF residual, not gold"
+
+
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
     from pathlib import Path
@@ -504,8 +567,12 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F2"
     if level == "f4_amg":
         return "F4"
+    if level == "f4_ras":
+        return "F4"
     if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract"):
         return "F4"
+    if level in ("synthesis", "f1_synth"):
+        return "F1"
     need = float(cost_hint.get("F1", 2.0))
     if budget_left < need:
         return "F0"
