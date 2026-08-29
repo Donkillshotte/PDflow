@@ -17,7 +17,7 @@ Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo con compani
 | Scenario / window engine | non simulare 100k cicli | PARTIAL (`I_tot(t)` di questo run) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
-| **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=24 · \|A−C\| 1.20 mV sul GCD clock; ranking scenari = Solver A |
+| **Solver C** rational Krylov MOR | riuso tra scenari | **PARTIAL** · m=24 · \|A−C\| 13.6 mV sul GCD clock (MOR senza \(i_L\)); ranking scenari = Solver A |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
 | ngspice | unit test fisico 1-nodo RC e R+L | READY |
@@ -52,7 +52,7 @@ Lo split da copiare è quello di EMSim *current analysis*, non il passo EM probe
 |---|---|---|---|
 | **A — Direct BE** | \((G + C/\Delta t) V_{n+1} = \mathrm{rhs}\) · LU sparso | gold, lento, indispensabile per validare | **READY** |
 | **B — SA-AMG** | V-cycle Jacobi + CG, LU sul coarse | workhorse (ESPSim-class) | **READY** |
-| **C — rational Krylov** | \(C_r \dot z + G_r z = -V^\top I(t)\) | tante TRAN sulla stessa PDN | **READY** se \|A−C\| < 5 mV; altrimenti PARTIAL |
+| **C — rational Krylov** | \(C_r \dot z + G_r z = -V^\top I(t)\) | tante TRAN sulla stessa PDN | **READY** se \|A−C\| < 5 mV; **PARTIAL** sul GCD con \(L>0\) (13.6 mV) |
 
 Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. Non si scrive una GPU fork: un giorno `LinearSolver` → Ginkgo.
 

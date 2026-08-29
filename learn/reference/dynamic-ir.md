@@ -45,7 +45,7 @@ Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A
 |---|---|---|
 | **A** direct BE + LU | golden | READY (~3 ms setup, più veloce a 4k nodi) |
 | **B** SA-AMG + CG in `libdpn` | workhorse | READY · 5 livelli · \|A−B\| ≪ 1 mV · nativo |
-| **C** rational Krylov MOR | reduced ODE, tanti `I(t)` | READY · m=24 · \|A−C\| 1.20 mV (clock); ranking resta A |
+| **C** rational Krylov MOR | reduced ODE, tanti `I(t)` | PARTIAL · m=24 · \|A−C\| 13.6 mV (niente \(i_L\)); ranking resta A |
 
 | Rete | Equazione | GCD |
 |---|---|---|
@@ -101,22 +101,23 @@ Per ogni load ITerm: \(I_\mathrm{leak}=f_\mathrm{leak}\,I_\mathrm{avg}\), impuls
 
 ## Numeri GCD flowlab (verificati)
 
-Stesso `pg_vdd_bumps.sp` (~3972 nodi, 13 pad, 601 load, Vdd = 1.1 V, periodo SDC 0.46 ns).
-N3 usa il companion BE con **storia di \(i_L\)** (non \(L/\Delta t\) memoryless): il droop **non** è il numero 74.715 mV della slice precedente.
-
-I numeri sotto sono quelli dell’ultimo `FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh` (clock, `PKG_L=2e-10`).
+Stesso `pg_vdd_bumps.sp` (~3985 nodi, 13 pad, 601 load, Vdd = 1.1 V, periodo SDC 0.46 ns).
+N3 = companion BE con storia di \(i_L\) (non \(L/\Delta t\) memoryless). Il droop **non** è più 74.715 mV.
 
 | Engine | Static IR | Dynamic droop |
 |---|---|---|
 | `pdn_transient.py` | 17.52 mV | 154 mV (step ×8 + pkg R/L memoryless) |
 | vyges-em-ir 0.1.33 | 17.46 mV | 78.8 mV @ 1.016 ns (simultaneous) |
-| **questo engine `clock` + \(i_L\)** | **17.52 mV** | **vedi report JSON** (`sim/reports/dynamic_ir_flowlab.json`) |
+| **questo engine `clock` + \(i_L\)** | **17.52 mV** | **59.925 mV (5.45%) @ 0.33 ns** · I_peak 21.7 mA · native_hist |
+| Solver B SA-AMG | — | 59.925 mV · \|A−B\| ≪ 1 µV · L5 native |
+| Solver C Krylov MOR | — | 73.518 mV · m=24 · \|A−C\| 13.59 mV · **screening** |
 
-Lo statico coincide. Il dinamico `clock` è **sotto** vyges simultaneous perché i t50 non sono allineati. Non è un FAIL di tapeout: è un laboratorio di droop.
+Ranking Solver A (gold): simultaneous 67.25 mV > clock 59.93 mV > spatial 55.31 mV.
+Con \(i_L\), lo spike simultaneo è il peggiore (I_peak 52 mA vs 22 mA clock) — il contrario della slice memoryless.
 
-Gold ngspice: **1 nodo RC** + triangolo, e **1 nodo pad–R–L–C** vs companion (non il chip). Soglia 5 mV, `method=gear maxord=1`.
+Gold ngspice: **1 nodo RC** `|V_BE−V_ng| ≈ 0.032 mV`; **1 nodo pad–R–L–C** ≈ 0.056 mV (`gear maxord=1`, soglia 5 mV). Non è il chip.
 
-EM: \(I=(V_a-V_b)/R\) a \(t_\mathrm{worst}\) = PARTIAL. Manca width → niente J né Black TTF.
+EM: \(I=(V_a-V_b)/R\) a \(t_\mathrm{worst}\) = PARTIAL · \|I\|_max ≈ 3.04 mA (via M3–M4). Manca width → niente J né Black TTF. \(i_L\) bump max ≈ 2.38 mA.
 
 ## File
 
