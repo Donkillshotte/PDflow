@@ -1388,7 +1388,7 @@ def evaluate_net_port_buffer(
 ) -> Candidate | None:
     """Insert BUF on attributed cross-module port nets. Not intra-module hops."""
     from .attribute import attribute_sta
-    from .net_space import BUF_TYPE, buffer_port_file, hop_is_cross_module
+    from .net_space import BUF_TYPE, buffer_port_file, hop_is_block_port, hop_is_cross_module
     from .sta_f3 import evaluate_sta
 
     mapped = (parent.artifacts or {}).get("mapped_v")
@@ -1397,34 +1397,25 @@ def evaluate_net_port_buffer(
     if src is None or not src.is_file():
         return None
     types: dict[str, str] = {}
-    targets = [h for h in list(hops or []) if hop_is_cross_module(h)]
+    targets = [h for h in list(hops or []) if hop_is_block_port(h)]
     if not targets:
-        f3 = next(
-            (
-                c
-                for c in reversed(list(mem.all()))
-                if c.status == "ok"
-                and (c.knobs or {}).get("source") == "f3_opensta_ideal"
-                and (c.knobs or {}).get("parent_id") == parent.id
-            ),
-            None,
-        )
-        art = (f3.artifacts if f3 else None) or parent.artifacts or {}
-        targets = [h for h in list(art.get("path_nets") or (parent.attr or {}).get("nets") or []) if hop_is_cross_module(str(h))]
-        types = dict(art.get("path_types") or {})
-        if not types:
-            types = dict((parent.artifacts or {}).get("path_types") or {})
+        from .acquire import _attributed_cross_module_nets
+
+        targets = list(_attributed_cross_module_nets(mem))
+        block = [h for h in targets if hop_is_block_port(h)]
+        if block:
+            targets = block
     if not targets:
+        targets = [h for h in list(hops or []) if hop_is_cross_module(h)]
+    if not types:
         for c in reversed(list(mem.all())):
             if c.status != "ok":
                 continue
             art = c.artifacts or {}
-            hits = [h for h in list(art.get("path_nets") or (c.attr or {}).get("nets") or []) if hop_is_cross_module(str(h))]
-            if hits:
-                targets = hits
-                if not types:
-                    types = dict(art.get("path_types") or {})
-                break
+            if any(hop_is_block_port(str(h)) for h in list(art.get("path_nets") or [])):
+                types = dict(art.get("path_types") or {})
+                if types:
+                    break
     knobs = {
         "source": "net_buffer_port",
         "parent_id": parent.id,

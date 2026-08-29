@@ -171,6 +171,20 @@ def hop_is_cross_module(hop: str) -> bool:
     return bool(pa and pb and pa != pb)
 
 
+def hop_is_block_port(hop: str) -> bool:
+    """True when the hop crosses top-level instances (ctrl↔dpath), not just submodules."""
+    if "->" not in hop:
+        return False
+    a, b = hop.split("->", 1)
+
+    def top_inst(name: str) -> str:
+        n = str(name).replace("\\", "").split()[0]
+        return n.split("/")[0] if "/" in n else ""
+
+    ta, tb = top_inst(a), top_inst(b)
+    return bool(ta and tb and ta != tb)
+
+
 def _norm_net(name: str) -> str:
     n = str(name or "").strip()
     if n.startswith("\\"):
@@ -390,6 +404,9 @@ def buffer_port_nets(
     seen: set[tuple[str, str, str]] = set()
     n_id = 0
     path_types = path_types or {}
+    hops = [h for h in hops if hop_is_block_port(h)] + [
+        h for h in hops if hop_is_cross_module(h) and not hop_is_block_port(h)
+    ]
     for hop in hops:
         if len(changed) >= int(max_n):
             break

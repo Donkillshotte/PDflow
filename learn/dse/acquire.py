@@ -707,8 +707,6 @@ def should_pay_net_port(
     min_s: float = 3.0,
 ) -> tuple[bool, str]:
     """Pay one parent-scoped BUF on ctrl↔dpath port nets. Not intra-module hops."""
-    from .net_space import hop_is_cross_module
-
     if n_port >= port_max:
         return False, "port-net buffer shot already spent"
     if budget_left < min_s:
@@ -725,28 +723,34 @@ def should_pay_net_port(
     hops = _attributed_cross_module_nets(mem)
     if not hops:
         return False, "no attributed cross-module hops (ctrl↔dpath ports)"
+    from .net_space import hop_is_block_port
+
+    n_block = sum(1 for h in hops if hop_is_block_port(h))
     return True, (
-        f"insert BUF on {len(hops)} port-net hops at the parent "
+        f"insert BUF on {n_block or len(hops)} port-net hops at the parent "
         "— not intra-module, not ABC, not a chip restart"
     )
 
 
 def _attributed_cross_module_nets(mem: DesignMemory) -> list[str]:
-    """Latest STA path that still names a module-boundary hop (not flatten-only)."""
-    from .net_space import hop_is_cross_module
+    """Prefer ctrl↔dpath port hops over later flatten/submodule-only paths."""
+    from .net_space import hop_is_block_port, hop_is_cross_module
 
+    fallback: list[str] = []
     for c in reversed(list(mem.all())):
         if c.status != "ok":
             continue
         art = c.artifacts or {}
-        hops = [h for h in (art.get("path_nets") or []) if isinstance(h, str) and hop_is_cross_module(h)]
-        if hops:
-            return hops
-        attr = c.attr or {}
-        hops = [h for h in (attr.get("nets") or []) if isinstance(h, str) and hop_is_cross_module(h)]
-        if hops:
-            return hops
-    return []
+        hops = [h for h in (art.get("path_nets") or []) if isinstance(h, str)]
+        if not hops:
+            hops = [h for h in ((c.attr or {}).get("nets") or []) if isinstance(h, str)]
+        block = [h for h in hops if hop_is_block_port(h)]
+        if block:
+            return block
+        cross = [h for h in hops if hop_is_cross_module(h)]
+        if cross and not fallback:
+            fallback = cross
+    return fallback
 
 
 def _attributed_path_nets(mem: DesignMemory) -> list[str]:

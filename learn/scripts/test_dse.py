@@ -455,12 +455,14 @@ def main() -> int:
         != knobs_fp("pdn", {"source": "f4_solver_amg", "extract_id": "finish"}),
         "RAS residual is not flattened into the AMG fingerprint",
     )
-    from dse.net_space import buffer_path_nets, buffer_port_nets, hop_is_cross_module
+    from dse.net_space import buffer_path_nets, buffer_port_nets, hop_is_block_port, hop_is_cross_module
 
     check(not hop_is_cross_module("_586_->_587_"), "flatten hop is not cross-module")
     check(not hop_is_cross_module("dpath/_07_->dpath/_08_"), "same-instance prefix is intra-module")
     check(hop_is_cross_module("dpath/a_lt_b/_194_->ctrl/_06_"), "dpath↔ctrl hop is cross-module")
     check(hop_is_cross_module("dpath/a_lt_b/_142_->dpath/a_mux/_40_"), "dpath submodule hop is cross-module")
+    check(hop_is_block_port("dpath/a_lt_b/_194_->ctrl/_06_"), "dpath↔ctrl is a block-port hop")
+    check(not hop_is_block_port("dpath/a_lt_b/_142_->dpath/a_mux/_40_"), "same top instance is not a block-port hop")
     tiny_port = (
         "module ctrl(is_a_lt_b, z);\n"
         "  input is_a_lt_b;\n  output z;\n"
@@ -1283,6 +1285,30 @@ def main() -> int:
         check(pay_p2, f"port-net is paid after intra-module net + crossing hops ({why_p2})")
         pay_p3, why_p3 = should_pay_net_port(mem_pay, budget_left=80, n_net=1, n_port=1)
         check(not pay_p3, f"port-net is a single shot ({why_p3})")
+        from dse.acquire import _attributed_cross_module_nets
+
+        mem_pay.add(
+            Candidate(
+                id="f3later",
+                design_id="gcd",
+                parent_id="t0",
+                level="logic",
+                knobs={"source": "f3_opensta_ideal", "parent_id": "t0"},
+                knobs_fp="f3later",
+                rtl_fp="x",
+                netlist_fp="y",
+                fidelity="F3",
+                qor=QoR(wns_cost=0.20, fidelity="F3"),
+                cost_s=0.1,
+                status="ok",
+                artifacts={"path_nets": ["dpath/b_reg/_49_->dpath/sub/_125_", "dpath/sub/_179_->dpath/a_mux/_084_"]},
+            )
+        )
+        picked = _attributed_cross_module_nets(mem_pay)
+        check(
+            any(h.startswith("dpath/") and "->ctrl/" in h for h in picked),
+            f"port-net acquire prefers ctrl↔dpath over later submodule hops, got {picked}",
+        )
 
     from dse.active import order_local_hosts, steer_from_residual
     from dse.surrogate import residual_f3_to_f5_lite
