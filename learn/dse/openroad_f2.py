@@ -76,8 +76,8 @@ def region_blockage_tcl(
     if region and re.fullmatch(r"r\d{2}", str(region)):
         nx, ny = int(region[1]), int(region[2])
     use_xy = x_dbu is not None and y_dbu is not None
-    hx = float(x_dbu) if use_xy else 0.0
-    hy = float(y_dbu) if use_xy else 0.0
+    hx = int(round(float(x_dbu))) if use_xy else 0
+    hy = int(round(float(y_dbu))) if use_xy else 0
     flag = 1 if use_xy else 0
     return f"""
 lassign [ord::get_core_area] _cx1 _cy1 _cx2 _cy2
@@ -94,8 +94,8 @@ if {{{int(flag)}}} {{
 }}
 if {{$_nx < 0}} {{ set _nx 0 }}
 if {{$_ny < 0}} {{ set _ny 0 }}
-if {{$_nx > $_bins-1}} {{ set _nx [expr {{$_bins-1}}] }}
-if {{$_ny > $_bins-1}} {{ set _ny [expr {{$_bins-1}}] }}
+if {{$_nx > [expr {{$_bins - 1}}]}} {{ set _nx [expr {{$_bins - 1}}] }}
+if {{$_ny > [expr {{$_bins - 1}}]}} {{ set _ny [expr {{$_bins - 1}}] }}
 set _rx1 [expr {{$_cx1 + $_nx*$_wx}}]
 set _ry1 [expr {{$_cy1 + $_ny*$_wy}}]
 set _rx2 [expr {{$_rx1 + $_wx}}]
@@ -211,7 +211,10 @@ exit
     area_m = _AREA.search(log)
     inst_m = _INST.search(log)
     ok = "DSE_GPL_OK" in log and hpwl is not None and proc.returncode == 0
-    err = next((ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR")), "")
+    err = next(
+        (ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR") or ln.startswith("Error:")),
+        "",
+    )
     return {
         "status": "ok" if ok else "fail",
         "reason": None if ok else (err or "gpl_failed"),
@@ -320,7 +323,10 @@ exit
     start = _START.search(log)
     end = _END.search(log)
     ok = "DSE_GRT_OK" in log and proc.returncode == 0
-    err = next((ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR")), "")
+    err = next(
+        (ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR") or ln.startswith("Error:")),
+        "",
+    )
     grt_overflow = float(gov.group(6)) if gov else (0.0 if ok else None)
     return {
         "status": "ok" if ok else "fail",
@@ -424,7 +430,10 @@ exit
     gwl = _GRT_WL.search(log)
     gov = _GRT_OV.search(log)
     ok = "DSE_F5_OK" in log and proc.returncode == 0 and spef_tmp.is_file()
-    err = next((ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR")), "")
+    err = next(
+        (ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR") or ln.startswith("Error:")),
+        "",
+    )
     segs = None
     mseg = re.search(r"Final (\d+) rc segments", log)
     if mseg:
@@ -541,7 +550,10 @@ exit
         }
     log = (proc.stdout or "") + "\n" + (proc.stderr or "")
     logp.write_text(log)
-    err = next((ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR")), "")
+    err = next(
+        (ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR") or ln.startswith("Error:")),
+        "",
+    )
     if "DSE_PDN_EXTRACT_OK" not in log or proc.returncode != 0 or not spice.is_file() or not odb.is_file():
         return {
             "status": "fail",
