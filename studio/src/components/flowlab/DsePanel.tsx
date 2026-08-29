@@ -22,9 +22,11 @@ type DseReport = {
   n_candidates?: number;
   n_f1?: number;
   n_arch?: number;
+  n_f2_fast?: number;
   pareto?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
   attribution?: Attr;
   focus?: { focus?: string; scope?: string };
+  plan?: { steps?: { level?: string; reason?: string }[] };
   candidates?: Cand[];
 };
 
@@ -60,8 +62,7 @@ export function DsePanel() {
       <header className="fl-dynir-head">
         <strong>DSE · ricerca a livelli</strong>
         <p>
-          E-graph sul cono IR · ABC BOiLS/SSK-GP · F2 place ingest · IR/EM come
-          oracolo F4 · Pareto per livello ·{" "}
+          Planner dal cono IR · ABC BOiLS/DRiLLS · F2-fast sul netlist · IR F4 ·{" "}
           <Link href="/materiali/reference/dse.md">dse.md</Link>
         </p>
       </header>
@@ -72,6 +73,9 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
+          {report.plan?.steps?.[0]?.reason ? (
+            <p className="fl-dynir-summary">Piano: {report.plan.steps[0].reason}</p>
+          ) : null}
           <ul className="fl-dynir-levels">
             {LEVELS.map((lv) => {
               const n = cands.filter((c) => c.level === lv).length;

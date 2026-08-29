@@ -27,6 +27,7 @@ class Candidate:
     pred: dict = field(default_factory=dict)
     attr: dict = field(default_factory=dict)
     egraph: dict = field(default_factory=dict)
+    artifacts: dict = field(default_factory=dict)
     status: str = "ok"
     failure: str | None = None
     created_at: float = 0.0
@@ -55,6 +56,7 @@ class Candidate:
             pred=dict(d.get("pred") or {}),
             attr=dict(d.get("attr") or {}),
             egraph=dict(d.get("egraph") or {}),
+            artifacts=dict(d.get("artifacts") or {}),
             status=str(d.get("status") or "ok"),
             failure=d.get("failure"),
             created_at=float(d.get("created_at") or 0.0),

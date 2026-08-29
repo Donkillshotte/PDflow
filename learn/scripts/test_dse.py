@@ -173,6 +173,32 @@ def main() -> int:
     check(local_scope(attr)["restart_chip"] is False, "local scope refuses a chip restart")
     check(local_scope(attr)["focus"] == "dpath", "focus is the attributed module")
 
+    from dse.planner import plan_search
+    from dse.policy import ucb_next_op
+    from dse.netgraph import estimate_physical, parse_mapped_verilog
+
+    planned = plan_search(attr, mem2, f2_cong=0.0)
+    check(planned["restart_chip"] is False, "planner refuses a chip restart")
+    check(planned["focus"] == "dpath", "planner focus is dpath")
+    check(
+        any(s["level"] == "architecture" for s in planned["steps"]),
+        "combo IR on dpath schedules architecture extracts",
+    )
+    check(
+        planned["steps"][0].get("extracts", [None])[0] == "lt_borrow",
+        "combo-heavy IR prefers lt_borrow first",
+    )
+    check(ucb_next_op(mem2, last="∅", focus="dpath") is None, "UCB is silent without transitions")
+
+    yosys_v = _ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/1_2_yosys.v"
+    if yosys_v.is_file():
+        g = parse_mapped_verilog(yosys_v)
+        check(g.n_cells > 20, f"parsed mapped netlist cells, got {g.n_cells}")
+        est = estimate_physical(yosys_v)
+        check(est["hpwl"] > 0, "F2-fast HPWL is positive")
+        check(est["congestion"] >= 0, "F2-fast RUDY congestion is ≥0")
+        print(f"    F2-fast ORFS yosys.v cells={g.n_cells} HPWL={est['hpwl']:.1f} cong={est['congestion']:.3f}")
+
     from dse.controller import propose_logic
 
     knobs = propose_logic(mem2)

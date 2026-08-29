@@ -83,6 +83,66 @@ def residual(actual: float | None, pred: dict) -> dict | None:
     }
 
 
+def predict_f2_from_f1(all_cands: list[Candidate]) -> dict:
+    """Residual teacher: F1 area → F2-fast HPWL. Honest uncertainty.
+
+    Fit HPWL ≈ a + b·area when n≥3. Below that, report mean HPWL only.
+    Ingested GRT HPWL is a *different* teacher (scale), never mixed into IR.
+    """
+    pairs = []
+    for c in all_cands:
+        if c.fidelity != "F2" or c.status != "ok":
+            continue
+        if (c.knobs or {}).get("source") != "f2_fast_barycenter":
+            continue
+        hpwl = (c.artifacts or {}).get("hpwl")
+        parent = next((p for p in all_cands if p.id == c.parent_id), None)
+        area = parent.qor.area_um2 if parent else c.qor.area_um2
+        if hpwl is None or area is None:
+            continue
+        pairs.append((float(area), float(hpwl)))
+    if not pairs:
+        return {
+            "metric": "hpwl",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no F1→F2-fast pairs",
+            "not": "GRT or Dynamic IR",
+        }
+    areas = [p[0] for p in pairs]
+    hp = [p[1] for p in pairs]
+    mean_h = sum(hp) / len(hp)
+    if len(pairs) < 3:
+        return {
+            "metric": "hpwl",
+            "mean": mean_h,
+            "n": len(pairs),
+            "uncertainty": "high",
+            "via": "mean F2-fast HPWL (n<3, no slope)",
+            "not": "GRT or Dynamic IR",
+        }
+    # least-squares hpwl = a + b*area
+    n = len(pairs)
+    mx = sum(areas) / n
+    my = mean_h
+    den = sum((x - mx) ** 2 for x in areas)
+    b = 0.0 if den < 1e-12 else sum((x - mx) * (y - my) for x, y in pairs) / den
+    a = my - b * mx
+    resid = [y - (a + b * x) for x, y in pairs]
+    var = sum(r * r for r in resid) / (n - 2)
+    return {
+        "metric": "hpwl",
+        "mean": mean_h,
+        "slope_d_hpwl_d_area": b,
+        "intercept": a,
+        "residual_std": var ** 0.5,
+        "n": n,
+        "uncertainty": "medium" if n < 6 else "low",
+        "via": "linear residual F1 area → F2-fast HPWL (RTLDistil-shaped)",
+        "not": "Dynamic IR / a neural voltage map",
+    }
+
+
 def predict_f4_from_f1(all_cands: list[Candidate]) -> dict:
     """Teacher/student residual: F4 droop vs F1 area, paired on rtl_fp.
 

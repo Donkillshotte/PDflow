@@ -16,6 +16,7 @@ import numpy as np
 from .abc_space import BOILS_STD_OPS, CATALOG, subsequence_kernel
 from .fingerprint import knobs_fp
 from .memory import DesignMemory
+from .policy import drills_propose
 
 
 def ssk(a: list[str], b: list[str], ell: int = 3) -> float:
@@ -155,14 +156,18 @@ def generate_candidates(seen_ops: list[list[str]], best: list[str] | None) -> li
     return list(uniq.values())
 
 
-def propose_logic_boils(mem: DesignMemory) -> dict | None:
-    """Next logic knobs: EI on the SSK-GP when possible, else SSK diversity."""
+def propose_logic_boils(mem: DesignMemory, focus: str = "chip") -> dict | None:
+    """Next logic knobs: DRiLLS UCB first, then EI on the SSK-GP."""
     seen_fp = mem.seen_knobs("logic")
     ok = [c for c in mem.by_level("logic") if c.status == "ok" and c.qor.area_um2 is not None]
     train_seqs = [list(c.knobs.get("abc_ops") or []) for c in ok]
     y = [float(c.qor.area_um2) for c in ok]
     best_seq = train_seqs[int(np.argmin(y))] if y else None
     pool = []
+    if best_seq is not None:
+        ucb = drills_propose(mem, best_seq, focus)
+        if ucb and knobs_fp("logic", ucb) not in seen_fp:
+            pool.append(ucb)
     for knobs in generate_candidates(train_seqs, best_seq):
         fp = knobs_fp("logic", knobs)
         if fp in seen_fp:

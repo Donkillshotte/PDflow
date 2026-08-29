@@ -2,7 +2,7 @@
 
 F0  cheap analytical / SSK-GP / RUDY-class proxy
 F1  Yosys + ABC liberty map + equiv (logic or architecture RTL)
-F2  ingest OpenROAD place / GRT (no new P&R)
+F2  ingest OpenROAD place / GRT, plus F2-fast barycenter on a *candidate* netlist
 F3  OpenSTA signoff ingest
 F4  Dynamic IR / EM ingest (Solver A gold stays 45.298 mV on the GCD)
 F5  GAP (signoff P&R not launched from the controller)
@@ -22,6 +22,7 @@ from .abc_space import write_abc_script
 from .fingerprint import knobs_fp, sha256_file, sha256_text
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, wns_cost_from_slack_ns
+from .netgraph import estimate_physical, parse_mapped_verilog, features as net_features
 
 REPO = Path(__file__).resolve().parents[1].parent
 NANGATE_LIB = (
@@ -291,9 +292,21 @@ write_verilog -noattr {net}
         )
         net_fp = sha256_file(net) if net.is_file() else sha256_text(text[-2000:])
         err = next((ln.strip() for ln in text.splitlines() if "ERROR" in ln), "")
+        mapped_text = net.read_text() if net.is_file() else None
     cost = time.time() - t0
     ok = equiv and area is not None and proc.returncode == 0
     fail = None if ok else (err or "equiv_or_map_failed")
+    cid = DesignMemory.new_id()
+    artifacts: dict = {}
+    if mapped_text and ok:
+        dest = REPO / "learn" / "sim" / "dse" / "netlists" / f"{cid}.v"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(mapped_text)
+        artifacts["mapped_v"] = str(dest)
+        try:
+            artifacts.update(net_features(parse_mapped_verilog(dest)))
+        except Exception:
+            pass
     q = QoR(
         area_um2=area,
         n_cells=n_cells,
@@ -301,7 +314,7 @@ write_verilog -noattr {net}
         note="Yosys+ABC mapped area; delay/IR not claimed from F1",
     )
     c = Candidate(
-        id=DesignMemory.new_id(),
+        id=cid,
         design_id=design_id,
         parent_id=parent_id,
         level=level,
@@ -312,10 +325,124 @@ write_verilog -noattr {net}
         fidelity="F1",
         qor=q,
         cost_s=cost,
+        artifacts=artifacts,
         status="ok" if ok else "fail",
         failure=fail,
         note=f"F1 {knobs.get('name')} equiv={'PASS' if equiv else 'FAIL'}"
         + (f" · {err}" if err and not ok else ""),
+    )
+    return mem.add(c)
+
+
+def ensure_mapped_netlist(
+    cand: Candidate,
+    *,
+    rtl: Path,
+    liberty: Path,
+    top: str = "gcd",
+    timeout_s: float = 60.0,
+) -> Candidate:
+    """Resume-safe: re-map an F1 candidate that predates netlist persistence."""
+    existing = (cand.artifacts or {}).get("mapped_v")
+    if existing and Path(existing).is_file():
+        return cand
+    dest = REPO / "learn" / "sim" / "dse" / "netlists" / f"{cand.id}.v"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    knobs = cand.knobs or {}
+    ops = list(knobs.get("abc_ops") or [])
+    args = list(knobs.get("abc_args") or [])
+    lib = str(liberty)
+    with tempfile.TemporaryDirectory(prefix="dse-map-") as tmp:
+        tmp_p = Path(tmp)
+        net = tmp_p / "mapped.v"
+        ys = tmp_p / "map.ys"
+        abc_file = tmp_p / "aig.abc"
+        aig_cmd = ""
+        if ops:
+            write_abc_script(ops, abc_file)
+            aig_cmd = f"abc -script {abc_file}"
+        map_cmd = "abc -liberty " + lib
+        if args:
+            map_cmd += " " + " ".join(args)
+        ys.write_text(
+            f"""
+read_verilog {rtl}
+hierarchy -check -top {top}
+proc; flatten; opt_expr; opt_clean
+synth -top {top}
+{aig_cmd}
+dfflibmap -liberty {lib}
+{map_cmd}
+write_verilog -noattr {net}
+"""
+        )
+        proc = subprocess.run(
+            ["yosys", "-q", "-s", str(ys)],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+        if proc.returncode != 0 or not net.is_file():
+            return cand
+        dest.write_text(net.read_text())
+    art = dict(cand.artifacts or {})
+    art["mapped_v"] = str(dest)
+    try:
+        art.update(net_features(parse_mapped_verilog(dest)))
+    except Exception:
+        pass
+    cand.artifacts = art
+    return cand
+
+
+def evaluate_f2_fast(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    util: float = 0.35,
+) -> Candidate | None:
+    """F2-fast on a persisted F1 netlist. Separate physical observation, no P&R."""
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    knobs = {
+        "source": "f2_fast_barycenter",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "util": util,
+    }
+    fp = knobs_fp("physical", knobs)
+    if fp in mem.seen_knobs("physical"):
+        return next(c for c in mem.by_level("physical") if c.knobs_fp == fp)
+    t0 = time.time()
+    est = estimate_physical(Path(mapped), util=util)
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=est.get("n_cells"),
+        congestion=est.get("congestion"),
+        fidelity="F2",
+        note=f"F2-fast HPWL={est['hpwl']:.3f} · {est['via']}",
+    )
+    c = Candidate(
+        id=DesignMemory.new_id(),
+        design_id=design_id,
+        parent_id=parent.id,
+        level="physical",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F2",
+        qor=q,
+        cost_s=time.time() - t0,
+        artifacts=est,
+        attr={
+            "transform": parent.knobs.get("name"),
+            "context": {"parent": parent.id, "level": parent.level},
+            "note": "transform+netlist → ΔHPWL/RUDY; not Dynamic IR",
+        },
+        note=f"F2-fast child of {parent.knobs.get('name')} HPWL={est['hpwl']:.3f}",
     )
     return mem.add(c)
 

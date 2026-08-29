@@ -61,8 +61,15 @@ non solo `design → QoR`.
 
 ## Ottimizzatori (uno per problema)
 
+Il **planner** legge `combo_frac` e il modulo attribuito: IR combo su `dpath`
+ordina gli extract (`lt_borrow` → `sub` → `eqz`) e non riparte dal chip. Congestione
+GRT alta sposta il budget sul livello physical.
+
+F2-fast: place baricentrico + HPWL + RUDY sul *netlist del candidato* (non è GRT,
+non è `make finish`). L’ingest ORFS resta l’osservazione F2 del layout corrente.
+
 - **BOiLS** — kernel SSK + GP + EI + trust-region (swap/delete)
-- **DRiLLS** — append di un’op STD alla migliore sequenza
+- **DRiLLS** — UCB sul prossimo op ABC dato (ultimo op, focus IR)
 - **e-graph** — saturation + extract, non RTL casuale
 - **AutoDMP-shaped** — catalogo util/densità a F0; F5 non parte
 - **LLM** — non è l’ottimizzatore (GAP proposer)

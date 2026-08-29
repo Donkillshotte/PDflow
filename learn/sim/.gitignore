@@ -4,3 +4,4 @@ sim.log
 reports/*
 !reports/dse_*.json
 previews/
+dse/netlists/

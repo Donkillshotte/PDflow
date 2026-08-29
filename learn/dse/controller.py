@@ -21,12 +21,14 @@ import time
 from pathlib import Path
 
 from .abc_space import CATALOG
-from .arch_space import emit_gcd_variant, plan_dpath_extracts
+from .arch_space import emit_gcd_variant
 from .attribute import attribute_from_path, local_scope
 from .boils import propose_logic_boils, should_pay_f1
 from .fidelity import (
     COST_HINT,
     evaluate_f1_abc,
+    evaluate_f2_fast,
+    ensure_mapped_netlist,
     flowlab_params,
     ingest_f2,
     ingest_pdn,
@@ -34,18 +36,19 @@ from .fidelity import (
     liberty_path,
     reports_dir,
 )
+from .planner import plan_search
 from .fingerprint import knobs_fp
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front
 from .physical_space import propose_physical_f0, propose_synthesis_f0
-from .surrogate import predict_f1_area, predict_f4_from_f1, residual
+from .surrogate import predict_f1_area, predict_f2_from_f1, predict_f4_from_f1, residual
 
 LEVELS = ("architecture", "logic", "synthesis", "physical", "pdn")
 
 
-def propose_logic(mem: DesignMemory) -> dict | None:
+def propose_logic(mem: DesignMemory, focus: str = "chip") -> dict | None:
     """Public hook used by tests: a logic proposal never carries physical knobs."""
-    return propose_logic_boils(mem)
+    return propose_logic_boils(mem, focus=focus)
 
 
 def run_controller(
@@ -57,7 +60,7 @@ def run_controller(
     rtl: Path | None = None,
     memory_path: Path | None = None,
     fresh: bool = False,
-    arch_max: int = 2,
+    arch_max: int = 3,
 ) -> dict:
     t_end = time.time() + max(float(budget_s), 1.0)
     root = Path(__file__).resolve().parents[1].parent
@@ -92,6 +95,12 @@ def run_controller(
         if c:
             c.attr = attr
             mem.touch(c)
+
+    f2_cong = f2.qor.congestion if f2 and f2.qor.congestion is not None else None
+    plan = plan_search(attr, mem, f2_cong=f2_cong)
+    step("plan", **{k: plan[k] for k in ("focus", "combo_frac", "f2_cong") if k in plan})
+    for s in plan["steps"]:
+        step("plan_step", **s)
 
     lib = liberty_path()
     n_f1 = 0
@@ -135,11 +144,15 @@ def run_controller(
                 cost_s=cand.cost_s,
             )
 
-    # Hierarchical architecture: only the attributed cone, and only if the
-    # e-graph actually discovered an equivalent extract.
-    if focus.get("focus") == "dpath" and time.time() < t_end:
-        eg, _roots, extracts, stats = plan_dpath_extracts()
+    # Hierarchical architecture: planner orders extracts from IR attribution.
+    arch_step = next((s for s in plan["steps"] if s["level"] == "architecture"), None)
+    if arch_step and time.time() < t_end:
+        from .arch_space import plan_dpath_extracts
+
+        _eg, _roots, _ex, stats = plan_dpath_extracts()
+        extracts = list(arch_step.get("extracts") or _ex)
         step("egraph", **{k: stats[k] for k in ("n_enodes", "n_eclasses", "rules_fired", "extracts")})
+        step("arch_reason", reason=arch_step.get("reason"))
         seen_arch = mem.seen_knobs("architecture")
         for name in extracts:
             if n_arch >= arch_max or n_f1 >= f1_max or time.time() >= t_end:
@@ -198,7 +211,7 @@ def run_controller(
             )
 
     while n_f1 < f1_max and time.time() < t_end:
-        knobs = propose_logic_boils(mem)
+        knobs = propose_logic_boils(mem, focus=str(plan.get("focus") or "chip"))
         if knobs is None:
             step("stop", reason="logic space exhausted at this budget")
             break
@@ -259,6 +272,36 @@ def run_controller(
             cost_s=cand.cost_s,
         )
 
+    # F2-fast on the best F1 netlists (logic + architecture winners).
+    n_f2 = 0
+    if any(s["level"] == "f2_fast" for s in plan["steps"]) and time.time() < t_end:
+        winners = []
+        for lv in ("logic", "architecture"):
+            ranked = [
+                c
+                for c in mem.by_level(lv)
+                if c.status == "ok" and c.qor.area_um2 is not None and c.artifacts.get("mapped_v")
+            ]
+            ranked.sort(key=lambda c: float(c.qor.area_um2))
+            winners.extend(ranked[:1])
+        for w in winners:
+            if n_f2 >= 3 or time.time() >= t_end:
+                break
+            w = ensure_mapped_netlist(w, rtl=rtl, liberty=lib)
+            mem.touch(w)
+            child = evaluate_f2_fast(w, mem, design_id=design_id)
+            if child:
+                n_f2 += 1
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="physical",
+                    fidelity="F2",
+                    parent=w.id,
+                    hpwl=(child.artifacts or {}).get("hpwl"),
+                    congestion=child.qor.congestion,
+                )
+
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:
         step("propose", level="physical", knobs=c.knobs, fidelity="F0")
@@ -282,11 +325,11 @@ def run_controller(
             "layered search: architecture e-graph ≠ logic ABC ≠ synthesis ABC_AREA ≠ physical ≠ PDN",
             "F0 SSK-GP area + RUDY-class congestion; not IR",
             "F1 Yosys+ABC+equiv (script file) on logic sequences and dpath extracts",
-            "F2 ingest of OpenROAD place/GRT/finish",
+            "F2 ingest of OpenROAD place/GRT + F2-fast barycenter on candidate netlists",
             "F3/F4 ingest of OpenSTA + Dynamic IR (Solver A gold unrestamped)",
-            "IR hotspot → dpath cone → local extract, not a chip restart",
+            "IR combo on dpath → planner orders cone extracts (lt/sub/eqz), no chip restart",
             "Pareto per level — no premature scalar",
-            "BOiLS SSK-GP + EI · DRiLLS append · AutoDMP-shaped physical F0",
+            "BOiLS SSK-GP + EI · DRiLLS UCB · AutoDMP-shaped physical F0",
         ],
         "not": [
             "flattened black-box of all knobs",
@@ -299,9 +342,16 @@ def run_controller(
         "n_candidates": len(mem),
         "n_f1": sum(1 for c in mem.all() if c.fidelity == "F1"),
         "n_arch": sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1"),
+        "n_f2_fast": sum(
+            1
+            for c in mem.by_level("physical")
+            if c.knobs.get("source") == "f2_fast_barycenter"
+        ),
         "memory": str(mem_path),
         "surrogate_f0": pred,
+        "surrogate_f1_to_f2": predict_f2_from_f1(mem.all()),
         "surrogate_f1_to_f4": f4s,
+        "plan": plan,
         "attribution": attr,
         "focus": focus,
         "pareto": {
