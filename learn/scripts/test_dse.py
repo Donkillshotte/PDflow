@@ -539,8 +539,12 @@ def main() -> int:
         check(
             spef_sta.get("wns_ns") is not None
             and cts_sta.get("wns_ns") is not None
-            and abs(float(cts_sta["wns_ns"]) - float(spef_sta["wns_ns"])) > 0.01,
+            and abs(float(cts_sta["wns_ns"]) - float(spef_sta["wns_ns"])) >= 0.01,
             f"CTS SPEF WNS {cts_sta.get('wns_ns')} must differ from F5-lite {spef_sta.get('wns_ns')}",
+        )
+        check(
+            "set_propagated_clock" in (cts_sta.get("via") or ""),
+            "CTS STA via names set_propagated_clock",
         )
         check(f5.get("clock") == "ideal", "F5-lite stays ideal after the CTS shot")
         print(

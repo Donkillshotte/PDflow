@@ -82,8 +82,8 @@ link_design {top}
 read_sdc {SDC}
 {anno}
 {prop}
-report_wns
-report_tns
+report_wns -digits 4
+report_tns -digits 4
 report_power
 puts STA_PATH_BEGIN
 report_checks -path_delay max -fields {{input_pin}} -digits 4 -format full -group_path_count 1
