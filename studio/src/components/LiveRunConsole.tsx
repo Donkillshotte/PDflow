@@ -33,6 +33,7 @@ const POST_FINISH_CHIPS = [
   { id: "activity_power", label: "Activity → power", hint: "set_power_activity" },
   { id: "vectorless", label: "Vectorless / dynamic", hint: "Najm + Kouroussis IR" },
   { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
+  { id: "vyges_em_ir", label: "vyges-em-ir", hint: "CG + backward Euler" },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
   { id: "power_chain", label: "Catena SPICE", hint: "activity→IR→system" },
   { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },

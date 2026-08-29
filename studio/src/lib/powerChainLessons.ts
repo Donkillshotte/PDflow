@@ -148,6 +148,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
       "activity_power",
       "vectorless",
       "chip_pdn_ir",
+      "vyges_em_ir",
       "system_pdn",
       "power_chain",
       "yosys_equiv",
@@ -160,11 +161,13 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     spiceOutputs: [
       "system_pdn_*.json",
       "pdn_chip_ir_*.json",
+      "vyges_em_ir_*.json",
       "learn/sim/spice/*",
     ],
     docs: [
       { href: "/materiali/reference/spice-power-chain.md#lezione-07-finish", label: "§07 Finish" },
       { href: "/materiali/reference/vectorless-power.md", label: "Vectorless / dynamic" },
+      { href: "/materiali/reference/vyges-em-ir.md", label: "vyges-em-ir" },
       { href: "/materiali/reference/oss-integrations.md", label: "Matrice OSS" },
       { href: "/materiali/reference/signoff-matrix.md", label: "Matrice signoff 4 pilastri" },
       { href: "/materiali/reference/spice-ngspice-primer.md", label: "ngspice" },

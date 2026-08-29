@@ -80,6 +80,7 @@ export const POWER_ACTIONS = [
   "activity_power",
   "vectorless",
   "chip_pdn_ir",
+  "vyges_em_ir",
   "system_pdn",
   "export_spice_lab",
   "power_chain",

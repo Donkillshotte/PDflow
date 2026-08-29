@@ -113,6 +113,14 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         long: true,
       },
       {
+        id: "vyges_em_ir",
+        label: "vyges-em-ir",
+        action: "vyges_em_ir",
+        script: "learn/scripts/run_vyges_em_ir.sh",
+        reportRel: "sim/reports/vyges_em_ir_{variant}.json",
+        stampRel: ".vyges_em_ir.ok",
+      },
+      {
         id: "system_pdn",
         label: "System PDN",
         action: "system_pdn",

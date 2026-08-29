@@ -97,6 +97,7 @@ const ALLOWED_ACTIONS = new Set([
   "analytical_pex",
   "layout_tools",
   "spice_engines",
+  "vyges_em_ir",
   "tool_matrix",
 ]);
 
@@ -255,6 +256,7 @@ function resolveCommand(
     analytical_pex: { script: "run_analytical_pex.py", pythonpath: true },
     layout_tools: { script: "run_layout_tools_probe.sh" },
     spice_engines: { script: "run_spice_engines.sh" },
+    vyges_em_ir: { script: "run_vyges_em_ir.sh" },
     tool_matrix: { script: "run_tool_matrix.sh", pythonpath: true },
   };
   if (action in analysisScripts) {
@@ -638,6 +640,12 @@ export async function probeToolchain(): Promise<{
         required: false,
       };
     } catch {
+      if (bin === "vyges-em-ir") {
+        const local = path.join(REPO_ROOT, "tools/vyges-em-ir/vyges-em-ir");
+        if (fs.existsSync(local)) {
+          return { name: bin, ok: true, detail: local, required: false };
+        }
+      }
       return { name: bin, ok: false, detail: "mancante", required: false };
     }
   }
@@ -650,6 +658,7 @@ export async function probeToolchain(): Promise<{
     present("sby"),
     present("xyce"),
     present("fastercap"),
+    present("vyges-em-ir"),
   ]);
 
   return {

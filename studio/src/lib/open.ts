@@ -214,6 +214,7 @@ export function listOpenTargets(): {
     { id: "run-gridcheck", label: "Run · gridcheck PDN", action: "gridcheck" },
     { id: "run-system-pdn", label: "Run · System PDN (hier)", action: "system_pdn" },
     { id: "run-chip-ir", label: "Run · chip IR mesh", action: "chip_pdn_ir" },
+    { id: "run-vyges-em-ir", label: "Run · vyges-em-ir", action: "vyges_em_ir" },
     { id: "run-power-chain", label: "Run · catena SPICE", action: "power_chain" },
     {
       id: "run-export-spice",

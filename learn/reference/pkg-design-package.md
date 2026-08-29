@@ -39,6 +39,7 @@ package**. Questa sezione documenta i concetti e collega le due demo PDN.
 | Chip PDN + `check_power_grid` | FlowLab fase **PDN** |
 | **System PDN** VRM→board→pkg→die · Z(f) + load-step | FlowLab fase **PKG** · `run_system_pdn.sh` · ngspice |
 | Chip IR static+transient (opzionale) | `run_chip_pdn_ir.sh` · PDNSim + `pdn_transient.py` |
+| vyges-em-ir | `run_vyges_em_ir.sh` · engine Apache-2.0 sulla stessa mesh |
 | Heatmap IR finish | Galleria `orfs_final_ir_drop.png` · L07 |
 | Teoria + landscape tool | [system-pdn.md](./system-pdn.md) · [spice-power-chain.md](./spice-power-chain.md) |
 

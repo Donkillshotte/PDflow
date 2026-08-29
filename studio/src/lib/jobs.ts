@@ -28,6 +28,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   gridcheck: "floorplan",
   system_pdn: "finish",
   chip_pdn_ir: "finish",
+  vyges_em_ir: "finish",
   power_chain: "finish",
   activity_power: "finish",
   vectorless: "finish",
@@ -362,6 +363,10 @@ export function preflightAction(
     chip_pdn_ir: {
       rel: "6_final.odb",
       hint: "esegui prima finish (mesh SPICE)",
+    },
+    vyges_em_ir: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (vyges-em-ir sulla mesh PDN)",
     },
     power_chain: {
       rel: "6_final.odb",

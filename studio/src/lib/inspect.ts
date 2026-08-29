@@ -267,6 +267,11 @@ export function inspectStage(
       detail: "run_vectorless.sh · Najm 1994 + Kouroussis DAC 2003",
     },
     {
+      id: "vyges-em-ir",
+      label: "vyges-em-ir (engine)",
+      detail: "run_vyges_em_ir.sh · CG + backward Euler su write_pg_spice",
+    },
+    {
       id: "yosys-equiv",
       label: "Yosys equiv (EQY-class)",
       detail: "run_yosys_equiv.sh · RTL ↔ synth",

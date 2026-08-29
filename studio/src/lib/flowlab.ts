@@ -239,6 +239,7 @@ export function flowlabPhaseHistory(limitPerPhase = 3) {
     "activity_power",
     "vectorless",
     "chip_pdn_ir",
+    "vyges_em_ir",
     "power_chain",
     "export_spice_lab",
     "klayout_drc",

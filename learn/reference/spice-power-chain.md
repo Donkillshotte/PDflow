@@ -197,8 +197,9 @@ IR drop statico usa geometria **post-route/finish**, non il placement alone.
 
 1. **`activity_power`** → `activity_power_<variant>.log` → **I_die**
 2. **`chip_pdn_ir`** → `pg_vdd_bumps.sp` + `pdn_chip_ir_*.json`
-3. **`system_pdn`** → `system_pdn_*.json` (Zmax, droop)
-4. **`power_chain`** → esegue 1→2→3 + `export_spice_lab.sh`
+3. **`vyges_em_ir`** → stesso mesh, binario CG + backward Euler (`vyges_em_ir_*.json`)
+4. **`system_pdn`** → `system_pdn_*.json` (Zmax, droop)
+5. **`power_chain`** → esegue activity → chip IR → system → export lab
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh

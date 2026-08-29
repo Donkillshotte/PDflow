@@ -218,6 +218,17 @@ export async function getSuiteStatus() {
       href: "/strumenti?tab=run&action=chip_pdn_ir",
     },
     {
+      id: "vyges_em_ir",
+      label: "vyges-em-ir",
+      group: "Power",
+      ok:
+        signoffReportPass("flowlab", "vyges_em_ir") ||
+        signoffReportPass("learn", "vyges_em_ir"),
+      detail: "binario Apache-2.0 · CG + backward Euler sulla mesh PDNSim",
+      action: "vyges_em_ir",
+      href: "/strumenti?tab=run&action=vyges_em_ir",
+    },
+    {
       id: "power_chain",
       label: "Catena SPICE",
       group: "Power",

@@ -12,7 +12,13 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materiali/reference/oss-integrations.md",
     title: "Integrazioni OSS",
     group: "Riferimento",
-    description: "Stack integrato, gap commerciali, Magic/Netgen, vectorless.",
+    description: "Stack integrato, gap commerciali, Magic/Netgen, vectorless, vyges-em-ir.",
+  },
+  {
+    href: "/materiali/reference/vyges-em-ir.md",
+    title: "vyges-em-ir",
+    group: "Riferimento",
+    description: "Engine Apache-2.0 IR/EM sulla mesh PDNSim del GCD.",
   },
   {
     href: "/materiali/reference/signoff-matrix.md",

@@ -8,7 +8,7 @@
 #   1. OpenROAD psm: set_pdnsim_source_settings + analyze_power_grid
 #      + write_pg_spice  (static IR, package R proxy, bump/strap sources)
 #   2. learn/scripts/pdn_transient.py — backward-Euler dynamic IR on that
-#      SPICE mesh (VoltSpot / vyges-em-ir style)
+#      SPICE mesh (VoltSpot-style). Real vyges-em-ir: run_vyges_em_ir.sh
 #
 # Uso: run_chip_pdn_ir.sh
 # Env:

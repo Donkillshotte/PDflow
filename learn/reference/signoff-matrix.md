@@ -39,6 +39,7 @@ Sub-check power (dentro pilastro `power`):
 | Activity → power | `activity_power` | `activity_power_{v}.log` |
 | Vectorless / dynamic | `vectorless` | `vectorless_{v}.json` |
 | Chip IR mesh | `chip_pdn_ir` | `pdn_chip_ir_{v}.json` + `.chip_pdn_ir.ok` |
+| vyges-em-ir | `vyges_em_ir` | `vyges_em_ir_{v}.json` + `.vyges_em_ir.ok` |
 | System PDN | `system_pdn` | `system_pdn_{v}.json` + `.system_pdn.ok` |
 | SPICE lab export | `export_spice_lab` | `sim/spice/INDEX_{v}.md` |
 

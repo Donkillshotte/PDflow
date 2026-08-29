@@ -20,6 +20,12 @@ if [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIA
 else
   echo "skip vectorless (no 6_final.odb)"
 fi
+if [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/pdn/pg_vdd_bumps.sp" ]] \
+  || [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/6_final.odb" ]]; then
+  "${ROOT}/learn/scripts/run_vyges_em_ir.sh"
+else
+  echo "skip vyges-em-ir (no finish / spice mesh)"
+fi
 
 python3 - <<PY
 import json, shutil
@@ -42,6 +48,7 @@ parts = {
     "layout_tools": load("layout_tools"),
     "spice_engines": load("spice_engines"),
     "vectorless": load("vectorless"),
+    "vyges_em_ir": load("vyges_em_ir"),
 }
 tools = {
     "yosys": {"status": "INTEGRATED", "bin": shutil.which("yosys"), "role": "synth + equiv + formal sat"},
@@ -57,12 +64,11 @@ tools = {
     "raphael": {"status": "GAP", "bin": None, "role": "Synopsys commercial — not licensed"},
     "starrc": {"status": "GAP", "bin": None, "role": "Synopsys commercial — OpenRCX SPEF is the extract"},
     "open_pdks": {"status": "GAP", "bin": None, "role": "Sky130/gf180; this course is pinned Nangate45/FreePDK45"},
+    "vyges_em_ir": {"status": "INTEGRATED", "bin": shutil.which("vyges-em-ir") or str(root / "tools/vyges-em-ir/vyges-em-ir"), "role": "CG + backward Euler on write_pg_spice mesh"},
 }
-ok = all(v.get("ok") for k, v in parts.items() if k != "vectorless" or Path(rep / f"vectorless_{variant}.json").exists())
-# vectorless required when odb exists
 odb = root / f"tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/{variant}/6_final.odb"
-if odb.exists():
-    ok = ok and parts["vectorless"].get("ok") is True
+skip_optional = set() if odb.exists() else {"vectorless", "vyges_em_ir"}
+ok = all(v.get("ok") for k, v in parts.items() if k not in skip_optional)
 out = {
     "ok": ok,
     "kind": "tool_matrix",

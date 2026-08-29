@@ -130,6 +130,14 @@ export const SPICE_ANALYSES = [
     action: "chip_pdn_ir",
   },
   {
+    id: "vyges_em_ir",
+    label: "vyges-em-ir",
+    produces: ["vyges_em_ir_*.json", "gcd_*.pdn"],
+    spice: "binario CG + backward Euler sulla stessa mesh",
+    doc: "/materiali/reference/vyges-em-ir.md",
+    action: "vyges_em_ir",
+  },
+  {
     id: "system_pdn",
     label: "System PDN",
     produces: ["system_pdn_*.json", "Z(f)", "droop"],

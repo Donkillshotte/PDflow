@@ -233,6 +233,22 @@ for action in yosys_equiv formal_gcd openrcx_report analytical_pex layout_tools 
   rg -q '"ok":true' "/tmp/studio-${action}.sse" && ok "${action} pass" || bad "${action} fail"
 done
 
+code="$(curl -s --max-time 180 -o /tmp/studio-vyges.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=vyges_em_ir&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "vyges_em_ir stream → 200" || bad "vyges_em_ir → ${code}"
+rg -q '"ok":true' /tmp/studio-vyges.sse && ok "vyges_em_ir pass" || bad "vyges_em_ir fail"
+[[ -f "${ROOT}/learn/sim/reports/vyges_em_ir_flowlab.json" ]] && ok "vyges_em_ir json artifact" || bad "manca vyges_em_ir json"
+python3 - <<PY || bad "vyges_em_ir json parse"
+import json
+r=json.load(open("${ROOT}/learn/sim/reports/vyges_em_ir_flowlab.json"))
+assert r["ok"] is True
+assert r["engine"] == "vyges-em-ir"
+assert r["vyges"]["worst_ir"]["drop"] > 0
+print(r["summary"][:120])
+PY
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/vyges-em-ir.md")"
+[[ "${c}" == "200" ]] && ok "vyges-em-ir.md page" || bad "vyges-em-ir page → ${c}"
+
 code="$(curl -s --max-time 180 -o /tmp/studio-vectorless.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=vectorless&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "vectorless stream → 200" || bad "vectorless → ${code}"
@@ -280,7 +296,7 @@ if python3 - <<'PY'
 import json, sys
 d = json.load(open("/tmp/studio-suite.json"))
 ids = {h["id"] for h in d["hooks"]}
-need = {"ngspice", "activity", "chip_pdn_ir", "power_chain", "spice_lab", "system_pdn"}
+need = {"ngspice", "activity", "chip_pdn_ir", "vyges_em_ir", "power_chain", "spice_lab", "system_pdn"}
 miss = sorted(need - ids)
 if miss:
     print("missing", miss)

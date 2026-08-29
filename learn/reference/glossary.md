@@ -176,8 +176,6 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **SPEF** — Standard Parasitic Exchange Format.
 
-**write_pg_spice** — Export OpenROAD PDNSim: rete R + correnti I per pin cella → input `pdn_transient.py`.
-
 **STA** — Static Timing Analysis: verifica setup/hold senza simulazione.
 
 **STA-2204** — Errore tipico se ORFS **master** (26Q3) gira su OpenROAD **26Q2** (`get_property default` in save_images). Il repo pinna il tag ORFS **26Q2**.
@@ -198,11 +196,19 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 ---
 
+## V
+
+**vyges-em-ir** — Engine Apache-2.0 ([vyges-tools/em-ir](https://github.com/vyges-tools/em-ir)): IR statico CG + transiente backward-Euler su un `.pdn`. Integrato sul GCD via `run_vyges_em_ir.sh`. Non è RedHawk.
+
+---
+
 ## W
 
 **WNS (Worst Negative Slack)** — Peggiore violazione setup (la più critica).
 
 **Wirelength** — Lunghezza totale interconnessioni (obiettivo placement/routing).
+
+**write_pg_spice** — Export OpenROAD PDNSim: rete R + correnti I per pin cella → input `pdn_transient.py` e `spice_to_pdn.py` (vyges-em-ir).
 
 ---
 

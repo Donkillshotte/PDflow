@@ -29,6 +29,7 @@ const RUN_ACTIONS = new Set([
   "gridcheck",
   "system_pdn",
   "chip_pdn_ir",
+  "vyges_em_ir",
   "power_chain",
   "activity_power",
   "vectorless",

@@ -44,6 +44,13 @@ const POWER_ACTIONS: SignoffAction[] = [
     long: true,
   },
   {
+    id: "vyges_em_ir",
+    label: "vyges-em-ir",
+    hint: "engine Apache-2.0 · CG + BE",
+    icon: Zap,
+    long: false,
+  },
+  {
     id: "system_pdn",
     label: "System PDN",
     hint: "Z(f) · die droop · ngspice",
@@ -246,10 +253,12 @@ export function FlowLabSignoff({
           <div className="fl-signoff-head">
             <strong>Signoff power &amp; SPICE</strong>
             <p>
-              Catena: VCD/activity → <strong>vectorless/dynamic</strong> → chip mesh → System PDN. Docs{" "}
+              Catena: VCD/activity → <strong>vectorless/dynamic</strong> → chip mesh → vyges-em-ir → System PDN. Docs{" "}
               <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>
               {" · "}
-              <a href="/materiali/reference/vectorless-power.md">vectorless-power</a>.
+              <a href="/materiali/reference/vectorless-power.md">vectorless-power</a>
+              {" · "}
+              <a href="/materiali/reference/vyges-em-ir.md">vyges-em-ir</a>.
             </p>
           </div>
           <ActionGrid

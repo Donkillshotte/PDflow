@@ -33,6 +33,8 @@ Attenzione **STA-1452**: il testbench usa periodo 10 ns, l’SDC 0.46 ns. I watt
 - fill/tap **esclusi** (non commutano)
 - se esiste `pg_vdd_bumps.sp`, DC sul mesh (`pdn_transient.py`) con correnti riscalate al budget
 
+Lo stesso mesh alimenta l’engine **vyges-em-ir** (`run_vyges_em_ir.sh`): IR statico CG confrontabile con `pdn_transient`, droop dinamico simultaneous-switch. Vedi [vyges-em-ir.md](./vyges-em-ir.md).
+
 PDNSim (`analyze_power_grid -source_type STRAPS`) gira in entrambi i modi: IR straps sul report.
 
 ## Come lanciare

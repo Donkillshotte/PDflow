@@ -74,6 +74,8 @@ Validazione GCD: static ≈ OpenROAD ±2%.
 
 Report: `pdn_chip_ir_<variant>.json`
 
+Engine reale **vyges-em-ir** (stesso `.sp`): [vyges-em-ir.md](./vyges-em-ir.md). Static IR coincide (~0.4 %); il droop dinamico no (waveform diversa).
+
 ---
 
 ## Confronto con System PDN

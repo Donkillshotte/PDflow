@@ -202,6 +202,47 @@ rg -q 'id: "pkg"' "${ROOT}/studio/src/components/flowlab/phases.ts" && ok "FlowL
 [[ -f "${ROOT}/learn/system_pdn/default.json" ]] && ok "system_pdn config" || bad "manca system_pdn/default.json"
 [[ -f "${ROOT}/learn/scripts/pdn_transient.py" ]] && ok "pdn_transient.py" || bad "manca pdn_transient.py"
 [[ -f "${ROOT}/learn/scripts/run_chip_pdn_ir.sh" ]] && ok "run_chip_pdn_ir.sh" || bad "manca chip PDN script"
+[[ -f "${ROOT}/learn/scripts/run_vyges_em_ir.sh" ]] && ok "run_vyges_em_ir.sh" || bad "manca vyges-em-ir script"
+[[ -f "${ROOT}/learn/scripts/spice_to_pdn.py" ]] && ok "spice_to_pdn.py" || bad "manca spice_to_pdn.py"
+[[ -f "${ROOT}/learn/reference/vyges-em-ir.md" ]] && ok "vyges-em-ir.md" || bad "manca vyges-em-ir.md"
+python3 -m py_compile "${ROOT}/learn/scripts/spice_to_pdn.py" && ok "spice_to_pdn compile" || bad "spice_to_pdn compile"
+rg -q 'vyges_em_ir' "${ROOT}/studio/src/lib/run.ts" && ok "studio vyges_em_ir action" || bad "studio senza vyges_em_ir"
+# Tiny mesh: adapter + real binary (if present)
+mkdir -p /tmp/vyges-course-smoke
+cat > /tmp/vyges-course-smoke/mesh.sp <<'SP'
+R0 p1 a R=0.05
+R1 a c R=0.20
+I0 c 0 DC 0.010
+V0 p1 0 DC 1.8
+SP
+if PYTHONPATH=/usr/lib/python3/dist-packages python3 "${ROOT}/learn/scripts/spice_to_pdn.py" \
+  --spice /tmp/vyges-course-smoke/mesh.sp --out-dir /tmp/vyges-course-smoke --design tiny \
+  >/tmp/vyges-course-smoke.log 2>&1 && rg -q 'SPICE_TO_PDN_DONE' /tmp/vyges-course-smoke.log
+then
+  ok "spice_to_pdn tiny mesh"
+else
+  bad "spice_to_pdn tiny mesh"
+fi
+VYGES_BIN=""
+if command -v vyges-em-ir >/dev/null 2>&1; then
+  VYGES_BIN="$(command -v vyges-em-ir)"
+elif [[ -x "${ROOT}/tools/vyges-em-ir/vyges-em-ir" ]]; then
+  VYGES_BIN="${ROOT}/tools/vyges-em-ir/vyges-em-ir"
+elif [[ -x "${ROOT}/learn/scripts/ensure_vyges_em_ir.sh" ]]; then
+  VYGES_BIN="$("${ROOT}/learn/scripts/ensure_vyges_em_ir.sh" 2>/dev/null || true)"
+fi
+if [[ -n "${VYGES_BIN}" && -x "${VYGES_BIN}" ]]; then
+  if "${VYGES_BIN}" run /tmp/vyges-course-smoke/tiny.emir --json -o /tmp/vyges-course-smoke/out.json \
+    >/tmp/vyges-course-smoke/stdout.json 2>/tmp/vyges-course-smoke/err.ndjson \
+    && python3 -c 'import json; r=json.load(open("/tmp/vyges-course-smoke/out.json")); assert r["worst_ir"]["drop"]>0'
+  then
+    ok "vyges-em-ir tiny solve"
+  else
+    bad "vyges-em-ir tiny solve"
+  fi
+else
+  ok "skip vyges-em-ir binary (not installed yet)"
+fi
 # Hierarchical System PDN smoke (ngspice)
 REP_SYS="${ROOT}/learn/sim/reports/system_pdn_flowlab.json"
 if command -v ngspice >/dev/null 2>&1; then
