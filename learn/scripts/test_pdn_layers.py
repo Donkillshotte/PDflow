@@ -166,6 +166,14 @@ STA_ARRIVALS_DONE n=2
     check(sta_meta["status"] == "READY" and sta_meta["n_applied"] == 1, "apply_sta_t50 READY")
     check(abs(sta_ev[0]["t50_s"] - 0.11e-9) < 1e-18, "STA rise overwrites synthetic t50")
     check(sta_ev[0]["t50_via"] == "sta_arrival", "t50_via sta_arrival")
+    hier_ev = [{"inst": "_479_", "t50_s": 0.12e-9, "dur_s": 0.08e-9}]
+    hier_meta = apply_sta_t50(
+        hier_ev,
+        {"dpath/a_lt_b/_479_": {"rise_ns": 0.22, "full": "dpath/a_lt_b/_479_/ZN"}},
+        0.46e-9,
+    )
+    check(hier_meta["n_applied"] == 1, "hierarchical STA key joins the leaf ODB inst")
+    check(abs(hier_ev[0]["t50_s"] - 0.22e-9) < 1e-18, "hier join uses the host rise arrival")
 
     insts_sta = [
         {"name": "_479_", "x": 100.0, "y": 0.0, "seq": False, "cell": "AND2_X1", "filler": False}

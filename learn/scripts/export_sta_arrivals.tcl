@@ -18,7 +18,7 @@ if {[info exists env(STA_SPEF)] && $env(STA_SPEF) ne "" && [file exists $env(STA
 }
 
 set n 0
-foreach pin [get_pins *] {
+foreach pin [get_pins -hierarchical *] {
   if {[catch {get_property $pin direction} dir]} {
     continue
   }

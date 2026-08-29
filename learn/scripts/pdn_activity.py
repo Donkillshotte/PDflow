@@ -166,6 +166,8 @@ def apply_sta_t50(events: list[dict], arrivals: dict, period_s: float) -> dict:
     for ev in events:
         rec = arrivals.get(norm_inst(ev.get("inst")))
         if not rec:
+            rec = hier_lookup(ev.get("inst"), arrivals)
+        if not rec:
             continue
         t_ns = rec.get("rise_ns")
         if t_ns is None:

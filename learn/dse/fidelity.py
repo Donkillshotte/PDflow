@@ -424,7 +424,14 @@ def evaluate_host_arrivals(
     cid = DesignMemory.new_id()
     dest = REPO / "learn" / "sim" / "dse" / "arrivals" / cid / "sta_arrivals.json"
     arr = export_arrivals(Path(mapped), dest)
-    sta_p = dest if dest.is_file() and arr.get("status") == "ok" else None
+    n_inst = int(arr.get("n_inst") or 0)
+    # Hierarchical hosts used to report only top-level portbufs (n=2).
+    # Leaf coverage is required — two port pins are not a t50 teacher.
+    sta_p = dest if dest.is_file() and arr.get("status") == "ok" and n_inst >= 8 else None
+    if dest.is_file() and n_inst < 8:
+        arr = dict(arr)
+        arr["status"] = "fail"
+        arr["reason"] = f"host arrivals n_inst={n_inst} is top-level-only, not a t50 teacher"
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
