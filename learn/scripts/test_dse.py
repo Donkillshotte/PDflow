@@ -1643,8 +1643,42 @@ def main() -> int:
     check(not pay_ir0, f"IR steer waits for a steer dict ({why_ir0})")
     pay_ir1, why_ir1 = should_pay_ir_steer(mem_ir, budget_left=80, steer=st_ir)
     check(pay_ir1, f"IR steer is paid after F4 residuals ({why_ir1})")
-    pay_ir2, why_ir2 = should_pay_ir_steer(mem_ir, budget_left=80, steer=st_ir, n_steer=1)
-    check(not pay_ir2, f"IR steer is a single shot ({why_ir2})")
+    pay_dup, why_dup = should_pay_ir_steer(mem_ir, budget_left=80, steer=st_ir)
+    check(pay_dup, f"first IR-steer is still paid ({why_dup})")
+    mem_ir.add(
+        Candidate(
+            id="decapr",
+            design_id="gcd",
+            parent_id="regext",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "decap_200f",
+                "extract_id": "regext",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 200e-15,
+            },
+            knobs_fp="decapr",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=7.507, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "active_f4_ir"},
+        )
+    )
+    pay_same, why_same = should_pay_ir_steer(mem_ir, budget_left=80, steer=st_ir, n_steer=1)
+    check(not pay_same, f"same region-decap point is not restamped ({why_same})")
+    st_ir2 = steer_from_ir_residual(mem_ir)
+    check(st_ir2 is not None and (st_ir2.get("spec") or {}).get("name") == "pkg_l_100p", f"after region decap, unused pkg L is next, got {st_ir2}")
+    check(st_ir2.get("extract_id") == "candext", f"second IR-steer stays on the candidate extract, got {st_ir2}")
+    check(st_ir2.get("host_source") == "f4_candidate_extract", "second IR-steer names the candidate extract host")
+    pay_ir2, why_ir2 = should_pay_ir_steer(mem_ir, budget_left=80, steer=st_ir2, n_steer=1)
+    check(pay_ir2, f"second IR-steer is paid after inspect ({why_ir2})")
+    pay_ir3, why_ir3 = should_pay_ir_steer(mem_ir, budget_left=80, steer=st_ir2, n_steer=2)
+    check(not pay_ir3, f"IR-steer loop caps at region family + unused catalog ({why_ir3})")
     # Small decap residual → unused pkg L on the candidate, not the region.
     mem_small = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-irs-")) / "s.jsonl")
     for cid, src, eid, mv, extra in (

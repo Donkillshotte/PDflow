@@ -203,7 +203,8 @@ def steer_from_ir_residual(mem: DesignMemory) -> dict | None:
                 "not": "a flattened black-box of ABC+PDN knobs",
             }
 
-    # Small / missing knob residual → IR is not decap-dominated → unused pkg L on candidate.
+    # After the winning family is on the region (or residual is small / missing)
+    # → unused catalog on the candidate. Inductance ≠ more decap.
     if cand is not None:
         cid = str((cand.knobs or {}).get("extract_id") or cand.id)
         have = measured_pdn_keys(mem, extract_id=cid)
@@ -213,17 +214,34 @@ def steer_from_ir_residual(mem: DesignMemory) -> dict | None:
             if (float(s["pkg_r"]), float(s["pkg_l"]), float(s["c_decap"])) not in have
         ]
         small = knob_r is not None and abs(float(knob_r)) < KNOB_MV
-        if unused and (small or knob_r is None):
+        transferred = (
+            spec_win is not None
+            and reg is not None
+            and (
+                float(spec_win["pkg_r"]),
+                float(spec_win["pkg_l"]),
+                float(spec_win["c_decap"]),
+            )
+            in measured_pdn_keys(mem, extract_id=str((reg.knobs or {}).get("extract_id") or reg.id))
+        )
+        if unused and (small or knob_r is None or transferred):
             spec = unused[0]
-            why = (
-                f"F4 knob residual {float(knob_r):+.3f} mV (small) — pay {spec['name']} "
-                "on the candidate extract, not more decap, not ABC"
-                if small
-                else (
+            if transferred and not small:
+                why = (
+                    f"F4 winning family {winning} already on the region mesh "
+                    f"— pay unused {spec['name']} on the candidate extract "
+                    "(inductance, not more decap, not ABC)"
+                )
+            elif small:
+                why = (
+                    f"F4 knob residual {float(knob_r):+.3f} mV (small) — pay {spec['name']} "
+                    "on the candidate extract, not more decap, not ABC"
+                )
+            else:
+                why = (
                     f"F4 mesh residual {mesh.get('mean_residual_mv')} mV vs gold — "
                     f"pay {spec['name']} on the candidate extract, not ABC"
                 )
-            )
             return {
                 "level": "pdn",
                 "spec": spec,

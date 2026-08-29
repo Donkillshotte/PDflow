@@ -284,8 +284,8 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         {
             "level": "ir_steer",
             "reason": (
-                "F4 mesh/knob/region residual picks the next PDN action "
-                "(winning decap on the region mesh, or unused pkg L) — not ABC, not a mixed vector"
+                "F4 IR residual loop: winning decap on the region mesh, then "
+                "unused pkg L on the candidate — inspect after each shot, not a mixed vector"
             ),
             "scope": "region" if region else "chip",
         }

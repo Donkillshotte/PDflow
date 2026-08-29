@@ -33,7 +33,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "active": {
         "via": "dse.active.steer_from_residual + steer_from_ir_residual + order_local_hosts",
-        "note": "F3→F5 residual picks cell|net|f5_local; F4 IR residual picks PDN on region|candidate; not a mixed knob vector",
+        "note": "F3→F5 residual picks cell|net|f5_local; F4 IR residual loops region-decap then unused pkg L; not a mixed knob vector",
     },
     "synthesis": {
         "via": "dse.synthesis + dse.fidelity.evaluate_f1_synth",

@@ -582,18 +582,27 @@ def should_pay_ir_steer(
     budget_left: float,
     steer: dict | None,
     n_steer: int = 0,
-    steer_max: int = 1,
+    steer_max: int = 2,
     min_s: float = 8.0,
 ) -> tuple[bool, str]:
-    """Pay one F4 residual-steered PDN action. Not a mixed ABC+PDN vector."""
+    """Pay the next F4 residual-steered PDN action. Not a mixed ABC+PDN vector.
+
+    Shot 1: winning catalog on the region mesh. Shot 2: unused pkg L on the
+    candidate extract after inspect. Same extract+catalog is not restamped.
+    """
     if n_steer >= steer_max:
-        return False, "IR-residual-steered shot already spent"
-    if any((c.attr or {}).get("via") == "active_f4_ir" and c.status == "ok" for c in mem.all()):
-        return False, "already have an IR-residual-steered child"
+        return False, "IR-residual-steered budget spent (region family + unused catalog)"
     if budget_left < min_s:
         return False, "wall budget would not cover IR-steered Solver A"
     if not steer or not steer.get("spec") or not steer.get("extract_id"):
         return False, "no IR-residual-steered PDN action (need candidate vs gold or a catalog pair)"
+    spec = steer["spec"]
+    from .pdn_space import measured_pdn_keys
+
+    have = measured_pdn_keys(mem, extract_id=str(steer["extract_id"]))
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that IR-steered PDN point is already measured on this extract"
     return True, str(steer.get("reason") or "F4 IR residual steers the next PDN action")
 
 
