@@ -17,6 +17,7 @@ from pdn_activity import (  # noqa: E402
     apply_sta_t50,
     expand_windows,
     load_sta_arrivals,
+    nearest_inst,
     parse_vcd,
     plan_events,
     probe_activity_trace,
@@ -219,6 +220,11 @@ $end
     loaded = load_sta_arrivals(tmp_sta)
     check("_479_" in loaded and loaded["_479_"]["rise_ns"] == 0.09, "load_sta_arrivals by_inst")
     check(t50_via_counts(ev_clk)["sta_arrival"] == 1, "t50_via_counts")
+
+    near = nearest_inst(1100.0, 0.0, [{"name": "c", "x": 0.0, "y": 0.0, "seq": True, "filler": False}])
+    check(near is not None and near["name"] == "c", "ITerm 1100 dbu from origin still joins")
+    far = nearest_inst(9000.0, 0.0, [{"name": "c", "x": 0.0, "y": 0.0, "seq": True, "filler": False}])
+    check(far is None, "far ITerm is not silently mapped")
 
     wins_m = windows_from_itot([0.0, 0.1, 0.2, 1.0, 1.1, 1.2], [0.0, 1.0, 0.0, 0.0, 1.0, 0.0], 0.5)
     check(len(wins_m) == 2, "two I_tot peaks → two windows")

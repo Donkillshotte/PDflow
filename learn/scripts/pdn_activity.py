@@ -39,7 +39,13 @@ def load_insts(path: Path) -> list[dict]:
     return blob.get("insts") or []
 
 
-def nearest_inst(x: float, y: float, insts: list[dict], max_dbu: float = 800.0):
+def nearest_inst(x: float, y: float, insts: list[dict], max_dbu: float = 4000.0):
+    """Nearest non-filler instance. Default 4000 dbu = 2 µm at 2000 dbu/µm.
+
+    write_pg_spice ITerm nodes are VDD pins, not the instance origin.
+    On Nangate45 GCD that offset is ~1.0–1.6 µm — 800 dbu matched nothing
+    and clock mode never saw a flip-flop.
+    """
     best = None
     best_d = max_dbu
     for inst in insts:
