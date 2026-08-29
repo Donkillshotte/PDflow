@@ -90,6 +90,7 @@ python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   --pkg-l "${PKG_L}" \
   --c-decap "${C_DECAP}" \
   --dt-ps "${DT_PS}" \
+  --liberty "${LIB}" \
   "${ADAPT[@]}" \
   2>&1 | tee -a "${LOG}"
 

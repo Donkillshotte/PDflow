@@ -404,6 +404,48 @@ int main() {
           "c_api timestep_be_hist");
     check(std::abs(worst_v - worst) < 1e-12, "c_api RL hist vs hand companion");
     dpn_free(hh);
+
+    std::vector<double> start(1, 1.0);
+    double shifts[3] = {0.0, 1e9, 1.0 / dt};
+    auto mor = dpn::make_mor_rlc(Gmesh, C, bumps, 1, bump_v, R, L, 1, start.data(), 3, shifts, 4);
+    double pad0[1] = {0.0};
+    auto red = mor->timestep(leak, pad0, dt, t_end, vdd, &ev, 1);
+    const double err_rlc = std::abs(red.worst_v - hist.worst_v);
+    check(mor->rlc(), "1-node MOR is descriptor RLC");
+    check(err_rlc < 5e-3, "1-node RLC MOR vs hist BE (< 5 mV)");
+    std::printf("    RLC MOR m=%d vmin=%.6f hist=%.6f |A-C|=%.3e V\n", mor->m(), red.worst_v,
+                hist.worst_v, err_rlc);
+  }
+  {
+    // 2-node RC line + package R+L: descriptor MOR vs hist BE gold.
+    const int n = 2;
+    Csr G = r_chain(n, 0.2);
+    std::vector<double> C(n, 50e-12);
+    const double vdd = 1.1, dt = 10e-12, t_end = 0.4e-9, R = 0.05, L = 2e-10;
+    int bumps[1] = {0};
+    double bump_v[1] = {vdd};
+    std::vector<double> pad;
+    Csr A = dpn::form_be_operator(G, C.data(), dt, bumps, 1, bump_v, R, L, pad);
+    auto lu = dpn::make_direct(A);
+    dpn::TriangleSrc ev;
+    ev.idx = 1;
+    ev.t50 = 0.2e-9;
+    ev.dur = 0.2e-9;
+    ev.ipulse = 5e-3;
+    double leak[2] = {0.0, 0.0};
+    auto hist = dpn::timestep_be_hist(*lu, A, C.data(), leak, dt, t_end, &ev, 1, bumps, 1, bump_v,
+                                      R, L);
+    std::vector<double> start(n, 0.0);
+    start[1] = 1.0;
+    double shifts[3] = {0.0, 1e9, 1.0 / dt};
+    auto mor = dpn::make_mor_rlc(G, C.data(), bumps, 1, bump_v, R, L, 1, start.data(), 3, shifts, 4);
+    double pad0[2] = {0.0, 0.0};
+    auto red = mor->timestep(leak, pad0, dt, t_end, vdd, &ev, 1);
+    const double err = std::abs(red.worst_v - hist.worst_v);
+    check(mor->rlc(), "2-node MOR is descriptor RLC");
+    check(err < 5e-3, "2-node RLC MOR vs hist BE (< 5 mV)");
+    std::printf("    2-node RLC MOR m=%d vmin=%.6f hist=%.6f |A-C|=%.3e V\n", mor->m(), red.worst_v,
+                hist.worst_v, err);
   }
   if (fails) {
     std::fprintf(stderr, "%d checks failed\n", fails);

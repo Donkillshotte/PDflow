@@ -11,8 +11,58 @@ Csr from_csr(Index n, const Index* rowptr, const Index* col, const double* val) 
   A.ncols = n;
   A.rowptr.assign(rowptr, rowptr + n + 1);
   const Index nnz = rowptr[n];
-  A.col.assign(col, col + nnz);
-  A.val.assign(val, val + nnz);
+  if (nnz > 0 && col && val) {
+    A.col.assign(col, col + nnz);
+    A.val.assign(val, val + nnz);
+  }
+  return A;
+}
+
+Csr from_triplets(Index n, const Index* ti, const Index* tj, const double* tv, Index ntrips) {
+  struct T {
+    Index i, j;
+    double v;
+  };
+  std::vector<T> a(static_cast<size_t>(std::max(ntrips, 0)));
+  for (Index k = 0; k < ntrips; ++k) {
+    a[static_cast<size_t>(k)] = {ti[k], tj[k], tv[k]};
+  }
+  std::sort(a.begin(), a.end(), [](const T& x, const T& y) {
+    if (x.i != y.i) {
+      return x.i < y.i;
+    }
+    return x.j < y.j;
+  });
+  std::vector<T> b;
+  b.reserve(a.size());
+  for (const T& t : a) {
+    if (t.i < 0 || t.j < 0 || t.i >= n || t.j >= n) {
+      continue;
+    }
+    if (!b.empty() && b.back().i == t.i && b.back().j == t.j) {
+      b.back().v += t.v;
+    } else {
+      b.push_back(t);
+    }
+  }
+  Csr A;
+  A.nrows = n;
+  A.ncols = n;
+  A.rowptr.assign(static_cast<size_t>(n + 1), 0);
+  for (const T& t : b) {
+    A.rowptr[t.i + 1]++;
+  }
+  for (Index i = 0; i < n; ++i) {
+    A.rowptr[i + 1] += A.rowptr[i];
+  }
+  A.col.resize(b.size());
+  A.val.resize(b.size());
+  std::vector<Index> next = A.rowptr;
+  for (const T& t : b) {
+    const Index p = next[t.i]++;
+    A.col[p] = t.j;
+    A.val[p] = t.v;
+  }
   return A;
 }
 

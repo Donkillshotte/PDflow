@@ -58,6 +58,12 @@ int dpn_timestep_be_adaptive(int n, int nnz, const int* rowptr, const int* col, 
 DpnMor* dpn_mor_setup(int n, int nnz, const int* rowptr, const int* col, const double* Gval,
                       const double* C, int n_starts, const double* starts, int n_shifts,
                       const double* shifts, int n_moments);
+/* Descriptor RLC MOR: G is the mesh without pad stamp. starts is n × n_starts column-major
+   (voltage ports). Unsymmetric A+sE (SparseLU). */
+DpnMor* dpn_mor_setup_rlc(int n, int nnz, const int* rowptr, const int* col, const double* Gval,
+                          const double* C, const int* bumps, int n_bumps, const double* bump_v,
+                          double pkg_r, double pkg_l, int n_starts, const double* starts,
+                          int n_shifts, const double* shifts, int n_moments);
 int dpn_mor_m(DpnMor* h);
 double dpn_mor_setup_s(DpnMor* h);
 const char* dpn_mor_name(DpnMor* h);

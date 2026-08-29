@@ -4,18 +4,19 @@
 Architecture (what this file actually does — not a product claim):
 
   OpenROAD write_pg_spice  →  PDN graph (R mesh, bump V, I_avg)
-  per-ITerm triangle I(t)  →  Solver A: direct backward-Euler + sparse LU
+  activity layer (synthetic t50) + current layer (triangle; CCS if tables)
+  Solver A: direct backward-Euler + sparse LU (golden)
+  Solver B: SA-AMG + CG on the same SPD companion operator
+  Solver C: rational Krylov MOR — RC on δv, or descriptor RLC on x=[v; i_L]
   Vmin(t) + V(x,y) heatmap at t_worst
 
-Solver A (direct BE + LU) is the golden oracle.
-Solver B (smoothed-aggregation AMG + CG) is the workhorse on A = G+C/Δt.
-Solver C is a rational Krylov reduced BE ODE on δv = v − Vdd (same G, C;
-many I(t)). vyges-em-ir is bootstrap, not the core. No forks.
+Solver A is the golden oracle. Solver C with L>0 reduces Eẋ+Ax=u matching
+the BE companion (not an RC-only Gsoft screen). Ranking of extra I(t) stays A.
 
 The BE time loop and MOR live in libdpn. Python orchestrates extraction and I(t).
 
-Honest limits: triangle ≠ Liberty CCS; RTL VCD does not name gate pins;
-Nangate45 has no CCS current tables.
+Honest limits: Nangate45 has no CCS current tables (triangle from I_avg);
+RTL VCD does not name gate pins. No silent CCS←NLDM mapping.
 
 Prior art (concepts, not dependencies): OpenROAD PSM (frontend),
 EMSim split A/B, ESPSim SA-AMG, MATEX/Raptor MOR, Ginkgo, Xyce/ngspice gold.
@@ -45,6 +46,8 @@ _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
+from pdn_activity import load_insts, node_xy, plan_events, probe_activity_trace  # noqa: E402
+from pdn_current import probe_liberty_current_model, triangle_above_leak  # noqa: E402
 from pdn_solvers import (  # noqa: E402
     DirectLU,
     RationalKrylov,
@@ -56,35 +59,6 @@ from pdn_solvers import (  # noqa: E402
     rl_companion,
 )
 from pdn_transient import build_system, parse_spice, solve_static  # noqa: E402
-
-COORD_RE = re.compile(r"(ITermNode|Node)_metal(\d+)_(-?\d+)_(-?\d+)")
-
-
-def node_xy(name: str) -> tuple[float, float] | None:
-    m = COORD_RE.search(name)
-    if not m:
-        return None
-    return float(m.group(3)), float(m.group(4))
-
-
-def load_insts(path: Path) -> list[dict]:
-    if not path.is_file():
-        return []
-    blob = json.loads(path.read_text())
-    return blob.get("insts") or []
-
-
-def nearest_inst(x: float, y: float, insts: list[dict], max_dbu: float = 800.0):
-    best = None
-    best_d = max_dbu
-    for inst in insts:
-        if inst.get("filler"):
-            continue
-        d = math.hypot(float(inst["x"]) - x, float(inst["y"]) - y)
-        if d < best_d:
-            best_d = d
-            best = inst
-    return best
 
 
 def viridis(t: float) -> str:
@@ -106,78 +80,6 @@ def viridis(t: float) -> str:
             b = int(c0[2] + u * (c1[2] - c0[2]))
             return f"#{r:02x}{g:02x}{b:02x}"
     return "#fde725"
-
-
-def triangle_above_leak(t: float, t50: float, dur: float, i_pulse: float) -> float:
-    if dur <= 0 or i_pulse <= 0:
-        return 0.0
-    half = 0.5 * dur
-    tau = t - t50
-    if abs(tau) >= half:
-        return 0.0
-    return i_pulse * (1.0 - abs(tau) / half)
-
-
-def plan_events(
-    currents: dict[str, float],
-    idx: dict[str, int],
-    insts: list[dict],
-    *,
-    mode: str,
-    peak_factor: float,
-    leak_frac: float,
-    period_s: float,
-    dur_s: float,
-    t50_s: float,
-) -> list[dict]:
-    loads = [(n, i) for n, i in currents.items() if n != "0" and n in idx and i > 0]
-    xs = []
-    for n, _ in loads:
-        xy = node_xy(n)
-        xs.append(xy[0] if xy else 0.0)
-    xmin, xmax = (min(xs), max(xs)) if xs else (0.0, 1.0)
-    span = max(xmax - xmin, 1.0)
-
-    events = []
-    for n, i_avg in loads:
-        xy = node_xy(n)
-        inst = nearest_inst(xy[0], xy[1], insts) if xy else None
-        seq = bool(inst and inst.get("seq"))
-        leak = leak_frac * i_avg
-        # Charge conservation over one clock: leak*T + I_pulse*dur/2 ≈ I_avg*T
-        q_switch = max(0.0, (i_avg - leak) * period_s)
-        i_from_q = (2.0 * q_switch / dur_s) if dur_s > 0 else 0.0
-        i_pulse = min(peak_factor * i_avg, i_from_q if i_from_q > 0 else peak_factor * i_avg)
-        i_pulse = max(i_pulse, 0.0)
-        if mode == "simultaneous":
-            t50 = t50_s
-        elif mode == "spatial":
-            nx = ((xy[0] - xmin) / span) if xy else 0.0
-            t50 = t50_s + nx * 0.35 * period_s
-        else:  # clock: flops at edge, combo later + spatial
-            nx = ((xy[0] - xmin) / span) if xy else 0.0
-            if seq:
-                t50 = t50_s
-            else:
-                t50 = t50_s + 0.22 * period_s + nx * 0.25 * period_s
-        events.append(
-            {
-                "node": n,
-                "idx": idx[n],
-                "i_avg": i_avg,
-                "i_leak": leak,
-                "i_peak": leak + i_pulse,
-                "i_pulse": i_pulse,
-                "t50_s": t50,
-                "dur_s": dur_s,
-                "seq": seq,
-                "cell": (inst or {}).get("cell"),
-                "inst": (inst or {}).get("name"),
-                "x": xy[0] if xy else None,
-                "y": xy[1] if xy else None,
-            }
-        )
-    return events
 
 
 def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
@@ -398,11 +300,12 @@ def platform_block(
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
     if mor and mor.get("ok"):
         c_status = "READY"
-        c_via = "rational Krylov reduced BE ODE on δv = v − Vdd"
+        c_via = mor.get("via") or "rational Krylov reduced BE"
     elif mor:
         c_status = "PARTIAL"
         c_via = (
-            f"rational Krylov ODE, |A−C|={mor.get('abs_err_vs_A_mv')} mV "
+            mor.get("via")
+            or f"rational Krylov ODE, |A−C|={mor.get('abs_err_vs_A_mv')} mV "
             "(basis does not yet replace full-order gold)"
         )
     elif scenarios:
@@ -418,7 +321,7 @@ def platform_block(
         "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + adaptive BE) + OpenROAD + triangle I(t)",
         "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
         "do_not_implement_this_slice": [
-            "Liberty CCS/ECSM I(t) tables",
+            "gate-accurate VCD/FSDB pin times on this Nangate netlist",
             "Ginkgo CPU/GPU backend",
             "empty power-integrity/ tree",
         ],
@@ -949,7 +852,12 @@ def main() -> int:
     ap.add_argument("--no-scenarios", action="store_true", help="skip extra I(t) modes")
     ap.add_argument("--no-mor", action="store_true", help="skip Solver C rational Krylov")
     ap.add_argument("--adaptive", action="store_true", help="also run adaptive-Δt BE (LU)")
+    ap.add_argument("--liberty", type=Path, default=None, help="Liberty file to probe for CCS/ECSM (never synthesized)")
+    ap.add_argument("--vcd", type=Path, default=None, help="VCD/SAIF/FSDB to probe (never silently mapped to ITerms)")
     args = ap.parse_args()
+
+    current_model = probe_liberty_current_model(args.liberty)
+    activity_model = probe_activity_trace(args.vcd)
 
     resistors, currents, voltages = parse_spice(args.spice)
     order, idx, G = build_system(resistors, currents, voltages)
@@ -1020,10 +928,11 @@ def main() -> int:
     if not args.no_mor:
         starts = mor_starts(sys_be["n"], events)
         shifts = np.array([0.0, 1e9, 1.0 / dt], dtype=np.float64)
-        mor = RationalKrylov(sys_be["G"], sys_be["C"], starts, shifts, n_moments=4)
+        mor = RationalKrylov(sys_be["G"], sys_be["C"], starts, shifts, n_moments=4, sys=sys_be)
         dyn_c = mor.timestep(sys_be, events, vdd, t_end)
         dyn_c = _map_worst_node(dyn_c, order)
         err_c = abs(dyn["worst_droop"] - dyn_c["worst_droop"]) * 1e3
+        rlc_mor = bool(getattr(mor, "name", "").endswith("rlc") or float(sys_be["pkg_l"] or 0) > 0)
         mor_meta = {
             "ok": err_c < 5.0,
             "worst_droop_mv": dyn_c["worst_droop"] * 1e3,
@@ -1034,10 +943,15 @@ def main() -> int:
             "setup_s": getattr(mor, "setup_s", dyn_c.get("solver_setup_s")),
             "step_s": dyn_c.get("solver_step_s"),
             "backend": getattr(mor, "backend", dyn_c.get("backend")),
-            "via": "rational Krylov + reduced BE on δv=v-Vdd",
+            "via": (
+                "descriptor RLC Krylov on Eẋ + A x = u, x=[v; i_L]"
+                if rlc_mor
+                else "rational Krylov + reduced BE on δv=v-Vdd"
+            ),
             "note": (
-                "MOR uses Gsoft (g_eq at analysis Δt) with no i_L. When pkg_l>0 it is an "
-                "RC-equivalent screening model, not RLC gold. Ranking stays Solver A."
+                "MOR includes package inductor states. Ranking of extra I(t) stays Solver A."
+                if rlc_mor
+                else "RC MOR on Gsoft."
             ),
         }
         dyn["mor"] = {k: v for k, v in dyn_c.items() if not k.startswith("wave_") and k != "V_worst"}
@@ -1135,8 +1049,7 @@ def main() -> int:
             mor_scen.sort(key=lambda s: -s["droop_mv"])
             mor_meta["scenarios"] = mor_scen
             mor_meta["note"] = (
-                "MOR is the reduced ODE (screening). Ranking below is Solver A gold — "
-                "MOR can invert clock vs simultaneous on this mesh."
+                "Scenario ranking is Solver A gold. MOR is the reduced ODE for reuse, not ranking."
             )
     Vw = dyn.pop("V_worst")
     pts = heatmap_points(order, Vw, vdd, events)
@@ -1215,8 +1128,8 @@ def main() -> int:
             "note": "synthetic t50 (clock/spatial/simultaneous), not STA arrival windows",
         },
         "L2_vcd_dynamic": {
-            "status": "GAP",
-            "reason": "RTL VCD (tb_gcd, 10 ns) does not name gate ITerms; SDC is 0.46 ns",
+            "status": activity_model["status"],
+            "reason": activity_model["note"],
         },
         "L3_windowed": {
             "status": "PARTIAL",
@@ -1224,12 +1137,32 @@ def main() -> int:
             "note": "high-I windows on this run's I_tot(t), not 100k-cycle screening",
         },
     }
+    i_via = (
+        f"CCS interpolator {current_model['n_ccs_tables']} tables — mesh still triangle (no cell Vout(t))"
+        if current_model.get("n_ccs_tables")
+        else f"per-ITerm triangle PWL ({current_model['kind']})"
+    )
     pipeline = [
         {"id": 1, "name": "PDN extraction", "status": "READY", "via": "OpenROAD write_pg_spice"},
-        {"id": 2, "name": "Power model", "status": "PARTIAL", "via": "I_avg from mesh (NLDM, not CCS I(t))"},
-        {"id": 3, "name": "Activity engine", "status": "PARTIAL", "via": f"synthetic {args.mode}; VCD pin-accurate = GAP"},
-        {"id": 4, "name": "Current waveform", "status": "PARTIAL", "via": "per-ITerm triangle PWL"},
-        {"id": 5, "name": "Transient solver", "status": "READY", "via": "A LU gold + B SA-AMG + C rational Krylov MOR"},
+        {
+            "id": 2,
+            "name": "Power model",
+            "status": "PARTIAL",
+            "via": current_model["note"],
+        },
+        {
+            "id": 3,
+            "name": "Activity engine",
+            "status": "PARTIAL",
+            "via": f"synthetic {args.mode}; {activity_model['note']}",
+        },
+        {"id": 4, "name": "Current waveform", "status": "PARTIAL", "via": i_via},
+        {
+            "id": 5,
+            "name": "Transient solver",
+            "status": "READY",
+            "via": "A LU gold + B SA-AMG + C descriptor RLC Krylov (or RC MOR if L=0)",
+        },
         {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + windows + delay scaling + branch I EM screen; J/TTF = GAP"},
     ]
     plat = platform_block(
@@ -1260,15 +1193,15 @@ def main() -> int:
         "engine": "studio-dynamic-ir",
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
-            "per-ITerm PWL triangle I(t) (leak + switch) — not CCS",
-            "Solver A: direct backward-Euler sparse LU (golden)",
-            "Solver B: smoothed-aggregation AMG + CG (workhorse)",
-            "Solver C: rational Krylov reduced BE ODE (δv = v − Vdd)",
-            "Native BE timestep with R+L companion i_L history in libdpn; Python orchestrates I(t)",
+            "replaceable activity (synthetic t50) + current (triangle; CCS interpolator when tables exist)",
+            "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
+            "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
+            "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
+            "Native BE/MOR in libdpn; Python orchestrates extraction and I(t)",
             "V(x,y) heatmap at t_worst + delay scaling at worst tap",
         ],
         "not": [
-            "Liberty CCS current waveforms",
+            "CCS I(t) on Nangate45 (NLDM, no current tables — interpolator is tested on synthetic CCS)",
             "gate-level VCD pin times",
             "RedHawk / Voltus / Totem sign-off",
             "vyges-em-ir fork",
@@ -1278,7 +1211,7 @@ def main() -> int:
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
-            "this_engine": "A gold + B SA-AMG + C Krylov MOR on write_pg_spice; triangle I(t)",
+            "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov on write_pg_spice; triangle I(t) on NLDM",
             "ngspice": "unit-test gold for BE on 1-node RC and 1-node series R+L",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
@@ -1291,14 +1224,14 @@ def main() -> int:
                 "replaces": "PrimeTime PX time-based power + logic_cell_modeling.py",
                 "pwl_sources": len(events),
                 "shape": "triangle leak+switch",
-                "not": "CCS / PT-PX current profiles / gate VCD",
+                "not": "CCS on this Nangate mesh / PT-PX current profiles / gate VCD",
             },
             "B_pdn_solve": {
                 "status": "READY",
                 "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor",
                 "replaces": "HSpice TRAN on Calibre DSPF",
                 "via": "Solver A LU golden + B SA-AMG + C reduced ODE on write_pg_spice",
-                "gold": "ngspice 1-node RC + series R+L companion; A vs B vs C droop on the chip mesh",
+                "gold": "ngspice 1-node RC + series R+L companion; A vs B vs C (descriptor RLC) on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
@@ -1310,6 +1243,8 @@ def main() -> int:
         "pipeline": pipeline,
         "sim_levels": sim_levels,
         "hotspot": hotspot,
+        "current_model": current_model,
+        "activity_model": activity_model,
         "spice": str(args.spice),
         "vdd": vdd,
         "mode": args.mode,

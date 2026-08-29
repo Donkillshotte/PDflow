@@ -46,6 +46,7 @@ struct Csr {
 };
 
 Csr from_csr(Index n, const Index* rowptr, const Index* col, const double* val);
+Csr from_triplets(Index n, const Index* ti, const Index* tj, const double* tv, Index ntrips);
 Csr transpose(const Csr& A);
 Csr spmm(const Csr& A, const Csr& B);
 void drop_small(Csr& A, double tol);

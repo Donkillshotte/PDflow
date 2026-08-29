@@ -273,6 +273,13 @@ if [[ -n "${VYGES_BIN}" && -x "${VYGES_BIN}" ]]; then
 else
   ok "skip vyges-em-ir binary (not installed yet)"
 fi
+# Replaceable current/activity layers (CCS interpolator; NLDM never mapped)
+if PYTHONPATH=/usr/lib/python3/dist-packages python3 "${ROOT}/learn/scripts/test_pdn_layers.py"
+then
+  ok "pdn current/activity layers"
+else
+  bad "pdn current/activity layers"
+fi
 # Tiny mesh: pdn_dynamic BE + ngspice gold
 mkdir -p /tmp/dynir-course-smoke
 cat > /tmp/dynir-course-smoke/mesh.sp <<'SP'
@@ -301,7 +308,10 @@ assert p["solvers"]["A_direct_be"]["status"]=="READY"
 assert p["solvers"]["B_sa_amg"]["status"]=="READY"
 assert p["solvers"]["C_rational_krylov_mor"]["status"] in ("READY", "PARTIAL")
 assert r.get("solver_c") is not None
-assert r["solver_c"]["abs_err_vs_A_mv"] < 50.0
+assert r["solver_c"]["abs_err_vs_A_mv"] < 5.0
+assert "i_L" in (r["solver_c"].get("via") or "") or "RLC" in (r["solver_c"].get("via") or "") or r["solver_c"]["abs_err_vs_A_mv"] < 1.0
+assert r.get("current_model", {}).get("status") in ("GAP", "PARTIAL", "READY")
+assert r.get("activity_model", {}).get("status") == "GAP"
 assert r["dynamic"].get("timestep_loop") in ("native", "native_hist", "python", "python_hist", None)
 assert p["product_tiers"]["FAST"]["status"]=="READY"
 assert p["product_tiers"]["SIGNOFF"]["status"]=="GAP"

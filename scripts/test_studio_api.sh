@@ -275,7 +275,7 @@ assert r["solver_b"]["ok"] is True
 assert r["solver_b"]["abs_err_vs_A_mv"] < 5.0
 assert r["solver_b"].get("backend") in (None, "native", "python")
 c = r.get("solver_c")
-assert c is None or c.get("abs_err_vs_A_mv", 0) < 50.0
+assert c is None or c.get("abs_err_vs_A_mv", 0) < 5.0
 assert "windows" in r["sim_levels"]["L3_windowed"]
 g = r.get("ngspice_gold")
 assert g is None or g.get("ok") is True, g

@@ -222,6 +222,28 @@ DpnMor* dpn_mor_setup(int n, int nnz, const int* rowptr, const int* col, const d
   }
 }
 
+DpnMor* dpn_mor_setup_rlc(int n, int nnz, const int* rowptr, const int* col, const double* Gval,
+                          const double* C, const int* bumps, int n_bumps, const double* bump_v,
+                          double pkg_r, double pkg_l, int n_starts, const double* starts,
+                          int n_shifts, const double* shifts, int n_moments) {
+  if (!rowptr || !C || !starts || !shifts || n <= 0 || n_starts <= 0 || n_shifts <= 0 ||
+      n_bumps <= 0 || !bumps || !bump_v || rowptr[n] != nnz) {
+    return nullptr;
+  }
+  if (nnz > 0 && (!col || !Gval)) {
+    return nullptr;
+  }
+  try {
+    auto* h = new DpnMor();
+    dpn::Csr G = dpn::from_csr(n, rowptr, col, Gval);
+    h->mor = dpn::make_mor_rlc(G, C, bumps, n_bumps, bump_v, pkg_r, pkg_l, n_starts, starts,
+                               n_shifts, shifts, n_moments);
+    return h;
+  } catch (...) {
+    return nullptr;
+  }
+}
+
 int dpn_mor_m(DpnMor* h) { return h && h->mor ? h->mor->m() : 0; }
 
 double dpn_mor_setup_s(DpnMor* h) { return h && h->mor ? h->mor->setup_s() : 0.0; }
@@ -236,7 +258,10 @@ int dpn_mor_timestep(DpnMor* h, const double* leak, const double* pad, double dt
                      double* worst_v, double* worst_t, double* rel_res_max, double* solve_s,
                      int max_steps, double* wave_t, double* wave_vmin, double* wave_itot,
                      int* n_steps) {
-  if (!h || !h->mor || !leak || !pad || dt <= 0.0) {
+  if (!h || !h->mor || !leak || dt <= 0.0) {
+    return -1;
+  }
+  if (!pad && !h->mor->rlc()) {
     return -1;
   }
   try {

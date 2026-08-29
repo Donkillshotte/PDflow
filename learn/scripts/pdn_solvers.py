@@ -6,6 +6,9 @@ Solver B — smoothed-aggregation AMG V-cycle + CG (workhorse).
 The BE matrix A = G + C/Δt + g_eq is SPD. Package R+L uses a companion
 g_eq=1/(R+L/Δt) with inductor current i_L on the RHS (not memoryless L/Δt).
 
+Solver C — rational Krylov MOR. RC: reduced BE on δv. RLC: descriptor
+Eẋ + A x = u on x=[v; i_L] matching the companion (A unsymmetric).
+
 Not Ginkgo, not pyamg, not a fork of ESPSim. Classic Vaněk–Mandel–Brezina
 SA plus damped Jacobi, coarse LU when n is small.
 """
@@ -141,6 +144,25 @@ def _libdpn():
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+    ]
+    lib.dpn_mor_setup_rlc.restype = ctypes.c_void_p
+    lib.dpn_mor_setup_rlc.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_double,
+        ctypes.c_double,
         ctypes.c_int,
         ctypes.POINTER(ctypes.c_double),
         ctypes.c_int,
@@ -764,29 +786,57 @@ class NativeMor:
     name = "C_rational_krylov_mor"
     backend = "native"
 
-    def __init__(self, G, C, starts, shifts, n_moments: int, lib):
+    def __init__(self, G, C, starts, shifts, n_moments: int, lib, sys=None):
         Gc = G.tocsr()
         n, nnz, rp, ci, va = _csr_ct(Gc)
+        if nnz == 0:
+            ci = np.zeros(1, dtype=np.int32)
+            va = np.zeros(1, dtype=np.float64)
         C = np.ascontiguousarray(C, dtype=np.float64)
         starts = np.asfortranarray(starts, dtype=np.float64)
         if starts.ndim != 2 or starts.shape[0] != n:
             raise ValueError("starts must be n × n_starts")
         shifts = np.ascontiguousarray(shifts, dtype=np.float64)
-        h = lib.dpn_mor_setup(
-            n,
-            nnz,
-            rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-            ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-            va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            int(starts.shape[1]),
-            starts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            int(shifts.size),
-            shifts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            int(n_moments),
-        )
-        if not h:
-            raise RuntimeError("dpn_mor_setup failed")
+        bumps, n_bumps, bump_v = _bump_arrays(sys or {}, 0.0)
+        pkg_l = float((sys or {}).get("pkg_l") or 0.0)
+        use_rlc = sys is not None and pkg_l > 0.0 and n_bumps > 0 and hasattr(lib, "dpn_mor_setup_rlc")
+        if use_rlc:
+            h = lib.dpn_mor_setup_rlc(
+                n,
+                nnz,
+                rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                bumps.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                n_bumps,
+                bump_v.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                float(sys.get("pkg_r") or 0.0),
+                pkg_l,
+                int(starts.shape[1]),
+                starts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                int(shifts.size),
+                shifts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                int(n_moments),
+            )
+            if not h:
+                raise RuntimeError("dpn_mor_setup_rlc failed")
+        else:
+            h = lib.dpn_mor_setup(
+                n,
+                nnz,
+                rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                int(starts.shape[1]),
+                starts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                int(shifts.size),
+                shifts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                int(n_moments),
+            )
+            if not h:
+                raise RuntimeError("dpn_mor_setup failed")
         self._lib = lib
         self._h = h
         self.n = n
@@ -794,7 +844,7 @@ class NativeMor:
         self.setup_s = float(lib.dpn_mor_setup_s(h))
         raw = lib.dpn_mor_name(h)
         self.name = raw.decode() if raw else self.name
-        self._keep = (rp, ci, va, C, starts, shifts)
+        self._keep = (rp, ci, va, C, starts, shifts, bumps, bump_v)
 
     def timestep(self, sys, events, vdd: float, t_end: float) -> dict:
         leak = np.ascontiguousarray(sys["leak"], dtype=np.float64)
@@ -842,31 +892,89 @@ class NativeMor:
             self._h = None
 
 
+def _descriptor_rlc(Gmesh, bumps, pkg_r: float):
+    """Unsymmetric MNA: C v' + G v − i = −I, L i' + R i + v = Vsrc."""
+    Gmesh = Gmesh.tocsr().astype(np.float64)
+    n = Gmesh.shape[0]
+    bumps = np.asarray(bumps, dtype=np.int32)
+    p = int(bumps.size)
+    R = max(float(pkg_r), 1e-9)
+    rows, cols, data = [], [], []
+    Gcoo = Gmesh.tocoo()
+    rows.extend(Gcoo.row.tolist())
+    cols.extend(Gcoo.col.tolist())
+    data.extend(Gcoo.data.tolist())
+    for k, b in enumerate(bumps):
+        b = int(b)
+        if b < 0 or b >= n:
+            continue
+        ik = n + k
+        rows.extend([b, ik, ik])
+        cols.extend([ik, b, ik])
+        data.extend([-1.0, 1.0, R])
+    A = sparse.coo_matrix((data, (rows, cols)), shape=(n + p, n + p)).tocsr()
+    return A, n, p
+
+
 class PyMor:
-    """SciPy fallback: same rational Arnoldi + reduced BE as libdpn."""
+    """SciPy fallback: same rational Arnoldi + reduced BE as libdpn (RC and RLC)."""
 
     name = "C_rational_krylov_mor"
     backend = "python"
 
-    def __init__(self, G, C, starts, shifts, n_moments: int = 4):
+    def __init__(self, G, C, starts, shifts, n_moments: int = 4, sys=None):
         t0 = time.perf_counter()
-        self.G = G.tocsr().astype(np.float64)
         self.C = np.asarray(C, dtype=np.float64)
-        n = self.G.shape[0]
+        n = int(self.C.shape[0])
         starts = np.asarray(starts, dtype=np.float64)
         if starts.ndim == 1:
             starts = starts.reshape(n, 1)
-        cap = min(n, 48)
+        pkg_l = float((sys or {}).get("pkg_l") or 0.0)
+        bumps = np.asarray((sys or {}).get("bump") or [], dtype=np.int32)
+        self.rlc = bool(sys is not None and pkg_l > 0.0 and bumps.size > 0)
+        if self.rlc:
+            Gmesh = (sys.get("G_mesh") if sys and "G_mesh" in sys else G).tocsr()
+            A, n, p = _descriptor_rlc(Gmesh, bumps, float(sys.get("pkg_r") or 0.0))
+            E = np.zeros(n + p, dtype=np.float64)
+            E[:n] = self.C
+            E[n:] = pkg_l
+            self.bump_v = np.asarray(sys.get("bump_v"), dtype=np.float64).reshape(-1)
+            ns = []
+            for k in range(p):
+                e = np.zeros(n + p)
+                e[n + k] = 1.0
+                ns.append(e)
+            for b in range(starts.shape[1]):
+                e = np.zeros(n + p)
+                e[:n] = starts[:, b]
+                ns.append(e)
+            e = np.zeros(n + p)
+            e[:n] = 1.0 / np.sqrt(max(n, 1))
+            ns.append(e)
+            starts_use = np.column_stack(ns)
+            self.Aop = A
+            self.Ediag = E
+            self.n = n
+            self.n_aug = n + p
+            self.name = "C_rational_krylov_rlc"
+            cap = min(self.n_aug, 96)
+        else:
+            self.Aop = G.tocsr().astype(np.float64)
+            self.Ediag = self.C
+            self.n = n
+            self.n_aug = n
+            starts_use = starts
+            cap = min(n, 96)
         Vcols = []
         moments = max(1, n_moments)
         for s in np.asarray(shifts, dtype=np.float64):
-            K = (self.G + sparse.diags(s * self.C)).tocsc()
+            K = (self.Aop + sparse.diags(s * self.Ediag)).tocsc()
             lu = splu(K)
-            for b in range(starts.shape[1]):
-                rhs = starts[:, b].copy()
+            for b in range(starts_use.shape[1]):
+                rhs = starts_use[:, b].copy()
                 for mom in range(moments):
                     if mom > 0:
-                        rhs = self.C * Vcols[-1]
+                        rhs = self.Ediag * Vcols[-1]
                     x = lu.solve(rhs)
                     x = self._mgs(Vcols, x)
                     if x is None:
@@ -879,15 +987,14 @@ class PyMor:
             if len(Vcols) >= cap:
                 break
         if not Vcols:
-            x = np.ones(n) / np.sqrt(n)
+            x = np.ones(self.n_aug) / np.sqrt(self.n_aug)
             Vcols = [x]
         self.V = np.column_stack(Vcols)
         self.m = self.V.shape[1]
-        GV = np.column_stack([self.G @ self.V[:, k] for k in range(self.m)])
-        self.Gr = self.V.T @ GV
-        self.Cr = self.V.T @ (self.C[:, None] * self.V)
+        AV = np.column_stack([self.Aop @ self.V[:, k] for k in range(self.m)])
+        self.Ar = self.V.T @ AV
+        self.Er = self.V.T @ (self.Ediag[:, None] * self.V)
         self.setup_s = time.perf_counter() - t0
-        self.n = n
 
     @staticmethod
     def _mgs(basis, w, tol=1e-14):
@@ -908,17 +1015,20 @@ class PyMor:
         leak = np.asarray(sys["leak"], dtype=np.float64)
         n = self.n
         steps = max(2, int(np.ceil(t_end / dt)))
-        Ar = self.Gr + self.Cr / dt
-        try:
-            from numpy.linalg import solve as dsolve
-        except ImportError:
-            dsolve = np.linalg.solve
+        Kr = self.Ar + self.Er / dt
+        dsolve = np.linalg.solve
         z = np.zeros(self.m)
+        if self.rlc:
+            Ex = np.zeros(self.m)
+            for k in range(self.m):
+                Ex[k] = float(np.dot(self.V[:n, k], self.Ediag[:n] * vdd))
+            z = dsolve(self.Er, Ex)
         V = np.full(n, vdd)
         worst_v, worst_t, worst_i = vdd, 0.0, 0
         worst_V = V.copy()
         wave_t, wave_vmin, wave_itot = [], [], []
         t0 = time.perf_counter()
+        p = self.n_aug - n
         for s in range(steps):
             t = s * dt
             I = leak.copy()
@@ -928,10 +1038,20 @@ class PyMor:
                 half = 0.5 * dur
                 if dur > 0 and ev["i_pulse"] > 0 and abs(tau) < half:
                     I[ev["idx"]] += ev["i_pulse"] * (1.0 - abs(tau) / half)
-            f = self.V.T @ I
-            rhs = (self.Cr @ z) / dt - f
-            z = dsolve(Ar, rhs)
-            V = vdd + self.V @ z
+            if self.rlc:
+                u = np.zeros(self.n_aug)
+                u[:n] = -I
+                for k in range(p):
+                    u[n + k] = float(self.bump_v[k]) if k < self.bump_v.size else vdd
+                f = self.V.T @ u
+                rhs = (self.Er @ z) / dt + f
+                z = dsolve(Kr, rhs)
+                V = self.V[:n, :] @ z
+            else:
+                f = self.V.T @ I
+                rhs = (self.Er @ z) / dt - f
+                z = dsolve(Kr, rhs)
+                V = vdd + self.V @ z
             vmin = float(np.min(V))
             wave_t.append(float(t))
             wave_vmin.append(vmin)
@@ -940,7 +1060,7 @@ class PyMor:
                 worst_v = vmin
                 worst_t = float(t)
                 worst_i = int(np.argmin(V))
-                worst_V = V.copy()
+                worst_V = np.asarray(V, dtype=np.float64).copy()
         return {
             "worst_voltage": worst_v,
             "worst_droop": vdd - worst_v,
@@ -965,11 +1085,14 @@ class PyMor:
         }
 
 
-def RationalKrylov(G, C, starts, shifts, n_moments: int = 4):
+def RationalKrylov(G, C, starts, shifts, n_moments: int = 4, sys=None):
     lib = _libdpn()
+    Guse = G
+    if sys is not None and float(sys.get("pkg_l") or 0.0) > 0.0 and "G_mesh" in sys:
+        Guse = sys["G_mesh"]
     if lib is not None:
         try:
-            return NativeMor(G, C, starts, shifts, n_moments, lib)
+            return NativeMor(Guse, C, starts, shifts, n_moments, lib, sys=sys)
         except Exception as exc:
             print(f"libdpn MOR unavailable ({exc}); using SciPy fallback", file=sys.stderr)
-    return PyMor(G, C, starts, shifts, n_moments)
+    return PyMor(Guse, C, starts, shifts, n_moments, sys=sys)
