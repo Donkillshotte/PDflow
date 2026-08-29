@@ -22,6 +22,10 @@ type DynReport = {
     L3_windowed?: Level;
   };
   pipeline?: PipelineStep[];
+  emsim_split?: {
+    A_cell_current?: { status?: string; pwl_sources?: number };
+    B_pdn_solve?: { status?: string };
+  };
   hotspot?: {
     node?: string;
     t_ns?: number;
@@ -78,8 +82,8 @@ export function DynamicIrHeatmap({
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
-          Pipeline 6 livelli · L0 statico + L1 sintetico READY · L2 VCD e CCS = GAP ·
-          vyges = riferimento simultaneous-switch, non il core ·{" "}
+          Pipeline 6 livelli · split EMSim A (I cella, PARTIAL) / B (PDN, READY) ·
+          vyges = prototipo, non la fondazione ·{" "}
           <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>
           {" · "}
           <a href="/materiali/reference/dynamic-ir-landscape.md">landscape</a>
@@ -125,6 +129,14 @@ export function DynamicIrHeatmap({
               </dd>
             </div>
           </dl>
+          {report.emsim_split && (
+            <ul className="fl-dynir-levels" aria-label="Split EMSim A/B">
+              <li data-status={report.emsim_split.A_cell_current?.status ?? "GAP"}>
+                A I(t) {report.emsim_split.A_cell_current?.pwl_sources ?? "—"} PWL
+              </li>
+              <li data-status={report.emsim_split.B_pdn_solve?.status ?? "GAP"}>B PDN BE</li>
+            </ul>
+          )}
           {levels && (
             <ul className="fl-dynir-levels">
               <li data-status={levels.L0_static?.status ?? "GAP"}>L0 static</li>

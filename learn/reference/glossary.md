@@ -196,9 +196,13 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 ---
 
+## E
+
+**EMSim** — Framework accademico di emanazione EM ([jinyier/EMSim](https://github.com/jinyier/EMSim), TIFS 2023). Il passo *current analysis* (PT-PX → PWL → HSpice) è lo split A/B da copiare. Prerequisiti: VCS, Calibre xRC, PrimeTime PX, HSpice — non è drop-in OSS.
+
 ## V
 
-**vyges-em-ir** — Engine Apache-2.0 ([vyges-tools/em-ir](https://github.com/vyges-tools/em-ir)): IR statico CG + transiente backward-Euler su un `.pdn`. Integrato sul GCD via `run_vyges_em_ir.sh`. Non è RedHawk.
+**vyges-em-ir** — Engine Apache-2.0 ([vyges-tools/em-ir](https://github.com/vyges-tools/em-ir)): IR statico CG + transiente backward-Euler su un `.pdn`. Integrato sul GCD via `run_vyges_em_ir.sh`. Non è RedHawk. Non è la fondazione Dynamic IR di questo corso.
 
 **Dynamic IR (I(t))** — Engine del corso (`pdn_dynamic.py`): correnti PWL per power pin, backward Euler, waveform e heatmap all’istante di droop. Non è CCS né VCD pin-accurate.
 

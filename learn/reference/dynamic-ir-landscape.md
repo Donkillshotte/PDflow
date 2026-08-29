@@ -17,7 +17,7 @@ Domanda: *c’è un RedHawk Dynamic open-source?* Risposta onesta: **no**. Ci so
 | IREDGe / PowerNet / MAVIREC | ML IR | screening | — | feature IR | vettori | **non** physics sign-off |
 | RedHawk / Voltus / Totem | sì | sì | sì | sì | sì | commerciale |
 
-OpenROAD PSM resta **static IR**. vyges-em-ir è il prototipo BE più vicino a un mini-RedHawk, con tre limiti dichiarati: switch simultaneo, timestep interno, niente waveform.
+OpenROAD PSM resta **static IR**. vyges-em-ir è un prototipo BE (switch simultaneo, timestep interno, niente waveform) — **non** la fondazione. Lo split da copiare è quello di EMSim *current analysis*, non il passo EM probe.
 
 ## Architettura di riferimento (EMSim), frontend OpenROAD
 
@@ -49,18 +49,29 @@ Dipendenze commerciali: non si “portano” nel corso. Al loro posto:
 
 vyges resta il **check simultaneous-switch** (binario Apache-2.0). Questo engine è il path I(t)+waveform. ngspice non è il motore full-chip.
 
-## Classifica (obiettivo RedHawk Dynamic OSS)
+## Classifica reale (dopo EMSim)
 
-| Approccio | Voto | Ruolo in questo repo |
+| Approccio | Voto | Perché |
 |---|---|---|
-| OpenROAD PSM + nuovo transient + I(t) | ⭐⭐⭐⭐⭐ | **slice attuale** (`dynamic_ir`) |
-| vyges-em-ir + estensione I(t) | ⭐⭐⭐⭐⭐ come *idea*; ⭐⭐⭐⭐ come binario | prototipo, **non forkato** |
-| OpenROAD + ngspice | ⭐⭐⭐⭐ | gold 1-nodo; non full-chip |
-| ngspice puro | ⭐⭐⭐ | impraticabile a 10M nodi |
-| PDNSim da modificare | ⭐⭐⭐ | resta static analyzer |
-| Solver da zero senza mesh OpenROAD | ⭐⭐ | scartato |
+| **Architettura EMSim** (current → PWL → PDN TRAN) | ⭐⭐⭐⭐⭐ | Split A/B corretto. Repo: [jinyier/EMSim](https://github.com/jinyier/EMSim). Fine dichiarato: **emanazione EM** (TIFS 2023), non RedHawk IR. Prerequisiti README: **VCS, Calibre xRC, PrimeTime PX, HSpice**. |
+| **OpenROAD + nuovo engine I(t)+BE** | ⭐⭐⭐⭐⭐ | Unico path *eseguibile* e OSS su questo GCD (`dynamic_ir`) |
+| vyges-em-ir | ⭐⭐⭐⭐ | Prototipo BE; simultaneous `switch_t_ns`; no waveform; **non** la fondazione |
+| OpenROAD + ngspice | ⭐⭐⭐ | Validazione, non il motore a 10M nodi |
 
-Il salto qualitativo non è «un CG più veloce»: è \(I(t)=f(\mathrm{cell},\mathrm{slew},\mathrm{load},\mathrm{transition})\) + correlazione temporale VCD. Nangate45 non ha CCS; il VCD del testbench non mappa i pin gate — quindi L2 è GAP dichiarato, non un fake.
+Non si parte da vyges. Non si clona EMSim (servirebbero le quattro licenze). Si **sostituiscono** i pezzi commerciali uno a uno:
+
+| EMSim (README) | Sostituto qui | Fedeltà |
+|---|---|---|
+| Calibre xRC → DSPF power grid | OpenROAD `write_pg_spice` | R mesh PDNSim, non DSPF cell-internal |
+| VCS VCD gate-level | Icarus `tb_gcd` | **GAP** pin ITerm |
+| PrimeTime PX time-based + `logic_cell_modeling.py` | I_avg nel `.sp` + triangolo | **PARTIAL** — non waveform PT-PX |
+| `logic_cell_to_current_source.py` PWL | 601 PWL per ITerm | forma triangolo, non report PX |
+| HSpice TRAN | BE LU sul mesh; ngspice gold 1-nodo | gold ≠ full-chip |
+
+```text
+A  Quanto assorbe la cella?     PARTIAL (triangolo da I_avg)
+B  Cosa fa la PDN?              READY   (BE + heatmap + waveform)
+```
 
 ## Cosa non fare (questa slice e oltre, nel repo)
 

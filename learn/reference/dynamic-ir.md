@@ -32,7 +32,7 @@ vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch
 | **L2 VCD dynamic** | tempi reali di pin | **GAP** — VCD RTL ≠ ITerm gate |
 | **L3 Windowed** | simula solo finestre ad alta corrente | PARTIAL — finestre su `I_tot(t)` di **questo** run |
 
-Il cuore del prodotto futuro è il modello **cella → I(t)** da Liberty CCS + VCD/SAIF, non il solver. BE+LU sul GCD (~4k nodi) è il laboratorio; PCG/AMG/Krylov non sono in questa slice. **Non** si forka vyges-em-ir: resta riferimento simultaneous-switch e formato `.pdn`.
+Il cuore del prodotto futuro è il modello **cella → I(t)** (EMSim A: PT-PX), non il solver. BE+LU sul GCD è il laboratorio per **B**. **Non** si forka vyges né EMSim.
 
 ## Pipeline a 6 livelli (oggi)
 
