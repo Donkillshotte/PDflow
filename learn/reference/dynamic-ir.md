@@ -41,7 +41,7 @@ vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch
 
 Il salto qualitativo restante è il modello **cella → I(t)** sul GCD (Nangate è NLDM).
 L’interpolatore CCS esiste (`pdn_current.py`) e si testa su Liberty sintetica — **non** si inventa un mapping NLDM→CCS.
-I solver A/B/C/D ci sono. **Non** si forka vyges, EMSim o PSM. Ginkgo GPU resta GAP.
+I solver A/B/C/D ci sono. kind=3 è BiCGSTAB CPU per operatori **non simmetrici** (descriptor). **Non** si forka vyges, EMSim o PSM. Ginkgo GPU resta GAP.
 Indici nativi: `int64_t` (`dpn_index_width()==64`). SciPy fallback può restare int32.
 
 ## Solver A / B / C / D e livelli prodotto
@@ -57,7 +57,7 @@ Indici nativi: `int64_t` (`dpn_index_width()==64`). SciPy fallback può restare 
 |---|---|---|
 | N1 R | \(GV=I\) | READY |
 | N2 R+C | + `c_decap` | READY |
-| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L on-die **stimata** (Σ partial self, non loop L); descriptor TRAN solo con `--on-die-l` / `ON_DIE_L=1` (non AMG) |
+| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L on-die **stimata** (Σ partial self, non loop L) + mutual parziale cutoff \(d\le 2\,\mu\mathrm{m}\); descriptor TRAN solo con `--on-die-l` / `ON_DIE_L=1` (sparse \(E\), \(n_\mathrm{iv}\) bump, non AMG) |
 | N4 + VRM | on-die + lumped VRM descriptor | **READY** (native descriptor BE; \|N3−N4\| ≈ 23 nV on this STA-clock window — 47 µF is stiff). Full VRM µs load-step resta `system_pdn` |
 
 FAST = vectorless + AMG = **READY** (STA t50 in clock). ACCURATE e SIGNOFF = GAP.
@@ -68,11 +68,11 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 
 | # | Livello | Oggi | Gap onesto |
 |---|---|---|---|
-| 1 | PDN extract | OpenROAD `write_pg_spice` + tech LEF + SPEF PG C name-join + Grover on-die L | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped; on-die L default is estimate-only (no mutual) |
+| 1 | PDN extract | OpenROAD `write_pg_spice` + tech LEF + SPEF PG C name-join + Grover on-die L+M | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped; on-die L default is estimate-only; mutual is cutoff/partial, not PEEC |
 | 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
 | 3 | Activity | STA `report_arrival` t50 (clock) + SAIF TC name-join | VCD RTL name-join GAP; ranking extra I(t) resta sintetico; SAIF non inventa t50 |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) in Python TRAN se tabelle + slew; Nangate = GAP |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS + **N4** descriptor BE nativo | ngspice = gold 1-nodo RC, R+L, VRM+die; Index nativo int64 |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS + **N4** descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)) + kind=3 BiCGSTAB | ngspice = gold 1-nodo RC, R+L, VRM+die, strap K; Xyce = GAP in VM (deck contract); Index nativo int64; Ginkgo GPU = GAP |
 | 6 | Analysis | heatmap, finestre, ranking, path STA delay, \(J=I/(wt)\) | TTF relativo (no A foundry); R(T) lumpato one-shot N1, non mesh 3D; path = NLDM typical-V, non liberty a Vmin |
 
 ```bash

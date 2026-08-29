@@ -597,6 +597,198 @@ int main() {
                                   wv.data(), wi.data(), &n_steps) == 0,
           "c_api timestep_descriptor");
     check(std::abs(worst_v - worst) < 1e-12, "c_api compact VRM descriptor vs dense 4x4 BE");
+
+    Csr Ed = dpn::diag_csr(4, E);
+    Index iv_row[1] = {2};
+    double worst_g = 0;
+    check(dpn_timestep_descriptor_gen(4, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data(),
+                                      Ed.nnz(), Ed.rowptr.data(), Ed.col.data(), Ed.val.data(), 2, 1,
+                                      1, 1, iv_row, dt, t_end, vdd, nullptr, nullptr, 1, ev_idx,
+                                      ev_t50, ev_dur, ev_ip, Vw.data(), &worst_node, &worst_g,
+                                      &worst_t, &rel, &ts, maxs, wt.data(), wv.data(), wi.data(),
+                                      &n_steps) == 0,
+          "c_api timestep_descriptor_gen diagonal E");
+    check(std::abs(worst_g - worst) < 1e-12, "gen API diagonal E vs dense 4x4");
+
+    auto gen = dpn::timestep_descriptor_gen(A, Ed, dt, t_end, vdd, 2, 1, 1, iv_row, 1, nullptr,
+                                            nullptr, &ev, 1);
+    check(std::abs(gen.worst_v - desc.worst_v) < 1e-15, "sparse-E gen vs diagonal descriptor");
+  }
+  {
+    // Sparse E with off-diagonal C (mutual capacitance analogue) vs dense 2×2 BE.
+    const double vdd = 1.1, dt = 10e-12, t_end = 0.4e-9, t50 = 0.2e-9, dur = 0.2e-9, ipulse = 5e-3;
+    const double g = 1.0 / 0.2, gpad = 1.0 / 0.05, C = 50e-12, Mc = 5e-12;
+    Index ti[4] = {0, 0, 1, 1};
+    Index tj[4] = {0, 1, 0, 1};
+    double tv[4] = {g + gpad, -g, -g, g};
+    Csr A = dpn::from_triplets(2, ti, tj, tv, 4);
+    Index ei[4] = {0, 0, 1, 1};
+    Index ej[4] = {0, 1, 0, 1};
+    double evv[4] = {C, Mc, Mc, C};
+    Csr E = dpn::from_triplets(2, ei, ej, evv, 4);
+    double u0[2] = {gpad * vdd, 0.0};
+    dpn::TriangleSrc ev;
+    ev.idx = 1;
+    ev.t50 = t50;
+    ev.dur = dur;
+    ev.ipulse = ipulse;
+    auto desc = dpn::timestep_descriptor_gen(A, E, dt, t_end, vdd, 2, 2, -1, nullptr, 0, nullptr, u0,
+                                             &ev, 1);
+    double Ad[2][2] = {{g + gpad, -g}, {-g, g}};
+    double Ed[2][2] = {{C, Mc}, {Mc, C}};
+    double K[2][2];
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < 2; ++j) {
+        K[i][j] = Ad[i][j] + Ed[i][j] / dt;
+      }
+    }
+    double x[2] = {vdd, vdd};
+    double worst = vdd;
+    const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+    for (int s = 0; s < steps; ++s) {
+      const double t = static_cast<double>(s) * dt;
+      const double idraw = dpn::triangle(t, t50, dur, ipulse);
+      double rhs[2];
+      rhs[0] = (Ed[0][0] / dt) * x[0] + (Ed[0][1] / dt) * x[1] + u0[0];
+      rhs[1] = (Ed[1][0] / dt) * x[0] + (Ed[1][1] / dt) * x[1] + u0[1] - idraw;
+      const double det = K[0][0] * K[1][1] - K[0][1] * K[1][0];
+      const double x0n = (K[1][1] * rhs[0] - K[0][1] * rhs[1]) / det;
+      const double x1n = (K[0][0] * rhs[1] - K[1][0] * rhs[0]) / det;
+      x[0] = x0n;
+      x[1] = x1n;
+      worst = std::min(worst, x[1]);
+    }
+    check(std::abs(desc.worst_v - worst) < 1e-12, "sparse-E mutual C vs dense 2x2 BE");
+    std::printf("    sparse E vmin=%.9f gold=%.9f |err|=%.3e V\n", desc.worst_v, worst,
+                std::abs(desc.worst_v - worst));
+  }
+  {
+    // Two coupled strap L (M off-diag in E) vs dense 4×4 BE.
+    const double vdd = 1.1, dt = 10e-12, t_end = 0.4e-9, t50 = 0.2e-9, dur = 0.2e-9, ipulse = 5e-3;
+    const double R = 0.38, L = 1e-12, M = 0.3e-12, C = 50e-12, gpad = 1.0 / 0.05;
+    Index ti[10] = {0, 0, 1, 2, 2, 2, 0, 1, 3, 3};
+    Index tj[10] = {0, 2, 2, 0, 1, 2, 3, 3, 0, 1};
+    double tv[10] = {gpad, -1.0, 1.0, 1.0, -1.0, R, -1.0, 1.0, 1.0, -1.0};
+    // A[3,3]=R
+    Index ti2[1] = {3};
+    Index tj2[1] = {3};
+    double tv2[1] = {R};
+    Csr A1 = dpn::from_triplets(4, ti, tj, tv, 10);
+    Csr A2 = dpn::from_triplets(4, ti2, tj2, tv2, 1);
+    Csr A = dpn::plus(A1, A2);
+    Index ei[6] = {0, 1, 2, 2, 3, 3};
+    Index ej[6] = {0, 1, 2, 3, 2, 3};
+    double evv[6] = {C, C, L, M, M, L};
+    Csr E = dpn::from_triplets(4, ei, ej, evv, 6);
+    double u0[4] = {gpad * vdd, 0, 0, 0};
+    dpn::TriangleSrc ev;
+    ev.idx = 1;
+    ev.t50 = t50;
+    ev.dur = dur;
+    ev.ipulse = ipulse;
+    auto desc = dpn::timestep_descriptor_gen(A, E, dt, t_end, vdd, 2, 2, -1, nullptr, 0, nullptr, u0,
+                                             &ev, 1);
+    double Ad[4][4] = {};
+    Ad[0][0] = gpad;
+    Ad[0][2] = -1.0;
+    Ad[1][2] = 1.0;
+    Ad[2][0] = 1.0;
+    Ad[2][1] = -1.0;
+    Ad[2][2] = R;
+    Ad[0][3] = -1.0;
+    Ad[1][3] = 1.0;
+    Ad[3][0] = 1.0;
+    Ad[3][1] = -1.0;
+    Ad[3][3] = R;
+    double Ed[4][4] = {};
+    Ed[0][0] = C;
+    Ed[1][1] = C;
+    Ed[2][2] = L;
+    Ed[3][3] = L;
+    Ed[2][3] = M;
+    Ed[3][2] = M;
+    double K[4][4];
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        K[i][j] = Ad[i][j] + Ed[i][j] / dt;
+      }
+    }
+    double x[4] = {vdd, vdd, 0.0, 0.0};
+    double worst = vdd;
+    const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+    for (int s = 0; s < steps; ++s) {
+      const double t = static_cast<double>(s) * dt;
+      const double idraw = dpn::triangle(t, t50, dur, ipulse);
+      double rhs[4] = {};
+      for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+          rhs[i] += (Ed[i][j] / dt) * x[j];
+        }
+      }
+      rhs[0] += u0[0];
+      rhs[1] -= idraw;
+      ge4(K, rhs, x);
+      worst = std::min(worst, x[1]);
+    }
+    check(std::abs(desc.worst_v - worst) < 1e-12, "coupled L sparse-E vs dense 4x4 BE");
+    std::printf("    coupled L vmin=%.9f gold=%.9f |err|=%.3e V\n", desc.worst_v, worst,
+                std::abs(desc.worst_v - worst));
+  }
+  {
+    Csr A = poisson_1d(400);
+    auto lu = dpn::make_direct(A);
+    auto bicg = dpn::make_bicgstab(A);
+    std::vector<double> b(400, 1.0), xlu(400), xbicg(400);
+    lu->solve(b.data(), xlu.data(), nullptr);
+    bicg->solve(b.data(), xbicg.data(), nullptr);
+    double err = 0.0;
+    for (int i = 0; i < 400; ++i) {
+      err = std::max(err, std::abs(xlu[i] - xbicg[i]));
+    }
+    check(err < 1e-6, "poisson1d n=400 BiCGSTAB vs LU");
+    std::printf("    BiCGSTAB max|A-E|=%.3e relres=%.3e name=%s\n", err, bicg->last_relres(),
+                bicg->name());
+    DpnHandle* hb = dpn_setup(3, 400, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data());
+    check(hb != nullptr, "c_api BiCGSTAB setup");
+    std::vector<double> xapi(400);
+    double rel = 0.0;
+    check(dpn_solve(hb, b.data(), xapi.data(), nullptr, &rel) == 0, "c_api BiCGSTAB solve");
+    double erra = 0.0;
+    for (int i = 0; i < 400; ++i) {
+      erra = std::max(erra, std::abs(xlu[i] - xapi[i]));
+    }
+    check(erra < 1e-6, "c_api BiCGSTAB vs LU");
+    dpn_free(hb);
+  }
+  {
+    // Unsymmetric compact-VRM K = A + E/dt: BiCGSTAB vs SparseLU.
+    const double dt = 10e-12, r_vrm = 0.015, r_pkg = 0.05;
+    const double c_vrm = 50e-12, c_die = 50e-12, l_vrm = 2e-10, l_pkg = 2e-10;
+    Index ti[8] = {0, 0, 1, 2, 2, 3, 3, 3};
+    Index tj[8] = {2, 3, 3, 0, 2, 1, 0, 3};
+    double tv[8] = {-1.0, 1.0, -1.0, 1.0, r_vrm, 1.0, -1.0, r_pkg};
+    Csr A = dpn::from_triplets(4, ti, tj, tv, 8);
+    double Ed[4] = {c_vrm / dt, c_die / dt, l_vrm / dt, l_pkg / dt};
+    Csr K = dpn::plus_diag(A, Ed);
+    auto lu = dpn::make_direct(K);
+    auto bicg = dpn::make_bicgstab(K);
+    std::vector<double> b{1.0, -0.005, 1.1, 0.0}, xlu(4), xbicg(4);
+    lu->solve(b.data(), xlu.data(), nullptr);
+    bicg->solve(b.data(), xbicg.data(), nullptr);
+    double err = 0.0;
+    for (int i = 0; i < 4; ++i) {
+      err = std::max(err, std::abs(xlu[i] - xbicg[i]));
+    }
+    check(err < 1e-8, "unsymmetric VRM K BiCGSTAB vs LU");
+    std::printf("    unsym BiCGSTAB max|LU-E|=%.3e relres=%.3e\n", err, bicg->last_relres());
+  }
+  {
+    double d[2] = {1.0, 2.0};
+    Csr D = dpn::diag_csr(2, d);
+    Csr S = dpn::scale(D, 0.5);
+    Csr P = dpn::plus(D, S);
+    check(P.nnz() == 2 && std::abs(P.val[0] - 1.5) < 1e-15 && std::abs(P.val[1] - 3.0) < 1e-15,
+          "csr plus/scale/diag");
   }
   if (fails) {
     std::fprintf(stderr, "%d checks failed\n", fails);

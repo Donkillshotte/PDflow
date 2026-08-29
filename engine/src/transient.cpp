@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 namespace dpn {
@@ -313,23 +314,21 @@ TranResult timestep_be_adaptive(const Csr& Gmesh, const double* C, const Index* 
   return out;
 }
 
-TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double t_end, double vdd,
-                               int n_v, int n_die, Index die_idx, int iv, const double* leak,
-                               const TriangleSrc* ev, int n_ev) {
+TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double t_end, double vdd,
+                                   int n_v, int n_die, Index die_idx, const Index* iv, int n_iv,
+                                   const double* leak, const double* u_const, const TriangleSrc* ev,
+                                   int n_ev) {
   TranResult out;
   const Index n = A.nrows;
   out.worst_v = vdd;
   out.worst_t = 0.0;
   const Index n_die_i = std::max(static_cast<Index>(n_die), Index{0});
   out.V_worst.assign(static_cast<size_t>(n_die_i > 0 ? n_die_i : n), vdd);
-  if (n <= 0 || dt <= 0.0 || !E || n_v <= 0) {
+  if (n <= 0 || dt <= 0.0 || n_v <= 0 || E.nrows != n || E.ncols != n) {
     return out;
   }
-  std::vector<double> Edt(static_cast<size_t>(n));
-  for (Index i = 0; i < n; ++i) {
-    Edt[static_cast<size_t>(i)] = E[i] / dt;
-  }
-  Csr K = plus_diag(A, Edt.data());
+  Csr Edt = scale(E, 1.0 / dt);
+  Csr K = plus(A, Edt);
   auto solver = make_direct(K);
   const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
   std::vector<double> x(static_cast<size_t>(n), 0.0);
@@ -339,7 +338,6 @@ TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double 
   std::vector<double> rhs(static_cast<size_t>(n)), I(static_cast<size_t>(std::max(n_die_i, Index{1})));
   const auto t0 = std::chrono::steady_clock::now();
   double res_max = 0.0;
-  const Index iv_i = static_cast<Index>(iv);
   for (int s = 0; s < steps; ++s) {
     const double t = static_cast<double>(s) * dt;
     std::fill(rhs.begin(), rhs.end(), 0.0);
@@ -352,11 +350,23 @@ TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double 
         rhs[static_cast<size_t>(i)] = -I[static_cast<size_t>(i)];
       }
     }
-    if (iv_i >= 0 && iv_i < n) {
-      rhs[static_cast<size_t>(iv_i)] += vdd;
+    if (u_const) {
+      for (Index i = 0; i < n; ++i) {
+        rhs[static_cast<size_t>(i)] += u_const[i];
+      }
     }
+    if (iv && n_iv > 0) {
+      for (int k = 0; k < n_iv; ++k) {
+        const Index j = iv[k];
+        if (j >= 0 && j < n) {
+          rhs[static_cast<size_t>(j)] += vdd;
+        }
+      }
+    }
+    std::vector<double> hist(static_cast<size_t>(n), 0.0);
+    Edt.spmv(x.data(), hist.data());
     for (Index i = 0; i < n; ++i) {
-      rhs[static_cast<size_t>(i)] += Edt[static_cast<size_t>(i)] * x[static_cast<size_t>(i)];
+      rhs[static_cast<size_t>(i)] += hist[static_cast<size_t>(i)];
     }
     std::vector<double> xnext(static_cast<size_t>(n));
     solver->solve(rhs.data(), xnext.data(), x.data());
@@ -401,6 +411,21 @@ TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double 
   out.rel_res_max = res_max;
   out.solve_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
   return out;
+}
+
+TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double t_end, double vdd,
+                               int n_v, int n_die, Index die_idx, int iv, const double* leak,
+                               const TriangleSrc* ev, int n_ev) {
+  if (!E || A.nrows <= 0) {
+    TranResult out;
+    out.worst_v = vdd;
+    return out;
+  }
+  Csr Ed = diag_csr(A.nrows, E);
+  const Index iv_i = static_cast<Index>(iv);
+  const int n_iv = (iv >= 0) ? 1 : 0;
+  return timestep_descriptor_gen(A, Ed, dt, t_end, vdd, n_v, n_die, die_idx, n_iv ? &iv_i : nullptr,
+                                 n_iv, leak, nullptr, ev, n_ev);
 }
 
 }  // namespace dpn

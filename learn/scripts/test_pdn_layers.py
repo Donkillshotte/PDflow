@@ -479,7 +479,7 @@ STA_PATH_END
     check(n4.get("ok") is True, f"N4 compact vs ngspice ({n4})")
     print(f"    N4 compact |BE−ng|={n4.get('abs_err_mv'):.4f} mV droop={n4.get('be_droop_mv'):.3f} mV")
 
-    from pdn_solvers import RASDD, native_index_width
+    from pdn_solvers import RASDD, BicgSTAB, native_index_width
 
     widx = native_index_width()
     if widx is None:
@@ -502,6 +502,12 @@ STA_PATH_END
     check(ras.n_levels >= 2, f"RAS multi-domain n=200 ndom={ras.n_levels}")
     check(err_ras < 1e-6, f"RAS vs LU poisson n=200 max|A-D|={err_ras:.3e}")
     print(f"    RAS poisson ndom={ras.n_levels} backend={ras.backend} max|A-D|={err_ras:.3e}")
+
+    bicg = BicgSTAB(A_poi)
+    xe = bicg.solve(b_poi)
+    err_bicg = float(np.max(np.abs(xa - xe)))
+    check(err_bicg < 1e-6, f"BiCGSTAB vs LU poisson n=200 max|A-E|={err_bicg:.3e}")
+    print(f"    BiCGSTAB poisson backend={bicg.backend} max|A-E|={err_bicg:.3e} name={bicg.name}")
 
     # Lagged CCS I(slew, V^n) on 1-node RC vs ngspice implicit B-source.
     from shutil import which
@@ -676,16 +682,30 @@ quit
     check(sys_pgc["C"][i0] > sys_lumped["C"][i0], "SPEF C is added to lumped c_decap, not a replacement")
     check(abs(sys_pgc["C"][i0] - sys_lumped["C"][i0] - 0.0012e-12) < 1e-24, "assemble_be adds stamped Farads")
 
-    from pdn_em import grover_partial_L, estimate_on_die_L
+    from pdn_em import grover_partial_L, grover_partial_M, estimate_on_die_L
 
     Lg = grover_partial_L(1e-6, 0.07e-6, 0.13e-6)
     check(abs(Lg - 5.6943e-13) / 5.6943e-13 < 1e-3, f"Grover 1 µm metal1 bar ({Lg:.4e} H)")
+    Mg = grover_partial_M(1e-6, 0.2e-6)
+    M_expect = 2e-7 * 1e-6 * (math.log(2.0 * 1e-6 / 0.2e-6) - 1.0 + 0.2e-6 / 1e-6)
+    check(abs(Mg - M_expect) / M_expect < 1e-12, f"Grover partial M 1 µm / 0.2 µm ({Mg:.4e} H)")
     onl = estimate_on_die_L(
         [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],
         tech,
     )
     check(onl["status"] == "READY" and onl["n_stamped"] == 1, "estimate_on_die_L READY on one strap")
     check(onl["L_max_h"] > 0, "Grover L_max > 0")
+    check(onl["n_mutual"] == 0, "single strap has no mutual pair")
+    two_par = estimate_on_die_L(
+        [
+            ("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38),
+            ("ITermNode_metal1_0_400", "ITermNode_metal1_2000_400", 0.38),
+        ],
+        tech,
+    )
+    check(two_par["n_stamped"] == 2, "two parallel 1 µm straps")
+    check(two_par["n_mutual"] == 1, f"parallel straps pair once (n_mutual={two_par['n_mutual']})")
+    check(two_par["M_max_h"] > 0, "M_max > 0")
     via_r = estimate_on_die_L(
         [("ITermNode_metal1_0_0", "ITermNode_metal2_0_0", 1.0)],
         tech,
@@ -709,10 +729,15 @@ quit
         gcd_l = estimate_on_die_L(parse_spice(gcd_sp)[0], tech)
         check(gcd_l["n_stamped"] > 1000, f"GCD Grover straps n={gcd_l['n_stamped']}")
         check("metal1" in (gcd_l.get("by_layer") or {}), "GCD metal1 straps have Grover L")
+        check(gcd_l["n_mutual"] > 0, f"GCD cutoff mutual n={gcd_l['n_mutual']}")
+        print(
+            f"    GCD Grover n_stamped={gcd_l['n_stamped']} n_mutual={gcd_l['n_mutual']} "
+            f"M_max={gcd_l['M_max_h']*1e12:.3f} pH"
+        )
     else:
         print("    skip GCD Grover (no pg_vdd_bumps.sp)")
 
-    from pdn_vrm import assemble_strap_rlc, ngspice_strap_rlc_gold
+    from pdn_vrm import assemble_strap_rlc, ngspice_coupled_l_gold, ngspice_strap_rlc_gold, xyce_vrm_die_gold
     from pdn_transient import build_system as _bs
     from shutil import which as _which
 
@@ -733,6 +758,26 @@ quit
     )
     check(sys_st["n_straps"] == 1 and sys_st["iv"] == 2, "strap descriptor: 1 L + bump L")
     check(sys_st["A"].shape[0] == 4, "2 voltages + i_pkg + i_strap")
+    check(sys_st.get("n_iv") == 1, "single-bump inductor pad n_iv=1")
+    _, idx3, G3 = _bs(
+        [("n0", "n1", rs), ("n2", "n1", rs)],
+        {"n1": 0.0},
+        {"n0": 1.1, "n2": 1.1},
+    )
+    sys_2p = assemble_strap_rlc(
+        G3,
+        np.array([50e-12, 50e-12, 50e-12]),
+        idx3,
+        {"n0": 1.1, "n2": 1.1},
+        [{"a": "n0", "b": "n1", "r_ohm": rs, "L_h": ls}],
+        pkg_r=0.05,
+        pkg_l=2e-10,
+        dt=10e-12,
+        vdd=1.1,
+        pad="inductor",
+    )
+    check(sys_2p.get("n_iv") == 2, f"two-bump inductor pad n_iv={sys_2p.get('n_iv')}")
+    check(len(sys_2p.get("iv_list") or []) == 2, "iv_list has both bump KVL rows")
     if _which("ngspice"):
         gold_st = ngspice_strap_rlc_gold()
         check(gold_st.get("ok") is True, f"2-node Grover strap vs ngspice ({gold_st})")
@@ -740,8 +785,22 @@ quit
             f"    strap RLC |BE−ng|={gold_st.get('abs_err_mv'):.4f} mV "
             f"backend={gold_st.get('backend')} droop={gold_st.get('be_droop_mv'):.3f} mV"
         )
+        gold_k = ngspice_coupled_l_gold()
+        check(gold_k.get("ok") is True, f"coupled straps vs ngspice K ({gold_k})")
+        check(gold_k.get("n_mutual") == 1, "coupled gold stamps one M pair")
+        print(
+            f"    strap K |BE−ng|={gold_k.get('abs_err_mv'):.4f} mV "
+            f"backend={gold_k.get('backend')} n_mutual={gold_k.get('n_mutual')}"
+        )
     else:
         print("    skip strap RLC ngspice")
+    xyce = xyce_vrm_die_gold()
+    check(xyce.get("deck_ok") is True, f"Xyce N4 deck has R/L/C/PWL/.TRAN ({xyce})")
+    if xyce.get("status") == "READY":
+        check(xyce.get("ok") is True, f"Xyce N4 vs BE ({xyce})")
+        print(f"    Xyce |BE−xy|={xyce.get('abs_err_mv'):.4f} mV")
+    else:
+        print(f"    Xyce GAP ({xyce.get('reason')}) — deck contract kept")
 
     # w = RPERSQ·L/R. L = 2000 dbu / 2000 dbu_per_um = 1 µm → w = 1 µm (not min WIDTH 0.07).
     order = ["ITermNode_metal1_0_0", "ITermNode_metal1_2000_0"]

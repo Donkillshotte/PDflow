@@ -14,7 +14,8 @@ subdomains, overlapping local SparseLU, RAS restriction, GMRES
 (not CG: RAS is not SPD). ndom=1 falls back to one LU of A.
 
 Not Ginkgo, not pyamg, not a fork of ESPSim. Classic Vaněk–Mandel–Brezina
-SA plus damped Jacobi, coarse LU when n is small.
+SA plus damped Jacobi, coarse LU when n is small. kind=3 is Eigen BiCGSTAB+ILUT
+for unsymmetric descriptor operators (CPU Krylov workhorse). Ginkgo GPU is GAP.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ if "/usr/lib/python3/dist-packages" not in sys.path:
 
 import numpy as np
 from scipy import sparse
-from scipy.sparse.linalg import LinearOperator, cg, splu
+from scipy.sparse.linalg import LinearOperator, bicgstab, cg, splu, spilu
 
 _LIB = None
 _LIB_TRIED = False
@@ -283,6 +284,45 @@ def _libdpn():
         ctypes.POINTER(ctypes.c_double),  # wave_itot
         _P_IDX,  # n_steps
     ]
+    if hasattr(lib, "dpn_timestep_descriptor_gen"):
+        lib.dpn_timestep_descriptor_gen.restype = ctypes.c_int
+        lib.dpn_timestep_descriptor_gen.argtypes = [
+            _C_IDX,
+            _C_IDX,
+            _P_IDX,
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            _C_IDX,
+            _P_IDX,
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.c_int,
+            _C_IDX,
+            _C_IDX,
+            _P_IDX,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            _C_IDX,
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            _P_IDX,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            _P_IDX,
+        ]
     _LIB = lib
     return _LIB
 
@@ -325,7 +365,9 @@ class NativeSolver:
         self.setup_s = float(lib.dpn_setup_s(h))
         self.n_levels = int(lib.dpn_n_levels(h))
         raw = lib.dpn_name(h)
-        fallback = {0: "A_direct_be", 1: "B_sa_amg", 2: "D_ras_schwarz"}.get(kind, "solver")
+        fallback = {0: "A_direct_be", 1: "B_sa_amg", 2: "D_ras_schwarz", 3: "E_bicgstab"}.get(
+            kind, "solver"
+        )
         self.name = raw.decode() if raw else fallback
         self.last_iters = 0
         self.backend = "native"
@@ -537,6 +579,47 @@ class PySAAMG:
         return x
 
 
+class PyBicgSTAB:
+    """SciPy BiCGSTAB + ILU (diag fallback). Unsymmetric CPU Krylov — not Ginkgo."""
+
+    name = "E_bicgstab"
+
+    def __init__(self, A):
+        t0 = time.perf_counter()
+        self.A = A.tocsr().astype(np.float64)
+        self.n = self.A.shape[0]
+        self.Mop = None
+        try:
+            ilu = spilu(self.A.tocsc())
+            self.Mop = LinearOperator(self.A.shape, matvec=ilu.solve)
+        except Exception:
+            self.Mop = None
+        self.setup_s = time.perf_counter() - t0
+        self.last_iters = 0
+        self.backend = "python"
+
+    def solve(self, b: np.ndarray, x0: np.ndarray | None = None) -> np.ndarray:
+        b = np.asarray(b, dtype=np.float64)
+        x, info = bicgstab(
+            self.A,
+            b,
+            x0=x0,
+            M=self.Mop,
+            tol=1e-10,
+            atol=1e-12,
+            maxiter=max(200, 8 * self.n),
+        )
+        self.last_iters = 0 if info == 0 else int(info)
+        if info != 0:
+            x, info = bicgstab(self.A, b, x0=x0, tol=1e-8, atol=1e-10, maxiter=max(400, 16 * self.n))
+        return np.asarray(x, dtype=np.float64)
+
+
+def BicgSTAB(A):
+    n = _native(A, 3)
+    return n if n is not None else PyBicgSTAB(A)
+
+
 def DirectLU(A):
     n = _native(A, 0)
     return n if n is not None else PyDirectLU(A)
@@ -688,6 +771,8 @@ def make_solver(A, kind: str):
         return SAAMG(A)
     if kind in ("d", "D", "ras", "schwarz", "D_ras_schwarz"):
         return RASDD(A)
+    if kind in ("e", "E", "bicg", "bicgstab", "E_bicgstab"):
+        return BicgSTAB(A)
     raise ValueError(f"unknown solver {kind}")
 
 
@@ -952,7 +1037,9 @@ def native_adaptive(sys, events, vdd: float, t_end: float, atol: float = 1e-4, r
 
 
 def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=None):
-    """Native BE on Eẋ+Ax=u. Returns None if libdpn is missing."""
+    """Native BE on Eẋ+Ax=u. Prefers sparse-E gen API (u_const, n_iv, mutual)."""
+    from pdn_vrm import as_e_csr
+
     lib = _libdpn()
     if lib is None or not hasattr(lib, "dpn_timestep_descriptor"):
         return None
@@ -961,18 +1048,96 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
     if A is None or Eraw is None:
         return None
     n, nnz, rp, ci, va = _csr_ct(A)
-    E = np.ascontiguousarray(Eraw, dtype=np.float64)
-    if E.size != n:
+    try:
+        Ecsr = as_e_csr(Eraw, n)
+    except ValueError:
         return None
     n_v = int(sys["n_v"])
     die_idx = -1 if sys.get("die_idx") is None else int(sys["die_idx"])
     n_die = int(sys.get("n_die") or (1 if die_idx >= 0 else n_v))
-    iv = int(sys.get("iv", n_v))
     if leak is None:
         leak_a = np.zeros(max(n_die, 1), dtype=np.float64)
     else:
         leak_a = np.ascontiguousarray(leak, dtype=np.float64)
     kw = _tran_kwargs(max(n_die, 1), events, dt, t_end)
+    u0 = sys.get("u_const")
+    iv_list = sys.get("iv_list")
+    if iv_list is None:
+        iv = int(sys.get("iv", n_v))
+        n_iv = int(sys.get("n_iv", 1 if iv >= 0 else 0))
+        if n_iv > 0 and iv >= 0:
+            iv_list = list(range(iv, iv + n_iv))
+        else:
+            iv_list = []
+            n_iv = 0
+    else:
+        iv_list = [int(k) for k in iv_list]
+        n_iv = len(iv_list)
+    use_gen = hasattr(lib, "dpn_timestep_descriptor_gen")
+    if use_gen:
+        n_e, nnz_e, erp, eci, eva = _csr_ct(Ecsr)
+        if n_e != n:
+            return None
+        if eci.size == 0:
+            eci = np.zeros(1, dtype=_NP_IDX)
+            eva = np.zeros(1, dtype=np.float64)
+        iv_arr = np.ascontiguousarray(iv_list if n_iv else [0], dtype=_NP_IDX)
+        u_ptr = None
+        u_arr = None
+        if u0 is not None:
+            u_arr = np.ascontiguousarray(u0, dtype=np.float64)
+            if u_arr.size != n:
+                return None
+            u_ptr = u_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        rc = lib.dpn_timestep_descriptor_gen(
+            n,
+            nnz,
+            rp.ctypes.data_as(_P_IDX),
+            ci.ctypes.data_as(_P_IDX),
+            va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            nnz_e,
+            erp.ctypes.data_as(_P_IDX),
+            eci.ctypes.data_as(_P_IDX),
+            eva.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            n_v,
+            n_die,
+            die_idx,
+            n_iv,
+            iv_arr.ctypes.data_as(_P_IDX),
+            float(dt),
+            float(t_end),
+            float(vdd),
+            leak_a.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            u_ptr,
+            kw["n_ev"],
+            kw["idx"].ctypes.data_as(_P_IDX),
+            kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["worst_node"]),
+            ctypes.byref(kw["worst_v"]),
+            ctypes.byref(kw["worst_t"]),
+            ctypes.byref(kw["rel"]),
+            ctypes.byref(kw["solve_s"]),
+            kw["max_steps"],
+            kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(kw["n_steps"]),
+        )
+        if rc != 0:
+            print(f"dpn_timestep_descriptor_gen rc={rc}", file=sys.stderr)
+            return None
+        out = _tran_result(kw, n_die, "N4_descriptor_be", None, 1, vdd, dt, t_end, "native", "native_desc")
+        out["via"] = "descriptor BE sparse-E (libdpn SparseLU)"
+        return out
+    if n_iv != 1 or u0 is not None:
+        return None
+    E = np.ascontiguousarray(np.asarray(Ecsr.diagonal()), dtype=np.float64)
+    if E.size != n:
+        return None
+    iv = int(iv_list[0]) if iv_list else -1
     rc = lib.dpn_timestep_descriptor(
         n,
         nnz,

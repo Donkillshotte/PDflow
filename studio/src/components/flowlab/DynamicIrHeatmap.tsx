@@ -147,7 +147,14 @@ type DynReport = {
   timing_impact?: Timing;
   em?: Em;
   extract?: {
-    on_die_l?: { status?: string; n_stamped?: number; L_sum_h?: number; L_max_h?: number };
+    on_die_l?: {
+      status?: string;
+      n_stamped?: number;
+      L_sum_h?: number;
+      L_max_h?: number;
+      n_mutual?: number;
+      M_max_h?: number;
+    };
   };
   activity_model?: Activity;
   windowed?: { status?: string; abs_err_vs_A_mv?: number; n_windows?: number; steps?: number; full_steps?: number };
@@ -419,6 +426,9 @@ export function DynamicIrHeatmap({
                 <dd>
                   {odl.status}
                   {odl.n_stamped != null ? ` · ${odl.n_stamped} straps` : ""}
+                  {odl.n_mutual != null && odl.n_mutual > 0
+                    ? ` · ${odl.n_mutual} M`
+                    : ""}
                   {odl.L_max_h != null
                     ? ` · max ${(odl.L_max_h * 1e12).toFixed(1)} pH`
                     : ""}

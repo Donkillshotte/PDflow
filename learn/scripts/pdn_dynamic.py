@@ -737,7 +737,8 @@ def platform_block(
                 "on_die_l": None if not extract else ((extract.get("on_die_l") or {}).get("status")),
                 "note": (
                     f"Grover partial self on {((extract or {}).get('on_die_l') or {}).get('n_stamped')} straps "
-                    f"(Σ {(((extract or {}).get('on_die_l') or {}).get('L_sum_h') or 0)*1e9:.3f} nH is not loop L); "
+                    f"(Σ {(((extract or {}).get('on_die_l') or {}).get('L_sum_h') or 0)*1e9:.3f} nH is not loop L; "
+                    f"{((extract or {}).get('on_die_l') or {}).get('n_mutual') or 0} mutual pairs, d≤2 µm); "
                     + (
                         "descriptor TRAN stamped (--on-die-l)"
                         if on_die_l and on_die_l.get("ok")
@@ -1457,6 +1458,7 @@ def main() -> int:
                 dt=dt,
                 vdd=vdd,
                 pad="companion",
+                mutual=(ext.get("on_die_l") or {}).get("mutual"),
             )
             leak_l = np.asarray(sys_be["leak"], dtype=np.float64)
 
@@ -1476,9 +1478,10 @@ def main() -> int:
                 "worst_droop_mv": dyn_l["worst_droop"] * 1e3,
                 "worst_time_ns": dyn_l["worst_time_s"] * 1e9,
                 "abs_err_vs_N3_mv": abs(dyn_l["worst_droop"] - dyn["worst_droop"]) * 1e3,
+                "n_mutual": sys_l.get("n_mutual"),
                 "backend": dyn_l.get("backend"),
                 "via": sys_l.get("via"),
-                "note": "Grover partial self, no mutual; pads stay N3 companion; unsymmetric — not AMG",
+                "note": "Grover partial self + cutoff mutual; pads stay N3 companion; unsymmetric — not AMG",
             }
         else:
             ondie_meta = {

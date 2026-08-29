@@ -1,6 +1,8 @@
 #include "dpn/csr.hpp"
 
 #include <algorithm>
+#include <map>
+#include <stdexcept>
 #include <vector>
 
 namespace dpn {
@@ -162,6 +164,65 @@ Csr plus_diag(const Csr& A, const double* d) {
   B.col = std::move(col);
   B.val = std::move(val);
   return B;
+}
+
+Csr plus(const Csr& A, const Csr& B) {
+  if (A.nrows != B.nrows || A.ncols != B.ncols) {
+    throw std::invalid_argument("plus: shape mismatch");
+  }
+  const Index n = A.nrows;
+  std::vector<std::map<Index, double>> rows(static_cast<size_t>(n));
+  auto add = [&](const Csr& M) {
+    for (Index i = 0; i < M.nrows; ++i) {
+      for (Index p = M.rowptr[i]; p < M.rowptr[i + 1]; ++p) {
+        rows[static_cast<size_t>(i)][M.col[p]] += M.val[p];
+      }
+    }
+  };
+  add(A);
+  add(B);
+  Csr C;
+  C.nrows = A.nrows;
+  C.ncols = A.ncols;
+  C.rowptr.assign(static_cast<size_t>(n + 1), 0);
+  for (Index i = 0; i < n; ++i) {
+    C.rowptr[i + 1] = C.rowptr[i] + static_cast<Index>(rows[static_cast<size_t>(i)].size());
+  }
+  C.col.resize(static_cast<size_t>(C.rowptr[n]));
+  C.val.resize(static_cast<size_t>(C.rowptr[n]));
+  for (Index i = 0; i < n; ++i) {
+    Index p = C.rowptr[i];
+    for (const auto& kv : rows[static_cast<size_t>(i)]) {
+      C.col[static_cast<size_t>(p)] = kv.first;
+      C.val[static_cast<size_t>(p)] = kv.second;
+      ++p;
+    }
+  }
+  return C;
+}
+
+Csr scale(const Csr& A, double s) {
+  Csr B = A;
+  for (double& v : B.val) {
+    v *= s;
+  }
+  return B;
+}
+
+Csr diag_csr(Index n, const double* d) {
+  Csr E;
+  E.nrows = n;
+  E.ncols = n;
+  E.rowptr.resize(static_cast<size_t>(n + 1));
+  E.col.resize(static_cast<size_t>(n));
+  E.val.resize(static_cast<size_t>(n));
+  for (Index i = 0; i < n; ++i) {
+    E.rowptr[static_cast<size_t>(i)] = i;
+    E.col[static_cast<size_t>(i)] = i;
+    E.val[static_cast<size_t>(i)] = d ? d[i] : 0.0;
+  }
+  E.rowptr[static_cast<size_t>(n)] = n;
+  return E;
 }
 
 void drop_small(Csr& A, double tol) {

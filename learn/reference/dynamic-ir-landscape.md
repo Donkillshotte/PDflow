@@ -6,7 +6,7 @@ Il “flow definitivo” **non** si costruisce intorno a un singolo progetto esi
 più solver a fedeltà diversa, screening attività, gold esterni.
 
 Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo con companion R+L e \(i_L\), Δt adattivo, MOR rational Krylov **descriptor RLC** (Solver C, \(x=[v;i_L]\)) e **RAS Schwarz** (Solver D) sull’operatore BE.
-Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Python (lagged \(I(\mathrm{slew},V^n)\)); sul GCD Nangate resta il triangolo. **Non** Ginkgo/GPU. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
+Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Python (lagged \(I(\mathrm{slew},V^n)\)); sul GCD Nangate resta il triangolo. kind=3 = Eigen BiCGSTAB+ILUT (CPU, unsymmetric). **Non** Ginkgo/GPU. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
 
 ## Verdetto (piattaforma, non un clone)
 
@@ -19,9 +19,10 @@ Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Pytho
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
 | **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=96 · \|A−C\| 0.401 mV sul GCD clock STA (descriptor RLC); ranking scenari = Solver A |
 | **Solver D** RAS Schwarz | decomposizione di dominio | **READY** · ndom=8 · \|A−D\| 0.013 mV sul GCD clock STA (grafo, non stripe) |
+| kind=3 BiCGSTAB | Krylov CPU su \(A\) non simmetrica | **READY** (Eigen ILUT; non Ginkgo). Non è il gold N3 GCD |
 | libdpn Index | mesh n/nnz | **READY** int64 (C API + Eigen StorageIndex); SciPy fallback può restare int32 |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
-| Xyce | gold parallelo medio | **GAP** in VM |
+| Xyce | gold parallelo medio | **GAP** in VM (deck R/L/C/K/PWL/.TRAN è il contratto) |
 | ngspice | unit test fisico 1-nodo RC e R+L | READY |
 | MAVIREC / PowerNet / IR-Hunter | ML solo screening | **GAP** — mai dentro il physics |
 | vyges-em-ir | bootstrap + check simultaneous-switch | INTEGRATED, **non** il core |
@@ -61,13 +62,13 @@ Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. N
 
 ## Livelli di rete (già nel codice, etichette oneste)
 
-Il prototipo stampava \(L/\Delta t\) memoryless. N3 ora è un **companion BE serie R+L** con stato \(i_L\) (SPD, AMG ok). L on-die estratta resta GAP.
+Il prototipo stampava \(L/\Delta t\) memoryless. N3 ora è un **companion BE serie R+L** con stato \(i_L\) (SPD, AMG ok). L on-die è Grover **stimata** (partial self + mutual cutoff); il TRAN descriptor resta opt-in.
 
 | Livello | Contenuto | GCD oggi |
 |---|---|---|
 | **N1 R** | \(GV = I\) | READY — `solve_static` |
 | **N2 R+C** | decap lumpato sui tap | READY — `c_decap` |
-| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L on-die stimata (descriptor `--on-die-l`, non AMG) |
+| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L+M on-die stimata (descriptor `--on-die-l`, sparse \(E\), non AMG) |
 | **N4 on-die + pkg + bumps + VRM** | gerarchia completa | **READY** nativo (`libdpn` descriptor BE, \|N3−N4\| ≈ 23 nV sul clock STA GCD). Il load-step µs VRM resta `system_pdn` ngspice |
 
 ## Tre livelli di prodotto
@@ -114,11 +115,11 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 
 | Livello | Prodotto “RedHawk-like” | Cosa gira **oggi** sul GCD |
 |---|---|---|
-| 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` + tech LEF; SPEF PG C from PG `*D_NET` (GCD OpenRCX = GAP); Grover on-die L estimated (descriptor `--on-die-l`) |
+| 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` + tech LEF; SPEF PG C from PG `*D_NET` (GCD OpenRCX = GAP); Grover on-die L+M estimated (descriptor `--on-die-l`) |
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; SAIF TC name-join (idle-zero, no t50); extra I(t) ranking sintetico; VCD RTL name-join = GAP |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |
-| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold | **A + B + C + D READY**; N4 descriptor BE nativo |
+| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB |
 | 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + R(T) lumpato + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)) |
 
 ## Classifica reale

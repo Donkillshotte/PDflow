@@ -13,6 +13,7 @@ Never ML.
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 
 from pdn_extract import layer_of, node_xy_dbu
 
@@ -31,16 +32,120 @@ def grover_partial_L(l_m: float, w_m: float, t_m: float) -> float:
     return MU0_2PI * l * (math.log(max(2.0 * l / wt, 1.0)) + 0.5 + 0.2235 * wt / l)
 
 
+def grover_partial_M(length_m: float, dist_m: float) -> float:
+    """Partial mutual inductance of two parallel filaments (Grover / Neumann).
+
+    M = (μ0/2π) * l * [ln(2l/d) - 1 + d/l] for overlapping length l and
+    perpendicular distance d. No skin, not a full PEEC kernel.
+    Negative results (d ≳ l) are clamped to 0.
+    """
+    l = max(float(length_m), 1e-18)
+    d = max(float(dist_m), 1e-18)
+    return max(MU0_2PI * l * (math.log(2.0 * l / d) - 1.0 + d / l), 0.0)
+
+
+def _strap_axis(rec: dict) -> tuple[str, float, float, float] | None:
+    xa, ya, xb, yb = rec.get("xa_m"), rec.get("ya_m"), rec.get("xb_m"), rec.get("yb_m")
+    if xa is None or ya is None or xb is None or yb is None:
+        return None
+    dx, dy = abs(xb - xa), abs(yb - ya)
+    if dx >= dy:
+        return "H", min(xa, xb), max(xa, xb), 0.5 * (ya + yb)
+    return "V", min(ya, yb), max(ya, yb), 0.5 * (xa + xb)
+
+
+def pair_parallel_straps(
+    branches: list,
+    *,
+    cutoff_m: float = 2e-6,
+    max_pairs: int = 100_000,
+    k_max: float = 0.99,
+) -> list:
+    """Same-layer, same-orientation, overlapping projection, d ≤ cutoff.
+
+    Spatial hash — not O(n²) on every strap pair. k = M/√(L_i L_j) is clamped
+    to [0, k_max] so E stays safely positive-definite. Not full PEEC.
+    """
+    buckets: dict[tuple, list[int]] = defaultdict(list)
+    axes = []
+    cutoff = max(float(cutoff_m), 1e-12)
+    bin_m = cutoff
+    for i, rec in enumerate(branches):
+        ax = _strap_axis(rec)
+        axes.append(ax)
+        if ax is None:
+            continue
+        ori, _lo, _hi, perp = ax
+        b = int(round(perp / bin_m))
+        buckets[(rec.get("layer"), ori, b)].append(i)
+    cands: list[tuple[float, int, int, float]] = []
+    seen: set[tuple[int, int]] = set()
+    for key, members in list(buckets.items()):
+        layer, ori, b0 = key
+        neigh = []
+        for db in (-1, 0, 1):
+            neigh.extend(buckets.get((layer, ori, b0 + db), ()))
+        for i in members:
+            ax_i = axes[i]
+            if ax_i is None:
+                continue
+            _, lo_i, hi_i, perp_i = ax_i
+            Li = max(float(branches[i]["L_h"]), 1e-30)
+            for j in neigh:
+                if j <= i:
+                    continue
+                pair = (i, j)
+                if pair in seen:
+                    continue
+                ax_j = axes[j]
+                if ax_j is None:
+                    continue
+                _, lo_j, hi_j, perp_j = ax_j
+                ov = min(hi_i, hi_j) - max(lo_i, lo_j)
+                if ov <= 0.0:
+                    continue
+                d = abs(perp_i - perp_j)
+                if d < 1e-9 or d > cutoff:
+                    continue
+                seen.add(pair)
+                M = grover_partial_M(ov, d)
+                Lj = max(float(branches[j]["L_h"]), 1e-30)
+                den = math.sqrt(Li * Lj)
+                k = M / den if den > 0 else 0.0
+                if k > k_max:
+                    k = k_max
+                    M = k * den
+                if M <= 0.0:
+                    continue
+                cands.append((M, i, j, k))
+    cands.sort(key=lambda t: t[0], reverse=True)
+    truncated = len(cands) > max_pairs
+    cands = cands[:max_pairs]
+    return [
+        {
+            "i": i,
+            "j": j,
+            "M_h": M,
+            "k": k,
+            "layer": branches[i].get("layer"),
+            "truncated": truncated,
+        }
+        for M, i, j, k in cands
+    ]
+
+
 def estimate_on_die_L(resistors, tech: dict | None) -> dict:
     """Grover L on same-layer write_pg_spice straps. Vias stay R (no length model)."""
     branches = []
     by_layer: dict[str, dict] = {}
     tech = tech or {}
+    dbu = float(tech.get("dbu_per_um") or 2000.0)
     for a, b, r in resistors:
         g = branch_geometry(a, b, float(r), tech)
         if not g:
             continue
         Lh = grover_partial_L(g["L_m"], g["w_m"], g["t_m"])
+        pa, pb = node_xy_dbu(a), node_xy_dbu(b)
         rec = {
             "a": a,
             "b": b,
@@ -51,14 +156,21 @@ def estimate_on_die_L(resistors, tech: dict | None) -> dict:
             "w_m": g["w_m"],
             "t_m": g["t_m"],
         }
+        if pa is not None and pb is not None:
+            rec["xa_m"] = pa[0] / dbu * 1e-6
+            rec["ya_m"] = pa[1] / dbu * 1e-6
+            rec["xb_m"] = pb[0] / dbu * 1e-6
+            rec["yb_m"] = pb[1] / dbu * 1e-6
         branches.append(rec)
         slot = by_layer.setdefault(g["layer"], {"n": 0, "L_sum_h": 0.0, "L_max_h": 0.0})
         slot["n"] += 1
         slot["L_sum_h"] += Lh
         slot["L_max_h"] = max(slot["L_max_h"], Lh)
+    mutual = pair_parallel_straps(branches) if branches else []
     Lvals = [b["L_h"] for b in branches]
     Lvals_sorted = sorted(Lvals)
     p50 = Lvals_sorted[len(Lvals_sorted) // 2] if Lvals_sorted else 0.0
+    Mvals = [m["M_h"] for m in mutual]
     return {
         "status": "READY" if branches else "GAP",
         "n_stamped": len(branches),
@@ -66,13 +178,20 @@ def estimate_on_die_L(resistors, tech: dict | None) -> dict:
         "L_sum_h": float(sum(Lvals)) if Lvals else 0.0,
         "L_max_h": float(max(Lvals)) if Lvals else 0.0,
         "L_p50_h": float(p50),
+        "n_mutual": len(mutual),
+        "M_max_h": float(max(Mvals)) if Mvals else 0.0,
+        "k_max": float(max((m["k"] for m in mutual), default=0.0)),
+        "cutoff_m": 2e-6,
         "by_layer": by_layer,
         "branches": branches,
-        "via": "Grover partial self-L on same-layer write_pg_spice straps",
+        "mutual": mutual,
+        "via": "Grover partial self-L + cutoff partial mutual on same-layer write_pg_spice straps",
         "note": (
-            "Σ partial self is not loop L (mesh paths are parallel). No mutual, no skin. "
-            "Vias stay resistive. Descriptor stamp is unsymmetric — not AMG. "
-            "Default TRAN stays N3 RC+pkg companion unless --on-die-l."
+            "Σ partial self is not loop L (mesh paths are parallel). Partial mutual is "
+            "same-layer parallel filaments with overlapping projection and d≤2 µm "
+            "(spatial hash, k clamped to 0.99). No skin, no full PEEC. Vias stay resistive. "
+            "Descriptor stamp is unsymmetric — not AMG. Default TRAN stays N3 RC+pkg companion "
+            "unless --on-die-l."
             if branches
             else "no same-layer strap with LEF geometry — on-die L stays GAP"
         ),

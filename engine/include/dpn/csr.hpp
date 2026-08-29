@@ -53,6 +53,11 @@ Csr spmm(const Csr& A, const Csr& B);
 void drop_small(Csr& A, double tol);
 /* B = A + diag(d). Inserts a diagonal entry when A_ii is missing. */
 Csr plus_diag(const Csr& A, const double* d);
+/* Sparse A+B (same shape). Columns are sorted. */
+Csr plus(const Csr& A, const Csr& B);
+Csr scale(const Csr& A, double s);
+/* Diagonal CSR from a dense vector of length n (zeros are stored). */
+Csr diag_csr(Index n, const double* d);
 
 inline double dot(const double* a, const double* b, Index n) {
   double s = 0.0;

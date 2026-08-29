@@ -394,6 +394,6 @@ def summarize_extract(ext: dict) -> dict:
             },
         },
         "spef": {k: v for k, v in (ext.get("spef") or {}).items() if k != "node_c"},
-        "on_die_l": {k: v for k, v in (ext.get("on_die_l") or {}).items() if k != "branches"},
+        "on_die_l": {k: v for k, v in (ext.get("on_die_l") or {}).items() if k not in ("branches", "mutual")},
         "note": ext.get("note"),
     }

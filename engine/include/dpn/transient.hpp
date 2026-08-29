@@ -63,9 +63,16 @@ Csr form_be_operator(const Csr& Gmesh, const double* C, double dt, const Index* 
 /* Fixed-Δt BE on the descriptor Eẋ + A x = u(t). E is diagonal (length n).
    n_v voltage states start at Vdd; inductor states (the rest) start at 0.
    die_idx>=0: scalar I_draw on that node. die_idx<0: I_draw[0:n_die] on the first n_die nodes.
-   u[iv] += vdd (VRM inductor KVL). */
+   u[iv] += vdd (VRM inductor KVL). Wraps timestep_descriptor_gen. */
 TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double t_end, double vdd,
                                int n_v, int n_die, Index die_idx, int iv, const double* leak,
                                const TriangleSrc* ev, int n_ev);
+
+/* Same BE; E is sparse (mutual L, non-diagonal C). iv[0:n_iv) get +Vdd each step.
+   u_const (nullable, length n) is added every step (N3 pad companion). Gold = SparseLU. */
+TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double t_end, double vdd,
+                                   int n_v, int n_die, Index die_idx, const Index* iv, int n_iv,
+                                   const double* leak, const double* u_const, const TriangleSrc* ev,
+                                   int n_ev);
 
 }  // namespace dpn

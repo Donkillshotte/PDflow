@@ -27,6 +27,8 @@ class Solver {
 std::unique_ptr<Solver> make_direct(const Csr& A);
 std::unique_ptr<Solver> make_amg(const Csr& A);
 std::unique_ptr<Solver> make_ras(const Csr& A);
+/* Eigen BiCGSTAB + ILUT (diag fallback). Unsymmetric CPU Krylov — not Ginkgo. */
+std::unique_ptr<Solver> make_bicgstab(const Csr& A);
 
 double residual_rel(const Csr& A, const double* x, const double* b);
 

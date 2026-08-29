@@ -12,7 +12,8 @@ typedef struct DpnMor DpnMor;
 /* Storage index width in bits (64). Call this before dpn_setup to confirm ABI. */
 int dpn_index_width(void);
 
-/* kind: 0 = direct SparseLU, 1 = SA-AMG + CG, 2 = restricted additive Schwarz.
+/* kind: 0 = direct SparseLU, 1 = SA-AMG + CG, 2 = restricted additive Schwarz,
+   3 = BiCGSTAB + ILUT (unsymmetric CPU Krylov; not Ginkgo).
    rowptr has n+1 entries, col/val have nnz. Indices are int64. Data is copied. */
 DpnHandle* dpn_setup(int kind, int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
                      const double* val);
@@ -87,6 +88,18 @@ int dpn_timestep_descriptor(int64_t n, int64_t nnz, const int64_t* rowptr, const
                             int64_t* worst_node, double* worst_v, double* worst_t,
                             double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
                             double* wave_vmin, double* wave_itot, int64_t* n_steps);
+
+/* Descriptor BE with sparse E (CSR). iv[n_iv] get +Vdd. u_const may be NULL. */
+int dpn_timestep_descriptor_gen(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
+                                const double* Aval, int64_t nnz_e, const int64_t* eptr,
+                                const int64_t* eidx, const double* eval, int n_v, int n_die,
+                                int64_t die_idx, int64_t n_iv, const int64_t* iv, double dt,
+                                double t_end, double vdd, const double* leak, const double* u_const,
+                                int64_t n_events, const int64_t* ev_idx, const double* ev_t50,
+                                const double* ev_dur, const double* ev_ipulse, double* V_worst,
+                                int64_t* worst_node, double* worst_v, double* worst_t,
+                                double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
+                                double* wave_vmin, double* wave_itot, int64_t* n_steps);
 
 #ifdef __cplusplus
 }

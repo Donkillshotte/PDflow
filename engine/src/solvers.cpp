@@ -1,9 +1,11 @@
 #include "dpn/solvers.hpp"
 
+#include <Eigen/IterativeLinearSolvers>
 #include <Eigen/Sparse>
 #include <Eigen/SparseLU>
 #include <algorithm>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <memory>
 #include <queue>
@@ -655,8 +657,77 @@ class RasSolver final : public Solver {
   std::vector<RasDom> doms_;
 };
 
+class BicgSolver final : public Solver {
+ public:
+  using Ilut = Eigen::IncompleteLUT<double, Index>;
+  using BicgIlut = Eigen::BiCGSTAB<SpMat, Ilut>;
+  using BicgDiag = Eigen::BiCGSTAB<SpMat, Eigen::DiagonalPreconditioner<double>>;
+
+  explicit BicgSolver(const Csr& A) : A_(A) {
+    n_ = A.nrows;
+    const auto t0 = std::chrono::steady_clock::now();
+    M_ = to_eigen(A);
+    const int maxit = static_cast<int>(
+        std::min<Index>(std::max<Index>(Index{200}, 8 * n_), static_cast<Index>(INT_MAX / 4)));
+    ilut_.preconditioner().setDroptol(1e-4);
+    ilut_.preconditioner().setFillfactor(10);
+    ilut_.setMaxIterations(maxit);
+    ilut_.setTolerance(1e-12);
+    bool ok = false;
+    try {
+      ilut_.compute(M_);
+      ok = ilut_.info() == Eigen::Success;
+    } catch (...) {
+      ok = false;
+    }
+    if (ok) {
+      use_ilut_ = true;
+    } else {
+      diag_.setMaxIterations(maxit);
+      diag_.setTolerance(1e-12);
+      diag_.compute(M_);
+      if (diag_.info() != Eigen::Success) {
+        throw std::runtime_error("BiCGSTAB setup failed");
+      }
+      use_ilut_ = false;
+    }
+    setup_s_ = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+  }
+
+  void solve(const double* b, double* x, const double* x0) override {
+    Eigen::Map<const Eigen::VectorXd> bv(b, static_cast<Eigen::Index>(n_));
+    Eigen::VectorXd xv(static_cast<Eigen::Index>(n_));
+    if (x0) {
+      Eigen::Map<const Eigen::VectorXd> x0v(x0, static_cast<Eigen::Index>(n_));
+      if (use_ilut_) {
+        xv = ilut_.solveWithGuess(bv, x0v);
+      } else {
+        xv = diag_.solveWithGuess(bv, x0v);
+      }
+    } else if (use_ilut_) {
+      xv = ilut_.solve(bv);
+    } else {
+      xv = diag_.solve(bv);
+    }
+    for (Index i = 0; i < n_; ++i) {
+      x[i] = xv[i];
+    }
+    last_relres_ = residual_rel(A_, x, b);
+  }
+
+  const char* name() const override { return "E_bicgstab"; }
+
+ private:
+  Csr A_;
+  SpMat M_;
+  BicgIlut ilut_;
+  BicgDiag diag_;
+  bool use_ilut_ = false;
+};
+
 std::unique_ptr<Solver> make_direct(const Csr& A) { return std::make_unique<DirectSolver>(A); }
 std::unique_ptr<Solver> make_amg(const Csr& A) { return std::make_unique<AmgSolver>(A); }
 std::unique_ptr<Solver> make_ras(const Csr& A) { return std::make_unique<RasSolver>(A); }
+std::unique_ptr<Solver> make_bicgstab(const Csr& A) { return std::make_unique<BicgSolver>(A); }
 
 }  // namespace dpn
