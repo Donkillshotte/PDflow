@@ -283,6 +283,27 @@ def main() -> int:
     check(mo_pick is not None, "MO BOiLS still proposes after two timed sequences")
     check((mo_pick or {}).get("acq", {}).get("via") == "ssk_gp_ehvi", f"acquisition is EHVI, got {mo_pick}")
     check("coreUtilization" not in (mo_pick or {}), "EHVI proposal does not flatten physical knobs")
+    from dse.controller import f1_area_winner, f1_wns_winner
+
+    check(f1_area_winner(mem_w).id == "base", "area winner is liberty_default")
+    check(f1_wns_winner(mem_w).id == "base", "among these two, baseline also has the better WNS")
+    mem_w.add(
+        Candidate(
+            id="fastish",
+            design_id="gcd",
+            parent_id=None,
+            level="logic",
+            knobs={"name": "boils_resyn2ish", "abc_ops": ["balance", "rewrite"]},
+            knobs_fp=knobs_fp("logic", {"name": "boils_resyn2ish", "abc_ops": ["balance", "rewrite"]}),
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=460.4, wns_cost=0.11, fidelity="F1"),
+            cost_s=1.0,
+        )
+    )
+    check(f1_area_winner(mem_w).id == "base", "larger faster netlist does not steal the area crown")
+    check(f1_wns_winner(mem_w).id == "fastish", "WNS winner is the delay-improved sequence")
     check(any(s["level"] == "f3_sta" for s in planned["steps"]), "planner schedules F3 STA")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(

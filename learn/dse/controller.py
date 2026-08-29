@@ -52,7 +52,7 @@ from .layers import adapter_status
 from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front
-from .mo import baseline_wns
+from .mo import baseline_wns, timing_of
 from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
 from .planner import plan_search, rank_extracts
 from .proposer import propose as propose_from_attr
@@ -73,6 +73,51 @@ LEVELS = ("architecture", "logic", "synthesis", "physical", "routing", "pdn")
 def propose_logic(mem: DesignMemory, focus: str = "chip") -> dict | None:
     """Public hook used by tests: a logic proposal never carries physical knobs."""
     return propose_logic_boils(mem, focus=focus)
+
+
+def f1_ok(mem: DesignMemory) -> list:
+    return [
+        c
+        for c in mem.all()
+        if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
+    ]
+
+
+def f1_area_winner(mem: DesignMemory):
+    xs = f1_ok(mem)
+    return min(xs, key=lambda c: float(c.qor.area_um2)) if xs else None
+
+
+def f1_wns_winner(mem: DesignMemory):
+    """F1 with the best joined F3 slack. None if nobody has been timed."""
+    xs = []
+    for c in f1_ok(mem):
+        wns, _ = timing_of(mem, c)
+        if wns is not None:
+            xs.append((wns, c))
+    return min(xs, key=lambda t: t[0])[1] if xs else None
+
+
+def f1_pareto_parents(mem: DesignMemory) -> list:
+    """Area-best and WNS-best F1 (one row if they coincide). Not a flat knob vector."""
+    out = []
+    seen = set()
+    for c in (f1_area_winner(mem), f1_wns_winner(mem)):
+        if c and c.id not in seen:
+            out.append(c)
+            seen.add(c.id)
+    return out
+
+
+def _mapped_pick(cands, *, rtl, liberty):
+    for cand in cands:
+        if cand is None:
+            continue
+        w = ensure_mapped_netlist(cand, rtl=rtl, liberty=liberty)
+        mapped = (w.artifacts or {}).get("mapped_v")
+        if mapped and is_gate_cell_netlist(Path(mapped)):
+            return w
+    return None
 
 
 def run_controller(
@@ -206,6 +251,9 @@ def run_controller(
                 cost_s=cand.cost_s,
             )
             time_candidate(cand, reason="F3 teacher on liberty_default before extracts")
+
+    # Re-plan once WNS exists so logic acquisition is EHVI, not area-only EI.
+    plan = plan_search(attr, mem, f2_cong=f2_cong)
 
     # Hierarchical architecture: planner orders extracts from IR attribution.
     arch_step = next((s for s in plan["steps"] if s["level"] == "architecture"), None)
@@ -373,15 +421,11 @@ def run_controller(
     n_f2 = 0
     pay_fast, why_fast = should_pay_f2_fast(mem, n_f2=n_f2)
     if any(s["level"] == "f2_fast" for s in plan["steps"]) and pay_fast and time.time() < t_end:
-        winners = []
-        for lv in ("logic", "architecture"):
-            ranked = [
-                c
-                for c in mem.by_level(lv)
-                if c.status == "ok" and c.qor.area_um2 is not None
-            ]
-            ranked.sort(key=lambda c: float(c.qor.area_um2))
-            winners.extend(ranked[:2])
+        winners = list(f1_pareto_parents(mem))
+        seen = {c.id for c in winners}
+        extra = [c for c in f1_ok(mem) if c.id not in seen]
+        extra.sort(key=lambda c: float(c.qor.area_um2))
+        winners.extend(extra)
         for w in winners:
             if n_f2 >= 4 or time.time() >= t_end:
                 break
@@ -409,19 +453,11 @@ def run_controller(
     pay_gpl, why_gpl = should_pay_f2_gpl(mem, budget_left=t_end - time.time(), n_gpl=n_gpl)
     step("acquire", fidelity="F2_GPL", pay=pay_gpl, why=why_gpl)
     if any(s["level"] == "f2_gpl" for s in plan["steps"]) and pay_gpl and time.time() < t_end:
-        ranked = [
-            c
-            for c in mem.all()
-            if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
-        ]
-        ranked.sort(key=lambda c: float(c.qor.area_um2))
-        pick = None
-        for cand in ranked:
-            w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib)
-            mapped = (w.artifacts or {}).get("mapped_v")
-            if mapped and is_gate_cell_netlist(Path(mapped)):
-                pick = w
-                break
+        pick = _mapped_pick(
+            [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+            rtl=rtl,
+            liberty=lib,
+        )
         if pick:
             w = pick
             mem.touch(w)
@@ -479,19 +515,11 @@ def run_controller(
     pay_grt, why_grt = should_pay_f2_grt(mem, budget_left=t_end - time.time(), n_grt=n_grt)
     step("acquire", fidelity="F2_GRT", pay=pay_grt, why=why_grt)
     if any(s["level"] == "routing" for s in plan["steps"]) and pay_grt and time.time() < t_end:
-        ranked = [
-            c
-            for c in mem.all()
-            if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
-        ]
-        ranked.sort(key=lambda c: float(c.qor.area_um2))
-        pick = None
-        for cand in ranked:
-            w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib)
-            mapped = (w.artifacts or {}).get("mapped_v")
-            if mapped and is_gate_cell_netlist(Path(mapped)):
-                pick = w
-                break
+        pick = _mapped_pick(
+            [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+            rtl=rtl,
+            liberty=lib,
+        )
         if pick:
             mem.touch(pick)
             child = evaluate_f2_grt(pick, mem, design_id=design_id)
@@ -518,19 +546,12 @@ def run_controller(
     step("acquire", fidelity="F2_GPL_CATALOG", pay=pay_cat, why=why_cat)
     spec = next_catalog_spec(mem) if pay_cat else None
     if spec and time.time() < t_end:
-        ranked = [
-            c
-            for c in mem.all()
-            if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
-        ]
-        ranked.sort(key=lambda c: float(c.qor.area_um2))
-        pick = None
-        for cand in ranked:
-            w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib)
-            mapped = (w.artifacts or {}).get("mapped_v")
-            if mapped and is_gate_cell_netlist(Path(mapped)):
-                pick = w
-                break
+        # Second GPL shot: prefer the WNS incumbent (Pareto), not the same area netlist.
+        pick = _mapped_pick(
+            [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+            rtl=rtl,
+            liberty=lib,
+        )
         if pick:
             mem.touch(pick)
             util_c = float(spec["coreUtilization"])
