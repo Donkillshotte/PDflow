@@ -1194,7 +1194,10 @@ I0 ITermNode_metal1_1200_400 0 DC 1.0e-3
         gcd_cox = estimate_rail_overlap_c(parse_spice(gcd_sp)[0], parse_spice(gcd_vss)[0], tech)
         gcd_br = strap_branches(parse_spice(gcd_sp)[0], tech)
         check(len(gcd_br) == gcd_l["n_stamped"], "GCD strap_branches matches Grover n_stamped")
+        check(gcd_cox["n_vdd_straps"] == 5153, "GCD VDD Grover/Cox strap count")
         check(gcd_cox["n_pairs"] > 0, f"GCD VDD/VSS strap Cox n={gcd_cox['n_pairs']}")
+        check(gcd_cox["n_lateral"] > 1000, "GCD same-layer lateral Cox")
+        check(gcd_cox["n_plate"] == 0, "GCD has no adjacent-layer strap pairs (metal1 vs metal4 is GAP)")
         check(gcd_cox.get("truncated") is False, "GCD Cox not truncated at 100k")
         print(
             f"    GCD Cox n_lateral={gcd_cox['n_lateral']} n_plate={gcd_cox['n_plate']} "

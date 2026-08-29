@@ -63,7 +63,7 @@ Indici nativi: `int64_t` (`dpn_index_width()==64`). SciPy fallback può restare 
 | N2 R+C | + `c_decap` | READY |
 | **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L on-die **stimata** (Σ partial self, non loop L) + mutual parziale cutoff \(d\le 2\,\mu\mathrm{m}\); descriptor TRAN solo con `--on-die-l` / `ON_DIE_L=1` (sparse \(E\), \(n_\mathrm{iv}\) bump, non AMG) |
 | N4 + VRM | on-die + lumped VRM descriptor | **READY** (native descriptor BE; \|N3−N4\| ≈ 23 nV on this STA-clock window — 47 µF is stiff). Full VRM µs load-step resta `system_pdn` |
-| Dual-rail VSS | return path, same \(I(t)\) | **READY** extract+TRAN: `write_pg_spice -net VSS`, pair `* Sink for inst/pin`, bounce = −Vmin; **non** cambia il gold VDD 45.298 mV; C rail-to-rail **opt-in**: pin istanza (`--rail-c` / `RAIL_C=1`, scenario F) e/o Cox di strap (`--rail-c-geom` / `RAIL_C_GEOM=1`, ε0εr laterale + piastra ILD, non PEX foundry) |
+| Dual-rail VSS | return path, same \(I(t)\) | **READY** extract+TRAN: `write_pg_spice -net VSS`, pair `* Sink for inst/pin`, bounce = −Vmin; **non** cambia il gold VDD 45.298 mV; C rail-to-rail **opt-in**: pin istanza (`--rail-c` / `RAIL_C=1`, scenario F) e/o Cox di strap (`--rail-c-geom` / `RAIL_C_GEOM=1`, ε0εr laterale + piastra ILD, non PEX foundry). GCD extract: **6591** coppie laterali, **0** piastra (PDN quasi tutto metal1; metal4 non è adiacente), \(C_\Sigma=3.37\,\mathrm{fF}\) — non entra nel TRAN default |
 
 FAST = vectorless + AMG = **READY** (STA t50 in clock). ACCURATE e SIGNOFF = GAP.
 
