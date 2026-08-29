@@ -60,8 +60,12 @@ def dominates(a: QoR, b: QoR) -> bool:
     compared = 0
     for name in MINIMIZE:
         va, vb = getattr(a, name), getattr(b, name)
-        if va is None or vb is None:
+        if va is None and vb is None:
             continue
+        # Incomplete observation: F4 IR-only must not dominate an F2 point
+        # that also carries area/congestion. Missing ≠ better.
+        if va is None or vb is None:
+            return False
         compared += 1
         if float(va) > float(vb) + 1e-15:
             return False

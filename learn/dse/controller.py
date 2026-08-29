@@ -297,8 +297,8 @@ def run_controller(
         "budget_s": budget_s,
         "spent_s": sum(c.cost_s for c in mem.all()),
         "n_candidates": len(mem),
-        "n_f1": n_f1,
-        "n_arch": n_arch,
+        "n_f1": sum(1 for c in mem.all() if c.fidelity == "F1"),
+        "n_arch": sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1"),
         "memory": str(mem_path),
         "surrogate_f0": pred,
         "surrogate_f1_to_f4": f4s,
@@ -310,7 +310,13 @@ def run_controller(
         },
         "candidates": [c.to_dict() for c in mem.all()],
         "log": log,
-        "summary": _summary(mem, front.get("logic") or [], attr, n_f1, n_arch),
+        "summary": _summary(
+            mem,
+            front.get("logic") or [],
+            attr,
+            sum(1 for c in mem.all() if c.fidelity == "F1"),
+            sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1"),
+        ),
         "catalog": [s["name"] for s in CATALOG],
     }
     out = reports_dir(variant) / f"dse_{variant}.json"
