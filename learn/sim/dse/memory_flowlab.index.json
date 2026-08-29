@@ -1,11 +1,12 @@
 {
-  "n": 20,
+  "n": 27,
   "path": "/workspace/learn/sim/dse/memory_flowlab.jsonl",
   "levels": [
     "architecture",
     "logic",
     "pdn",
     "physical",
+    "routing",
     "synthesis"
   ],
   "ids": [
@@ -28,6 +29,13 @@
     "0d3adc2c6aac",
     "0d22a1a778b6",
     "1eac33218872",
-    "b61c3406327d"
+    "b61c3406327d",
+    "8a83fbe9e3da",
+    "c9aa589ebcd9",
+    "4955f613ffef",
+    "600a41f00bf5",
+    "50f501b02756",
+    "d288eea9b75d",
+    "1cc2db31e5d5"
   ]
 }
