@@ -572,7 +572,7 @@ export function FlowLab() {
           </span>
           <button
             type="button"
-            className="fl-btn fl-btn-ghost"
+            className={clsx("fl-btn fl-btn-ghost", sideCollapsed && "chip-active")}
             onClick={() => setSideCollapsed((v) => !v)}
             title={sideCollapsed ? "Mostra console" : "Nascondi console"}
           >
@@ -619,7 +619,11 @@ export function FlowLab() {
       )}
 
       <div
-        className={clsx("fl-workbench-grid", sideCollapsed && "is-collapsed")}
+        className={clsx(
+          "fl-workbench-grid",
+          sideCollapsed && "is-collapsed",
+          phase.id === "rtl" && "is-rtl",
+        )}
         style={{ "--fl-side-w": `${sideWidth}px` } as React.CSSProperties}
       >
         <section className="fl-main-panel">
@@ -763,6 +767,16 @@ export function FlowLab() {
           onPointerCancel={onResizeEnd}
           aria-hidden
         />
+
+        {sideCollapsed && (
+          <button
+            type="button"
+            className="fl-console-dock"
+            onClick={() => setSideCollapsed(false)}
+          >
+            Console
+          </button>
+        )}
 
         <aside className="fl-side-panel">
           <div className="fl-side-tabs" role="tablist">

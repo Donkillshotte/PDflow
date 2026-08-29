@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import {
   Columns2,
-  Eye,
   Layers,
   Maximize2,
   Minimize2,
@@ -403,7 +402,7 @@ export function FlowLabLayoutCanvas({
                         <i style={{ background: layer.color }} />
                         <span className="fl-layer-name">{layer.name}</span>
                         {layer.soloAvailable ? (
-                          <Eye size={12} aria-hidden />
+                          <span className="fl-layer-solo">solo</span>
                         ) : (
                           <span className="fl-layer-legend">legenda</span>
                         )}
@@ -412,15 +411,14 @@ export function FlowLabLayoutCanvas({
                     </li>
                   ))}
                 </ul>
-                {activeShot && activeShot !== meta?.primaryShot && (
-                  <button
-                    type="button"
-                    className="btn-ghost btn-sm"
-                    onClick={() => selectShot(meta?.primaryShot ?? gallery[0]?.file ?? "")}
-                  >
-                    Tutti i layer
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm fl-layer-reset"
+                  disabled={!activeShot || activeShot === meta?.primaryShot}
+                  onClick={() => selectShot(meta?.primaryShot ?? gallery[0]?.file ?? "")}
+                >
+                  Tutti i layer
+                </button>
               </aside>
             )}
             {!layersOpen && layers.length > 0 && (
@@ -432,6 +430,32 @@ export function FlowLabLayoutCanvas({
                 <Layers size={14} aria-hidden />
                 Layer
               </button>
+            )}
+            {gallery.length > 1 && (
+              <div className="fl-filmstrip" role="list" aria-label="Screenshot correlati">
+                {gallery.map((shot) => (
+                  <button
+                    key={shot.file}
+                    type="button"
+                    role="listitem"
+                    className={clsx(
+                      "fl-film-thumb",
+                      activeShot === shot.file && viewMode === "single" && !compareId && "is-active",
+                    )}
+                    onClick={() => selectShot(shot.file)}
+                    title={shot.caption}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={withKey(shot.url, refreshKey)} alt="" />
+                    <span>{shot.title}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {activeShot && activeShot !== meta?.primaryShot && viewMode === "single" && (
+              <p className="fl-shot-banner">
+                Screenshot in-app · {gallery.find((g) => g.file === activeShot)?.title ?? activeShot}
+              </p>
             )}
           </>
         ) : (
@@ -459,28 +483,6 @@ export function FlowLabLayoutCanvas({
           </div>
         )}
       </div>
-
-      {gallery.length > 1 && !showViewer && (
-        <div className="fl-filmstrip" role="list" aria-label="Screenshot correlati">
-          {gallery.map((shot) => (
-            <button
-              key={shot.file}
-              type="button"
-              role="listitem"
-              className={clsx(
-                "fl-film-thumb",
-                activeShot === shot.file && viewMode === "single" && !compareId && "is-active",
-              )}
-              onClick={() => selectShot(shot.file)}
-              title={shot.caption}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={withKey(shot.url, refreshKey)} alt="" />
-              <span>{shot.title}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {(viewerErr || imgErr) && (
         <p className="fl-layout-warn" role="status">
