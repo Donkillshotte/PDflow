@@ -18,6 +18,8 @@ F4 I-scale host:
   never flatten ABC + c_decap + util into one box
 F4 I-scale-win hotspot → ODB inst join → cell_size_ir (ctrl combo, not STA dpath)
   then write_pg_spice on that sized netlist — residual vs host extract, not STA-only
+IR-cell 1× hotspot bin ≠ host bin:
+  seq-heavy → density-cap extract on the sized netlist (region, not more combo size-up)
 """
 
 from __future__ import annotations
@@ -605,4 +607,44 @@ def steer_from_ir_cell_residual(mem: DesignMemory) -> dict | None:
         "knob_residual_mv": knob_r,
         "via": "active_f4_ir_cell_pdn",
         "not": "a flattened cell+PDN vector / gold",
+    }
+
+
+def steer_from_ir_cell_hotspot(mem: DesignMemory) -> dict | None:
+    """IR-cell 1× hotspot chooses region vs more combo size-up. Not host-region rXY."""
+    from .acquire import latest_host_extract_cand
+
+    ice = ir_cell_extract_cand(mem)
+    if ice is None:
+        return None
+    attr = ice.attr or {}
+    region = attr.get("region")
+    x_dbu, y_dbu = attr.get("x_dbu"), attr.get("y_dbu")
+    if not region and x_dbu is None:
+        return None
+    host_ext = latest_host_extract_cand(mem)
+    host_r = (host_ext.attr or {}).get("region") if host_ext else None
+    if region and host_r and str(region) == str(host_r):
+        return None
+    combo = float(attr.get("combo_frac") or 0.0)
+    if combo >= 0.5:
+        return None
+    eid = str((ice.knobs or {}).get("extract_id") or ice.id)
+    return {
+        "level": "ir_cell_region",
+        "extract_id": eid,
+        "host_id": ice.id,
+        "host_source": "f4_ir_cell_extract",
+        "region": region,
+        "x_dbu": x_dbu,
+        "y_dbu": y_dbu,
+        "combo_frac": combo,
+        "host_region": host_r,
+        "reason": (
+            f"IR-cell 1× bin {region or 'xy'} combo {combo:.2f} ≠ host {host_r} — "
+            "seq-heavy: density cap on the sized netlist, not more combo size-up, "
+            "not gold rXY, not ABC"
+        ),
+        "via": "active_f4_ir_cell_region",
+        "not": "host-region / a flattened cell+util vector",
     }

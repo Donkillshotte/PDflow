@@ -508,6 +508,7 @@ def evaluate_f4_extract(
     That mesh is not the synth F1 extract and not gold.
     kind=host_region density-caps the host IR bin (not gold rXY on synth F1).
     kind=ir_cell extracts the IR-hotspot sized netlist and residuals vs host extract.
+    kind=ir_cell_region density-caps the IR-cell 1× bin (not host rXY, not gold rXY).
     """
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
@@ -550,6 +551,16 @@ def evaluate_f4_extract(
         knobs["host_level"] = parent.level
         knobs["host_source"] = parent.knobs.get("source") or parent.level
         knobs["ir_join"] = 1
+    elif kind == "ir_cell_region":
+        knobs["source"] = "f4_ir_cell_region_extract"
+        knobs["name"] = f"extract_ir_cell_region_{host}"
+        knobs["host_level"] = parent.level
+        knobs["host_source"] = parent.knobs.get("source") or parent.level
+        knobs["ir_join"] = 1
+        knobs["region"] = region
+        knobs["x_dbu"] = x_dbu
+        knobs["y_dbu"] = y_dbu
+        knobs["region_density"] = region_density if region_density is not None else 0.30
     elif region or x_dbu is not None:
         knobs["source"] = "f4_region_extract"
         knobs["region"] = region
@@ -641,7 +652,23 @@ def evaluate_f4_extract(
             attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(hx.qor.dynamic_ir_mv)
             attr["residual_vs"] = hx.id
             attr["residual_via"] = "ir_cell_vs_host_extract"
-    kind_note = {"host": "host", "host_region": "host-region", "ir_cell": "IR-cell"}.get(kind, "candidate")
+    if kind == "ir_cell_region":
+        from .active import ir_cell_extract_cand
+
+        attr["via"] = "f4_ir_cell_region_extract"
+        attr["host_level"] = parent.level
+        attr["host_source"] = parent.knobs.get("source") or parent.level
+        ice = ir_cell_extract_cand(mem)
+        if ice and ice.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
+            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
+            attr["residual_vs"] = ice.id
+            attr["residual_via"] = "ir_cell_region_vs_ir_cell_extract"
+    kind_note = {
+        "host": "host",
+        "host_region": "host-region",
+        "ir_cell": "IR-cell",
+        "ir_cell_region": "IR-cell-region",
+    }.get(kind, "candidate")
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,

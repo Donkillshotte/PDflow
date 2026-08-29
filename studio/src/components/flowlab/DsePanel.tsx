@@ -66,6 +66,10 @@ type DseReport = {
   ir_cell_extract_residual_mv?: number;
   ir_cell_pdn_mv?: number;
   ir_cell_pdn_name?: string;
+  n_f4_ir_cell_region_extract?: number;
+  ir_cell_region_mv?: number;
+  ir_cell_region_residual_mv?: number;
+  ir_cell_region_bin?: string;
   n_host_ir_steer?: number;
   n_port_steer?: number;
   n_f4_solve?: number;
@@ -120,7 +124,7 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.n_ir_cell || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn ? (
+          {report.n_ir_cell || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract ? (
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -137,6 +141,17 @@ export function DsePanel() {
                 ? ` · IR-p ${report.ir_cell_pdn_name ?? "PDN"} ${report.ir_cell_pdn_mv.toFixed(3)} mV`
                 : report.n_ir_cell_pdn != null
                   ? ` · IR-p ${report.n_ir_cell_pdn}`
+                  : ""}
+              {report.ir_cell_region_mv != null
+                ? ` · IR-r ${report.ir_cell_region_mv.toFixed(3)} mV${
+                    report.ir_cell_region_bin ? ` ${report.ir_cell_region_bin}` : ""
+                  }${
+                    report.ir_cell_region_residual_mv != null
+                      ? ` Δ=${report.ir_cell_region_residual_mv >= 0 ? "+" : ""}${report.ir_cell_region_residual_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_ir_cell_region_extract != null
+                  ? ` · IR-r ${report.n_f4_ir_cell_region_extract}`
                   : ""}
             </p>
           ) : null}
@@ -198,6 +213,9 @@ export function DsePanel() {
                 {report.n_f4_iscale_win != null ? ` · I×w ${report.n_f4_iscale_win}` : ""}
                 {report.n_f4_ir_cell_extract != null ? ` · IR-x ${report.n_f4_ir_cell_extract}` : ""}
                 {report.n_ir_cell_pdn != null ? ` · IR-p ${report.n_ir_cell_pdn}` : ""}
+                {report.n_f4_ir_cell_region_extract != null
+                  ? ` · IR-r ${report.n_f4_ir_cell_region_extract}`
+                  : ""}
                 {report.n_host_ir_steer != null ? ` · h-IR ${report.n_host_ir_steer}` : ""}
                 {report.n_f4_solve != null ? ` · solve ${report.n_f4_solve}` : ""}
               </dd>

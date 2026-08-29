@@ -384,6 +384,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
+    steps.append(
+        {
+            "level": "ir_cell_region",
+            "reason": (
+                "IR-cell 1× hotspot bin ≠ host bin and seq-heavy — density cap "
+                "on the sized netlist, not more combo size-up, not gold rXY, not ABC"
+            ),
+            "scope": "region",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
@@ -447,6 +457,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             "f4_host_extract",
             "f4_host_region_extract",
             "f4_ir_cell_extract",
+            "f4_ir_cell_region_extract",
             "f4_region_extract",
         ):
             v = float(c.qor.dynamic_ir_mv)

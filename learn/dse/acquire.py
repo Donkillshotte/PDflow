@@ -1138,6 +1138,43 @@ def should_pay_ir_cell_pdn(
     return True, str(steer.get("reason") or "IR-cell residual steers a PDN restamp on the sized mesh")
 
 
+def should_pay_ir_cell_region(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_extract: int = 0,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay density-cap write_pg_spice on the IR-cell 1× bin. Not host-region rXY."""
+    if n_extract >= extract_max:
+        return False, "IR-cell region extract already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-cell-region write_pg_spice"
+    if not steer or steer.get("level") != "ir_cell_region":
+        return False, "no IR-cell hotspot residual (need a seq-heavy bin ≠ host)"
+    if str(steer.get("host_source") or "") != "f4_ir_cell_extract":
+        return False, "IR-cell region refuses a host/candidate extract"
+    from pathlib import Path
+
+    from .active import ir_cell_host
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    host = ir_cell_host(mem)
+    mapped = (host.artifacts or {}).get("mapped_v") if host else None
+    if not host or not mapped or not Path(mapped).is_file():
+        return False, "IR-cell netlist missing for a region extract"
+    if any(
+        (c.knobs or {}).get("source") == "f4_ir_cell_region_extract" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    ):
+        return False, "already have an IR-cell-region write_pg_spice mesh"
+    return True, str(steer.get("reason") or "IR-cell 1× hotspot steers a region density cap")
+
+
 def should_pay_net_buffer(
     mem: DesignMemory,
     *,
@@ -1373,6 +1410,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
         "f4_host_extract",
         "f4_host_region_extract",
         "f4_ir_cell_extract",
+        "f4_ir_cell_region_extract",
     ):
         hit = _latest_extract(mem, source=src)
         if hit and str(hit["extract_id"]) == want:
@@ -1390,6 +1428,8 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
             "f4_region_extract",
             "f4_host_extract",
             "f4_host_region_extract",
+            "f4_ir_cell_extract",
+            "f4_ir_cell_region_extract",
         ):
             continue
         art = c.artifacts or {}
@@ -1460,6 +1500,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "ir_cell_extract",
         "f4_ir_cell_extract",
         "ir_cell_pdn",
+        "ir_cell_region",
+        "f4_ir_cell_region_extract",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):
