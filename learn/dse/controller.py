@@ -1497,6 +1497,7 @@ def run_controller(
             "synthesis F1 = ORFS abc_speed.script (ABC_AREA=0); abc_area stays F0-only; not abc_ops",
             "cell-local drive-up on the attributed OpenSTA worst path (module-scoped); not ABC",
             "net-local BUF on attributed worst-path hops (module-scoped); not ABC",
+            "port-net BUF on attributed ctrl↔dpath hops at the parent (scope=port); not intra-module hops",
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + IR-bin region GPL + GRT",
             "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF + OpenRCX SPEF",
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
