@@ -22,14 +22,41 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-_SCRIPTS = Path(__file__).resolve().parent
-if str(_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_SCRIPTS))
-
-from pdn_transient import parse_spice  # noqa: E402
-
+# Keep this adapter free of NumPy/SciPy so Studio's pip NumPy 2.x cannot
+# break the convert step. Same regexes as pdn_transient.parse_spice.
+R_RE = re.compile(r"^\S+\s+(\S+)\s+(\S+)\s+R=([0-9eE.+-]+)")
+I_RE = re.compile(r"^\S+\s+(\S+)\s+\S+\s+DC\s+([0-9eE.+-]+)", re.I)
+V_RE = re.compile(r"^\S+\s+(\S+)\s+\S+\s+DC\s+([0-9eE.+-]+)", re.I)
 LAYER_RE = re.compile(r"metal(\d+)", re.I)
 SAFE_NODE = re.compile(r"[^A-Za-z0-9_]")
+
+
+def parse_spice(path: Path):
+    resistors = []
+    currents = defaultdict(float)
+    voltages = {}
+    for raw in path.read_text().splitlines():
+        s = raw.strip()
+        if not s or s.startswith("*") or s.startswith("."):
+            continue
+        k = s[0].upper()
+        if k == "R":
+            m = R_RE.match(s)
+            if not m:
+                continue
+            a, b, r = m.group(1), m.group(2), float(m.group(3))
+            resistors.append((a, b, max(r, 1e-12)))
+        elif k == "I":
+            m = I_RE.match(s)
+            if m:
+                currents[m.group(1)] += abs(float(m.group(2)))
+        elif k == "V":
+            m = V_RE.match(s)
+            if m:
+                voltages[m.group(1)] = float(m.group(2))
+    if not resistors or not voltages:
+        raise SystemExit(f"SPICE incompleto: R={len(resistors)} V={len(voltages)}")
+    return resistors, dict(currents), voltages
 
 
 def sanitize(name: str) -> str:

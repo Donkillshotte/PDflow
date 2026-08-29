@@ -14,6 +14,7 @@
 #   VYGES_EM_IR=/path/to/binary
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export PYTHONPATH="/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
 source "${ROOT}/learn/lib/power_vcd.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 C_DECAP="${C_DECAP:-50e-15}"
