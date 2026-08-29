@@ -53,6 +53,8 @@ type DseReport = {
   n_f4?: number;
   n_f4_extract?: number;
   n_f4_amg?: number;
+  n_f4_iscale?: number;
+  n_port_steer?: number;
   n_f4_solve?: number;
   surrogate_f1_to_f2_gnn?: { n?: number; uncertainty?: string; via?: string };
   pareto?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
@@ -163,6 +165,7 @@ export function DsePanel() {
                 {report.n_f4_extract != null ? ` · ext ${report.n_f4_extract}` : ""}
                 {report.n_f4_region_extract != null ? ` · r-ext ${report.n_f4_region_extract}` : ""}
                 {report.n_f4_amg != null ? ` · AMG ${report.n_f4_amg}` : ""}
+                {report.n_f4_iscale != null ? ` · I× ${report.n_f4_iscale}` : ""}
                 {report.n_f4_solve != null ? ` · solve ${report.n_f4_solve}` : ""}
               </dd>
             </div>
