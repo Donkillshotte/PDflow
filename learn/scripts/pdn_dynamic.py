@@ -1226,6 +1226,11 @@ def main() -> int:
     ap.add_argument("--lef", type=Path, default=None, help="tech LEF for metal WIDTH/THICKNESS/RPERSQ (EM J)")
     ap.add_argument("--spef", type=Path, default=None, help="SPEF PG *D_NET *CAP stamped by name-join (never mapped from signal nets)")
     ap.add_argument("--spice-vss", type=Path, default=None, help="write_pg_spice VSS mesh; dual-rail return TRAN (does not change VDD gold)")
+    ap.add_argument(
+        "--on-die-l",
+        action="store_true",
+        help="stamp Grover strap L+M as descriptor TRAN (not the GCD N3 gold; never AMG)",
+    )
     args = ap.parse_args()
 
     current_model = probe_liberty_current_model(args.liberty)
@@ -2073,6 +2078,10 @@ def main() -> int:
                 "j_absmax_a_m2": em.get("j_absmax_a_m2"),
                 "ttf_rel_min": em.get("ttf_rel_min"),
                 "dT_absmax_k": em.get("dT_absmax_k"),
+                "dT_mesh_absmax_k": em.get("dT_mesh_absmax_k"),
+                "dT_lumped_absmax_k": em.get("dT_lumped_absmax_k"),
+                "thermal_mesh": (em.get("thermal_mesh") or {}).get("status"),
+                "n_vias": (em.get("thermal_mesh") or {}).get("n_vias"),
                 "rT_delta_ir_mv": em.get("rT_delta_ir_mv"),
             },
         )
