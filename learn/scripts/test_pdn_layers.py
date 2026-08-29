@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import subprocess
 import sys
@@ -14,10 +15,13 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 from pdn_activity import (  # noqa: E402
+    apply_saif_activity,
     apply_sta_t50,
     expand_windows,
     load_sta_arrivals,
+    load_sta_path,
     nearest_inst,
+    parse_saif,
     parse_vcd,
     plan_events,
     probe_activity_trace,
@@ -220,6 +224,140 @@ $end
     loaded = load_sta_arrivals(tmp_sta)
     check("_479_" in loaded and loaded["_479_"]["rise_ns"] == 0.09, "load_sta_arrivals by_inst")
     check(t50_via_counts(ev_clk)["sta_arrival"] == 1, "t50_via_counts")
+
+    from export_sta_arrivals import parse_sta_path_report
+
+    path_dump = """STA_PATH_BEGIN
+Startpoint: ff1
+Endpoint: ff2
+      Delay        Time   Description
+-----------------------------------------------------------------
+   0.000000    0.000000   clock core_clock (rise edge)
+   0.000000    0.000000 ^ ff1/CK (DFF_X1)
+   0.100000    0.100000 ^ ff1/Q (DFF_X1)
+   0.000000    0.100000 ^ g2/A (INV_X1)
+   0.050000    0.150000 v g2/ZN (INV_X1)
+   0.000000    0.150000 v ff2/D (DFF_X1)
+               0.150000   data arrival time
+               0.420511   data required time
+               0.023500   slack (MET)
+STA_PATH_END
+"""
+    wp = parse_sta_path_report(path_dump)
+    check(wp is not None, "parse_sta_path_report finds a path")
+    check(wp["startpoint"] == "ff1" and wp["endpoint"] == "ff2", "path start/end")
+    check(abs(wp["slack_ns"] - 0.0235) < 1e-12, "slack from indented slack (MET) line")
+    check(wp["n_gates"] == 2, f"two gate stages (Q, ZN), got {wp['n_gates']}")
+    check(abs(wp["gate_delay_ns"] - 0.15) < 1e-12, "gate delay 0.10+0.05")
+    check(all("/CK" not in (s.get("pin") or "") for s in wp["stages"] if s["kind"] == "gate"), "CK is net not gate")
+    check(not any(s["inst"] == "ff2" and s["pin"] == "CK" for s in wp["stages"]), "required-time CK excluded")
+
+    from pdn_dynamic import path_ir_timing
+
+    vdd_p, alpha_p = 1.1, 1.3
+    Vw_p = [0.9, 1.1]
+    ev_path = [{"inst": "ff1", "idx": 0}, {"inst": "other", "idx": 1}]
+    tir = path_ir_timing(wp, ev_path, Vw_p, vdd_p, 0.46, alpha=alpha_p)
+    check(tir["status"] == "READY", "path IR READY when a gate joins")
+    check(tir["path"]["n_joined"] == 1, "only ff1 joins")
+    d_ff = 0.1 * (vdd_p / 0.9) ** alpha_p
+    d_g2 = 0.05  # unjoined stays at Vdd
+    expect_deg_ps = (d_ff + d_g2 - 0.15) * 1e3
+    check(abs(tir["degradation_ps"] - expect_deg_ps) < 1e-9, f"gate delay scaled at V=0.9 ({tir['degradation_ps']})")
+    check(abs(tir["path"]["slack_ir_ns"] - (0.0235 - (d_ff + d_g2 - 0.15))) < 1e-12, "IR slack = STA slack − extra gate delay")
+    tap_only = path_ir_timing(None, ev_path, Vw_p, vdd_p, 0.46)
+    check(tap_only["status"] == "PARTIAL" and tap_only["path"]["status"] == "GAP", "no path → tap-scale PARTIAL")
+
+    saif_txt = """(SAIFILE
+(SAIFVERSION "2.0")
+(DIRECTION "backward")
+(TIMESCALE 1 ps)
+(DURATION 10000)
+(INSTANCE top
+  (NET
+    (req_val (T0 10000) (T1 0) (TC 99) (IG 0))
+  )
+  (INSTANCE _479_
+    (NET
+      (ZN (T0 4000) (T1 6000) (TC 4) (IG 0))
+    )
+  )
+  (INSTANCE idle_buf
+    (NET
+      (Z (T0 10000) (T1 0) (TC 0) (IG 0))
+    )
+  )
+)
+)
+"""
+    saif_path = Path(tempfile.mkdtemp(prefix="saif-join-")) / "gate.saif"
+    saif_path.write_text(saif_txt)
+    insts_saif = [
+        {"name": "_479_", "x": 100.0, "y": 0.0, "seq": False, "cell": "AND2_X1", "filler": False},
+        {"name": "idle_buf", "x": 200.0, "y": 0.0, "seq": False, "cell": "BUF_X1", "filler": False},
+        {"name": "ghost", "x": 300.0, "y": 0.0, "seq": False, "cell": "INV_X1", "filler": False},
+    ]
+    probe_saif = probe_activity_trace(saif_path, insts_saif)
+    check(probe_saif["kind"] == "saif" and probe_saif["status"] == "READY", "SAIF probe READY")
+    check(probe_saif["n_matched"] == 2, f"SAIF joins _479_ and idle_buf not ghost ({probe_saif['n_matched']})")
+    parsed_saif = parse_saif(saif_path)
+    check(parsed_saif["n_nets"] == 3, "SAIF three NET records (req_val + ZN + Z)")
+    ev_saif = plan_events(
+        {
+            "ITermNode_metal1_100_0": 1e-3,
+            "ITermNode_metal1_200_0": 1e-3,
+            "ITermNode_metal1_300_0": 1e-3,
+        },
+        {
+            "ITermNode_metal1_100_0": 0,
+            "ITermNode_metal1_200_0": 1,
+            "ITermNode_metal1_300_0": 2,
+        },
+        insts_saif,
+        mode="clock",
+        peak_factor=8,
+        leak_frac=0.2,
+        period_s=0.46e-9,
+        dur_s=0.08e-9,
+        t50_s=0.12e-9,
+        sta_arrivals={"_479_": {"rise_ns": 0.20, "full": "_479_/ZN"}},
+        saif=parsed_saif,
+    )
+    by_inst_ev = {e["inst"]: e for e in ev_saif}
+    check(by_inst_ev["_479_"]["t50_via"] == "sta_arrival", "SAIF TC>0 keeps STA t50")
+    check(abs(by_inst_ev["_479_"]["t50_s"] - 0.20e-9) < 1e-15, "SAIF does not invent t50")
+    check(by_inst_ev["_479_"]["i_pulse"] > 0, "toggled SAIF keeps pulse")
+    check(by_inst_ev["idle_buf"]["i_pulse"] == 0.0, "SAIF TC=0 idle-zeros pulse")
+    check(by_inst_ev["idle_buf"]["t50_via"] == "synthetic", "idle SAIF does not invent t50")
+    pulse_before = by_inst_ev["_479_"]["i_pulse"]
+    check(by_inst_ev["ghost"].get("saif_tc") is None, "unrelated instance does not join SAIF")
+    meta_saif = apply_saif_activity(
+        [{"inst": "idle_buf", "i_pulse": 1e-3, "i_leak": 0.0, "i_peak": 1e-3, "t50_via": "synthetic"}],
+        parsed_saif,
+    )
+    check(meta_saif["n_idle"] == 1, "apply_saif_activity idle count")
+
+    ev_vcd_saif = plan_events(
+        {"ITermNode_metal1_100_0": 1e-3},
+        {"ITermNode_metal1_100_0": 0},
+        insts_sta,
+        mode="clock",
+        peak_factor=8,
+        leak_frac=0.2,
+        period_s=0.46e-9,
+        dur_s=0.08e-9,
+        t50_s=0.12e-9,
+        vcd=parsed,
+        saif={"toggle_count": {"_479_": 0}},
+    )
+    check(ev_vcd_saif[0]["t50_via"] == "vcd_name_join", "VCD name-join wins over SAIF")
+    check(ev_vcd_saif[0]["i_pulse"] > 0, "VCD-matched ITerm is not idle-zeroed by SAIF TC=0")
+    check(abs(pulse_before - by_inst_ev["_479_"]["i_pulse"]) < 1e-18, "SAIF TC does not rescale I_avg/pulse")
+
+    tmp_path_json = Path(tempfile.mkdtemp(prefix="sta-path-")) / "arr.json"
+    tmp_path_json.write_text(json.dumps({"by_inst": {"_479_": {"rise_ns": 0.09}}, "worst_path": wp}) + "\n")
+    check(load_sta_path(tmp_path_json)["n_gates"] == 2, "load_sta_path worst_path")
+    check(load_sta_path(tmp_sta) is None, "arrivals without worst_path → None")
 
     near = nearest_inst(1100.0, 0.0, [{"name": "c", "x": 0.0, "y": 0.0, "seq": True, "filler": False}])
     check(near is not None and near["name"] == "c", "ITerm 1100 dbu from origin still joins")

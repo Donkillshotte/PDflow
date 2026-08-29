@@ -29,6 +29,13 @@ def _num(tok: str) -> float | None:
     except ValueError:
         return None
 PIN_RE = re.compile(r"^PIN\s+(\S+)\s+activity=(\S+)\s+duty=(\S+)\s+origin=(\S*)\s*$")
+PATH_LINE = re.compile(
+    r"^\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+([v^])\s+(\S+)\s+\((\S+)\)\s*$"
+)
+SLACK_LINE = re.compile(
+    r"^\s+(-?[0-9.]+)\s+slack\s+\((MET|VIOLATED)\)\s*$", re.I
+)
+GATE_PINS = {"Q", "QN", "Z", "ZN", "CO", "S", "SN"}
 
 
 def parse_arrival_log(text: str) -> list[dict]:
@@ -67,6 +74,77 @@ def parse_arrival_log(text: str) -> list[dict]:
     return rows
 
 
+def parse_sta_path_report(text: str) -> dict | None:
+    """OpenSTA `report_checks -format full` → gate/net stages. None if no path.
+
+    Delay/Time/edge/pin/(cell) rows only. Slack is the indented
+    ``0.043530   slack (MET)`` line — never the header word ``slack``.
+    Stages stop at ``data arrival time`` so the required-time CK is not a gate.
+    """
+    if "STA_PATH_BEGIN" in text and "STA_PATH_END" in text:
+        text = text.split("STA_PATH_BEGIN", 1)[1].split("STA_PATH_END", 1)[0]
+    start = end = slack = None
+    slack_met = None
+    stages: list[dict] = []
+    after_arrival = False
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("Startpoint:"):
+            start = s.split(":", 1)[1].strip().split()[0]
+            continue
+        if s.startswith("Endpoint:"):
+            end = s.split(":", 1)[1].strip().split()[0]
+            continue
+        sm = SLACK_LINE.match(line)
+        if sm:
+            slack = float(sm.group(1))
+            slack_met = sm.group(2).upper() == "MET"
+            continue
+        if "data arrival time" in s.lower():
+            after_arrival = True
+            continue
+        if after_arrival:
+            continue
+        pm = PATH_LINE.match(line)
+        if not pm:
+            continue
+        full = pm.group(4)
+        if "/" not in full:
+            continue
+        delay_ns = float(pm.group(1))
+        cell = pm.group(5)
+        slash = full.rfind("/")
+        inst = full[:slash]
+        pin = full[slash + 1 :]
+        kind = "gate" if pin in GATE_PINS else "net"
+        stages.append(
+            {
+                "inst": inst,
+                "inst_key": inst.replace("\\", ""),
+                "pin": pin,
+                "cell": cell,
+                "delay_ns": delay_ns,
+                "kind": kind,
+                "edge": pm.group(3),
+            }
+        )
+    gates = [s for s in stages if s["kind"] == "gate"]
+    if not stages:
+        return None
+    return {
+        "startpoint": start,
+        "endpoint": end,
+        "slack_ns": slack,
+        "slack_met": slack_met,
+        "n_stages": len(stages),
+        "n_gates": len(gates),
+        "arrival_ns": sum(s["delay_ns"] for s in stages),
+        "gate_delay_ns": sum(s["delay_ns"] for s in gates),
+        "stages": stages,
+        "via": "OpenSTA report_checks -format full worst max path",
+    }
+
+
 def main() -> int:
     flow = _ROOT / "tools" / "OpenROAD-flow-scripts" / "flow"
     variant = os.environ.get("FLOW_VARIANT", "flowlab")
@@ -85,6 +163,9 @@ def main() -> int:
     env["STA_LIB"] = str(lib)
     env["STA_V"] = str(v)
     env["STA_SDC"] = str(sdc)
+    spef = os.environ.get("STA_SPEF")
+    if spef:
+        env["STA_SPEF"] = spef
     proc = subprocess.run(
         ["sta", "-no_init", "-exit", str(_TCL)],
         capture_output=True,
@@ -111,6 +192,7 @@ def main() -> int:
         t_old = prev.get("rise_ns") if prev.get("rise_ns") is not None else prev.get("fall_ns")
         if t_new is not None and (t_old is None or t_new < t_old):
             by_inst[key] = r
+    worst_path = parse_sta_path_report(log)
     payload = {
         "ok": True,
         "n_pins": len(rows),
@@ -119,12 +201,32 @@ def main() -> int:
         "verilog": str(v),
         "sdc": str(sdc),
         "via": "OpenSTA report_arrival on output pins — t50 from rise arrival, not VCD",
+        "spef": os.environ.get("STA_SPEF") or None,
+        "spef_note": (
+            "STA_SPEF was set — path/arrival include OpenRCX nets"
+            if os.environ.get("STA_SPEF")
+            else "no STA_SPEF — NLDM typical-V with ideal interconnect; net delay on the path is 0"
+        ),
         "pins": with_arr,
         "by_inst": by_inst,
+        "worst_path": worst_path,
     }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n")
-    print("STA_ARRIVALS_JSON", out, "n_inst", len(by_inst), "n_pins", len(with_arr))
+    n_gates = (worst_path or {}).get("n_gates") or 0
+    slack = (worst_path or {}).get("slack_ns")
+    print(
+        "STA_ARRIVALS_JSON",
+        out,
+        "n_inst",
+        len(by_inst),
+        "n_pins",
+        len(with_arr),
+        "path_gates",
+        n_gates,
+        "slack_ns",
+        slack,
+    )
     return 0 if with_arr else 1
 
 

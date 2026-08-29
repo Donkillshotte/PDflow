@@ -9,6 +9,7 @@ type Level = {
   mode?: string;
   note?: string;
   reason?: string;
+  kind?: string;
   windows?: Window[];
   n_windows?: number;
   abs_err_vs_A_mv?: number;
@@ -17,13 +18,36 @@ type Level = {
 type Activity = {
   status?: string;
   note?: string;
-  sta?: { status?: string; n_applied?: number; n_inst?: number };
+  sta?: {
+    status?: string;
+    n_applied?: number;
+    n_inst?: number;
+    worst_path?: { slack_ns?: number; n_gates?: number; startpoint?: string };
+  };
   vcd?: { status?: string; n_matched?: number; kind?: string; n_applied?: number };
+  saif?: { status?: string; n_matched?: number; n_idle?: number; n_joined?: number; kind?: string };
 };
 type PipelineStep = { id: number; name: string; status: string; via: string };
 type StatusChip = { status?: string };
 type Scenario = { mode?: string; droop_mv?: number; t_ns?: number; primary?: boolean };
-type Timing = { status?: string; degradation_ps?: number; scale?: number };
+type TimingPath = {
+  status?: string;
+  startpoint?: string;
+  endpoint?: string;
+  slack_ns?: number;
+  slack_ir_ns?: number;
+  n_gates?: number;
+  n_joined?: number;
+  gate_delay_ns?: number;
+  gate_delay_ir_ns?: number;
+};
+type Timing = {
+  status?: string;
+  degradation_ps?: number;
+  scale?: number;
+  delay_nom_ps?: number;
+  path?: TimingPath;
+};
 type Em = {
   status?: string;
   i_absmax_a?: number;
@@ -204,7 +228,9 @@ export function DynamicIrHeatmap({
   const worstScen = scenarios[0];
   const sta = report?.activity_model?.sta;
   const vcd = report?.activity_model?.vcd;
+  const saif = report?.activity_model?.saif;
   const l3 = levels?.L3_windowed;
+  const pathT = timing?.path;
 
   return (
     <section className="fl-dynir" aria-label="Dynamic IR heatmap">
@@ -364,12 +390,22 @@ export function DynamicIrHeatmap({
                 </dd>
               </div>
             ) : null}
-            {vcd ? (
+            {vcd && vcd.kind === "vcd" ? (
               <div>
                 <dt>VCD join</dt>
                 <dd>
                   {vcd.status ?? "GAP"}
                   {vcd.n_matched != null ? ` · ${vcd.n_matched} names` : ""}
+                </dd>
+              </div>
+            ) : null}
+            {saif && (saif.kind === "saif" || (saif.n_joined ?? 0) > 0) ? (
+              <div>
+                <dt>SAIF join</dt>
+                <dd>
+                  {saif.status ?? "GAP"}
+                  {saif.n_joined != null ? ` · ${saif.n_joined} inst` : ""}
+                  {saif.n_idle ? ` · idle ${saif.n_idle}` : ""}
                 </dd>
               </div>
             ) : null}
@@ -395,10 +431,25 @@ export function DynamicIrHeatmap({
             ) : null}
             {timing?.degradation_ps != null && (
               <div>
-                <dt>Delay scale</dt>
-                <dd>+{timing.degradation_ps.toFixed(2)} ps</dd>
+                <dt>{pathT?.status === "READY" ? "Path delay" : "Delay scale"}</dt>
+                <dd>
+                  +{timing.degradation_ps.toFixed(2)} ps
+                  {timing.status ? ` · ${timing.status}` : ""}
+                </dd>
               </div>
             )}
+            {pathT?.status === "READY" && pathT.slack_ns != null ? (
+              <div>
+                <dt>Path slack</dt>
+                <dd>
+                  {pathT.slack_ns.toFixed(4)} ns STA
+                  {pathT.slack_ir_ns != null
+                    ? ` · ${pathT.slack_ir_ns.toFixed(4)} ns IR`
+                    : ""}
+                  {pathT.n_joined != null ? ` · ${pathT.n_joined} gates` : ""}
+                </dd>
+              </div>
+            ) : null}
           </dl>
           {solvers && (
             <ChipList
@@ -494,7 +545,13 @@ export function DynamicIrHeatmap({
                 {
                   key: "L2",
                   status: levels.L2_vcd_dynamic?.status,
-                  text: "L2 VCD",
+                  text: `L2 ${
+                    levels.L2_vcd_dynamic?.kind === "saif"
+                      ? "SAIF"
+                      : levels.L2_vcd_dynamic?.kind === "fsdb"
+                        ? "FSDB"
+                        : "VCD"
+                  }`,
                 },
                 {
                   key: "L3",
@@ -512,7 +569,12 @@ export function DynamicIrHeatmap({
               Hotspot {report.hotspot.node ?? "—"} · {report.hotspot.droop_mv?.toFixed(2)} mV @{" "}
               {report.hotspot.t_ns?.toFixed(2)} ns · I seq {seqPct}% / combo {comboPct}%
               {timing?.degradation_ps != null
-                ? ` · delay +${timing.degradation_ps.toFixed(2)} ps`
+                ? pathT?.status === "READY"
+                  ? ` · path delay +${timing.degradation_ps.toFixed(2)} ps`
+                  : ` · delay +${timing.degradation_ps.toFixed(2)} ps`
+                : ""}
+              {pathT?.status === "READY" && pathT.slack_ir_ns != null
+                ? ` · slack IR ${pathT.slack_ir_ns.toFixed(3)} ns`
                 : ""}
               {em?.hottest?.i_abs != null
                 ? ` · |I| ${(em.hottest.i_abs * 1e3).toFixed(2)} mA`

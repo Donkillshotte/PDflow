@@ -4,6 +4,7 @@
 Default: synthetic clock / spatial / simultaneous t50.
 STA arrivals (OpenSTA report_arrival) overwrite t50 by instance name.
 VCD/SAIF/FSDB join by hierarchical name only — never a silent RTL→ITerm map.
+SAIF TC=0 idle-zeros the pulse; TC does not invent t50 or rescale I_avg.
 """
 
 from __future__ import annotations
@@ -148,6 +149,17 @@ def load_sta_arrivals(path: Path | None) -> dict:
     return out
 
 
+def load_sta_path(path: Path | None) -> dict | None:
+    """Worst max path from the same OpenSTA arrivals JSON. None if missing."""
+    if path is None or not Path(path).is_file():
+        return None
+    blob = json.loads(Path(path).read_text())
+    wp = blob.get("worst_path")
+    if not wp or not wp.get("stages"):
+        return None
+    return wp
+
+
 def apply_sta_t50(events: list[dict], arrivals: dict, period_s: float) -> dict:
     """Overwrite t50 from OpenSTA rise (else fall) arrival, folded into one period."""
     n = 0
@@ -183,21 +195,29 @@ def t50_via_counts(events: list[dict]) -> dict[str, int]:
     return out
 
 
+def hier_lookup(inst: str | None, table: dict):
+    """Join ODB instance name to a hierarchical key. No silent RTL→ITerm map."""
+    inst_n = norm_inst(inst)
+    if not inst_n or not table:
+        return None
+    keyed = {norm_inst(k).replace("/", "."): v for k, v in table.items()}
+    inst_flat = inst_n.replace("/", ".")
+    if inst_flat in keyed:
+        return keyed[inst_flat]
+    inst_last = inst_flat.split(".")[-1]
+    for kk, vv in keyed.items():
+        if kk.endswith("." + inst_flat):
+            return vv
+        last = kk.split(".")[-1]
+        if last == inst_flat or last == inst_last:
+            return vv
+    return None
+
+
 def vcd_edge_time(inst: str | None, edges: dict[str, float]) -> float | None:
     """Join ODB instance name to a VCD hier/scope key. No silent RTL→ITerm map."""
-    inst_n = norm_inst(inst)
-    if not inst_n or not edges:
-        return None
-    keyed = {norm_inst(k): t for k, t in edges.items()}
-    if inst_n in keyed:
-        return keyed[inst_n]
-    for kk, tt in keyed.items():
-        if kk.endswith("/" + inst_n) or kk.endswith("." + inst_n):
-            return tt
-        last = kk.replace("/", ".").split(".")[-1]
-        if last == inst_n:
-            return tt
-    return None
+    t = hier_lookup(inst, edges)
+    return None if t is None else float(t)
 
 
 def apply_vcd_t50(events: list[dict], vcd: dict, period_s: float) -> dict:
@@ -224,6 +244,182 @@ def apply_vcd_t50(events: list[dict], vcd: dict, period_s: float) -> dict:
     }
 
 
+_SAIF_ATOM = re.compile(r'"[^"]*"|[()]|[^\s()]+')
+
+
+def _saif_atom(tok: str) -> str:
+    if len(tok) >= 2 and tok[0] == '"' and tok[-1] == '"':
+        return tok[1:-1]
+    return tok
+
+
+def _saif_tree(tokens: list[str]):
+    i = 0
+    n = len(tokens)
+
+    def parse():
+        nonlocal i
+        if i >= n:
+            return None
+        if tokens[i] != "(":
+            v = _saif_atom(tokens[i])
+            i += 1
+            return v
+        i += 1
+        items = []
+        while i < n and tokens[i] != ")":
+            items.append(parse())
+        if i < n and tokens[i] == ")":
+            i += 1
+        return items
+
+    roots = []
+    while i < n:
+        if tokens[i] == "(":
+            roots.append(parse())
+        else:
+            i += 1
+    if len(roots) == 1:
+        return roots[0]
+    return roots
+
+
+def _saif_timescale(node: list) -> float | None:
+    if len(node) >= 3:
+        try:
+            return _timescale_s(float(node[1]), str(node[2]))
+        except (TypeError, ValueError):
+            pass
+    if len(node) >= 2:
+        raw = str(node[1]).strip()
+        m = re.match(r"^([0-9.]+)\s*([fpnum]?s)$", raw, re.I)
+        if m:
+            return _timescale_s(float(m.group(1)), m.group(2))
+    return None
+
+
+def _saif_net_tc(net) -> int:
+    if not isinstance(net, list) or len(net) < 2:
+        return 0
+    for item in net[1:]:
+        if isinstance(item, list) and item and str(item[0]).upper() == "TC":
+            try:
+                return int(float(item[1]))
+            except (IndexError, TypeError, ValueError):
+                return 0
+    return 0
+
+
+def parse_saif(path: Path) -> dict:
+    """IEEE SAIF → instance-path toggle counts. Does not invent edge times."""
+    text = Path(path).read_text(errors="replace")
+    tree = _saif_tree(_SAIF_ATOM.findall(text))
+    timescale_s = 1e-12
+    duration_units = None
+    toggle: dict[str, int] = {}
+    n_nets = 0
+
+    def walk(node, inst_path: list[str]) -> None:
+        nonlocal timescale_s, duration_units, n_nets
+        if not isinstance(node, list) or not node:
+            return
+        tag = str(node[0] or "").upper()
+        if tag == "TIMESCALE":
+            ts = _saif_timescale(node)
+            if ts:
+                timescale_s = ts
+            return
+        if tag == "DURATION":
+            try:
+                duration_units = float(node[1])
+            except (IndexError, TypeError, ValueError):
+                duration_units = None
+            return
+        if tag == "INSTANCE":
+            name = str(node[1]) if len(node) > 1 and not isinstance(node[1], list) else ""
+            child = inst_path + ([name] if name else [])
+            max_tc = 0
+            saw_net = False
+            for ch in node[2:]:
+                if not isinstance(ch, list) or not ch:
+                    continue
+                ctag = str(ch[0] or "").upper()
+                if ctag in ("NET", "PORT"):
+                    for net in ch[1:]:
+                        if not isinstance(net, list):
+                            continue
+                        saw_net = True
+                        n_nets += 1
+                        max_tc = max(max_tc, _saif_net_tc(net))
+                else:
+                    walk(ch, child)
+            if saw_net and child:
+                toggle["/".join(child)] = max_tc
+                toggle[".".join(child)] = max_tc
+            return
+        for ch in node[1:]:
+            if isinstance(ch, list):
+                walk(ch, inst_path)
+
+    if isinstance(tree, list):
+        walk(tree, [])
+    duration_s = None if duration_units is None else duration_units * timescale_s
+    return {
+        "timescale_s": timescale_s,
+        "duration_s": duration_s,
+        "n_nets": n_nets,
+        "n_inst": len({k.replace("/", ".") for k in toggle}),
+        "toggle_count": toggle,
+    }
+
+
+def apply_saif_activity(events: list[dict], saif: dict) -> dict:
+    """Idle-zero ITerm pulses from SAIF TC. Never invent t50; never rescale I_avg.
+
+    VCD name-join already matched → do not idle-zero (edge times win).
+    TC>0 keeps STA/synthetic/VCD t50 and the existing triangle charge.
+    """
+    toggles = saif.get("toggle_count") or {}
+    if not toggles:
+        return {
+            "status": "GAP",
+            "n_matched": 0,
+            "n_idle": 0,
+            "n_toggled": 0,
+            "n_events": len(events),
+            "via": "no SAIF toggle counts",
+        }
+    n_idle = n_toggled = n_skip_vcd = 0
+    for ev in events:
+        tc = hier_lookup(ev.get("inst"), toggles)
+        if tc is None:
+            continue
+        ev["saif_tc"] = int(tc)
+        if ev.get("t50_via") == "vcd_name_join":
+            n_skip_vcd += 1
+            continue
+        if int(tc) == 0:
+            leak = float(ev.get("i_leak") or 0.0)
+            ev["i_pulse"] = 0.0
+            ev["i_peak"] = leak
+            ev["saif_idle"] = True
+            n_idle += 1
+        else:
+            ev["saif_idle"] = False
+            n_toggled += 1
+    n_matched = n_idle + n_toggled + n_skip_vcd
+    return {
+        "status": "READY" if n_matched else "GAP",
+        "n_matched": n_matched,
+        "n_idle": n_idle,
+        "n_toggled": n_toggled,
+        "n_skip_vcd": n_skip_vcd,
+        "n_events": len(events),
+        "n_saif_inst": saif.get("n_inst") or 0,
+        "via": "SAIF TC name-join (idle zeros pulse; no t50 from SAIF; no I_avg rescale from TC)",
+    }
+
+
 def probe_activity_trace(path: Path | None, insts: list | None = None) -> dict:
     """What a VCD/SAIF/FSDB file can (not) drive. Does not invent pin times."""
     if path is None or not Path(path).is_file():
@@ -245,25 +441,41 @@ def probe_activity_trace(path: Path | None, insts: list | None = None) -> dict:
         kind = "fsdb"
     n_match = 0
     n_sig = 0
+    extra: dict = {}
     if kind == "vcd" and insts:
         parsed = parse_vcd(p)
         n_sig = parsed.get("n_signals") or 0
         edges = parsed.get("first_edge_s") or {}
         inst_keys = {norm_inst(i.get("name")) for i in insts if i.get("name")}
         n_match = sum(1 for k in inst_keys if k and vcd_edge_time(k, edges) is not None)
+    elif kind == "saif":
+        parsed = parse_saif(p)
+        n_sig = parsed.get("n_nets") or 0
+        extra["n_inst"] = parsed.get("n_inst") or 0
+        extra["duration_s"] = parsed.get("duration_s")
+        if insts:
+            toggles = parsed.get("toggle_count") or {}
+            inst_keys = {norm_inst(i.get("name")) for i in insts if i.get("name")}
+            n_match = sum(1 for k in inst_keys if k and hier_lookup(k, toggles) is not None)
+    elif kind == "fsdb":
+        extra["note_fsdb"] = "FSDB is proprietary binary — no decoder in this tree"
     status = "READY" if n_match else "GAP"
-    return {
+    if n_match:
+        note = f"{kind} name-join {n_match} instances"
+    elif kind == "fsdb":
+        note = "FSDB present but proprietary; no silent pin mapping"
+    else:
+        note = f"{kind} present but names do not match gate instances; no silent pin mapping"
+    out = {
         "status": status,
         "kind": kind,
         "path": str(p),
         "n_matched": n_match,
         "n_signals": n_sig,
-        "note": (
-            f"{kind} name-join {n_match} instance edges"
-            if n_match
-            else f"{kind} present but names do not match gate instances; no silent pin mapping"
-        ),
+        "note": note,
     }
+    out.update(extra)
+    return out
 
 
 def itot_from_events(events, dt: float, t_end: float) -> tuple[list[float], list[float]]:
@@ -377,8 +589,13 @@ def plan_events(
     t50_s: float,
     sta_arrivals: dict | None = None,
     vcd: dict | None = None,
+    saif: dict | None = None,
 ) -> list[dict]:
-    """t50: synthetic, then STA arrivals (clock mode), then VCD name-join."""
+    """t50: synthetic, then STA arrivals (clock mode), then VCD name-join.
+
+    SAIF (after VCD) idle-zeros unmatched-idle pulses. Does not invent t50.
+    Ranking extra I(t) must not pass STA/VCD/SAIF — those stay synthetic.
+    """
     loads = [(n, i) for n, i in currents.items() if n != "0" and n in idx and i > 0]
     xs = []
     for n, _ in loads:
@@ -431,4 +648,6 @@ def plan_events(
         apply_sta_t50(events, sta_arrivals, period_s)
     if vcd:
         apply_vcd_t50(events, vcd, period_s)
+    if saif:
+        apply_saif_activity(events, saif)
     return events

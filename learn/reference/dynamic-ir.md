@@ -13,7 +13,8 @@ inst_power_map.json             placement, seq vs combo (opzionale)
     ▼
 pdn_dynamic.py
     per-ITerm triangle I(t)     clock: STA arrival t50; spatial/simultaneous synthetic
-    VCD name-join only          RTL tb_gcd → GAP (no silent pin map)
+    VCD/SAIF name-join only     RTL tb_gcd → GAP (no silent pin map); SAIF idle-zeros TC=0
+    Path STA delay              OpenSTA worst max path, gate delays × (Vdd/V_inst)^α
     A = G + C/Δt                setup una volta (indipendente da I(t))
     Solver A: LU                gold
     Solver B: SA-AMG + CG       workhorse, |A−B| sul GCD < 1 µV
@@ -35,7 +36,7 @@ vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch
 |---|---|---|
 | **L0 Static** | \(G V = I_\mathrm{avg}\) | READY — stesso mesh di PDNSim |
 | **L1 Vectorless dynamic** | t50 da STA arrival (clock) o sintetici | READY — OpenSTA `report_arrival` rise, folded nel periodo SDC; I_avg non riscalato |
-| **L2 VCD dynamic** | tempi reali di pin | **GAP** — VCD RTL ≠ ITerm gate; name-join only (READY su VCD sintetico nei test) |
+| **L2 VCD/SAIF dynamic** | tempi reali / idle | **GAP** sul VCD RTL (`tb_gcd` ≠ ITerm); name-join READY su VCD/SAIF sintetici nei test. SAIF non inventa t50 e non riscala \(I_\mathrm{avg}\) da TC; TC=0 azzera l’impulso (idle). FSDB = GAP (binario proprietario) |
 | **L3 Windowed** | simula solo finestre ad alta corrente | READY/PARTIAL — BE su finestre `I_tot` (isolato se L=0; con pkg L prefix/`i_L`) |
 
 Il salto qualitativo restante è il modello **cella → I(t)** sul GCD (Nangate è NLDM).
@@ -69,10 +70,10 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 |---|---|---|---|
 | 1 | PDN extract | OpenROAD `write_pg_spice` + tech LEF + SPEF PG C name-join | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped |
 | 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
-| 3 | Activity | STA `report_arrival` t50 (clock) | VCD RTL name-join GAP; ranking extra I(t) resta sintetico |
+| 3 | Activity | STA `report_arrival` t50 (clock) + SAIF TC name-join | VCD RTL name-join GAP; ranking extra I(t) resta sintetico; SAIF non inventa t50 |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) in Python TRAN se tabelle + slew; Nangate = GAP |
 | 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS + **N4** descriptor BE nativo | ngspice = gold 1-nodo RC, R+L, VRM+die; Index nativo int64 |
-| 6 | Analysis | heatmap, finestre, ranking, delay scaling, \(J=I/(wt)\) | TTF relativo (no A foundry); R(T) lumpato one-shot N1, non mesh 3D |
+| 6 | Analysis | heatmap, finestre, ranking, path STA delay, \(J=I/(wt)\) | TTF relativo (no A foundry); R(T) lumpato one-shot N1, non mesh 3D; path = NLDM typical-V, non liberty a Vmin |
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
@@ -86,13 +87,13 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 |---|---|---|---|---|
 | Static IR | sì (stesso G) | sì (CG) | sì | sì |
 | I(t) | **per pin**, triangolo leak+switch | **un** `switch_t_ns` per tutte | load-step globale × peak_factor | I_avg DC |
-| t50 | STA arrival (clock) / spatial / simultaneous | simultaneo | n/a | n/a |
-| CCS Liberty / VCD pin | **no** (Nangate è NLDM); VCD name-join GAP sul GCD | no | no | no |
+| t50 | STA arrival (clock) / spatial / simultaneous; SAIF idle-zero | simultaneo | n/a | n/a |
+| CCS Liberty / VCD pin | **no** (Nangate è NLDM); VCD name-join GAP sul GCD; SAIF READY solo se i nomi join-ano | no | no | no |
 | Waveform | **CSV** Vmin(t) | no | CSV | no |
 | Heatmap t_worst | **SVG + CSV** | no | no | PNG statico ORFS |
 | Gold | ngspice 1-nodo RC + serie R+L | — | — | — |
 
-Non è sign-off Ansys RedHawk / Cadence Voltus. Nangate45 non ha tabelle CCS di corrente. Il VCD RTL (`tb_gcd`, 10 ns) **non** nomina i pin gate del netlist 0.46 ns — non si finge un mapping. t50 clock = OpenSTA `report_arrival` (join sul nome istanza).
+Non è sign-off Ansys RedHawk / Cadence Voltus. Nangate45 non ha tabelle CCS di corrente. Il VCD RTL (`tb_gcd`, 10 ns) **non** nomina i pin gate del netlist 0.46 ns — non si finge un mapping. t50 clock = OpenSTA `report_arrival` (join sul nome istanza). Dump STA di default **senza SPEF** (interconnect ideale; `STA_SPEF` per OpenRCX). Path delay scala solo i gate NLDM typical-V, non una liberty a Vmin.
 
 ## Modi I(t)
 
@@ -127,7 +128,7 @@ Gold ngspice: **1 nodo RC** `|V_BE−V_ng| ≈ 0.032 mV`; **1 nodo pad–R–L�
 
 EM: \(I=(V_a-V_b)/R\) e \(J=I/(w t)\) con \(w=\max(\mathrm{RPERSQ}\cdot L/R,\,\mathrm{WIDTH}_\min)\) dal tech LEF. TTF relativo \((J_\mathrm{ref}/J)^n\), \(n=2\), \(J_\mathrm{ref}=10^{10}\,\mathrm{A/m^2}\) — **non** ore foundry. \(\Delta T=R_\mathrm{th} I^2 R\) lumpato, restamp N1 \(R(T)\).
 
-GCD clock STA: \|I\|_max ≈ 2.25 mA (via / strap). \(J_\max\) ≈ \(1.48\times10^{11}\,\mathrm{A/m^2}\) su metal1 (w clampato a 0.07 µm; \(I\) ≈ 1.35 mA) · TTF_rel ≈ \(4.56\times10^{-3}\) · \(\Delta T\) lumpato ≈ 11 mK · \(\Delta\)IR \(R(T)\) ≈ 0.35 µV. \(i_L\) bump max ≈ 1.67 mA. Path STA (delay su un path timed) = GAP. L3 prefix BE 38/74 step, \|A−W\|=0 (L/R ≈ 4 ns ≫ orizzonte 0.74 ns — niente restart isolato).
+GCD clock STA: \|I\|_max ≈ 2.25 mA (via / strap). \(J_\max\) ≈ \(1.48\times10^{11}\,\mathrm{A/m^2}\) su metal1 (w clampato a 0.07 µm; \(I\) ≈ 1.35 mA) · TTF_rel ≈ \(4.56\times10^{-3}\) · \(\Delta T\) lumpato ≈ 11 mK · \(\Delta\)IR \(R(T)\) ≈ 0.35 µV. \(i_L\) bump max ≈ 1.67 mA. Path STA: OpenSTA worst max path, delay gate \(\times(V_\mathrm{dd}/V_\mathrm{inst})^{1.3}\) (NLDM typical-V, non una seconda liberty a Vmin). L3 prefix BE 38/74 step, \|A−W\|=0 (L/R ≈ 4 ns ≫ orizzonte 0.74 ns — niente restart isolato).
 
 ## File
 
@@ -137,8 +138,8 @@ GCD clock STA: \|I\|_max ≈ 2.25 mA (via / strap). \(J_\max\) ≈ \(1.48\times1
 | `learn/scripts/pdn_extract.py` | layer extract: SPICE + tech LEF + probe SPEF (C PG = GAP) |
 | `learn/scripts/pdn_em.py` | J da RPERSQ·L/R, TTF relativo, restamp R(T) lumpato |
 | `learn/scripts/pdn_current.py` | triangolo + probe/interpolatore CCS |
-| `learn/scripts/pdn_activity.py` | t50 sintetici + STA `report_arrival` + VCD name-join + finestre I_tot |
-| `learn/scripts/export_sta_arrivals.py` | OpenSTA → JSON `by_inst` (rise/fall ns) |
+| `learn/scripts/pdn_activity.py` | t50 sintetici + STA `report_arrival` + VCD/SAIF name-join + finestre I_tot |
+| `learn/scripts/export_sta_arrivals.py` | OpenSTA → JSON `by_inst` (rise/fall ns) + `worst_path` (`report_checks -format full`) |
 | `learn/scripts/pdn_solvers.py` | A/B/C/D + N4 descriptor (libdpn ctypes + SciPy) |
 | `learn/scripts/run_dynamic_ir.sh` | GCD + stamp `.dynamic_ir.ok` |
 | `learn/scripts/pdn_vrm.py` | N4 descriptor: VRM + bump R+L + mesh |

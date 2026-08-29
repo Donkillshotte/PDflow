@@ -85,7 +85,7 @@ Sì: `I_cell(t) = f(cell, arc, slew, load, state)` da Liberty CCS/ECSM quando c�
 
 Nangate45 è **NLDM**. Questa slice usa triangoli da `I_avg` nel mesh GCD.
 `pdn_current.py` interpola `output_current_*` quando le tabelle ci sono (test su Liberty sintetica).
-**Non** si sintetizza CCS da NLDM. VCD pin-accurate sul netlist gate resta GAP (il VCD RTL `tb_gcd` non nomina gli ITerm). STA `report_arrival` fornisce t50 in clock mode — **non** si riscala `I_avg` con l’activity Hz di OpenSTA (sarebbe un double-count rispetto a `report_power` / spice).
+**Non** si sintetizza CCS da NLDM. VCD pin-accurate sul netlist gate resta GAP (il VCD RTL `tb_gcd` non nomina gli ITerm). STA `report_arrival` fornisce t50 in clock mode — **non** si riscala `I_avg` con l’activity Hz di OpenSTA (sarebbe un double-count rispetto a `report_power` / spice). SAIF `TC` name-join azzera gli impulsi idle; **non** inventa t50 e **non** riscala `I_avg` da `TC`. FSDB resta GAP (binario proprietario). Path delay: OpenSTA worst max path, solo i gate (Q/ZN/…) scalati con \(V_\mathrm{inst}\) a \(t_\mathrm{worst}\); net delay resta nominal. Non è una seconda liberty a Vmin / CCS delay.
 
 CircuitNet (instance power + toggle + arrival windows + IR) conferma la separazione
 power + timing window + PDN — non è un dataset di sign-off dynamic.
@@ -116,10 +116,10 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 |---|---|---|
 | 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` + tech LEF; SPEF PG C stamped only from PG `*D_NET` (GCD OpenRCX = GAP) |
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
-| 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; extra I(t) ranking sintetico; VCD RTL name-join = GAP |
+| 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; SAIF TC name-join (idle-zero, no t50); extra I(t) ranking sintetico; VCD RTL name-join = GAP |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |
 | 5 Solver | B AMG + C Krylov MOR + D RAS + A gold | **A + B + C + D READY**; N4 descriptor BE nativo |
-| 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + R(T) lumpato |
+| 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + R(T) lumpato + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)) |
 
 ## Classifica reale
 

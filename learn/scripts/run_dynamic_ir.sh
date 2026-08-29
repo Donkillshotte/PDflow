@@ -3,7 +3,9 @@
 # Per-ITerm PWL + A LU gold + B SA-AMG + C Krylov MOR + D RAS Schwarz.
 # Extract = SPICE + tech LEF (EM J); SPEF PG *D_NET *CAP is stamped by name-join
 # (GCD OpenRCX has no VDD — GAP; signal nets are never mapped).
-# Activity = OpenSTA arrival t50 (clock) + VCD name-join (GAP on RTL tb_gcd).
+# Activity = OpenSTA arrival t50 (clock) + VCD/SAIF name-join (GAP on RTL tb_gcd).
+# SAIF idle-zeros TC=0 pulses; does not invent t50 or rescale I_avg.
+# Path STA delay from OpenSTA report_checks (NLDM typical-V × (Vdd/V)^α).
 # Ranking of extra I(t) stays Solver A (synthetic). vyges-em-ir is bootstrap.
 #
 # Uso: FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh

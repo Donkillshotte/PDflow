@@ -1,4 +1,5 @@
-# Dump OpenSTA output-pin arrivals. Stdout is parsed by export_sta_arrivals.py.
+# Dump OpenSTA output-pin arrivals and the worst max path.
+# Stdout is parsed by export_sta_arrivals.py.
 # Env: STA_LIB STA_V STA_SDC
 # Pin names join ODB insts after unescaping '\'. Does not invent times.
 set lib $env(STA_LIB)
@@ -9,6 +10,12 @@ read_liberty $lib
 read_verilog $v
 link_design gcd
 read_sdc $sdc
+if {[info exists env(STA_SPEF)] && $env(STA_SPEF) ne "" && [file exists $env(STA_SPEF)]} {
+  read_spef $env(STA_SPEF)
+  puts "STA_SPEF_READ $env(STA_SPEF)"
+} else {
+  puts "STA_SPEF_SKIP ideal interconnect (set STA_SPEF for OpenRCX parasitics)"
+}
 
 set n 0
 foreach pin [get_pins *] {
@@ -36,4 +43,7 @@ foreach pin [get_pins *] {
   report_arrival -digits 8 $pin
   incr n
 }
+puts "STA_PATH_BEGIN"
+report_checks -path_delay max -fields {input_pin} -digits 6 -format full -group_path_count 1
+puts "STA_PATH_END"
 puts "STA_ARRIVALS_DONE n=$n"

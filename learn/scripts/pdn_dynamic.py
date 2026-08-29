@@ -4,13 +4,13 @@
 Architecture (what this file actually does — not a product claim):
 
   OpenROAD write_pg_spice  →  PDN graph (R mesh, bump V, I_avg)
-  activity layer (STA arrival t50 in clock mode; VCD name-join; else synthetic)
+  activity layer (STA arrival t50 in clock; VCD/SAIF name-join; else synthetic)
   current layer (triangle; CCS interpolator if tables+slew)
   Solver A: direct backward-Euler + sparse LU (golden)
   Solver B: SA-AMG + CG on the same SPD companion operator
   Solver C: rational Krylov MOR — RC on δv, or descriptor RLC on x=[v; i_L]
   Solver D: restricted additive Schwarz (graph partition, local LU, GMRES)
-  Vmin(t) + V(x,y) heatmap at t_worst
+  Vmin(t) + V(x,y) heatmap at t_worst + OpenSTA path IR delay
 
 Solver A is the golden oracle. Solver C with L>0 reduces Eẋ+Ax=u matching
 the BE companion (not an RC-only Gsoft screen). Ranking of extra I(t) stays A.
@@ -53,7 +53,9 @@ from pdn_activity import (  # noqa: E402
     expand_windows,
     load_insts,
     load_sta_arrivals,
+    load_sta_path,
     node_xy,
+    parse_saif,
     parse_vcd,
     plan_events,
     probe_activity_trace,
@@ -478,10 +480,10 @@ def solve_be(
 
 
 def timing_impact(vdd: float, vmin: float, period_ns: float, alpha: float = 1.3) -> dict:
-    """Delay scaling at the worst tap — not a real STA path."""
+    """Delay scaling at the worst tap — used only when no OpenSTA path joins."""
     v_eff = max(float(vmin), 0.25 * vdd)
     scale = (vdd / v_eff) ** alpha
-    delay_nom_ps = 30.0  # ~FO4-class inverter at 45 nm, didactic
+    delay_nom_ps = 30.0  # ~FO4-class inverter at 45 nm, didactic fallback
     deg_ps = (scale - 1.0) * delay_nom_ps
     return {
         "status": "PARTIAL",
@@ -495,6 +497,111 @@ def timing_impact(vdd: float, vmin: float, period_ns: float, alpha: float = 1.3)
         "frac_of_period": (deg_ps * 1e-3) / period_ns if period_ns else None,
         "note": "not a timed path — delay scaling only",
     }
+
+
+def path_ir_timing(
+    path: dict | None,
+    events: list,
+    Vw,
+    vdd: float,
+    period_ns: float,
+    alpha: float = 1.3,
+) -> dict:
+    """Scale OpenSTA NLDM typical-V *gate* delays by local Vmin. Nets stay unscaled.
+
+    READY when ≥1 path gate joins an ITerm event. Unjoined gates stay at Vdd.
+    This is not a second liberty at Vmin and not CCS voltage-dependent delay.
+    """
+    from pdn_activity import norm_inst
+
+    vmin = float(np.min(Vw)) if Vw is not None and len(Vw) else vdd
+    tap = timing_impact(vdd, vmin, period_ns, alpha)
+    if not path or not path.get("stages"):
+        tap["path"] = {
+            "status": "GAP",
+            "note": "no OpenSTA worst_path in arrivals JSON",
+        }
+        return tap
+    by_inst: dict[str, float] = {}
+    for ev in events:
+        name = norm_inst(ev.get("inst"))
+        if not name or ev.get("idx") is None or Vw is None:
+            continue
+        try:
+            v = float(Vw[int(ev["idx"])])
+        except (IndexError, TypeError, ValueError):
+            continue
+        prev = by_inst.get(name)
+        if prev is None or v < prev:
+            by_inst[name] = v
+    stages_out = []
+    n_joined = 0
+    gate_nom = 0.0
+    gate_ir = 0.0
+    for st in path["stages"]:
+        kind = st.get("kind") or "net"
+        d_ns = float(st.get("delay_ns") or 0.0)
+        v_inst = vdd
+        joined = False
+        if kind == "gate":
+            key = norm_inst(st.get("inst_key") or st.get("inst"))
+            if key in by_inst:
+                v_inst = by_inst[key]
+                joined = True
+                n_joined += 1
+            v_eff = max(v_inst, 0.25 * vdd)
+            scale = (vdd / v_eff) ** alpha
+            d_ir = d_ns * scale
+            gate_nom += d_ns
+            gate_ir += d_ir
+        else:
+            scale = 1.0
+            d_ir = d_ns
+        stages_out.append({**st, "v_inst": v_inst, "joined": joined, "delay_ir_ns": d_ir, "scale": scale})
+    slack_ns = path.get("slack_ns")
+    deg_ns = gate_ir - gate_nom
+    slack_ir = None if slack_ns is None else (float(slack_ns) - deg_ns)
+    path_meta = {
+        "status": "READY" if n_joined else "GAP",
+        "startpoint": path.get("startpoint"),
+        "endpoint": path.get("endpoint"),
+        "slack_ns": slack_ns,
+        "slack_ir_ns": slack_ir,
+        "slack_met": path.get("slack_met"),
+        "n_gates": path.get("n_gates"),
+        "n_joined": n_joined,
+        "gate_delay_ns": gate_nom,
+        "gate_delay_ir_ns": gate_ir,
+        "via": path.get("via"),
+        "note": (
+            "NLDM typical-V OpenSTA delays scaled by (Vdd/V_inst)^alpha on joined gates; "
+            "not a second liberty at Vmin / CCS voltage-dependent delay"
+        ),
+    }
+    if n_joined:
+        deg_ps = deg_ns * 1e3
+        scale = (gate_ir / gate_nom) if gate_nom > 0 else 1.0
+        return {
+            "status": "READY",
+            "model": "OpenSTA NLDM typical-V gate delay * (Vdd/V_inst)^alpha; nets unscaled",
+            "alpha": alpha,
+            "vmin": vmin,
+            "scale": scale,
+            "delay_nom_ps": gate_nom * 1e3,
+            "degradation_ps": deg_ps,
+            "period_ns": period_ns,
+            "frac_of_period": (deg_ps * 1e-3) / period_ns if period_ns else None,
+            "note": path_meta["note"],
+            "path": path_meta,
+            "tap_fallback": {
+                "degradation_ps": tap["degradation_ps"],
+                "scale": tap["scale"],
+                "delay_nom_ps": tap["delay_nom_ps"],
+            },
+        }
+    tap["path"] = path_meta
+    tap["note"] = "path present but unjoined — delay scaling at worst tap only"
+    return tap
 
 
 def platform_block(
@@ -1043,9 +1150,15 @@ def main() -> int:
     insts = load_insts(args.insts) if args.insts else []
     activity_model = probe_activity_trace(args.vcd, insts)
     sta_arrivals = load_sta_arrivals(args.sta)
+    sta_path = load_sta_path(args.sta)
     vcd_parsed = None
-    if args.vcd and Path(args.vcd).is_file() and activity_model.get("kind") == "vcd":
-        vcd_parsed = parse_vcd(Path(args.vcd))
+    saif_parsed = None
+    if args.vcd and Path(args.vcd).is_file():
+        kind = activity_model.get("kind")
+        if kind == "vcd":
+            vcd_parsed = parse_vcd(Path(args.vcd))
+        elif kind == "saif":
+            saif_parsed = parse_saif(Path(args.vcd))
     events = plan_events(
         currents,
         idx,
@@ -1058,10 +1171,13 @@ def main() -> int:
         t50_s=t50_s,
         sta_arrivals=sta_arrivals if args.mode == "clock" else None,
         vcd=vcd_parsed,
+        saif=saif_parsed,
     )
     via_n = t50_via_counts(events)
     n_sta = via_n.get("sta_arrival") or 0
     n_vcd_applied = via_n.get("vcd_name_join") or 0
+    n_saif_idle = sum(1 for e in events if e.get("saif_idle"))
+    n_saif_joined = sum(1 for e in events if e.get("saif_tc") is not None)
     if not sta_arrivals:
         sta_status = "GAP"
         sta_note = "no STA arrivals JSON"
@@ -1084,17 +1200,69 @@ def main() -> int:
         "via": "OpenSTA report_arrival rise folded into the SDC period (clock mode only)",
         "note": sta_note,
         "path": str(args.sta) if args.sta else None,
+        "worst_path": (
+            {
+                "startpoint": sta_path.get("startpoint"),
+                "endpoint": sta_path.get("endpoint"),
+                "slack_ns": sta_path.get("slack_ns"),
+                "n_gates": sta_path.get("n_gates"),
+                "gate_delay_ns": sta_path.get("gate_delay_ns"),
+            }
+            if sta_path
+            else None
+        ),
     }
-    vcd_meta = {
-        "status": activity_model["status"],
-        "n_matched": activity_model.get("n_matched") or 0,
-        "n_applied": n_vcd_applied,
+    if activity_model.get("kind") == "vcd":
+        vcd_meta = {
+            "status": activity_model["status"],
+            "n_matched": activity_model.get("n_matched") or 0,
+            "n_applied": n_vcd_applied,
+            "kind": "vcd",
+            "note": activity_model.get("note"),
+            "path": activity_model.get("path"),
+        }
+    else:
+        vcd_meta = {
+            "status": "GAP",
+            "n_matched": 0,
+            "n_applied": n_vcd_applied,
+            "kind": activity_model.get("kind"),
+            "note": (
+                "SAIF is not VCD; see activity_model.saif"
+                if activity_model.get("kind") == "saif"
+                else activity_model.get("note")
+            ),
+            "path": None,
+        }
+    saif_meta = {
+        "status": "GAP",
+        "n_matched": 0,
+        "n_idle": n_saif_idle,
+        "n_joined": n_saif_joined,
         "kind": activity_model.get("kind"),
-        "note": activity_model.get("note"),
-        "path": activity_model.get("path"),
+        "note": "no SAIF",
+        "path": None,
     }
+    if activity_model.get("kind") == "saif":
+        saif_meta = {
+            "status": "READY" if n_saif_joined else activity_model["status"],
+            "n_matched": activity_model.get("n_matched") or n_saif_joined,
+            "n_idle": n_saif_idle,
+            "n_joined": n_saif_joined,
+            "kind": "saif",
+            "note": (
+                f"SAIF name-join {n_saif_joined} ITerms, idle-zero {n_saif_idle}; "
+                "no t50 from SAIF; I_avg not rescaled from TC"
+            ),
+            "path": activity_model.get("path"),
+            "duration_s": activity_model.get("duration_s"),
+        }
+    elif activity_model.get("kind") == "fsdb":
+        saif_meta["note"] = "FSDB is proprietary binary — no decoder"
+        saif_meta["kind"] = "fsdb"
     activity_model["sta"] = sta_meta
     activity_model["vcd"] = vcd_meta
+    activity_model["saif"] = saif_meta
     activity_model["t50_via"] = via_n
     activity_model["n_with_inst"] = sum(1 for e in events if e.get("inst"))
     current_model["ccs_in_loop"] = events_use_ccs(events, ccs_tables)
@@ -1433,10 +1601,14 @@ def main() -> int:
         "seq": bool(hot.get("seq")),
         "contributors": contrib,
     }
-    timing = timing_impact(vdd, dyn["worst_voltage"], args.period_ns)
+    timing = path_ir_timing(sta_path, events, Vw, vdd, args.period_ns)
     hotspot["timing"] = {
         "degradation_ps": timing["degradation_ps"],
         "scale": timing["scale"],
+        "status": timing.get("status"),
+        "path_slack_ns": (timing.get("path") or {}).get("slack_ns"),
+        "path_slack_ir_ns": (timing.get("path") or {}).get("slack_ir_ns"),
+        "n_joined": (timing.get("path") or {}).get("n_joined"),
     }
     sim_levels = {
         "L0_static": {
@@ -1455,8 +1627,10 @@ def main() -> int:
         },
         "L2_vcd_dynamic": {
             "status": activity_model["status"],
+            "kind": activity_model.get("kind"),
             "reason": activity_model["note"],
-            "n_matched": vcd_meta.get("n_matched") or 0,
+            "n_matched": activity_model.get("n_matched") or 0,
+            "saif_idle": n_saif_idle,
         },
         "L3_windowed": {
             "status": win_run.get("status") or "PARTIAL",
@@ -1480,11 +1654,14 @@ def main() -> int:
             else f"per-ITerm triangle PWL ({current_model['kind']})"
         )
     )
+    path_ok = (timing.get("path") or {}).get("status") == "READY"
     em_via = (
-        f"heatmap + windows + delay scaling + J={em.get('j_absmax_a_m2', 0):.3e} A/m² "
+        f"heatmap + windows + {'path STA delay' if path_ok else 'tap delay scaling'} + J={em.get('j_absmax_a_m2', 0):.3e} A/m² "
         f"+ relative Black TTF + lumped R(T) N1 restamp"
         if em.get("n_with_j")
-        else "heatmap + windows + delay scaling + branch I (no same-layer coords for J)"
+        else (
+            f"heatmap + windows + {'path STA delay' if path_ok else 'tap delay scaling'} + branch I (no same-layer coords for J)"
+        )
     )
     pipeline = [
         {
@@ -1506,10 +1683,15 @@ def main() -> int:
         {
             "id": 3,
             "name": "Activity engine",
-            "status": "READY" if (n_sta or n_vcd_applied) else "PARTIAL",
+            "status": "READY" if (n_sta or n_vcd_applied or n_saif_joined) else "PARTIAL",
             "via": (
                 f"STA t50 {n_sta}/{len(events)}"
-                + (f"; VCD name-join {n_vcd_applied}" if n_vcd_applied else f"; VCD {activity_model['status']}")
+                + (f"; VCD name-join {n_vcd_applied}" if n_vcd_applied else f"; VCD {vcd_meta['status']}")
+                + (
+                    f"; SAIF join {n_saif_joined} idle {n_saif_idle}"
+                    if n_saif_joined
+                    else f"; SAIF {saif_meta['status']}"
+                )
                 + f"; synthetic remainder {via_n.get('synthetic') or 0}"
             ),
         },
@@ -1578,7 +1760,7 @@ def main() -> int:
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
             "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C stamped only from PG *D_NET name-join",
-            "replaceable activity (STA arrival t50 in clock mode, VCD name-join, else synthetic) + current (triangle; CCS interpolator when tables exist)",
+            "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS interpolator when tables exist)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
             "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
@@ -1586,7 +1768,7 @@ def main() -> int:
             "N4: native descriptor BE on Eẋ+Ax=u (VRM + bump R+L + die mesh); SparseLU, not AMG",
             "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; lumped R(T) N1 restamp",
             "Native BE/MOR/RAS/N4 in libdpn (Index=int64); Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
-            "V(x,y) heatmap at t_worst + delay scaling at worst tap",
+            "V(x,y) heatmap at t_worst + OpenSTA path delay scaled by local Vmin (NLDM typical-V, not a second liberty)",
         ],
         "not": [
             "CCS I(t) on Nangate45 (NLDM, no current tables — interpolator is tested on synthetic CCS)",
@@ -1600,7 +1782,7 @@ def main() -> int:
         "roles": {
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C READY only when *CAP is stamped",
-            "activity": "pdn_activity: OpenSTA report_arrival t50 (clock); VCD name-join only; windowed BE",
+            "activity": "pdn_activity: OpenSTA report_arrival t50 (clock); VCD/SAIF name-join only; windowed BE",
             "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, lumped ΔT → R(T) N1 restamp — not foundry hours",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
