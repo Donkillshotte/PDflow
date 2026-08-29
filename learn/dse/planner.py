@@ -144,6 +144,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "residual_steer",
+            "reason": (
+                "F3→F5 residual + uncertainty pick the next local level "
+                "(other host SPEF, or SPEF-path cell/net) — not a mixed knob vector"
+            ),
+            "scope": "net",
+        }
+    )
+    steps.append(
+        {
             "level": "synthesis",
             "reason": "ORFS abc_speed.script (ABC_AREA=0) — measured synthesis F1, not logic -fast",
             "scope": "chip",

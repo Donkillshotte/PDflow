@@ -28,8 +28,12 @@ ADAPTERS: dict[str, dict] = {
         "note": "budget-aware inspect→transform→fidelity→attribute loop; ctrl is a first-class cone, not leftover of dpath",
     },
     "surrogate": {
-        "via": "dse.surrogate + dse.gnn",
-        "note": "SSK-GP / F1→F2 residual / F3→F5-local residual / GNN readout — never Dynamic IR gold",
+        "via": "dse.surrogate + dse.gnn + dse.active",
+        "note": "SSK-GP / F1→F2 residual / F3→F5-lite+local residual steers the next level / GNN readout — never Dynamic IR gold",
+    },
+    "active": {
+        "via": "dse.active.steer_from_residual + order_local_hosts",
+        "note": "F3→F5 residual + uncertainty pick cell|net|f5_local; not a mixed knob vector",
     },
     "synthesis": {
         "via": "dse.synthesis + dse.fidelity.evaluate_f1_synth",
@@ -83,4 +87,5 @@ def adapter_status() -> dict:
     out["synthesis"]["ready"] = bool(synth_ok())
     out["cell"]["ready"] = bool(sta_ok())
     out["net"]["ready"] = bool(sta_ok())
+    out["active"]["ready"] = True
     return out

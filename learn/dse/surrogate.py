@@ -302,6 +302,86 @@ def predict_f5_cts_from_f1(all_cands: list[Candidate]) -> dict:
     )
 
 
+def _ideal_wns_ns(parent: Candidate | None, all_cands: list[Candidate], child: Candidate | None = None) -> float | None:
+    """Ideal-clock WNS for a parent, from artifacts / F3 child / wns_cost."""
+    if child is not None:
+        w = (child.artifacts or {}).get("ideal_wns_ns")
+        if w is not None:
+            return float(w)
+    if parent is not None:
+        w = (parent.artifacts or {}).get("wns_ns")
+        if w is not None:
+            return float(w)
+        if parent.qor.wns_cost is not None:
+            return -float(parent.qor.wns_cost)
+        pid = parent.id
+        for c in all_cands:
+            if c.status != "ok" or (c.knobs or {}).get("source") != "f3_opensta_ideal":
+                continue
+            if (c.knobs or {}).get("parent_id") != pid:
+                continue
+            ww = (c.artifacts or {}).get("wns_ns")
+            if ww is not None:
+                return float(ww)
+            if c.qor.wns_cost is not None:
+                return -float(c.qor.wns_cost)
+    return None
+
+
+def _residual_pack(pairs: list[dict], *, via: str, empty_via: str) -> dict:
+    if not pairs:
+        return {
+            "metric": "wns_spef_minus_ideal",
+            "n": 0,
+            "uncertainty": "high",
+            "via": empty_via,
+            "not": "Dynamic IR or a reused SPEF as physical truth",
+        }
+    rs = [p["residual_ns"] for p in pairs]
+    mean_r = sum(rs) / len(rs)
+    var = sum((x - mean_r) ** 2 for x in rs) / max(len(rs) - 1, 1)
+    return {
+        "metric": "wns_spef_minus_ideal",
+        "mean_residual_ns": mean_r,
+        "residual_std_ns": var ** 0.5,
+        "n": len(pairs),
+        "pairs": pairs,
+        "uncertainty": "high" if len(pairs) < 2 else ("medium" if len(pairs) < 4 else "low"),
+        "via": via,
+        "not": "Dynamic IR or a reused SPEF as physical truth",
+    }
+
+
+def residual_f3_to_f5_lite(all_cands: list[Candidate]) -> dict:
+    """Ideal STA WNS → F5-lite OpenRCX SPEF WNS on the F1 netlist.
+
+    Available before F5-local. Steers which local host to measure first.
+    """
+    by_id = {c.id: c for c in all_cands}
+    pairs: list[dict] = []
+    for c in all_cands:
+        if (c.knobs or {}).get("source") != "f5_openroad_drt_rcx" or c.status != "ok":
+            continue
+        spef_w = (c.artifacts or {}).get("wns_ns")
+        parent = by_id.get(c.parent_id)
+        ideal_w = _ideal_wns_ns(parent, all_cands, c)
+        if spef_w is None or ideal_w is None:
+            continue
+        pairs.append(
+            {
+                "ideal_ns": float(ideal_w),
+                "spef_ns": float(spef_w),
+                "residual_ns": float(spef_w) - float(ideal_w),
+                "host_level": "chip",
+            }
+        )
+    return _residual_pack(
+        pairs,
+        via="F3 ideal → F5-lite OpenRCX residual on the F1 netlist",
+        empty_via="no F3-ideal→F5-lite pairs",
+    )
+
+
 def residual_f3_to_f5_local(all_cands: list[Candidate]) -> dict:
     """Ideal STA WNS → OpenRCX SPEF WNS on the same cell/net netlist.
 
@@ -315,11 +395,7 @@ def residual_f3_to_f5_local(all_cands: list[Candidate]) -> dict:
             continue
         spef_w = (c.artifacts or {}).get("wns_ns")
         parent = by_id.get(c.parent_id)
-        ideal_w = None
-        if parent is not None:
-            ideal_w = (parent.artifacts or {}).get("wns_ns")
-        if ideal_w is None:
-            ideal_w = (c.artifacts or {}).get("ideal_wns_ns")
+        ideal_w = _ideal_wns_ns(parent, all_cands, c)
         if spef_w is None or ideal_w is None:
             continue
         pairs.append(
@@ -330,24 +406,11 @@ def residual_f3_to_f5_local(all_cands: list[Candidate]) -> dict:
                 "host_level": (c.knobs or {}).get("host_level"),
             }
         )
-    if not pairs:
-        return {
-            "metric": "wns_spef_minus_ideal",
-            "n": 0,
-            "uncertainty": "high",
-            "via": "no F3-ideal→F5-local pairs",
-            "not": "Dynamic IR or the F1 F5-lite SPEF",
-        }
-    mean_r = sum(p["residual_ns"] for p in pairs) / len(pairs)
-    return {
-        "metric": "wns_spef_minus_ideal",
-        "mean_residual_ns": mean_r,
-        "n": len(pairs),
-        "pairs": pairs,
-        "uncertainty": "high" if len(pairs) < 3 else "medium",
-        "via": "F3 ideal → F5 OpenRCX residual on the local cell/net netlist",
-        "not": "Dynamic IR or a reused F1 SPEF",
-    }
+    return _residual_pack(
+        pairs,
+        via="F3 ideal → F5 OpenRCX residual on the local cell/net netlist",
+        empty_via="no F3-ideal→F5-local pairs",
+    )
 
 
 def predict_wns_from_f1(all_cands: list[Candidate]) -> dict:

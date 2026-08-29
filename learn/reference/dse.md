@@ -22,6 +22,7 @@ RTL
  → F3 OpenSTA + SPEF OpenRCX (stesso SPEF F5-lite, senza un secondo DRT)
  → F5-CTS: `clock_tree_synthesis` + DRT + OpenRCX + OpenSTA `set_propagated_clock` sul netlist post-CTS (colpo a pagamento, non sostituisce F5-lite, non `make finish`)
  → F5-local: OpenRCX SPEF sul netlist cell/net — residuo F3→F5, non il SPEF F1, non `make finish`
+ → active learning: residuo F3→F5-lite ordina host cell vs net; residuo F3→F5-local + incertezza sceglie il livello successivo (altro SPEF, o cell/net sul path SPEF) — non un vettore misto
  → F2 catalogo fisico: un punto AutoDMP (util/densità) misurato con GPL, non solo proxy RUDY
  → F2 regione: `create_blockage -max_density` sul bin IR (rXY / hotspot dbu) + GPL
  → F4 extract regione: `write_pg_spice` sotto lo stesso cap — mesh nuova, non gold

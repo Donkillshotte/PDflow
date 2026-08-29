@@ -12,6 +12,7 @@ Optimizers (each on its own level):
   net          — attributed worst-path BUF insert (module-scoped; not ABC)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
+  active       — F3→F5 residual + uncertainty pick the next local level (not a mixed vector)
   pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS/Krylov restamp (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
@@ -46,11 +47,13 @@ from .acquire import (
     should_pay_f5_cts,
     should_pay_f5_drt,
     should_pay_f5_local,
+    should_pay_residual_steer,
     local_hosts,
     should_pay_f4_pdn,
     should_pay_f4_scale,
     should_pay_physical_catalog,
 )
+from .active import order_local_hosts, steer_from_residual
 from .arch_space import emit_gcd_variant, stamp_cone_knobs
 from .attribute import attribute_from_path, local_scope
 from .boils import propose_logic_boils, should_pay_f1
@@ -100,6 +103,7 @@ from .surrogate import (
     predict_wns_from_f1,
     predict_f5_from_f1,
     predict_f5_cts_from_f1,
+    residual_f3_to_f5_lite,
     residual_f3_to_f5_local,
     residual,
 )
@@ -887,11 +891,12 @@ def run_controller(
     pay_loc, why_loc = should_pay_f5_local(
         mem, budget_left=t_end - time.time(), n_f5_local=n_f5_local
     )
-    step("acquire", fidelity="F5_LOCAL", pay=pay_loc, why=why_loc)
+    hosts_ord, host_why = order_local_hosts(mem)
+    step("acquire", fidelity="F5_LOCAL", pay=pay_loc, why=why_loc, **host_why)
     if any(s["level"] == "f5_local" for s in plan["steps"]) and pay_loc and time.time() < t_end:
         child = None
         host = None
-        for cand in local_hosts(mem):
+        for cand in hosts_ord or local_hosts(mem):
             mem.touch(cand)
             child = evaluate_f5_local(cand, mem, design_id=design_id)
             host = cand
@@ -909,6 +914,43 @@ def run_controller(
                 wns_ns=(child.artifacts or {}).get("wns_ns"),
                 ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
                 status=child.status,
+            )
+
+    steer = steer_from_residual(mem)
+    n_steer = sum(1 for c in mem.all() if (c.attr or {}).get("via") == "active_residual" and c.status == "ok")
+    pay_st, why_st = should_pay_residual_steer(
+        mem, budget_left=t_end - time.time(), steer=steer, n_steer=n_steer
+    )
+    step("acquire", fidelity="RESIDUAL_STEER", pay=pay_st, why=why_st, steer=steer)
+    if any(s["level"] == "residual_steer" for s in plan["steps"]) and pay_st and steer and time.time() < t_end:
+        host = mem.get(str(steer.get("host_id") or "")) if steer.get("host_id") else None
+        child = None
+        if steer["level"] == "f5_local" and host is not None:
+            mem.touch(host)
+            child = evaluate_f5_local(host, mem, design_id=design_id)
+        elif steer["level"] == "cell" and host is not None:
+            mem.touch(host)
+            child = evaluate_cell_size(host, mem, design_id=design_id, cells=list(steer.get("cells") or []))
+        elif steer["level"] == "net" and host is not None:
+            mem.touch(host)
+            child = evaluate_net_buffer(host, mem, design_id=design_id, hops=list(steer.get("hops") or []))
+        if child:
+            child.attr = dict(child.attr or {})
+            child.attr["via"] = "active_residual"
+            child.attr["steer"] = {k: steer[k] for k in steer if k != "cells" and k != "hops"}
+            mem.touch(child)
+            step(
+                "evaluate",
+                id=child.id,
+                level=child.level,
+                fidelity=child.fidelity,
+                via="active_residual",
+                parent=host.id if host else None,
+                host_level=steer.get("host_level") or (host.level if host else None),
+                residual_ns=steer.get("residual_ns"),
+                wns_ns=(child.artifacts or {}).get("wns_ns"),
+                status=child.status,
+                reason=steer.get("reason"),
             )
 
     phys_f0 = propose_physical_f0(mem, design_id)
@@ -1397,6 +1439,7 @@ def run_controller(
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
             "F5-CTS clock_tree_synthesis + DRT + OpenRCX + OpenSTA set_propagated_clock — not make finish",
             "F5-local OpenRCX SPEF on the cell/net netlist — F3→F5 residual, not a reused F1 SPEF",
+            "active learning: F3→F5-lite residual orders cell vs net host; F3→F5-local residual + uncertainty pick the next level",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -1479,6 +1522,9 @@ def run_controller(
             for c in mem.by_level("routing")
             if (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
         ),
+        "n_residual_steer": sum(
+            1 for c in mem.all() if (c.attr or {}).get("via") == "active_residual" and c.status == "ok"
+        ),
         "n_f2_grt": sum(
             1
             for c in mem.by_level("routing")
@@ -1534,6 +1580,7 @@ def run_controller(
         "surrogate_f1_to_f4": f4s,
         "surrogate_f1_to_f5": predict_f5_from_f1(mem.all()),
         "surrogate_f1_to_f5_cts": predict_f5_cts_from_f1(mem.all()),
+        "surrogate_f3_to_f5_lite": residual_f3_to_f5_lite(mem.all()),
         "surrogate_f3_to_f5_local": residual_f3_to_f5_local(mem.all()),
         "plan": plan,
         "attribution": attr,
@@ -1689,8 +1736,13 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             extra = f" vs ideal {float(ideal):+.3f}" if ideal is not None else ""
             f5loc = f" · F5-local SPEF WNS {float(w):+.3f} ns ({host}{extra})"
             break
+    steers = ""
+    for c in mem.all():
+        if c.status == "ok" and (c.attr or {}).get("via") == "active_residual":
+            steers = f" · residual-steer {c.level}"
+            break
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{wns}{f5}{f5cts}{f5loc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{wns}{f5}{f5cts}{f5loc}{steers} · IR cone {mods}{ir}{ras}{kry}"
     )

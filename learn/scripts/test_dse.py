@@ -349,6 +349,7 @@ def main() -> int:
     check(any(s["level"] == "f3_spef" for s in planned["steps"]), "planner schedules F3 SPEF")
     check(any(s["level"] == "f5_cts" for s in planned["steps"]), "planner schedules F5-CTS")
     check(any(s["level"] == "f5_local" for s in planned["steps"]), "planner schedules F5-local SPEF")
+    check(any(s["level"] == "residual_steer" for s in planned["steps"]), "planner schedules residual-steered next level")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -403,11 +404,17 @@ def main() -> int:
         != knobs_fp("routing", {"source": "f5_openroad_drt_rcx", "clock": "ideal"}),
         "F5-local is not flattened into the F5-lite fingerprint",
     )
+    check(
+        knobs_fp("routing", {"source": "f5_openroad_local", "host_level": "cell", "parent_id": "cellh"})
+        != knobs_fp("routing", {"source": "f5_openroad_local", "host_level": "net", "parent_id": "neth"}),
+        "residual-steered cell SPEF is not flattened into the net F5-local fingerprint",
+    )
     from dse.acquire import next_fidelity
 
     check(next_fidelity(level="f5_drt", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-lite is its own fidelity")
     check(next_fidelity(level="f5_cts", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-CTS measures at F5")
     check(next_fidelity(level="f5_local", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-local measures at F5")
+    check(next_fidelity(level="residual_steer", pred=None, budget_left=20, cost_hint={}) == "F5", "residual steer measures at F5")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
@@ -625,6 +632,8 @@ def main() -> int:
     check("cts" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-CTS")
     check("local" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-local")
     check("f5-local" in (adapter_status()["surrogate"]["note"] or "").lower() or "F3→F5" in (adapter_status()["surrogate"]["note"] or ""), "surrogate adapter names the F3→F5-local residual")
+    check("residual" in (adapter_status()["active"]["note"] or ""), "active adapter steers from the F3→F5 residual")
+    check(adapter_status()["active"].get("ready") is True, "active adapter is ready")
     check("propagated" in (adapter_status()["timing"]["note"] or ""), "timing adapter names propagated-clock CTS SPEF")
     check("arrival" in (adapter_status()["activity"]["via"] or "").lower(), "activity adapter is candidate STA arrivals")
     check(
@@ -1000,6 +1009,7 @@ def main() -> int:
         should_pay_f5_cts,
         should_pay_f5_local,
         should_pay_net_buffer,
+        should_pay_residual_steer,
     )
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
@@ -1179,6 +1189,160 @@ def main() -> int:
         check(pay_l1, f"F5-local is paid after F5-lite + net host ({why_l1})")
         pay_l2, why_l2 = should_pay_f5_local(mem_pay, budget_left=80, n_f5_local=1)
         check(not pay_l2, f"F5-local is a single shot ({why_l2})")
+
+    from dse.active import order_local_hosts, steer_from_residual
+    from dse.surrogate import residual_f3_to_f5_lite
+
+    mem_al = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-al-")) / "a.jsonl")
+    mapped_al = Path(tempfile.mkdtemp(prefix="dse-alv-")) / "g.v"
+    mapped_al.write_text("module gcd; endmodule\n")
+    mem_al.add(
+        Candidate(
+            id="f1al",
+            design_id="gcd",
+            parent_id=None,
+            level="logic",
+            knobs={"name": "liberty_default"},
+            knobs_fp="f1al",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=409.108, wns_cost=0.522, fidelity="F1"),
+            cost_s=1.0,
+            status="ok",
+            artifacts={"mapped_v": str(mapped_al), "wns_ns": -0.522},
+        )
+    )
+    mem_al.add(
+        Candidate(
+            id="f5lite",
+            design_id="gcd",
+            parent_id="f1al",
+            level="routing",
+            knobs={"source": "f5_openroad_drt_rcx", "parent_id": "f1al", "clock": "ideal"},
+            knobs_fp="f5lite",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F5",
+            qor=QoR(wns_cost=0.649, fidelity="F5"),
+            cost_s=1.0,
+            status="ok",
+            artifacts={"wns_ns": -0.649},
+        )
+    )
+    mem_al.add(
+        Candidate(
+            id="cellh",
+            design_id="gcd",
+            parent_id="f1al",
+            level="cell",
+            knobs={"source": "cell_size_up"},
+            knobs_fp="cellh",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(wns_cost=0.12, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": str(mapped_al), "wns_ns": -0.119},
+        )
+    )
+    mem_al.add(
+        Candidate(
+            id="neth",
+            design_id="gcd",
+            parent_id="cellh",
+            level="net",
+            knobs={"source": "net_buffer"},
+            knobs_fp="neth",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(wns_cost=0.21, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": str(mapped_al), "wns_ns": -0.207},
+        )
+    )
+    lite = residual_f3_to_f5_lite(list(mem_al.all()))
+    check((lite.get("n") or 0) == 1, f"F3→F5-lite residual has a pair, got {lite}")
+    check(abs(float(lite["mean_residual_ns"]) - (-0.127)) < 1e-6, f"lite residual -0.649−(−0.522), got {lite.get('mean_residual_ns')}")
+    hosts_w, why_w = order_local_hosts(mem_al)
+    check(hosts_w and hosts_w[0].level == "net", f"wire-dominated lite residual puts net host first, got {[h.level for h in hosts_w]}")
+    check("wire" in (why_w.get("reason") or ""), f"host order reason names wire, got {why_w}")
+    # Small residual → cell first
+    f5c = next(c for c in mem_al.all() if c.id == "f5lite")
+    f5c.artifacts = {"wns_ns": -0.530}
+    mem_al.touch(f5c)
+    hosts_c, why_c = order_local_hosts(mem_al)
+    check(hosts_c and hosts_c[0].level == "cell", f"small lite residual puts cell host first, got {[h.level for h in hosts_c]}")
+    check("small" in (why_c.get("reason") or ""), f"host order reason names small residual, got {why_c}")
+    check(steer_from_residual(mem_al) is None, "no F5-local pair yet → no residual steer")
+    mem_al.add(
+        Candidate(
+            id="f5locn",
+            design_id="gcd",
+            parent_id="neth",
+            level="routing",
+            knobs={"source": "f5_openroad_local", "parent_id": "neth", "host_level": "net"},
+            knobs_fp="f5locn",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F5",
+            qor=QoR(wns_cost=0.232, fidelity="F5"),
+            cost_s=1.0,
+            status="ok",
+            artifacts={"wns_ns": -0.232, "ideal_wns_ns": -0.207, "path_cells": ["dpath/a_reg/_112_"], "path_nets": ["a->b"]},
+        )
+    )
+    st1 = steer_from_residual(mem_al)
+    check(st1 is not None and st1.get("level") == "f5_local", f"high uncertainty steers the other host SPEF, got {st1}")
+    check(st1.get("host_id") == "cellh", f"unmeasured host is the cell, got {st1}")
+    pay_st0, why_st0 = should_pay_residual_steer(mem_al, budget_left=80, steer=None)
+    check(not pay_st0, f"residual steer waits for a steer dict ({why_st0})")
+    pay_st1, why_st1 = should_pay_residual_steer(mem_al, budget_left=80, steer=st1)
+    check(pay_st1, f"residual steer is paid after F5-local ({why_st1})")
+    pay_st2, why_st2 = should_pay_residual_steer(mem_al, budget_left=80, steer=st1, n_steer=1)
+    check(not pay_st2, f"residual steer is a single shot ({why_st2})")
+    mem_al.add(
+        Candidate(
+            id="f5locc",
+            design_id="gcd",
+            parent_id="cellh",
+            level="routing",
+            knobs={"source": "f5_openroad_local", "parent_id": "cellh", "host_level": "cell"},
+            knobs_fp="f5locc",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F5",
+            qor=QoR(wns_cost=0.14, fidelity="F5"),
+            cost_s=1.0,
+            status="ok",
+            artifacts={"wns_ns": -0.140, "ideal_wns_ns": -0.119, "path_cells": ["dpath/a_lt_b/_142_"], "path_nets": ["x->y"]},
+        )
+    )
+    st2 = steer_from_residual(mem_al)
+    check(st2 is not None and st2.get("level") == "cell", f"small local residual steers cell size-up, got {st2}")
+    mem_al.add(
+        Candidate(
+            id="f5locw",
+            design_id="gcd",
+            parent_id="neth",
+            level="routing",
+            knobs={"source": "f5_openroad_local", "parent_id": "neth", "host_level": "net", "tag": "wire"},
+            knobs_fp="f5locw",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F5",
+            qor=QoR(wns_cost=0.35, fidelity="F5"),
+            cost_s=1.0,
+            status="ok",
+            artifacts={"wns_ns": -0.350, "ideal_wns_ns": -0.207, "path_cells": ["dpath/a_reg/_112_"], "path_nets": ["p->q"]},
+        )
+    )
+    st3 = steer_from_residual(mem_al)
+    check(st3 is not None and st3.get("level") == "net", f"wire local residual steers net BUF, got {st3}")
+    check((st3.get("hops") or ["p->q"])[0], "wire steer names SPEF hops")
 
     gold_json = _ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     gold_before = gold_json.read_text() if gold_json.is_file() else None

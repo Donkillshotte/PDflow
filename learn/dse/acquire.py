@@ -503,6 +503,28 @@ def should_pay_f5_local(
     )
 
 
+def should_pay_residual_steer(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay one residual-steered local action. Not a mixed cell+net+ABC vector."""
+    if n_steer >= steer_max:
+        return False, "residual-steered shot already spent"
+    if any((c.attr or {}).get("via") == "active_residual" and c.status == "ok" for c in mem.all()):
+        return False, "already have a residual-steered child"
+    if not steer or not steer.get("level"):
+        return False, "no residual-steered action (need an F3→F5-local pair first)"
+    need = 12.0 if steer["level"] == "f5_local" else max(min_s, 3.0)
+    if budget_left < need:
+        return False, "wall budget would not cover residual-steered shot"
+    return True, str(steer.get("reason") or "F3→F5 residual steers the next level")
+
+
 def should_pay_f3_spef(
     mem: DesignMemory,
     *,
@@ -827,6 +849,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
     if level == "f5_cts":
         return "F5"
     if level == "f5_local":
+        return "F5"
+    if level == "residual_steer":
         return "F5"
     if level == "f2_region":
         return "F2"
