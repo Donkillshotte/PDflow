@@ -562,3 +562,47 @@ def ir_cell_host(mem: DesignMemory):
         if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir":
             return c
     return None
+
+
+def ir_cell_extract_cand(mem: DesignMemory):
+    """Newest IR-cell write_pg_spice. Residual vs host extract lives on this point."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_extract":
+            return c
+    return None
+
+
+def steer_from_ir_cell_residual(mem: DesignMemory) -> dict | None:
+    """Winning PDN family on the IR-cell mesh after the 1× residual. Not host IR-steer."""
+    from .pdn_space import measured_pdn_keys
+
+    ice = ir_cell_extract_cand(mem)
+    if ice is None or ice.qor.dynamic_ir_mv is None:
+        return None
+    res = (ice.attr or {}).get("residual_mv")
+    if res is None:
+        return None
+    spec_win, knob_r = _winning_pdn_family(mem)
+    if spec_win is None:
+        return None
+    eid = str((ice.knobs or {}).get("extract_id") or ice.id)
+    have = measured_pdn_keys(mem, extract_id=eid)
+    key = (float(spec_win["pkg_r"]), float(spec_win["pkg_l"]), float(spec_win["c_decap"]))
+    if key in have:
+        return None
+    sign = "raised" if float(res) > 0 else "lowered"
+    return {
+        "level": "pdn",
+        "spec": spec_win,
+        "extract_id": eid,
+        "host_id": ice.id,
+        "host_source": "f4_ir_cell_extract",
+        "reason": (
+            f"IR-cell 1× residual {float(res):+.3f} mV ({sign} droop vs host) — "
+            f"restamp {spec_win['name']} on the sized mesh, not host IR-steer, not ABC"
+        ),
+        "ir_cell_residual_mv": float(res),
+        "knob_residual_mv": knob_r,
+        "via": "active_f4_ir_cell_pdn",
+        "not": "a flattened cell+PDN vector / gold",
+    }

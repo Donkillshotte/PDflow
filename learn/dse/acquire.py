@@ -1110,6 +1110,34 @@ def should_pay_ir_cell_extract(
     )
 
 
+def should_pay_ir_cell_pdn(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay the winning PDN family on the IR-cell extract. Not host IR-steer."""
+    if n_steer >= steer_max:
+        return False, "IR-cell PDN restamp already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-cell PDN restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no IR-cell residual-steered PDN action (need a 1× residual)"
+    if str(steer.get("host_source") or "") != "f4_ir_cell_extract":
+        return False, "IR-cell PDN restamp refuses a host/candidate extract"
+    spec = steer["spec"]
+    from .pdn_space import measured_pdn_keys
+
+    have = measured_pdn_keys(mem, extract_id=str(steer["extract_id"]))
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that PDN point is already measured on the IR-cell extract"
+    return True, str(steer.get("reason") or "IR-cell residual steers a PDN restamp on the sized mesh")
+
+
 def should_pay_net_buffer(
     mem: DesignMemory,
     *,
@@ -1431,6 +1459,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "f4_scale_win",
         "ir_cell_extract",
         "f4_ir_cell_extract",
+        "ir_cell_pdn",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):

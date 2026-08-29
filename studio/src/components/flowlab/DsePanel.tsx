@@ -61,6 +61,7 @@ type DseReport = {
   n_f4_iscale_win?: number;
   n_ir_cell?: number;
   n_f4_ir_cell_extract?: number;
+  n_ir_cell_pdn?: number;
   n_host_ir_steer?: number;
   n_port_steer?: number;
   n_f4_solve?: number;
@@ -172,6 +173,7 @@ export function DsePanel() {
                 {report.n_f4_iscale != null ? ` · I× ${report.n_f4_iscale}` : ""}
                 {report.n_f4_iscale_win != null ? ` · I×w ${report.n_f4_iscale_win}` : ""}
                 {report.n_f4_ir_cell_extract != null ? ` · IR-x ${report.n_f4_ir_cell_extract}` : ""}
+                {report.n_ir_cell_pdn != null ? ` · IR-p ${report.n_ir_cell_pdn}` : ""}
                 {report.n_host_ir_steer != null ? ` · h-IR ${report.n_host_ir_steer}` : ""}
                 {report.n_f4_solve != null ? ` · solve ${report.n_f4_solve}` : ""}
               </dd>

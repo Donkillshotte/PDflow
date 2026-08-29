@@ -46,6 +46,7 @@ from .acquire import (
     should_pay_cell_size,
     should_pay_ir_cell,
     should_pay_ir_cell_extract,
+    should_pay_ir_cell_pdn,
     should_pay_ctrl_cone,
     should_pay_net_buffer,
     should_pay_net_port,
@@ -78,6 +79,7 @@ from .active import (
     winning_host_pdn,
     ir_hotspot_cells,
     ir_cell_host,
+    steer_from_ir_cell_residual,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -1942,6 +1944,52 @@ def run_controller(
                     reason=why_irce,
                 )
 
+    n_icp = sum(
+        1
+        for c in mem.all()
+        if (c.attr or {}).get("via") == "active_f4_ir_cell_pdn" and c.status == "ok"
+    )
+    steer_icp = steer_from_ir_cell_residual(mem)
+    pay_icp, why_icp = should_pay_ir_cell_pdn(
+        mem, budget_left=t_end - time.time(), steer=steer_icp, n_steer=n_icp
+    )
+    step("acquire", fidelity="IR_CELL_PDN", pay=pay_icp, why=why_icp, steer=steer_icp)
+    if any(s["level"] == "ir_cell_pdn" for s in plan["steps"]) and pay_icp and steer_icp and time.time() < t_end:
+        spec_icp = steer_icp.get("spec") or {}
+        eid_icp = str(steer_icp.get("extract_id") or "")
+        hit_icp = extract_on_disk(mem, eid_icp) if eid_icp else None
+        if spec_icp and hit_icp:
+            child = evaluate_f4_pdn(
+                mem,
+                spec_icp,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit_icp["candidate"].id,
+                spice=hit_icp["spice"],
+                insts=hit_icp["insts"],
+                extract_id=eid_icp,
+                sta=hit_icp.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "active_f4_ir_cell_pdn"
+                child.attr["steer"] = {k: steer_icp[k] for k in steer_icp if k != "spec"}
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="active_f4_ir_cell_pdn",
+                    parent=hit_icp["candidate"].id,
+                    catalog=spec_icp.get("name"),
+                    extract_id=eid_icp,
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    gold=False,
+                    status=child.status,
+                    reason=steer_icp.get("reason"),
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -2021,6 +2069,11 @@ def run_controller(
             1
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_ir_cell_extract" and c.status == "ok"
+        ),
+        "n_ir_cell_pdn": sum(
+            1
+            for c in mem.all()
+            if (c.attr or {}).get("via") == "active_f4_ir_cell_pdn" and c.status == "ok"
         ),
         "n_net": sum(
             1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"
@@ -2336,6 +2389,17 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
                 else f" · IR-cell extract n_r={nr} (not gold)"
             )
             break
+    icpdn = ""
+    icp_bits: list[str] = []
+    for c in mem.all():
+        if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_ir_cell_pdn":
+            continue
+        w = c.qor.dynamic_ir_mv
+        cat = (c.knobs or {}).get("name")
+        eid = (c.knobs or {}).get("extract_id")
+        icp_bits.append(f"{cat} on {eid} {float(w):.3f} mV" if w is not None else str(cat))
+    if icp_bits:
+        icpdn = " · IR-cell-PDN " + "; ".join(icp_bits)
     netb = ""
     for c in mem.by_level("net"):
         if c.status == "ok" and (c.knobs or {}).get("source") == "net_buffer":
@@ -2474,5 +2538,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircext}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircext}{icpdn}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )
