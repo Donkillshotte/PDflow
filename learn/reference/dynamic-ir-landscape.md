@@ -121,7 +121,7 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 | 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; SAIF TC name-join (idle-zero, no t50); extra I(t) ranking sintetico; VCD RTL name-join = GAP |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS \(I(\mathrm{slew},V)\) o ECSM \(\|C\mathrm{d}V/\mathrm{d}t\|\) solo con tabelle |
 | 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB workhorse; RAS kind=2 su \(K\) unsymmetric; Δt adattivo descriptor; MOR gen sparse-\(E\) (compact/strap, non default GCD); VSS return TRAN |
-| 6 Analysis | map, Vmin, EM, timing, thermal | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + **mesh termica strap+via+ILD/Si** + R(T) N1 + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)); 3D CFD = GAP |
+| 6 Analysis | map, Vmin, EM, timing, thermal | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + **mesh termica strap+via+ILD/Si** + R(T) N1 + **R(T) TRAN** one-shot (non gold) + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)); 3D CFD = GAP |
 
 ## Classifica reale
 

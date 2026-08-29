@@ -11,6 +11,8 @@ Architecture (what this file actually does — not a product claim):
   Solver C: rational Krylov MOR — RC on δv, or descriptor RLC on x=[v; i_L]
   Solver D: restricted additive Schwarz (graph partition, local LU, GMRES)
   Vmin(t) + V(x,y) heatmap at t_worst + OpenSTA path IR delay
+  EM: J from RPERSQ·L/R; metal-graph ΔT; N1 R(T) + one-shot Solver A TRAN restamp
+      (not gold; thermal tau ≫ electrical Δt)
 
 Solver A is the golden oracle. Solver C with L>0 reduces Eẋ+Ax=u matching
 the BE companion (not an RC-only Gsoft screen). Ranking of extra I(t) stays A.
@@ -369,6 +371,86 @@ def timestep_be(
         "worst_time_s_rail1": worst_t1 if n0 < n else None,
         "worst_node_rail1": worst_node1,
         "V_worst_rail1": worst_V1,
+    }
+
+
+def electrothermal_timestep_be(
+    scaled_resistors,
+    currents,
+    voltages,
+    events,
+    *,
+    vdd: float,
+    pkg_r: float,
+    pkg_l: float,
+    c_decap: float,
+    dt: float,
+    t_end: float,
+    spef_c=None,
+    gold_droop: float | None = None,
+    n_r_scaled: int = 0,
+    r_scale_hot: float = 1.0,
+) -> dict:
+    """One-shot R(T) restamp → Solver A TRAN. Does not replace gold.
+
+    T is the metal-graph steady field from I_avg·Vdd + strap/via I²R (thermal
+    tau ≫ electrical Δt, so this is self-heating, not pulse heating in one
+    clock). Triangle I(t) does not depend on V, so hotter R cannot decrease
+    droop. Not a tightly coupled electrothermal DAE and not 3D CFD.
+    """
+    if not scaled_resistors:
+        return {"status": "GAP", "reason": "no scaled resistors", "ok": False}
+    order, idx, G = build_system(scaled_resistors, currents, voltages)
+    evs = []
+    for ev in events:
+        node = ev.get("node")
+        if node not in idx:
+            return {
+                "status": "GAP",
+                "ok": False,
+                "reason": f"event node {node!r} missing after R(T) restamp",
+            }
+        e = dict(ev)
+        e["idx"] = int(idx[node])
+        evs.append(e)
+    sys_t = assemble_be(
+        G,
+        idx,
+        voltages,
+        vdd,
+        evs,
+        pkg_r=pkg_r,
+        pkg_l=pkg_l,
+        c_decap=c_decap,
+        dt=dt,
+        spef_c=spef_c,
+    )
+    solver = DirectLU(sys_t["A"])
+    dyn_t = timestep_be(sys_t, evs, solver, vdd, order, t_end)
+    droop = float(dyn_t["worst_droop"])
+    delta_mv = None if gold_droop is None else (droop - float(gold_droop)) * 1e3
+    return {
+        "status": "READY",
+        "ok": True,
+        "worst_droop_mv": droop * 1e3,
+        "worst_time_ns": float(dyn_t["worst_time_s"]) * 1e9,
+        "worst_node": dyn_t.get("worst_node"),
+        "delta_vs_A_mv": delta_mv,
+        "n_r_scaled": int(n_r_scaled),
+        "r_scale_hot": float(r_scale_hot),
+        "backend": dyn_t.get("backend"),
+        "timestep_loop": dyn_t.get("timestep_loop"),
+        "rel_res_max": dyn_t.get("rel_res_max"),
+        "n": int(sys_t["n"]),
+        "via": (
+            "one-shot weakly-coupled electrothermal: R'=R(1+αΔT) from metal-graph T "
+            "(cell P=I_avg·Vdd + strap/via I²R; Si excluded from restamp ΔT), then "
+            "Solver A TRAN — not a sub-ps DAE, not N1-only, not 3D CFD"
+        ),
+        "note": (
+            "Gold remains unrestamped Solver A. Thermal tau ≫ electrical Δt so T is "
+            "steady self-heating, not one-cycle pulse heating."
+        ),
     }
 
 
@@ -1089,7 +1171,7 @@ def platform_block(
         "em_thermal": em
         or {
             "status": "GAP",
-            "idea": "I(t)→J→EM and P→T→R(T) as later coupling",
+            "idea": "I(t)→J→EM and P→T→R(T) N1 + one-shot Solver A TRAN",
         },
         "extract": extract
         or {
@@ -1573,6 +1655,11 @@ def main() -> int:
         "--rail-c-geom",
         action="store_true",
         help="stamp overlapping-strap Cox (lateral + ILD plate) on coupled MNA (not GCD gold)",
+    )
+    ap.add_argument(
+        "--no-electrothermal",
+        action="store_true",
+        help="skip R(T) restamped Solver A TRAN (N1 restamp still reported; gold unchanged either way)",
     )
     args = ap.parse_args()
 
@@ -2061,10 +2148,38 @@ def main() -> int:
             if (em.get("thermal_mesh") or {}).get("status") == "READY"
             else "one-shot N1 restamp R'=R(1+αΔT) from lumped ΔT=Rth·I²R; mesh GAP"
         )
+        if args.no_electrothermal:
+            em["electrothermal"] = {
+                "status": "GAP",
+                "ok": False,
+                "reason": "skipped --no-electrothermal; N1 restamp still reported",
+            }
+        else:
+            em["electrothermal"] = electrothermal_timestep_be(
+                scaled,
+                currents,
+                voltages,
+                events,
+                vdd=vdd,
+                pkg_r=args.pkg_r,
+                pkg_l=args.pkg_l,
+                c_decap=args.c_decap,
+                dt=dt,
+                t_end=t_end,
+                spef_c=(ext.get("spef") or {}).get("node_c"),
+                gold_droop=dyn["worst_droop"],
+                n_r_scaled=int(em.get("n_r_scaled") or 0),
+                r_scale_hot=float(em.get("r_scale_hot") or 1.0),
+            )
     else:
         em["rT_static_ir_mv"] = static["worst_ir"] * 1e3
         em["rT_delta_ir_mv"] = 0.0
         em["rT_via"] = "no same-layer J or ΔT≈0 — G not restamped"
+        em["electrothermal"] = {
+            "status": "GAP",
+            "ok": False,
+            "reason": "no same-layer J or ΔT≈0 — G not restamped",
+        }
 
     out = args.out
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -2191,9 +2306,15 @@ def main() -> int:
         )
     )
     path_ok = (timing.get("path") or {}).get("status") == "READY"
+    et = em.get("electrothermal") or {}
     em_via = (
         f"heatmap + windows + {'path STA delay' if path_ok else 'tap delay scaling'} + J={em.get('j_absmax_a_m2', 0):.3e} A/m² "
-        f"+ relative Black TTF + metal-graph R(T) N1 restamp"
+        f"+ relative Black TTF + metal-graph R(T) N1"
+        + (
+            " + Solver A TRAN restamp"
+            if et.get("status") == "READY"
+            else " restamp (TRAN skipped)"
+        )
         if em.get("n_with_j")
         else (
             f"heatmap + windows + {'path STA delay' if path_ok else 'tap delay scaling'} + branch I (no same-layer coords for J)"
@@ -2286,6 +2407,11 @@ def main() -> int:
             if (em.get("thermal_mesh") or {}).get("status") == "READY" and em.get("dT_mesh_absmax_k") is not None
             else ""
         )
+        + (
+            f" · R(T) TRAN {et['worst_droop_mv']:.3f} mV (Δ {et['delta_vs_A_mv']:+.4f} mV)"
+            if et.get("status") == "READY" and et.get("delta_vs_A_mv") is not None
+            else ""
+        )
         if em.get("n_with_j")
         else ""
     )
@@ -2326,7 +2452,7 @@ def main() -> int:
             "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
             "Solver D: restricted additive Schwarz on the BE operator (graph partition, local LU, GMRES)",
             "N4: native descriptor BE on Eẋ+Ax=u (VRM + bump R+L + die mesh); SparseLU, not AMG",
-            "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; metal-graph thermal ΔT (straps+vias) + N1 R(T) restamp; skin depth reported",
+            "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; metal-graph thermal ΔT (straps+vias) + N1 R(T) + one-shot Solver A TRAN restamp (not gold); skin depth reported",
             "Native BE/MOR/RAS/N4 in libdpn (Index=int64); Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
             "V(x,y) heatmap at t_worst + OpenSTA path delay scaled by local Vmin (NLDM typical-V, not a second liberty)",
         ],
@@ -2343,7 +2469,7 @@ def main() -> int:
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C READY only when *CAP is stamped",
             "activity": "pdn_activity: OpenSTA report_arrival t50 (clock); VCD/SAIF name-join only; windowed BE",
-            "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, metal-graph ΔT (straps+vias) → R(T) N1 restamp — not foundry hours",
+            "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, metal-graph ΔT (straps+vias) → R(T) N1 + Solver A TRAN restamp — not foundry hours, not gold",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
             "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",
@@ -2470,6 +2596,8 @@ def main() -> int:
                 "thermal_mesh": (em.get("thermal_mesh") or {}).get("status"),
                 "n_vias": (em.get("thermal_mesh") or {}).get("n_vias"),
                 "rT_delta_ir_mv": em.get("rT_delta_ir_mv"),
+                "electrothermal": (em.get("electrothermal") or {}).get("status"),
+                "rT_tran_delta_mv": (em.get("electrothermal") or {}).get("delta_vs_A_mv"),
             },
         )
     if n_sta:

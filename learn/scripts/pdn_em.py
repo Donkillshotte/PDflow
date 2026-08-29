@@ -14,7 +14,8 @@ that stars to the C4 pads. That is the substrate path metal-only vias omit —
 not 3D FEM, not CFD, not a foundry package. Pads still G_amb to ambient.
 Lumped Rth·I²R is a comparison, not the restamp ΔT when the mesh solves.
 Skin depth is reported; Nangate metal1 is thinner than δ at the GCD clock
-so Rac/Rdc ≈ 1. Never ML.
+so Rac/Rdc ≈ 1. Weakly coupled R(T) TRAN (Solver A on restamped G) lives in
+pdn_dynamic.electrothermal_timestep_be — not gold, not a sub-ps DAE. Never ML.
 """
 
 from __future__ import annotations

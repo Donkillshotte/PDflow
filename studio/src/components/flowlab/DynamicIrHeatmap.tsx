@@ -59,6 +59,13 @@ type Em = {
   n_with_j?: number;
   r_scale_hot?: number;
   rT_delta_ir_mv?: number;
+  electrothermal?: {
+    status?: string;
+    worst_droop_mv?: number;
+    delta_vs_A_mv?: number | null;
+    n_r_scaled?: number;
+    r_scale_hot?: number;
+  };
   hottest?: { i_abs?: number };
   hottest_j?: { j_a_m2?: number; layer?: string };
   thermal_mesh?: {
@@ -470,6 +477,18 @@ export function DynamicIrHeatmap({
                     ? ` · ${em.thermal_mesh.n_pads} pad`
                     : ""}
                   {em.thermal_mesh.backend ? ` · ${em.thermal_mesh.backend}` : ""}
+                </dd>
+              </div>
+            ) : null}
+            {em?.electrothermal?.status === "READY" && em.electrothermal.worst_droop_mv != null ? (
+              <div>
+                <dt>R(T) TRAN</dt>
+                <dd>
+                  {em.electrothermal.worst_droop_mv.toFixed(3)} mV
+                  {em.electrothermal.delta_vs_A_mv != null
+                    ? ` · Δ ${em.electrothermal.delta_vs_A_mv >= 0 ? "+" : ""}${em.electrothermal.delta_vs_A_mv.toFixed(4)} mV`
+                    : ""}
+                  {" · not gold"}
                 </dd>
               </div>
             ) : null}

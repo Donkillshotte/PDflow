@@ -8,6 +8,8 @@
 # inst (not RTL). VSS TRAN does not change VDD gold 45.298 mV.
 # Rail-to-rail C is opt-in: instance-pin C_rr (RAIL_C=1) and/or overlapping-strap
 # Cox (RAIL_C_GEOM=1) — not the GCD default.
+# Electrothermal: default ON reports one-shot R(T) Solver A TRAN (not gold).
+#   ELECTROTHERMAL=0 skips that TRAN; N1 restamp still reported.
 # Activity = OpenSTA arrival t50 (clock) + VCD/SAIF name-join (GAP on RTL tb_gcd).
 # SAIF idle-zeros TC=0 pulses; does not invent t50 or rescale I_avg.
 # Path STA delay from OpenSTA report_checks (NLDM typical-V × (Vdd/V)^α).
@@ -136,6 +138,9 @@ if [[ "${RAIL_C:-}" == "1" ]]; then
 fi
 if [[ "${RAIL_C_GEOM:-}" == "1" ]]; then
   EXTRA+=(--rail-c-geom)
+fi
+if [[ "${ELECTROTHERMAL:-1}" == "0" ]]; then
+  EXTRA+=(--no-electrothermal)
 fi
 if [[ -f "${SPICE_VSS}" ]]; then
   EXTRA+=(--spice-vss "${SPICE_VSS}")

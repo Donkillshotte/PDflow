@@ -1518,6 +1518,134 @@ I0 ITermNode_metal1_1200_400 0 DC 1.0e-3
     check(tr2a["worst_node"] == 1, "full-track thermal max is the higher-Rth node")
     check(tr2["dT_absmax_k"] < tr2a["dT_absmax_k"], "excluding Si-class node lowers reported max ΔT")
 
+    from pdn_dynamic import electrothermal_timestep_be
+    from pdn_em import ALPHA_R as ALPHA_R_ET
+
+    r0_et = 0.5
+    res_et = [("Node_pad", "ITermNode_metal1_0_0", r0_et)]
+    volt_et = {"Node_pad": 1.1}
+    cur_et = {"ITermNode_metal1_0_0": 1e-3}
+    order_et, idx_et, G_et = build_system(res_et, cur_et, volt_et)
+    ev_et = [
+        {
+            "node": "ITermNode_metal1_0_0",
+            "idx": idx_et["ITermNode_metal1_0_0"],
+            "t50_s": 0.2e-9,
+            "dur_s": 0.2e-9,
+            "i_pulse": 5e-3,
+            "i_leak": 0.0,
+        }
+    ]
+    sys_et = assemble_be(
+        G_et, idx_et, volt_et, 1.1, ev_et, pkg_r=0.05, pkg_l=0.0, c_decap=50e-15, dt=10e-12
+    )
+    cold_et = timestep_be(sys_et, ev_et, DirectLU(sys_et["A"]), 1.1, order_et, 0.4e-9)
+    idn_et = electrothermal_timestep_be(
+        res_et,
+        cur_et,
+        volt_et,
+        ev_et,
+        vdd=1.1,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        gold_droop=cold_et["worst_droop"],
+        n_r_scaled=0,
+        r_scale_hot=1.0,
+    )
+    check(idn_et["status"] == "READY", "identity electrothermal READY")
+    check(
+        abs(idn_et["delta_vs_A_mv"]) < 1e-6,
+        f"identity R(T) TRAN |Δ|={idn_et['delta_vs_A_mv']} mV (must not replace gold)",
+    )
+    dT_et = 50.0
+    scale_et = 1.0 + ALPHA_R_ET * dT_et
+    hot_res = [(a, b, r * scale_et) for a, b, r in res_et]
+    hot_et = electrothermal_timestep_be(
+        hot_res,
+        cur_et,
+        volt_et,
+        ev_et,
+        vdd=1.1,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        gold_droop=cold_et["worst_droop"],
+        n_r_scaled=1,
+        r_scale_hot=scale_et,
+    )
+    check(hot_et["status"] == "READY", "hot R(T) TRAN READY")
+    check(hot_et["delta_vs_A_mv"] > 0.01, f"hotter R increases TRAN droop Δ={hot_et['delta_vs_A_mv']:.4f} mV")
+    check(
+        hot_et["worst_droop_mv"] > cold_et["worst_droop"] * 1e3,
+        "hot electrothermal droop is not the unrestamped gold",
+    )
+    sys_etl = assemble_be(
+        G_et, idx_et, volt_et, 1.1, ev_et, pkg_r=0.05, pkg_l=2e-10, c_decap=50e-15, dt=10e-12
+    )
+    cold_etl = timestep_be(sys_etl, ev_et, DirectLU(sys_etl["A"]), 1.1, order_et, 0.4e-9)
+    hot_etl = electrothermal_timestep_be(
+        hot_res,
+        cur_et,
+        volt_et,
+        ev_et,
+        vdd=1.1,
+        pkg_r=0.05,
+        pkg_l=2e-10,
+        c_decap=50e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        gold_droop=cold_etl["worst_droop"],
+        n_r_scaled=1,
+        r_scale_hot=scale_et,
+    )
+    check(hot_etl["delta_vs_A_mv"] > 0.0, "package-L companion still hotter-R increases droop")
+    gap_et = electrothermal_timestep_be(
+        res_et,
+        cur_et,
+        volt_et,
+        [
+            {
+                "node": "ITermNode_does_not_exist",
+                "idx": 0,
+                "t50_s": 0.2e-9,
+                "dur_s": 0.2e-9,
+                "i_pulse": 5e-3,
+                "i_leak": 0.0,
+            }
+        ],
+        vdd=1.1,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+        gold_droop=cold_et["worst_droop"],
+    )
+    check(gap_et["status"] == "GAP", "missing event node after restamp is GAP")
+    empty_et = electrothermal_timestep_be(
+        [],
+        cur_et,
+        volt_et,
+        ev_et,
+        vdd=1.1,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        c_decap=50e-15,
+        dt=10e-12,
+        t_end=0.4e-9,
+    )
+    check(empty_et["status"] == "GAP", "empty scaled resistor list is GAP")
+    print(
+        f"    electrothermal identity |Δ|={abs(idn_et['delta_vs_A_mv']):.3e} mV "
+        f"hot Δ={hot_et['delta_vs_A_mv']:.4f} mV L-pkg Δ={hot_etl['delta_vs_A_mv']:.4f} mV "
+        f"loop={hot_et.get('timestep_loop')}"
+    )
+
     from pdn_solvers import native_descriptor, native_descriptor_adaptive, native_mor_descriptor
 
     sysd = compact_vrm_die(
