@@ -97,6 +97,11 @@ def main() -> int:
     )
     plus = abc_script_plus(["rewrite", "rewrite -z", "balance"])
     check(plus is not None and "rewrite,-z" in plus, f"Yosys + form uses commas for spaces: {plus}")
+    from dse.abc_space import write_abc_script
+
+    abc_tmp = Path(tempfile.mkdtemp(prefix="dse-abc-")) / "m.abc"
+    write_abc_script(["rewrite", "balance"], abc_tmp, map_liberty=True)
+    check("map" in abc_tmp.read_text().splitlines()[-1], "liberty ABC script ends with map")
 
     eg, roots = gcd_dpath_egraph()
     check(eg.has_op(roots["sub"], "add"), "e-graph: sub ≡ add(inc(not))")
@@ -292,6 +297,10 @@ def main() -> int:
             check(
                 abs(c0.qor.area_um2 - c1.qor.area_um2) > 1.0,
                 f"default vs -fast is a real area move ({c0.qor.area_um2} vs {c1.qor.area_um2})",
+            )
+            check(
+                (c2.artifacts or {}).get("n_cells", 0) > 100,
+                f"rewrite+balance writes liberty cells, not $lut soup ({c2.artifacts})",
             )
             dest = tdir / "gcd_eqz.v"
             emit_gcd_variant(rtl, "eqz_or_reduce", dest)

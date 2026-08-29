@@ -63,13 +63,19 @@ def abc_script_plus(ops: list[str]) -> str | None:
     return f"+{';'.join(parts)}"
 
 
-def write_abc_script(ops: list[str], path) -> None:
-    """ABC script *file* (one command per line). rewrite needs strash first."""
+def write_abc_script(ops: list[str], path, *, map_liberty: bool = False) -> None:
+    """ABC script *file* (one command per line). rewrite needs strash first.
+
+    When map_liberty=True the script ends with ``map`` so Yosys `abc -liberty
+    -script` actually emits standard cells instead of leftover $lut.
+    """
     body = list(ops)
     if body and body[0] != "strash":
         body = ["strash", *body]
     elif not body:
         body = ["strash"]
+    if map_liberty and body[-1] != "map":
+        body.append("map")
     path.write_text("\n".join(body) + "\n")
 
 

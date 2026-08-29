@@ -40,6 +40,7 @@ from .fidelity import (
 )
 from .fingerprint import knobs_fp
 from .layers import adapter_status
+from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front
 from .physical_space import propose_physical_f0, propose_synthesis_f0
@@ -350,8 +351,15 @@ def run_controller(
             if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
         ]
         ranked.sort(key=lambda c: float(c.qor.area_um2))
-        if ranked:
-            w = ensure_mapped_netlist(ranked[0], rtl=rtl, liberty=lib)
+        pick = None
+        for cand in ranked:
+            w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib)
+            mapped = (w.artifacts or {}).get("mapped_v")
+            if mapped and is_gate_cell_netlist(Path(mapped)):
+                pick = w
+                break
+        if pick:
+            w = pick
             mem.touch(w)
             child = evaluate_f2_gpl(w, mem, design_id=design_id)
             if child:

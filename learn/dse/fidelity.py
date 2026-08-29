@@ -263,13 +263,12 @@ def evaluate_f1_abc(
         net = tmp_p / "mapped.v"
         ys = tmp_p / "f1.ys"
         abc_file = tmp_p / "aig.abc"
-        aig_cmd = ""
-        if ops:
-            write_abc_script(ops, abc_file)
-            aig_cmd = f"abc -script {abc_file}"
         map_cmd = "abc -liberty " + lib
         if args:
             map_cmd += " " + " ".join(args)
+        if ops:
+            write_abc_script(ops, abc_file, map_liberty=True)
+            map_cmd += f" -script {abc_file}"
         ys.write_text(
             f"""
 read_verilog {rtl}
@@ -277,7 +276,6 @@ hierarchy -check -top {top}
 proc; flatten; opt_expr; opt_clean
 design -save rtl
 synth -top {top}
-{aig_cmd}
 design -save syn
 design -copy-from rtl -as gold {top}
 design -copy-from syn -as gate {top}
@@ -289,6 +287,7 @@ equiv_status
 design -load syn
 dfflibmap -liberty {lib}
 {map_cmd}
+techmap; opt_clean
 stat -liberty {lib}
 write_verilog -noattr -noexpr {net}
 """
@@ -374,13 +373,12 @@ def ensure_mapped_netlist(
         net = tmp_p / "mapped.v"
         ys = tmp_p / "map.ys"
         abc_file = tmp_p / "aig.abc"
-        aig_cmd = ""
-        if ops:
-            write_abc_script(ops, abc_file)
-            aig_cmd = f"abc -script {abc_file}"
         map_cmd = "abc -liberty " + lib
         if args:
             map_cmd += " " + " ".join(args)
+        if ops:
+            write_abc_script(ops, abc_file, map_liberty=True)
+            map_cmd += f" -script {abc_file}"
         if extract:
             from .arch_space import emit_gcd_variant
 
@@ -396,9 +394,9 @@ read_verilog {src_rtl}
 hierarchy -check -top {top}
 proc; flatten; opt_expr; opt_clean
 synth -top {top}
-{aig_cmd}
 dfflibmap -liberty {lib}
 {map_cmd}
+techmap; opt_clean
 write_verilog -noattr -noexpr {net}
 """
         )

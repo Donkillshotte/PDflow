@@ -37,7 +37,7 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F | Ruolo | Stato |
 |---|---|---|
 | F0 | SSK-GP area ± std; congestion RUDY-class; skip F1 se l’ottimista è già peggiore | READY — **non** è IR |
-| F1 | Yosys synth + ABC (script *file*) + `equiv_*` + `write_verilog -noexpr` | READY |
+| F1 | Yosys synth + ABC (script *file* ending with `map`) + `equiv_*` + `write_verilog -noexpr` | READY |
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` | READY (GPL budgetato) |
 | F3 | OpenSTA | ingest `sta_signoff_*.json` |
 | F4 | Dynamic IR/EM (libdpn A/B/C/D) | ingest — **non** sostituisce il gold |
