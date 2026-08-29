@@ -324,6 +324,7 @@ def main() -> int:
     check(any(s["level"] == "f3_sdf" for s in planned["steps"]), "planner schedules F3 SDF-GRT")
     check(any(s["level"] == "f5_drt" for s in planned["steps"]), "planner schedules F5-lite DRT/OpenRCX")
     check(any(s["level"] == "f3_spef" for s in planned["steps"]), "planner schedules F3 SPEF")
+    check(any(s["level"] == "f5_cts" for s in planned["steps"]), "planner schedules F5-CTS")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -351,9 +352,15 @@ def main() -> int:
         != knobs_fp("routing", {"source": "f2_openroad_grt"}),
         "F5 DRT is not flattened into the GRT fingerprint",
     )
+    check(
+        knobs_fp("routing", {"source": "f5_openroad_cts_rcx", "clock": "propagated", "cts": 1})
+        != knobs_fp("routing", {"source": "f5_openroad_drt_rcx", "clock": "ideal"}),
+        "F5-CTS is not flattened into the F5-lite fingerprint",
+    )
     from dse.acquire import next_fidelity
 
     check(next_fidelity(level="f5_drt", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-lite is its own fidelity")
+    check(next_fidelity(level="f5_cts", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-CTS measures at F5")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
@@ -442,7 +449,12 @@ def main() -> int:
         )
 
     from dse.sta_f3 import available as sta_available, evaluate_sta, export_arrivals
-    from dse.openroad_f2 import evaluate_f5_drt as run_f5_drt, evaluate_grt, f5_available
+    from dse.openroad_f2 import (
+        evaluate_f5_cts as run_f5_cts,
+        evaluate_f5_drt as run_f5_drt,
+        evaluate_grt,
+        f5_available,
+    )
     from dse.attribute import attribute_sta
 
     slash = attribute_sta(
@@ -512,6 +524,29 @@ def main() -> int:
             f"    F5 SPEF WNS={spef_sta['wns_ns']:.3f} ns vs ideal {ideal['wns_ns']:.3f} ns "
             f"segs={f5.get('n_rc_segments')} ({f5['cost_s']:.2f}s)"
         )
+        cts_spef = Path(tempfile.mkdtemp(prefix="dse-cts-")) / "cand_cts.spef"
+        cts_v = Path(tempfile.mkdtemp(prefix="dse-cts-v-")) / "cand_cts.v"
+        cts = run_f5_cts(mapped_ok, timeout_s=90, spef_out=cts_spef, verilog_out=cts_v)
+        check(cts.get("status") == "ok", f"F5-CTS DRT+OpenRCX ({cts.get('reason')})")
+        check(cts.get("clock") == "propagated", "F5-CTS marks the clock propagated")
+        check((cts.get("n_clkbuf") or 0) >= 1, f"F5-CTS inserts CLKBUF, got {cts.get('n_clkbuf')}")
+        check(cts.get("spef") and Path(cts["spef"]).is_file(), "F5-CTS writes a distinct SPEF")
+        check(cts.get("cts_v") and Path(cts["cts_v"]).is_file(), "F5-CTS writes the post-CTS netlist")
+        check("not make finish" in (cts.get("via") or ""), "F5-CTS via states it is not make finish")
+        cts_sta = evaluate_sta(Path(cts["cts_v"]), spef=Path(cts["spef"]), propagated_clock=True)
+        check(cts_sta.get("status") == "ok", f"OpenSTA + CTS SPEF ({cts_sta.get('reason')})")
+        check(cts_sta.get("clock") == "propagated", "OpenSTA CTS shot uses set_propagated_clock")
+        check(
+            spef_sta.get("wns_ns") is not None
+            and cts_sta.get("wns_ns") is not None
+            and abs(float(cts_sta["wns_ns"]) - float(spef_sta["wns_ns"])) > 0.01,
+            f"CTS SPEF WNS {cts_sta.get('wns_ns')} must differ from F5-lite {spef_sta.get('wns_ns')}",
+        )
+        check(f5.get("clock") == "ideal", "F5-lite stays ideal after the CTS shot")
+        print(
+            f"    F5-CTS SPEF WNS={cts_sta['wns_ns']:.3f} ns vs F5-lite {spef_sta['wns_ns']:.3f} ns "
+            f"n_clkbuf={cts.get('n_clkbuf')} ({cts['cost_s']:.2f}s)"
+        )
 
     props = dse_propose(mem2, focus="dpath", attr=attr)
     check(props, "symbolic proposer returns at least one idea")
@@ -529,6 +564,8 @@ def main() -> int:
     check("path" in (adapter_status()["cell"]["note"] or ""), "cell adapter is attributed-path drive-up")
     check("SPEF" in (adapter_status()["timing"]["note"] or ""), "timing adapter includes OpenRCX SPEF")
     check("f5" in (adapter_status()["routing"]["via"] or "").lower() or "OpenRCX" in (adapter_status()["routing"]["note"] or ""), "routing adapter includes F5-lite")
+    check("cts" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-CTS")
+    check("propagated" in (adapter_status()["timing"]["note"] or ""), "timing adapter names propagated-clock CTS SPEF")
     check("arrival" in (adapter_status()["activity"]["via"] or "").lower(), "activity adapter is candidate STA arrivals")
     check(
         "write_pg_spice" in (adapter_status()["extraction"]["via"] or ""),
@@ -803,7 +840,7 @@ def main() -> int:
         )
     )
     check(pdn_next(mem_kry).get("name") == "decap_200f", "Krylov residual does not consume the PDN catalog")
-    from dse.acquire import should_pay_f1_synth, should_pay_f4_krylov, should_pay_f4_ras
+    from dse.acquire import should_pay_f1_synth, should_pay_f4_krylov, should_pay_f4_ras, should_pay_f5_cts
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
     pay_s0, _ = should_pay_f1_synth(mem_pay, budget_left=80, n_f1=0)
@@ -866,6 +903,33 @@ def main() -> int:
     )
     pay_k1, why_k1 = should_pay_f4_krylov(mem_pay, budget_left=80, n_krylov=0, variant="flowlab")
     check(pay_k1 or "cached finish" in why_k1 or "already" in why_k1, f"Krylov acquire is well-formed ({why_k1})")
+    pay_c0, why_c0 = should_pay_f5_cts(mem_pay, budget_left=80, n_f5_cts=0)
+    check(not pay_c0, f"CTS waits for F5-lite ({why_c0})")
+    mem_pay.add(
+        Candidate(
+            id="f5lite",
+            design_id="gcd",
+            parent_id="t0",
+            level="routing",
+            knobs={"source": "f5_openroad_drt_rcx", "clock": "ideal"},
+            knobs_fp="f5lite",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F5",
+            qor=QoR(wns_cost=0.64, fidelity="F5"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    if mapped_ok.is_file():
+        t0c = next(c for c in mem_pay.all() if c.id == "t0")
+        t0c.artifacts = dict(t0c.artifacts or {})
+        t0c.artifacts["mapped_v"] = str(mapped_ok)
+        mem_pay.touch(t0c)
+        pay_c1, why_c1 = should_pay_f5_cts(mem_pay, budget_left=80, n_f5_cts=0)
+        check(pay_c1, f"CTS is paid after F5-lite ({why_c1})")
+        pay_c2, why_c2 = should_pay_f5_cts(mem_pay, budget_left=80, n_f5_cts=1)
+        check(not pay_c2, f"CTS is a single shot ({why_c2})")
 
     gold_json = _ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     gold_before = gold_json.read_text() if gold_json.is_file() else None

@@ -17,8 +17,9 @@ RTL
  → F3 OpenSTA sul *candidato* (ideale; path gerarchici `dpath/sub/…` sul cono), **interleaved** dopo ogni F1
  → F2 routing: place_pins + GPL + global_route + `write_sdf` (non SPEF)
  → F3 OpenSTA + SDF GRT (stesso `mapped.v` del GRT — non OpenRCX)
- → F5-lite: `detailed_route` (2 iter, no CTS) + OpenRCX + OpenSTA `read_spef`
- → F3 OpenSTA + SPEF OpenRCX (stesso SPEF, senza un secondo DRT)
+ → F5-lite: `detailed_route` (2 iter, no CTS) + OpenRCX + OpenSTA `read_spef` (clock ideale)
+ → F3 OpenSTA + SPEF OpenRCX (stesso SPEF F5-lite, senza un secondo DRT)
+ → F5-CTS: `clock_tree_synthesis` + DRT + OpenRCX + OpenSTA `set_propagated_clock` sul netlist post-CTS (colpo a pagamento, non sostituisce F5-lite, non `make finish`)
  → F2 catalogo fisico: un punto AutoDMP (util/densità) misurato con GPL, non solo proxy RUDY
  → F2 regione: `create_blockage -max_density` sul bin IR (rXY / hotspot dbu) + GPL
  → F4 extract regione: `write_pg_spice` sotto lo stesso cap — mesh nuova, non gold
@@ -43,7 +44,7 @@ RTL
 | **synthesis** | `ABC_AREA` ORFS (`abc_speed.script` + `-D 460`) | F0 catalogo + **F1 misurato** (non mescolato alle ops ABC) |
 | **cell** | drive-up delle istanze sul worst path STA | READY F3 — scope di modulo, non `abc_ops` |
 | **physical** | util, densità, **regione IR**, netlist del candidato | F0 proxy + F2-fast + **GPL** + catalogo + **density cap sul bin IR** + ingest — non lancia finish |
-| **routing** | GRT dopo place_pins + F5-lite DRT/OpenRCX | READY F2 GRT + F5-lite SPEF — non `make finish`, clock ideale |
+| **routing** | GRT dopo place_pins + F5-lite DRT/OpenRCX + F5-CTS | READY F2 GRT + F5-lite SPEF (clock ideale) + F5-CTS SPEF (clock propagato) — non `make finish` |
 | **pdn** | `c_decap`, pkg L, I(t)×power, mesh del candidato, solver MF | ingest gold + **extract `write_pg_spice`** + DirectLU/AMG/RAS/Krylov (non gold) |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
@@ -55,9 +56,9 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F0 | SSK-GP area ± std; congestion RUDY-class; skip F1 se l’ottimista è già peggiore | READY — **non** è IR |
 | F1 | Yosys synth + ABC (script *file*) + `equiv_*` + `write_verilog -noexpr` | READY · chip flatten-first **o** cone-local ABC **o** ORFS `abc_speed` (synthesis) |
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` · GRT+SDF | READY (GPL/GRT budgetati) |
-| F3 | OpenSTA ideale (hier sul cono) + OpenSTA+SDF GRT + OpenSTA+SPEF OpenRCX + ingest | READY — SPEF è F5-lite, non signoff CTS |
+| F3 | OpenSTA ideale (hier sul cono) + OpenSTA+SDF GRT + OpenSTA+SPEF OpenRCX + ingest | READY — SPEF F5-lite è clock ideale; F5-CTS usa `set_propagated_clock` |
 | F4 | Dynamic IR/EM (libdpn A/B/C/D) + static IR sullo stesso extract | ingest gold + **extract candidato** + arrivals + restamp DirectLU/AMG/RAS/Krylov — **non** sostituisce il gold 45.298 |
-| F5 | DRT + OpenRCX SPEF + OpenSTA `read_spef` | READY F5-lite (`droute_end_iter=2`, no CTS) — il controller **non** lancia `make finish` |
+| F5 | DRT + OpenRCX SPEF + OpenSTA `read_spef` | READY F5-lite (`droute_end_iter=2`, clock ideale) **e** F5-CTS (CLKBUF + clock propagato) — il controller **non** lancia `make finish` |
 
 F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.
 La congestion F2-fast è `rudy_excess/(1+rudy_excess)` ∈ [0,1) — non è l’overflow GRT.

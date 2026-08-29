@@ -114,6 +114,13 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "f5_cts",
+            "reason": "budgeted CTS + DRT + OpenRCX SPEF — propagated clock, not make finish",
+            "scope": "chip",
+        }
+    )
+    steps.append(
+        {
             "level": "synthesis",
             "reason": "ORFS abc_speed.script (ABC_AREA=0) — measured synthesis F1, not logic -fast",
             "scope": "chip",

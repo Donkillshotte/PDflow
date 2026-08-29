@@ -52,12 +52,12 @@ ADAPTERS: dict[str, dict] = {
         "note": "OpenROAD GPL -skip_io; AutoDMP catalog and IR-bin create_blockage -max_density are measured here, not as F0 truth",
     },
     "routing": {
-        "via": "dse.openroad_f2.evaluate_grt + evaluate_f5_drt",
-        "note": "GRT + F5-lite DRT/OpenRCX SPEF; not make finish, clock ideal",
+        "via": "dse.openroad_f2.evaluate_grt + evaluate_f5_drt + evaluate_f5_cts",
+        "note": "GRT + F5-lite DRT/OpenRCX (clock ideal) + paid F5-CTS (clock propagated); not make finish",
     },
     "timing": {
         "via": "dse.sta_f3",
-        "note": "OpenSTA ideal / GRT SDF / OpenRCX SPEF WNS/power; not finish launch",
+        "note": "OpenSTA ideal / GRT SDF / OpenRCX SPEF / CTS SPEF with set_propagated_clock; not finish launch",
     },
 }
 

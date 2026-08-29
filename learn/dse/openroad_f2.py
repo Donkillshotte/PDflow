@@ -1,9 +1,11 @@
-"""Budgeted OpenROAD GPL / GRT / F5-lite DRT+OpenRCX / candidate PDN extract.
+"""Budgeted OpenROAD GPL / GRT / F5-lite DRT+OpenRCX / F5-CTS / candidate PDN extract.
 
 GPL: `global_placement -skip_io` → HPWL (µm) + overflow.
 GRT: `place_pins` + GPL + `global_route` + `estimate_parasitics` → WNS/power.
 F5-lite: legalize + GRT + `detailed_route` + OpenRCX `extract_parasitics`
   + `write_spef` — not `make finish`, clock stays ideal (no CTS).
+F5-CTS: same place, then `clock_tree_synthesis` + legalize + GRT + DRT +
+  OpenRCX. Clock is propagated. Not `make finish`, not a replacement for F5-lite.
 PDN extract: `place_pins` + tapcell + pdngen + GPL + `detailed_placement`
   + `write_pg_spice` — a *new* R-graph, not the finish mesh, not gold.
 """
@@ -459,6 +461,169 @@ exit
         "via": (
             "openroad detailed_route+OpenRCX write_spef — F5-lite, not make finish, "
             "clock ideal (no CTS); OpenSTA read_spef is the timing oracle"
+        ),
+        "cost_s": time.time() - t0,
+    }
+
+
+_CTS_BUFS = re.compile(r"Number of Buffers Inserted:\s+(\d+)")
+_CLKBUF_ROW = re.compile(r"CLKBUF_X\d+\s+(\d+)")
+_CLKBUF_V = re.compile(r"\bCLKBUF_X\d+\b")
+
+
+def _count_clkbuf(log: str, verilog: Path | None = None) -> int:
+    n = 0
+    if verilog is not None and Path(verilog).is_file():
+        n = max(n, len(_CLKBUF_V.findall(Path(verilog).read_text(errors="replace"))))
+    m = _CTS_BUFS.search(log)
+    if m:
+        n = max(n, int(m.group(1)))
+    rows = _CLKBUF_ROW.findall(log)
+    if rows:
+        n = max(n, sum(int(x) for x in rows))
+    return n
+
+
+def evaluate_f5_cts(
+    verilog: Path,
+    *,
+    top: str = "gcd",
+    util: float = 35.0,
+    density: float = 0.55,
+    timeout_s: float = 90.0,
+    spef_out: Path | None = None,
+    verilog_out: Path | None = None,
+    droute_end_iter: int = 2,
+) -> dict:
+    """CTS + legalize + GRT + DRT + OpenRCX SPEF. Not make finish.
+
+    Separate paid shot from F5-lite. Clock is propagated. Timing truth is
+    OpenSTA `read_spef` + `set_propagated_clock` on the *post-CTS* netlist
+    (CLKBUF instances are not in the pre-CTS mapped.v).
+    """
+    if not f5_available():
+        return {"status": "GAP", "reason": "openroad/LEF/RCX rules missing", "via": "openroad_f5_cts"}
+    verilog = Path(verilog)
+    if not verilog.is_file():
+        return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_f5_cts"}
+    rc = f"source {SETRC}" if SETRC.is_file() else ""
+    spef_tmp = Path(spef_out) if spef_out is not None else None
+    if spef_tmp is not None:
+        spef_tmp.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        spef_tmp = Path(tempfile.mkdtemp(prefix="dse-f5cts-")) / "cand_cts.spef"
+    v_tmp = Path(verilog_out) if verilog_out is not None else None
+    if v_tmp is not None:
+        v_tmp.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        v_tmp = Path(tempfile.mkdtemp(prefix="dse-f5cts-v-")) / "cand_cts.v"
+    tcl = f"""
+set_thread_count 1
+read_lef {TECH_LEF}
+read_lef {SC_LEF}
+read_liberty {LIB}
+read_verilog {verilog}
+link_design {top}
+read_sdc {SDC}
+initialize_floorplan -utilization {float(util)} -aspect_ratio 1.0 -core_space 2.0 -site {SITE}
+source {TRACKS}
+{rc}
+place_pins -hor_layers {IO_H} -ver_layers {IO_V}
+global_placement -density {float(density)}
+detailed_placement
+repair_clock_inverters
+clock_tree_synthesis -sink_clustering_enable -repair_clock_nets \\
+    -buf_list {{CLKBUF_X3 CLKBUF_X2 CLKBUF_X1}} -root_buf CLKBUF_X3
+estimate_parasitics -placement
+if {{[catch {{detailed_placement}} dp_err]}} {{
+  puts "DSE_CTS_DP_WARN $dp_err"
+}}
+global_route
+detailed_route -droute_end_iter {int(droute_end_iter)} -verbose 1
+extract_parasitics -ext_model_file {RCX_RULES}
+write_spef {spef_tmp}
+write_verilog {v_tmp}
+puts DSE_CLKBUF_BEGIN
+report_cell_usage
+puts DSE_CLKBUF_END
+report_wns
+report_tns
+report_power
+puts STA_PATH_BEGIN
+report_checks -path_delay max -fields {{input_pin}} -digits 4 -format full -group_path_count 1
+puts STA_PATH_END
+puts DSE_F5_CTS_OK
+exit
+"""
+    t0 = time.time()
+    with tempfile.TemporaryDirectory(prefix="dse-f5cts-") as tmp:
+        script = Path(tmp) / "f5_cts.tcl"
+        script.write_text(tcl)
+        try:
+            proc = subprocess.run(
+                ["openroad", "-exit", "-no_init", str(script)],
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "fail",
+                "reason": f"F5 CTS/DRT/RCX timeout {timeout_s}s",
+                "via": "openroad_f5_cts",
+                "cost_s": time.time() - t0,
+            }
+        log = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    wns = _WNS.search(log)
+    tns = _TNS.search(log)
+    pwr = _PWR.search(log)
+    start = _START.search(log)
+    end = _END.search(log)
+    gwl = _GRT_WL.search(log)
+    gov = _GRT_OV.search(log)
+    n_clkbuf = _count_clkbuf(log, v_tmp)
+    ok = (
+        "DSE_F5_CTS_OK" in log
+        and proc.returncode == 0
+        and spef_tmp.is_file()
+        and v_tmp.is_file()
+        and n_clkbuf >= 1
+    )
+    err = next(
+        (ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR") or ln.startswith("Error:")),
+        "",
+    )
+    if "DSE_F5_CTS_OK" in log and n_clkbuf < 1:
+        err = err or "cts_inserted_no_clkbuf"
+    segs = None
+    mseg = re.search(r"Final (\d+) rc segments", log)
+    if mseg:
+        segs = int(mseg.group(1))
+    return {
+        "status": "ok" if ok else "fail",
+        "reason": None if ok else (err or "f5_cts_rcx_failed"),
+        "spef": str(spef_tmp) if ok else None,
+        "spef_bytes": spef_tmp.stat().st_size if ok and spef_tmp.is_file() else 0,
+        "cts_v": str(v_tmp) if ok else None,
+        "n_clkbuf": n_clkbuf,
+        "n_rc_segments": segs,
+        "wns_or_ns": float(wns.group(1)) if wns else None,
+        "tns_or_ns": float(tns.group(1)) if tns else None,
+        "power_or_w": float(pwr.group(1)) if pwr else None,
+        "path_start": start.group(1) if start else None,
+        "path_end": end.group(1) if end else None,
+        "grt_wl": float(gwl.group(1)) if gwl else None,
+        "grt_overflow": float(gov.group(6)) if gov else None,
+        "util": float(util),
+        "density": float(density),
+        "droute_end_iter": int(droute_end_iter),
+        "clock": "propagated",
+        "cts": 1,
+        "interconnect": "spef_openrcx" if ok else "none",
+        "via": (
+            "openroad clock_tree_synthesis+detailed_route+OpenRCX write_spef — "
+            "F5-CTS, not make finish, clock propagated; OpenSTA read_spef + "
+            "set_propagated_clock on the post-CTS netlist is the timing oracle"
         ),
         "cost_s": time.time() - t0,
     }

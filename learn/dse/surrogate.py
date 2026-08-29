@@ -295,6 +295,13 @@ def predict_f5_from_f1(all_cands: list[Candidate]) -> dict:
     )
 
 
+def predict_f5_cts_from_f1(all_cands: list[Candidate]) -> dict:
+    """F1 area → CTS SPEF wns_cost. Not the ideal-clock F5-lite residual."""
+    return _f1_to_metric(
+        all_cands, source="f5_openroad_cts_rcx", field="wns_cost", metric="wns_spef_cts"
+    )
+
+
 def predict_wns_from_f1(all_cands: list[Candidate]) -> dict:
     """F1 area → ideal-STA wns_cost. Separate from placed/GRT WNS and from IR."""
     return _f1_to_metric(

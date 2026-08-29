@@ -48,6 +48,7 @@ def evaluate_sta(
     top: str = "gcd",
     spef: Path | None = None,
     sdf: Path | None = None,
+    propagated_clock: bool = False,
     timeout_s: float = 20.0,
 ) -> dict:
     """WNS / TNS / power on the candidate. Ideal nets unless SPEF/SDF is given.
@@ -55,6 +56,9 @@ def evaluate_sta(
     GRT `write_spef` needs OpenRCX (detailed route / F5). After
     `estimate_parasitics -global_routing`, `write_sdf` is the honest
     parasitic annotation we can persist — not SPEF signoff.
+
+    `propagated_clock=True` is for a post-CTS netlist + SPEF (F5-CTS).
+    F5-lite keeps the default (ideal clock on the pre-CTS mapped.v).
     """
     if not available():
         return {"status": "GAP", "reason": "opensta or liberty/sdc missing", "via": "opensta_f3"}
@@ -69,12 +73,15 @@ def evaluate_sta(
     elif sdf and Path(sdf).is_file():
         anno = f"read_sdf {sdf}"
         interconnect = "sdf_grt"
+    prop = "set_propagated_clock [all_clocks]" if propagated_clock else ""
+    clock = "propagated" if propagated_clock else "ideal"
     tcl = f"""
 read_liberty {LIB}
 read_verilog {verilog}
 link_design {top}
 read_sdc {SDC}
 {anno}
+{prop}
 report_wns
 report_tns
 report_power
@@ -121,12 +128,17 @@ puts DSE_STA_OK
         "path_nets": path_nets,
         "path_types": path_types,
         "interconnect": interconnect,
+        "clock": clock,
         "via": (
             "opensta_f3 — "
             + (
                 "SDF from GRT estimate_parasitics (not SPEF/OpenRCX, not finish)"
                 if interconnect == "sdf_grt"
-                else "SPEF WNS/power; not IR, not finish"
+                else (
+                    "SPEF WNS/power with set_propagated_clock; not IR, not finish"
+                    if clock == "propagated"
+                    else "SPEF WNS/power; not IR, not finish"
+                )
                 if interconnect == "spef"
                 else "ideal WNS/power; not IR, not finish"
             )

@@ -9,7 +9,7 @@ Optimizers (each on its own level):
   synthesis    — ORFS ABC_AREA F0 catalog + one abc_speed.script F1 (not abc_ops)
   cell         — attributed worst-path drive-up (module-scoped; not ABC)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
-  routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX (not make finish)
+  routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS/Krylov restamp (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
@@ -39,6 +39,7 @@ from .acquire import (
     should_pay_f4_krylov,
     should_pay_f4_ras,
     should_pay_f4_region_extract,
+    should_pay_f5_cts,
     should_pay_f5_drt,
     should_pay_f4_pdn,
     should_pay_f4_scale,
@@ -58,6 +59,7 @@ from .fidelity import (
     evaluate_f3_sdf,
     evaluate_f3_spef,
     evaluate_f3_sta,
+    evaluate_f5_cts,
     evaluate_f5_drt,
     evaluate_f4_extract,
     evaluate_f4_pdn,
@@ -89,6 +91,7 @@ from .surrogate import (
     predict_power_from_f1,
     predict_wns_from_f1,
     predict_f5_from_f1,
+    predict_f5_cts_from_f1,
     residual,
 )
 
@@ -735,6 +738,36 @@ def run_controller(
                     status=spc.status,
                 )
 
+    n_f5_cts = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_cts_rcx" and c.status == "ok"
+    )
+    pay_cts, why_cts = should_pay_f5_cts(mem, budget_left=t_end - time.time(), n_f5_cts=n_f5_cts)
+    step("acquire", fidelity="F5_CTS", pay=pay_cts, why=why_cts)
+    if any(s["level"] == "f5_cts" for s in plan["steps"]) and pay_cts and time.time() < t_end:
+        pick = _mapped_pick(
+            [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
+            rtl=rtl,
+            liberty=lib,
+        )
+        if pick:
+            mem.touch(pick)
+            child = evaluate_f5_cts(pick, mem, design_id=design_id)
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="routing",
+                    fidelity="F5",
+                    via="f5_openroad_cts_rcx",
+                    parent=pick.id,
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    n_clkbuf=(child.artifacts or {}).get("n_clkbuf"),
+                    clock="propagated",
+                    status=child.status,
+                )
+
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:
         step("propose", level="physical", knobs=c.knobs, fidelity="F0")
@@ -1218,16 +1251,17 @@ def run_controller(
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + IR-bin region GPL + GRT",
             "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF + OpenRCX SPEF",
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
+            "F5-CTS clock_tree_synthesis + DRT + OpenRCX + OpenSTA set_propagated_clock — not make finish",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; F3 WNS reorders remaining, no chip restart",
-            "hierarchy chip→block→region→cone; IR rXY → OpenROAD density cap on that bin → optional extract",
+            "hierarchy chip→block→region→cone→cell; IR rXY → OpenROAD density cap on that bin → optional extract",
             "Pareto per level — EHVI acquires, it does not replace the front",
             "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · MF PDN AMG/RAS/Krylov residual",
         ],
         "not": [
             "flattened black-box of all knobs",
             "neural voltage map as sign-off",
-            "make finish launched from the controller (F5-lite is not CTS/signoff)",
+            "make finish launched from the controller (F5-lite and F5-CTS are not signoff)",
             "LLM as the optimizer (proposer-only; DSE_LLM_URL optional)",
             "signal SPEF C mapped onto the PDN extract",
         ],
@@ -1276,6 +1310,11 @@ def run_controller(
             1
             for c in mem.by_level("routing")
             if (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+        ),
+        "n_f5_cts": sum(
+            1
+            for c in mem.by_level("routing")
+            if (c.knobs or {}).get("source") == "f5_openroad_cts_rcx" and c.status == "ok"
         ),
         "n_f2_grt": sum(
             1
@@ -1331,6 +1370,7 @@ def run_controller(
         "surrogate_f1_to_power": predict_power_from_f1(mem.all()),
         "surrogate_f1_to_f4": f4s,
         "surrogate_f1_to_f5": predict_f5_from_f1(mem.all()),
+        "surrogate_f1_to_f5_cts": predict_f5_cts_from_f1(mem.all()),
         "plan": plan,
         "attribution": attr,
         "focus": focus,
@@ -1453,8 +1493,17 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if w is not None:
             f5 = f" · F5 SPEF WNS {float(w):+.3f} ns"
             break
+    f5cts = ""
+    for c in mem.all():
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f5_openroad_cts_rcx":
+            continue
+        w = (c.artifacts or {}).get("wns_ns")
+        ncb = (c.artifacts or {}).get("n_clkbuf")
+        if w is not None:
+            f5cts = f" · F5-CTS SPEF WNS {float(w):+.3f} ns (propagated, n_clkbuf={ncb})"
+            break
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{synth}{cell}{wns}{f5} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{synth}{cell}{wns}{f5}{f5cts} · IR cone {mods}{ir}{ras}{kry}"
     )

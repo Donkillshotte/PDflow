@@ -5,7 +5,7 @@ F1  Yosys + ABC liberty map + equiv (logic or architecture RTL)
 F2  ingest OpenROAD place / GRT, F2-fast netgraph, budgeted OpenROAD GPL
 F3  OpenSTA on the *candidate* (ideal or GRT SDF) + ingest of signoff STA
 F4  Dynamic IR / EM ingest (Solver A gold stays 45.298 mV on the GCD)
-F5  budgeted detailed_route + OpenRCX SPEF (not make finish)
+F5  budgeted detailed_route + OpenRCX SPEF (F5-lite ideal clock, or paid F5-CTS)
 """
 
 from __future__ import annotations
@@ -29,7 +29,12 @@ from .netgraph import (
     parse_mapped_verilog,
     features as net_features,
 )
-from .openroad_f2 import evaluate_f5_drt as run_f5_drt, evaluate_gpl, evaluate_grt
+from .openroad_f2 import (
+    evaluate_f5_cts as run_f5_cts,
+    evaluate_f5_drt as run_f5_drt,
+    evaluate_gpl,
+    evaluate_grt,
+)
 from .sta_f3 import evaluate_sta, export_arrivals
 
 REPO = Path(__file__).resolve().parents[1].parent
@@ -50,6 +55,7 @@ COST_HINT = {
     "F4": 12.0,
     "F4_EXTRACT": 15.0,
     "F5": 15.0,
+    "F5_CTS": 25.0,
 }
 
 
@@ -1456,6 +1462,101 @@ def evaluate_f5_drt(
         status="ok" if raw.get("status") == "ok" else "fail",
         failure=raw.get("reason") if raw.get("status") != "ok" else None,
         note=f"F5 DRT+RCX child of {parent.knobs.get('name')} WNS={raw.get('wns_ns')}",
+    )
+    return mem.add(c)
+
+
+def evaluate_f5_cts(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    util: float = 35.0,
+    density: float = 0.55,
+    timeout_s: float = 90.0,
+) -> Candidate | None:
+    """F5-CTS: clock_tree_synthesis + DRT + OpenRCX. Not make finish.
+
+    Distinct knobs from F5-lite (`clock=propagated`, `cts=1`). Does not
+    overwrite the parent's F5-lite SPEF — that stays the ideal-clock artifact.
+    """
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    knobs = {
+        "source": "f5_openroad_cts_rcx",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "util": util,
+        "density": density,
+        "droute_end_iter": 2,
+        "clock": "propagated",
+        "cts": 1,
+    }
+    fp = knobs_fp("routing", knobs)
+    if fp in mem.seen_knobs("routing"):
+        return next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
+    cid = DesignMemory.new_id()
+    spef_dest = REPO / "learn" / "sim" / "dse" / "spef" / f"{cid}_cts.spef"
+    v_dest = REPO / "learn" / "sim" / "dse" / "netlists" / f"{cid}_cts.v"
+    raw = run_f5_cts(
+        Path(mapped),
+        util=util,
+        density=density,
+        timeout_s=timeout_s,
+        spef_out=spef_dest,
+        verilog_out=v_dest,
+    )
+    sta = {}
+    sta_v = Path(raw["cts_v"]) if raw.get("cts_v") else Path(mapped)
+    if raw.get("status") == "ok" and raw.get("spef"):
+        sta = evaluate_sta(sta_v, spef=Path(raw["spef"]), propagated_clock=True)
+        raw = dict(raw)
+        raw["sta"] = sta
+        raw["wns_ns"] = sta.get("wns_ns")
+        raw["power_w"] = sta.get("power_w")
+        raw["interconnect"] = sta.get("interconnect") or "spef_openrcx"
+        raw["clock"] = "propagated"
+    from .attribute import attribute_sta
+
+    attr = attribute_sta(sta or raw, inherit=parent.attr or {})
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=wns_cost_from_slack_ns(raw.get("wns_ns")),
+        power_w=raw.get("power_w") or sta.get("power_w"),
+        congestion=raw.get("grt_overflow"),
+        fidelity="F5",
+        note=(
+            f"CTS SPEF WNS={raw.get('wns_ns')} n_clkbuf={raw.get('n_clkbuf')} "
+            "— F5-CTS, not make finish, clock propagated"
+        ),
+    )
+    if raw.get("spef"):
+        parent.artifacts = dict(parent.artifacts or {})
+        parent.artifacts["spef_cts"] = raw["spef"]
+        if raw.get("cts_v"):
+            parent.artifacts["cts_v"] = raw["cts_v"]
+        if raw.get("wns_ns") is not None:
+            parent.artifacts["spef_cts_wns_ns"] = raw["wns_ns"]
+        mem.touch(parent)
+    c = Candidate(
+        id=cid,
+        design_id=design_id,
+        parent_id=parent.id,
+        level="routing",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F5",
+        qor=q,
+        cost_s=float(raw.get("cost_s") or 0.0) + float(sta.get("cost_s") or 0.0),
+        artifacts=raw,
+        attr=attr,
+        status="ok" if raw.get("status") == "ok" else "fail",
+        failure=raw.get("reason") if raw.get("status") != "ok" else None,
+        note=f"F5 CTS+RCX child of {parent.knobs.get('name')} WNS={raw.get('wns_ns')}",
     )
     return mem.add(c)
 

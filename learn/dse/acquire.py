@@ -401,6 +401,48 @@ def should_pay_f5_drt(
     return True, "detailed_route + OpenRCX SPEF — F5-lite, not make finish"
 
 
+def should_pay_f5_cts(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_f5_cts: int,
+    f5_cts_max: int = 1,
+    min_s: float = 25.0,
+) -> tuple[bool, str]:
+    """Pay one CTS + DRT + OpenRCX SPEF after F5-lite. Not make finish."""
+    from .openroad_f2 import f5_available
+
+    if n_f5_cts >= f5_cts_max:
+        return False, "F5 CTS shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover CTS+DRT+OpenRCX"
+    if not f5_available():
+        return False, "OpenRCX rules missing — not launching make finish"
+    have_lite = any(
+        (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+        for c in mem.by_level("routing")
+    )
+    if not have_lite:
+        return False, "F5-lite SPEF is the prerequisite — CTS is not the first F5 shot"
+    have_cts = any(
+        (c.knobs or {}).get("source") == "f5_openroad_cts_rcx" and c.status == "ok"
+        for c in mem.by_level("routing")
+    )
+    if have_cts:
+        return False, "already have a CTS SPEF child"
+    winners = [
+        c
+        for c in mem.all()
+        if c.status == "ok"
+        and c.fidelity == "F1"
+        and c.qor.area_um2 is not None
+        and (c.artifacts or {}).get("mapped_v")
+    ]
+    if not winners:
+        return False, "no F1 mapped netlist for CTS"
+    return True, "CTS + DRT + OpenRCX SPEF — propagated clock, not make finish"
+
+
 def should_pay_f3_spef(
     mem: DesignMemory,
     *,
@@ -637,6 +679,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
     if level == "f3_spef":
         return "F3"
     if level == "f5_drt":
+        return "F5"
+    if level == "f5_cts":
         return "F5"
     if level == "f2_region":
         return "F2"
