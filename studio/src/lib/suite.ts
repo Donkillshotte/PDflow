@@ -240,6 +240,16 @@ export async function getSuiteStatus() {
       href: "/strumenti?tab=run&action=dynamic_ir",
     },
     {
+      id: "dse",
+      label: "DSE fisico-aware",
+      group: "Power",
+      ok:
+        signoffReportPass("flowlab", "dse") || signoffReportPass("learn", "dse"),
+      detail: "E-graph dpath + BOiLS SSK-GP + oracolo IR F4 · Pareto per livello",
+      action: "dse",
+      href: "/strumenti?tab=run&action=dse",
+    },
+    {
       id: "power_chain",
       label: "Catena SPICE",
       group: "Power",

@@ -101,6 +101,8 @@ Le card **Preview** nella chat non funzionano per applicazioni Qt/VNC.
 Guida pixel-level (screenshot Qt reali, anatomia A–G, galleria synth→GDS):
 [learn/reference/gui-atlas.md](./reference/gui-atlas.md).
 
+DSE fisico-aware (e-graph datapath + ABC BOiLS/SSK-GP + oracolo Dynamic IR, non un box piatto): [dse.md](./reference/dse.md) · `./learn/scripts/run_dse.sh`.
+
 Metriche del run tutorial (WNS, `period_min`, area, DRC): [golden-metrics.md](./reference/golden-metrics.md).  
 Matrice signoff 4 pilastri (STA/DRC/LVS/power): [signoff-matrix.md](./reference/signoff-matrix.md) · soglie in [`signoff/golden-gcd.json`](./signoff/golden-gcd.json).  
 Definition of Done per pilastro: script + JSON report + gate golden + test + doc (vedi checklist in signoff-matrix).  

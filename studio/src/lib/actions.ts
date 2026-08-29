@@ -110,10 +110,17 @@ export function isToolMatrixAction(action: string): action is ToolMatrixAction {
   return (TOOL_MATRIX_ACTIONS as readonly string[]).includes(action);
 }
 
+export const DSE_ACTIONS = ["dse"] as const;
+export type DseAction = (typeof DSE_ACTIONS)[number];
+export function isDseAction(action: string): action is DseAction {
+  return (DSE_ACTIONS as readonly string[]).includes(action);
+}
+
 /** All post-finish analysis actions (power + signoff + fase 2 + tool matrix). */
 export const POST_FINISH_ACTIONS = [
   ...POWER_ACTIONS,
   ...SIGNOFF_ACTIONS,
   ...PHASE2_SIGNOFF_ACTIONS,
   ...TOOL_MATRIX_ACTIONS,
+  ...DSE_ACTIONS,
 ] as const;

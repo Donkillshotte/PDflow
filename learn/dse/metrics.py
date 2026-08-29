@@ -1,0 +1,81 @@
+"""Multi-objective QoR. Missing metrics do not dominate. Never a forced scalar."""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, fields
+from typing import Iterable
+
+
+# Lower is better for every field. WNS is stored as -slack so a larger slack wins.
+MINIMIZE = (
+    "area_um2",
+    "n_cells",
+    "wns_cost",  # -WNS_ns; 0 slack → 0
+    "power_w",
+    "congestion",
+    "static_ir_mv",
+    "dynamic_ir_mv",
+    "em_j_a_m2",
+    "ttf_rel_inv",  # 1/ttf_rel so smaller TTF is worse
+)
+
+
+@dataclass
+class QoR:
+    area_um2: float | None = None
+    n_cells: float | None = None
+    wns_cost: float | None = None
+    power_w: float | None = None
+    congestion: float | None = None
+    static_ir_mv: float | None = None
+    dynamic_ir_mv: float | None = None
+    em_j_a_m2: float | None = None
+    ttf_rel_inv: float | None = None
+    fidelity: str = "F0"
+    note: str = ""
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict | None) -> "QoR":
+        d = d or {}
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in d.items() if k in known})
+
+
+def wns_cost_from_slack_ns(slack_ns: float | None) -> float | None:
+    if slack_ns is None:
+        return None
+    return -float(slack_ns)
+
+
+def dominates(a: QoR, b: QoR) -> bool:
+    """a dominates b iff a is ≤ on all comparable axes and < on at least one.
+
+    Axes where either value is None are skipped. Two points that share no
+    comparable axis do not dominate each other.
+    """
+    better = False
+    compared = 0
+    for name in MINIMIZE:
+        va, vb = getattr(a, name), getattr(b, name)
+        if va is None or vb is None:
+            continue
+        compared += 1
+        if float(va) > float(vb) + 1e-15:
+            return False
+        if float(va) < float(vb) - 1e-15:
+            better = True
+    return better and compared > 0
+
+
+def pareto_front(items: Iterable[tuple[str, QoR]]) -> list[str]:
+    """Return ids that are not dominated by any other id."""
+    rows = [(i, q) for i, q in items if q is not None]
+    keep: list[str] = []
+    for i, qi in rows:
+        if any(dominates(qj, qi) for j, qj in rows if j != i):
+            continue
+        keep.append(i)
+    return keep

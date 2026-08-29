@@ -27,6 +27,12 @@ export const MATERIALS: MaterialLink[] = [
     description: "PWL per pin, backward Euler, waveform e heatmap sul GCD.",
   },
   {
+    href: "/materiali/reference/dse.md",
+    title: "DSE fisico-aware",
+    group: "Riferimento",
+    description: "E-graph datapath, BOiLS SSK-GP, Pareto per livello, oracolo Dynamic IR.",
+  },
+  {
     href: "/materiali/reference/dynamic-ir-landscape.md",
     title: "Landscape Dynamic IR",
     group: "Riferimento",

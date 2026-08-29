@@ -100,6 +100,7 @@ const ALLOWED_ACTIONS = new Set([
   "vyges_em_ir",
   "dynamic_ir",
   "tool_matrix",
+  "dse",
 ]);
 
 type Job = {
@@ -260,6 +261,7 @@ function resolveCommand(
     vyges_em_ir: { script: "run_vyges_em_ir.sh", pythonpath: true },
     dynamic_ir: { script: "run_dynamic_ir.sh", pythonpath: true },
     tool_matrix: { script: "run_tool_matrix.sh", pythonpath: true },
+    dse: { script: "run_dse.sh", pythonpath: true },
   };
   if (action in analysisScripts) {
     const spec = analysisScripts[action]!;

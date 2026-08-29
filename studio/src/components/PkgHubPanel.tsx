@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
 import { SignoffMatrixPanel } from "@/components/flowlab/SignoffMatrixPanel";
+import { DsePanel } from "@/components/flowlab/DsePanel";
 import { useToast } from "@/components/ToastProvider";
 
 type HookRow = { id: string; label: string; ok: boolean; detail: string };
@@ -154,6 +155,8 @@ export function PkgHubPanel() {
           )}
         </article>
       </div>
+
+      <DsePanel />
 
       <SignoffMatrixPanel busy={busy} onRun={(a, l) => void runSignoff(a, l)} />
 

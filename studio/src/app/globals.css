@@ -2296,6 +2296,31 @@ button.pipeline-node {
   font-size: 0.8rem;
   color: var(--fl-muted);
 }
+.fl-dynir-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.fl-dynir-table th,
+.fl-dynir-table td {
+  text-align: left;
+  padding: 0.28rem 0.4rem;
+  border-bottom: 1px solid var(--fl-border);
+  font-family: var(--font-mono);
+}
+.fl-dynir-table th {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fl-muted);
+  font-family: inherit;
+}
+.fl-dynir-table tr[data-status="fail"] td {
+  color: #f85149;
+}
+.fl-dynir-table tr[data-status="skip"] td {
+  color: var(--fl-muted);
+}
 .fl-dynir-gauges {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

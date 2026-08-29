@@ -52,6 +52,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   layout_tools: null,
   spice_engines: null,
   tool_matrix: null,
+  dse: null,
   synth: null,
   floorplan: "synth",
   place: "floorplan",

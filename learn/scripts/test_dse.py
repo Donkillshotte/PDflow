@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""DSE contracts: layered knobs, Pareto, e-graph, SSK-GP, attribution, F1 equiv."""
+
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT / "learn") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "learn"))
+
+from dse.abc_space import CATALOG, BOILS_STD_OPS, abc_script_plus, min_kernel_to_seen, subsequence_kernel
+from dse.arch_space import emit_gcd_variant, plan_dpath_extracts
+from dse.attribute import attribute_dynamic_ir, local_scope
+from dse.boils import ei_min, gp_predict, should_pay_f1
+from dse.egraph import gcd_dpath_egraph
+from dse.fingerprint import knobs_fp
+from dse.memory import Candidate, DesignMemory
+from dse.metrics import QoR, dominates, pareto_front, wns_cost_from_slack_ns
+from dse.physical_space import PHYSICAL_CATALOG, rudy_congestion
+
+
+def check(ok: bool, msg: str) -> None:
+    if not ok:
+        raise SystemExit(f"FAIL {msg}")
+    print(f"ok  {msg}")
+
+
+def main() -> int:
+    a = QoR(area_um2=10, dynamic_ir_mv=40)
+    b = QoR(area_um2=12, dynamic_ir_mv=40)
+    c = QoR(area_um2=11, dynamic_ir_mv=30)
+    check(dominates(a, b), "smaller area dominates equal IR")
+    check(not dominates(b, a), "worse area does not dominate")
+    check(not dominates(a, c), "trade-off is not domination")
+    check(not dominates(c, a), "the other side of the trade-off neither")
+    gap = QoR(area_um2=1.0)
+    only_ir = QoR(dynamic_ir_mv=1.0)
+    check(not dominates(gap, only_ir), "disjoint metrics do not dominate")
+    check(wns_cost_from_slack_ns(0.04) == -0.04, "positive slack is a lower wns_cost")
+    front = pareto_front([("a", a), ("b", b), ("c", c)])
+    check(set(front) == {"a", "c"}, f"Pareto is a and c, got {front}")
+
+    tmp = Path(tempfile.mkdtemp(prefix="dse-mem-")) / "m.jsonl"
+    mem = DesignMemory(tmp)
+    parent = mem.add(
+        Candidate(
+            id="p1",
+            design_id="gcd",
+            parent_id=None,
+            level="physical",
+            knobs={"coreUtilization": 35},
+            knobs_fp=knobs_fp("physical", {"coreUtilization": 35}),
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=45.298, fidelity="F4"),
+            cost_s=0.0,
+        )
+    )
+    child = mem.add(
+        Candidate(
+            id="c1",
+            design_id="gcd",
+            parent_id=parent.id,
+            level="logic",
+            knobs={"name": "liberty_default", "abc_ops": []},
+            knobs_fp=knobs_fp("logic", {"name": "liberty_default", "abc_ops": []}),
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=409.1, fidelity="F1"),
+            cost_s=1.0,
+        )
+    )
+    mem2 = DesignMemory(tmp)
+    check(len(mem2) == 2, "memory reloads two rows")
+    check(mem2.get("c1").parent_id == "p1", "parent/child survives reload")
+    check(child.level != parent.level, "child stays on a different level")
+
+    logic_fp = knobs_fp("logic", {"abc_ops": ["rewrite"]})
+    phys_fp = knobs_fp("physical", {"abc_ops": ["rewrite"], "coreUtilization": 35})
+    check(logic_fp != phys_fp, "same ABC ops + util is not one flattened fingerprint")
+    check("rewrite" in BOILS_STD_OPS, "BOiLS standard alphabet includes rewrite")
+    check(len(CATALOG) >= 4, "ABC catalog has ≥4 named sequences")
+    check(subsequence_kernel(["rewrite", "balance"], ["rewrite", "balance"]) > 0.99, "identical seq kernel ≈1")
+    check(
+        min_kernel_to_seen(["refactor"], [["rewrite", "balance"]])
+        < subsequence_kernel(["rewrite", "balance"], ["rewrite", "balance"]),
+        "unseen op is more diverse than a repeat",
+    )
+    plus = abc_script_plus(["rewrite", "rewrite -z", "balance"])
+    check(plus is not None and "rewrite,-z" in plus, f"Yosys + form uses commas for spaces: {plus}")
+
+    eg, roots = gcd_dpath_egraph()
+    check(eg.has_op(roots["sub"], "add"), "e-graph: sub ≡ add(inc(not))")
+    check(eg.has_op(roots["eqz"], "not"), "e-graph: eqz ≡ not(or-reduce)")
+    check(eg.has_op(roots["lt"], "borrow"), "e-graph: lt ≡ unsigned borrow")
+    gop, gcost = eg.extract_greedy(roots["sub"])
+    check(gop.op == "sub", f"greedy extract prefers native sub, got {gop.op}")
+    check(gcost <= 16.0 + 1e-9, "native sub is cheaper than add+inc+not")
+    _eg, _r, extracts, stats = plan_dpath_extracts()
+    check(
+        set(extracts) >= {"sub_twos_complement", "eqz_or_reduce", "lt_borrow"},
+        f"named extracts discovered, got {extracts}",
+    )
+    check(stats["n_eclasses"] >= 3, "e-graph has multiple e-classes")
+    soft = eg.extract_softmax(roots["sub"])
+    check(soft.get("expected") is not None and soft.get("entropy") is not None, "SmoothE-inspired softmax extract")
+
+    rtl = _ROOT / "learn/flowlab/gcd.v"
+    if rtl.is_file():
+        dest = Path(tempfile.mkdtemp(prefix="dse-rtl-")) / "gcd.v"
+        meta = emit_gcd_variant(rtl, "eqz_or_reduce", dest)
+        check(meta["cone"] == "dpath", "extract stays on the dpath cone")
+        check("~(|in_)" in dest.read_text(), "eqz extract rewrote ZeroComparator")
+        check("GcdUnitCtrlRTL" in dest.read_text(), "ctrl module is untouched")
+
+    mu_seen, std_seen = gp_predict(
+        [["rewrite", "balance"], ["balance"]],
+        [200.0, 400.0],
+        [["rewrite", "balance"]],
+    )[0]
+    mu_new, std_new = gp_predict(
+        [["rewrite", "balance"], ["balance"]],
+        [200.0, 400.0],
+        [["refactor", "resub"]],
+    )[0]
+    check(std_new + 1e-9 >= std_seen * 0.5, "SSK-GP: unseen sequence is not overconfident")
+    check(ei_min(250.0, 40.0, 200.0) < ei_min(180.0, 40.0, 200.0), "EI prefers a better mean")
+    pay, _ = should_pay_f1({"mean": 900.0, "std": 5.0, "n": 5}, 200.0)
+    check(not pay, "F0 skip when optimistic draw is still worse than incumbent")
+    pay0, _ = should_pay_f1({"mean": 900.0, "std": 5.0, "n": 1}, 200.0)
+    check(pay0, "n<3 still pays F1")
+
+    check(len(PHYSICAL_CATALOG) >= 3, "physical catalog has several AutoDMP-shaped points")
+    check(rudy_congestion(45, 0.3) > rudy_congestion(30, 0.1), "higher util/density → higher proxy congestion")
+    check(
+        knobs_fp("physical", {"coreUtilization": 35})
+        != knobs_fp("logic", {"coreUtilization": 35}),
+        "level is part of the knob fingerprint",
+    )
+
+    attr = attribute_dynamic_ir(
+        {
+            "hotspot": {
+                "node": "ITermNode_metal1_1_2",
+                "droop_mv": 45.298,
+                "contributors": {"seq_frac": 0.02, "combo_frac": 0.98},
+                "timing": {"path_slack_ns": 0.04},
+            },
+            "activity_model": {
+                "sta": {
+                    "worst_path": {
+                        "startpoint": "dpath.a_reg.out[5]$_DFFE_PP_",
+                        "endpoint": "dpath.a_reg.out[7]$_DFFE_PP_",
+                        "slack_ns": 0.04353,
+                    }
+                }
+            },
+            "em": {"j_absmax_a_m2": 1e11, "dT_mesh_absmax_k": 0.66},
+        }
+    )
+    check(attr["status"] == "READY", "IR attribution READY")
+    check(attr["modules"] == ["dpath"], f"path start/end map to dpath, got {attr['modules']}")
+    check(attr["scope"] == "logic_cone", "attributed scope is logic_cone, not chip restart")
+    check(local_scope(attr)["restart_chip"] is False, "local scope refuses a chip restart")
+    check(local_scope(attr)["focus"] == "dpath", "focus is the attributed module")
+
+    from dse.controller import propose_logic
+
+    knobs = propose_logic(mem2)
+    check(knobs is not None and knobs.get("name"), "controller proposes a logic catalog entry")
+    check("coreUtilization" not in knobs, "logic proposal does not smuggle physical knobs")
+    check("pkg_l" not in knobs, "logic proposal does not smuggle PDN knobs")
+
+    ir_p = _ROOT / "learn" / "sim" / "reports" / "dynamic_ir_flowlab.json"
+    if ir_p.is_file():
+        real = attribute_dynamic_ir(json.loads(ir_p.read_text()))
+        check(real.get("droop_mv") and abs(float(real["droop_mv"]) - 45.298) < 0.02, "GCD IR attr keeps 45.298 gold")
+        check("dpath" in (real.get("modules") or []), "GCD worst path attributes to dpath")
+        print(f"    GCD IR cone {real.get('modules')} droop={real.get('droop_mv'):.3f} mV")
+
+    import shutil
+
+    if shutil.which("yosys") and rtl.is_file():
+        from dse.fidelity import evaluate_f1_abc, liberty_path
+
+        lib = liberty_path()
+        if lib.is_file():
+            tdir = Path(tempfile.mkdtemp(prefix="dse-f1-"))
+            mm = DesignMemory(tdir / "m.jsonl")
+            k0 = {"name": "liberty_default", "abc_args": [], "abc_ops": [], "abc_script": "file"}
+            k1 = {"name": "liberty_fast", "abc_args": ["-fast"], "abc_ops": [], "abc_script": "file"}
+            k2 = {
+                "name": "boils_rewrite_balance",
+                "abc_args": [],
+                "abc_ops": ["rewrite", "balance"],
+                "abc_script": "file",
+            }
+            c0 = evaluate_f1_abc(rtl=rtl, liberty=lib, knobs=k0, mem=mm)
+            c1 = evaluate_f1_abc(rtl=rtl, liberty=lib, knobs=k1, mem=mm)
+            c2 = evaluate_f1_abc(rtl=rtl, liberty=lib, knobs=k2, mem=mm)
+            check(c0.status == "ok" and c1.status == "ok", "F1 default and fast prove equiv")
+            check(c2.status == "ok", f"F1 rewrite+balance proves equiv ({c2.failure})")
+            check(c0.qor.area_um2 and c1.qor.area_um2 and c2.qor.area_um2, "F1 reports mapped area")
+            check(
+                abs(c0.qor.area_um2 - c1.qor.area_um2) > 1.0,
+                f"default vs -fast is a real area move ({c0.qor.area_um2} vs {c1.qor.area_um2})",
+            )
+            dest = tdir / "gcd_eqz.v"
+            emit_gcd_variant(rtl, "eqz_or_reduce", dest)
+            ka = {
+                "name": "eqz_or_reduce",
+                "module": "dpath",
+                "extract": "eqz_or_reduce",
+                "scope": "logic_cone",
+                "abc_script": "file",
+            }
+            ca = evaluate_f1_abc(rtl=dest, liberty=lib, knobs=ka, mem=mm, level="architecture")
+            check(ca.status == "ok", f"architecture eqz extract proves equiv ({ca.failure})")
+            check(ca.level == "architecture", "extract is recorded on the architecture level")
+            print(
+                f"    F1 default {c0.qor.area_um2:.3f} vs fast {c1.qor.area_um2:.3f} vs "
+                f"rewrite+balance {c2.qor.area_um2:.3f} vs eqz-arch {ca.qor.area_um2:.3f} µm²"
+            )
+        else:
+            print("    skip F1 yosys (no liberty)")
+    else:
+        print("    skip F1 yosys")
+
+    print("ALL test_dse PASSED")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

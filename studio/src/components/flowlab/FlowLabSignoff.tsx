@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
 import { DynamicIrHeatmap } from "./DynamicIrHeatmap";
+import { DsePanel } from "./DsePanel";
 
 type SignoffAction = {
   id: string;
@@ -56,6 +57,13 @@ const POWER_ACTIONS: SignoffAction[] = [
     label: "Dynamic IR I(t)",
     hint: "A gold · B SA-AMG · heatmap",
     icon: Zap,
+    long: false,
+  },
+  {
+    id: "dse",
+    label: "DSE fisico-aware",
+    hint: "e-graph dpath · BOiLS · oracolo IR",
+    icon: Layers,
     long: false,
   },
   {
@@ -273,6 +281,7 @@ export function FlowLabSignoff({
             </p>
           </div>
           <DynamicIrHeatmap />
+          <DsePanel />
           <ActionGrid
             actions={POWER_ACTIONS}
             disabled={disabled}
