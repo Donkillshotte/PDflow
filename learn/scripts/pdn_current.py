@@ -98,6 +98,36 @@ def interpolate_ccs_current(table: dict, x: float, y: float) -> float:
     return _interp1(xs, col, x)
 
 
+def events_use_ccs(events, ccs_tables: list | None) -> bool:
+    """True when the TRAN loop must evaluate Liberty I(slew, Vout), not triangle."""
+    if not ccs_tables:
+        return False
+    return any(ev.get("slew_s") is not None for ev in events)
+
+
+def current_source_for_event(
+    ev: dict, t: float, *, ccs_tables: list[dict] | None = None, vout: float | None = None
+) -> float:
+    """I_switch(t) above leak.
+
+    CCS only when tables exist and the event carries slew. Vout is lagged
+    (caller passes V^n) or a characterization value on the event. Outside
+    the event window there is no switching CCS current. This is *not* a
+    cell-pin Vout trajectory on Nangate — that PDK has no CCS tables.
+    """
+    tables = ccs_tables or []
+    slew = ev.get("slew_s")
+    v = ev.get("vout") if vout is None else vout
+    if tables and slew is not None and v is not None:
+        half = 0.5 * float(ev.get("dur_s") or 0.0)
+        if half > 0.0 and abs(t - float(ev["t50_s"])) >= half:
+            return 0.0
+        direction = ev.get("direction") or "fall"
+        tab = next((tb for tb in tables if tb["direction"] == direction), tables[0])
+        return interpolate_ccs_current(tab, float(slew), float(v))
+    return triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
+
+
 def probe_liberty_current_model(path: Path | None) -> dict:
     """What current tables exist. Does not synthesize CCS from NLDM."""
     if path is None or not Path(path).is_file():
@@ -141,18 +171,6 @@ def probe_liberty_current_model(path: Path | None) -> dict:
         "n_ccs_tables": len(tables),
         "note": note,
     }
-
-
-def current_source_for_event(ev: dict, t: float, *, ccs_tables: list[dict] | None = None) -> float:
-    """I_switch(t) above leak. CCS only when a table and (slew, vout) are given."""
-    tables = ccs_tables or []
-    slew = ev.get("slew_s")
-    vout = ev.get("vout")
-    if tables and slew is not None and vout is not None:
-        direction = ev.get("direction") or "fall"
-        tab = next((tb for tb in tables if tb["direction"] == direction), tables[0])
-        return interpolate_ccs_current(tab, float(slew), float(vout))
-    return triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
 
 
 SYNTHETIC_CCS_LIB = """

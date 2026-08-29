@@ -95,6 +95,8 @@ DpnHandle* dpn_setup(int kind, int n, int nnz, const int* rowptr, const int* col
     h->A = dpn::from_csr(n, rowptr, col, val);
     if (kind == 1) {
       h->solver = dpn::make_amg(h->A);
+    } else if (kind == 2) {
+      h->solver = dpn::make_ras(h->A);
     } else {
       h->solver = dpn::make_direct(h->A);
     }

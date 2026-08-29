@@ -181,6 +181,17 @@ int main() {
     check(err < 1e-6, "poisson1d n=400 AMG vs LU");
     std::printf("    levels=%d max|A-B|=%.3e relres=%.3e setup=%.4fs\n", amg->n_levels(), err,
                 amg->last_relres(), amg->setup_s());
+    auto ras = dpn::make_ras(A);
+    std::vector<double> xras(400);
+    ras->solve(b.data(), xras.data(), nullptr);
+    double errd = 0.0;
+    for (int i = 0; i < 400; ++i) {
+      errd = std::max(errd, std::abs(xlu[i] - xras[i]));
+    }
+    check(ras->n_levels() >= 2, "poisson1d RAS multi-domain");
+    check(errd < 1e-6, "poisson1d n=400 RAS vs LU");
+    std::printf("    RAS ndom=%d max|A-D|=%.3e relres=%.3e\n", ras->n_levels(), errd,
+                ras->last_relres());
   }
   {
     Csr A = poisson_2d(40);
@@ -197,6 +208,31 @@ int main() {
     check(err < 1e-6, "poisson2d 40x40 AMG vs LU");
     std::printf("    levels=%d max|A-B|=%.3e lu_setup=%.4fs amg_setup=%.4fs\n", amg->n_levels(), err,
                 lu->setup_s(), amg->setup_s());
+    auto ras = dpn::make_ras(A);
+    std::vector<double> xras(n);
+    ras->solve(b.data(), xras.data(), nullptr);
+    double errd = 0.0;
+    for (int i = 0; i < n; ++i) {
+      errd = std::max(errd, std::abs(xlu[i] - xras[i]));
+    }
+    check(ras->n_levels() >= 2, "poisson2d RAS multi-domain");
+    check(errd < 1e-6, "poisson2d 40x40 RAS vs LU");
+    std::printf("    RAS ndom=%d max|A-D|=%.3e relres=%.3e setup=%.4fs\n", ras->n_levels(), errd,
+                ras->last_relres(), ras->setup_s());
+    DpnHandle* hd = dpn_setup(2, n, A.nnz(), A.rowptr.data(), A.col.data(), A.val.data());
+    check(hd != nullptr, "c_api RAS setup 40x40");
+    std::vector<double> xapi(static_cast<size_t>(n));
+    double rel = 0.0;
+    check(dpn_solve(hd, b.data(), xapi.data(), nullptr, &rel) == 0, "c_api RAS solve");
+    double erra = 0.0;
+    for (int i = 0; i < n; ++i) {
+      erra = std::max(erra, std::abs(xlu[i] - xapi[i]));
+    }
+    check(erra < 1e-6, "c_api RAS vs LU 40x40");
+    const int ndom_api = dpn_n_levels(hd);
+    check(ndom_api >= 2, "c_api RAS ndom");
+    dpn_free(hd);
+    std::printf("    c_api RAS max|A-D|=%.3e relres=%.3e ndom=%d\n", erra, rel, ndom_api);
   }
   {
     // 1-node implicit Euler: (g + c/dt) v = g*vdd - i + (c/dt) vprev

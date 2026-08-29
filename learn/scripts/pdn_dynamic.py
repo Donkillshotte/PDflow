@@ -8,6 +8,7 @@ Architecture (what this file actually does — not a product claim):
   Solver A: direct backward-Euler + sparse LU (golden)
   Solver B: SA-AMG + CG on the same SPD companion operator
   Solver C: rational Krylov MOR — RC on δv, or descriptor RLC on x=[v; i_L]
+  Solver D: restricted additive Schwarz (graph partition, local LU, GMRES)
   Vmin(t) + V(x,y) heatmap at t_worst
 
 Solver A is the golden oracle. Solver C with L>0 reduces Eẋ+Ax=u matching
@@ -47,9 +48,16 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 from pdn_activity import load_insts, node_xy, plan_events, probe_activity_trace  # noqa: E402
-from pdn_current import probe_liberty_current_model, triangle_above_leak  # noqa: E402
+from pdn_current import (  # noqa: E402
+    current_source_for_event,
+    events_use_ccs,
+    parse_ccs_output_current,
+    probe_liberty_current_model,
+    triangle_above_leak,
+)
 from pdn_solvers import (  # noqa: E402
     DirectLU,
+    RASDD,
     RationalKrylov,
     SAAMG,
     mor_starts,
@@ -144,8 +152,18 @@ def _map_worst_node(result: dict, order) -> dict:
     return result
 
 
-def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adaptive: bool = False):
+def timestep_be(
+    sys: dict,
+    events,
+    solver,
+    vdd: float,
+    order,
+    t_end: float,
+    adaptive: bool = False,
+    ccs_tables: list | None = None,
+):
     native = None
+    use_ccs = events_use_ccs(events, ccs_tables)
     if adaptive:
         native = native_adaptive(sys, events, vdd, t_end)
         if native is not None:
@@ -159,7 +177,7 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adap
             file=__import__("sys").stderr,
         )
         adaptive = False
-    else:
+    elif not use_ccs:
         native = native_timestep(solver, sys, events, vdd, t_end)
         if native is not None:
             native["pkg_r"] = sys["pkg_r"]
@@ -189,7 +207,9 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adap
         t = s * dt
         I_draw = leak.copy()
         for ev in events:
-            I_draw[ev["idx"]] += triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
+            I_draw[ev["idx"]] += current_source_for_event(
+                ev, t, ccs_tables=ccs_tables, vout=float(V[ev["idx"]])
+            )
         rhs = (C / dt) * V - I_draw
         for k, b in enumerate(bump):
             vs = float(bump_v[k]) if k < bump_v.size else vdd
@@ -215,6 +235,10 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adap
             i_L_worst = i_L.copy()
             i_L_absmax = float(np.max(np.abs(i_L))) if i_L.size else 0.0
 
+    loop = "python_hist" if bump else "python"
+    if use_ccs:
+        loop = loop.replace("python", "python_ccs")
+
     return {
         "worst_voltage": worst_v,
         "worst_droop": vdd - worst_v,
@@ -239,7 +263,8 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adap
         "i_L_worst": i_L_worst,
         "i_L_absmax": i_L_absmax,
         "backend": getattr(solver, "backend", "python"),
-        "timestep_loop": "python_hist" if bump else "python",
+        "timestep_loop": loop,
+        "ccs_in_loop": bool(use_ccs),
     }
 
 
@@ -298,6 +323,7 @@ def platform_block(
     adaptive: dict | None = None,
     em: dict | None = None,
     n4: dict | None = None,
+    ras: dict | None = None,
 ) -> dict:
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
     if mor and mor.get("ok"):
@@ -316,11 +342,12 @@ def platform_block(
     else:
         c_status = "GAP"
         c_via = "rational Krylov reduced ODE"
+    d_status = "READY" if ras and ras.get("ok") else ("PARTIAL" if ras else "GAP")
     fast = "READY" if b_status == "READY" else "PARTIAL"
     accurate = "PARTIAL" if adaptive and adaptive.get("ok") else "GAP"
     return {
         "name": "hierarchical multi-fidelity power-integrity engine",
-        "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + adaptive BE) + OpenROAD + triangle I(t)",
+        "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + D RAS Schwarz + adaptive BE) + OpenROAD + triangle/CCS I(t)",
         "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
         "do_not_implement_this_slice": [
             "gate-accurate VCD/FSDB pin times on this Nangate netlist",
@@ -366,6 +393,13 @@ def platform_block(
                 "vs_A": mor,
                 "scenarios": scenarios,
             },
+            "D_ras_schwarz": {
+                "status": d_status,
+                "role": "domain decomposition on the BE operator",
+                "via": "restricted additive Schwarz: graph-grown subdomains, overlapping local SparseLU, RAS restriction, GMRES",
+                "not": "index stripes, CG (RAS is not SPD), AMG",
+                "vs_A": ras,
+            },
         },
         "network_levels": {
             "N1_R": {
@@ -406,7 +440,7 @@ def platform_block(
             "ACCURATE": {
                 "status": accurate,
                 "intended": "VCD/FSDB + CCS I(t) + AMG + adaptive timestep",
-                "this_slice": "adaptive BE with i_L history; CCS/VCD still GAP",
+                "this_slice": "adaptive BE with i_L history; CCS lagged I(slew,V^n) in Python TRAN when tables+slew; Nangate NLDM still GAP",
                 "adaptive": adaptive,
             },
             "SIGNOFF": {
@@ -857,6 +891,7 @@ def main() -> int:
     ap.add_argument("--no-amg", action="store_true", help="skip Solver B SA-AMG")
     ap.add_argument("--no-scenarios", action="store_true", help="skip extra I(t) modes")
     ap.add_argument("--no-mor", action="store_true", help="skip Solver C rational Krylov")
+    ap.add_argument("--no-ras", action="store_true", help="skip Solver D restricted additive Schwarz")
     ap.add_argument("--adaptive", action="store_true", help="also run adaptive-Δt BE (LU)")
     ap.add_argument("--liberty", type=Path, default=None, help="Liberty file to probe for CCS/ECSM (never synthesized)")
     ap.add_argument("--vcd", type=Path, default=None, help="VCD/SAIF/FSDB to probe (never silently mapped to ITerms)")
@@ -866,6 +901,9 @@ def main() -> int:
 
     current_model = probe_liberty_current_model(args.liberty)
     activity_model = probe_activity_trace(args.vcd)
+    ccs_tables: list = []
+    if args.liberty and Path(args.liberty).is_file() and current_model.get("n_ccs_tables"):
+        ccs_tables = parse_ccs_output_current(Path(args.liberty).read_text(errors="replace")[:2_000_000])
 
     resistors, currents, voltages = parse_spice(args.spice)
     order, idx, G = build_system(resistors, currents, voltages)
@@ -888,6 +926,7 @@ def main() -> int:
         dur_s=dur_s,
         t50_s=t50_s,
     )
+    current_model["ccs_in_loop"] = events_use_ccs(events, ccs_tables)
 
     static = solve_static(G, idx, order, currents, voltages, vdd)
     Vstat = static.pop("V")
@@ -904,13 +943,13 @@ def main() -> int:
         dt=dt,
     )
     solver_a = DirectLU(sys_be["A"])
-    dyn = timestep_be(sys_be, events, solver_a, vdd, order, t_end)
+    dyn = timestep_be(sys_be, events, solver_a, vdd, order, t_end, ccs_tables=ccs_tables)
 
     amg_meta = None
     solver_b = None
     if not args.no_amg:
         solver_b = SAAMG(sys_be["A"])
-        dyn_b = timestep_be(sys_be, events, solver_b, vdd, order, t_end)
+        dyn_b = timestep_be(sys_be, events, solver_b, vdd, order, t_end, ccs_tables=ccs_tables)
         err_mv = abs(dyn["worst_droop"] - dyn_b["worst_droop"]) * 1e3
         amg_meta = {
             "ok": err_mv < 5.0,
@@ -930,6 +969,26 @@ def main() -> int:
         }
         dyn_b.pop("V_worst", None)
         dyn["amg"] = {k: v for k, v in dyn_b.items() if not k.startswith("wave_") and k != "V_worst"}
+
+    ras_meta = None
+    if not args.no_ras:
+        solver_d = RASDD(sys_be["A"])
+        dyn_d = timestep_be(sys_be, events, solver_d, vdd, order, t_end, ccs_tables=ccs_tables)
+        err_d = abs(dyn["worst_droop"] - dyn_d["worst_droop"]) * 1e3
+        ras_meta = {
+            "ok": err_d < 5.0,
+            "worst_droop_mv": dyn_d["worst_droop"] * 1e3,
+            "worst_time_ns": dyn_d["worst_time_s"] * 1e9,
+            "abs_err_vs_A_mv": err_d,
+            "rel_res_max": dyn_d["rel_res_max"],
+            "n_levels": dyn_d["n_levels"],
+            "setup_s": solver_d.setup_s,
+            "step_s": dyn_d["solver_step_s"],
+            "backend": getattr(solver_d, "backend", "python"),
+            "timestep_loop": dyn_d.get("timestep_loop"),
+            "via": "restricted additive Schwarz + GMRES on A=G+C/Δt+g_eq (graph partition, not stripes)",
+        }
+        dyn["ras"] = {k: v for k, v in dyn_d.items() if not k.startswith("wave_") and k != "V_worst"}
 
     mor_meta = None
     mor = None
@@ -1197,9 +1256,13 @@ def main() -> int:
         },
     }
     i_via = (
-        f"CCS interpolator {current_model['n_ccs_tables']} tables — mesh still triangle (no cell Vout(t))"
-        if current_model.get("n_ccs_tables")
-        else f"per-ITerm triangle PWL ({current_model['kind']})"
+        f"CCS interpolator {current_model['n_ccs_tables']} tables in TRAN (lagged I(slew,V^n)) — not native triangle"
+        if events_use_ccs(events, ccs_tables)
+        else (
+            f"CCS interpolator {current_model['n_ccs_tables']} tables — mesh still triangle (no cell Vout(t)/slew on events)"
+            if current_model.get("n_ccs_tables")
+            else f"per-ITerm triangle PWL ({current_model['kind']})"
+        )
     )
     pipeline = [
         {"id": 1, "name": "PDN extraction", "status": "READY", "via": "OpenROAD write_pg_spice"},
@@ -1220,7 +1283,7 @@ def main() -> int:
             "id": 5,
             "name": "Transient solver",
             "status": "READY",
-            "via": "A LU gold + B SA-AMG + C descriptor RLC Krylov (or RC MOR if L=0)",
+            "via": "A LU gold + B SA-AMG + C descriptor RLC Krylov + D RAS Schwarz",
         },
         {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + windows + delay scaling + branch I EM screen; J/TTF = GAP"},
     ]
@@ -1236,6 +1299,7 @@ def main() -> int:
         adaptive=adaptive_meta,
         em=em,
         n4=n4_meta,
+        ras=ras_meta,
     )
     amg_note = (
         f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
@@ -1245,6 +1309,11 @@ def main() -> int:
     mor_note = (
         f" · MOR m={mor_meta['m']} {mor_meta['worst_droop_mv']:.3f} mV (|A−C| {mor_meta['abs_err_vs_A_mv']:.3f} mV)"
         if mor_meta
+        else ""
+    )
+    ras_note = (
+        f" · RAS {ras_meta['worst_droop_mv']:.3f} mV (|A−D| {ras_meta['abs_err_vs_A_mv']:.3f} mV, ndom={ras_meta['n_levels']})"
+        if ras_meta
         else ""
     )
     n4_note = (
@@ -1262,7 +1331,8 @@ def main() -> int:
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
             "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
-            "Native BE/MOR in libdpn; Python orchestrates extraction and I(t)",
+            "Solver D: restricted additive Schwarz on the BE operator (graph partition, local LU, GMRES)",
+            "Native BE/MOR/RAS in libdpn; Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
             "V(x,y) heatmap at t_worst + delay scaling at worst tap",
         ],
         "not": [
@@ -1276,7 +1346,7 @@ def main() -> int:
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
-            "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov on write_pg_spice; triangle I(t) on NLDM",
+            "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov + D RAS on write_pg_spice; triangle I(t) on NLDM",
             "ngspice": "unit-test gold for BE on 1-node RC and 1-node series R+L",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
@@ -1293,10 +1363,10 @@ def main() -> int:
             },
             "B_pdn_solve": {
                 "status": "READY",
-                "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor",
+                "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor + D_ras_schwarz",
                 "replaces": "HSpice TRAN on Calibre DSPF",
-                "via": "Solver A LU golden + B SA-AMG + C reduced ODE on write_pg_spice",
-                "gold": "ngspice 1-node RC + series R+L companion; A vs B vs C (descriptor RLC) on the chip mesh",
+                "via": "Solver A LU golden + B SA-AMG + C reduced ODE + D RAS Schwarz on write_pg_spice",
+                "gold": "ngspice 1-node RC + series R+L companion; A vs B vs C vs D on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
@@ -1336,6 +1406,7 @@ def main() -> int:
         "em": em,
         "solver_b": amg_meta,
         "solver_c": mor_meta,
+        "solver_d": ras_meta,
         "n4": n4_meta,
         "adaptive": adaptive_meta,
         "scenarios": scenarios,
@@ -1348,6 +1419,7 @@ def main() -> int:
             f"t50 span {((max(t50s)-min(t50s))*1e9) if t50s else 0:.2f} ns"
             f"{amg_note}"
             f"{mor_note}"
+            f"{ras_note}"
             f"{n4_note}"
             f" · delay +{timing['degradation_ps']:.2f} ps"
         ),

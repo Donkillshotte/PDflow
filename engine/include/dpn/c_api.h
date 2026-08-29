@@ -9,7 +9,7 @@ extern "C" {
 typedef struct DpnHandle DpnHandle;
 typedef struct DpnMor DpnMor;
 
-/* kind: 0 = direct SparseLU, 1 = SA-AMG + CG.
+/* kind: 0 = direct SparseLU, 1 = SA-AMG + CG, 2 = restricted additive Schwarz.
    rowptr has n+1 entries, col/val have nnz. Data is copied. */
 DpnHandle* dpn_setup(int kind, int n, int nnz, const int* rowptr, const int* col,
                      const double* val);

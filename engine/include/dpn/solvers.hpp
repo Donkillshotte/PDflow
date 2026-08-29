@@ -26,6 +26,7 @@ class Solver {
 
 std::unique_ptr<Solver> make_direct(const Csr& A);
 std::unique_ptr<Solver> make_amg(const Csr& A);
+std::unique_ptr<Solver> make_ras(const Csr& A);
 
 double residual_rel(const Csr& A, const double* x, const double* b);
 

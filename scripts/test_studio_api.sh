@@ -269,6 +269,7 @@ assert r["emsim_split"]["B_pdn_solve"]["status"] == "READY"
 assert r["platform"]["solvers"]["A_direct_be"]["status"] == "READY"
 assert r["platform"]["solvers"]["B_sa_amg"]["status"] == "READY"
 assert r["platform"]["solvers"]["C_rational_krylov_mor"]["status"] in ("READY", "PARTIAL")
+assert r["platform"]["solvers"].get("D_ras_schwarz", {}).get("status") in (None, "READY", "PARTIAL", "GAP")
 assert r["platform"]["product_tiers"]["FAST"]["status"] == "READY"
 assert r["platform"]["network_levels"]["N2_RC"]["status"] == "READY"
 assert r["solver_b"]["ok"] is True
@@ -276,6 +277,8 @@ assert r["solver_b"]["abs_err_vs_A_mv"] < 5.0
 assert r["solver_b"].get("backend") in (None, "native", "python")
 c = r.get("solver_c")
 assert c is None or c.get("abs_err_vs_A_mv", 0) < 5.0
+d = r.get("solver_d")
+assert d is None or d.get("abs_err_vs_A_mv", 0) < 5.0
 assert "windows" in r["sim_levels"]["L3_windowed"]
 g = r.get("ngspice_gold")
 assert g is None or g.get("ok") is True, g

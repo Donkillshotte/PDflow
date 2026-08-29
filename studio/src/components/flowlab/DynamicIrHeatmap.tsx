@@ -9,6 +9,14 @@ type PipelineStep = { id: number; name: string; status: string; via: string };
 type StatusChip = { status?: string };
 type Scenario = { mode?: string; droop_mv?: number; t_ns?: number; primary?: boolean };
 type Timing = { status?: string; degradation_ps?: number; scale?: number };
+type Em = { status?: string; i_absmax_a?: number };
+type Ras = {
+  ok?: boolean;
+  worst_droop_mv?: number;
+  abs_err_vs_A_mv?: number;
+  n_levels?: number;
+  backend?: string;
+};
 type Amg = {
   ok?: boolean;
   worst_droop_mv?: number;
@@ -61,6 +69,7 @@ type DynReport = {
       A_direct_be?: StatusChip;
       B_sa_amg?: StatusChip;
       C_rational_krylov_mor?: StatusChip;
+      D_ras_schwarz?: StatusChip;
     };
     network_levels?: {
       N1_R?: StatusChip;
@@ -78,6 +87,7 @@ type DynReport = {
   };
   solver_b?: Amg;
   solver_c?: Mor;
+  solver_d?: Ras;
   n4?: N4;
   scenarios?: Scenario[];
   timing_impact?: Timing;
@@ -155,6 +165,7 @@ export function DynamicIrHeatmap({
   const tiers = plat?.product_tiers;
   const amg = report?.solver_b;
   const mor = report?.solver_c;
+  const ras = report?.solver_d;
   const n4 = report?.n4;
   const timing = report?.timing_impact ?? plat?.timing_impact;
   const scenarios = report?.scenarios ?? [];
@@ -166,7 +177,7 @@ export function DynamicIrHeatmap({
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
           Piattaforma ibrida: OpenROAD frontend · Solver A golden · Solver B
-          SA-AMG · C = Krylov MOR · vyges = bootstrap ·{" "}
+          SA-AMG · C = Krylov MOR · D = RAS Schwarz · vyges = bootstrap ·{" "}
           <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>
           {" · "}
           <a href="/materiali/reference/dynamic-ir-landscape.md">landscape</a>
@@ -245,6 +256,18 @@ export function DynamicIrHeatmap({
                 </dd>
               </div>
             )}
+            {ras && (
+              <div>
+                <dt>|A−D| RAS</dt>
+                <dd>
+                  {(ras.abs_err_vs_A_mv ?? 0) < 0.001
+                    ? "< 1 µV"
+                    : `${(ras.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
+                  {ras.n_levels != null ? ` · ndom=${ras.n_levels}` : ""}
+                  {ras.backend ? ` · ${ras.backend}` : ""}
+                </dd>
+              </div>
+            )}
             {n4 && (
               <div>
                 <dt>|N3−N4| VRM</dt>
@@ -276,7 +299,7 @@ export function DynamicIrHeatmap({
           </dl>
           {solvers && (
             <ChipList
-              label="Solver (A gold · B workhorse · C Krylov MOR)"
+              label="Solver (A gold · B workhorse · C Krylov MOR · D RAS)"
               items={[
                 {
                   key: "A",
@@ -291,7 +314,12 @@ export function DynamicIrHeatmap({
                 {
                   key: "C",
                   status: solvers.C_rational_krylov_mor?.status,
-                  text: "C Krylov MOR",
+                  text: "C Krylov RLC",
+                },
+                {
+                  key: "D",
+                  status: solvers.D_ras_schwarz?.status,
+                  text: "D RAS Schwarz",
                 },
               ]}
             />

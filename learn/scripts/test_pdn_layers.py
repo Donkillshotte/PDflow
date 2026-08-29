@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import math
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -79,6 +80,10 @@ library (nldm_only) {
         abs(current_source_for_event(ev_ccs, 0.1, ccs_tables=tables) - 1e-3) < 1e-15,
         "event with slew+vout uses CCS table",
     )
+    check(
+        current_source_for_event(ev_ccs, 0.0, ccs_tables=tables) == 0.0,
+        "CCS current is zero outside the event window",
+    )
 
     act = probe_activity_trace(None)
     check(act["status"] == "GAP", "missing VCD is GAP")
@@ -149,6 +154,99 @@ library (nldm_only) {
     )
     check(n4.get("ok") is True, f"N4 compact vs ngspice ({n4})")
     print(f"    N4 compact |BE−ng|={n4.get('abs_err_mv'):.4f} mV droop={n4.get('be_droop_mv'):.3f} mV")
+
+    from pdn_solvers import RASDD
+
+    n_poi = 200
+    A_poi = sparse.diags(
+        [-np.ones(n_poi - 1), 2 * np.ones(n_poi), -np.ones(n_poi - 1)],
+        [-1, 0, 1],
+        shape=(n_poi, n_poi),
+        format="csr",
+    )
+    b_poi = np.ones(n_poi, dtype=np.float64)
+    xa = DirectLU(A_poi).solve(b_poi)
+    ras = RASDD(A_poi)
+    xd = ras.solve(b_poi)
+    err_ras = float(np.max(np.abs(xa - xd)))
+    check(ras.n_levels >= 2, f"RAS multi-domain n=200 ndom={ras.n_levels}")
+    check(err_ras < 1e-6, f"RAS vs LU poisson n=200 max|A-D|={err_ras:.3e}")
+    print(f"    RAS poisson ndom={ras.n_levels} backend={ras.backend} max|A-D|={err_ras:.3e}")
+
+    # Lagged CCS I(slew, V^n) on 1-node RC vs ngspice implicit B-source.
+    from shutil import which
+    from pdn_current import events_use_ccs
+
+    vdd, r, c, dt, t_end = 1.1, 2.0, 50e-12, 10e-12, 0.8e-9
+    t50, dur, slew = 0.2e-9, 0.2e-9, 0.01
+    ev_iv = {
+        "idx": 0,
+        "t50_s": t50,
+        "dur_s": dur,
+        "i_pulse": 0.0,
+        "i_leak": 0.0,
+        "slew_s": slew,
+        "direction": "fall",
+        "x": 0.0,
+        "seq": True,
+    }
+    check(events_use_ccs([ev_iv], tables), "slew+tables ⇒ CCS in the TRAN loop")
+    G0 = sparse.csr_matrix((1, 1), dtype=np.float64)
+    sys_ccs = assemble_be(
+        G0, {"n": 0}, {"n": vdd}, vdd, [ev_iv], pkg_r=r, pkg_l=0.0, c_decap=c, dt=dt
+    )
+    ccs_run = timestep_be(sys_ccs, [ev_iv], DirectLU(sys_ccs["A"]), vdd, ["n"], t_end, ccs_tables=tables)
+    check(ccs_run.get("ccs_in_loop") is True, "timestep_be reports ccs_in_loop")
+    check(str(ccs_run.get("timestep_loop", "")).startswith("python_ccs"), "CCS skips native triangle loop")
+    print(
+        f"    CCS lagged BE droop={ccs_run['worst_droop']*1e3:.4f} mV loop={ccs_run['timestep_loop']}"
+    )
+
+    if which("ngspice"):
+        t0w = t50 - 0.5 * dur
+        t1w = t50 + 0.5 * dur
+        tmp = Path(tempfile.mkdtemp(prefix="ccs-iv-"))
+        sp = tmp / "ccs.sp"
+        dat = tmp / "ccs.dat"
+        # slew=0.01 table is I = 1e-3 + V/550 (linear in Vout).
+        sp.write_text(
+            f"""* lagged CCS I(V) gold — B-source is implicit; BE uses V^n
+Vpad pad 0 DC {vdd}
+R1 pad n {r}
+C1 n 0 {c}
+B1 n 0 I = {{ (time > {t0w:.12e}) && (time < {t1w:.12e}) ? (1.0e-3 + v(n)/550.0) : 0 }}
+.control
+option method=gear maxord=1
+set filetype=ascii
+tran {dt:.6e} {t_end:.6e}
+wrdata {dat} v(n)
+quit
+.endc
+.end
+"""
+        )
+        subprocess.run(["ngspice", "-b", str(sp)], capture_output=True, text=True, timeout=30)
+        vmin_ng = None
+        for extra in [dat, *sorted(tmp.glob("ccs.dat*"))]:
+            if not extra.is_file():
+                continue
+            xs = []
+            for line in extra.read_text().splitlines():
+                parts = line.split()
+                if len(parts) >= 2:
+                    try:
+                        xs.append(float(parts[1]))
+                    except ValueError:
+                        continue
+            if xs:
+                vmin_ng = min(xs)
+                break
+        check(vmin_ng is not None, "ngspice CCS wrdata")
+        err_ccs = abs(ccs_run["worst_voltage"] - vmin_ng) * 1e3
+        check(err_ccs < 5.0, f"CCS lagged BE vs ngspice B-source |err|={err_ccs:.4f} mV")
+        print(f"    CCS |BE−ng|={err_ccs:.4f} mV ng_vmin={vmin_ng:.6f} be_vmin={ccs_run['worst_voltage']:.6f}")
+    else:
+        print("    skip CCS ngspice (no ngspice)")
 
     print("ALL test_pdn_layers PASSED")
     return 0

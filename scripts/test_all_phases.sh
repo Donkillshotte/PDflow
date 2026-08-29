@@ -151,6 +151,8 @@ assert r["emsim_split"]["B_pdn_solve"]["status"]=="READY"
 assert r["platform"]["solvers"]["A_direct_be"]["status"]=="READY"
 assert r["platform"]["solvers"]["B_sa_amg"]["status"]=="READY"
 assert r["solver_b"]["ok"] is True
+d=r.get("solver_d")
+assert d is None or d.get("ok") is True
 assert (r.get("ngspice_gold") or {}).get("ok") is not False or r.get("ngspice_gold") is None
 print(r["summary"][:120])
 PY

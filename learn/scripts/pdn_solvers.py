@@ -9,6 +9,10 @@ g_eq=1/(R+L/Δt) with inductor current i_L on the RHS (not memoryless L/Δt).
 Solver C — rational Krylov MOR. RC: reduced BE on δv. RLC: descriptor
 Eẋ + A x = u on x=[v; i_L] matching the companion (A unsymmetric).
 
+Solver D — restricted additive Schwarz on the BE operator. Graph-grown
+subdomains, overlapping local SparseLU, RAS restriction, GMRES
+(not CG: RAS is not SPD). ndom=1 falls back to one LU of A.
+
 Not Ginkgo, not pyamg, not a fork of ESPSim. Classic Vaněk–Mandel–Brezina
 SA plus damped Jacobi, coarse LU when n is small.
 """
@@ -269,7 +273,8 @@ class NativeSolver:
         self.setup_s = float(lib.dpn_setup_s(h))
         self.n_levels = int(lib.dpn_n_levels(h))
         raw = lib.dpn_name(h)
-        self.name = raw.decode() if raw else ("B_sa_amg" if kind else "A_direct_be")
+        fallback = {0: "A_direct_be", 1: "B_sa_amg", 2: "D_ras_schwarz"}.get(kind, "solver")
+        self.name = raw.decode() if raw else fallback
         self.last_iters = 0
         self.backend = "native"
 
@@ -492,11 +497,145 @@ def SAAMG(A, coarse_n: int = COARSE_N):
     return PySAAMG(A, coarse_n=coarse_n)
 
 
+def _ras_ndom(n: int) -> int:
+    if n < 8:
+        return 1
+    if n <= 64:
+        return 2
+    return min(8, max(2, n // 32))
+
+
+def _ras_partition(A, ndom: int) -> np.ndarray:
+    """Graph-growing owners. Not index stripes — follows the stencil."""
+    A = A.tocsr()
+    n = int(A.shape[0])
+    owner = np.full(n, -1, dtype=np.int32)
+    unassigned = n
+    seed = 0
+    indptr, indices = A.indptr, A.indices
+    for s in range(ndom):
+        if unassigned <= 0:
+            break
+        while seed < n and owner[seed] >= 0:
+            seed += 1
+        if seed >= n:
+            break
+        want = max(1, unassigned // (ndom - s))
+        q = [int(seed)]
+        owner[seed] = s
+        unassigned -= 1
+        taken = 1
+        qi = 0
+        while qi < len(q) and taken < want:
+            i = q[qi]
+            qi += 1
+            for k in range(int(indptr[i]), int(indptr[i + 1])):
+                j = int(indices[k])
+                if owner[j] < 0:
+                    owner[j] = s
+                    unassigned -= 1
+                    taken += 1
+                    q.append(j)
+                    if taken >= want:
+                        break
+    owner[owner < 0] = max(ndom - 1, 0)
+    return owner
+
+
+class PyRASDD:
+    """Restricted additive Schwarz: overlapping local LU, RAS restriction, GMRES.
+
+    Not AMG, not a stripe split. Subdomains grow on the sparsity graph.
+    RAS is not SPD, so the outer iteration is GMRES (not CG).
+    """
+
+    name = "D_ras_schwarz"
+
+    def __init__(self, A, hops: int = 2):
+        t0 = time.perf_counter()
+        self.A = A.tocsr().astype(np.float64)
+        self.n = int(self.A.shape[0])
+        self.ndom = _ras_ndom(self.n)
+        self.n_levels = self.ndom
+        self.backend = "python"
+        self.last_iters = 0
+        owner = _ras_partition(self.A, self.ndom)
+        self.doms = []
+        indptr, indices, data = self.A.indptr, self.A.indices, self.A.data
+        for s in range(self.ndom):
+            interior = np.flatnonzero(owner == s)
+            in_set = np.zeros(self.n, dtype=bool)
+            in_set[interior] = True
+            for _ in range(hops):
+                nxt = in_set.copy()
+                for i in np.flatnonzero(in_set):
+                    sl, sr = int(indptr[i]), int(indptr[i + 1])
+                    nxt[indices[sl:sr]] = True
+                in_set = nxt
+            all_idx = np.flatnonzero(in_set).astype(np.int32)
+            if all_idx.size == 0:
+                continue
+            loc = np.full(self.n, -1, dtype=np.int32)
+            loc[all_idx] = np.arange(all_idx.size, dtype=np.int32)
+            ti, tj, tv = [], [], []
+            for gi in all_idx:
+                i = int(loc[gi])
+                sl, sr = int(indptr[gi]), int(indptr[gi + 1])
+                for k in range(sl, sr):
+                    gj = int(indices[k])
+                    j = int(loc[gj])
+                    if j < 0:
+                        continue
+                    ti.append(i)
+                    tj.append(j)
+                    tv.append(float(data[k]))
+            locA = sparse.csr_matrix((tv, (ti, tj)), shape=(all_idx.size, all_idx.size))
+            self.doms.append(
+                {
+                    "all": all_idx,
+                    "interior": interior.astype(np.int32),
+                    "loc": loc,
+                    "lu": splu(locA.tocsc()),
+                }
+            )
+        self.setup_s = time.perf_counter() - t0
+
+    def _apply(self, r: np.ndarray) -> np.ndarray:
+        z = np.zeros(self.n, dtype=np.float64)
+        r = np.asarray(r, dtype=np.float64)
+        for D in self.doms:
+            rs = r[D["all"]]
+            es = D["lu"].solve(rs)
+            inter = D["interior"]
+            z[inter] += es[D["loc"][inter]]
+        return z
+
+    def solve(self, b: np.ndarray, x0: np.ndarray | None = None) -> np.ndarray:
+        b = np.asarray(b, dtype=np.float64)
+        if self.ndom == 1 and self.doms:
+            self.last_iters = 1
+            return self.doms[0]["lu"].solve(b)
+        from scipy.sparse.linalg import gmres as sp_gmres
+
+        x0 = np.zeros_like(b) if x0 is None else np.asarray(x0, dtype=np.float64)
+        M = LinearOperator((self.n, self.n), matvec=self._apply, dtype=np.float64)
+        x, info = sp_gmres(self.A, b, x0=x0, M=M, restart=32, maxiter=256, atol=0.0, tol=1e-10)
+        self.last_iters = 0 if info == 0 else abs(int(info))
+        return x
+
+
+def RASDD(A):
+    n = _native(A, 2)
+    return n if n is not None else PyRASDD(A)
+
+
 def make_solver(A, kind: str):
     if kind in ("a", "A", "direct", "lu", "A_direct_be"):
         return DirectLU(A)
     if kind in ("b", "B", "amg", "B_sa_amg"):
         return SAAMG(A)
+    if kind in ("d", "D", "ras", "schwarz", "D_ras_schwarz"):
+        return RASDD(A)
     raise ValueError(f"unknown solver {kind}")
 
 

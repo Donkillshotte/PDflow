@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Dynamic IR engine on the GCD write_pg_spice mesh.
-# Per-ITerm PWL + Solver A (LU golden) + Solver B (SA-AMG) + Solver C (Krylov MOR).
-# Solver C = same operator, extra I(t) scenarios. vyges-em-ir is bootstrap.
+# Per-ITerm PWL + A LU gold + B SA-AMG + C Krylov MOR + D RAS Schwarz.
+# Ranking of extra I(t) stays Solver A. vyges-em-ir is bootstrap.
 #
 # Uso: FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 # Env:

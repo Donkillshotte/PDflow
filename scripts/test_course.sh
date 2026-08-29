@@ -221,7 +221,7 @@ fi
 if PYTHONPATH=/usr/lib/python3/dist-packages:"${ROOT}/learn/scripts" python3 - <<'PY'
 from scipy import sparse
 import numpy as np
-from pdn_solvers import DirectLU, SAAMG
+from pdn_solvers import DirectLU, SAAMG, RASDD
 n=200
 A=sparse.diags([-np.ones(n-1), 2*np.ones(n), -np.ones(n-1)], [-1,0,1], shape=(n,n), format="csr")
 b=np.ones(n)
@@ -232,6 +232,12 @@ assert B.n_levels>=2
 assert float(np.max(np.abs(xa-xb)))<1e-6
 print("amg poisson ok", B.n_levels, getattr(B, "backend", "?"))
 assert getattr(B, "backend", "") == "native"
+D=RASDD(A)
+xd=D.solve(b)
+assert D.n_levels>=2
+assert float(np.max(np.abs(xa-xd)))<1e-6
+print("ras poisson ok", D.n_levels, getattr(D, "backend", "?"))
+assert getattr(D, "backend", "") == "native"
 PY
 then ok "SA-AMG vs LU poisson (native)"; else bad "SA-AMG poisson"; fi
 rg -q 'vyges_em_ir' "${ROOT}/studio/src/lib/run.ts" && ok "studio vyges_em_ir action" || bad "studio senza vyges_em_ir"
@@ -309,10 +315,14 @@ assert p["solvers"]["B_sa_amg"]["status"]=="READY"
 assert p["solvers"]["C_rational_krylov_mor"]["status"] in ("READY", "PARTIAL")
 assert r.get("solver_c") is not None
 assert r["solver_c"]["abs_err_vs_A_mv"] < 5.0
+assert r.get("solver_d") is not None
+assert r["solver_d"]["ok"] is True
+assert r["solver_d"]["abs_err_vs_A_mv"] < 5.0
+assert p["solvers"]["D_ras_schwarz"]["status"] in ("READY", "PARTIAL")
 assert "i_L" in (r["solver_c"].get("via") or "") or "RLC" in (r["solver_c"].get("via") or "") or r["solver_c"]["abs_err_vs_A_mv"] < 1.0
 assert r.get("current_model", {}).get("status") in ("GAP", "PARTIAL", "READY")
 assert r.get("activity_model", {}).get("status") == "GAP"
-assert r["dynamic"].get("timestep_loop") in ("native", "native_hist", "python", "python_hist", None)
+assert r["dynamic"].get("timestep_loop") in ("native", "native_hist", "python", "python_hist", "python_ccs", "python_ccs_hist", None)
 assert p["product_tiers"]["FAST"]["status"]=="READY"
 assert p["product_tiers"]["SIGNOFF"]["status"]=="GAP"
 assert p["network_levels"]["N1_R"]["status"]=="READY"
