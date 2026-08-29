@@ -10,7 +10,7 @@ Not a DEF+LEF Rsq extractor and not a fork of OpenROAD PSM.
 Never synthesizes PDN C from signal SPEF names.
 On-die L is Grover partial self plus cutoff partial mutual on same-layer straps;
 not stamped into the SPD companion unless the caller asks for the descriptor.
-Rail-to-rail C is opt-in instance-pin \(C_{rr}\) (scenario Farads), not overlapping-strap Cox.
+Rail-to-rail C is opt-in instance-pin C_rr (scenario Farads), not overlapping-strap Cox.
 """
 
 from __future__ import annotations
