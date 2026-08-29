@@ -204,6 +204,8 @@ rg -q 'id: "pkg"' "${ROOT}/studio/src/components/flowlab/phases.ts" && ok "FlowL
 [[ -f "${ROOT}/learn/scripts/run_chip_pdn_ir.sh" ]] && ok "run_chip_pdn_ir.sh" || bad "manca chip PDN script"
 [[ -f "${ROOT}/learn/scripts/run_vyges_em_ir.sh" ]] && ok "run_vyges_em_ir.sh" || bad "manca vyges-em-ir script"
 [[ -f "${ROOT}/learn/scripts/run_dynamic_ir.sh" ]] && ok "run_dynamic_ir.sh" || bad "manca dynamic_ir script"
+rg -q -- '--sta' "${ROOT}/learn/scripts/run_dynamic_ir.sh" && ok "run_dynamic_ir passes STA JSON" || bad "run_dynamic_ir senza --sta"
+rg -q 'export_sta_arrivals' "${ROOT}/learn/scripts/run_dynamic_ir.sh" && ok "run_dynamic_ir exports STA arrivals" || bad "run_dynamic_ir senza OpenSTA"
 [[ -f "${ROOT}/learn/scripts/pdn_dynamic.py" ]] && ok "pdn_dynamic.py" || bad "manca pdn_dynamic.py"
 [[ -f "${ROOT}/learn/reference/vyges-em-ir.md" ]] && ok "vyges-em-ir.md" || bad "manca vyges-em-ir.md"
 [[ -f "${ROOT}/learn/reference/dynamic-ir.md" ]] && ok "dynamic-ir.md" || bad "manca dynamic-ir.md"
@@ -215,6 +217,9 @@ python3 -m py_compile "${ROOT}/learn/scripts/pdn_solvers.py" && ok "pdn_solvers 
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_extract.py" && ok "pdn_extract compile" || bad "pdn_extract compile"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_em.py" && ok "pdn_em compile" || bad "pdn_em compile"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_vrm.py" && ok "pdn_vrm compile" || bad "pdn_vrm compile"
+python3 -m py_compile "${ROOT}/learn/scripts/pdn_activity.py" && ok "pdn_activity compile" || bad "pdn_activity compile"
+python3 -m py_compile "${ROOT}/learn/scripts/pdn_current.py" && ok "pdn_current compile" || bad "pdn_current compile"
+python3 -m py_compile "${ROOT}/learn/scripts/export_sta_arrivals.py" && ok "export_sta_arrivals compile" || bad "export_sta_arrivals compile"
 if "${ROOT}/learn/scripts/build_dpn_engine.sh" >/tmp/dpn-engine-build.log 2>&1; then
   ok "libdpn build + dpn_test"
 else
@@ -325,6 +330,10 @@ assert p["solvers"]["D_ras_schwarz"]["status"] in ("READY", "PARTIAL")
 assert "i_L" in (r["solver_c"].get("via") or "") or "RLC" in (r["solver_c"].get("via") or "") or r["solver_c"]["abs_err_vs_A_mv"] < 1.0
 assert r.get("current_model", {}).get("status") in ("GAP", "PARTIAL", "READY")
 assert r.get("activity_model", {}).get("status") == "GAP"
+assert (r.get("activity_model") or {}).get("sta", {}).get("status") in (None, "GAP")
+assert r["sim_levels"]["L1_vectorless_dynamic"]["status"]=="READY"
+assert r["sim_levels"]["L3_windowed"]["status"] in ("READY", "PARTIAL")
+assert "windows" in r["sim_levels"]["L3_windowed"]
 assert r["dynamic"].get("timestep_loop") in ("native", "native_hist", "python", "python_hist", "python_ccs", "python_ccs_hist", None)
 assert p["product_tiers"]["FAST"]["status"]=="READY"
 assert p["product_tiers"]["SIGNOFF"]["status"]=="GAP"

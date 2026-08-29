@@ -264,7 +264,13 @@ assert r["static"]["worst_ir"] > 0
 assert r["dynamic"]["worst_droop"] > 0
 assert r["sim_levels"]["L0_static"]["status"] == "READY"
 assert r["sim_levels"]["L2_vcd_dynamic"]["status"] == "GAP"
+assert r["sim_levels"]["L3_windowed"]["status"] in ("READY", "PARTIAL")
+assert "windows" in r["sim_levels"]["L3_windowed"]
+sta = (r.get("activity_model") or {}).get("sta") or {}
+assert sta.get("status") == "READY", sta
+assert (sta.get("n_applied") or 0) > 0
 assert r["pipeline"][0]["status"] == "READY"
+assert r["pipeline"][2]["status"] == "READY"
 assert "LEF" in r["pipeline"][0]["via"] or "lef" in r["pipeline"][0]["via"].lower() or "write_pg_spice" in r["pipeline"][0]["via"]
 assert r.get("extract", {}).get("backend") == "write_pg_spice"
 assert r["emsim_split"]["B_pdn_solve"]["status"] == "READY"

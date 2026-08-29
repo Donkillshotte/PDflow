@@ -4,7 +4,22 @@ import { useCallback, useEffect, useState } from "react";
 
 type Hottest = { node?: string; ir_mv?: number; x?: number; y?: number };
 type Window = { t_start_ns?: number; t_end_ns?: number; t_peak_ns?: number; i_peak_a?: number };
-type Level = { status?: string; mode?: string; note?: string; reason?: string; windows?: Window[] };
+type Level = {
+  status?: string;
+  mode?: string;
+  note?: string;
+  reason?: string;
+  windows?: Window[];
+  n_windows?: number;
+  abs_err_vs_A_mv?: number;
+  collapsed_to_full?: boolean;
+};
+type Activity = {
+  status?: string;
+  note?: string;
+  sta?: { status?: string; n_applied?: number; n_inst?: number };
+  vcd?: { status?: string; n_matched?: number; kind?: string; n_applied?: number };
+};
 type PipelineStep = { id: number; name: string; status: string; via: string };
 type StatusChip = { status?: string };
 type Scenario = { mode?: string; droop_mv?: number; t_ns?: number; primary?: boolean };
@@ -105,6 +120,8 @@ type DynReport = {
   scenarios?: Scenario[];
   timing_impact?: Timing;
   em?: Em;
+  activity_model?: Activity;
+  windowed?: { status?: string; abs_err_vs_A_mv?: number; n_windows?: number; steps?: number; full_steps?: number };
 };
 
 function ChipList({
@@ -183,6 +200,9 @@ export function DynamicIrHeatmap({
   const timing = report?.timing_impact ?? plat?.timing_impact;
   const scenarios = report?.scenarios ?? [];
   const worstScen = scenarios[0];
+  const sta = report?.activity_model?.sta;
+  const vcd = report?.activity_model?.vcd;
+  const l3 = levels?.L3_windowed;
 
   return (
     <section className="fl-dynir" aria-label="Dynamic IR heatmap">
@@ -332,6 +352,36 @@ export function DynamicIrHeatmap({
                 <dd>{em.ttf_rel_min.toExponential(2)}</dd>
               </div>
             ) : null}
+            {sta?.n_applied ? (
+              <div>
+                <dt>STA t50</dt>
+                <dd>
+                  {sta.n_applied}
+                  {sta.n_inst != null ? ` / ${sta.n_inst} inst` : ""}
+                  {sta.status ? ` · ${sta.status}` : ""}
+                </dd>
+              </div>
+            ) : null}
+            {vcd ? (
+              <div>
+                <dt>VCD join</dt>
+                <dd>
+                  {vcd.status ?? "GAP"}
+                  {vcd.n_matched != null ? ` · ${vcd.n_matched} names` : ""}
+                </dd>
+              </div>
+            ) : null}
+            {l3?.abs_err_vs_A_mv != null ? (
+              <div>
+                <dt>|A−W| L3</dt>
+                <dd>
+                  {l3.abs_err_vs_A_mv < 0.001
+                    ? "< 1 µV"
+                    : `${l3.abs_err_vs_A_mv.toFixed(3)} mV`}
+                  {l3.n_windows != null ? ` · ${l3.n_windows} win` : ""}
+                </dd>
+              </div>
+            ) : null}
             {timing?.degradation_ps != null && (
               <div>
                 <dt>Delay scale</dt>
@@ -428,7 +478,7 @@ export function DynamicIrHeatmap({
                 {
                   key: "L1",
                   status: levels.L1_vectorless_dynamic?.status,
-                  text: `L1 ${report.mode ?? "synth"}`,
+                  text: `L1 ${sta?.n_applied ? "STA" : (report.mode ?? "synth")}`,
                 },
                 {
                   key: "L2",

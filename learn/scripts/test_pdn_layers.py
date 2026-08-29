@@ -13,7 +13,17 @@ _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from pdn_activity import plan_events, probe_activity_trace  # noqa: E402
+from pdn_activity import (  # noqa: E402
+    apply_sta_t50,
+    expand_windows,
+    load_sta_arrivals,
+    parse_vcd,
+    plan_events,
+    probe_activity_trace,
+    shift_events_to_window,
+    t50_via_counts,
+    windows_from_itot,
+)
 from pdn_current import (  # noqa: E402
     SYNTHETIC_CCS_LIB,
     current_source_for_event,
@@ -99,13 +109,134 @@ library (nldm_only) {
         t50_s=0.12e-9,
     )
     check(len(ev) == 1 and math.isclose(ev[0]["t50_s"], 0.12e-9), "synthetic simultaneous t50")
+    check(ev[0]["t50_via"] == "synthetic", "no STA → synthetic t50_via")
+
+    from export_sta_arrivals import parse_arrival_log
+
+    arr_log = """PIN _479_/ZN activity=0.0 duty=0.5 origin=propagated
+  (core_clock ^) r 0.1104:0.1104 f 0.117:0.117
+PIN ctrl.state.out\\[0\\]$_DFF_P_/QN activity=0.0 duty=0.5 origin=propagated
+  (core_clock ^) r 0.150:0.150 f ---:---
+STA_ARRIVALS_DONE n=2
+"""
+    pins = parse_arrival_log(arr_log)
+    check(len(pins) == 2, "parse_arrival_log two PIN rows")
+    check(abs(pins[0]["rise_ns"] - 0.1104) < 1e-12, "rise max of min:max")
+    check(pins[1]["inst_key"] == "ctrl.state.out[0]$_DFF_P_", "Verilog backslash stripped")
+    check(pins[1]["fall_ns"] is None, "--- fall is missing not zero")
+
+    sta_ev = [{"inst": "_479_", "t50_s": 0.12e-9, "dur_s": 0.08e-9}]
+    sta_meta = apply_sta_t50(
+        sta_ev, {"_479_": {"rise_ns": 0.11, "fall_ns": 0.12, "full": "_479_/ZN"}}, 0.46e-9
+    )
+    check(sta_meta["status"] == "READY" and sta_meta["n_applied"] == 1, "apply_sta_t50 READY")
+    check(abs(sta_ev[0]["t50_s"] - 0.11e-9) < 1e-18, "STA rise overwrites synthetic t50")
+    check(sta_ev[0]["t50_via"] == "sta_arrival", "t50_via sta_arrival")
+
+    insts_sta = [
+        {"name": "_479_", "x": 100.0, "y": 0.0, "seq": False, "cell": "AND2_X1", "filler": False}
+    ]
+    ev_clk = plan_events(
+        {"ITermNode_metal1_100_0": 1e-3},
+        {"ITermNode_metal1_100_0": 0},
+        insts_sta,
+        mode="clock",
+        peak_factor=8,
+        leak_frac=0.2,
+        period_s=0.46e-9,
+        dur_s=0.08e-9,
+        t50_s=0.12e-9,
+        sta_arrivals={"_479_": {"rise_ns": 0.20, "full": "_479_/ZN"}},
+    )
+    check(ev_clk[0]["t50_via"] == "sta_arrival", "plan_events clock applies STA")
+    check(abs(ev_clk[0]["t50_s"] - 0.20e-9) < 1e-15, "clock STA t50 is rise arrival")
+    ev_sp = plan_events(
+        {"ITermNode_metal1_100_0": 1e-3},
+        {"ITermNode_metal1_100_0": 0},
+        insts_sta,
+        mode="spatial",
+        peak_factor=8,
+        leak_frac=0.2,
+        period_s=0.46e-9,
+        dur_s=0.08e-9,
+        t50_s=0.12e-9,
+        sta_arrivals={"_479_": {"rise_ns": 0.20, "full": "_479_/ZN"}},
+    )
+    check(ev_sp[0]["t50_via"] == "synthetic", "spatial ranking stays synthetic (no STA)")
+
+    vcd_txt = """$date
+now
+$end
+$timescale 1ps $end
+$scope module _479_ $end
+$var wire 1 ! ZN $end
+$upscope $end
+$enddefinitions $end
+$dumpvars
+0!
+$end
+#250
+1!
+"""
+    vcd_path = Path(tempfile.mkdtemp(prefix="vcd-join-")) / "gate.vcd"
+    vcd_path.write_text(vcd_txt)
+    probe_ok = probe_activity_trace(vcd_path, insts_sta)
+    check(probe_ok["status"] == "READY" and probe_ok["n_matched"] >= 1, "synthetic VCD name-join READY")
+    parsed = parse_vcd(vcd_path)
+    ev_v = plan_events(
+        {"ITermNode_metal1_100_0": 1e-3},
+        {"ITermNode_metal1_100_0": 0},
+        insts_sta,
+        mode="clock",
+        peak_factor=8,
+        leak_frac=0.2,
+        period_s=0.46e-9,
+        dur_s=0.08e-9,
+        t50_s=0.12e-9,
+        vcd=parsed,
+    )
+    check(ev_v[0]["t50_via"] == "vcd_name_join", "VCD name-join overwrites t50")
+    check(abs(ev_v[0]["t50_s"] - 250e-12) < 1e-18, "VCD first edge 250 ps")
+
+    gcd_vcd = Path(__file__).resolve().parents[2] / "learn/sim/gcd/gcd.vcd"
+    if gcd_vcd.is_file():
+        gap = probe_activity_trace(
+            gcd_vcd,
+            [
+                {"name": "_479_"},
+                {"name": r"ctrl.state.out[0]$_DFF_P_"},
+                {"name": r"ctrl.state.out\[0\]$_DFF_P_"},
+            ],
+        )
+        check(gap["status"] == "GAP" and (gap.get("n_matched") or 0) == 0, "GCD RTL VCD does not join gate insts")
+    else:
+        print("    skip GCD VCD (missing learn/sim/gcd/gcd.vcd)")
+
+    tmp_sta = Path(tempfile.mkdtemp(prefix="sta-json-")) / "arr.json"
+    tmp_sta.write_text(
+        '{"by_inst": {"_479_": {"rise_ns": 0.09, "fall_ns": 0.10, "full": "_479_/ZN"}}}\n'
+    )
+    loaded = load_sta_arrivals(tmp_sta)
+    check("_479_" in loaded and loaded["_479_"]["rise_ns"] == 0.09, "load_sta_arrivals by_inst")
+    check(t50_via_counts(ev_clk)["sta_arrival"] == 1, "t50_via_counts")
+
+    wins_m = windows_from_itot([0.0, 0.1, 0.2, 1.0, 1.1, 1.2], [0.0, 1.0, 0.0, 0.0, 1.0, 0.0], 0.5)
+    check(len(wins_m) == 2, "two I_tot peaks → two windows")
+    merged = expand_windows(wins_m, pad_s=0.05, t_end=1.2)
+    check(len(merged) == 2, "padding does not merge isolated peaks")
+    sh = shift_events_to_window(
+        [{"t50_s": 0.1, "dur_s": 0.04, "idx": 0}, {"t50_s": 1.1, "dur_s": 0.04, "idx": 0}],
+        1.0,
+        1.2,
+    )
+    check(len(sh) == 1 and abs(sh[0]["t50_s"] - 0.1) < 1e-12, "shift_events_to_window")
 
     # 1-node descriptor RLC MOR vs Solver A hist (native or SciPy).
     if "/usr/lib/python3/dist-packages" not in sys.path:
         sys.path.insert(0, "/usr/lib/python3/dist-packages")
     import numpy as np
     from scipy import sparse
-    from pdn_dynamic import assemble_be, timestep_be
+    from pdn_dynamic import assemble_be, timestep_be, windowed_timestep_be
     from pdn_solvers import DirectLU, RationalKrylov
 
     vdd, dt, t_end = 1.1, 10e-12, 0.4e-9
@@ -135,6 +266,55 @@ library (nldm_only) {
     check("rlc" in mor.name, f"MOR name is RLC ({mor.name})")
     check(err_mv < 1.0, f"1-node Python RLC MOR vs hist |A−C|={err_mv:.4f} mV")
     print(f"    python RLC MOR m={mor.m} backend={mor.backend} |A-C|={err_mv:.4e} mV")
+
+    vdd_w, dt_w, t_end_w = 1.1, 10e-12, 2.0e-9
+    G_w = sparse.csr_matrix((1, 1), dtype=np.float64)
+    ev_iso = [
+        {
+            "idx": 0,
+            "t50_s": 0.2e-9,
+            "dur_s": 0.1e-9,
+            "i_pulse": 5e-3,
+            "i_leak": 0.0,
+            "x": 0.0,
+            "seq": True,
+        },
+        {
+            "idx": 0,
+            "t50_s": 1.5e-9,
+            "dur_s": 0.1e-9,
+            "i_pulse": 5e-3,
+            "i_leak": 0.0,
+            "x": 0.0,
+            "seq": True,
+        },
+    ]
+    sys_w = assemble_be(
+        G_w, {"n": 0}, {"n": vdd_w}, vdd_w, ev_iso, pkg_r=2.0, pkg_l=0.0, c_decap=50e-12, dt=dt_w
+    )
+    gold_w = timestep_be(sys_w, ev_iso, DirectLU(sys_w["A"]), vdd_w, ["n"], t_end_w)
+    win_w = windowed_timestep_be(
+        sys_w,
+        ev_iso,
+        DirectLU(sys_w["A"]),
+        vdd_w,
+        ["n"],
+        t_end_w,
+        gold_w["wave_t"],
+        gold_w["wave_itot"],
+        gold_w,
+    )
+    check(win_w.get("isolated") is True, "L=0 isolated windows")
+    check((win_w.get("n_windows") or 0) >= 2, f"two isolated pulses → n_windows={win_w.get('n_windows')}")
+    check(int(win_w.get("steps") or 0) < int(gold_w["steps"]), "windowed BE uses fewer steps than full TRAN")
+    check(
+        (win_w.get("abs_err_vs_A_mv") or 99) < 0.5,
+        f"windowed vs full |A−W|={win_w.get('abs_err_vs_A_mv')} mV",
+    )
+    print(
+        f"    windowed RC steps {win_w.get('steps')}/{gold_w['steps']} "
+        f"|A−W|={win_w.get('abs_err_vs_A_mv'):.4e} mV nwin={win_w.get('n_windows')}"
+    )
 
     from pdn_vrm import compact_vrm_die, ngspice_vrm_die_gold, timestep_descriptor
 

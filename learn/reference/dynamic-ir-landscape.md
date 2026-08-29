@@ -13,8 +13,8 @@ Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Pytho
 | Pezzo | Ruolo | In questa slice |
 |---|---|---|
 | OpenROAD / ODB / `write_pg_spice` | frontend fisico | READY |
-| Liberty CCS/ECSM + VCD/FSDB + STA | domanda di corrente vera | GAP sul GCD (NLDM); interpolatore CCS READY su `.lib` sintetico |
-| Scenario / window engine | non simulare 100k cicli | PARTIAL (`I_tot(t)` di questo run) |
+| Liberty CCS/ECSM + VCD/FSDB + STA | domanda di corrente vera | STA t50 READY (OpenSTA `report_arrival`); CCS interpolator READY su `.lib` sintetico; Nangate NLDM = triangolo; VCD RTL = GAP name-join |
+| Scenario / window engine | non simulare 100k cicli | L3 READY/PARTIAL — BE sulle finestre `I_tot` (restart isolato solo se L=0; con pkg L si taglia il trailing idle) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
 | **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=96 · \|A−C\| 0.129 mV sul GCD clock (descriptor RLC); ranking scenari = Solver A |
@@ -73,7 +73,7 @@ Il prototipo stampava \(L/\Delta t\) memoryless. N3 ora è un **companion BE ser
 
 | Livello | Intento | GCD oggi |
 |---|---|---|
-| **FAST** | vectorless + AMG + timestep grosso · placement/routing | **READY** — t50 sintetici + Solver B |
+| **FAST** | vectorless + AMG + timestep grosso · placement/routing | **READY** — STA arrival t50 (clock) + Solver B |
 | **ACCURATE** | VCD/FSDB + waveform cella + AMG + Δt adattivo · IR closure | **GAP** |
 | **SIGNOFF** | RLC + MOR + spot-check diretti + EM + package | **GAP** |
 
@@ -84,7 +84,7 @@ Sì: `I_cell(t) = f(cell, arc, slew, load, state)` da Liberty CCS/ECSM quando c�
 
 Nangate45 è **NLDM**. Questa slice usa triangoli da `I_avg` nel mesh GCD.
 `pdn_current.py` interpola `output_current_*` quando le tabelle ci sono (test su Liberty sintetica).
-**Non** si sintetizza CCS da NLDM. VCD pin-accurate e STA windows restano GAP.
+**Non** si sintetizza CCS da NLDM. VCD pin-accurate sul netlist gate resta GAP (il VCD RTL `tb_gcd` non nomina gli ITerm). STA `report_arrival` fornisce t50 in clock mode — **non** si riscala `I_avg` con l’activity Hz di OpenSTA (sarebbe un double-count rispetto a `report_power` / spice).
 
 CircuitNet (instance power + toggle + arrival windows + IR) conferma la separazione
 power + timing window + PDN — non è un dataset di sign-off dynamic.
@@ -93,7 +93,8 @@ power + timing window + PDN — non è un dataset di sign-off dynamic.
 
 Heuristics → ranking (un giorno ML) → fisica solo sulle top windows.
 MAVIREC è il riferimento filosofico (screening, non sostituto del solver).
-Qui: finestre su `I_tot(t)` di **questo** run = L3 PARTIAL.
+Qui: L3 esegue Solver A sulle finestre di `I_tot(t)` di **questo** run.
+Restart UIC isolato solo se \(L=0\) (o idle \(\gg L/R\)); con package L si conserva \(i_L\) (prefix \([0,t_\mathrm{cut}]\) o identità se la finestra copre l’orizzonte). Non è uno scan da 100k cicli.
 
 ## Architettura di riferimento (EMSim), frontend OpenROAD
 
@@ -114,7 +115,7 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 |---|---|---|
 | 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` + tech LEF; SPEF PG C = GAP |
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
-| 3 Activity | VCD/SAIF/vectorless windows | modi sintetici clock/spatial; VCD RTL non è pin-accurate |
+| 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; extra I(t) ranking sintetico; VCD RTL name-join = GAP |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |
 | 5 Solver | B AMG + C Krylov MOR + D RAS + A gold | **A + B + C + D READY**; N4 descriptor BE nativo |
 | 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + R(T) lumpato |

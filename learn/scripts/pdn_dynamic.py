@@ -4,7 +4,8 @@
 Architecture (what this file actually does — not a product claim):
 
   OpenROAD write_pg_spice  →  PDN graph (R mesh, bump V, I_avg)
-  activity layer (synthetic t50) + current layer (triangle; CCS if tables)
+  activity layer (STA arrival t50 in clock mode; VCD name-join; else synthetic)
+  current layer (triangle; CCS interpolator if tables+slew)
   Solver A: direct backward-Euler + sparse LU (golden)
   Solver B: SA-AMG + CG on the same SPD companion operator
   Solver C: rational Krylov MOR — RC on δv, or descriptor RLC on x=[v; i_L]
@@ -17,7 +18,8 @@ the BE companion (not an RC-only Gsoft screen). Ranking of extra I(t) stays A.
 The BE time loop and MOR live in libdpn. Python orchestrates extraction and I(t).
 
 Honest limits: Nangate45 has no CCS current tables (triangle from I_avg);
-RTL VCD does not name gate pins. No silent CCS←NLDM mapping.
+RTL VCD does not name gate pins — name-join only, no silent RTL→ITerm map.
+STA t50 uses report_arrival; I_avg is not rescaled from activity Hz.
 
 Prior art (concepts, not dependencies): OpenROAD PSM (frontend),
 EMSim split A/B, ESPSim SA-AMG, MATEX/Raptor MOR, Ginkgo, Xyce/ngspice gold.
@@ -47,7 +49,18 @@ _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from pdn_activity import load_insts, node_xy, plan_events, probe_activity_trace  # noqa: E402
+from pdn_activity import (  # noqa: E402
+    expand_windows,
+    load_insts,
+    load_sta_arrivals,
+    node_xy,
+    parse_vcd,
+    plan_events,
+    probe_activity_trace,
+    shift_events_to_window,
+    t50_via_counts,
+    windows_from_itot,
+)
 from pdn_current import (  # noqa: E402
     current_source_for_event,
     events_use_ccs,
@@ -270,6 +283,165 @@ def timestep_be(
     }
 
 
+def windowed_timestep_be(
+    sys: dict,
+    events,
+    solver,
+    vdd: float,
+    order,
+    t_end: float,
+    wave_t,
+    wave_itot,
+    dyn_full: dict,
+    ccs_tables: list | None = None,
+    frac: float = 0.5,
+) -> dict:
+    """Solver A on high-I windows. Isolated restart only when L=0 (or idle ≫ L/R).
+
+    With package L, i_L is history: restarting UIC Vdd mid-horizon is wrong.
+    Then L3 is a prefix BE [0, t_cut] that drops trailing idle, or identity if
+    the I_tot window already covers the horizon.
+    """
+    dt = float(sys["dt"])
+    pkg_r = float(sys.get("pkg_r") or 0.0)
+    pkg_l = float(sys.get("pkg_l") or 0.0)
+    lr = (pkg_l / pkg_r) if pkg_r > 0 else 0.0
+    durs = [float(e.get("dur_s") or 0.0) for e in events] or [dt]
+    pad_s = max(3 * dt, 0.5 * max(durs))
+    raw = windows_from_itot(wave_t, wave_itot, frac)
+    wins = expand_windows(raw, pad_s, t_end)
+    full_steps = int(dyn_full.get("steps") or 0)
+    gold_droop = float(dyn_full.get("worst_droop") or 0.0)
+    base = {
+        "n_windows_raw": len(raw),
+        "n_windows": len(wins),
+        "pad_s": pad_s,
+        "full_steps": full_steps,
+        "L_over_R_ns": lr * 1e9,
+        "threshold_frac": frac,
+        "windows": [
+            {
+                "t_start_ns": w["t_start_s"] * 1e9,
+                "t_end_ns": w["t_end_s"] * 1e9,
+                "t_peak_ns": w["t_peak_s"] * 1e9,
+                "i_peak_a": w["i_peak_a"],
+            }
+            for w in wins
+        ],
+    }
+    if not wins:
+        return {
+            **base,
+            "status": "GAP",
+            "collapsed_to_full": False,
+            "steps": 0,
+            "abs_err_vs_A_mv": None,
+            "via": "no I_tot window",
+            "note": "I_tot never crossed the window threshold",
+        }
+
+    covers = (
+        len(wins) == 1
+        and wins[0]["t_start_s"] <= 2 * dt
+        and wins[0]["t_end_s"] >= t_end - 2 * dt
+    )
+    if covers:
+        return {
+            **base,
+            "status": "READY",
+            "collapsed_to_full": True,
+            "steps": full_steps,
+            "worst_droop_mv": gold_droop * 1e3,
+            "worst_time_ns": float(dyn_full.get("worst_time_s") or 0.0) * 1e9,
+            "abs_err_vs_A_mv": 0.0,
+            "via": "one I_tot window covers the horizon — windowed BE is the full TRAN",
+            "note": "not 100k-cycle screening; this run's I_tot already occupies [0, t_end]",
+        }
+
+    isolated_ok = pkg_l <= 0.0
+    if not isolated_ok and len(wins) >= 2 and lr > 0:
+        gaps = [wins[i]["t_start_s"] - wins[i - 1]["t_end_s"] for i in range(1, len(wins))]
+        isolated_ok = min(gaps) >= 3 * lr and wins[0]["t_start_s"] >= 3 * lr
+
+    if isolated_ok:
+        worst_droop = 0.0
+        worst_t = 0.0
+        steps = 0
+        per = []
+        for w in wins:
+            t0, t1 = w["t_start_s"], w["t_end_s"]
+            evw = shift_events_to_window(events, t0, t1)
+            if not evw:
+                continue
+            span = max(t1 - t0, 2 * dt)
+            r = timestep_be(sys, evw, solver, vdd, order, span, ccs_tables=ccs_tables)
+            t_abs = r["worst_time_s"] + t0
+            steps += int(r["steps"])
+            per.append(
+                {
+                    "t_start_ns": t0 * 1e9,
+                    "t_end_ns": t1 * 1e9,
+                    "steps": r["steps"],
+                    "droop_mv": r["worst_droop"] * 1e3,
+                    "t_ns": t_abs * 1e9,
+                    "n_events": len(evw),
+                }
+            )
+            if r["worst_droop"] > worst_droop:
+                worst_droop = r["worst_droop"]
+                worst_t = t_abs
+        err_mv = abs(worst_droop - gold_droop) * 1e3
+        return {
+            **base,
+            "status": "READY" if per and err_mv < 1.0 else ("PARTIAL" if per else "GAP"),
+            "collapsed_to_full": False,
+            "steps": steps,
+            "isolated": True,
+            "per_window": per,
+            "worst_droop_mv": worst_droop * 1e3,
+            "worst_time_ns": worst_t * 1e9,
+            "abs_err_vs_A_mv": err_mv,
+            "via": "isolated BE on I_tot windows; t50 shifted so each window starts at 0; UIC Vdd",
+            "note": (
+                "valid when pkg L=0 or idle gaps ≫ L/R; not 100k-cycle screening"
+            ),
+        }
+
+    t_cut = wins[-1]["t_end_s"]
+    if t_cut >= t_end - 2 * dt:
+        return {
+            **base,
+            "status": "READY",
+            "collapsed_to_full": True,
+            "steps": full_steps,
+            "worst_droop_mv": gold_droop * 1e3,
+            "worst_time_ns": float(dyn_full.get("worst_time_s") or 0.0) * 1e9,
+            "abs_err_vs_A_mv": 0.0,
+            "via": "I_tot window reaches t_end — prefix cut would be the full TRAN",
+            "note": (
+                f"pkg L/R={lr*1e9:.2f} ns; isolated restart would drop i_L history"
+            ),
+        }
+    r = timestep_be(sys, events, solver, vdd, order, t_cut, ccs_tables=ccs_tables)
+    err_mv = abs(r["worst_droop"] - gold_droop) * 1e3
+    return {
+        **base,
+        "status": "READY" if err_mv < 1.0 else "PARTIAL",
+        "collapsed_to_full": False,
+        "steps": int(r["steps"]),
+        "isolated": False,
+        "t_cut_ns": t_cut * 1e9,
+        "worst_droop_mv": r["worst_droop"] * 1e3,
+        "worst_time_ns": r["worst_time_s"] * 1e9,
+        "abs_err_vs_A_mv": err_mv,
+        "via": "prefix BE [0, t_cut] preserving i_L; not isolated restart",
+        "note": (
+            f"pkg L/R={lr*1e9:.2f} ns vs horizon {t_end*1e9:.2f} ns — "
+            "UIC restart mid-window would drop inductor current"
+        ),
+    }
+
+
 def solve_be(
     G,
     idx,
@@ -327,6 +499,7 @@ def platform_block(
     n4: dict | None = None,
     ras: dict | None = None,
     extract: dict | None = None,
+    activity: dict | None = None,
 ) -> dict:
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
     if mor and mor.get("ok"):
@@ -348,12 +521,18 @@ def platform_block(
     d_status = "READY" if ras and ras.get("ok") else ("PARTIAL" if ras else "GAP")
     fast = "READY" if b_status == "READY" else "PARTIAL"
     accurate = "PARTIAL" if adaptive and adaptive.get("ok") else "GAP"
+    n_sta = int(((activity or {}).get("sta") or {}).get("n_applied") or 0)
+    fast_slice = (
+        f"STA arrival t50 ({n_sta} ITerms) + Solver B SA-AMG"
+        if n_sta
+        else f"synthetic {mode} t50 + Solver B SA-AMG"
+    )
     return {
         "name": "hierarchical multi-fidelity power-integrity engine",
         "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + D RAS Schwarz + descriptor N4) + extract/EM layers + OpenROAD + triangle/CCS I(t)",
         "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
         "do_not_implement_this_slice": [
-            "gate-accurate VCD/FSDB pin times on this Nangate netlist",
+            "silent RTL VCD → gate ITerm mapping (name-join only)",
             "Ginkgo CPU/GPU backend",
             "empty power-integrity/ tree",
         ],
@@ -438,7 +617,7 @@ def platform_block(
             "FAST": {
                 "status": fast,
                 "intended": "vectorless + SA-AMG + coarse timestep",
-                "this_slice": f"synthetic {mode} t50 + Solver B SA-AMG",
+                "this_slice": fast_slice,
             },
             "ACCURATE": {
                 "status": accurate,
@@ -498,42 +677,16 @@ def current_windows(wave_t: list[float], wave_itot: list[float], frac: float = 0
     """L3-lite: intervals where I_tot >= frac * I_peak (this run, not 100k-cycle scan)."""
     if not wave_itot:
         return []
-    peak = max(wave_itot)
-    thresh = frac * peak
-    out: list[dict] = []
-    in_win = False
-    t0 = peak_t = 0.0
-    peak_i = 0.0
-    for t, i in zip(wave_t, wave_itot):
-        if i >= thresh:
-            if not in_win:
-                in_win = True
-                t0 = t
-                peak_t, peak_i = t, i
-            elif i > peak_i:
-                peak_t, peak_i = t, i
-        elif in_win:
-            out.append(
-                {
-                    "t_start_ns": t0 * 1e9,
-                    "t_end_ns": t * 1e9,
-                    "t_peak_ns": peak_t * 1e9,
-                    "i_peak_a": peak_i,
-                    "threshold_frac": frac,
-                }
-            )
-            in_win = False
-    if in_win and wave_t:
-        out.append(
-            {
-                "t_start_ns": t0 * 1e9,
-                "t_end_ns": wave_t[-1] * 1e9,
-                "t_peak_ns": peak_t * 1e9,
-                "i_peak_a": peak_i,
-                "threshold_frac": frac,
-            }
-        )
-    return out
+    return [
+        {
+            "t_start_ns": w["t_start_s"] * 1e9,
+            "t_end_ns": w["t_end_s"] * 1e9,
+            "t_peak_ns": w["t_peak_s"] * 1e9,
+            "i_peak_a": w["i_peak_a"],
+            "threshold_frac": w["threshold_frac"],
+        }
+        for w in windows_from_itot(wave_t, wave_itot, frac)
+    ]
 
 
 def contributors_at(events: list[dict], t: float) -> dict:
@@ -838,7 +991,8 @@ def main() -> int:
     ap.add_argument("--no-ras", action="store_true", help="skip Solver D restricted additive Schwarz")
     ap.add_argument("--adaptive", action="store_true", help="also run adaptive-Δt BE (LU)")
     ap.add_argument("--liberty", type=Path, default=None, help="Liberty file to probe for CCS/ECSM (never synthesized)")
-    ap.add_argument("--vcd", type=Path, default=None, help="VCD/SAIF/FSDB to probe (never silently mapped to ITerms)")
+    ap.add_argument("--vcd", type=Path, default=None, help="VCD/SAIF/FSDB: name-join only, never a silent RTL map")
+    ap.add_argument("--sta", type=Path, default=None, help="OpenSTA arrivals JSON (t50 from rise arrival in clock mode)")
     ap.add_argument("--no-vrm", action="store_true", help="skip coupled N4 VRM+die descriptor BE")
     ap.add_argument("--vrm-cfg", type=Path, default=None, help="system_pdn JSON for lumped VRM")
     ap.add_argument("--lef", type=Path, default=None, help="tech LEF for metal WIDTH/THICKNESS/RPERSQ (EM J)")
@@ -846,7 +1000,6 @@ def main() -> int:
     args = ap.parse_args()
 
     current_model = probe_liberty_current_model(args.liberty)
-    activity_model = probe_activity_trace(args.vcd)
     ccs_tables: list = []
     if args.liberty and Path(args.liberty).is_file() and current_model.get("n_ccs_tables"):
         ccs_tables = parse_ccs_output_current(Path(args.liberty).read_text(errors="replace")[:2_000_000])
@@ -863,6 +1016,11 @@ def main() -> int:
     t_end = (args.t_end_ns * 1e-9) if args.t_end_ns > 0 else max(period_s * 1.6, t50_s + dur_s * 3)
 
     insts = load_insts(args.insts) if args.insts else []
+    activity_model = probe_activity_trace(args.vcd, insts)
+    sta_arrivals = load_sta_arrivals(args.sta)
+    vcd_parsed = None
+    if args.vcd and Path(args.vcd).is_file() and activity_model.get("kind") == "vcd":
+        vcd_parsed = parse_vcd(Path(args.vcd))
     events = plan_events(
         currents,
         idx,
@@ -873,7 +1031,46 @@ def main() -> int:
         period_s=period_s,
         dur_s=dur_s,
         t50_s=t50_s,
+        sta_arrivals=sta_arrivals if args.mode == "clock" else None,
+        vcd=vcd_parsed,
     )
+    via_n = t50_via_counts(events)
+    n_sta = via_n.get("sta_arrival") or 0
+    n_vcd_applied = via_n.get("vcd_name_join") or 0
+    if not sta_arrivals:
+        sta_status = "GAP"
+        sta_note = "no STA arrivals JSON"
+    elif args.mode != "clock":
+        sta_status = "GAP"
+        sta_note = "STA arrivals are clock-mode only; ranking extra I(t) stays synthetic"
+    elif n_sta:
+        sta_status = "READY"
+        sta_note = (
+            f"clock-mode t50 from OpenSTA report_arrival on {n_sta}/{len(events)} ITerms; "
+            "I_avg not rescaled from activity Hz"
+        )
+    else:
+        sta_status = "GAP"
+        sta_note = "STA JSON present but no instance-name join to ITerms"
+    sta_meta = {
+        "status": sta_status,
+        "n_inst": len(sta_arrivals),
+        "n_applied": n_sta,
+        "via": "OpenSTA report_arrival rise folded into the SDC period (clock mode only)",
+        "note": sta_note,
+        "path": str(args.sta) if args.sta else None,
+    }
+    vcd_meta = {
+        "status": activity_model["status"],
+        "n_matched": activity_model.get("n_matched") or 0,
+        "n_applied": n_vcd_applied,
+        "kind": activity_model.get("kind"),
+        "note": activity_model.get("note"),
+        "path": activity_model.get("path"),
+    }
+    activity_model["sta"] = sta_meta
+    activity_model["vcd"] = vcd_meta
+    activity_model["t50_via"] = via_n
     current_model["ccs_in_loop"] = events_use_ccs(events, ccs_tables)
 
     static = solve_static(G, idx, order, currents, voltages, vdd)
@@ -892,6 +1089,18 @@ def main() -> int:
     )
     solver_a = DirectLU(sys_be["A"])
     dyn = timestep_be(sys_be, events, solver_a, vdd, order, t_end, ccs_tables=ccs_tables)
+    win_run = windowed_timestep_be(
+        sys_be,
+        events,
+        solver_a,
+        vdd,
+        order,
+        t_end,
+        dyn["wave_t"],
+        dyn["wave_itot"],
+        dyn,
+        ccs_tables=ccs_tables,
+    )
 
     amg_meta = None
     solver_b = None
@@ -1210,16 +1419,29 @@ def main() -> int:
         "L1_vectorless_dynamic": {
             "status": "READY",
             "mode": args.mode,
-            "note": "synthetic t50 (clock/spatial/simultaneous), not STA arrival windows",
+            "t50_via": via_n,
+            "note": (
+                sta_note
+                if n_sta
+                else "synthetic t50 (clock/spatial/simultaneous); STA arrivals not applied"
+            ),
         },
         "L2_vcd_dynamic": {
             "status": activity_model["status"],
             "reason": activity_model["note"],
+            "n_matched": vcd_meta.get("n_matched") or 0,
         },
         "L3_windowed": {
-            "status": "PARTIAL",
+            "status": win_run.get("status") or "PARTIAL",
             "windows": windows,
-            "note": "high-I windows on this run's I_tot(t), not 100k-cycle screening",
+            "n_windows": win_run.get("n_windows"),
+            "collapsed_to_full": win_run.get("collapsed_to_full"),
+            "steps": win_run.get("steps"),
+            "full_steps": win_run.get("full_steps"),
+            "abs_err_vs_A_mv": win_run.get("abs_err_vs_A_mv"),
+            "via": win_run.get("via"),
+            "note": win_run.get("note")
+            or "high-I windows on this run's I_tot(t), not 100k-cycle screening",
         },
     }
     i_via = (
@@ -1257,8 +1479,12 @@ def main() -> int:
         {
             "id": 3,
             "name": "Activity engine",
-            "status": "PARTIAL",
-            "via": f"synthetic {args.mode}; {activity_model['note']}",
+            "status": "READY" if (n_sta or n_vcd_applied) else "PARTIAL",
+            "via": (
+                f"STA t50 {n_sta}/{len(events)}"
+                + (f"; VCD name-join {n_vcd_applied}" if n_vcd_applied else f"; VCD {activity_model['status']}")
+                + f"; synthetic remainder {via_n.get('synthetic') or 0}"
+            ),
         },
         {"id": 4, "name": "Current waveform", "status": "PARTIAL", "via": i_via},
         {
@@ -1283,6 +1509,7 @@ def main() -> int:
         n4=n4_meta,
         ras=ras_meta,
         extract=extract_report,
+        activity=activity_model,
     )
     amg_note = (
         f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
@@ -1310,6 +1537,13 @@ def main() -> int:
         if em.get("n_with_j")
         else ""
     )
+    sta_note_sum = f" · STA t50 {n_sta}/{len(events)}" if n_sta else ""
+    win_err = win_run.get("abs_err_vs_A_mv")
+    l3_note = (
+        f" · L3 |A−W| {win_err:.3f} mV"
+        if win_err is not None
+        else ""
+    )
     report = {
         "ok": True,
         "kind": "dynamic_ir",
@@ -1317,7 +1551,7 @@ def main() -> int:
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
             "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C never mapped from signal nets",
-            "replaceable activity (synthetic t50) + current (triangle; CCS interpolator when tables exist)",
+            "replaceable activity (STA arrival t50 in clock mode, VCD name-join, else synthetic) + current (triangle; CCS interpolator when tables exist)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
             "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
@@ -1329,7 +1563,7 @@ def main() -> int:
         ],
         "not": [
             "CCS I(t) on Nangate45 (NLDM, no current tables — interpolator is tested on synthetic CCS)",
-            "gate-level VCD pin times",
+            "gate-level VCD pin times (RTL VCD names do not match ODB ITerms — no silent map)",
             "foundry Black TTF hours / extracted strap WIDTH from LEF geometry",
             "3D thermal mesh or sub-ns thermal TRAN",
             "RedHawk / Voltus / Totem sign-off",
@@ -1339,6 +1573,7 @@ def main() -> int:
         "roles": {
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C is GAP (signal SPEF has no VDD)",
+            "activity": "pdn_activity: OpenSTA report_arrival t50 (clock); VCD name-join only; windowed BE",
             "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, lumped ΔT → R(T) N1 restamp — not foundry hours",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
@@ -1406,6 +1641,7 @@ def main() -> int:
         "solver_d": ras_meta,
         "n4": n4_meta,
         "adaptive": adaptive_meta,
+        "windowed": {k: v for k, v in win_run.items() if k != "V_worst"},
         "scenarios": scenarios,
         "timing_impact": timing,
         "summary": (
@@ -1414,11 +1650,13 @@ def main() -> int:
             f"({dyn['worst_droop_pct']:.3f}%) @ {dyn['worst_time_s']*1e9:.2f} ns · "
             f"I_peak {i_tot_peak*1e3:.2f} mA · {len(events)} PWL · "
             f"t50 span {((max(t50s)-min(t50s))*1e9) if t50s else 0:.2f} ns"
+            f"{sta_note_sum}"
             f"{amg_note}"
             f"{mor_note}"
             f"{ras_note}"
             f"{n4_note}"
             f"{em_note}"
+            f"{l3_note}"
             f" · delay +{timing['degradation_ps']:.2f} ps"
         ),
     }
@@ -1455,6 +1693,19 @@ def main() -> int:
                 "rT_delta_ir_mv": em.get("rT_delta_ir_mv"),
             },
         )
+    if n_sta:
+        print("sta", {"status": sta_meta["status"], "n_applied": n_sta, "n_inst": sta_meta["n_inst"]})
+    print(
+        "windowed",
+        {
+            "status": win_run.get("status"),
+            "n_windows": win_run.get("n_windows"),
+            "steps": win_run.get("steps"),
+            "full_steps": win_run.get("full_steps"),
+            "abs_err_vs_A_mv": win_run.get("abs_err_vs_A_mv"),
+            "collapsed_to_full": win_run.get("collapsed_to_full"),
+        },
+    )
     return 0
 
 

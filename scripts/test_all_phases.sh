@@ -146,6 +146,10 @@ assert r["ok"] is True and r["kind"]=="dynamic_ir"
 assert r["static"]["worst_ir"] < 0.05
 assert r["dynamic"]["worst_droop"] > r["static"]["worst_ir"] * 0.5
 assert r["sim_levels"]["L1_vectorless_dynamic"]["status"]=="READY"
+assert r["sim_levels"]["L2_vcd_dynamic"]["status"]=="GAP"
+assert r["sim_levels"]["L3_windowed"]["status"] in ("READY", "PARTIAL")
+sta=(r.get("activity_model") or {}).get("sta") or {}
+assert sta.get("status") in ("READY", "GAP")
 assert r["hotspot"]["droop_mv"] > 0
 assert r["emsim_split"]["B_pdn_solve"]["status"]=="READY"
 assert r["platform"]["solvers"]["A_direct_be"]["status"]=="READY"

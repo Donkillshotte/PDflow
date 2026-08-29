@@ -2,7 +2,8 @@
 # Dynamic IR engine on the GCD write_pg_spice mesh.
 # Per-ITerm PWL + A LU gold + B SA-AMG + C Krylov MOR + D RAS Schwarz.
 # Extract = SPICE + tech LEF (EM J); SPEF is probed, never mapped onto PDN C.
-# Ranking of extra I(t) stays Solver A. vyges-em-ir is bootstrap.
+# Activity = OpenSTA arrival t50 (clock) + VCD name-join (GAP on RTL tb_gcd).
+# Ranking of extra I(t) stays Solver A (synthetic). vyges-em-ir is bootstrap.
 #
 # Uso: FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 # Env:
@@ -38,6 +39,8 @@ INSTS="${RES}/pdn/inst_power_map.json"
 OUT_DIR="${ROOT}/learn/sim/reports"
 JSON="${OUT_DIR}/dynamic_ir_${VARIANT}.json"
 LOG="${OUT_DIR}/dynamic_ir_${VARIANT}.log"
+STA_JSON="${OUT_DIR}/sta_arrivals_${VARIANT}.json"
+VCD="${ROOT}/learn/sim/gcd/gcd.vcd"
 STAMP="${RES}/.dynamic_ir.ok"
 
 [[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB} — esegui finish (variant=${VARIANT})"; exit 1; }
@@ -75,6 +78,17 @@ EOF
 fi
 [[ -f "${SPICE}" ]] || { echo "FAIL manca ${SPICE}"; exit 1; }
 
+if ! command -v sta >/dev/null 2>&1; then
+  echo "FAIL OpenSTA (sta) not in PATH — needed for arrival t50" | tee -a "${LOG}"
+  exit 1
+fi
+echo "=== OpenSTA report_arrival → ${STA_JSON} ===" | tee -a "${LOG}"
+unset STA_OUT
+STA_LIB="${LIB}" STA_V="${RES}/6_final.v" STA_SDC="${SDC}" FLOW_VARIANT="${VARIANT}" \
+  python3 "${ROOT}/learn/scripts/export_sta_arrivals.py" 2>&1 | tee -a "${LOG}"
+[[ -f "${STA_JSON}" ]] || { echo "FAIL manca ${STA_JSON}"; exit 1; }
+rg -q 'STA_ARRIVALS_JSON' "${LOG}"
+
 echo "=== pdn_dynamic.py mode=${MODE} ===" | tee -a "${LOG}"
 ADAPT=()
 if [[ "${DYNAMIC_IR_ADAPTIVE:-}" == "1" ]]; then
@@ -86,6 +100,10 @@ if [[ -f "${LEF}" ]]; then
 fi
 if [[ -f "${SPEF}" ]]; then
   EXTRA+=(--spef "${SPEF}")
+fi
+EXTRA+=(--sta "${STA_JSON}")
+if [[ -f "${VCD}" ]]; then
+  EXTRA+=(--vcd "${VCD}")
 fi
 python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   --spice "${SPICE}" \
