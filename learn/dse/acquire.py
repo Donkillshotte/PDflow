@@ -522,6 +522,45 @@ def should_pay_f4_ras(
     return True, f"RAS restamp on {extract_id} — domain-decomp MF residual, not gold"
 
 
+def should_pay_f4_krylov(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_krylov: int = 0,
+    krylov_max: int = 1,
+    min_s: float = 10.0,
+    variant: str = "flowlab",
+    extract_id: str = "finish",
+) -> tuple[bool, str]:
+    """Pay one rational Krylov/MOR restamp after RAS. Residual vs DirectLU, not gold."""
+    if n_krylov >= krylov_max:
+        return False, "Krylov F4 scout already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover Krylov/MOR restamp"
+    have = any(
+        (c.knobs or {}).get("source") == "f4_solver_krylov"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+        and c.status == "ok"
+        for c in mem.by_level("pdn")
+    )
+    if have:
+        return False, "this extract already has a Krylov/MOR child"
+    if not any(
+        (c.knobs or {}).get("source") == "f4_solver_ras" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    ):
+        return False, "RAS residual not yet measured"
+    if extract_id != "finish":
+        if latest_ok_extract(mem) is None:
+            return False, "no candidate extract for Krylov/MOR residual"
+    else:
+        from .f4_oracle import available
+
+        if not available(variant):
+            return False, "no cached finish extract for Krylov/MOR residual"
+    return True, f"rational Krylov/MOR restamp on {extract_id} — reduced-order residual, not gold"
+
+
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
     from pathlib import Path
@@ -568,6 +607,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
     if level == "f4_amg":
         return "F4"
     if level == "f4_ras":
+        return "F4"
+    if level in ("f4_krylov", "f4_mor"):
         return "F4"
     if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract"):
         return "F4"

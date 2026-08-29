@@ -135,6 +135,13 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "f4_krylov",
+            "reason": "rational Krylov/MOR restamp after RAS — reduced-order residual vs DirectLU, not gold",
+            "scope": "chip",
+        }
+    )
+    steps.append(
+        {
             "level": "physical_catalog",
             "reason": "measure one AutoDMP util/density point with GPL (not F0-only RUDY)",
             "scope": "region" if region else "chip",

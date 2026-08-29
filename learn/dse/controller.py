@@ -9,7 +9,7 @@ Optimizers (each on its own level):
   synthesis    — ORFS ABC_AREA F0 catalog + one abc_speed.script F1 (not abc_ops)
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX (not make finish)
-  pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS restamp (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS/Krylov restamp (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -34,6 +34,7 @@ from .acquire import (
     should_pay_f1_synth,
     should_pay_f4_amg,
     should_pay_f4_extract,
+    should_pay_f4_krylov,
     should_pay_f4_ras,
     should_pay_f4_region_extract,
     should_pay_f5_drt,
@@ -1055,6 +1056,54 @@ def run_controller(
                 reason="mf-ras-residual-vs-direct",
             )
 
+    n_krylov = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_solver_krylov"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+    )
+    pay_kry, why_kry = should_pay_f4_krylov(
+        mem,
+        budget_left=t_end - time.time(),
+        n_krylov=n_krylov,
+        variant=variant,
+        extract_id=extract_id,
+    )
+    step("acquire", fidelity="F4_KRYLOV", pay=pay_kry, why=why_kry)
+    if any(s["level"] == "f4_krylov" for s in plan["steps"]) and pay_kry and time.time() < t_end:
+        ingest = next(
+            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
+            None,
+        )
+        child = evaluate_f4_pdn(
+            mem,
+            {"name": "krylov_residual", **GOLD_KNOBS},
+            variant=variant,
+            design_id=design_id,
+            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
+            spice=ext_hit["spice"] if ext_hit else None,
+            insts=ext_hit["insts"] if ext_hit else None,
+            extract_id=extract_id,
+            solver="krylov",
+            sta=ext_hit.get("sta") if ext_hit else None,
+        )
+        if child:
+            step(
+                "evaluate",
+                id=child.id,
+                level="pdn",
+                fidelity="F4",
+                via="f4_solver_krylov",
+                extract_id=extract_id,
+                droop_mv=child.qor.dynamic_ir_mv,
+                em_j=child.qor.em_j_a_m2,
+                gold=False,
+                status=child.status,
+                m=(child.artifacts or {}).get("m"),
+                reason="mf-krylov-mor-residual-vs-direct",
+            )
+
     n_scale = sum(
         1
         for c in mem.by_level("pdn")
@@ -1134,11 +1183,11 @@ def run_controller(
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + IR-bin region GPL + GRT",
             "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF + OpenRCX SPEF",
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
-            "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS + static IR",
+            "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; F3 WNS reorders remaining, no chip restart",
             "hierarchy chip→block→region→cone; IR rXY → OpenROAD density cap on that bin → optional extract",
             "Pareto per level — EHVI acquires, it does not replace the front",
-            "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · MF PDN AMG/RAS residual",
+            "BOiLS EHVI(area,WNS[+IR]) · DRiLLS UCB+IR · GNN HPWL · AutoDMP GPL · MF PDN AMG/RAS/Krylov residual",
         ],
         "not": [
             "flattened black-box of all knobs",
@@ -1216,6 +1265,11 @@ def run_controller(
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_solver_ras" and c.status == "ok"
         ),
+        "n_f4_krylov": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_solver_krylov" and c.status == "ok"
+        ),
         "n_f4_solve": sum(
             1
             for c in mem.by_level("pdn")
@@ -1227,6 +1281,7 @@ def run_controller(
                 "f4_region_extract",
                 "f4_solver_amg",
                 "f4_solver_ras",
+                "f4_solver_krylov",
             )
         ),
         "memory": str(mem_path),
@@ -1321,6 +1376,11 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if c.status == "ok" and (c.knobs or {}).get("source") == "f4_solver_ras" and c.qor.dynamic_ir_mv is not None:
             ras = f" · RAS residual {c.qor.dynamic_ir_mv:.3f} mV (not gold)"
             break
+    kry = ""
+    for c in mem.by_level("pdn"):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_solver_krylov" and c.qor.dynamic_ir_mv is not None:
+            kry = f" · Krylov/MOR residual {c.qor.dynamic_ir_mv:.3f} mV m={(c.artifacts or {}).get('m')} (not gold)"
+            break
     synth = ""
     for c in mem.by_level("synthesis"):
         if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None:
@@ -1351,5 +1411,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{synth}{wns}{f5} · IR cone {mods}{ir}{ras}"
+        f"best mapped area {best}{synth}{wns}{f5} · IR cone {mods}{ir}{ras}{kry}"
     )

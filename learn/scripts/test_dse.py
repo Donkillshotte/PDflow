@@ -325,6 +325,7 @@ def main() -> int:
     check(any(s["level"] == "f3_spef" for s in planned["steps"]), "planner schedules F3 SPEF")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
+    check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
     check(any(s["level"] == "synthesis" for s in planned["steps"]), "planner schedules synthesis F1")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
@@ -355,6 +356,12 @@ def main() -> int:
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
     check(next_fidelity(level="f4_ras", pred=None, budget_left=20, cost_hint={}) == "F4", "RAS stays on F4")
+    check(next_fidelity(level="f4_krylov", pred=None, budget_left=20, cost_hint={}) == "F4", "Krylov/MOR stays on F4")
+    check(
+        knobs_fp("pdn", {"source": "f4_solver_krylov", "extract_id": "finish"})
+        != knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "finish"}),
+        "Krylov residual is not flattened into the RAS fingerprint",
+    )
     check(next_fidelity(level="synthesis", pred=None, budget_left=20, cost_hint={}) == "F1", "synthesis measures at F1")
     check(
         knobs_fp("synthesis", {"name": "orfs_abc_speed", "abcArea": 0, "source": "orfs_abc_script"})
@@ -505,6 +512,11 @@ def main() -> int:
     check("restamp" in (adapter_status()["solver"]["note"] or "").lower() or "make_solver" in (adapter_status()["solver"]["via"] or ""), "solver adapter can restamp on the cached extract")
     check("amg" in (adapter_status()["solver"]["via"] or "").lower(), "solver adapter names AMG as a replaceable MF solver")
     check("ras" in (adapter_status()["solver"]["via"] or "").lower(), "solver adapter names RAS as a replaceable MF solver")
+    check(
+        "krylov" in (adapter_status()["solver"]["via"] or "").lower()
+        or "mor" in (adapter_status()["solver"]["via"] or "").lower(),
+        "solver adapter names Krylov/MOR as a replaceable MF solver",
+    )
     check("abc_speed" in (adapter_status()["synthesis"]["note"] or ""), "synthesis adapter is ORFS abc_speed, not logic -fast")
     check("SPEF" in (adapter_status()["timing"]["note"] or ""), "timing adapter includes OpenRCX SPEF")
     check("f5" in (adapter_status()["routing"]["via"] or "").lower() or "OpenRCX" in (adapter_status()["routing"]["note"] or ""), "routing adapter includes F5-lite")
@@ -703,7 +715,31 @@ def main() -> int:
         )
     )
     check(pdn_next(mem_ras).get("name") == "decap_200f", "RAS residual does not consume the PDN catalog")
-    from dse.acquire import should_pay_f1_synth, should_pay_f4_ras
+    mem_kry = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-kry-")) / "k.jsonl")
+    mem_kry.add(
+        Candidate(
+            id="kry0",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={
+                "source": "f4_solver_krylov",
+                "name": "krylov_residual",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 50e-15,
+                "extract_id": "finish",
+            },
+            knobs_fp="kry",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=45.3, fidelity="F4"),
+            cost_s=1.0,
+        )
+    )
+    check(pdn_next(mem_kry).get("name") == "decap_200f", "Krylov residual does not consume the PDN catalog")
+    from dse.acquire import should_pay_f1_synth, should_pay_f4_krylov, should_pay_f4_ras
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
     pay_s0, _ = should_pay_f1_synth(mem_pay, budget_left=80, n_f1=0)
@@ -746,6 +782,26 @@ def main() -> int:
     )
     pay_r1, why_r1 = should_pay_f4_ras(mem_pay, budget_left=80, n_ras=0, variant="flowlab")
     check(pay_r1 or "cached finish" in why_r1 or "already" in why_r1, f"RAS acquire is well-formed ({why_r1})")
+    pay_k0, why_k0 = should_pay_f4_krylov(mem_pay, budget_left=80, n_krylov=0)
+    check(not pay_k0, f"Krylov waits for RAS ({why_k0})")
+    mem_pay.add(
+        Candidate(
+            id="ras1",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "f4_solver_ras", "extract_id": "finish"},
+            knobs_fp="ras1",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=45.3, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    pay_k1, why_k1 = should_pay_f4_krylov(mem_pay, budget_left=80, n_krylov=0, variant="flowlab")
+    check(pay_k1 or "cached finish" in why_k1 or "already" in why_k1, f"Krylov acquire is well-formed ({why_k1})")
 
     gold_json = _ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     gold_before = gold_json.read_text() if gold_json.is_file() else None
@@ -768,6 +824,19 @@ def main() -> int:
         check(ras.get("solver_kind") == "ras", f"RAS solver_kind, got {ras.get('solver_kind')}")
         check(abs(float(ras["worst_droop_mv"]) - GOLD_MV) < 0.05, f"RAS reproduces gold droop {ras.get('worst_droop_mv')}")
         print(f"    F4 RAS {ras['worst_droop_mv']:.3f} mV vs DirectLU {base['worst_droop_mv']:.3f} mV ({ras.get('cost_s', 0):.2f}s)")
+        kry = solve_f4(variant="flowlab", solver="krylov")
+        check(kry.get("status") == "ok", f"F4 Krylov/MOR residual ({kry.get('reason')})")
+        check(kry.get("gold") is False, "Krylov residual is not marked gold")
+        check(kry.get("solver_kind") == "krylov", f"Krylov solver_kind, got {kry.get('solver_kind')}")
+        check((kry.get("m") or 0) >= 1, f"Krylov reports reduced order m, got {kry.get('m')}")
+        check(
+            abs(float(kry["worst_droop_mv"]) - GOLD_MV) < 5.0,
+            f"Krylov/MOR stays within 5 mV of gold {kry.get('worst_droop_mv')}",
+        )
+        print(
+            f"    F4 Krylov {kry['worst_droop_mv']:.3f} mV m={kry.get('m')} "
+            f"vs DirectLU {base['worst_droop_mv']:.3f} mV ({kry.get('cost_s', 0):.2f}s)"
+        )
         check(base.get("static_ir_mv") is not None, "F4 restamp reports static IR")
         check(float(base["static_ir_mv"]) > 1.0, f"static IR is a real mV drop, got {base.get('static_ir_mv')}")
         check(

@@ -23,10 +23,10 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 from pdn_activity import load_insts, load_sta_arrivals, node_xy, plan_events, t50_via_counts  # noqa: E402
-from pdn_dynamic import assemble_be, contributors_at, timestep_be  # noqa: E402
+from pdn_dynamic import _map_worst_node, assemble_be, contributors_at, timestep_be  # noqa: E402
 from pdn_em import em_thermal_snapshot  # noqa: E402
 from pdn_extract import extract_pdn  # noqa: E402
-from pdn_solvers import make_solver  # noqa: E402
+from pdn_solvers import RationalKrylov, make_solver, mor_starts  # noqa: E402
 from pdn_transient import build_system, solve_static  # noqa: E402
 
 ORFS = _REPO / "tools/OpenROAD-flow-scripts/flow"
@@ -80,8 +80,8 @@ def main() -> int:
     ap.add_argument(
         "--solver",
         default="direct",
-        choices=("direct", "amg", "bicg", "ras"),
-        help="PDN timestep solver; default DirectLU (gold teacher). Not flattened into ABC.",
+        choices=("direct", "amg", "bicg", "ras", "krylov", "mor"),
+        help="PDN timestep: DirectLU (gold teacher), AMG, RAS, or rational Krylov/MOR. Not ABC.",
     )
     args = ap.parse_args()
     t0 = time.time()
@@ -146,8 +146,23 @@ def main() -> int:
         dt=dt,
         spef_c=(ext.get("spef") or {}).get("node_c"),
     )
-    solver = make_solver(sys_be["A"], args.solver)
-    dyn = timestep_be(sys_be, events, solver, vdd, order, t_end)
+    solver_kind = "krylov" if args.solver in ("krylov", "mor") else args.solver
+    mor_m = None
+    if solver_kind == "krylov":
+        import numpy as np
+
+        starts = mor_starts(int(sys_be["n"]), events)
+        shifts = np.array([0.0, 1e9, 1.0 / dt], dtype=np.float64)
+        mor = RationalKrylov(sys_be["G"], sys_be["C"], starts, shifts, n_moments=4, sys=sys_be)
+        dyn = mor.timestep(sys_be, events, vdd, t_end)
+        dyn = _map_worst_node(dyn, order)
+        dyn.setdefault("solver", getattr(mor, "name", "C_rational_krylov_mor"))
+        dyn.setdefault("backend", getattr(mor, "backend", None))
+        dyn.setdefault("timestep_loop", "mor")
+        mor_m = getattr(mor, "m", dyn.get("m"))
+    else:
+        solver = make_solver(sys_be["A"], solver_kind)
+        dyn = timestep_be(sys_be, events, solver, vdd, order, t_end)
     droop = float(dyn["worst_droop"])
     static_ir_mv = None
     static_ir_pct = None
@@ -191,11 +206,18 @@ def main() -> int:
             em = _em_compact(raw)
         except Exception as exc:  # noqa: BLE001 — IR must still report
             em = {"status": "GAP", "reason": str(exc)[:200], "via": "em_thermal_snapshot"}
-    via = (
-        "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) — not finish, not gold"
-        if kind == "candidate"
-        else "Solver A worker on cached write_pg_spice extract — not finish, not gold"
-    )
+    if solver_kind == "krylov":
+        via = (
+            "rational Krylov/MOR on candidate write_pg_spice — reduced-order residual, not gold"
+            if kind == "candidate"
+            else "rational Krylov/MOR on cached write_pg_spice extract — reduced-order residual, not gold"
+        )
+    else:
+        via = (
+            "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) — not finish, not gold"
+            if kind == "candidate"
+            else "Solver A worker on cached write_pg_spice extract — not finish, not gold"
+        )
     note = (
         "candidate PDN R-graph after legalized place; do not replace gold "
         f"{GOLD_MV:.3f} mV"
@@ -230,8 +252,9 @@ def main() -> int:
                 "n_events": len(events),
                 "n_sta_applied": t50_via_counts(events).get("sta_arrival", 0),
                 "t50_via": t50_via_counts(events),
-                "solver": dyn.get("solver") or args.solver,
-                "solver_kind": args.solver,
+                "solver": dyn.get("solver") or solver_kind,
+                "solver_kind": solver_kind,
+                "m": mor_m,
                 "backend": dyn.get("backend"),
                 "timestep_loop": dyn.get("timestep_loop"),
                 "gold": False,

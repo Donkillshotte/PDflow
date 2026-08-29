@@ -36,8 +36,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "ORFS abc_speed.script (ABC_AREA=0) at F1; abc_area stays F0-only; not abc_ops",
     },
     "solver": {
-        "via": "dse.f4_oracle + dse_f4_worker.make_solver (direct|amg|bicg|ras)",
-        "note": "DirectLU restamp on named extract; AMG and RAS are MF residuals; GCD gold 45.298 mV unrestamped",
+        "via": "dse.f4_oracle + dse_f4_worker (direct|amg|bicg|ras|krylov/MOR)",
+        "note": "DirectLU restamp on named extract; AMG, RAS, and rational Krylov/MOR are MF residuals; GCD gold 45.298 mV unrestamped",
     },
     "physical_fast": {
         "via": "dse.netgraph",

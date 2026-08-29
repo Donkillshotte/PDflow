@@ -62,7 +62,7 @@ def solve_f4(
     solver: str = "direct",
     sta: Path | str | None = None,
 ) -> dict:
-    """Named extract + named solver (direct/amg/bicg/ras). Not gold."""
+    """Named extract + named solver (direct/amg/bicg/ras/krylov). Not gold."""
     kind = "candidate" if spice or insts else extract_kind
     if spice or insts:
         if not extract_ready(spice, insts):
