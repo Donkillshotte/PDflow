@@ -229,7 +229,7 @@ Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 | `system_pdn` | ngspice System PDN · VRM→board→pkg→die |
 | `chip_pdn_ir` | PDNSim + write_pg_spice + pdn_transient |
 | `vyges_em_ir` | vyges-em-ir binario su `.pdn` dalla stessa mesh |
-| `dynamic_ir` | PWL per ITerm + Solver A BE golden + heatmap SVG (B/C GAP) |
+| `dynamic_ir` | PWL per ITerm + Solver A LU + Solver B SA-AMG + scenari shared A |
 | `power_chain` | activity → chip IR → system → export lab |
 | `activity_power` | `read_vcd` / `set_power_activity` + `report_power` |
 | `vectorless` | Vectorless vs dynamic IR (Najm + Kouroussis) |

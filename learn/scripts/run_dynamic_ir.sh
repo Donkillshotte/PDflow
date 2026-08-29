@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Dynamic IR engine on the GCD write_pg_spice mesh.
-# Per-ITerm PWL + Solver A (direct BE + LU, golden) + V(x,y) heatmap.
-# Not the SA-AMG/MOR workhorse. Distinct from vyges-em-ir (bootstrap /
-# simultaneous t50, no waveform) and pdn_transient.py (global load-step).
+# Per-ITerm PWL + Solver A (LU golden) + Solver B (SA-AMG) on shared A=G+C/Δt.
+# Solver C = same operator, extra I(t) scenarios. vyges-em-ir is bootstrap.
 #
 # Uso: FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 # Env:

@@ -7,6 +7,14 @@ type Window = { t_start_ns?: number; t_end_ns?: number; t_peak_ns?: number; i_pe
 type Level = { status?: string; mode?: string; note?: string; reason?: string; windows?: Window[] };
 type PipelineStep = { id: number; name: string; status: string; via: string };
 type StatusChip = { status?: string };
+type Scenario = { mode?: string; droop_mv?: number; t_ns?: number; primary?: boolean };
+type Timing = { status?: string; degradation_ps?: number; scale?: number };
+type Amg = {
+  ok?: boolean;
+  worst_droop_mv?: number;
+  abs_err_vs_A_mv?: number;
+  n_levels?: number;
+};
 type DynReport = {
   ok?: boolean;
   summary?: string;
@@ -51,7 +59,11 @@ type DynReport = {
       ACCURATE?: StatusChip;
       SIGNOFF?: StatusChip;
     };
+    timing_impact?: Timing;
   };
+  solver_b?: Amg;
+  scenarios?: Scenario[];
+  timing_impact?: Timing;
 };
 
 function ChipList({
@@ -120,14 +132,18 @@ export function DynamicIrHeatmap({
   const solvers = plat?.solvers;
   const nets = plat?.network_levels;
   const tiers = plat?.product_tiers;
+  const amg = report?.solver_b;
+  const timing = report?.timing_impact ?? plat?.timing_impact;
+  const scenarios = report?.scenarios ?? [];
+  const worstScen = scenarios[0];
 
   return (
     <section className="fl-dynir" aria-label="Dynamic IR heatmap">
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
-          Piattaforma ibrida: OpenROAD frontend · Solver A golden (BE LU) · B AMG
-          e C Krylov/MOR = GAP · vyges = bootstrap, non il core ·{" "}
+          Piattaforma ibrida: OpenROAD frontend · Solver A golden · Solver B
+          SA-AMG · C = stessa A, molti I(t) · vyges = bootstrap ·{" "}
           <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>
           {" · "}
           <a href="/materiali/reference/dynamic-ir-landscape.md">landscape</a>
@@ -172,10 +188,27 @@ export function DynamicIrHeatmap({
                     : `CHECK · ${gold.abs_err_mv?.toFixed(2) ?? "?"} mV`}
               </dd>
             </div>
+            {amg && (
+              <div>
+                <dt>|A−B| AMG</dt>
+                <dd>
+                  {(amg.abs_err_vs_A_mv ?? 0) < 0.001
+                    ? "< 1 µV"
+                    : `${(amg.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
+                  {amg.n_levels != null ? ` · L${amg.n_levels}` : ""}
+                </dd>
+              </div>
+            )}
+            {timing?.degradation_ps != null && (
+              <div>
+                <dt>Delay scale</dt>
+                <dd>+{timing.degradation_ps.toFixed(2)} ps</dd>
+              </div>
+            )}
           </dl>
           {solvers && (
             <ChipList
-              label="Solver (A golden · B/C GAP)"
+              label="Solver (A gold · B workhorse · C shared A)"
               items={[
                 {
                   key: "A",
@@ -190,7 +223,7 @@ export function DynamicIrHeatmap({
                 {
                   key: "C",
                   status: solvers.C_rational_krylov_mor?.status,
-                  text: "C Krylov/MOR",
+                  text: "C shared PDN",
                 },
               ]}
             />
@@ -240,7 +273,7 @@ export function DynamicIrHeatmap({
                 {
                   key: "B",
                   status: report.emsim_split.B_pdn_solve?.status,
-                  text: "B PDN Solver A",
+                  text: "B PDN A+B",
                 },
               ]}
             />
@@ -279,6 +312,26 @@ export function DynamicIrHeatmap({
             <p className="fl-dynir-hotspot">
               Hotspot {report.hotspot.node ?? "—"} · {report.hotspot.droop_mv?.toFixed(2)} mV @{" "}
               {report.hotspot.t_ns?.toFixed(2)} ns · I seq {seqPct}% / combo {comboPct}%
+              {timing?.degradation_ps != null
+                ? ` · delay +${timing.degradation_ps.toFixed(2)} ps`
+                : ""}
+            </p>
+          )}
+          {scenarios.length > 0 && (
+            <ol className="fl-dynir-scenarios" aria-label="Scenario ranking">
+              {scenarios.map((s) => (
+                <li key={s.mode} data-primary={s.primary ? "1" : "0"}>
+                  {s.mode}
+                  {s.primary ? " (run)" : ""} · {s.droop_mv?.toFixed(2)} mV @{" "}
+                  {s.t_ns?.toFixed(2)} ns
+                </li>
+              ))}
+            </ol>
+          )}
+          {worstScen && !worstScen.primary && (
+            <p className="fl-dynir-hotspot">
+              Ranking: il peggiore è {worstScen.mode} ({worstScen.droop_mv?.toFixed(2)} mV),
+              non il modo corrente.
             </p>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}

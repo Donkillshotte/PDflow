@@ -211,6 +211,22 @@ rg -q 'id: "pkg"' "${ROOT}/studio/src/components/flowlab/phases.ts" && ok "FlowL
 [[ -f "${ROOT}/learn/scripts/spice_to_pdn.py" ]] && ok "spice_to_pdn.py" || bad "manca spice_to_pdn.py"
 python3 -m py_compile "${ROOT}/learn/scripts/spice_to_pdn.py" && ok "spice_to_pdn compile" || bad "spice_to_pdn compile"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic compile" || bad "pdn_dynamic compile"
+python3 -m py_compile "${ROOT}/learn/scripts/pdn_solvers.py" && ok "pdn_solvers compile" || bad "pdn_solvers compile"
+if PYTHONPATH=/usr/lib/python3/dist-packages:"${ROOT}/learn/scripts" python3 - <<'PY'
+from scipy import sparse
+import numpy as np
+from pdn_solvers import DirectLU, SAAMG
+n=200
+A=sparse.diags([-np.ones(n-1), 2*np.ones(n), -np.ones(n-1)], [-1,0,1], shape=(n,n), format="csr")
+b=np.ones(n)
+xa=DirectLU(A).solve(b)
+B=SAAMG(A)
+xb=B.solve(b)
+assert B.n_levels>=2
+assert float(np.max(np.abs(xa-xb)))<1e-6
+print("amg poisson ok", B.n_levels)
+PY
+then ok "SA-AMG vs LU poisson"; else bad "SA-AMG poisson"; fi
 rg -q 'vyges_em_ir' "${ROOT}/studio/src/lib/run.ts" && ok "studio vyges_em_ir action" || bad "studio senza vyges_em_ir"
 rg -q 'dynamic_ir' "${ROOT}/studio/src/lib/run.ts" && ok "studio dynamic_ir action" || bad "studio senza dynamic_ir"
 rg -F -q 'image/svg+xml' "${ROOT}/studio/src/app/api/content/route.ts" && ok "content SVG mime" || bad "content senza SVG"
@@ -275,13 +291,16 @@ assert r["emsim_split"]["A_cell_current"]["status"]=="PARTIAL"
 assert r["emsim_split"]["B_pdn_solve"]["status"]=="READY"
 p=r["platform"]
 assert p["solvers"]["A_direct_be"]["status"]=="READY"
-assert p["solvers"]["B_sa_amg"]["status"]=="GAP"
-assert p["solvers"]["C_rational_krylov_mor"]["status"]=="GAP"
-assert p["product_tiers"]["FAST"]["status"]=="PARTIAL"
+assert p["solvers"]["B_sa_amg"]["status"]=="READY"
+assert p["solvers"]["C_rational_krylov_mor"]["status"]=="PARTIAL"
+assert p["product_tiers"]["FAST"]["status"]=="READY"
 assert p["product_tiers"]["SIGNOFF"]["status"]=="GAP"
 assert p["network_levels"]["N1_R"]["status"]=="READY"
 assert p["network_levels"]["N4_vrm"]["status"]=="PARTIAL"
 assert "vyges-em-ir" in p["do_not_fork"]
+assert r["solver_b"]["ok"] is True
+assert r["solver_b"]["abs_err_vs_A_mv"] < 5.0
+assert r["timing_impact"]["status"]=="PARTIAL"
 g=r.get("ngspice_gold")
 assert g is None or g.get("ok") is True, g
 print(r["summary"][:100])

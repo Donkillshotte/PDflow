@@ -267,10 +267,12 @@ assert r["sim_levels"]["L2_vcd_dynamic"]["status"] == "GAP"
 assert r["pipeline"][0]["status"] == "READY"
 assert r["emsim_split"]["B_pdn_solve"]["status"] == "READY"
 assert r["platform"]["solvers"]["A_direct_be"]["status"] == "READY"
-assert r["platform"]["solvers"]["B_sa_amg"]["status"] == "GAP"
-assert r["platform"]["solvers"]["C_rational_krylov_mor"]["status"] == "GAP"
-assert r["platform"]["product_tiers"]["FAST"]["status"] == "PARTIAL"
+assert r["platform"]["solvers"]["B_sa_amg"]["status"] == "READY"
+assert r["platform"]["solvers"]["C_rational_krylov_mor"]["status"] == "PARTIAL"
+assert r["platform"]["product_tiers"]["FAST"]["status"] == "READY"
 assert r["platform"]["network_levels"]["N2_RC"]["status"] == "READY"
+assert r["solver_b"]["ok"] is True
+assert r["solver_b"]["abs_err_vs_A_mv"] < 5.0
 assert "windows" in r["sim_levels"]["L3_windowed"]
 g = r.get("ngspice_gold")
 assert g is None or g.get("ok") is True, g

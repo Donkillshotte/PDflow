@@ -1,8 +1,7 @@
-# Dynamic IR sul GCD (I(t) per pin + Solver A golden)
+# Dynamic IR sul GCD (I(t) per pin + Solver A gold + Solver B SA-AMG)
 
 Slice eseguibile di una **piattaforma ibrida**, non un RedHawk e non un fork.
-Frontend: OpenROAD `write_pg_spice`. Motore: **Solver A** (backward Euler + LU sparso) come **gold**, non come workhorse.
-Solver B (SA-AMG) e Solver C (rational Krylov / MOR) sono GAP. vyges-em-ir è bootstrap / check simultaneous-switch.
+Frontend: OpenROAD `write_pg_spice`. **Solver A** (BE + LU) è l’oracle. **Solver B** (SA-AMG + CG) è il workhorse sulla stessa \(A=G+C/\Delta t\). **Solver C** oggi è il riuso di quella A su più `I(t)` — non un ODE Krylov ridotto. vyges-em-ir è bootstrap.
 
 ```text
 6_final.odb
@@ -14,8 +13,10 @@ inst_power_map.json             placement, seq vs combo (opzionale)
     ▼
 pdn_dynamic.py
     per-ITerm triangle I(t)     simultaneous | spatial | clock
-    Solver A: (G + C/Δt) V_{n+1} = I_{n+1} + (C/Δt) V_n
-    sparse LU una volta, poi timestep   ← gold, non AMG/MOR
+    A = G + C/Δt                setup una volta (indipendente da I(t))
+    Solver A: LU                gold
+    Solver B: SA-AMG + CG       workhorse, |A−B| sul GCD < 1 µV
+    scenari extra su B          ranking clock / spatial / simultaneous
     ▼
 sim/reports/dynamic_ir_<variant>.json
                   .wave.csv     Vmin(t), I_tot(t)
@@ -34,17 +35,16 @@ vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch
 | **L2 VCD dynamic** | tempi reali di pin | **GAP** — VCD RTL ≠ ITerm gate |
 | **L3 Windowed** | simula solo finestre ad alta corrente | PARTIAL — finestre su `I_tot(t)` di **questo** run |
 
-Il salto qualitativo del prodotto è il modello **cella → I(t)** (CCS/arco/slew/load), non il solver.
-Solver A sul GCD è il **gold**. Il workhorse futuro è B (AMG); il riuso multi-scenario è C (MOR).
-**Non** si forka vyges, EMSim o PSM. **Non** si implementa AMG/CCS/GPU in questa slice.
+Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A/B ci sono.
+**Non** si forka vyges, EMSim o PSM. CCS, Ginkgo GPU e rational Krylov ODE restano GAP.
 
 ## Solver A / B / C e livelli prodotto
 
 | Solver | Ruolo | GCD |
 |---|---|---|
-| **A** direct BE + LU | golden | READY |
-| **B** SA-AMG | workhorse full-chip | GAP |
-| **C** Krylov/MOR | stessa PDN, tanti `I(t)` | GAP |
+| **A** direct BE + LU | golden | READY (~3 ms setup, più veloce a 4k nodi) |
+| **B** SA-AMG + CG | workhorse (scala verso milioni di nodi) | READY · 5 livelli · \|A−B\| ≪ 1 mV |
+| **C** shared PDN | stessa A, tanti `I(t)` | PARTIAL — non ODE Krylov/MOR |
 
 | Rete | Equazione | GCD |
 |---|---|---|
@@ -53,7 +53,9 @@ Solver A sul GCD è il **gold**. Il workhorse futuro è B (AMG); il riuso multi-
 | N3 + pkg R/L | `pkg_r` / `pkg_l` sui bump | READY (L on-die non estratta) |
 | N4 + VRM | on-die + package + VRM | PARTIAL (`system_pdn` non accoppiato) |
 
-FAST = vectorless+AMG (PARTIAL: abbiamo t50 sintetici + A). ACCURATE e SIGNOFF = GAP.
+FAST = vectorless + AMG = **READY** (t50 sintetici). ACCURATE e SIGNOFF = GAP.
+
+Sul GCD Nangate45 LU è più veloce di AMG (4k nodi). AMG è il path che tiene su mesh enormi; A resta l’oracle.
 
 ## Pipeline a 6 livelli (oggi)
 
@@ -63,8 +65,8 @@ FAST = vectorless+AMG (PARTIAL: abbiamo t50 sintetici + A). ACCURATE e SIGNOFF =
 | 2 | Power model | I_avg nel `.sp` (NLDM) | no CCS I(t) |
 | 3 | Activity | clock/spatial/simultaneous | no VCD pin, no SAIF |
 | 4 | Current waveform | triangolo per ITerm | no slew/load/arc |
-| 5 | Transient solver | **Solver A** BE + LU | B AMG / C MOR = GAP; ngspice = gold 1-nodo |
-| 6 | Analysis | heatmap, Vmin(t), finestre, hotspot seq/combo | no EM, no delay vs V |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG | C = shared A, non Krylov ODE; ngspice = gold 1-nodo |
+| 6 | Analysis | heatmap, finestre, ranking scenari, delay scaling | no EM, no path STA |
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
@@ -118,8 +120,8 @@ Gold ngspice: circuito **1 nodo** RC + triangolo (non il chip). `|V_BE − V_ngs
 | `learn/scripts/run_dynamic_ir.sh` | GCD + stamp `.dynamic_ir.ok` |
 | `sim/reports/dynamic_ir_<variant>.*` | JSON / wave / map / SVG |
 
-Limiti in aula: triangolo ≠ CCS; Solver A ≠ workhorse; nessun AMG/Krylov/GPU; package R/L come in `pdn_transient`; pad PDNSim su metal4.
+Limiti in aula: triangolo ≠ CCS; AMG sul GCD è più lento di LU (4k nodi); package R/L lumpato; pad PDNSim su metal4.
 
-Piattaforma ibrida (A/B/C, FAST/ACCURATE/SIGNOFF, perché **non** forkare): [dynamic-ir-landscape.md](./dynamic-ir-landscape.md).
+Piattaforma ibrida: [dynamic-ir-landscape.md](./dynamic-ir-landscape.md).
 
 Cross-ref: [vyges-em-ir.md](./vyges-em-ir.md) · [spice-chip-mesh.md](./spice-chip-mesh.md) · [vectorless-power.md](./vectorless-power.md) · [oss-integrations.md](./oss-integrations.md)

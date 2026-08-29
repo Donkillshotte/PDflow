@@ -7,10 +7,10 @@ Architecture (what this file actually does — not a product claim):
   per-ITerm triangle I(t)  →  Solver A: direct backward-Euler + sparse LU
   Vmin(t) + V(x,y) heatmap at t_worst
 
-This slice is Solver A (golden) on ~4k GCD nodes. It is not the SoC workhorse.
-Solver B (SA-AMG) and Solver C (rational Krylov / MOR) are documented GAP.
-vyges-em-ir is bootstrap / simultaneous-switch check — not the core, not a fork.
-Do not implement AMG, CCS tables, Ginkgo, or GPU here.
+Solver A (direct BE + LU) is the golden oracle.
+Solver B (smoothed-aggregation AMG + CG) is the workhorse on the same A = G+C/Δt.
+Solver C here is shared-operator reuse across I(t) scenarios — not a rational
+Krylov reduced ODE yet. vyges-em-ir is bootstrap, not the core. No forks.
 
 Honest limits: triangle ≠ Liberty CCS; RTL VCD does not name gate pins;
 Nangate45 has no CCS current tables.
@@ -30,6 +30,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 if "/usr/lib/python3/dist-packages" not in sys.path:
@@ -37,12 +38,12 @@ if "/usr/lib/python3/dist-packages" not in sys.path:
 
 import numpy as np
 from scipy import sparse
-from scipy.sparse.linalg import splu, spsolve
 
 _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
+from pdn_solvers import DirectLU, SAAMG, residual_rel  # noqa: E402
 from pdn_transient import build_system, parse_spice, solve_static  # noqa: E402
 
 COORD_RE = re.compile(r"(ITermNode|Node)_metal(\d+)_(-?\d+)_(-?\d+)")
@@ -168,20 +169,8 @@ def plan_events(
     return events
 
 
-def solve_be(
-    G,
-    idx,
-    order,
-    voltages,
-    vdd,
-    events,
-    *,
-    pkg_r,
-    pkg_l,
-    c_decap,
-    t_end,
-    dt,
-):
+def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
+    """A = G + C/Δt + pad conductance. Independent of I(t) / t50."""
     n = G.shape[0]
     bump = [idx[nm] for nm in voltages if nm in idx]
     r_series = max(pkg_r + (pkg_l / dt if pkg_l > 0 else 0.0), 1e-9)
@@ -198,15 +187,36 @@ def solve_be(
         leak[ev["idx"]] += ev["i_leak"]
 
     A = (Gsoft + sparse.diags(C / dt)).tocsc()
-    lu = splu(A)
     pad = np.zeros(n)
     for i in bump:
         pad[i] = g_pad * vdd
+    return {
+        "A": A,
+        "C": C,
+        "leak": leak,
+        "pad": pad,
+        "n": n,
+        "pkg_r": pkg_r,
+        "pkg_l": pkg_l,
+        "c_decap": c_decap,
+        "dt": dt,
+        "g_pad": g_pad,
+    }
 
+
+def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float):
+    C = sys["C"]
+    leak = sys["leak"]
+    pad = sys["pad"]
+    dt = sys["dt"]
+    A = sys["A"]
+    n = sys["n"]
     steps = max(2, int(math.ceil(t_end / dt)))
     V = np.full(n, vdd)
     wave_t, wave_vmin, wave_itot = [], [], []
     worst_v, worst_t, worst_node, worst_V = vdd, 0.0, None, V.copy()
+    res_max = 0.0
+    t_solve = 0.0
 
     for s in range(steps):
         t = s * dt
@@ -214,7 +224,10 @@ def solve_be(
         for ev in events:
             I_draw[ev["idx"]] += triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
         rhs = (C / dt) * V - I_draw + pad
-        V = lu.solve(rhs)
+        t0 = time.perf_counter()
+        V = solver.solve(rhs, x0=V)
+        t_solve += time.perf_counter() - t0
+        res_max = max(res_max, residual_rel(A, V, rhs))
         vmin = float(np.min(V))
         wave_t.append(float(t))
         wave_vmin.append(vmin)
@@ -234,11 +247,14 @@ def solve_be(
         "dt": dt,
         "t_end": t_end,
         "steps": steps,
-        "pkg_r": pkg_r,
-        "pkg_l": pkg_l,
-        "c_decap": c_decap,
-        "solver": "A_direct_be",
-        "solver_note": "golden backward-Euler + sparse LU — not AMG/MOR workhorse",
+        "pkg_r": sys["pkg_r"],
+        "pkg_l": sys["pkg_l"],
+        "c_decap": sys["c_decap"],
+        "solver": solver.name,
+        "solver_setup_s": getattr(solver, "setup_s", None),
+        "solver_step_s": t_solve,
+        "n_levels": getattr(solver, "n_levels", 1),
+        "rel_res_max": res_max,
         "wave_t": wave_t,
         "wave_vmin": wave_vmin,
         "wave_itot": wave_itot,
@@ -246,17 +262,69 @@ def solve_be(
     }
 
 
-def platform_block(*, mode: str, c_decap: float, pkg_r: float, pkg_l: float) -> dict:
-    """Hybrid multi-fidelity platform labels. Solvers B/C are GAP on purpose."""
+def solve_be(
+    G,
+    idx,
+    order,
+    voltages,
+    vdd,
+    events,
+    *,
+    pkg_r,
+    pkg_l,
+    c_decap,
+    t_end,
+    dt,
+    backend: str = "a",
+):
+    sys = assemble_be(
+        G, idx, voltages, vdd, events, pkg_r=pkg_r, pkg_l=pkg_l, c_decap=c_decap, dt=dt
+    )
+    solver = DirectLU(sys["A"]) if backend in ("a", "direct", "lu") else SAAMG(sys["A"])
+    return timestep_be(sys, events, solver, vdd, order, t_end)
+
+
+def timing_impact(vdd: float, vmin: float, period_ns: float, alpha: float = 1.3) -> dict:
+    """Delay scaling at the worst tap — not a real STA path."""
+    v_eff = max(float(vmin), 0.25 * vdd)
+    scale = (vdd / v_eff) ** alpha
+    delay_nom_ps = 30.0  # ~FO4-class inverter at 45 nm, didactic
+    deg_ps = (scale - 1.0) * delay_nom_ps
+    return {
+        "status": "PARTIAL",
+        "model": "delay = delay_nom * (Vdd/V)^alpha at worst tap",
+        "alpha": alpha,
+        "vmin": vmin,
+        "scale": scale,
+        "delay_nom_ps": delay_nom_ps,
+        "degradation_ps": deg_ps,
+        "period_ns": period_ns,
+        "frac_of_period": (deg_ps * 1e-3) / period_ns if period_ns else None,
+        "note": "not a timed path — delay scaling only",
+    }
+
+
+def platform_block(
+    *,
+    mode: str,
+    c_decap: float,
+    pkg_r: float,
+    pkg_l: float,
+    amg: dict | None,
+    scenarios: list | None,
+    timing: dict | None,
+) -> dict:
+    b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
+    c_status = "PARTIAL" if scenarios else "GAP"
+    fast = "READY" if b_status == "READY" else "PARTIAL"
     return {
         "name": "hierarchical multi-fidelity power-integrity engine",
-        "slice": "OpenROAD frontend + triangle I(t) + Solver A golden (GCD ~4k nodes)",
+        "slice": "OpenROAD frontend + triangle I(t) + Solver A gold + Solver B SA-AMG",
         "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
         "do_not_implement_this_slice": [
-            "SA-AMG",
-            "rational Krylov / MOR",
             "Liberty CCS/ECSM I(t) tables",
             "Ginkgo CPU/GPU backend",
+            "rational Krylov reduced ODE",
             "empty power-integrity/ tree",
         ],
         "ml": {
@@ -284,15 +352,17 @@ def platform_block(*, mode: str, c_decap: float, pkg_r: float, pkg_l: float) -> 
                 "not": "product workhorse",
             },
             "B_sa_amg": {
-                "status": "GAP",
+                "status": b_status,
                 "role": "full-chip workhorse",
-                "ref": "ESPSim smoothed-aggregation AMG",
+                "ref": "smoothed aggregation + Jacobi V-cycle + CG (ESPSim-class)",
+                "vs_A": amg,
             },
             "C_rational_krylov_mor": {
-                "status": "GAP",
+                "status": c_status,
                 "role": "multi-scenario reuse on the same PDN",
-                "ref": "MATEX + Raptor",
-                "killer_feature": "shared reduced model across I(t) scenarios",
+                "via": "shared A = G+C/Δt across I(t) scenarios (not rational Krylov ODE)",
+                "killer_feature": "same PDN operator, many current waveforms",
+                "scenarios": scenarios,
             },
         },
         "network_levels": {
@@ -323,9 +393,9 @@ def platform_block(*, mode: str, c_decap: float, pkg_r: float, pkg_l: float) -> 
         },
         "product_tiers": {
             "FAST": {
-                "status": "PARTIAL",
+                "status": fast,
                 "intended": "vectorless + SA-AMG + coarse timestep",
-                "this_slice": f"synthetic {mode} t50 + Solver A BE (no AMG)",
+                "this_slice": f"synthetic {mode} t50 + Solver B SA-AMG",
             },
             "ACCURATE": {
                 "status": "GAP",
@@ -336,7 +406,8 @@ def platform_block(*, mode: str, c_decap: float, pkg_r: float, pkg_l: float) -> 
                 "intended": "RLC + MOR/Krylov + direct spot checks + EM + package",
             },
         },
-        "timing_impact": {
+        "timing_impact": timing
+        or {
             "status": "GAP",
             "idea": "V(t) → delay(V) → STA path degradation",
         },
@@ -619,6 +690,8 @@ def main() -> int:
     ap.add_argument("--t-end-ns", type=float, default=0.0)
     ap.add_argument("--vdd", type=float, default=0.0)
     ap.add_argument("--skip-ngspice", action="store_true")
+    ap.add_argument("--no-amg", action="store_true", help="skip Solver B SA-AMG")
+    ap.add_argument("--no-scenarios", action="store_true", help="skip extra I(t) modes on shared A")
     args = ap.parse_args()
 
     resistors, currents, voltages = parse_spice(args.spice)
@@ -646,19 +719,80 @@ def main() -> int:
     static = solve_static(G, idx, order, currents, voltages, vdd)
     Vstat = static.pop("V")
 
-    dyn = solve_be(
+    sys_be = assemble_be(
         G,
         idx,
-        order,
         voltages,
         vdd,
         events,
         pkg_r=args.pkg_r,
         pkg_l=args.pkg_l,
         c_decap=args.c_decap,
-        t_end=t_end,
         dt=dt,
     )
+    solver_a = DirectLU(sys_be["A"])
+    dyn = timestep_be(sys_be, events, solver_a, vdd, order, t_end)
+
+    amg_meta = None
+    solver_b = None
+    if not args.no_amg:
+        solver_b = SAAMG(sys_be["A"])
+        dyn_b = timestep_be(sys_be, events, solver_b, vdd, order, t_end)
+        err_mv = abs(dyn["worst_droop"] - dyn_b["worst_droop"]) * 1e3
+        amg_meta = {
+            "ok": err_mv < 5.0,
+            "worst_droop_mv": dyn_b["worst_droop"] * 1e3,
+            "worst_time_ns": dyn_b["worst_time_s"] * 1e9,
+            "abs_err_vs_A_mv": err_mv,
+            "rel_res_max": dyn_b["rel_res_max"],
+            "n_levels": dyn_b["n_levels"],
+            "setup_s": solver_b.setup_s,
+            "step_s": dyn_b["solver_step_s"],
+            "lu_setup_s": solver_a.setup_s,
+            "lu_step_s": dyn["solver_step_s"],
+        }
+        dyn_b.pop("V_worst", None)
+        dyn["amg"] = {k: v for k, v in dyn_b.items() if not k.startswith("wave_") and k != "V_worst"}
+
+    scenarios = None
+    if not args.no_scenarios and solver_b is not None:
+        scenarios = []
+        for m in ("clock", "spatial", "simultaneous"):
+            if m == args.mode and amg_meta is not None:
+                scenarios.append(
+                    {
+                        "mode": m,
+                        "droop_mv": amg_meta["worst_droop_mv"],
+                        "t_ns": amg_meta["worst_time_ns"],
+                        "i_peak_a": max(dyn["wave_itot"]) if dyn["wave_itot"] else 0.0,
+                        "via": solver_b.name,
+                        "primary": True,
+                    }
+                )
+                continue
+            ev_m = plan_events(
+                currents,
+                idx,
+                insts,
+                mode=m,
+                peak_factor=args.peak_factor,
+                leak_frac=args.leak_frac,
+                period_s=period_s,
+                dur_s=dur_s,
+                t50_s=t50_s,
+            )
+            r_m = timestep_be(sys_be, ev_m, solver_b, vdd, order, t_end)
+            scenarios.append(
+                {
+                    "mode": m,
+                    "droop_mv": r_m["worst_droop"] * 1e3,
+                    "t_ns": r_m["worst_time_s"] * 1e9,
+                    "i_peak_a": max(r_m["wave_itot"]) if r_m["wave_itot"] else 0.0,
+                    "via": solver_b.name,
+                    "primary": False,
+                }
+            )
+        scenarios.sort(key=lambda s: -s["droop_mv"])
     Vw = dyn.pop("V_worst")
     pts = heatmap_points(order, Vw, vdd, events)
     hottest = sorted(pts, key=lambda p: p["ir_mv"], reverse=True)[:8]
@@ -707,6 +841,11 @@ def main() -> int:
         "seq": bool(hot.get("seq")),
         "contributors": contrib,
     }
+    timing = timing_impact(vdd, dyn["worst_voltage"], args.period_ns)
+    hotspot["timing"] = {
+        "degradation_ps": timing["degradation_ps"],
+        "scale": timing["scale"],
+    }
     sim_levels = {
         "L0_static": {
             "status": "READY",
@@ -732,10 +871,23 @@ def main() -> int:
         {"id": 2, "name": "Power model", "status": "PARTIAL", "via": "I_avg from mesh (NLDM, not CCS I(t))"},
         {"id": 3, "name": "Activity engine", "status": "PARTIAL", "via": f"synthetic {args.mode}; VCD pin-accurate = GAP"},
         {"id": 4, "name": "Current waveform", "status": "PARTIAL", "via": "per-ITerm triangle PWL"},
-        {"id": 5, "name": "Transient solver", "status": "READY", "via": "Solver A golden — direct BE sparse LU. Solver B SA-AMG and Solver C Krylov/MOR = GAP"},
-        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + Vmin(t) + windows; timing/EM coupling = GAP"},
+        {"id": 5, "name": "Transient solver", "status": "READY", "via": "A golden LU + B SA-AMG on shared A=G+C/Δt"},
+        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + windows + delay scaling; EM = GAP"},
     ]
-    plat = platform_block(mode=args.mode, c_decap=args.c_decap, pkg_r=args.pkg_r, pkg_l=args.pkg_l)
+    plat = platform_block(
+        mode=args.mode,
+        c_decap=args.c_decap,
+        pkg_r=args.pkg_r,
+        pkg_l=args.pkg_l,
+        amg=amg_meta,
+        scenarios=scenarios,
+        timing=timing,
+    )
+    amg_note = (
+        f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
+        if amg_meta
+        else ""
+    )
     report = {
         "ok": True,
         "kind": "dynamic_ir",
@@ -743,14 +895,15 @@ def main() -> int:
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
             "per-ITerm PWL triangle I(t) (leak + switch) — not CCS",
-            "Solver A: direct backward-Euler sparse LU (golden, not workhorse)",
-            "V(x,y) heatmap at t_worst",
+            "Solver A: direct backward-Euler sparse LU (golden)",
+            "Solver B: smoothed-aggregation AMG + CG (workhorse)",
+            "Shared A = G+C/Δt across I(t) scenarios",
+            "V(x,y) heatmap at t_worst + delay scaling at worst tap",
         ],
         "not": [
             "Liberty CCS current waveforms",
             "gate-level VCD pin times",
-            "SA-AMG workhorse (Solver B)",
-            "rational Krylov / MOR (Solver C)",
+            "rational Krylov reduced ODE",
             "RedHawk / Voltus / Totem sign-off",
             "vyges-em-ir fork",
             "EMSim commercial flow (VCS/Calibre/PT-PX/HSpice)",
@@ -759,8 +912,8 @@ def main() -> int:
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
-            "this_engine": "Solver A golden on write_pg_spice; triangle I(t) per ITerm",
-            "ngspice": "unit-test gold for B on a 1-node RC",
+            "this_engine": "Solver A gold + Solver B SA-AMG on write_pg_spice; triangle I(t)",
+            "ngspice": "unit-test gold for BE on a 1-node RC",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
         "platform": plat,
@@ -776,11 +929,10 @@ def main() -> int:
             },
             "B_pdn_solve": {
                 "status": "READY",
-                "solver": "A_direct_be",
+                "solver": "A_direct_be + B_sa_amg",
                 "replaces": "HSpice TRAN on Calibre DSPF",
-                "via": "Solver A — backward-Euler sparse LU on write_pg_spice (golden)",
-                "gold": "ngspice 1-node gear/BE",
-                "not": "SA-AMG workhorse or Krylov/MOR",
+                "via": "Solver A LU golden + Solver B SA-AMG on write_pg_spice",
+                "gold": "ngspice 1-node gear/BE; A vs B droop on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
@@ -813,15 +965,26 @@ def main() -> int:
         },
         "waveform": str(wave_path),
         "ngspice_gold": gold,
+        "solver_b": amg_meta,
+        "scenarios": scenarios,
+        "timing_impact": timing,
         "summary": (
             f"{args.mode} · static {static['worst_ir']*1e3:.3f} mV · "
             f"dynamic droop {dyn['worst_droop']*1e3:.3f} mV "
             f"({dyn['worst_droop_pct']:.3f}%) @ {dyn['worst_time_s']*1e9:.2f} ns · "
             f"I_peak {i_tot_peak*1e3:.2f} mA · {len(events)} PWL · "
             f"t50 span {((max(t50s)-min(t50s))*1e9) if t50s else 0:.2f} ns"
+            f"{amg_note}"
+            f" · delay +{timing['degradation_ps']:.2f} ps"
         ),
     }
-    out.write_text(json.dumps(report, indent=2) + "\n")
+
+    def _json(o):
+        if isinstance(o, np.generic):
+            return o.item()
+        raise TypeError(type(o))
+
+    out.write_text(json.dumps(report, indent=2, default=_json) + "\n")
     print("DYNAMIC_IR_DONE")
     print(report["summary"])
     print(f"report → {out}")

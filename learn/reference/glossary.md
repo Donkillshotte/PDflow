@@ -204,7 +204,7 @@ Riferimento alfabetico. Torna qui durante ogni lezione.
 
 **vyges-em-ir** — Engine Apache-2.0 ([vyges-tools/em-ir](https://github.com/vyges-tools/em-ir)): IR statico CG + transiente backward-Euler su un `.pdn`. Integrato sul GCD via `run_vyges_em_ir.sh`. Bootstrap e check simultaneous-switch — **non** il core della piattaforma.
 
-**Dynamic IR (I(t))** — Engine del corso (`pdn_dynamic.py`): I(t) per pin + **Solver A** (BE + LU sparso, golden) + heatmap. Non è CCS, VCD pin-accurate, SA-AMG (Solver B) né Krylov/MOR (Solver C).
+**Dynamic IR (I(t))** — Engine del corso (`pdn_dynamic.py`): I(t) per pin + **Solver A** (LU gold) + **Solver B** (SA-AMG) + ranking scenari sulla stessa A. Non è CCS né VCD pin-accurate.
 
 ---
 

@@ -274,7 +274,7 @@ export function inspectStage(
     {
       id: "dynamic-ir",
       label: "Dynamic IR I(t)",
-      detail: "run_dynamic_ir.sh · Solver A golden + heatmap · non AMG/MOR",
+      detail: "run_dynamic_ir.sh · A gold + B SA-AMG + heatmap",
     },
     {
       id: "yosys-equiv",

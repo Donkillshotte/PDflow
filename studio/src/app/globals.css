@@ -2371,6 +2371,16 @@ button.pipeline-node {
   font-family: var(--font-mono);
   color: var(--fl-muted);
 }
+.fl-dynir-scenarios {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--fl-muted);
+}
+.fl-dynir-scenarios li[data-primary="1"] {
+  color: #e8eef9;
+}
 
 .sig-matrix {
   padding: 0.85rem 1rem;

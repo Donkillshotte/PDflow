@@ -141,7 +141,7 @@ export const SPICE_ANALYSES = [
     id: "dynamic_ir",
     label: "Dynamic IR I(t)",
     produces: ["dynamic_ir_*.json", "dynamic_ir_*.svg"],
-    spice: "per-ITerm PWL + Solver A BE golden + heatmap t_worst",
+    spice: "per-ITerm PWL + Solver A LU + Solver B SA-AMG + heatmap",
     doc: "/materiali/reference/dynamic-ir.md",
     action: "dynamic_ir",
   },

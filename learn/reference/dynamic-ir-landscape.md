@@ -5,8 +5,8 @@ Il “flow definitivo” **non** si costruisce intorno a un singolo progetto esi
 È un **sistema ibrido**: frontend fisico OpenROAD, motore di corrente dedicato,
 più solver a fedeltà diversa, screening attività, gold esterni.
 
-Questa slice del corso **non** implementa AMG, rational Krylov, CCS, Ginkgo, GPU,
-né uno scaffold `power-integrity/`. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
+Questa slice **implementa** SA-AMG (Solver B) e il riuso dell’operatore PDN tra scenari.
+**Non** implementa CCS, Ginkgo/GPU, né un ODE rational Krylov. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
 
 ## Verdetto (piattaforma, non un clone)
 
@@ -16,17 +16,16 @@ né uno scaffold `power-integrity/`. Non forkare vyges-em-ir, EMSim o OpenROAD P
 | Liberty CCS/ECSM + VCD/FSDB + STA | domanda di corrente vera | GAP (NLDM + t50 sintetici) |
 | Scenario / window engine | non simulare 100k cicli | PARTIAL (`I_tot(t)` di questo run) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
-| **Solver B** SA-AMG (ESPSim) | workhorse full-chip | **GAP** |
-| **Solver C** rational Krylov / MOR (MATEX, Raptor) | riuso tra scenari | **GAP** |
+| **Solver B** SA-AMG + CG | workhorse | **READY** (5 livelli sul GCD, \|A−B\| ≪ 1 mV; LU è più veloce a 4k nodi) |
+| **Solver C** shared PDN (non Krylov ODE) | riuso tra scenari | **PARTIAL** — stessa \(A=G+C/\Delta t\), tre `I(t)` |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
 | ngspice | unit test fisico 1-nodo | READY |
 | MAVIREC / PowerNet / IR-Hunter | ML solo screening | **GAP** — mai dentro il physics |
 | vyges-em-ir | bootstrap + check simultaneous-switch | INTEGRATED, **non** il core |
 
-Killer feature futura (GAP): **stesso modello ridotto della PDN**, molti `I(t)` di scenario.
-Non è “un simulatore Dynamic IR”: è un engine di power integrity multi-fedeltà,
-activity-aware.
+Killer feature **già nel codice**: stessa A della PDN, molti `I(t)` (clock / spatial / simultaneous).
+Manca ancora il modello ridotto rational Krylov (MATEX/Raptor).
 
 ## Matrice (ciò che esiste davvero)
 
@@ -34,7 +33,7 @@ activity-aware.
 |---|---|---|---|---|---|---|
 | OpenROAD PSM / PDNSim | sì | **no** (docs: static IR analyzer) | current density | sì (ODB) | I_avg da liberty/activity | `analyze_power_grid` + `write_pg_spice` |
 | **vyges-em-ir** | sì (CG+Jacobi) | sì, BE, **un** `switch_t_ns` | sì (se `emlimit`) | DEF+LEF upstream; qui mesh SPICE | eventi, tutti allineati | bootstrap / validazione; no waveform |
-| **Questo corso `dynamic_ir`** | sì | Solver A BE LU, I(t) per pin | no | mesh OpenROAD | simultaneous / spatial / **clock** | waveform + heatmap |
+| **Questo corso `dynamic_ir`** | sì | A LU + B SA-AMG, I(t) per pin | no | mesh OpenROAD | simultaneous / spatial / **clock** + ranking | waveform + heatmap |
 | `pdn_transient.py` | sì | load-step globale | no | mesh OpenROAD | peak_factor | laboratorio CSV |
 | ngspice | sì | sì | possibile | da costruire | PWL | **gold 1-nodo**, non full-chip |
 | Xyce | sì | sì (MPI) | — | da costruire | sì | **GAP** in questa VM |
@@ -52,11 +51,10 @@ Lo split da copiare è quello di EMSim *current analysis*, non il passo EM probe
 | Solver | Formulazione | Ruolo | Stato GCD |
 |---|---|---|---|
 | **A — Direct BE** | \((G + C/\Delta t) V_{n+1} = \mathrm{rhs}\) · LU sparso | gold, lento, indispensabile per validare | **READY** |
-| **B — SA-AMG** | iterativo, mesh PDN ~ ellittica | workhorse full-chip (ESPSim: DC+TRAN, 0.13M–63.4M nodi) | **GAP** |
-| **C — Rational Krylov / MOR** | \(E\dot x = Ax + Bu(t)\) ridotto | molte TRAN sulla **stessa** PDN (MATEX, Raptor) | **GAP** |
+| **B — SA-AMG** | V-cycle Jacobi + CG, LU sul coarse | workhorse (ESPSim-class) | **READY** |
+| **C — shared A** | stessa \(A=G+C/\Delta t\), rhs diversi | tante TRAN sulla stessa PDN | **PARTIAL** (non rational Krylov) |
 
-Backward Euler + PCG/LU **non** è il cuore di prodotto. Qui è solo A.
-Non si scrive una “GPU version” a parte: un giorno `LinearSolver` → Ginkgo.
+Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. Non si scrive una GPU fork: un giorno `LinearSolver` → Ginkgo.
 
 ## Livelli di rete (già nel codice, etichette oneste)
 
@@ -73,7 +71,7 @@ Il prototipo può restare \(GV + C\dot V = I(t)\). Il design finale è MNA RLC.
 
 | Livello | Intento | GCD oggi |
 |---|---|---|
-| **FAST** | vectorless + AMG + timestep grosso · placement/routing | **PARTIAL** — t50 sintetici + Solver A (manca AMG) |
+| **FAST** | vectorless + AMG + timestep grosso · placement/routing | **READY** — t50 sintetici + Solver B |
 | **ACCURATE** | VCD/FSDB + waveform cella + AMG + Δt adattivo · IR closure | **GAP** |
 | **SIGNOFF** | RLC + MOR + spot-check diretti + EM + package | **GAP** |
 
@@ -116,7 +114,7 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | modi sintetici clock/spatial; VCD RTL non è pin-accurate |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm |
-| 5 Solver | B AMG + C Krylov/MOR + A gold | **solo Solver A** (GCD ~4k nodi) |
+| 5 Solver | B AMG + C shared A + A gold | **A + B READY**; C = shared operator |
 | 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG heatmap |
 
 ## Classifica reale
@@ -138,20 +136,20 @@ Non si forka PSM. Si **sostituiscono** i pezzi commerciali uno a uno.
 | VCS VCD gate-level | Icarus `tb_gcd` | **GAP** pin ITerm |
 | PrimeTime PX time-based + `logic_cell_modeling.py` | I_avg nel `.sp` + triangolo | **PARTIAL** — non waveform PT-PX |
 | `logic_cell_to_current_source.py` PWL | 601 PWL per ITerm | forma triangolo, non report PX |
-| HSpice TRAN | Solver A LU sul mesh; ngspice gold 1-nodo | gold ≠ full-chip |
+| HSpice TRAN | Solver A LU + Solver B SA-AMG; ngspice gold 1-nodo | gold ≠ full-chip |
 
 ```text
 A  Quanto assorbe la cella?     PARTIAL (triangolo da I_avg)
-B  Cosa fa la PDN?              READY   (Solver A + heatmap + waveform)
+B  Cosa fa la PDN?              READY   (Solver A gold + Solver B SA-AMG)
 ```
 
 ## Cosa non fare
 
 - Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
-- Non spacciare BE+PCG/LU come workhorse SoC.
+- Non spacciare LU a 4k nodi come prova che AMG è inutile a full-chip.
 - Non mettere ML *dentro* il solver: solo “cosa simulare”.
 - Non scaffoldare `power-integrity/` vuoto in questo repo.
-- Non implementare AMG / Krylov / CCS / Ginkgo in questa slice.
+- Non spacciare il shared-A come rational Krylov / CCS / Ginkgo GPU.
 - Non fingere correlazione commerciale.
 
 Riferimenti concettuali (non dipendenze): ESPSim, MATEX, Raptor, Ginkgo, Xyce.

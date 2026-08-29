@@ -54,7 +54,7 @@ const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "dynamic_ir",
     label: "Dynamic IR I(t)",
-    hint: "Solver A golden · heatmap t_worst",
+    hint: "A gold · B SA-AMG · heatmap",
     icon: Zap,
     long: false,
   },
