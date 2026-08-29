@@ -15,3 +15,7 @@ terminals/
 
 # Native solver build
 engine/build/
+
+# Python
+__pycache__/
+*.py[cod]
