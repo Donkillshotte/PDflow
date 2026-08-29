@@ -12,7 +12,7 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materiali/reference/oss-integrations.md",
     title: "Integrazioni OSS",
     group: "Riferimento",
-    description: "Stack integrato, gap LVS runset, thermal/HotSpot, tool non in scope.",
+    description: "Stack integrato, gap commerciali, Magic/Netgen, vectorless.",
   },
   {
     href: "/materiali/reference/signoff-matrix.md",
@@ -60,7 +60,13 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materiali/reference/extended-flow.md",
     title: "Flusso esteso",
     group: "Riferimento",
-    description: "RTL sim, activity, DRC, gridcheck, PDN, bump/RDL, thermal — mappa READY/MISSING.",
+    description: "RTL sim, activity, vectorless, DRC, gridcheck, PDN, bump/RDL, thermal.",
+  },
+  {
+    href: "/materiali/reference/vectorless-power.md",
+    title: "Vectorless / dynamic IR",
+    group: "Riferimento",
+    description: "Najm 1994 + Kouroussis DAC 2003 implementati sul GCD Nangate45.",
   },
   {
     href: "/materiali/reference/system-pdn.md",

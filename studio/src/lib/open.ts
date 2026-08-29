@@ -225,6 +225,36 @@ export function listOpenTargets(): {
       label: "Run · activity → power",
       action: "activity_power",
     },
+    {
+      id: "run-vectorless",
+      label: "Run · vectorless / dynamic IR",
+      action: "vectorless",
+    },
+    {
+      id: "run-yosys-equiv",
+      label: "Run · Yosys equiv (EQY-class)",
+      action: "yosys_equiv",
+    },
+    {
+      id: "run-formal",
+      label: "Run · formal SAT GCD",
+      action: "formal_gcd",
+    },
+    {
+      id: "run-openrcx",
+      label: "Run · OpenRCX SPEF report",
+      action: "openrcx_report",
+    },
+    {
+      id: "run-analytical-pex",
+      label: "Run · PEX analitico FasterCap-class",
+      action: "analytical_pex",
+    },
+    {
+      id: "run-tool-matrix",
+      label: "Run · tool matrix OSS",
+      action: "tool_matrix",
+    },
     { id: "run-klayout-drc", label: "Run · KLayout DRC", action: "klayout_drc" },
     { id: "run-test-course", label: "Run · smoke corso", action: "test_course" },
   ];
@@ -280,6 +310,20 @@ export function listOpenTargets(): {
     label: "Tool hooks (OpenROAD/STA/Yosys)",
     kind: "doc",
     href: "/materiali/reference/tool-hooks.md",
+    exists: true,
+  });
+  targets.push({
+    id: "oss-integrations",
+    label: "Matrice integrazioni OSS",
+    kind: "doc",
+    href: "/materiali/reference/oss-integrations.md",
+    exists: true,
+  });
+  targets.push({
+    id: "vectorless-power",
+    label: "Vectorless / dynamic power",
+    kind: "doc",
+    href: "/materiali/reference/vectorless-power.md",
     exists: true,
   });
   targets.push({

@@ -137,7 +137,7 @@ if python3 - <<'PY'
 import json,sys
 d=json.load(open("/tmp/studio-suite.json"))
 ids={h["id"] for h in d["hooks"]}
-need={"toolchain","rtl_sim","gridcheck","activity","klayout_drc","inspect","or-web","docs"}
+need={"toolchain","rtl_sim","gridcheck","activity","vectorless","klayout_drc","inspect","or-web","docs","yosys_equiv","formal_gcd","openrcx"}
 miss=sorted(need-ids)
 if miss:
     print("missing", miss)
@@ -221,6 +221,36 @@ rg -q 'POWER_CHAIN_DONE|"ok":true' /tmp/studio-power-chain.sse && ok "power_chai
 [[ -f "${ROOT}/learn/sim/reports/power_chain_flowlab.log" ]] && ok "power_chain log artifact" || bad "manca power_chain log"
 rg -q 'ACTIVITY_SOURCE' "${ROOT}/learn/sim/reports/activity_power_flowlab.log" 2>/dev/null \
   && ok "activity_power source stamped" || bad "activity_power log senza ACTIVITY_SOURCE"
+rg -q 'Wrong number of arguments' "${ROOT}/learn/sim/reports/activity_power_flowlab.log" 2>/dev/null \
+  && bad "activity_power still has read_vcd arity error" \
+  || ok "activity_power no VCD arity error"
+
+# Tool matrix / vectorless / equiv / formal / OpenRCX / PEX
+for action in yosys_equiv formal_gcd openrcx_report analytical_pex layout_tools spice_engines; do
+  code="$(curl -s --max-time 120 -o "/tmp/studio-${action}.sse" -w '%{http_code}' \
+    "${BASE}/api/run/stream?action=${action}&mode=flowlab")"
+  [[ "${code}" == "200" ]] && ok "${action} stream → 200" || bad "${action} → ${code}"
+  rg -q '"ok":true' "/tmp/studio-${action}.sse" && ok "${action} pass" || bad "${action} fail"
+done
+
+code="$(curl -s --max-time 180 -o /tmp/studio-vectorless.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=vectorless&mode=flowlab")"
+[[ "${code}" == "200" ]] && ok "vectorless stream → 200" || bad "vectorless → ${code}"
+rg -q '"ok":true' /tmp/studio-vectorless.sse && ok "vectorless pass" || bad "vectorless fail"
+[[ -f "${ROOT}/learn/sim/reports/vectorless_flowlab.json" ]] && ok "vectorless json artifact" || bad "manca vectorless json"
+python3 - <<PY || bad "vectorless json parse"
+import json
+r=json.load(open("${ROOT}/learn/sim/reports/vectorless_flowlab.json"))
+assert r["ok"] is True
+assert r["vectorless"]["total_w"]
+assert "vcd" in r["dynamic"]["source"]
+print(r["summary"][:100])
+PY
+
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/vectorless-power.md")"
+[[ "${c}" == "200" ]] && ok "vectorless-power.md page" || bad "vectorless-power page → ${c}"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/oss-integrations.md")"
+[[ "${c}" == "200" ]] && ok "oss-integrations.md page" || bad "oss-integrations page → ${c}"
 
 # SPICE lab viewer + download
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/file/sim/spice/nangate_inverter_demo.sp")"

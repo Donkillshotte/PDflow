@@ -31,7 +31,18 @@ const RUN_ACTIONS = new Set([
   "chip_pdn_ir",
   "power_chain",
   "activity_power",
+  "vectorless",
   "klayout_drc",
+  "sta_signoff",
+  "drc_signoff",
+  "klayout_lvs",
+  "yosys_equiv",
+  "formal_gcd",
+  "openrcx_report",
+  "analytical_pex",
+  "layout_tools",
+  "spice_engines",
+  "tool_matrix",
   ...STAGES,
 ]);
 

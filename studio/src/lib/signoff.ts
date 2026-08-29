@@ -97,6 +97,13 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         reportRel: "sim/reports/activity_power_{variant}.log",
       },
       {
+        id: "vectorless",
+        label: "Vectorless / dynamic IR",
+        action: "vectorless",
+        script: "learn/scripts/run_vectorless.sh",
+        reportRel: "sim/reports/vectorless_{variant}.json",
+      },
+      {
         id: "chip_ir",
         label: "Chip IR mesh",
         action: "chip_pdn_ir",

@@ -222,7 +222,8 @@ Mappa completa: [`learn/reference/extended-flow.md`](./reference/extended-flow.m
 | Chip IR mesh | `run_chip_pdn_ir.sh` · write_pg_spice | READY |
 | Catena SPICE | `run_power_chain.sh` · signoff FlowLab | READY |
 | Docs catena fasi | `spice-power-chain.md` + lab `sim/spice/` | READY |
-| Activity → power | `run_activity_power.sh` · `activity_power` | READY (sintetica) |
+| Activity → power | `run_activity_power.sh` · `activity_power` | READY (VCD `read_vcd`) |
+| Vectorless / dynamic IR | `run_vectorless.sh` · `vectorless` | READY (Najm + Kouroussis) |
 | KLayout GDS DRC | `run_klayout_drc.sh` · `klayout_drc` | READY (dopo finish) |
 | Bump / RDL / design package | `/pkg` · docs Packaging | PARTIAL (teoria + demo BUMPS) |
 | Thermal | nessun tool in VM | MISSING (teoria) |

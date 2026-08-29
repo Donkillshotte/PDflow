@@ -31,6 +31,7 @@ const PIPELINE_ACTIONS = [
 /** Post-finish: power chain + signoff (aligned with POST_FINISH_ACTIONS in actions.ts). */
 const POST_FINISH_CHIPS = [
   { id: "activity_power", label: "Activity → power", hint: "set_power_activity" },
+  { id: "vectorless", label: "Vectorless / dynamic", hint: "Najm + Kouroussis IR" },
   { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
   { id: "power_chain", label: "Catena SPICE", hint: "activity→IR→system" },
@@ -43,6 +44,12 @@ const POST_FINISH_CHIPS = [
   { id: "thermal_signoff", label: "Thermal proxy", hint: "IR+droop Fase 2" },
   { id: "pkg_signoff", label: "PKG signoff", hint: "bump/RDL/system" },
   { id: "signoff_phase2", label: "Signoff Fase 2", hint: "thermal + PKG" },
+  { id: "yosys_equiv", label: "Yosys equiv", hint: "EQY-class RTL↔synth" },
+  { id: "formal_gcd", label: "Formal SAT", hint: "sby-class tempinduct" },
+  { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },
+  { id: "analytical_pex", label: "PEX analitico", hint: "FasterCap-class FDM" },
+  { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
+  { id: "tool_matrix", label: "Tool matrix", hint: "tutti i check OSS" },
 ] as const;
 
 const STAGE_ACTIONS = [...PIPELINE_ACTIONS, ...POST_FINISH_CHIPS];

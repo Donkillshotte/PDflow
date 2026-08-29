@@ -10,6 +10,8 @@ Ambiente locale completo per il physical design digitale (RTL → GDSII) basato 
 | [yosys](https://github.com/YosysHQ/yosys) | submodule pinnato da ORFS | compilato dai sorgenti (CMake) |
 | [KLayout](https://www.klayout.de/) | 0.30.11 | pacchetto `.deb` ufficiale |
 
+**Yosys** (0.63, ORFS) · **KLayout** (0.30.11) · OpenSTA · ngspice. Matrice OSS (Magic/Netgen/EQY/sby/Xyce/OpenRCX/FasterCap/Raphael/StarRC/open_pdks): [learn/reference/oss-integrations.md](learn/reference/oss-integrations.md). Vectorless/dynamic: [learn/reference/vectorless-power.md](learn/reference/vectorless-power.md).
+
 Testato su **Ubuntu 24.04** (funziona anche su 22.04).
 
 ## Installazione
@@ -69,6 +71,7 @@ Interfaccia web enterprise: lezioni con gate di completamento, console SSE
 (confirm/cancel/retry/export), ops dashboard, **suite hub** (`/api/suite`),
 **FlowLab** (`/flusso`: RTL editabile → parametri → GDSII),
 **Ctrl+K** (dashboard / run / OpenROAD Qt / web viewer), materiali.
+Azioni analisi OSS: `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `tool_matrix`.
 Dettagli: [studio/README.md](studio/README.md) (FlowLab, API, troubleshooting).
 Smoke: `./scripts/test_all_phases.sh` (esaustivo), `./scripts/test_studio_api.sh`, `./scripts/test_course.sh`.
 

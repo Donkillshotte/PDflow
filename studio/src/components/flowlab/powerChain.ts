@@ -18,7 +18,7 @@ export const POWER_CHAIN: ChainNode[] = [
     lessonIds: ["00-intro"],
     produces: ["gcd.vcd", "toggle activity"],
     consumes: ["gcd.v"],
-    spice: "VCD → activity_power (power_vcd.sh)",
+    spice: "VCD → activity_power (read_vcd) · vectorless",
     doc: "/materiali/reference/spice-power-chain.md#lezione-00-intro",
     action: "rtl_sim",
   },
@@ -112,6 +112,14 @@ export const SPICE_ANALYSES = [
     spice: "liberty leak/switch/internal",
     doc: "/materiali/reference/spice-power-chain.md#lezione-07-finish",
     action: "activity_power",
+  },
+  {
+    id: "vectorless",
+    label: "Vectorless / dynamic IR",
+    produces: ["vectorless_*.json", "inst_power_map.json"],
+    spice: "Najm P01 + Kouroussis envelope + PDNSim",
+    doc: "/materiali/reference/vectorless-power.md",
+    action: "vectorless",
   },
   {
     id: "chip_pdn_ir",

@@ -43,7 +43,7 @@ Produzione:
 - **Ispezione tool**: `GET /api/inspect` (ODB via `-python`, OpenSTA JSON, Yosys `stat`)
 - **Web Viewer**: `POST /api/viewer` → OpenROAD `-web` su porta `43190`
 - **Suite hub**: `GET /api/suite` → matrice hook (ambiente → signoff) su `/` e `/strumenti#suite`
-- **Azioni estese**: `rtl_sim`, `gridcheck`, `activity_power`, `klayout_drc` (+ preflight artefatti)
+- **Azioni estese**: `rtl_sim`, `gridcheck`, `activity_power`, `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `klayout_drc` (+ preflight artefatti)
 
 ## API utili
 

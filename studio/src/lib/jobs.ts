@@ -30,6 +30,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   chip_pdn_ir: "finish",
   power_chain: "finish",
   activity_power: "finish",
+  vectorless: "finish",
   export_spice_lab: "finish",
   klayout_drc: "finish",
   sta_signoff: "finish",
@@ -42,6 +43,13 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   pkg_rdl: "finish",
   pkg_signoff: "finish",
   signoff_phase2: "finish",
+  yosys_equiv: null,
+  formal_gcd: null,
+  openrcx_report: "finish",
+  analytical_pex: null,
+  layout_tools: null,
+  spice_engines: null,
+  tool_matrix: null,
   synth: null,
   floorplan: "synth",
   place: "floorplan",
@@ -342,6 +350,14 @@ export function preflightAction(
     activity_power: {
       rel: "6_final.odb",
       hint: "esegui prima finish",
+    },
+    vectorless: {
+      rel: "6_final.odb",
+      hint: "esegui prima finish (vectorless/dynamic)",
+    },
+    openrcx_report: {
+      rel: "6_final.spef",
+      hint: "esegui prima finish (OpenRCX SPEF)",
     },
     chip_pdn_ir: {
       rel: "6_final.odb",

@@ -60,6 +60,7 @@ export const EXTENDED_TIMEOUT_ACTIONS = new Set([
   "signoff_all",
   "pkg_signoff",
   "signoff_phase2",
+  "tool_matrix",
 ]);
 
 export function defaultActionTimeoutMs(action: string): number {
@@ -77,6 +78,7 @@ export const DEFAULT_FLOW_VARIANT = "flowlab";
 /** Power-chain script actions (post-finish analysis). */
 export const POWER_ACTIONS = [
   "activity_power",
+  "vectorless",
   "chip_pdn_ir",
   "system_pdn",
   "export_spice_lab",
@@ -89,9 +91,27 @@ export function isPowerAction(action: string): action is PowerAction {
   return (POWER_ACTIONS as readonly string[]).includes(action);
 }
 
-/** All post-finish analysis actions (power + signoff + fase 2). */
+/** Formal / PEX / tool-matrix actions (RTL or post-finish). */
+export const TOOL_MATRIX_ACTIONS = [
+  "yosys_equiv",
+  "formal_gcd",
+  "openrcx_report",
+  "analytical_pex",
+  "layout_tools",
+  "spice_engines",
+  "tool_matrix",
+] as const;
+
+export type ToolMatrixAction = (typeof TOOL_MATRIX_ACTIONS)[number];
+
+export function isToolMatrixAction(action: string): action is ToolMatrixAction {
+  return (TOOL_MATRIX_ACTIONS as readonly string[]).includes(action);
+}
+
+/** All post-finish analysis actions (power + signoff + fase 2 + tool matrix). */
 export const POST_FINISH_ACTIONS = [
   ...POWER_ACTIONS,
   ...SIGNOFF_ACTIONS,
   ...PHASE2_SIGNOFF_ACTIONS,
+  ...TOOL_MATRIX_ACTIONS,
 ] as const;

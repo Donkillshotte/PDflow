@@ -89,6 +89,8 @@ report_wns
 | `stat` | Celle / area | synth LAB + inspect |
 | `hierarchy -top` | Top module | script corso |
 | `synth` / ORFS `1_2_yosys.v` | Netlist gate-level | fase synth |
+| `equiv_make` / `equiv_induct` | Equiv RTL↔synth (EQY-class) | azione `yosys_equiv` |
+| `sat -tempinduct` | Formal safety (sby-class) | azione `formal_gcd` |
 | `-p "…"` | One-liner | `GET /api/inspect` |
 
 ## KLayout
@@ -98,18 +100,19 @@ report_wns
 | `klayout file.gds` | Viewer interattivo | `POST /api/open` su `6_final.gds` |
 | `klayout -b -r script` | Batch | lezione 07 |
 
-## Altri tool open (non installati di default qui)
+## Altri tool (probe / mapped / gap)
 
-| Tool | Perché considerarlo | Nota |
+Vedi la matrice in [oss-integrations.md](./oss-integrations.md).
+
+| Tool | Stato qui | Nota |
 |---|---|---|
-| **Magic** | Layout editor classico, DRC | utile con PDK open; non nel path attuale |
-| **Netgen** | LVS | tipicamente dopo GDS |
-| **OpenLane / LibreLane** | Flow all-in-one | ORFS è già il flusso del corso |
-| **GTKWave** | Waveform sim | fuori physical design |
-| **Icarus / Verilator** | Sim RTL | utile pre-synth, non PD |
-
-Non li scarichiamo automaticamente: il corso resta centrato su **ORFS + Nangate45**.
-Se ti servono Magic/Netgen, installali a parte e documenta i path in note personali.
+| **Magic** | PARTIAL | installato; tech `minimum` — no FreePDK45 |
+| **Netgen** | PARTIAL | `netgen-lvs`; LVS signoff = KLayout |
+| **EQY / sby** | MAPPED | Yosys `equiv_*` e `sat -tempinduct` |
+| **Xyce** | GAP | ngspice copre System PDN |
+| **FasterCap / Raphael / StarRC** | MAPPED/GAP | OpenRCX + PEX analitico |
+| **open_pdks** | GAP | Sky130/gf180, non questo corso |
+| **Icarus** | INTEGRATED | `rtl_sim` + VCD |
 
 ## Come Studio li orchestra
 
@@ -120,7 +123,7 @@ Se ti servono Magic/Netgen, installali a parte e documenta i path in note person
 | `/api/inspect` | OpenROAD `-python`, OpenSTA, Yosys |
 | `/api/suite` | matrice hook collaborativa (toolchain → signoff) |
 | `/api/results` | File results/reports/logs ORFS |
-| `/api/run/stream` | ORFS make + `rtl_sim` / `gridcheck` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `klayout_drc` |
+| `/api/run/stream` | ORFS make + `rtl_sim` / `vectorless` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `klayout_drc` |
 | Ctrl+K | dashboard, run extended, Qt GUI, web viewer |
 | Suite hub (`/` · `/strumenti#suite`) | stato hook live + Apri/Run |
 

@@ -1,88 +1,81 @@
-# Integrazioni OSS mirate (GCD Nangate45)
+# Integrazioni OSS (GCD Nangate45)
 
-Documento di tracciabilità per componenti open-source **integrati o referenziati** nel corso — non un survey esaustivo del mondo EDA.
+Matrice onesta: ogni tool chiesto è **INTEGRATED**, **MAPPED** (equivalente OSS nel flusso studente), **PARTIAL**, o **GAP**. Il corso è pinnato **Nangate45 / FreePDK45** — non Sky130.
 
 Legenda:
 
 | Stato | Significato |
 |---|---|
-| **INTEGRATED** | Nel repo, script/Studio funzionanti |
-| **VENDORED** | File copiato da upstream con attribuzione |
-| **REFERENCED** | Documentato; esecuzione manuale o futura |
-| **GAP** | Noto, non risolto in scope GCD educativo |
+| **INTEGRATED** | Binario + script Studio + run verificato su GCD |
+| **MAPPED** | Binario dedicato assente; lo stesso ruolo è coperto da un engine OSS già nel path |
+| **PARTIAL** | Binario presente, ma PDK/tech incompatibile con Nangate45 |
+| **GAP** | Commerciale o PDK sbagliato — non si finge l’integrazione |
 
----
-
-## Stack core (INTEGRATED)
-
-| Progetto | Ruolo | Path corso |
-|---|---|---|
-| OpenROAD-flow-scripts 26Q2 | PD ORFS | `tools/OpenROAD-flow-scripts/` |
-| OpenROAD / OpenSTA / Yosys | synth→finish | ORFS Makefile |
-| KLayout | DRC/LVS/GDS viewer | `make drc`, `make lvs` |
-| Icarus Verilog | RTL sim + VCD | `run_rtl_sim.sh` |
-| ngspice | System PDN | `system_pdn_hier.py` |
-
----
-
-## Signoff — gap chiusi in corso
-
-### FreePDK45 LVS runset (VENDORED)
-
-ORFS Nangate45 referenzia `platforms/nangate45/lvs/FreePDK45.lylvs` ma il file **mancava** nel tree upstream — LVS falliva con `No rule to make target ... FreePDK45.lylvs`.
-
-| Item | Dettaglio |
-|---|---|
-| Upstream | [laurentc2/FreePDK45_for_KLayout](https://github.com/laurentc2/FreePDK45_for_KLayout) · `lvs/lvs_freepdk45.lylvs` |
-| Vendored in repo | `learn/platforms/nangate45/lvs/FreePDK45.lylvs` |
-| Runtime copy | `run_klayout_lvs.sh` → ORFS `platforms/nangate45/lvs/` + `KLAYOUT_LVS_FILE` |
-| Licenza | Vedi repo upstream (FreePDK45 academic) |
-| Nota | LVS su GCD completo può ancora **FAIL** educativamente — interpretare `.lvsdb` |
-
-### DRC runset (INTEGRATED)
-
-| Item | Path |
-|---|---|
-| KLayout DRC | `platforms/nangate45/drc/FreePDK45.lydrc` |
-| Parser UI | `learn/scripts/parse_signoff_artifacts.py` |
-
----
-
-## Packaging / thermal (INTEGRATED proxy)
-
-| Componente | Stato | Script |
-|---|---|---|
-| System PDN ladder | INTEGRATED | `run_system_pdn.sh` |
-| Chip IR mesh | INTEGRATED | `run_chip_pdn_ir.sh` |
-| PKG bump edu | INTEGRATED | `run_pkg_bump.sh` |
-| PKG RDL edu | INTEGRATED | `run_pkg_rdl.sh` |
-| Thermal proxy | INTEGRATED | `run_thermal_signoff.sh` |
-| HotSpot / 3D-ICE | GAP | extended-flow §9 |
-
----
-
-## Non integrati (REFERENCED / GAP)
-
-| Tool | Perché non in scope GCD |
-|---|---|
-| Verilator + GTKWave | Roadmap sim avanzata; VCD via Icarus ok |
-| Magic DRC/LVS | Tech presente, path corso = KLayout |
-| Sky130 / gf180 | Altro PDK; corso pinna Nangate45 |
-| Xyce | ngspice sufficiente per ladder educativo |
-| VoltSpot / HotSpot | Thermal full — solo proxy IR+droop |
-
----
-
-## Verifica integrazione
+Azioni Studio: `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `layout_tools`, `spice_engines`, `tool_matrix`.
 
 ```bash
-# LVS runset presente (learn/platforms, non tools/)
-test -f learn/platforms/nangate45/lvs/FreePDK45.lylvs
-
-# Signoff scripts
-./learn/scripts/run_drc_signoff.sh
-./learn/scripts/run_klayout_lvs.sh
-./learn/scripts/run_signoff_phase2.sh
+FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 ```
 
-Cross-ref: [signoff-matrix.md](./signoff-matrix.md) · [extended-flow.md](./extended-flow.md)
+---
+
+## Matrice tool
+
+| Tool | Stato | Ruolo sul GCD | Evidenza | Equivalente se non INTEGRATED |
+|---|---|---|---|---|
+| **Yosys** | INTEGRATED | Synth ORFS + `stat` inspect + **equiv RTL↔synth** | `yosys -V` 0.63 · azione `yosys_equiv` · `sim/reports/yosys_equiv_flowlab.json` | — |
+| **KLayout** | INTEGRATED | DRC/LVS signoff + GDS viewer | `klayout -v` · `drc_signoff` / `klayout_lvs` | — |
+| **Magic** | PARTIAL | Installato (8.3); tech di default `minimum` | azione `layout_tools` · nessun `.tech` FreePDK45 | Signoff layout = **KLayout** |
+| **Netgen** | PARTIAL | `netgen-lvs` 1.5.133 in PATH | stesso probe; no setup Nangate | Signoff LVS = **KLayout** `FreePDK45.lylvs` |
+| **EQY** | MAPPED | CLI `eqy` assente | Yosys `equiv_make` / `equiv_induct` / `equiv_status` | Stesso engine di EQY |
+| **SymbiYosys (`sby`)** | MAPPED | CLI `sby` assente; **z3** presente | Yosys `sat -tempinduct` su `reset \|-> resp_val=0` | Stesso backend SAT/BMC |
+| **ngspice** | INTEGRATED | System PDN AC+TRAN + demo | `ngspice -v` 42 · `system_pdn` · `spice_engines` | — |
+| **Xyce (Sandia)** | GAP | Non in apt / non in PATH | `spice_engines_*.json` `xyce_present: false` | **ngspice** copre AC/TRAN PDN educativo |
+| **OpenRCX** | INTEGRATED | Dentro OpenROAD (`extract_parasitics`) | `6_final.spef` + `rcx_patterns.rules` · azione `openrcx_report` | — |
+| **FasterCap** | MAPPED | Binario assente | Sakurai–Tamaru 1983 + FDM 2D Laplace · `analytical_pex` | Raphael-class 2-wire tutorial |
+| **Raphael** | GAP | Synopsys commerciale, no licenza | documentato | OpenRCX SPEF + PEX analitico |
+| **StarRC** | GAP | Synopsys commerciale, no licenza | documentato | **OpenRCX** SPEF a finish |
+| **open_pdks** | GAP | Sky130 / gf180, **altro PDK** | corso pinnato Nangate45 | Non si mescola con FreePDK45 |
+
+---
+
+## Formal / equiv (EQY · sby)
+
+| Check | Script | Proprietà |
+|---|---|---|
+| Equiv | `learn/scripts/run_yosys_equiv.sh` | RTL GCD ≡ `synth -top gcd` (induzione sequenziale) |
+| Safety | `learn/scripts/run_formal_gcd.sh` | `reset=1` ⇒ `resp_val=0` (`sat -tempinduct`) |
+| Wrapper sby | `learn/formal/gcd_safety.v` | pronto se installi `sby` |
+
+---
+
+## PEX (OpenRCX · FasterCap · Raphael · StarRC)
+
+Finish ORFS già chiama OpenRCX se `RCX_RULES` è settato (`platforms/nangate45/rcx_patterns.rules`). Il report `openrcx_*.json` conta `*D_NET` / `*CAP` / `*RES` sul SPEF reale.
+
+FasterCap/Raphael non estraggono il full-chip: il tutorial 2-wire (`run_analytical_pex.py`) dà Cg/Cc in fF su geometria M2 FreePDK45-like, confrontabile in ordine di grandezza col SPEF.
+
+---
+
+## Layout (Magic · Netgen · KLayout · open_pdks)
+
+KLayout è l’unico percorso **signoff** su questo PDK (runset vendored `learn/platforms/nangate45/lvs/FreePDK45.lylvs`). Magic/Netgen restano probe: utili su Sky130 via open_pdks, non su Nangate45.
+
+---
+
+## Power: vectorless + dynamic
+
+Vedi [vectorless-power.md](./vectorless-power.md). OpenSTA 26Q2: usare `read_vcd`, **non** `read_power_activities` (arity rotta).
+
+---
+
+## Verifica
+
+```bash
+FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
+test -f learn/sim/reports/vectorless_flowlab.json
+test -f learn/sim/reports/yosys_equiv_flowlab.json
+test -f learn/platforms/nangate45/lvs/FreePDK45.lylvs
+```
+
+Cross-ref: [signoff-matrix.md](./signoff-matrix.md) · [extended-flow.md](./extended-flow.md) · [tool-hooks.md](./tool-hooks.md)

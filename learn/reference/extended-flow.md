@@ -67,21 +67,23 @@ make … synth
 
 ---
 
-## 4. Attività vettoriale (SAIF/VCD → power) — PARTIAL → slice demo
+## 4. Attività vettoriale e vectorless — READY
 
 | Layer | Stato |
 |---|---|
-| OpenROAD | `set_power_activity`, `read_power_activities -vcd`, `report_power` |
-| ORFS GCD | non legge VCD/SAIF di default (IR usa default liberty) |
-| Demo corso | `learn/scripts/run_activity_power.sh` (attività globale 0.2) |
-| Vettori reali | VCD da `run_rtl_sim.sh` → poi `read_power_activities -vcd …` (esercizio avanzato) |
+| OpenSTA | `set_power_activity`, **`read_vcd -scope tb_gcd/dut`**, `report_power` |
+| Dynamic | VCD Icarus su nomi che matchano il gate netlist (port) |
+| Vectorless | global activity 0.5 + envelope Kouroussis (DAC 2003) + Najm \(P_{01}\) |
+| Demo | `learn/scripts/run_activity_power.sh` · `run_vectorless.sh` |
 
 ```bash
 ./learn/scripts/run_activity_power.sh
+FLOW_VARIANT=flowlab ./learn/scripts/run_vectorless.sh
 ```
 
-**Trattazione consigliata:** dopo lezione 07 (hai `6_final.odb`); confronta power
-default vs attività sintetica vs (opz.) VCD annotato.
+**Studio:** azioni `activity_power` e `vectorless`. Docs: [vectorless-power.md](./vectorless-power.md).
+
+Non usare `read_power_activities` (deprecato, arity rotta in OpenSTA 26Q2).
 
 ---
 
@@ -225,7 +227,14 @@ Power map proxy già disponibile: heatmap IR + `report_power` (activity script).
 | `system_pdn` | ngspice System PDN · VRM→board→pkg→die |
 | `chip_pdn_ir` | PDNSim + write_pg_spice + pdn_transient |
 | `power_chain` | activity → chip IR → system → export lab |
-| `activity_power` | `set_power_activity` + `report_power` |
+| `activity_power` | `read_vcd` / `set_power_activity` + `report_power` |
+| `vectorless` | Vectorless vs dynamic IR (Najm + Kouroussis) |
+| `yosys_equiv` | Yosys equiv RTL↔synth (EQY-class) |
+| `formal_gcd` | Yosys sat tempinduct (sby-class) |
+| `openrcx_report` | OpenRCX SPEF counts |
+| `analytical_pex` | Sakurai–Tamaru + FDM 2D (FasterCap-class) |
+| `layout_tools` | Magic / Netgen / KLayout probe |
+| `tool_matrix` | Orchestrator OSS |
 | `klayout_drc` | GDS DRC (legacy, solo GDS) |
 | `sta_signoff` | STA vs golden-metrics |
 | `drc_signoff` | Route DRC + KLayout GDS unificato |
@@ -252,6 +261,7 @@ Documentazione hook di basso livello: [tool-hooks.md](./tool-hooks.md).
 | RTL + sim + VCD | tra L00 e L02 | 1–2 h |
 | Yosys approfondito | L02 | già coperto |
 | Activity → power | dopo L07 | 1 h |
+| Vectorless / dynamic IR | dopo L07 + VCD | 1 h |
 | Gridcheck + IR | L03 + L07 | 0.5–1 h |
 | KLayout DRC | dopo finish | 0.5–1 h |
 | Bump/RDL/system PDN | elettivo avanzato | 2–3 h teoria |

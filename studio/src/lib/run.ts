@@ -90,6 +90,14 @@ const ALLOWED_ACTIONS = new Set([
   "pkg_rdl",
   "pkg_signoff",
   "signoff_phase2",
+  "vectorless",
+  "yosys_equiv",
+  "formal_gcd",
+  "openrcx_report",
+  "analytical_pex",
+  "layout_tools",
+  "spice_engines",
+  "tool_matrix",
 ]);
 
 type Job = {
@@ -237,6 +245,37 @@ function resolveCommand(
       cwd: REPO_ROOT,
       command: `FLOW_VARIANT=${variant} ${cmd}`,
       env: { FLOW_VARIANT: variant },
+    };
+  }
+  const analysisScripts: Record<string, { script: string; pythonpath?: boolean }> = {
+    vectorless: { script: "run_vectorless.sh", pythonpath: true },
+    yosys_equiv: { script: "run_yosys_equiv.sh" },
+    formal_gcd: { script: "run_formal_gcd.sh" },
+    openrcx_report: { script: "run_openrcx_report.sh" },
+    analytical_pex: { script: "run_analytical_pex.py", pythonpath: true },
+    layout_tools: { script: "run_layout_tools_probe.sh" },
+    spice_engines: { script: "run_spice_engines.sh" },
+    tool_matrix: { script: "run_tool_matrix.sh", pythonpath: true },
+  };
+  if (action in analysisScripts) {
+    const spec = analysisScripts[action]!;
+    const cmd = path.join(LEARN_ROOT, "scripts", spec.script);
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    const env: Record<string, string> = { FLOW_VARIANT: variant };
+    if (spec.pythonpath) {
+      env.PYTHONPATH = `/usr/lib/python3/dist-packages${
+        process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ""
+      }`;
+    }
+    const isPy = spec.script.endsWith(".py");
+    const args = isPy ? [cmd] : [];
+    const invoke = isPy ? `python3 ${cmd}` : cmd;
+    return {
+      cmd: isPy ? "python3" : cmd,
+      args,
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${invoke}`,
+      env,
     };
   }
   if (action === "klayout_drc") {
@@ -547,6 +586,7 @@ export type ToolStatus = {
   name: string;
   ok: boolean;
   detail: string;
+  required?: boolean;
 };
 
 export async function probeToolchain(): Promise<{
@@ -583,8 +623,37 @@ export async function probeToolchain(): Promise<{
     ver("ngspice", ["-v"]),
   ]);
 
+  async function optional(bin: string, args: string[]): Promise<ToolStatus> {
+    const t = await ver(bin, args);
+    return { ...t, required: false };
+  }
+
+  async function present(bin: string): Promise<ToolStatus> {
+    try {
+      const { stdout } = await execFileAsync("which", [bin], { timeout: 3000 });
+      return {
+        name: bin,
+        ok: true,
+        detail: stdout.trim().split("\n")[0] || "ok",
+        required: false,
+      };
+    } catch {
+      return { name: bin, ok: false, detail: "mancante", required: false };
+    }
+  }
+
+  const extra = await Promise.all([
+    optional("magic", ["--version"]),
+    present("netgen"),
+    optional("z3", ["--version"]),
+    present("eqy"),
+    present("sby"),
+    present("xyce"),
+    present("fastercap"),
+  ]);
+
   return {
-    tools,
+    tools: [...tools, ...extra],
     orfs: fs.existsSync(
       path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow"),
     ),

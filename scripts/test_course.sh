@@ -243,7 +243,8 @@ rg -q 'system_pdn_hier|ngspice' "${ROOT}/learn/scripts/run_system_pdn.sh" && ok 
 [[ -f "${ROOT}/scripts/test_all_phases.sh" ]] && ok "test_all_phases.sh" || bad "manca test_all_phases"
 bash -n "${ROOT}/scripts/test_all_phases.sh" && ok "test_all_phases syntax" || bad "syntax test_all_phases"
 rg -q 'export_spice_lab' "${ROOT}/studio/src/lib/run.ts" && ok "run export_spice_lab" || bad "run senza export_spice_lab"
-rg -q 'read_power_activities|power_vcd' "${ROOT}/learn/scripts/run_activity_power.sh" && ok "VCD activity wiring" || bad "activity senza VCD"
+rg -q 'read_vcd' "${ROOT}/learn/lib/power_vcd.sh" && ok "VCD read_vcd helper" || bad "power_vcd senza read_vcd"
+rg -q 'vectorless' "${ROOT}/studio/src/lib/run.ts" && ok "studio vectorless action" || bad "studio senza vectorless"
 [[ -f "${ROOT}/learn/lib/power_vcd.sh" ]] && ok "power_vcd.sh shared" || bad "manca power_vcd.sh"
 [[ -f "${ROOT}/studio/src/lib/actions.ts" ]] && ok "actions.ts single source" || bad "manca actions.ts"
 [[ -f "${ROOT}/studio/src/lib/materials-data.ts" ]] && ok "materials-data.ts" || bad "manca materials-data"
@@ -283,7 +284,40 @@ rg -q 'CommandPalette' "${ROOT}/studio/src/app/layout.tsx" && ok "palette wired"
 rg -q 'streamCourseAction|LiveRunConsole|LessonWizard' "${ROOT}/studio/src/components/LessonWizard.tsx" && ok "wizard uses interactive flow" || bad "wizard non interattivo"
 rg -q 'evaluateLessonGates|gates' "${ROOT}/studio/src/app/api/progress/route.ts" && ok "progress gates" || bad "progress senza gates"
 rg -q 'acquireLock|preflightAction' "${ROOT}/studio/src/lib/run.ts" && ok "run lock/preflight" || bad "run senza lock"
-rg -q 'rtl_sim|gridcheck|activity_power' "${ROOT}/studio/src/lib/run.ts" && ok "studio extended actions" || bad "studio senza rtl_sim/gridcheck"
+rg -q 'Yosys|KLayout|Magic|Netgen|EQY|SymbiYosys|ngspice|Xyce|OpenRCX|FasterCap|Raphael|StarRC|open_pdks' \
+  "${ROOT}/learn/reference/oss-integrations.md" && ok "oss-integrations matrix tools" || bad "oss-integrations incompleta"
+[[ -f "${ROOT}/learn/reference/vectorless-power.md" ]] && ok "vectorless-power.md" || bad "manca vectorless-power.md"
+[[ -f "${ROOT}/learn/scripts/run_vectorless.sh" ]] && bash -n "${ROOT}/learn/scripts/run_vectorless.sh" && ok "run_vectorless.sh" || bad "run_vectorless.sh"
+[[ -f "${ROOT}/learn/scripts/run_yosys_equiv.sh" ]] && bash -n "${ROOT}/learn/scripts/run_yosys_equiv.sh" && ok "run_yosys_equiv.sh" || bad "run_yosys_equiv.sh"
+[[ -f "${ROOT}/learn/scripts/run_formal_gcd.sh" ]] && bash -n "${ROOT}/learn/scripts/run_formal_gcd.sh" && ok "run_formal_gcd.sh" || bad "run_formal_gcd.sh"
+python3 -m py_compile "${ROOT}/learn/scripts/vectorless_analysis.py" \
+  "${ROOT}/learn/scripts/run_analytical_pex.py" \
+  "${ROOT}/learn/scripts/export_odb_inst_power.py" && ok "vectorless/pex python" || bad "py_compile vectorless"
+PYTHONPATH="${ROOT}/learn/scripts" python3 - <<'PY' && ok "Najm P01 unit" || bad "P01 unit"
+from vectorless_analysis import switching_p01
+assert abs(switching_p01(0.5) - 0.25) < 1e-12
+assert abs(switching_p01(0.1) - 0.09) < 1e-12
+PY
+if [[ -f "${ROOT}/learn/sim/reports/vectorless_flowlab.json" ]]; then
+  python3 - <<PY && ok "vectorless report ok" || bad "vectorless report"
+import json
+r=json.load(open("${ROOT}/learn/sim/reports/vectorless_flowlab.json"))
+assert r.get("ok") is True
+assert r["vectorless"]["total_w"]
+assert r["dynamic"]["source"].startswith("vcd")
+print(r["summary"][:80])
+PY
+else
+  ok "skip vectorless report (not run)"
+fi
+if [[ -f "${ROOT}/learn/sim/reports/yosys_equiv_flowlab.json" ]]; then
+  python3 -c 'import json; r=json.load(open("'"${ROOT}"'/learn/sim/reports/yosys_equiv_flowlab.json")); assert r["ok"]' \
+    && ok "yosys equiv report" || bad "yosys equiv report"
+fi
+if [[ -f "${ROOT}/learn/sim/reports/formal_gcd_flowlab.json" ]]; then
+  python3 -c 'import json; r=json.load(open("'"${ROOT}"'/learn/sim/reports/formal_gcd_flowlab.json")); assert r["ok"]' \
+    && ok "formal gcd report" || bad "formal gcd report"
+fi
 rg -q 'Sim RTL|Gridcheck|Activity' "${ROOT}/studio/src/components/LiveRunConsole.tsx" && ok "console extended chips" || bad "console senza chip estesi"
 rg -q 'OpsDashboard' "${ROOT}/studio/src/app/strumenti/strumenti-client.tsx" && ok "OpsDashboard wired" || bad "OpsDashboard non collegata"
 rg -q 'ToastProvider' "${ROOT}/studio/src/app/layout.tsx" && ok "ToastProvider wired" || bad "ToastProvider non collegata"

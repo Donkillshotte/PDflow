@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const status = await probeToolchain();
-  const allOk =
-    status.tools.every((t) => t.ok) && status.orfs && status.tutorial;
+  const coreOk = status.tools
+    .filter((t) => t.required !== false)
+    .every((t) => t.ok);
+  const allOk = coreOk && status.orfs && status.tutorial;
   return NextResponse.json({ ...status, ready: allOk });
 }

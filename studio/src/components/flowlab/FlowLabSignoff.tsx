@@ -30,6 +30,13 @@ const POWER_ACTIONS: SignoffAction[] = [
     long: false,
   },
   {
+    id: "vectorless",
+    label: "Vectorless / dynamic",
+    hint: "Najm P01 · IR senza vettori",
+    icon: Zap,
+    long: false,
+  },
+  {
     id: "chip_pdn_ir",
     label: "Chip IR mesh",
     hint: "write_pg_spice · pdn_transient",
@@ -79,6 +86,27 @@ const FINISH_ACTIONS: SignoffAction[] = [
     label: "STA signoff",
     hint: "WNS/TNS vs golden-metrics",
     icon: Clock,
+    long: false,
+  },
+  {
+    id: "yosys_equiv",
+    label: "Yosys equiv",
+    hint: "EQY-class RTL↔synth",
+    icon: ShieldCheck,
+    long: false,
+  },
+  {
+    id: "formal_gcd",
+    label: "Formal SAT",
+    hint: "reset |-> !resp_val",
+    icon: ShieldCheck,
+    long: false,
+  },
+  {
+    id: "openrcx_report",
+    label: "OpenRCX SPEF",
+    hint: "StarRC-class extract",
+    icon: Layers,
     long: false,
   },
   {
@@ -218,8 +246,10 @@ export function FlowLabSignoff({
           <div className="fl-signoff-head">
             <strong>Signoff power &amp; SPICE</strong>
             <p>
-              Catena: VCD/activity → chip mesh → System PDN → export lab. Docs{" "}
-              <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>.
+              Catena: VCD/activity → <strong>vectorless/dynamic</strong> → chip mesh → System PDN. Docs{" "}
+              <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>
+              {" · "}
+              <a href="/materiali/reference/vectorless-power.md">vectorless-power</a>.
             </p>
           </div>
           <ActionGrid

@@ -84,11 +84,21 @@ export async function getSuiteStatus() {
       href: "/strumenti",
     },
     {
+      id: "magic_netgen",
+      label: "Magic / Netgen",
+      group: "Ambiente",
+      ok: which("magic") && (which("netgen") || which("netgen-lvs")),
+      detail: which("magic")
+        ? "presenti · LVS Nangate resta KLayout (no FreePDK45 .tech)"
+        : "apt install magic netgen-lvs",
+      action: "layout_tools",
+    },
+    {
       id: "ngspice",
       label: "ngspice (System PDN)",
       group: "Ambiente",
       ok: which("ngspice"),
-      detail: which("ngspice") ? "ngspice presente" : "apt install ngspice",
+      detail: which("ngspice") ? "ngspice presente · Xyce GAP" : "apt install ngspice",
       action: "system_pdn",
     },
     {
@@ -184,6 +194,17 @@ export async function getSuiteStatus() {
       detail: "VCD se rtl_sim · report_power → I_avg System PDN",
       action: "activity_power",
       href: "/strumenti?tab=run&action=activity_power",
+    },
+    {
+      id: "vectorless",
+      label: "Vectorless / dynamic IR",
+      group: "Power",
+      ok:
+        signoffReportPass("flowlab", "vectorless") ||
+        signoffReportPass("learn", "vectorless"),
+      detail: "Najm P01 + Kouroussis envelope · VCD vs global 0.5",
+      action: "vectorless",
+      href: "/strumenti?tab=run&action=vectorless",
     },
     {
       id: "chip_pdn_ir",
@@ -312,6 +333,50 @@ export async function getSuiteStatus() {
       group: "GUI",
       ok: Boolean(display) && open.targets.some((t) => t.kind === "openroad" && t.exists),
       detail: "POST /api/open · Ctrl+K",
+    },
+    {
+      id: "yosys_equiv",
+      label: "Yosys equiv (EQY-class)",
+      group: "Analisi",
+      ok:
+        signoffReportPass("flowlab", "yosys_equiv") ||
+        signoffReportPass("learn", "yosys_equiv"),
+      detail: "RTL ↔ generic synth · equiv_induct",
+      action: "yosys_equiv",
+      href: "/strumenti?tab=run&action=yosys_equiv",
+    },
+    {
+      id: "formal_gcd",
+      label: "Formal SAT (sby-class)",
+      group: "Analisi",
+      ok:
+        signoffReportPass("flowlab", "formal_gcd") ||
+        signoffReportPass("learn", "formal_gcd"),
+      detail: "reset |-> !resp_val · yosys sat tempinduct",
+      action: "formal_gcd",
+      href: "/strumenti?tab=run&action=formal_gcd",
+    },
+    {
+      id: "openrcx",
+      label: "OpenRCX SPEF",
+      group: "Analisi",
+      ok:
+        signoffReportPass("flowlab", "openrcx") ||
+        signoffReportPass("learn", "openrcx"),
+      detail: "StarRC-class extract · 6_final.spef",
+      action: "openrcx_report",
+      href: "/strumenti?tab=run&action=openrcx_report",
+    },
+    {
+      id: "analytical_pex",
+      label: "PEX analitico (FasterCap-class)",
+      group: "Analisi",
+      ok:
+        signoffReportPass("flowlab", "analytical_pex") ||
+        signoffReportPass("learn", "analytical_pex"),
+      detail: "Sakurai–Tamaru + FDM 2D · Raphael GAP",
+      action: "analytical_pex",
+      href: "/strumenti?tab=run&action=analytical_pex",
     },
     {
       id: "inspect",

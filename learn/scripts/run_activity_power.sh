@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Activity → report_power on final ODB.
-# Uses VCD from rtl_sim when present (read_power_activities), else synthetic global.
+# Uses VCD from rtl_sim when present (read_vcd via power_vcd.sh), else synthetic global.
 #
 # Env: FLOW_VARIANT=learn|flowlab (default flowlab — aligned with power_chain)
 set -euo pipefail

@@ -259,7 +259,27 @@ export function inspectStage(
     {
       id: "activity",
       label: "set_power_activity / VCD",
-      detail: "run_activity_power.sh · VCD da rtl_sim",
+      detail: "run_activity_power.sh · VCD da rtl_sim (read_vcd)",
+    },
+    {
+      id: "vectorless",
+      label: "Vectorless vs dynamic IR",
+      detail: "run_vectorless.sh · Najm 1994 + Kouroussis DAC 2003",
+    },
+    {
+      id: "yosys-equiv",
+      label: "Yosys equiv (EQY-class)",
+      detail: "run_yosys_equiv.sh · RTL ↔ synth",
+    },
+    {
+      id: "formal",
+      label: "Yosys SAT formal",
+      detail: "run_formal_gcd.sh · reset |-> !resp_val",
+    },
+    {
+      id: "openrcx",
+      label: "OpenRCX SPEF",
+      detail: "6_final.spef · rcx_patterns.rules",
     },
     {
       id: "sta-json",

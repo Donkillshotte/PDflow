@@ -237,6 +237,7 @@ export function flowlabPhaseHistory(limitPerPhase = 3) {
   for (const extra of [
     "gridcheck",
     "activity_power",
+    "vectorless",
     "chip_pdn_ir",
     "power_chain",
     "export_spice_lab",

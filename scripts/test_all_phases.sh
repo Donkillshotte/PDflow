@@ -33,7 +33,8 @@ done
 
 echo "== Azioni power in run.ts =="
 for action in rtl_sim synth floorplan gridcheck place cts route finish \
-  activity_power chip_pdn_ir system_pdn export_spice_lab power_chain; do
+  activity_power vectorless chip_pdn_ir system_pdn export_spice_lab power_chain \
+  yosys_equiv formal_gcd openrcx_report analytical_pex layout_tools tool_matrix; do
   rg -q "\"${action}\"" "${ROOT}/studio/src/lib/run.ts" \
     && ok "action ${action}" || bad "run.ts senza ${action}"
 done
@@ -81,8 +82,9 @@ PY
 ok "STAGE_DEPS signoff"
 
 echo "== Script catena power =="
-for s in run_rtl_sim.sh run_activity_power.sh run_chip_pdn_ir.sh run_system_pdn.sh \
-  run_power_chain.sh export_spice_lab.sh run_gridcheck.sh; do
+for s in run_rtl_sim.sh run_activity_power.sh run_vectorless.sh run_chip_pdn_ir.sh run_system_pdn.sh \
+  run_power_chain.sh export_spice_lab.sh run_gridcheck.sh run_yosys_equiv.sh run_formal_gcd.sh \
+  run_openrcx_report.sh run_layout_tools_probe.sh run_spice_engines.sh run_tool_matrix.sh; do
   f="${ROOT}/learn/scripts/${s}"
   [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
 done
@@ -97,7 +99,7 @@ rg -q 'signoff-matrix' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
   && ok "powerChain signoff-matrix doc" || bad "powerChain senza signoff-matrix link"
 
 echo "== LiveRunConsole signoff chips =="
-for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2; do
+for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2 vectorless yosys_equiv formal_gcd; do
   rg -q "id: \"${action}\"" "${ROOT}/studio/src/components/LiveRunConsole.tsx" \
     && ok "LiveRunConsole ${action}" || bad "LiveRunConsole senza ${action}"
 done
@@ -106,7 +108,7 @@ echo "== STAGE_DEPS power =="
 python3 - <<PY || bad "STAGE_DEPS power incompleti"
 import re, sys
 text = open("${ROOT}/studio/src/lib/jobs.ts").read()
-need = ["gridcheck", "system_pdn", "chip_pdn_ir", "power_chain", "activity_power", "export_spice_lab"]
+need = ["gridcheck", "system_pdn", "chip_pdn_ir", "power_chain", "activity_power", "export_spice_lab", "vectorless"]
 for a in need:
     m = re.search(rf'{a}:\s*"(\w+)"', text)
     assert m, f"missing {a}"
