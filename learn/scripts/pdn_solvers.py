@@ -241,6 +241,39 @@ def _libdpn():
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_int),
     ]
+    lib.dpn_timestep_descriptor.restype = ctypes.c_int
+    lib.dpn_timestep_descriptor.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),  # Aval
+        ctypes.POINTER(ctypes.c_double),  # E
+        ctypes.c_int,  # n_v
+        ctypes.c_int,  # n_die
+        ctypes.c_int,  # die_idx
+        ctypes.c_int,  # iv
+        ctypes.c_double,  # dt
+        ctypes.c_double,  # t_end
+        ctypes.c_double,  # vdd
+        ctypes.POINTER(ctypes.c_double),  # leak
+        ctypes.c_int,  # n_events
+        ctypes.POINTER(ctypes.c_int),  # ev_idx
+        ctypes.POINTER(ctypes.c_double),  # ev_t50
+        ctypes.POINTER(ctypes.c_double),  # ev_dur
+        ctypes.POINTER(ctypes.c_double),  # ev_ipulse
+        ctypes.POINTER(ctypes.c_double),  # V_worst
+        ctypes.POINTER(ctypes.c_int),  # worst_node
+        ctypes.POINTER(ctypes.c_double),  # worst_v
+        ctypes.POINTER(ctypes.c_double),  # worst_t
+        ctypes.POINTER(ctypes.c_double),  # rel_res_max
+        ctypes.POINTER(ctypes.c_double),  # solve_s
+        ctypes.c_int,  # max_steps
+        ctypes.POINTER(ctypes.c_double),  # wave_t
+        ctypes.POINTER(ctypes.c_double),  # wave_vmin
+        ctypes.POINTER(ctypes.c_double),  # wave_itot
+        ctypes.POINTER(ctypes.c_int),  # n_steps
+    ]
     _LIB = lib
     return _LIB
 
@@ -895,6 +928,68 @@ def native_adaptive(sys, events, vdd: float, t_end: float, atol: float = 1e-4, r
         print(f"dpn_timestep_be_adaptive rc={rc} n_steps={kw['n_steps'].value} max={kw['max_steps']}", file=sys.stderr)
         return None
     return _tran_result(kw, n, "A_direct_be_adaptive", None, 1, vdd, dt, t_end, "native", "adaptive")
+
+
+def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=None):
+    """Native BE on Eẋ+Ax=u. Returns None if libdpn is missing."""
+    lib = _libdpn()
+    if lib is None or not hasattr(lib, "dpn_timestep_descriptor"):
+        return None
+    A = sys.get("A")
+    Eraw = sys.get("E")
+    if A is None or Eraw is None:
+        return None
+    n, nnz, rp, ci, va = _csr_ct(A)
+    E = np.ascontiguousarray(Eraw, dtype=np.float64)
+    if E.size != n:
+        return None
+    n_v = int(sys["n_v"])
+    die_idx = -1 if sys.get("die_idx") is None else int(sys["die_idx"])
+    n_die = int(sys.get("n_die") or (1 if die_idx >= 0 else n_v))
+    iv = int(sys.get("iv", n_v))
+    if leak is None:
+        leak_a = np.zeros(max(n_die, 1), dtype=np.float64)
+    else:
+        leak_a = np.ascontiguousarray(leak, dtype=np.float64)
+    kw = _tran_kwargs(max(n_die, 1), events, dt, t_end)
+    rc = lib.dpn_timestep_descriptor(
+        n,
+        nnz,
+        rp.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        ci.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        va.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        E.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        n_v,
+        n_die,
+        die_idx,
+        iv,
+        float(dt),
+        float(t_end),
+        float(vdd),
+        leak_a.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["n_ev"],
+        kw["idx"].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        kw["t50"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["dur"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["ip"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["Vw"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.byref(kw["worst_node"]),
+        ctypes.byref(kw["worst_v"]),
+        ctypes.byref(kw["worst_t"]),
+        ctypes.byref(kw["rel"]),
+        ctypes.byref(kw["solve_s"]),
+        kw["max_steps"],
+        kw["wt"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["wv"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        kw["wi"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.byref(kw["n_steps"]),
+    )
+    if rc != 0:
+        print(f"dpn_timestep_descriptor rc={rc}", file=sys.stderr)
+        return None
+    out = _tran_result(kw, n_die, "N4_descriptor_be", None, 1, vdd, dt, t_end, "native", "native_desc")
+    out["via"] = "descriptor BE VRM+pkg+die (libdpn SparseLU)"
+    return out
 
 
 def mor_starts(n: int, events) -> np.ndarray:

@@ -75,6 +75,16 @@ int dpn_mor_timestep(DpnMor* h, const double* leak, const double* pad, double dt
                      int max_steps, double* wave_t, double* wave_vmin, double* wave_itot,
                      int* n_steps);
 
+/* Descriptor BE on Eẋ+Ax=u. E is diagonal length n. die_idx<0 ⇒ I on nodes 0..n_die-1. */
+int dpn_timestep_descriptor(int n, int nnz, const int* rowptr, const int* col, const double* Aval,
+                            const double* E, int n_v, int n_die, int die_idx, int iv, double dt,
+                            double t_end, double vdd, const double* leak, int n_events,
+                            const int* ev_idx, const double* ev_t50, const double* ev_dur,
+                            const double* ev_ipulse, double* V_worst, int* worst_node,
+                            double* worst_v, double* worst_t, double* rel_res_max, double* solve_s,
+                            int max_steps, double* wave_t, double* wave_vmin, double* wave_itot,
+                            int* n_steps);
+
 #ifdef __cplusplus
 }
 #endif

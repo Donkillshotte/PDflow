@@ -13,9 +13,7 @@ import argparse
 import csv
 import json
 import os
-import re
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 # Prefer distro NumPy/SciPy when a newer pip NumPy breaks scipy.sparse
@@ -26,37 +24,7 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-R_RE = re.compile(r"^\S+\s+(\S+)\s+(\S+)\s+R=([0-9eE.+-]+)")
-I_RE = re.compile(r"^\S+\s+(\S+)\s+\S+\s+DC\s+([0-9eE.+-]+)", re.I)
-V_RE = re.compile(r"^\S+\s+(\S+)\s+\S+\s+DC\s+([0-9eE.+-]+)", re.I)
-
-
-def parse_spice(path: Path):
-    resistors = []
-    currents = defaultdict(float)
-    voltages = {}
-    for raw in path.read_text().splitlines():
-        s = raw.strip()
-        if not s or s.startswith("*") or s.startswith("."):
-            continue
-        k = s[0].upper()
-        if k == "R":
-            m = R_RE.match(s)
-            if not m:
-                continue
-            a, b, r = m.group(1), m.group(2), float(m.group(3))
-            resistors.append((a, b, max(r, 1e-12)))
-        elif k == "I":
-            m = I_RE.match(s)
-            if m:
-                currents[m.group(1)] += abs(float(m.group(2)))
-        elif k == "V":
-            m = V_RE.match(s)
-            if m:
-                voltages[m.group(1)] = float(m.group(2))
-    if not resistors or not voltages:
-        raise SystemExit(f"SPICE incompleto: R={len(resistors)} V={len(voltages)}")
-    return resistors, dict(currents), voltages
+from pdn_extract import parse_spice
 
 
 def build_system(resistors, currents, voltages):

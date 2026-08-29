@@ -65,12 +65,12 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 
 | # | Livello | Oggi | Gap onesto |
 |---|---|---|---|
-| 1 | PDN extract | OpenROAD `write_pg_spice` | non DEF+LEF nativo vyges su Nangate |
+| 1 | PDN extract | OpenROAD `write_pg_spice` + tech LEF | SPEF PG C never mapped from signal nets |
 | 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
 | 3 | Activity | clock/spatial/simultaneous | no VCD pin, no SAIF (`pdn_activity` probe = GAP) |
 | 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) in Python TRAN se tabelle + slew; Nangate = GAP |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS | ngspice = gold 1-nodo RC e R+L; CCS \(I(V)\) vs B-source su Liberty sintetica |
-| 6 | Analysis | heatmap, finestre, ranking scenari, delay scaling, \(I_\mathrm{branch}\) | no J/TTF (manca width), no path STA |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS + **N4** descriptor BE nativo | ngspice = gold 1-nodo RC, R+L, VRM+die |
+| 6 | Analysis | heatmap, finestre, ranking, delay scaling, \(J=I/(wt)\) | TTF relativo (no A foundry); R(T) lumpato one-shot N1, non mesh 3D |
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
@@ -121,19 +121,21 @@ Con \(i_L\), lo spike simultaneo è il peggiore (I_peak 52 mA vs 22 mA clock) �
 
 Gold ngspice: **1 nodo RC** `|V_BE−V_ng| ≈ 0.032 mV`; **1 nodo pad–R–L–C** ≈ 0.056 mV (`gear maxord=1`, soglia 5 mV). Non è il chip.
 
-EM: \(I=(V_a-V_b)/R\) a \(t_\mathrm{worst}\) = PARTIAL · \|I\|_max ≈ 3.04 mA (via M3–M4). Manca width → niente J né Black TTF. \(i_L\) bump max ≈ 2.38 mA.
+EM: \(I=(V_a-V_b)/R\) e \(J=I/(w t)\) con \(w=\mathrm{RPERSQ}\cdot L/R\) dal tech LEF (non min WIDTH). TTF relativo \((J_\mathrm{ref}/J)^n\), \(n=2\), \(J_\mathrm{ref}=10^{10}\,\mathrm{A/m^2}\) — **non** ore foundry. \(\Delta T=R_\mathrm{th} I^2 R\) lumpato, restamp N1 \(R(T)\). Numeri GCD dopo `run_dynamic_ir.sh`. Path STA = GAP.
 
 ## File
 
 | Path | Ruolo |
 |---|---|
 | `learn/scripts/pdn_dynamic.py` | orchestrazione + report |
+| `learn/scripts/pdn_extract.py` | layer extract: SPICE + tech LEF + probe SPEF (C PG = GAP) |
+| `learn/scripts/pdn_em.py` | J da RPERSQ·L/R, TTF relativo, restamp R(T) lumpato |
 | `learn/scripts/pdn_current.py` | triangolo + probe/interpolatore CCS |
 | `learn/scripts/pdn_activity.py` | t50 sintetici + probe VCD/SAIF |
-| `learn/scripts/pdn_solvers.py` | A/B/C (libdpn ctypes + SciPy) |
+| `learn/scripts/pdn_solvers.py` | A/B/C/D + N4 descriptor (libdpn ctypes + SciPy) |
 | `learn/scripts/run_dynamic_ir.sh` | GCD + stamp `.dynamic_ir.ok` |
 | `learn/scripts/pdn_vrm.py` | N4 descriptor: VRM + bump R+L + mesh |
-| `engine/` | `libdpn` LU / SA-AMG / BE hist / descriptor RLC MOR |
+| `engine/` | `libdpn` LU / SA-AMG / RAS / BE hist / descriptor N4 / RLC MOR |
 
 Limiti in aula: triangolo ≠ CCS; AMG sul GCD è più lento di LU (4k nodi); package R/L lumpato; pad PDNSim su metal4.
 

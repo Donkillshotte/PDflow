@@ -34,7 +34,7 @@ Il gold resta Solver A con \(i_L\). C riduce il descriptor \(E\dot x+Ax=u\) alli
 |---|---|---|---|---|---|---|
 | OpenROAD PSM / PDNSim | sì | **no** (docs: static IR analyzer) | current density | sì (ODB) | I_avg da liberty/activity | `analyze_power_grid` + `write_pg_spice` |
 | **vyges-em-ir** | sì (CG+Jacobi) | sì, BE, **un** `switch_t_ns` | sì (se `emlimit`) | DEF+LEF upstream; qui mesh SPICE | eventi, tutti allineati | bootstrap / validazione; no waveform |
-| **Questo corso `dynamic_ir`** | sì | A LU + B SA-AMG + C RLC MOR, I(t) per pin | PARTIAL (\(I_\mathrm{branch}\), no J) | mesh OpenROAD | simultaneous / spatial / **clock** + ranking | waveform + heatmap |
+| **Questo corso `dynamic_ir`** | sì | A LU + B SA-AMG + C RLC MOR + D RAS + N4, I(t) per pin | \(J\) da LEF RPERSQ·L/R, TTF relativo | mesh OpenROAD + tech LEF | simultaneous / spatial / **clock** + ranking | waveform + heatmap |
 | `pdn_transient.py` | sì | load-step globale | no | mesh OpenROAD | peak_factor | laboratorio CSV |
 | ngspice | sì | sì | possibile | da costruire | PWL | **gold 1-nodo**, non full-chip |
 | Xyce | sì | sì (MPI) | — | da costruire | sì | **GAP** in questa VM |
@@ -112,12 +112,12 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 
 | Livello | Prodotto “RedHawk-like” | Cosa gira **oggi** sul GCD |
 |---|---|---|
-| 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` |
+| 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` + tech LEF; SPEF PG C = GAP |
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | modi sintetici clock/spatial; VCD RTL non è pin-accurate |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |
-| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold | **A + B + C + D READY** (D = RAS, \|A−D\| 0.004 mV, ndom=8) |
-| 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG heatmap + \(I_\mathrm{branch}\) PARTIAL |
+| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold | **A + B + C + D READY**; N4 descriptor BE nativo |
+| 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + R(T) lumpato |
 
 ## Classifica reale
 

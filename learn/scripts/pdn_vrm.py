@@ -72,7 +72,17 @@ def compact_vrm_die(*, vdd: float, r_vrm: float, l_vrm: float, c_vrm: float, r_p
     put(3, 3, max(r_pkg, 1e-9))
     A = sparse.coo_matrix((data, (rows, cols)), shape=(N, N)).tocsc()
     names = ["n_vrm", "n_die", "i_vrm", "i_pkg"]
-    return {"E": E, "A": A, "n_v": n_v, "n_i": n_i, "vdd": vdd, "names": names, "die_idx": 1}
+    return {
+        "E": E,
+        "A": A,
+        "n_v": n_v,
+        "n_i": n_i,
+        "n_die": 1,
+        "vdd": vdd,
+        "names": names,
+        "die_idx": 1,
+        "iv": n_v,  # i_vrm; KVL row gets +Vsrc
+    }
 
 
 def assemble_n4_mesh(G_mesh, C_die, bumps, *, vdd: float, pkg_r: float, pkg_l: float, r_vrm: float, l_vrm: float, c_vrm: float):
@@ -132,11 +142,19 @@ def assemble_n4_mesh(G_mesh, C_die, bumps, *, vdd: float, pkg_r: float, pkg_l: f
     }
 
 
-def timestep_descriptor(sys: dict, i_die, dt: float, t_end: float, vdd: float, leak=None) -> dict:
+def timestep_descriptor(sys: dict, i_die, dt: float, t_end: float, vdd: float, leak=None, events=None) -> dict:
     """Fixed-Δt BE on Eẋ + A x = u(t). UIC: voltages = Vdd, currents = 0.
 
     i_die is either a callable t→float (compact 1-node) or t→ndarray of length n_die.
+    When `events` is given, libdpn descriptor BE is preferred.
     """
+    if events is not None:
+        from pdn_solvers import native_descriptor
+
+        nat = native_descriptor(sys, events, vdd, t_end, dt, leak=leak)
+        if nat is not None:
+            return nat
+
     E = np.asarray(sys["E"], dtype=np.float64)
     A = sys["A"].tocsc()
     n = A.shape[0]
@@ -185,6 +203,8 @@ def timestep_descriptor(sys: dict, i_die, dt: float, t_end: float, vdd: float, l
         "steps": steps,
         "V_worst": worst_Vdie,
         "via": "descriptor BE VRM+pkg+die (Python SparseLU)",
+        "backend": "python",
+        "timestep_loop": "python_desc",
     }
 
 
@@ -195,7 +215,14 @@ def ngspice_vrm_die_gold(*, vdd, r_vrm, l_vrm, c_vrm, r_pkg, l_pkg, c_die, i_pea
     sysd = compact_vrm_die(
         vdd=vdd, r_vrm=r_vrm, l_vrm=l_vrm, c_vrm=c_vrm, r_pkg=r_pkg, l_pkg=l_pkg, c_die=c_die
     )
-    be = timestep_descriptor(sysd, lambda t: triangle_above_leak(t, t50, dur, i_peak), dt, t_end, vdd)
+    be = timestep_descriptor(
+        sysd,
+        lambda t: triangle_above_leak(t, t50, dur, i_peak),
+        dt,
+        t_end,
+        vdd,
+        events=[{"idx": 0, "t50_s": t50, "dur_s": dur, "i_pulse": i_peak, "i_leak": 0.0}],
+    )
     t0 = max(t50 - 0.5 * dur, 0.0)
     t1 = t50 + 0.5 * dur
     tmp = Path(tempfile.mkdtemp(prefix="dynir-n4-gold-"))

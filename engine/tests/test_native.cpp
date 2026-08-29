@@ -87,6 +87,44 @@ static Csr r_chain(Index n, double r) {
   return A;
 }
 
+static void ge4(double A[4][4], const double b[4], double x[4]) {
+  double M[4][4];
+  double rhs[4];
+  for (int i = 0; i < 4; ++i) {
+    rhs[i] = b[i];
+    for (int j = 0; j < 4; ++j) {
+      M[i][j] = A[i][j];
+    }
+  }
+  for (int k = 0; k < 4; ++k) {
+    int piv = k;
+    for (int i = k + 1; i < 4; ++i) {
+      if (std::abs(M[i][k]) > std::abs(M[piv][k])) {
+        piv = i;
+      }
+    }
+    for (int j = 0; j < 4; ++j) {
+      std::swap(M[k][j], M[piv][j]);
+    }
+    std::swap(rhs[k], rhs[piv]);
+    const double akk = M[k][k];
+    for (int i = k + 1; i < 4; ++i) {
+      const double f = M[i][k] / akk;
+      for (int j = k; j < 4; ++j) {
+        M[i][j] -= f * M[k][j];
+      }
+      rhs[i] -= f * rhs[k];
+    }
+  }
+  for (int i = 3; i >= 0; --i) {
+    double s = rhs[i];
+    for (int j = i + 1; j < 4; ++j) {
+      s -= M[i][j] * x[j];
+    }
+    x[i] = s / M[i][i];
+  }
+}
+
 static Csr poisson_2d(Index m) {
   const Index n = m * m;
   Csr A;
@@ -482,6 +520,73 @@ int main() {
     check(err < 5e-3, "2-node RLC MOR vs hist BE (< 5 mV)");
     std::printf("    2-node RLC MOR m=%d vmin=%.6f hist=%.6f |A-C|=%.3e V\n", mor->m(), red.worst_v,
                 hist.worst_v, err);
+  }
+  {
+    // Compact VRM+die descriptor BE vs dense 4×4 gold (same stamp as pdn_vrm.compact_vrm_die).
+    const double vdd = 1.1, dt = 10e-12, t_end = 0.4e-9;
+    const double r_vrm = 0.015, r_pkg = 0.05;
+    const double c_vrm = 50e-12, c_die = 50e-12, l_vrm = 2e-10, l_pkg = 2e-10;
+    const double t50 = 0.2e-9, dur = 0.2e-9, ipulse = 5e-3;
+    Index ti[8] = {0, 0, 1, 2, 2, 3, 3, 3};
+    Index tj[8] = {2, 3, 3, 0, 2, 1, 0, 3};
+    double tv[8] = {-1.0, 1.0, -1.0, 1.0, r_vrm, 1.0, -1.0, r_pkg};
+    Csr A = dpn::from_triplets(4, ti, tj, tv, 8);
+    double E[4] = {c_vrm, c_die, l_vrm, l_pkg};
+    dpn::TriangleSrc ev;
+    ev.idx = 0;
+    ev.t50 = t50;
+    ev.dur = dur;
+    ev.ipulse = ipulse;
+    auto desc = dpn::timestep_descriptor(A, E, dt, t_end, vdd, 2, 1, 1, 2, nullptr, &ev, 1);
+
+    double Ad[4][4] = {};
+    Ad[0][2] = -1.0;
+    Ad[0][3] = 1.0;
+    Ad[1][3] = -1.0;
+    Ad[2][0] = 1.0;
+    Ad[2][2] = r_vrm;
+    Ad[3][1] = 1.0;
+    Ad[3][0] = -1.0;
+    Ad[3][3] = r_pkg;
+    double K[4][4];
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        K[i][j] = Ad[i][j] + (i == j ? E[i] / dt : 0.0);
+      }
+    }
+    double x[4] = {vdd, vdd, 0.0, 0.0};
+    double worst = vdd;
+    const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+    for (int s = 0; s < steps; ++s) {
+      const double t = static_cast<double>(s) * dt;
+      const double idraw = dpn::triangle(t, t50, dur, ipulse);
+      double rhs[4];
+      for (int i = 0; i < 4; ++i) {
+        rhs[i] = (E[i] / dt) * x[i];
+      }
+      rhs[1] -= idraw;
+      rhs[2] += vdd;
+      ge4(K, rhs, x);
+      worst = std::min(worst, x[1]);
+    }
+    check(std::abs(desc.worst_v - worst) < 1e-12, "compact VRM descriptor vs dense 4x4 BE");
+    std::printf("    N4 descriptor vmin=%.9f gold=%.9f |err|=%.3e V\n", desc.worst_v, worst,
+                std::abs(desc.worst_v - worst));
+
+    std::vector<int> rp(A.rowptr.begin(), A.rowptr.end());
+    std::vector<int> ci(A.col.begin(), A.col.end());
+    const int maxs = 128;
+    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
+    int worst_node = 0, n_steps = 0;
+    double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
+    int ev_idx[1] = {0};
+    double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
+    check(dpn_timestep_descriptor(4, A.nnz(), rp.data(), ci.data(), A.val.data(), E, 2, 1, 1, 2, dt,
+                                  t_end, vdd, nullptr, 1, ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(),
+                                  &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
+                                  wv.data(), wi.data(), &n_steps) == 0,
+          "c_api timestep_descriptor");
+    check(std::abs(worst_v - worst) < 1e-12, "c_api compact VRM descriptor vs dense 4x4 BE");
   }
   if (fails) {
     std::fprintf(stderr, "%d checks failed\n", fails);

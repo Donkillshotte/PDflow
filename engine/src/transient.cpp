@@ -313,4 +313,94 @@ TranResult timestep_be_adaptive(const Csr& Gmesh, const double* C, const Index* 
   return out;
 }
 
+TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double t_end, double vdd,
+                               int n_v, int n_die, int die_idx, int iv, const double* leak,
+                               const TriangleSrc* ev, int n_ev) {
+  TranResult out;
+  const Index n = A.nrows;
+  out.worst_v = vdd;
+  out.worst_t = 0.0;
+  const Index n_die_i = std::max(n_die, 0);
+  out.V_worst.assign(static_cast<size_t>(n_die_i > 0 ? n_die_i : n), vdd);
+  if (n <= 0 || dt <= 0.0 || !E || n_v <= 0) {
+    return out;
+  }
+  std::vector<double> Edt(static_cast<size_t>(n));
+  for (Index i = 0; i < n; ++i) {
+    Edt[static_cast<size_t>(i)] = E[i] / dt;
+  }
+  Csr K = plus_diag(A, Edt.data());
+  auto solver = make_direct(K);
+  const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+  std::vector<double> x(static_cast<size_t>(n), 0.0);
+  for (int i = 0; i < n_v && i < static_cast<int>(n); ++i) {
+    x[static_cast<size_t>(i)] = vdd;
+  }
+  std::vector<double> rhs(static_cast<size_t>(n)), I(static_cast<size_t>(std::max(n_die_i, 1)));
+  const auto t0 = std::chrono::steady_clock::now();
+  double res_max = 0.0;
+  const int iv_i = iv;
+  for (int s = 0; s < steps; ++s) {
+    const double t = static_cast<double>(s) * dt;
+    std::fill(rhs.begin(), rhs.end(), 0.0);
+    fill_idraw(n_die_i > 0 ? n_die_i : 1, t, leak, ev, n_ev, I.data());
+    if (die_idx >= 0 && die_idx < static_cast<int>(n)) {
+      rhs[static_cast<size_t>(die_idx)] = -I[0];
+    } else {
+      const Index nd = std::min(n_die_i, n);
+      for (Index i = 0; i < nd; ++i) {
+        rhs[static_cast<size_t>(i)] = -I[static_cast<size_t>(i)];
+      }
+    }
+    if (iv_i >= 0 && iv_i < static_cast<int>(n)) {
+      rhs[static_cast<size_t>(iv_i)] += vdd;
+    }
+    for (Index i = 0; i < n; ++i) {
+      rhs[static_cast<size_t>(i)] += Edt[static_cast<size_t>(i)] * x[static_cast<size_t>(i)];
+    }
+    std::vector<double> xnext(static_cast<size_t>(n));
+    solver->solve(rhs.data(), xnext.data(), x.data());
+    res_max = std::max(res_max, residual_rel(K, xnext.data(), rhs.data()));
+    x.swap(xnext);
+    double vmin = vdd;
+    Index imin = 0;
+    if (die_idx >= 0 && die_idx < static_cast<int>(n)) {
+      vmin = x[static_cast<size_t>(die_idx)];
+      imin = 0;
+    } else {
+      const Index nd = std::min(n_die_i, n);
+      vmin = x[0];
+      for (Index i = 1; i < nd; ++i) {
+        if (x[static_cast<size_t>(i)] < vmin) {
+          vmin = x[static_cast<size_t>(i)];
+          imin = i;
+        }
+      }
+    }
+    out.wave_t.push_back(t);
+    out.wave_vmin.push_back(vmin);
+    double itot = 0.0;
+    const Index ndi = n_die_i > 0 ? n_die_i : 1;
+    for (Index i = 0; i < ndi; ++i) {
+      itot += I[static_cast<size_t>(i)];
+    }
+    out.wave_itot.push_back(itot);
+    if (vmin < out.worst_v) {
+      out.worst_v = vmin;
+      out.worst_t = t;
+      out.worst_node = imin;
+      if (die_idx >= 0) {
+        out.V_worst.assign(1, vmin);
+      } else {
+        const Index nd = std::min(n_die_i, n);
+        out.V_worst.assign(x.begin(), x.begin() + nd);
+      }
+    }
+  }
+  out.steps = steps;
+  out.rel_res_max = res_max;
+  out.solve_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+  return out;
+}
+
 }  // namespace dpn

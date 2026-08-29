@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Dynamic IR engine on the GCD write_pg_spice mesh.
 # Per-ITerm PWL + A LU gold + B SA-AMG + C Krylov MOR + D RAS Schwarz.
+# Extract = SPICE + tech LEF (EM J); SPEF is probed, never mapped onto PDN C.
 # Ranking of extra I(t) stays Solver A. vyges-em-ir is bootstrap.
 #
 # Uso: FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
@@ -28,6 +29,8 @@ DT_PS="${DT_PS:-10}"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
 LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
+LEF="${FLOW}/platforms/nangate45/lef/NangateOpenCellLibrary.tech.lef"
+SPEF="${RES}/6_final.spef"
 ODB="${RES}/6_final.odb"
 SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
 SPICE="${RES}/pdn/pg_vdd_bumps.sp"
@@ -77,6 +80,13 @@ ADAPT=()
 if [[ "${DYNAMIC_IR_ADAPTIVE:-}" == "1" ]]; then
   ADAPT=(--adaptive)
 fi
+EXTRA=()
+if [[ -f "${LEF}" ]]; then
+  EXTRA+=(--lef "${LEF}")
+fi
+if [[ -f "${SPEF}" ]]; then
+  EXTRA+=(--spef "${SPEF}")
+fi
 python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   --spice "${SPICE}" \
   --insts "${INSTS}" \
@@ -91,6 +101,7 @@ python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   --c-decap "${C_DECAP}" \
   --dt-ps "${DT_PS}" \
   --liberty "${LIB}" \
+  "${EXTRA[@]}" \
   "${ADAPT[@]}" \
   2>&1 | tee -a "${LOG}"
 

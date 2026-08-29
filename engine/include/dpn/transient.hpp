@@ -60,4 +60,12 @@ TranResult timestep_be_adaptive(const Csr& Gmesh, const double* C, const Index* 
 Csr form_be_operator(const Csr& Gmesh, const double* C, double dt, const Index* bumps, int n_bumps,
                      const double* bump_v, double pkg_r, double pkg_l, std::vector<double>& pad);
 
+/* Fixed-Δt BE on the descriptor Eẋ + A x = u(t). E is diagonal (length n).
+   n_v voltage states start at Vdd; inductor states (the rest) start at 0.
+   die_idx>=0: scalar I_draw on that node. die_idx<0: I_draw[0:n_die] on the first n_die nodes.
+   u[iv] += vdd (VRM inductor KVL). */
+TranResult timestep_descriptor(const Csr& A, const double* E, double dt, double t_end, double vdd,
+                               int n_v, int n_die, int die_idx, int iv, const double* leak,
+                               const TriangleSrc* ev, int n_ev);
+
 }  // namespace dpn

@@ -55,6 +55,8 @@ from pdn_current import (  # noqa: E402
     probe_liberty_current_model,
     triangle_above_leak,
 )
+from pdn_em import em_thermal_snapshot  # noqa: E402
+from pdn_extract import extract_pdn, summarize_extract  # noqa: E402
 from pdn_solvers import (  # noqa: E402
     DirectLU,
     RASDD,
@@ -66,7 +68,7 @@ from pdn_solvers import (  # noqa: E402
     residual_rel,
     rl_companion,
 )
-from pdn_transient import build_system, parse_spice, solve_static  # noqa: E402
+from pdn_transient import build_system, solve_static  # noqa: E402
 from pdn_vrm import assemble_n4_mesh, load_vrm_cfg, ngspice_vrm_die_gold, timestep_descriptor  # noqa: E402
 
 
@@ -324,6 +326,7 @@ def platform_block(
     em: dict | None = None,
     n4: dict | None = None,
     ras: dict | None = None,
+    extract: dict | None = None,
 ) -> dict:
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
     if mor and mor.get("ok"):
@@ -347,7 +350,7 @@ def platform_block(
     accurate = "PARTIAL" if adaptive and adaptive.get("ok") else "GAP"
     return {
         "name": "hierarchical multi-fidelity power-integrity engine",
-        "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + D RAS Schwarz + adaptive BE) + OpenROAD + triangle/CCS I(t)",
+        "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + D RAS Schwarz + descriptor N4) + extract/EM layers + OpenROAD + triangle/CCS I(t)",
         "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
         "do_not_implement_this_slice": [
             "gate-accurate VCD/FSDB pin times on this Nangate netlist",
@@ -457,6 +460,12 @@ def platform_block(
         or {
             "status": "GAP",
             "idea": "I(t)→J→EM and P→T→R(T) as later coupling",
+        },
+        "extract": extract
+        or {
+            "status": "READY",
+            "backend": "write_pg_spice",
+            "idea": "OpenROAD SPICE + tech LEF; SPEF PG C never mapped from signal nets",
         },
     }
 
@@ -611,71 +620,6 @@ def _parse_wrdata_vmin(path: Path) -> float | None:
             continue
         worst = v if worst is None else min(worst, v)
     return worst
-
-
-def em_snapshot(
-    resistors,
-    idx: dict,
-    order,
-    V: np.ndarray,
-    *,
-    bump,
-    bump_v,
-    i_L,
-    pkg_r: float,
-    pkg_l: float,
-) -> dict:
-    """Branch currents at t_worst from I = (Va−Vb)/R. Physics screening, not ML.
-
-    No conductor width in write_pg_spice → no J (A/m²) and no Black TTF.
-    Package inductor current is the BE companion i_L at the same instant.
-    """
-    def vnode(name: str) -> float | None:
-        if name == "0":
-            return 0.0
-        i = idx.get(name)
-        if i is None or i < 0 or i >= len(V):
-            return None
-        return float(V[i])
-
-    branches = []
-    for a, b, r in resistors:
-        va, vb = vnode(a), vnode(b)
-        if va is None or vb is None:
-            continue
-        i_br = (va - vb) / max(r, 1e-18)
-        branches.append({"a": a, "b": b, "r_ohm": r, "i_a": i_br, "i_abs": abs(i_br)})
-    branches.sort(key=lambda x: -x["i_abs"])
-    top = branches[:12]
-    hottest = top[0] if top else None
-    pkg = []
-    i_L_list = []
-    if i_L is not None:
-        i_L_list = np.asarray(i_L, dtype=np.float64).tolist()
-    for k, bi in enumerate(bump or []):
-        node = order[int(bi)] if order is not None and 0 <= int(bi) < len(order) else str(bi)
-        pkg.append(
-            {
-                "node": node,
-                "v_src": float(bump_v[k]) if bump_v is not None and k < len(bump_v) else None,
-                "i_L_a": float(i_L_list[k]) if k < len(i_L_list) else None,
-            }
-        )
-    pkg.sort(key=lambda p: -abs(p["i_L_a"] or 0.0))
-    i_absmax = float(hottest["i_abs"]) if hottest else 0.0
-    return {
-        "status": "PARTIAL",
-        "model": "I_branch=(Va-Vb)/R at t_worst; package i_L from BE R+L companion",
-        "not": ["current density J (no width in SPICE)", "Black TTF", "thermal R(T)"],
-        "n_branches": len(branches),
-        "i_absmax_a": i_absmax,
-        "hottest": hottest,
-        "top": top[:8],
-        "package_i_L": pkg[:8],
-        "pkg_r": pkg_r,
-        "pkg_l": pkg_l,
-        "note": "EM screening from physics I(t), not ML. Width/J/TTF remain GAP.",
-    }
 
 
 def ngspice_gold(
@@ -897,6 +841,8 @@ def main() -> int:
     ap.add_argument("--vcd", type=Path, default=None, help="VCD/SAIF/FSDB to probe (never silently mapped to ITerms)")
     ap.add_argument("--no-vrm", action="store_true", help="skip coupled N4 VRM+die descriptor BE")
     ap.add_argument("--vrm-cfg", type=Path, default=None, help="system_pdn JSON for lumped VRM")
+    ap.add_argument("--lef", type=Path, default=None, help="tech LEF for metal WIDTH/THICKNESS/RPERSQ (EM J)")
+    ap.add_argument("--spef", type=Path, default=None, help="SPEF to probe for PDN C (never mapped from signal nets)")
     args = ap.parse_args()
 
     current_model = probe_liberty_current_model(args.liberty)
@@ -905,7 +851,9 @@ def main() -> int:
     if args.liberty and Path(args.liberty).is_file() and current_model.get("n_ccs_tables"):
         ccs_tables = parse_ccs_output_current(Path(args.liberty).read_text(errors="replace")[:2_000_000])
 
-    resistors, currents, voltages = parse_spice(args.spice)
+    ext = extract_pdn(args.spice, lef=args.lef, spef=args.spef)
+    extract_report = summarize_extract(ext)
+    resistors, currents, voltages = ext["resistors"], ext["currents"], ext["voltages"]
     order, idx, G = build_system(resistors, currents, voltages)
     vdd = args.vdd or next(iter(voltages.values()))
     period_s = args.period_ns * 1e-9
@@ -1059,14 +1007,18 @@ def main() -> int:
                 I[ev["idx"]] += triangle_above_leak(t, ev["t50_s"], ev["dur_s"], ev["i_pulse"])
             return I
 
-        dyn_n4 = timestep_descriptor(n4sys, _i_n4, dt, t_end, vdd)
+        dyn_n4 = timestep_descriptor(n4sys, _i_n4, dt, t_end, vdd, leak=leak_n4, events=events)
         err_n4 = abs(dyn["worst_droop"] - dyn_n4["worst_droop"]) * 1e3
         n4_meta = {
             "ok": True,
             "worst_droop_mv": dyn_n4["worst_droop"] * 1e3,
             "worst_time_ns": dyn_n4["worst_time_s"] * 1e9,
             "abs_err_vs_N3_mv": err_n4,
-            "via": "coupled descriptor BE: write_pg_spice die + lumped VRM C/L/R + bump R+L",
+            "via": dyn_n4.get("via")
+            or "coupled descriptor BE: write_pg_spice die + lumped VRM C/L/R + bump R+L",
+            "backend": dyn_n4.get("backend"),
+            "timestep_loop": dyn_n4.get("timestep_loop"),
+            "rel_res_max": dyn_n4.get("rel_res_max"),
             "note": "N3 (ideal Vsrc) stays gold on this sub-ns window; 47 µF VRM is stiff here",
             "r_vrm": float(vrm.get("r_out") or 0.015),
             "l_vrm": float(vrm.get("l_out") or 2e-9),
@@ -1157,7 +1109,7 @@ def main() -> int:
     Vw = dyn.pop("V_worst")
     pts = heatmap_points(order, Vw, vdd, events)
     hottest = sorted(pts, key=lambda p: p["ir_mv"], reverse=True)[:8]
-    em = em_snapshot(
+    em = em_thermal_snapshot(
         resistors,
         idx,
         order,
@@ -1167,7 +1119,22 @@ def main() -> int:
         i_L=dyn.get("i_L_worst"),
         pkg_r=args.pkg_r,
         pkg_l=args.pkg_l,
+        tech=ext.get("tech"),
     )
+    scaled = em.pop("_scaled_resistors", None)
+    if scaled and em.get("n_r_scaled"):
+        _, _, G_t = build_system(scaled, currents, voltages)
+        st_t = solve_static(G_t, idx, order, currents, voltages, vdd)
+        em["rT_static_ir_mv"] = st_t["worst_ir"] * 1e3
+        em["rT_delta_ir_mv"] = (st_t["worst_ir"] - static["worst_ir"]) * 1e3
+        em["rT_via"] = (
+            "one-shot N1 restamp R'=R(1+αΔT) from lumped ΔT=Rth·I²R; "
+            "not 3D thermal, not a sub-ns TRAN (thermal RC is much slower)"
+        )
+    else:
+        em["rT_static_ir_mv"] = static["worst_ir"] * 1e3
+        em["rT_delta_ir_mv"] = 0.0
+        em["rT_via"] = "no same-layer J or ΔT≈0 — G not restamped"
 
     out = args.out
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -1264,8 +1231,23 @@ def main() -> int:
             else f"per-ITerm triangle PWL ({current_model['kind']})"
         )
     )
+    em_via = (
+        f"heatmap + windows + delay scaling + J={em.get('j_absmax_a_m2', 0):.3e} A/m² "
+        f"+ relative Black TTF + lumped R(T) N1 restamp"
+        if em.get("n_with_j")
+        else "heatmap + windows + delay scaling + branch I (no same-layer coords for J)"
+    )
     pipeline = [
-        {"id": 1, "name": "PDN extraction", "status": "READY", "via": "OpenROAD write_pg_spice"},
+        {
+            "id": 1,
+            "name": "PDN extraction",
+            "status": "READY",
+            "via": (
+                f"{extract_report.get('backend')} + tech LEF "
+                f"({(extract_report.get('tech') or {}).get('status')}); "
+                f"SPEF PG C {(extract_report.get('spef') or {}).get('status')}"
+            ),
+        },
         {
             "id": 2,
             "name": "Power model",
@@ -1283,9 +1265,9 @@ def main() -> int:
             "id": 5,
             "name": "Transient solver",
             "status": "READY",
-            "via": "A LU gold + B SA-AMG + C descriptor RLC Krylov + D RAS Schwarz",
+            "via": "A LU gold + B SA-AMG + C descriptor RLC Krylov + D RAS Schwarz + native N4 descriptor BE",
         },
-        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + windows + delay scaling + branch I EM screen; J/TTF = GAP"},
+        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": em_via},
     ]
     plat = platform_block(
         mode=args.mode,
@@ -1300,6 +1282,7 @@ def main() -> int:
         em=em,
         n4=n4_meta,
         ras=ras_meta,
+        extract=extract_report,
     )
     amg_note = (
         f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
@@ -1317,8 +1300,14 @@ def main() -> int:
         else ""
     )
     n4_note = (
-        f" · N4 {n4_meta['worst_droop_mv']:.3f} mV (|N3−N4| {n4_meta['abs_err_vs_N3_mv']:.3f} mV)"
+        f" · N4 {n4_meta['worst_droop_mv']:.3f} mV "
+        f"(|N3−N4| {n4_meta['abs_err_vs_N3_mv']:.3f} mV, {n4_meta.get('backend', '?')})"
         if n4_meta
+        else ""
+    )
+    em_note = (
+        f" · J {em['j_absmax_a_m2']:.3e} A/m² TTF_rel {em.get('ttf_rel_min')}"
+        if em.get("n_with_j")
         else ""
     )
     report = {
@@ -1327,27 +1316,34 @@ def main() -> int:
         "engine": "studio-dynamic-ir",
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
+            "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C never mapped from signal nets",
             "replaceable activity (synthetic t50) + current (triangle; CCS interpolator when tables exist)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
             "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
             "Solver D: restricted additive Schwarz on the BE operator (graph partition, local LU, GMRES)",
-            "Native BE/MOR/RAS in libdpn; Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
+            "N4: native descriptor BE on Eẋ+Ax=u (VRM + bump R+L + die mesh); SparseLU, not AMG",
+            "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; lumped R(T) N1 restamp",
+            "Native BE/MOR/RAS/N4 in libdpn; Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
             "V(x,y) heatmap at t_worst + delay scaling at worst tap",
         ],
         "not": [
             "CCS I(t) on Nangate45 (NLDM, no current tables — interpolator is tested on synthetic CCS)",
             "gate-level VCD pin times",
+            "foundry Black TTF hours / extracted strap WIDTH from LEF geometry",
+            "3D thermal mesh or sub-ns thermal TRAN",
             "RedHawk / Voltus / Totem sign-off",
             "vyges-em-ir fork",
             "EMSim commercial flow (VCS/Calibre/PT-PX/HSpice)",
         ],
         "roles": {
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
+            "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C is GAP (signal SPEF has no VDD)",
+            "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, lumped ΔT → R(T) N1 restamp — not foundry hours",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
-            "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov + D RAS on write_pg_spice; triangle I(t) on NLDM",
-            "ngspice": "unit-test gold for BE on 1-node RC and 1-node series R+L",
+            "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",
+            "ngspice": "unit-test gold for BE on 1-node RC, 1-node series R+L, and compact VRM+die",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
         "platform": plat,
@@ -1363,10 +1359,10 @@ def main() -> int:
             },
             "B_pdn_solve": {
                 "status": "READY",
-                "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor + D_ras_schwarz",
+                "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor + D_ras_schwarz + N4_descriptor",
                 "replaces": "HSpice TRAN on Calibre DSPF",
-                "via": "Solver A LU golden + B SA-AMG + C reduced ODE + D RAS Schwarz on write_pg_spice",
-                "gold": "ngspice 1-node RC + series R+L companion; A vs B vs C vs D on the chip mesh",
+                "via": "Solver A LU golden + B SA-AMG + C reduced ODE + D RAS Schwarz + native N4 on write_pg_spice",
+                "gold": "ngspice 1-node RC + series R+L companion + compact VRM+die; A vs B vs C vs D on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
@@ -1403,6 +1399,7 @@ def main() -> int:
         "ngspice_gold": gold,
         "ngspice_rl_gold": gold_rl,
         "ngspice_n4_gold": gold_n4,
+        "extract": extract_report,
         "em": em,
         "solver_b": amg_meta,
         "solver_c": mor_meta,
@@ -1421,6 +1418,7 @@ def main() -> int:
             f"{mor_note}"
             f"{ras_note}"
             f"{n4_note}"
+            f"{em_note}"
             f" · delay +{timing['degradation_ps']:.2f} ps"
         ),
     }
@@ -1446,6 +1444,17 @@ def main() -> int:
         print("ngspice_n4_gold", gold_n4)
     if n4_meta:
         print("n4", {k: n4_meta[k] for k in n4_meta if k != "note"})
+    if em.get("n_with_j"):
+        print(
+            "em",
+            {
+                "status": em.get("status"),
+                "j_absmax_a_m2": em.get("j_absmax_a_m2"),
+                "ttf_rel_min": em.get("ttf_rel_min"),
+                "dT_absmax_k": em.get("dT_absmax_k"),
+                "rT_delta_ir_mv": em.get("rT_delta_ir_mv"),
+            },
+        )
     return 0
 
 

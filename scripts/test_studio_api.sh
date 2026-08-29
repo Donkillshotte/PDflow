@@ -265,6 +265,8 @@ assert r["dynamic"]["worst_droop"] > 0
 assert r["sim_levels"]["L0_static"]["status"] == "READY"
 assert r["sim_levels"]["L2_vcd_dynamic"]["status"] == "GAP"
 assert r["pipeline"][0]["status"] == "READY"
+assert "LEF" in r["pipeline"][0]["via"] or "lef" in r["pipeline"][0]["via"].lower() or "write_pg_spice" in r["pipeline"][0]["via"]
+assert r.get("extract", {}).get("backend") == "write_pg_spice"
 assert r["emsim_split"]["B_pdn_solve"]["status"] == "READY"
 assert r["platform"]["solvers"]["A_direct_be"]["status"] == "READY"
 assert r["platform"]["solvers"]["B_sa_amg"]["status"] == "READY"

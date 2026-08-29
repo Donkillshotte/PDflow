@@ -9,7 +9,18 @@ type PipelineStep = { id: number; name: string; status: string; via: string };
 type StatusChip = { status?: string };
 type Scenario = { mode?: string; droop_mv?: number; t_ns?: number; primary?: boolean };
 type Timing = { status?: string; degradation_ps?: number; scale?: number };
-type Em = { status?: string; i_absmax_a?: number };
+type Em = {
+  status?: string;
+  i_absmax_a?: number;
+  j_absmax_a_m2?: number;
+  dT_absmax_k?: number;
+  ttf_rel_min?: number | null;
+  n_with_j?: number;
+  r_scale_hot?: number;
+  rT_delta_ir_mv?: number;
+  hottest?: { i_abs?: number };
+  hottest_j?: { j_a_m2?: number; layer?: string };
+};
 type Ras = {
   ok?: boolean;
   worst_droop_mv?: number;
@@ -35,6 +46,8 @@ type N4 = {
   ok?: boolean;
   worst_droop_mv?: number;
   abs_err_vs_N3_mv?: number;
+  via?: string;
+  backend?: string;
 };
 type DynReport = {
   ok?: boolean;
@@ -278,6 +291,7 @@ export function DynamicIrHeatmap({
                   {n4.worst_droop_mv != null
                     ? ` · ${n4.worst_droop_mv.toFixed(2)} mV`
                     : ""}
+                  {n4.backend ? ` · ${n4.backend}` : ""}
                 </dd>
               </div>
             )}
@@ -290,6 +304,34 @@ export function DynamicIrHeatmap({
                 </dd>
               </div>
             )}
+            {em?.n_with_j ? (
+              <div>
+                <dt>J max</dt>
+                <dd>
+                  {(em.j_absmax_a_m2 ?? 0).toExponential(2)} A/m²
+                  {em.hottest_j?.layer ? ` · ${em.hottest_j.layer}` : ""}
+                </dd>
+              </div>
+            ) : null}
+            {em?.n_with_j ? (
+              <div>
+                <dt>ΔT lumped</dt>
+                <dd>
+                  {(em.dT_absmax_k ?? 0) < 1e-3
+                    ? "< 1 mK"
+                    : `${(em.dT_absmax_k ?? 0).toFixed(3)} K`}
+                  {em.rT_delta_ir_mv != null
+                    ? ` · ΔIR ${em.rT_delta_ir_mv.toFixed(4)} mV`
+                    : ""}
+                </dd>
+              </div>
+            ) : null}
+            {em?.ttf_rel_min != null && em.n_with_j ? (
+              <div>
+                <dt>TTF_rel min</dt>
+                <dd>{em.ttf_rel_min.toExponential(2)}</dd>
+              </div>
+            ) : null}
             {timing?.degradation_ps != null && (
               <div>
                 <dt>Delay scale</dt>
@@ -413,6 +455,9 @@ export function DynamicIrHeatmap({
                 : ""}
               {em?.hottest?.i_abs != null
                 ? ` · |I| ${(em.hottest.i_abs * 1e3).toFixed(2)} mA`
+                : ""}
+              {em?.j_absmax_a_m2 != null && em.n_with_j
+                ? ` · J ${em.j_absmax_a_m2.toExponential(2)} A/m²`
                 : ""}
             </p>
           )}

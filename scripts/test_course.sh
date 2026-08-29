@@ -212,6 +212,9 @@ rg -q 'id: "pkg"' "${ROOT}/studio/src/components/flowlab/phases.ts" && ok "FlowL
 python3 -m py_compile "${ROOT}/learn/scripts/spice_to_pdn.py" && ok "spice_to_pdn compile" || bad "spice_to_pdn compile"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic compile" || bad "pdn_dynamic compile"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_solvers.py" && ok "pdn_solvers compile" || bad "pdn_solvers compile"
+python3 -m py_compile "${ROOT}/learn/scripts/pdn_extract.py" && ok "pdn_extract compile" || bad "pdn_extract compile"
+python3 -m py_compile "${ROOT}/learn/scripts/pdn_em.py" && ok "pdn_em compile" || bad "pdn_em compile"
+python3 -m py_compile "${ROOT}/learn/scripts/pdn_vrm.py" && ok "pdn_vrm compile" || bad "pdn_vrm compile"
 if "${ROOT}/learn/scripts/build_dpn_engine.sh" >/tmp/dpn-engine-build.log 2>&1; then
   ok "libdpn build + dpn_test"
 else
@@ -328,9 +331,17 @@ assert p["product_tiers"]["SIGNOFF"]["status"]=="GAP"
 assert p["network_levels"]["N1_R"]["status"]=="READY"
 assert p["network_levels"]["N4_vrm"]["status"] in ("READY", "PARTIAL")
 assert r.get("n4") is None or r["n4"].get("ok") is True
+assert r.get("n4") is None or r["n4"].get("backend") in (None, "native", "python")
 assert "i_L" in p["network_levels"]["N3_RC_pkg"]["via"]
-assert p["em_thermal"]["status"]=="PARTIAL"
+assert p["em_thermal"]["status"] in ("READY", "PARTIAL")
 assert p["em_thermal"]["i_absmax_a"] > 0
+if p["em_thermal"].get("n_with_j"):
+    assert p["em_thermal"]["status"] == "READY"
+    assert p["em_thermal"]["j_absmax_a_m2"] > 0
+    assert p["em_thermal"].get("ttf_rel_min") is not None
+assert r.get("extract", {}).get("backend") == "write_pg_spice"
+assert (r.get("extract") or {}).get("spef", {}).get("status") == "GAP"
+assert p.get("extract", {}).get("backend") == "write_pg_spice"
 assert "vyges-em-ir" in p["do_not_fork"]
 assert r["solver_b"]["ok"] is True
 assert r["solver_b"]["abs_err_vs_A_mv"] < 5.0
