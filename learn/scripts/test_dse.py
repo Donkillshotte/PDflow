@@ -695,6 +695,8 @@ def main() -> int:
                 from dse.net_space import buffer_path_nets
 
                 check(next_drive("AND2_X1") == "AND2_X2", "Nangate drive ladder X1→X2")
+                check(next_drive("NOR3_X4") is None, "NOR3_X8 is not a LEF master — no illegal size-up")
+                check(next_drive("DFF_X2") is None, "DFF_X4 is not a LEF master — no illegal size-up")
                 tiny = (
                     "module left(a,z);\n  input a; output z;\n"
                     "  NOR3_X1 _07_ (.A1(a), .ZN(z));\nendmodule\n"

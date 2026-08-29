@@ -40,6 +40,23 @@ _SKIP = {
 }
 
 DRIVE_NEXT = {1: 2, 2: 4, 4: 8}
+_LEF = (
+    Path(__file__).resolve().parents[2]
+    / "tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lef/NangateOpenCellLibrary.macro.mod.lef"
+)
+_MACRO = re.compile(r"^MACRO\s+(\S+)", re.M)
+_LEF_MASTERS: set[str] | None = None
+
+
+def lef_masters() -> set[str]:
+    """OpenROAD place/route masters. Liberty-only sizes are not legal here."""
+    global _LEF_MASTERS
+    if _LEF_MASTERS is None:
+        if _LEF.is_file():
+            _LEF_MASTERS = set(_MACRO.findall(_LEF.read_text()))
+        else:
+            _LEF_MASTERS = set()
+    return _LEF_MASTERS
 
 
 def next_drive(cell_type: str) -> str | None:
@@ -49,7 +66,11 @@ def next_drive(cell_type: str) -> str | None:
     nxt = DRIVE_NEXT.get(int(m.group("n")))
     if nxt is None:
         return None
-    return f"{m.group('stem')}_X{nxt}"
+    name = f"{m.group('stem')}_X{nxt}"
+    masters = lef_masters()
+    if masters and name not in masters:
+        return None
+    return name
 
 
 def leaf_inst(name: str) -> str:

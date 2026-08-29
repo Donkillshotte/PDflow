@@ -45,6 +45,7 @@ from .acquire import (
     should_pay_f5_drt,
     should_pay_f5_local,
     latest_local_host,
+    local_hosts,
     should_pay_f4_pdn,
     should_pay_f4_scale,
     should_pay_physical_catalog,
@@ -825,23 +826,27 @@ def run_controller(
     )
     step("acquire", fidelity="F5_LOCAL", pay=pay_loc, why=why_loc)
     if any(s["level"] == "f5_local" for s in plan["steps"]) and pay_loc and time.time() < t_end:
-        host = latest_local_host(mem)
-        if host:
-            mem.touch(host)
-            child = evaluate_f5_local(host, mem, design_id=design_id)
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="routing",
-                    fidelity="F5",
-                    via="f5_openroad_local",
-                    parent=host.id,
-                    host_level=host.level,
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
-                    status=child.status,
-                )
+        child = None
+        host = None
+        for cand in local_hosts(mem):
+            mem.touch(cand)
+            child = evaluate_f5_local(cand, mem, design_id=design_id)
+            host = cand
+            if child and child.status == "ok":
+                break
+        if child:
+            step(
+                "evaluate",
+                id=child.id,
+                level="routing",
+                fidelity="F5",
+                via="f5_openroad_local",
+                parent=host.id if host else None,
+                host_level=host.level if host else None,
+                wns_ns=(child.artifacts or {}).get("wns_ns"),
+                ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
+                status=child.status,
+            )
 
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:

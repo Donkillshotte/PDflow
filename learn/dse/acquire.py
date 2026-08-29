@@ -443,18 +443,27 @@ def should_pay_f5_cts(
     return True, "CTS + DRT + OpenRCX SPEF — propagated clock, not make finish"
 
 
-def latest_local_host(mem: DesignMemory):
-    """Prefer the net-buffered netlist, then the cell-sized one."""
+def local_hosts(mem: DesignMemory) -> list:
+    """Net-buffered first, then cell-sized. Both must have a mapped netlist on disk."""
     from pathlib import Path
 
+    out = []
+    seen: set[str] = set()
     for level, src in (("net", "net_buffer"), ("cell", "cell_size_up")):
         for c in reversed(list(mem.by_level(level))):
             if c.status != "ok" or (c.knobs or {}).get("source") != src:
                 continue
             mapped = (c.artifacts or {}).get("mapped_v")
-            if mapped and Path(mapped).is_file():
-                return c
-    return None
+            if mapped and Path(mapped).is_file() and c.id not in seen:
+                out.append(c)
+                seen.add(c.id)
+    return out
+
+
+def latest_local_host(mem: DesignMemory):
+    """Prefer the net-buffered netlist, then the cell-sized one."""
+    hosts = local_hosts(mem)
+    return hosts[0] if hosts else None
 
 
 def should_pay_f5_local(
