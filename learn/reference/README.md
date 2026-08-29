@@ -42,7 +42,7 @@ Dopo le lezioni 00–07, per integrità di alimentazione end-to-end:
 3. [vyges-em-ir.md](./vyges-em-ir.md) — engine IR/EM Apache-2.0 sulla mesh GCD
 4. [dynamic-ir.md](./dynamic-ir.md) — I(t) per pin + heatmap
 5. [dynamic-ir-landscape.md](./dynamic-ir-landscape.md) — PDNSim / vyges / EMSim / ngspice
-5b. [dse.md](./dse.md) — DSE multi-fedeltà (ABC BOiLS + oracolo IR, non un box piatto)
+5b. [dse.md](./dse.md) — DSE multi-fedeltà (e-graph + BOiLS SSK-GP + oracolo IR)
 4. [spice-ngspice-primer.md](./spice-ngspice-primer.md) — System PDN ngspice
 5. [system-pdn.md](./system-pdn.md) — landscape tool
 6. [pkg-design-package.md](./pkg-design-package.md) — packaging
