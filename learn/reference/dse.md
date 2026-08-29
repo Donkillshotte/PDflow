@@ -29,7 +29,7 @@ RTL
  → F2 ingest place / GRT del layout corrente
  → F3 ingest STA signoff
  → F4 extract candidato (`write_pg_spice` dopo place_pins+GPL+DP+pdngen) + `report_arrival`
- → F4 restamp DirectLU / SA-AMG / RAS / Krylov-MOR (knobs PDN / I(t)×power / **static IR**) sullo extract nominato
+ → F4 restamp DirectLU / SA-AMG / RAS / Krylov-MOR (knobs PDN / I(t)×power dell’host attribuito / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle/net → modulo RTL (dpath/ctrl)
  → F3 cell-local: drive-up sulle celle del worst path (scope di modulo, non ABC)

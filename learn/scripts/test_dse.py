@@ -362,6 +362,11 @@ def main() -> int:
     check(any(s["level"] == "net_port" for s in planned["steps"]), "planner schedules port-net BUF")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
+    check(any(s["level"] == "f4_scale" for s in planned["steps"]), "planner schedules attributed I-scale")
+    check(
+        "attributed host" in next(s["reason"] for s in planned["steps"] if s["level"] == "f4_scale"),
+        "I-scale reason names the attributed host, not synth-only",
+    )
     check(any(s["level"] == "f2_region" for s in planned["steps"]), "planner schedules IR-bin region GPL")
     check(any(s["level"] == "f4_region_extract" for s in planned["steps"]), "planner schedules region write_pg_spice")
     attr_both = dict(attr)
@@ -432,6 +437,7 @@ def main() -> int:
     check(next_fidelity(level="f5_port", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-port measures at F5")
     check(next_fidelity(level="port_steer", pred=None, budget_left=20, cost_hint={}) == "F3", "F5-port residual steer measures at F3")
     check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
+    check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
@@ -465,6 +471,17 @@ def main() -> int:
         knobs_fp("synthesis", {"name": "orfs_abc_speed", "abcArea": 0, "source": "orfs_abc_script"})
         != knobs_fp("logic", {"name": "orfs_abc_speed", "abcArea": 0, "source": "orfs_abc_script"}),
         "synthesis knobs are not flattened into the logic fingerprint",
+    )
+    check(
+        knobs_fp(
+            "pdn",
+            {"source": "f4_iscale", "parent_id": "psteer", "host_source": "net_buffer_spef", "i_scale": 4.21},
+        )
+        != knobs_fp(
+            "pdn",
+            {"source": "f4_iscale", "parent_id": "synp", "host_source": "orfs_abc_script", "i_scale": 2.31},
+        ),
+        "I-scale of the port-steer host is not flattened into the synth I-scale fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "finish"})
@@ -1148,6 +1165,7 @@ def main() -> int:
         should_pay_net_port,
         should_pay_residual_steer,
         should_pay_ir_steer,
+        should_pay_f4_scale,
     )
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
@@ -1619,6 +1637,89 @@ def main() -> int:
     check(pay_ps1, f"port-steer is paid after F5-port residual ({why_ps1})")
     pay_ps2, why_ps2 = should_pay_port_steer(mem_ps, budget_left=80, steer=st_ps, n_steer=1)
     check(not pay_ps2, f"port-steer is a single shot ({why_ps2})")
+
+    from dse.active import iscale_host
+
+    mem_is = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-is-")) / "i.jsonl")
+    mem_is.add(
+        Candidate(
+            id="libp",
+            design_id="gcd",
+            parent_id=None,
+            level="logic",
+            knobs={"name": "liberty_default"},
+            knobs_fp="libp",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=409.108, power_w=0.00126, wns_cost=0.522, fidelity="F1"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    mem_is.add(
+        Candidate(
+            id="synp",
+            design_id="gcd",
+            parent_id=None,
+            level="synthesis",
+            knobs={"name": "orfs_abc_speed", "source": "orfs_abc_script"},
+            knobs_fp="synp",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F1",
+            qor=QoR(area_um2=618.982, power_w=0.00291, wns_cost=0.114, fidelity="F1"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    h0 = iscale_host(mem_is)
+    check(h0 is not None and h0.id == "synp", f"without a hierarchical host I-scale falls back to synth F1, got {h0}")
+    mem_is.add(
+        Candidate(
+            id="psteer",
+            design_id="gcd",
+            parent_id="porth",
+            level="net",
+            knobs={"source": "net_buffer_spef", "spef_residual": 1},
+            knobs_fp="psteer",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(area_um2=560.728, power_w=0.00531, wns_cost=0.309, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            attr={"via": "active_f5_port"},
+        )
+    )
+    h1 = iscale_host(mem_is)
+    check(h1 is not None and h1.id == "psteer", f"I-scale prefers port-steer over synth, got {h1}")
+    pay_is0, why_is0 = should_pay_f4_scale(mem_is, budget_left=80, n_scale=0)
+    check(pay_is0, f"attributed I-scale is paid ({why_is0})")
+    check("net_buffer_spef" in why_is0, f"acquire names the port-steer host ({why_is0})")
+    check("synth-only" in why_is0, f"acquire refuses a synth-only flatten ({why_is0})")
+    pay_is1, why_is1 = should_pay_f4_scale(mem_is, budget_left=80, n_scale=1)
+    check(not pay_is1, f"I-scale is a single shot ({why_is1})")
+    mem_is.add(
+        Candidate(
+            id="isc",
+            design_id="gcd",
+            parent_id="psteer",
+            level="pdn",
+            knobs={"source": "f4_iscale", "parent_id": "psteer", "i_scale": 4.21},
+            knobs_fp="isc",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=70.0, fidelity="F4"),
+            cost_s=5.0,
+            status="ok",
+        )
+    )
+    h2 = iscale_host(mem_is)
+    check(h2 is not None and h2.id == "synp", f"already-scaled port-steer falls back to unused synth, got {h2}")
+    pay_is2, why_is2 = should_pay_f4_scale(mem_is, budget_left=80, n_scale=1)
+    check(not pay_is2, f"acquire still spends only one I-scale shot ({why_is2})")
 
     from dse.active import steer_from_ir_residual
     from dse.surrogate import residual_f4_knob, residual_f4_mesh, residual_f4_region

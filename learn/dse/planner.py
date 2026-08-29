@@ -283,8 +283,8 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         {
             "level": "f4_scale",
             "reason": (
-                "I(t)×P_F3/P_base on the WNS/power incumbent — candidate mesh if extracted, "
-                "not a VCD remap"
+                "I(t)×P_F3/P_base of the attributed host (port-steer/port-net/net/cell, "
+                "else F1) on the candidate mesh — not synth-only, not a VCD remap"
                 + ("; IR feedback to the cone, no chip restart" if focus != "chip" else "")
             ),
             "scope": "logic_cone" if focus != "chip" else "chip",

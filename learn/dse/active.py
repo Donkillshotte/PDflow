@@ -10,6 +10,8 @@ F4 IR residual (mesh / PDN knob / region):
   small |catalog − gold-knob| → unused pkg L on the candidate extract
 F5-port residual (this pair only, not the mixed F5-local mean):
   large |SPEF − ideal| → intra-module BUF on SPEF hops (not another port BUF)
+F4 I-scale host:
+  port-steer > port-net > net > cell > F1 with a material power delta
   never flatten ABC + c_decap + util into one box
 """
 
@@ -318,4 +320,61 @@ def steer_from_ir_residual(mem: DesignMemory) -> dict | None:
                 "via": "active_f4_ir_residual",
                 "not": "a flattened black-box of ABC+PDN knobs",
             }
+    return None
+
+
+def iscale_host(mem: DesignMemory):
+    """Attributed netlist whose F3 power scales I(t).
+
+    Port-steer > port-net > intra net > cell > F1 with a material power
+    delta. Not the synth WNS-winner just because it has the best slack.
+    """
+    from .mo import timing_of
+
+    base = None
+    for c in mem.by_level("logic"):
+        if c.status == "ok" and (c.knobs or {}).get("name") == "liberty_default":
+            _w, p = timing_of(mem, c)
+            if p is None and c.qor.power_w is not None:
+                p = float(c.qor.power_w)
+            if p:
+                base = float(p)
+                break
+    if base is None or base <= 0:
+        return None
+    have = {
+        (c.knobs or {}).get("parent_id")
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_iscale" and c.status == "ok"
+    }
+
+    def _ok(c) -> bool:
+        if c is None or c.status != "ok" or c.id in have:
+            return False
+        _w, p = timing_of(mem, c)
+        if p is None:
+            return False
+        return abs(float(p) / base - 1.0) >= 0.03
+
+    ranked: list[tuple[int, object]] = []
+    for c in mem.all():
+        src = (c.knobs or {}).get("source")
+        via = (c.attr or {}).get("via")
+        if via == "active_f5_port":
+            ranked.append((0, c))
+        elif src == "net_buffer_port":
+            ranked.append((1, c))
+        elif src == "net_buffer":
+            ranked.append((2, c))
+        elif src == "cell_size_up":
+            ranked.append((3, c))
+    ranked.sort(key=lambda t: t[0])
+    for _, c in ranked:
+        if _ok(c):
+            return c
+    f1s = [c for c in mem.all() if c.status == "ok" and c.fidelity == "F1"]
+    f1s.sort(key=lambda c: 0 if c.level == "synthesis" else 1)
+    for c in f1s:
+        if _ok(c):
+            return c
     return None

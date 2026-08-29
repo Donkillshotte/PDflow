@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS/Krylov restamp (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + DirectLU/AMG/RAS/Krylov + I-scale of the attributed host (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -63,6 +63,7 @@ from .acquire import (
     should_pay_physical_catalog,
 )
 from .active import (
+    iscale_host,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_port_residual,
@@ -1516,17 +1517,9 @@ def run_controller(
                 if p:
                     base_p = p
                     break
-        pick = None
-        for cand in (f1_wns_winner(mem), f1_area_winner(mem), *f1_ok(mem)):
-            if cand is None or base_p is None:
-                continue
-            _w, p = timing_of(mem, cand)
-            if p is None or abs(float(p) / float(base_p) - 1.0) < 0.03:
-                continue
-            pick = cand
-            break
+        pick = iscale_host(mem)
         if pick and base_p:
-            use_ext = ext_hit and ext_hit.get("parent_id") == pick.id
+            use_ext = bool(ext_hit)
             child = evaluate_f4_scale(
                 pick,
                 mem,
@@ -1546,6 +1539,8 @@ def run_controller(
                     fidelity="F4",
                     via="f4_iscale",
                     parent=pick.id,
+                    host_level=pick.level,
+                    host_source=(pick.knobs or {}).get("source") or pick.level,
                     i_scale=(child.knobs or {}).get("i_scale"),
                     extract_id=(child.knobs or {}).get("extract_id"),
                     droop_mv=child.qor.dynamic_ir_mv,
@@ -1635,6 +1630,7 @@ def run_controller(
             "F5-port OpenRCX SPEF on the port-net BUF netlist — not the intra-module net host",
             "F5-port residual steers intra-module BUF on SPEF hops — not another port BUF, not ABC",
             "active learning: F3→F5-lite residual orders cell vs net host; F3→F5-local residual + uncertainty pick the next level",
+            "F4 I-scale uses F3 power of the attributed host (port-steer/port-net/net/cell), not synth-only WNS-winner",
             "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
@@ -1769,6 +1765,11 @@ def run_controller(
             1
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_solver_krylov" and c.status == "ok"
+        ),
+        "n_f4_iscale": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_iscale" and c.status == "ok"
         ),
         "n_f4_solve": sum(
             1
@@ -1993,8 +1994,18 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         )
     if ir_bits:
         irst = " · IR-steer " + "; ".join(ir_bits)
+    isc = ""
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_iscale":
+            continue
+        sc = (c.knobs or {}).get("i_scale")
+        host = (c.knobs or {}).get("parent_name") or (c.knobs or {}).get("host_source")
+        w = c.qor.dynamic_ir_mv
+        if sc is not None and w is not None:
+            isc = f" · I-scale {host} ×{float(sc):.3f} {float(w):.3f} mV"
+        break
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )

@@ -244,40 +244,21 @@ def should_pay_f4_scale(
         return False, "I(t)-scale F4 shot already spent"
     if budget_left < min_s:
         return False, "wall budget would not cover scaled Solver A"
+    from .active import iscale_host
     from .f4_oracle import available
-    from .mo import timing_of
 
     cand = latest_ok_extract(mem)
     if not available(variant) and cand is None:
         return False, "no write_pg_spice extract (not launching finish)"
-    base = None
-    for c in mem.by_level("logic"):
-        if c.status == "ok" and c.knobs.get("name") == "liberty_default":
-            _w, p = timing_of(mem, c)
-            if p:
-                base = p
-                break
-    if base is None:
-        return False, "no F3 baseline power to form an I(t) scale"
-    have = {
-        (c.knobs or {}).get("parent_id")
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_iscale" and c.status == "ok"
-    }
-    cands = []
-    for c in mem.all():
-        if c.status != "ok" or c.fidelity != "F1":
-            continue
-        _w, p = timing_of(mem, c)
-        if p is None or c.id in have:
-            continue
-        if abs(float(p) / float(base) - 1.0) < 0.03:
-            continue
-        cands.append(c)
-    if not cands:
-        return False, "no F1 with a material F3 power delta to scale I(t)"
+    host = iscale_host(mem)
+    if host is None:
+        return False, "no attributed host with a material F3 power delta to scale I(t)"
+    host_src = (host.knobs or {}).get("source") or (host.knobs or {}).get("name") or host.level
     mesh = "candidate extract" if cand else "cached finish extract"
-    return True, f"Solver A with I(t)×P_F3/P_base on {mesh} — not a new VCD map"
+    return True, (
+        f"I(t)×P_F3/P_base of {host_src} on {mesh} — attributed host, "
+        "not synth-only, not a new VCD map"
+    )
 
 
 def should_pay_f2_region(

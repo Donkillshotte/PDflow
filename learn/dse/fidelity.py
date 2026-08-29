@@ -280,7 +280,11 @@ def evaluate_f4_scale(
     extract_id: str = "finish",
     sta: Path | str | None = None,
 ) -> Candidate | None:
-    """Named extract + PDN knobs; I(t) × (F3 power / baseline). Not a new VCD map."""
+    """Named extract + PDN knobs; I(t) × (attributed host F3 power / baseline).
+
+    Host is the hierarchical incumbent (port-steer / port-net / net / cell)
+    when present — not a silent flatten to the synth WNS-winner. Not a VCD map.
+    """
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
     from .mo import timing_of
@@ -289,14 +293,17 @@ def evaluate_f4_scale(
     if pwr is None or baseline_power_w <= 0:
         return None
     scale = float(pwr) / float(baseline_power_w)
+    host = parent.knobs.get("name") or parent.knobs.get("source") or parent.level
     knobs = {
-        "name": f"iscale_{parent.knobs.get('name')}",
+        "name": f"iscale_{host}",
         "pkg_r": pkg_r,
         "pkg_l": pkg_l,
         "c_decap": c_decap,
         "i_scale": scale,
         "parent_id": parent.id,
-        "parent_name": parent.knobs.get("name"),
+        "parent_name": host,
+        "host_level": parent.level,
+        "host_source": parent.knobs.get("source") or parent.level,
         "source": "f4_iscale",
         "extract_id": extract_id,
     }
@@ -330,10 +337,12 @@ def evaluate_f4_scale(
             "em": em,
         }
     )
-    attr["transform"] = parent.knobs.get("name")
+    attr["transform"] = host
     attr["i_scale"] = scale
     attr["inherited_from"] = parent.id
     attr["extract_id"] = extract_id
+    attr["host_level"] = parent.level
+    attr["host_source"] = parent.knobs.get("source") or parent.level
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
@@ -377,7 +386,7 @@ def evaluate_f4_scale(
         attr=attr,
         status="ok" if dyn.get("status") == "ok" else "fail",
         failure=dyn.get("reason") if dyn.get("status") != "ok" else None,
-        note=f"F4 I-scale of {parent.knobs.get('name')} ×{scale:.3f} on {extract_id} droop={dyn.get('worst_droop_mv')}",
+        note=f"F4 I-scale of {host} ×{scale:.3f} on {extract_id} droop={dyn.get('worst_droop_mv')}",
     )
     return mem.add(c)
 
