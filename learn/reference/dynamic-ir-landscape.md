@@ -13,7 +13,7 @@ Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Pytho
 | Pezzo | Ruolo | In questa slice |
 |---|---|---|
 | OpenROAD / ODB / `write_pg_spice` | frontend fisico | READY |
-| Liberty CCS/ECSM + VCD/FSDB + STA | domanda di corrente vera | STA t50 READY (OpenSTA `report_arrival`); CCS interpolator READY su `.lib` sintetico; Nangate NLDM = triangolo; VCD RTL = GAP name-join |
+| Liberty CCS/ECSM + VCD/FSDB + STA | domanda di corrente vera | STA t50 READY (OpenSTA `report_arrival`); CCS **e** ECSM interpolator READY su `.lib` sintetico; Nangate NLDM = triangolo; VCD RTL = GAP name-join |
 | Scenario / window engine | non simulare 100k cicli | L3 READY/PARTIAL — BE sulle finestre `I_tot` (restart isolato solo se L=0; con pkg L si taglia il trailing idle) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
@@ -117,11 +117,11 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 | Livello | Prodotto “RedHawk-like” | Cosa gira **oggi** sul GCD |
 |---|---|---|
 | 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` VDD+VSS + tech LEF; SPEF PG C from PG `*D_NET` (GCD OpenRCX = GAP); Grover on-die L+M estimated (descriptor `--on-die-l`); dual-rail Sink-for pair |
-| 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
+| 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM); interpolatori CCS+ECSM su `.lib` sintetico |
 | 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; SAIF TC name-join (idle-zero, no t50); extra I(t) ranking sintetico; VCD RTL name-join = GAP |
-| 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS interpolato solo con tabelle + Vout |
+| 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS \(I(\mathrm{slew},V)\) o ECSM \(\|C\mathrm{d}V/\mathrm{d}t\|\) solo con tabelle |
 | 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB workhorse; RAS kind=2 su \(K\) unsymmetric; Δt adattivo descriptor; MOR gen sparse-\(E\) (compact/strap, non default GCD); VSS return TRAN |
-| 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + R(T) lumpato + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)) |
+| 6 Analysis | map, Vmin, EM, timing, thermal | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + **mesh termica strap+via** + R(T) N1 + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)); 3D CFD = GAP |
 
 ## Classifica reale
 

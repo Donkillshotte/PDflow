@@ -72,11 +72,11 @@ Sul GCD Nangate45 LU è più veloce di AMG e di RAS (4k nodi). AMG/RAS sono i pa
 | # | Livello | Oggi | Gap onesto |
 |---|---|---|---|
 | 1 | PDN extract | OpenROAD `write_pg_spice` VDD+VSS + tech LEF + SPEF PG C name-join + Grover on-die L+M | GCD OpenRCX SPEF has no VDD `*D_NET` (GAP); signal nets never mapped; on-die L default is estimate-only; mutual is cutoff/partial, not PEEC; dual-rail is block-diagonal (no rail-to-rail C) |
-| 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatore CCS READY su Liberty sintetica; GCD Nangate = GAP |
+| 2 | Power model | I_avg nel `.sp` (NLDM) | interpolatori CCS **e** ECSM READY su Liberty sintetica; GCD Nangate = GAP (no tabelle) |
 | 3 | Activity | STA `report_arrival` t50 (clock) + SAIF TC name-join | VCD RTL name-join GAP; ranking extra I(t) resta sintetico; SAIF non inventa t50 |
-| 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) in Python TRAN se tabelle + slew; Nangate = GAP |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS (companion GCD; kind=2 su \(K\) unsymmetric) + **N4** descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)) + kind=3 BiCGSTAB workhorse + Δt adattivo sul descriptor + MOR gen sparse-\(E\) (opt-in on-die L, non il gold GCD) + VSS return TRAN | ngspice = gold 1-nodo RC, R+L, VRM+die, strap K; Xyce = GAP in VM (deck contract); Index nativo int64; Ginkgo GPU = GAP |
-| 6 | Analysis | heatmap, finestre, ranking, path STA delay, \(J=I/(wt)\) | TTF relativo (no A foundry); R(T) lumpato one-shot N1, non mesh 3D; path = NLDM typical-V, non liberty a Vmin |
+| 4 | Current waveform | triangolo per ITerm | CCS lagged \(I(\mathrm{slew},V^n)\) o ECSM \(\|C\mathrm{d}V/\mathrm{d}t\|\) se tabelle + slew/c_load; Nangate = GAP |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** descriptor RLC Krylov + **D** RAS (companion GCD; kind=2 su \(K\) unsymmetric) + **N4** descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)) + kind=3 BiCGSTAB workhorse + Δt adattivo sul descriptor + MOR gen sparse-\(E\) (opt-in on-die L, non il gold GCD) + VSS return TRAN | ngspice = gold 1-nodo RC, R+L, VRM+die, strap K, 1-nodo thermal analogue; Xyce = GAP in VM (deck contract); Index nativo int64; Ginkgo GPU = GAP |
+| 6 | Analysis | heatmap, finestre, ranking, path STA delay, \(J=I/(wt)\), **mesh termica** strap+via \(G_\mathrm{th}=kA/L\) + pad \(G_\mathrm{amb}\) | TTF relativo (no A foundry); 3D/Si/package CFD = GAP; skin δ riportato non stampato in G; path = NLDM typical-V |
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
@@ -130,9 +130,9 @@ Il clock sintetico precedente (59.925 mV) non join-ava gli ITerm (raggio 800 dbu
 
 Gold ngspice: **1 nodo RC** `|V_BE−V_ng| ≈ 0.032 mV`; **1 nodo pad–R–L–C** ≈ 0.056 mV (`gear maxord=1`, soglia 5 mV). Non è il chip.
 
-EM: \(I=(V_a-V_b)/R\) e \(J=I/(w t)\) con \(w=\max(\mathrm{RPERSQ}\cdot L/R,\,\mathrm{WIDTH}_\min)\) dal tech LEF. TTF relativo \((J_\mathrm{ref}/J)^n\), \(n=2\), \(J_\mathrm{ref}=10^{10}\,\mathrm{A/m^2}\) — **non** ore foundry. \(\Delta T=R_\mathrm{th} I^2 R\) lumpato, restamp N1 \(R(T)\).
+EM: \(I=(V_a-V_b)/R\) e \(J=I/(w t)\) con \(w=\max(\mathrm{RPERSQ}\cdot L/R,\,\mathrm{WIDTH}_\min)\) dal tech LEF. TTF relativo \((J_\mathrm{ref}/J)^n\), \(n=2\), \(J_\mathrm{ref}=10^{10}\,\mathrm{A/m^2}\) — **non** ore foundry. \(\Delta T\) **metal-graph** \(G_\mathrm{th}=k_{\mathrm{Cu}}A/L\) su strap same-layer **e** via adiacenti (LEF `HEIGHT`/`CUT`, \(n_\mathrm{cuts}=\max(R_\mathrm{cut}/R,1)\)) + pad \(R_{\mathrm{th}}=50\,\mathrm{K/W}\) (C4-class, non extracted). Senza via lo stack è disconnesso (I²R metal1 ↛ bump metal7) → GAP, non un solve 2D-only. Lumped \(R_{\mathrm{th}}I^2R\) resta confronto (non un teorema di spreading: il nodo lontano può superare il lumped se \(G_\mathrm{th}\) è piccolo). Skin \(\delta=1/\sqrt{\pi f\mu\sigma}\) riportato; su metal1 Nangate \(t\ll\delta\) al clock GCD quindi \(R_\mathrm{ac}/R_\mathrm{dc}\approx 1\) (non stampato in \(G\)).
 
-GCD clock STA: \|I\|_max ≈ 2.25 mA (via / strap). \(J_\max\) ≈ \(1.48\times10^{11}\,\mathrm{A/m^2}\) su metal1 (w clampato a 0.07 µm; \(I\) ≈ 1.35 mA) · TTF_rel ≈ \(4.56\times10^{-3}\) · \(\Delta T\) lumpato ≈ 11 mK · \(\Delta\)IR \(R(T)\) ≈ 0.35 µV. \(i_L\) bump max ≈ 1.67 mA. Path STA: OpenSTA worst max path, delay gate \(\times(V_\mathrm{dd}/V_\mathrm{inst})^{1.3}\) (NLDM typical-V, non una seconda liberty a Vmin). L3 prefix BE 38/74 step, \|A−W\|=0 (L/R ≈ 4 ns ≫ orizzonte 0.74 ns — niente restart isolato).
+GCD clock STA: \|I\|_max ≈ 2.25 mA (via / strap). \(J_\max\) ≈ \(1.48\times10^{11}\,\mathrm{A/m^2}\) su metal1 (w clampato a 0.07 µm; \(I\) ≈ 1.35 mA) · TTF_rel ≈ \(4.56\times10^{-3}\) · \(\Delta T\) lumpato (isolamento \(R_{\mathrm{th}}=500\,\mathrm{K/W}\), solo I²R strap) ≈ 11 mK. Mesh termica GCD: 5153 strap + **39 via** adiacenti (così è `write_pg_spice`, non un FEM 3D) + 13 pad; pad \(\Delta T\sim 0.06\,\mathrm{K}\); il nodo lontano sul metal-graph può essere **centinaia di K** perché \(A/L\) del Cu è minuscolo e **non** c’è spreading ILD/Si — bound metal-only, non un package CFD. Restamp N1 usa \(T\) locale della mesh (sovrastima \(R(T)\) senza ILD). Skin \(\delta\approx 1.4\,\mu\mathrm{m}\), \(R_\mathrm{ac}/R_\mathrm{dc}=1\). \(i_L\) bump max ≈ 1.67 mA. Path STA: OpenSTA worst max path, delay gate \(\times(V_\mathrm{dd}/V_\mathrm{inst})^{1.3}\) (NLDM typical-V, non una seconda liberty a Vmin). L3 prefix BE 38/74 step, \|A−W\|=0 (L/R ≈ 4 ns ≫ orizzonte 0.74 ns — niente restart isolato).
 
 ## File
 
@@ -140,8 +140,8 @@ GCD clock STA: \|I\|_max ≈ 2.25 mA (via / strap). \(J_\max\) ≈ \(1.48\times1
 |---|---|
 | `learn/scripts/pdn_dynamic.py` | orchestrazione + report |
 | `learn/scripts/pdn_extract.py` | layer extract: SPICE + tech LEF + probe SPEF (C PG = GAP) |
-| `learn/scripts/pdn_em.py` | J da RPERSQ·L/R, TTF relativo, restamp R(T) lumpato |
-| `learn/scripts/pdn_current.py` | triangolo + probe/interpolatore CCS |
+| `learn/scripts/pdn_em.py` | J da RPERSQ·L/R, TTF relativo, mesh termica strap+via, skin δ, restamp R(T) |
+| `learn/scripts/pdn_current.py` | triangolo + interpolatori CCS e ECSM (mai da NLDM) |
 | `learn/scripts/pdn_activity.py` | t50 sintetici + STA `report_arrival` + VCD/SAIF name-join + finestre I_tot |
 | `learn/scripts/export_sta_arrivals.py` | OpenSTA → JSON `by_inst` (rise/fall ns) + `worst_path` (`report_checks -format full`) |
 | `learn/scripts/pdn_solvers.py` | A/B/C/D + N4 descriptor (libdpn ctypes + SciPy) |

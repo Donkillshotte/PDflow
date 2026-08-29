@@ -228,21 +228,32 @@ def parse_tech_lef(path: Path | None) -> dict:
             nums = re.findall(r"[0-9.]+", s)
             if nums:
                 layers[cur]["thickness_um"] = float(nums[0])
+        elif up.startswith("HEIGHT"):
+            nums = re.findall(r"[0-9.]+", s)
+            if nums:
+                layers[cur]["height_um"] = float(nums[0])
         elif "RPERSQ" in up:
             nums = re.findall(r"[0-9.eE+-]+", s)
             if nums:
                 layers[cur]["rpersq"] = float(nums[-1])
+        elif up.startswith("RESISTANCE"):
+            nums = re.findall(r"[0-9.eE+-]+", s)
+            if nums:
+                layers[cur]["r_ohm"] = float(nums[-1])
         elif up.startswith("TYPE"):
             layers[cur]["type"] = s.replace(";", "").split()[-1].upper()
     routing = {k: v for k, v in layers.items() if str(v.get("type", "")).startswith("ROUT")}
+    cuts = {k: v for k, v in layers.items() if str(v.get("type", "")).upper() == "CUT"}
     out_layers = routing or layers
     return {
         "path": str(p),
         "dbu_per_um": dbu,
         "layers": out_layers,
+        "cuts": cuts,
         "n_routing_layers": len(out_layers),
+        "n_cut_layers": len(cuts),
         "status": "READY" if routing else "GAP",
-        "via": "tech LEF WIDTH/THICKNESS/RPERSQ — strap width is inferred from R, not min WIDTH",
+        "via": "tech LEF WIDTH/THICKNESS/HEIGHT/RPERSQ + CUT WIDTH/R — strap w from R, via G_th from HEIGHT/CUT",
     }
 
 

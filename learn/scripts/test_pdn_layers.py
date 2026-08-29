@@ -31,9 +31,12 @@ from pdn_activity import (  # noqa: E402
 )
 from pdn_current import (  # noqa: E402
     SYNTHETIC_CCS_LIB,
+    SYNTHETIC_ECSM_LIB,
     current_source_for_event,
     interpolate_ccs_current,
+    interpolate_ecsm_current,
     parse_ccs_output_current,
+    parse_ecsm_waveforms,
     probe_liberty_current_model,
     triangle_above_leak,
 )
@@ -70,6 +73,7 @@ library (nldm_only) {
     nldm_path.unlink()
     check(probe["kind"] == "nldm" and probe["status"] == "GAP", "NLDM is GAP not fake CCS")
     check(probe["n_ccs_tables"] == 0, "NLDM yields zero CCS tables")
+    check(probe.get("n_ecsm_tables", 0) == 0, "NLDM yields zero ECSM tables")
 
     tables = parse_ccs_output_current(SYNTHETIC_CCS_LIB)
     check(len(tables) == 1 and tables[0]["direction"] == "fall", "parse synthetic CCS")
@@ -98,6 +102,28 @@ library (nldm_only) {
     check(
         current_source_for_event(ev_ccs, 0.0, ccs_tables=tables) == 0.0,
         "CCS current is zero outside the event window",
+    )
+
+    wfs = parse_ecsm_waveforms(SYNTHETIC_ECSM_LIB)
+    check(len(wfs) == 1 and wfs[0]["direction"] == "fall", "parse synthetic ECSM waveform")
+    i_ec = interpolate_ecsm_current(wfs[0], 0.02, 1e-12)
+    check(abs(i_ec - 1e-12 * 0.55 / 0.04) < 1e-18, "ECSM |C dV/dt| on first segment")
+    check(interpolate_ecsm_current(wfs[0], -0.01, 1e-12) == 0.0, "ECSM zero before waveform")
+    with tempfile.NamedTemporaryFile("w", suffix=".lib", delete=False) as f:
+        f.write(SYNTHETIC_ECSM_LIB)
+        ecsm_path = Path(f.name)
+    ecsm_p = probe_liberty_current_model(ecsm_path)
+    ecsm_path.unlink()
+    check(ecsm_p["status"] == "READY" and ecsm_p["kind"] == "ecsm_waveform", "synthetic ECSM probe READY")
+    check(ecsm_p["n_ecsm_tables"] == 1 and ecsm_p["n_ccs_tables"] == 0, "ECSM is not counted as CCS")
+    ev_ec = {"t50_s": 0.04, "dur_s": 0.08, "i_pulse": 5e-3, "c_load": 1e-12, "direction": "fall"}
+    check(
+        abs(current_source_for_event(ev_ec, 0.02, ecsm_tables=wfs) - 1e-12 * 0.55 / 0.04) < 1e-18,
+        "event with c_load uses ECSM |C dV/dt|",
+    )
+    check(
+        abs(current_source_for_event(ev_ec, 0.02) - triangle_above_leak(0.02, 0.04, 0.08, 5e-3)) < 1e-18,
+        "without ECSM tables the same event stays triangle (no NLDM→ECSM)",
     )
 
     act = probe_activity_trace(None)
@@ -695,6 +721,10 @@ quit
     check(abs(float(m1.get("width_um", 0)) - 0.07) < 1e-12, "metal1 WIDTH 0.07 µm (not SPACINGTABLE)")
     check(abs(float(m1.get("rpersq", 0)) - 0.38) < 1e-12, "metal1 RPERSQ 0.38")
     check(abs(float(m1.get("thickness_um", 0)) - 0.13) < 1e-12, "metal1 THICKNESS 0.13 µm")
+    check(abs(float(m1.get("height_um", 0)) - 0.37) < 1e-12, "metal1 HEIGHT 0.37 µm")
+    v1 = (tech.get("cuts") or {}).get("via1") or {}
+    check(abs(float(v1.get("width_um", 0)) - 0.07) < 1e-12, "via1 CUT WIDTH 0.07 µm")
+    check(abs(float(v1.get("r_ohm", 0)) - 5.0) < 1e-12, "via1 CUT R 5 Ω")
 
     spef_path = (
         _ROOT
@@ -934,10 +964,144 @@ quit
     check(em_c["hottest_j"]["w_clamped"] is True, "inferred w < min WIDTH is clamped")
     check(abs(em_c["hottest_j"]["w_m"] - 0.07e-6) < 1e-15, "clamped w equals metal1 min WIDTH")
     em.pop("_scaled_resistors", None)
+    check((em.get("thermal_mesh") or {}).get("status") == "GAP", "no pads → thermal mesh GAP")
     print(
         f"    EM J={em['j_absmax_a_m2']:.4e} A/m² TTF_rel={em['ttf_rel_min']:.4e} "
         f"ΔT={em['dT_absmax_k']:.4e} K w/min={em['hottest_j'].get('w_over_min')}"
     )
+
+    from pdn_em import (
+        K_CU_W_M_K,
+        RTH_PAD_K_PER_W,
+        assemble_thermal_mesh,
+        ngspice_thermal_1node_gold,
+        rac_over_rdc,
+        solve_thermal_steady,
+        timestep_thermal_be,
+        via_geometry,
+    )
+
+    em_m = em_thermal_snapshot(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],
+        idx_em,
+        order,
+        Vem,
+        bump=[0],
+        bump_v=[1.1],
+        i_L=None,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        tech=tech,
+        f_hz=1.0 / 0.46e-9,
+    )
+    em_m.pop("_scaled_resistors", None)
+    check((em_m.get("thermal_mesh") or {}).get("status") == "READY", "2-node thermal mesh READY with a pad")
+    P = em_m["p_joule_w"]
+    geo = em_m["hottest_j"]
+    gth = K_CU_W_M_K * geo["area_m2"] / geo["L_m"]
+    gamb = 1.0 / RTH_PAD_K_PER_W
+    t1 = P / gamb + 0.5 * P / gth
+    check(abs(em_m["dT_mesh_absmax_k"] - t1) / t1 < 1e-6, "2-node mesh ΔT vs G_th series (split I²R)")
+    t0_gold = P / gamb
+    t0 = float((em_m.get("thermal_mesh") or {}).get("dT_pad_max_k") or 0.0)
+    check(abs(t0 - t0_gold) / t0_gold < 1e-6, "pad T0 = P/G_amb")
+    check(t0 < em_m["dT_lumped_absmax_k"], "pad node cooler than isolated lumped Rth")
+    # Far-node T1 can exceed lumped Rth when G_th ≪ G_lumped (tiny A/L). Not a spreading theorem.
+    sk = em_m.get("skin") or {}
+    check(sk.get("status") == "READY", "skin depth reported")
+    check(sk["rac_rdc"] < 1.01, "Nangate metal1 t ≪ δ at GCD clock → Rac/Rdc≈1")
+    check(abs(rac_over_rdc(0.13e-6, 1.0 / 0.46e-9) - sk["rac_rdc"]) < 1e-12, "skin helper matches snapshot")
+    print(
+        f"    thermal mesh ΔT={em_m['dT_mesh_absmax_k']:.4e} K lumped={em_m['dT_lumped_absmax_k']:.4e} K "
+        f"pad={t0:.4e} K δ={sk['delta_m']*1e6:.2f} µm Rac/Rdc={sk['rac_rdc']:.4f}"
+    )
+
+    vg = via_geometry("ITermNode_metal1_0_0", "ITermNode_metal2_0_0", 5.0 / 3.0, tech)
+    check(vg is not None and vg["kind"] == "via", "via_geometry on adjacent metals")
+    L_via = (0.62 - 0.37 - 0.13) * 1e-6
+    check(abs(vg["L_m"] - L_via) / L_via < 1e-12, "via L = HEIGHT_m2 − HEIGHT_m1 − t_m1")
+    check(abs(vg["n_cuts"] - 3.0) < 1e-6, "n_cuts = R_cut/R = 5/(5/3) = 3")
+    check(via_geometry("ITermNode_metal1_0_0", "ITermNode_metal3_0_0", 1.0, tech) is None, "non-adjacent via is GAP")
+
+    order_v = ["ITermNode_metal1_0_0", "ITermNode_metal2_0_0"]
+    idx_v = {n: i for i, n in enumerate(order_v)}
+    r_via = 5.0 / 3.0
+    Vvia = np.array([1.10, 1.09], dtype=np.float64)
+    em_v = em_thermal_snapshot(
+        [("ITermNode_metal1_0_0", "ITermNode_metal2_0_0", r_via)],
+        idx_v,
+        order_v,
+        Vvia,
+        bump=[1],
+        bump_v=[1.1],
+        i_L=None,
+        pkg_r=0.05,
+        pkg_l=0.0,
+        tech=tech,
+    )
+    em_v.pop("_scaled_resistors", None)
+    check((em_v.get("thermal_mesh") or {}).get("status") == "READY", "via-only mesh READY (pad on metal2)")
+    check((em_v.get("thermal_mesh") or {}).get("n_vias") == 1, "one via thermal edge")
+    Pv = em_v["p_joule_w"]
+    gv = K_CU_W_M_K * vg["area_m2"] / vg["L_m"]
+    t1_via = Pv / gamb + 0.5 * Pv / gv
+    check(abs(em_v["dT_mesh_absmax_k"] - t1_via) / t1_via < 1e-6, "via mesh ΔT vs G_th series")
+    print(f"    via mesh ΔT={em_v['dT_mesh_absmax_k']:.4e} K n_cuts={vg['n_cuts']:.2f} G_th={gv:.4e} W/K")
+
+    th_gap = assemble_thermal_mesh(
+        [("ITermNode_metal1_0_0", "ITermNode_metal1_2000_0", 0.38)],
+        {"ITermNode_metal1_0_0": 0, "ITermNode_metal1_2000_0": 1, "ITermNode_metal7_0_0": 2},
+        [2],
+        tech,
+    )
+    check(th_gap is None, "strap with pad on another layer and no via → GAP (no invented island ambient)")
+
+    gcd_sp = (
+        _ROOT
+        / "tools"
+        / "OpenROAD-flow-scripts"
+        / "flow"
+        / "results"
+        / "nangate45"
+        / "gcd"
+        / "flowlab"
+        / "pdn"
+        / "pg_vdd_bumps.sp"
+    )
+    if gcd_sp.is_file():
+        from pdn_transient import build_system as _bs_th
+
+        Rg, Ig, Vg = parse_spice(gcd_sp)
+        order_g, idx_g, _Gg = _bs_th(Rg, Ig, Vg)
+        pads_g = [idx_g[n] for n in Vg if n in idx_g]
+        th_g = assemble_thermal_mesh(Rg, idx_g, pads_g, tech)
+        check(th_g is not None, "GCD VDD thermal mesh is pad-reachable (vias couple layers)")
+        check(th_g["n_vias"] > 0, f"GCD stamps via G_th (n_vias={th_g.get('n_vias')})")
+        P_g = np.full(th_g["n"], 1e-8, dtype=np.float64)
+        sol_g = solve_thermal_steady(th_g["G"], P_g)
+        check(np.isfinite(sol_g["T"]).all(), "GCD thermal T finite")
+        check(sol_g["rel_res"] < 1e-4, f"GCD thermal G_th rel_res={sol_g['rel_res']}")
+        print(
+            f"    GCD thermal n={th_g['n']} straps={th_g['n_straps']} vias={th_g['n_vias']} "
+            f"pads={th_g['n_pads']} rel_res={sol_g['rel_res']:.2e}"
+        )
+    else:
+        print("    skip GCD thermal mesh (no pg_vdd_bumps.sp)")
+
+    g_amb, c_th, p_w = 0.02, 1e-6, 0.01
+    tau = c_th / g_amb
+    dt_th, t_end_th = tau / 25.0, 8.0 * tau
+    Gth = sparse.csr_matrix([[g_amb]], dtype=np.float64)
+    tr = timestep_thermal_be({"G": Gth, "C": np.array([c_th])}, np.array([p_w]), dt_th, t_end_th)
+    t_inf = p_w / g_amb
+    check(abs(tr["T"][0] - t_inf) / t_inf < 0.02, "1-node thermal BE settles to P/G_amb")
+    gold_th = ngspice_thermal_1node_gold(g_amb, c_th, p_w, dt_th, t_end_th)
+    if gold_th.get("ok"):
+        err_th = abs(gold_th["ngspice_dT_k"] - tr["dT_absmax_k"])
+        check(err_th / t_inf < 0.05, f"ngspice thermal analogue |BE−ng|/T∞={err_th/t_inf:.3e}")
+        print(f"    thermal BE vs ngspice |ΔT|={err_th:.4e} K T∞={t_inf:.4f} K")
+    else:
+        print(f"    ngspice thermal GAP ({gold_th.get('reason')})")
 
     from pdn_solvers import native_descriptor, native_descriptor_adaptive, native_mor_descriptor
 

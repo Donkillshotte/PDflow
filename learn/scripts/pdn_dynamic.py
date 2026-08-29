@@ -1684,6 +1684,9 @@ def main() -> int:
         pkg_r=args.pkg_r,
         pkg_l=args.pkg_l,
         tech=ext.get("tech"),
+        currents=currents,
+        vdd=vdd,
+        f_hz=(1.0 / period_s) if period_s > 0 else None,
     )
     scaled = em.pop("_scaled_resistors", None)
     if scaled and em.get("n_r_scaled"):
@@ -1692,8 +1695,10 @@ def main() -> int:
         em["rT_static_ir_mv"] = st_t["worst_ir"] * 1e3
         em["rT_delta_ir_mv"] = (st_t["worst_ir"] - static["worst_ir"]) * 1e3
         em["rT_via"] = (
-            "one-shot N1 restamp R'=R(1+αΔT) from lumped ΔT=Rth·I²R; "
-            "not 3D thermal, not a sub-ns TRAN (thermal RC is much slower)"
+            "one-shot N1 restamp R'=R(1+αΔT) from metal-graph T "
+            "(cell P=I_avg·Vdd + strap/via I²R; pad Rth=50 K/W); not 3D CFD"
+            if (em.get("thermal_mesh") or {}).get("status") == "READY"
+            else "one-shot N1 restamp R'=R(1+αΔT) from lumped ΔT=Rth·I²R; mesh GAP"
         )
     else:
         em["rT_static_ir_mv"] = static["worst_ir"] * 1e3
@@ -1926,21 +1931,21 @@ def main() -> int:
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
             "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in); dual-rail VSS sink-pair",
-            "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS interpolator when tables exist)",
+            "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS/ECSM interpolators when tables exist — never from NLDM)",
             "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
             "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
             "Solver D: restricted additive Schwarz on the BE operator (graph partition, local LU, GMRES)",
             "N4: native descriptor BE on Eẋ+Ax=u (VRM + bump R+L + die mesh); SparseLU, not AMG",
-            "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; lumped R(T) N1 restamp",
+            "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; metal-graph thermal ΔT (straps+vias) + N1 R(T) restamp; skin depth reported",
             "Native BE/MOR/RAS/N4 in libdpn (Index=int64); Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
             "V(x,y) heatmap at t_worst + OpenSTA path delay scaled by local Vmin (NLDM typical-V, not a second liberty)",
         ],
         "not": [
-            "CCS I(t) on Nangate45 (NLDM, no current tables — interpolator is tested on synthetic CCS)",
+            "CCS/ECSM I(t) on Nangate45 (NLDM, no current tables — interpolators are tested on synthetic Liberty)",
             "gate-level VCD pin times (RTL VCD names do not match ODB ITerms — no silent map)",
             "foundry Black TTF hours / extracted strap WIDTH from LEF geometry",
-            "3D thermal mesh or sub-ns thermal TRAN",
+            "3D thermal / Si substrate / package CFD (metal-graph straps+vias is not that)",
             "RedHawk / Voltus / Totem sign-off",
             "vyges-em-ir fork",
             "EMSim commercial flow (VCS/Calibre/PT-PX/HSpice)",

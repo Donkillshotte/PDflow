@@ -1,23 +1,34 @@
 #!/usr/bin/env python3
-"""EM + lumped thermal reporting on the PDN graph.
+"""EM + thermal reporting on the PDN graph.
 
 J from branch I and a width inferred from R, length, and LEF RPERSQ.
 PDN straps are usually wider than min WIDTH; when inferred w is below
 min WIDTH (OpenROAD R is not a pure rectangle), w is clamped to min WIDTH
 so J is not a 10^12 A/m² artifact. Thickness from LEF. Black TTF is
-*relative* (∝ J^{-n}); no foundry A. Thermal is lumped P→ΔT→R(T), not a
-3D solver, and not a sub-ns TRAN (thermal RC is much slower).
-Never ML.
+*relative* (∝ J^{-n}); no foundry A.
+
+Thermal: metal-graph diffusion (G_th = k A/L on same-layer straps *and*
+adjacent-layer vias from LEF HEIGHT/CUT). Pads get G_amb to ambient.
+Without vias the stack is disconnected (metal1 I²R cannot reach metal7
+pads) — that is a GAP, not a 2D-only solve. Not 3D Si, not CFD, not a
+foundry package model. Lumped Rth·I²R is a comparison, not the restamp ΔT
+when the mesh solves. Skin depth is reported; Nangate metal1 is thinner
+than δ at the GCD clock so Rac/Rdc ≈ 1. Never ML.
 """
 
 from __future__ import annotations
 
 import math
-from collections import defaultdict
+from collections import defaultdict, deque
 
 from pdn_extract import layer_of, node_xy_dbu
 
+MU0 = 4.0e-7 * math.pi
 MU0_2PI = 2.0e-7  # H/m = μ0/(2π)
+K_CU_W_M_K = 400.0  # bulk Cu; not a foundry BEOL stack
+C_VOL_CU_J_M3_K = 3.45e6  # 385 J/kg/K × 8960 kg/m³
+SIGMA_CU_S_M = 5.8e7
+RTH_PAD_K_PER_W = 50.0  # C4-class bump → ambient; not extracted PKG
 
 
 def grover_partial_L(l_m: float, w_m: float, t_m: float) -> float:
@@ -30,6 +41,19 @@ def grover_partial_L(l_m: float, w_m: float, t_m: float) -> float:
     l = max(float(l_m), 1e-18)
     wt = max(float(w_m) + float(t_m), 1e-18)
     return MU0_2PI * l * (math.log(max(2.0 * l / wt, 1.0)) + 0.5 + 0.2235 * wt / l)
+
+
+def skin_depth_m(f_hz: float, sigma: float = SIGMA_CU_S_M) -> float:
+    """Classical skin depth δ = 1/√(π f μ σ). No anomalous skin, no roughness."""
+    f = max(float(f_hz), 1e-30)
+    return 1.0 / math.sqrt(math.pi * f * MU0 * max(float(sigma), 1.0))
+
+
+def rac_over_rdc(t_m: float, f_hz: float, sigma: float = SIGMA_CU_S_M) -> float:
+    """Wide-sheet Rac/Rdc ≈ t / min(t, δ). t ≪ δ → 1. Not Wheeler round-wire, not PEEC."""
+    t = max(float(t_m), 1e-18)
+    delta = skin_depth_m(f_hz, sigma)
+    return t / min(t, delta)
 
 
 def grover_partial_M(length_m: float, dist_m: float) -> float:
@@ -245,6 +269,7 @@ def branch_geometry(a: str, b: str, r: float, tech: dict) -> dict | None:
     if w_m <= 0.0 or t_m <= 0.0:
         return None
     return {
+        "kind": "strap",
         "layer": la,
         "L_m": L,
         "w_m": w_m,
@@ -256,6 +281,342 @@ def branch_geometry(a: str, b: str, r: float, tech: dict) -> dict | None:
         "w_over_min": (w_m / w_min_m) if w_min_m > 0 else None,
         "w_clamped": bool(w_min_m > 0.0 and w_inf_m < w_min_m),
     }
+
+
+def _metal_index(layer: str | None) -> int | None:
+    if not layer:
+        return None
+    s = str(layer).lower()
+    if not s.startswith("metal"):
+        return None
+    try:
+        return int(s[5:])
+    except ValueError:
+        return None
+
+
+def via_geometry(a: str, b: str, r: float, tech: dict | None) -> dict | None:
+    """Adjacent-layer via: A = n_cuts · w_cut², L from LEF HEIGHT.
+
+    n_cuts = max(R_cut / R, 1). OpenROAD often lumps several cuts into one R.
+    L = HEIGHT_upper − HEIGHT_lower − THICKNESS_lower (ILD, not metal).
+    Non-adjacent hops stay GAP (write_pg_spice has intermediate nodes).
+    Not a 3D FEM via, not a foundry BEOL k(T).
+    """
+    la, lb = layer_of(a), layer_of(b)
+    na, nb = _metal_index(la), _metal_index(lb)
+    if na is None or nb is None or abs(na - nb) != 1:
+        return None
+    tech = tech or {}
+    layers = tech.get("layers") or {}
+    cuts = tech.get("cuts") or {}
+    lo, hi = (la, lb) if na < nb else (lb, la)
+    spec_lo, spec_hi = layers.get(lo) or {}, layers.get(hi) or {}
+    h_lo, t_lo, h_hi = spec_lo.get("height_um"), spec_lo.get("thickness_um"), spec_hi.get("height_um")
+    if h_lo is None or t_lo is None or h_hi is None:
+        return None
+    L_um = float(h_hi) - float(h_lo) - float(t_lo)
+    if L_um <= 0.0:
+        return None
+    cut_name = f"via{min(na, nb)}"
+    cut = cuts.get(cut_name) or {}
+    w_um = cut.get("width_um")
+    if w_um is None:
+        return None
+    r_cut = cut.get("r_ohm")
+    n_cuts = (float(r_cut) / max(float(r), 1e-18)) if r_cut else 1.0
+    n_cuts = max(n_cuts, 1.0)
+    w_m = float(w_um) * 1e-6
+    L_m = L_um * 1e-6
+    area = n_cuts * w_m * w_m
+    return {
+        "kind": "via",
+        "layer": cut_name,
+        "layer_lo": lo,
+        "layer_hi": hi,
+        "cut": cut_name,
+        "L_m": L_m,
+        "w_m": w_m,
+        "t_m": L_m,
+        "area_m2": area,
+        "n_cuts": n_cuts,
+        "r_cut_ohm": float(r_cut) if r_cut is not None else None,
+        "w_clamped": False,
+    }
+
+
+def thermal_edge_geometry(a: str, b: str, r: float, tech: dict | None) -> dict | None:
+    """Strap (same layer) or via (adjacent layer). Else None — do not invent G_th."""
+    return branch_geometry(a, b, float(r), tech or {}) or via_geometry(a, b, float(r), tech)
+
+
+def _thermal_pads_reach(G, pad_th: list[int], n: int) -> bool:
+    """Every node with a thermal edge must reach a pad. No invented island ambient."""
+    adj: list[list[int]] = [[] for _ in range(n)]
+    Gcsr = G.tocsr()
+    for i in range(n):
+        for j, v in zip(Gcsr.indices[Gcsr.indptr[i] : Gcsr.indptr[i + 1]], Gcsr.data[Gcsr.indptr[i] : Gcsr.indptr[i + 1]]):
+            if i != j and v != 0.0:
+                adj[i].append(int(j))
+    if not pad_th:
+        return False
+    seen: set[int] = set()
+    q = deque(pad_th)
+    for p in pad_th:
+        seen.add(int(p))
+    while q:
+        i = q.popleft()
+        for j in adj[i]:
+            if j not in seen:
+                seen.add(j)
+                q.append(j)
+    for i in range(n):
+        if adj[i] and i not in seen:
+            return False
+    return True
+
+
+def assemble_thermal_mesh(
+    resistors,
+    idx: dict,
+    pad_idx,
+    tech: dict | None,
+    *,
+    rth_pad: float = RTH_PAD_K_PER_W,
+) -> dict | None:
+    """SPD thermal graph on straps + adjacent vias.
+
+    G_th_ij = k_Cu · A / L. C_th lumped half to each node.
+    Pads get G_amb = 1/Rth_pad to ambient (ΔT=0). Singular without a pad
+    path — vias are required to couple metal1 I²R to metal7 bumps.
+    Compact: electrical nodes with no thermal edge are dropped (no fake G_amb).
+    Not 3D, not a mold/heat-sink CFD, not Si substrate spreading.
+    """
+    if "/usr/lib/python3/dist-packages" not in __import__("sys").path:
+        __import__("sys").path.insert(0, "/usr/lib/python3/dist-packages")
+    import numpy as np
+    from scipy import sparse
+
+    if not idx or not pad_idx:
+        return None
+    edges = []
+    tech = tech or {}
+    n_strap = 0
+    n_via = 0
+    for a, b, r in resistors:
+        if a not in idx or b not in idx:
+            continue
+        geo = thermal_edge_geometry(a, b, float(r), tech)
+        if not geo:
+            continue
+        gth = K_CU_W_M_K * geo["area_m2"] / max(geo["L_m"], 1e-18)
+        cth = C_VOL_CU_J_M3_K * geo["area_m2"] * geo["L_m"]
+        kind = geo.get("kind") or "strap"
+        edges.append((int(idx[a]), int(idx[b]), gth, cth, kind))
+        if kind == "via":
+            n_via += 1
+        else:
+            n_strap += 1
+    if not edges:
+        return None
+    pads = sorted({int(i) for i in pad_idx})
+    if not pads:
+        return None
+    used = set(pads)
+    for ia, ib, *_rest in edges:
+        used.add(ia)
+        used.add(ib)
+    th_of = {e: k for k, e in enumerate(sorted(used))}
+    n = len(th_of)
+    G = sparse.lil_matrix((n, n), dtype=np.float64)
+    C = np.zeros(n, dtype=np.float64)
+    gth_sum = 0.0
+    for ia, ib, gth, cth, _kind in edges:
+        ta, tb = th_of[ia], th_of[ib]
+        G[ta, ta] += gth
+        G[tb, tb] += gth
+        G[ta, tb] -= gth
+        G[tb, ta] -= gth
+        C[ta] += 0.5 * cth
+        C[tb] += 0.5 * cth
+        gth_sum += gth
+    g_amb = 1.0 / max(float(rth_pad), 1e-9)
+    pad_th = [th_of[i] for i in pads if i in th_of]
+    if not pad_th:
+        return None
+    for t in pad_th:
+        G[t, t] += g_amb
+    Gcsr = G.tocsr()
+    if not _thermal_pads_reach(Gcsr, pad_th, n):
+        return None
+    C = np.maximum(C, 1e-18)
+    elec_of = [0] * n
+    for elec, th_i in th_of.items():
+        elec_of[th_i] = elec
+    return {
+        "G": Gcsr,
+        "C": C,
+        "n": n,
+        "n_edges": len(edges),
+        "n_straps": n_strap,
+        "n_vias": n_via,
+        "n_pads": len(pad_th),
+        "pads": pads,
+        "pad_th": pad_th,
+        "th_of": th_of,
+        "elec_of": elec_of,
+        "g_amb": g_amb,
+        "rth_pad": float(rth_pad),
+        "gth_sum": gth_sum,
+        "k_cu": K_CU_W_M_K,
+        "c_vol": C_VOL_CU_J_M3_K,
+        "via": (
+            "metal-graph G_th=kA/L on straps + adjacent vias (LEF HEIGHT/CUT); "
+            "pad G_amb; not 3D / not substrate"
+        ),
+    }
+
+
+def thermal_power_vector(
+    n: int,
+    idx: dict,
+    branches: list,
+    currents: dict | None,
+    vdd: float,
+) -> "object":
+    """Node heat: half of each strap I²R plus cell P≈I_avg·Vdd at sinks.
+
+    Cell power is dissipated in the device, not in the grid R — not a double count.
+    """
+    import numpy as np
+
+    P = np.zeros(int(n), dtype=np.float64)
+    for rec in branches:
+        a, b = rec.get("a"), rec.get("b")
+        if a not in idx or b not in idx:
+            continue
+        p = 0.5 * float(rec.get("p_w") or 0.0)
+        P[int(idx[a])] += p
+        P[int(idx[b])] += p
+    if currents and vdd:
+        for name, iavg in currents.items():
+            if name in idx:
+                P[int(idx[name])] += abs(float(iavg)) * float(vdd)
+    return P
+
+
+def solve_thermal_steady(G, P) -> dict:
+    """SPD G_th T = P. Direct LU (native if present). AMG when n is large."""
+    import numpy as np
+    from pdn_solvers import DirectLU, SAAMG, residual_rel
+
+    P = np.ascontiguousarray(P, dtype=np.float64)
+    n = int(G.shape[0])
+    solver = SAAMG(G) if n >= 256 else DirectLU(G)
+    T = np.asarray(solver.solve(P), dtype=np.float64)
+    return {
+        "T": T,
+        "dT_absmax_k": float(np.max(T)) if T.size else 0.0,
+        "dT_mean_k": float(np.mean(T)) if T.size else 0.0,
+        "backend": getattr(solver, "backend", "python"),
+        "solver": getattr(solver, "name", type(solver).__name__),
+        "n_levels": getattr(solver, "n_levels", 1),
+        "rel_res": residual_rel(G, T, P),
+    }
+
+
+def timestep_thermal_be(sys: dict, P, dt: float, t_end: float, *, T0=None) -> dict:
+    """Implicit Euler on C Ṫ + G T = P(t). P may be a vector or f(t)->vector.
+
+    Thermal Δt is independent of the IR TRAN Δt. Not a sub-ps electrical step.
+    """
+    import numpy as np
+    from scipy import sparse
+    from pdn_solvers import DirectLU, residual_rel
+
+    G = sys["G"].tocsr()
+    C = np.asarray(sys["C"], dtype=np.float64)
+    n = int(G.shape[0])
+    A = (G + sparse.diags(C / dt)).tocsc()
+    lu = DirectLU(A)
+    T = np.zeros(n, dtype=np.float64) if T0 is None else np.asarray(T0, dtype=np.float64).copy()
+    steps = max(2, int(math.ceil(t_end / dt)))
+    worst = float(np.max(T)) if T.size else 0.0
+    t_worst = 0.0
+    res_max = 0.0
+    wave_t, wave_tmax = [], []
+    for s in range(steps):
+        t = s * dt
+        rhs_p = P(t) if callable(P) else P
+        rhs = (C / dt) * T + np.asarray(rhs_p, dtype=np.float64)
+        T = np.asarray(lu.solve(rhs), dtype=np.float64)
+        res_max = max(res_max, residual_rel(A, T, rhs))
+        tmax = float(np.max(T))
+        wave_t.append(t)
+        wave_tmax.append(tmax)
+        if tmax > worst:
+            worst = tmax
+            t_worst = t
+    return {
+        "T": T,
+        "dT_absmax_k": worst,
+        "worst_time_s": t_worst,
+        "steps": steps,
+        "dt": dt,
+        "rel_res_max": res_max,
+        "wave_t": wave_t,
+        "wave_tmax": wave_tmax,
+        "backend": getattr(lu, "backend", "python"),
+        "via": "thermal BE C/Δt + G_th (same native LU as electrical, different Δt)",
+    }
+
+
+def ngspice_thermal_1node_gold(g_amb: float, c_th: float, p_w: float, dt: float, t_end: float) -> dict:
+    """ngspice analogue: voltage=ΔT, current=P, R=1/G_amb, C=C_th."""
+    import shutil
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    if not shutil.which("ngspice"):
+        return {"ok": False, "status": "GAP", "reason": "ngspice not in PATH"}
+    tmp = Path(tempfile.mkdtemp(prefix="dpn-th-"))
+    sp = tmp / "th.sp"
+    dat = tmp / "th.dat"
+    r = 1.0 / max(g_amb, 1e-18)
+    sp.write_text(
+        f"""* thermal analogue 1-node (V=ΔT, I=P)
+Ramb t 0 {r:.16e}
+Cth t 0 {c_th:.16e}
+Ip 0 t DC {p_w:.16e}
+.control
+option method=gear maxord=1
+set filetype=ascii
+tran {dt:.8e} {t_end:.8e}
+wrdata {dat} v(t)
+.endc
+.end
+"""
+    )
+    proc = subprocess.run(
+        ["ngspice", "-b", str(sp)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    vmax = None
+    for p in sorted(tmp.glob("th.dat*")):
+        text = p.read_text(errors="replace")
+        for line in text.splitlines():
+            parts = line.split()
+            if len(parts) >= 2:
+                try:
+                    vmax = float(parts[-1]) if vmax is None else max(vmax, float(parts[-1]))
+                except ValueError:
+                    continue
+    if vmax is None:
+        return {"ok": False, "status": "GAP", "reason": "no wrdata", "raw": (proc.stdout or "")[-400:]}
+    return {"ok": True, "ngspice_dT_k": vmax, "g_amb": g_amb, "c_th": c_th, "p_w": p_w}
 
 
 def em_thermal_snapshot(
@@ -270,8 +631,14 @@ def em_thermal_snapshot(
     pkg_r: float,
     pkg_l: float,
     tech: dict | None = None,
+    currents: dict | None = None,
+    vdd: float = 0.0,
+    f_hz: float | None = None,
 ) -> dict:
-    """I, J, relative Black TTF, lumped ΔT. Physics screening, not sign-off EM."""
+    """I, J, relative Black TTF, metal-graph ΔT (straps+vias), lumped ΔT comparison.
+
+    Physics screening, not sign-off EM or package thermal.
+    """
     import numpy as np
 
     def vnode(name: str) -> float | None:
@@ -284,7 +651,6 @@ def em_thermal_snapshot(
 
     tech = tech or {}
     branches = []
-    scaled_resistors = []
     n_j = 0
     j_absmax = 0.0
     dt_absmax = 0.0
@@ -292,7 +658,6 @@ def em_thermal_snapshot(
     for a, b, r in resistors:
         va, vb = vnode(a), vnode(b)
         if va is None or vb is None:
-            scaled_resistors.append((a, b, r))
             continue
         i_br = (va - vb) / max(r, 1e-18)
         rec = {
@@ -304,25 +669,97 @@ def em_thermal_snapshot(
             "p_w": i_br * i_br * r,
         }
         p_joule += rec["p_w"]
-        r_use = r
         geo = branch_geometry(a, b, r, tech)
         if geo:
             rec.update(geo)
             rec["j_a_m2"] = rec["i_abs"] / geo["area_m2"]
-            rec["dT_k"] = rec["p_w"] * RTH_K_PER_W
+            rec["dT_lumped_k"] = rec["p_w"] * RTH_K_PER_W
+            rec["dT_k"] = rec["dT_lumped_k"]
             rec["r_scale"] = 1.0 + ALPHA_R * rec["dT_k"]
             rec["ttf_rel"] = (J_REF_A_M2 / max(rec["j_a_m2"], 1.0)) ** BLACK_N
             n_j += 1
             j_absmax = max(j_absmax, rec["j_a_m2"])
             dt_absmax = max(dt_absmax, rec["dT_k"])
-            r_use = r * rec["r_scale"]
-        scaled_resistors.append((a, b, r_use))
         branches.append(rec)
     branches.sort(key=lambda x: -x["i_abs"])
     by_j = [b for b in branches if "j_a_m2" in b]
     by_j.sort(key=lambda x: -x["j_a_m2"])
     hottest_i = branches[0] if branches else None
     hottest_j = by_j[0] if by_j else None
+
+    mesh_meta = None
+    pad_idx = [int(b) for b in (bump or [])]
+    th = assemble_thermal_mesh(resistors, idx, pad_idx, tech)
+    if th:
+        n_elec = 1 + max(int(i) for i in idx.values())
+        P_e = thermal_power_vector(n_elec, idx, branches, currents, vdd)
+        P = np.zeros(th["n"], dtype=np.float64)
+        for elec_i, th_i in th["th_of"].items():
+            if 0 <= int(elec_i) < P_e.size:
+                P[int(th_i)] += P_e[int(elec_i)]
+        try:
+            sol = solve_thermal_steady(th["G"], P)
+            T = sol["T"]
+            if (not np.isfinite(T).all()) or float(sol["rel_res"]) > 1e-4:
+                raise RuntimeError(f"thermal residual {sol['rel_res']}")
+        except Exception as exc:  # noqa: BLE001 — mesh is optional; IR TRAN must still report
+            dt_mesh = None
+            mesh_meta = {"status": "GAP", "reason": f"thermal G_th solve failed: {exc}"}
+        else:
+            th_of = th["th_of"]
+            pad_temps = [float(T[t]) for t in th["pad_th"] if 0 <= t < T.size]
+            mesh_meta = {
+                "status": "READY",
+                "n": th["n"],
+                "n_edges": th["n_edges"],
+                "n_straps": th["n_straps"],
+                "n_vias": th["n_vias"],
+                "n_pads": th["n_pads"],
+                "rth_pad": th["rth_pad"],
+                "g_amb": th["g_amb"],
+                "p_cell_w": float(max(float(P.sum()) - p_joule, 0.0)),
+                "p_total_w": float(P.sum()),
+                "dT_absmax_k": sol["dT_absmax_k"],
+                "dT_mean_k": sol["dT_mean_k"],
+                "dT_pad_max_k": float(max(pad_temps)) if pad_temps else 0.0,
+                "backend": sol["backend"],
+                "solver": sol["solver"],
+                "rel_res": sol["rel_res"],
+                "via": th["via"],
+                "note": (
+                    "Steady metal-graph ΔT; cell P=I_avg·Vdd at sinks + strap/via I²R. "
+                    "Via G_th from LEF HEIGHT/CUT (n_cuts=R_cut/R). "
+                    "Pad Rth=50 K/W C4-class (not extracted). Not 3D, not Si spreading."
+                ),
+            }
+            for rec in branches:
+                a, b = rec.get("a"), rec.get("b")
+                if a not in idx or b not in idx:
+                    continue
+                ia, ib = int(idx[a]), int(idx[b])
+                if ia in th_of and ib in th_of:
+                    ta, tb = th_of[ia], th_of[ib]
+                    if 0 <= ta < T.size and 0 <= tb < T.size:
+                        rec["dT_mesh_k"] = 0.5 * (float(T[ta]) + float(T[tb]))
+                        rec["dT_k"] = rec["dT_mesh_k"]
+                        rec["r_scale"] = 1.0 + ALPHA_R * rec["dT_k"]
+            dt_mesh = sol["dT_absmax_k"]
+    else:
+        dt_mesh = None
+        mesh_meta = {
+            "status": "GAP",
+            "reason": "no strap/via G_th or no pad-reachable path to ambient",
+        }
+
+    scaled_resistors = []
+    for rec in branches:
+        a, b, r0 = rec["a"], rec["b"], rec["r_ohm"]
+        scaled_resistors.append((a, b, r0 * float(rec.get("r_scale") or 1.0)))
+    # resistors skipped (missing V) keep original R
+    have = {(rec["a"], rec["b"]) for rec in branches}
+    for a, b, r in resistors:
+        if (a, b) not in have:
+            scaled_resistors.append((a, b, r))
 
     pkg = []
     i_L_list = np.asarray(i_L, dtype=np.float64).tolist() if i_L is not None else []
@@ -337,32 +774,57 @@ def em_thermal_snapshot(
         )
     pkg.sort(key=lambda p: -abs(p["i_L_a"] or 0.0))
 
-    r_scale = 1.0 + ALPHA_R * dt_absmax
+    dt_for_scale = dt_mesh if dt_mesh is not None else dt_absmax
+    r_scale = 1.0 + ALPHA_R * dt_for_scale
     ttf_min = min((b["ttf_rel"] for b in by_j), default=None)
+    n_scaled = sum(1 for rec in branches if abs(float(rec.get("r_scale") or 1.0) - 1.0) > 1e-15)
+    f_use = float(f_hz) if f_hz and f_hz > 0 else None
+    skin = None
+    if hottest_j and hottest_j.get("t_m") and f_use:
+        delta = skin_depth_m(f_use)
+        ratio = rac_over_rdc(float(hottest_j["t_m"]), f_use)
+        skin = {
+            "status": "READY",
+            "f_hz": f_use,
+            "delta_m": delta,
+            "t_m": float(hottest_j["t_m"]),
+            "t_over_delta": float(hottest_j["t_m"]) / delta,
+            "rac_rdc": ratio,
+            "via": "wide-sheet t/min(t,δ); not Wheeler, not roughness, not PEEC",
+            "note": (
+                "Rac/Rdc≈1 — metal thinner than skin depth at this f"
+                if ratio < 1.01
+                else "Rac/Rdc>1 — AC correction is estimated, not stamped into G"
+            ),
+        }
     status = "READY" if n_j else "PARTIAL"
+    mesh_ready = bool(mesh_meta and mesh_meta.get("status") == "READY")
     return {
         "status": status,
         "model": (
             "I=(Va-Vb)/R; w=max(RPERSQ·L/R, WIDTH_min); J=I/(w·t); "
             f"TTF_rel=(Jref/J)^{BLACK_N} at {T_EM_K:.0f} K; "
-            f"ΔT=Rth·I²R with Rth={RTH_K_PER_W} K/W lumped"
+            + (
+                "ΔT from metal-graph G_th=kA/L (straps+vias) + pad G_amb (lumped Rth kept as comparison)"
+                if mesh_ready
+                else f"ΔT=Rth·I²R with Rth={RTH_K_PER_W} K/W lumped (mesh GAP)"
+            )
         ),
         "not": [
             "foundry Black A / TTF hours",
             "extracted strap width from LEF geometry (width from R, clamped to min WIDTH)",
-            "3D thermal / sub-ns thermal TRAN",
+            "3D thermal / Si substrate / package CFD",
+            "skin-effect stamp into G (reported, not restamped)",
         ],
         "n_branches": len(branches),
         "n_with_j": n_j,
         "i_absmax_a": float(hottest_i["i_abs"]) if hottest_i else 0.0,
         "j_absmax_a_m2": j_absmax,
         "dT_absmax_k": dt_absmax,
+        "dT_lumped_absmax_k": dt_absmax,
+        "dT_mesh_absmax_k": dt_mesh,
         "r_scale_hot": r_scale,
-        "n_r_scaled": sum(
-            1
-            for (_, _, r0), (_, _, r1) in zip(resistors, scaled_resistors)
-            if abs(r1 - r0) > 1e-18 * max(abs(r0), 1.0)
-        ),
+        "n_r_scaled": n_scaled,
         "_scaled_resistors": scaled_resistors,
         "p_joule_w": p_joule,
         "ttf_rel_min": ttf_min,
@@ -378,9 +840,16 @@ def em_thermal_snapshot(
         "pkg_r": pkg_r,
         "pkg_l": pkg_l,
         "tech_path": tech.get("path"),
+        "thermal_mesh": mesh_meta,
+        "skin": skin,
         "note": (
             "EM J from physics I(t) and LEF RPERSQ/thickness. "
-            "ΔT is lumped and tiny on this sub-ns window — thermal RC is not the IR TRAN."
+            + (
+                f"metal-graph max ΔT={dt_mesh:.4e} K "
+                f"(lumped isolation max {dt_absmax:.4e} K)."
+                if mesh_ready
+                else "ΔT is lumped Rth·I²R (thermal mesh GAP)."
+            )
             if n_j
             else "No same-layer R with coordinates — J remains GAP."
         ),

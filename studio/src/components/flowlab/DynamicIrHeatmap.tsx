@@ -53,12 +53,24 @@ type Em = {
   i_absmax_a?: number;
   j_absmax_a_m2?: number;
   dT_absmax_k?: number;
+  dT_mesh_absmax_k?: number;
+  dT_lumped_absmax_k?: number;
   ttf_rel_min?: number | null;
   n_with_j?: number;
   r_scale_hot?: number;
   rT_delta_ir_mv?: number;
   hottest?: { i_abs?: number };
   hottest_j?: { j_a_m2?: number; layer?: string };
+  thermal_mesh?: {
+    status?: string;
+    dT_absmax_k?: number;
+    dT_pad_max_k?: number;
+    n_pads?: number;
+    n_vias?: number;
+    n_straps?: number;
+    backend?: string;
+  };
+  skin?: { status?: string; rac_rdc?: number; delta_m?: number };
 };
 type Ras = {
   ok?: boolean;
@@ -396,12 +408,29 @@ export function DynamicIrHeatmap({
               <div>
                 <dt>ΔT lumped</dt>
                 <dd>
-                  {(em.dT_absmax_k ?? 0) < 1e-3
+                  {(em.dT_lumped_absmax_k ?? em.dT_absmax_k ?? 0) < 1e-3
                     ? "< 1 mK"
-                    : `${(em.dT_absmax_k ?? 0).toFixed(3)} K`}
+                    : `${(em.dT_lumped_absmax_k ?? em.dT_absmax_k ?? 0).toFixed(3)} K`}
                   {em.rT_delta_ir_mv != null
                     ? ` · ΔIR ${em.rT_delta_ir_mv.toFixed(4)} mV`
                     : ""}
+                </dd>
+              </div>
+            ) : null}
+            {em?.thermal_mesh?.status === "READY" ? (
+              <div>
+                <dt>ΔT mesh</dt>
+                <dd>
+                  {(em.dT_mesh_absmax_k ?? em.thermal_mesh.dT_absmax_k ?? 0) < 1e-3
+                    ? "< 1 mK"
+                    : `${(em.dT_mesh_absmax_k ?? em.thermal_mesh.dT_absmax_k ?? 0).toFixed(3)} K`}
+                  {em.thermal_mesh.n_vias != null
+                    ? ` · ${em.thermal_mesh.n_vias} via`
+                    : ""}
+                  {em.thermal_mesh.n_pads != null
+                    ? ` · ${em.thermal_mesh.n_pads} pad`
+                    : ""}
+                  {em.thermal_mesh.backend ? ` · ${em.thermal_mesh.backend}` : ""}
                 </dd>
               </div>
             ) : null}
