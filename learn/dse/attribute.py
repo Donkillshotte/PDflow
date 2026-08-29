@@ -114,6 +114,42 @@ def local_scope(attr: dict) -> dict:
     }
 
 
+def attribute_sta(sta: dict, *, inherit: dict | None = None) -> dict:
+    """STA worst path → cone. Flattened netlists often lose dpath/ctrl names."""
+    inherit = inherit or {}
+    start = sta.get("path_start")
+    end = sta.get("path_end")
+    modules: list[str] = []
+    cells: list[str] = []
+    for n in (start, end):
+        m = _module_of(n)
+        if m and m not in modules:
+            modules.append(m)
+        c = _cell_of(n)
+        if c and c not in cells:
+            cells.append(c)
+    if not modules:
+        modules = list(inherit.get("modules") or [])
+    scope = "logic_cone" if modules else (inherit.get("scope") or "chip")
+    return {
+        "status": "READY" if (start or modules) else "GAP",
+        "kind": "sta_path",
+        "path_start": start,
+        "path_end": end,
+        "path_slack_ns": sta.get("wns_ns"),
+        "modules": modules,
+        "cells": cells,
+        "scope": scope,
+        "restart_chip": False,
+        "inherited_from": inherit.get("transform") or inherit.get("inherited_from"),
+        "note": (
+            "OpenSTA worst path → "
+            + (f"cone {','.join(modules)}" if modules else "flattened pins (cone inherited)")
+            + "; not Dynamic IR"
+        ),
+    }
+
+
 def attribute_from_path(path: Path) -> dict:
     if not path.is_file():
         return {"status": "GAP", "reason": f"missing {path}"}

@@ -3,7 +3,7 @@
 F0  cheap analytical / SSK-GP / RUDY-class proxy
 F1  Yosys + ABC liberty map + equiv (logic or architecture RTL)
 F2  ingest OpenROAD place / GRT, F2-fast netgraph, budgeted OpenROAD GPL
-F3  OpenSTA signoff ingest
+F3  OpenSTA on the *candidate* netlist (ideal) + ingest of signoff STA
 F4  Dynamic IR / EM ingest (Solver A gold stays 45.298 mV on the GCD)
 F5  GAP (signoff P&R / finish not launched from the controller)
 """
@@ -28,7 +28,8 @@ from .netgraph import (
     parse_mapped_verilog,
     features as net_features,
 )
-from .openroad_f2 import evaluate_gpl
+from .openroad_f2 import evaluate_gpl, evaluate_grt
+from .sta_f3 import evaluate_sta
 
 REPO = Path(__file__).resolve().parents[1].parent
 NANGATE_LIB = (
@@ -42,7 +43,8 @@ COST_HINT = {
     "F2": 30.0,
     "F2_FAST": 0.2,
     "F2_GPL": 8.0,
-    "F3": 20.0,
+    "F2_GRT": 8.0,
+    "F3": 2.0,
     "F4": 35.0,
     "F5": 600.0,
 }
@@ -533,6 +535,130 @@ def evaluate_f2_gpl(
         status="ok" if gpl.get("status") == "ok" else "fail",
         failure=gpl.get("reason") if gpl.get("status") != "ok" else None,
         note=f"F2 GPL child of {parent.knobs.get('name')} HPWL_um={gpl.get('hpwl_um')}",
+    )
+    return mem.add(c)
+
+
+def evaluate_f3_sta(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+) -> Candidate | None:
+    """F3 OpenSTA on a gate-level F1 netlist. Enriches the parent QoR."""
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    knobs = {
+        "source": "f3_opensta_ideal",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "interconnect": "ideal",
+    }
+    fp = knobs_fp(parent.level, knobs)
+    if fp in mem.seen_knobs(parent.level):
+        return next(c for c in mem.by_level(parent.level) if c.knobs_fp == fp)
+    sta = evaluate_sta(Path(mapped))
+    from .attribute import attribute_sta
+
+    attr = attribute_sta(sta, inherit=parent.attr or {})
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
+        power_w=sta.get("power_w"),
+        fidelity="F3",
+        note=(
+            f"OpenSTA ideal WNS={sta.get('wns_ns')} ns P={sta.get('power_w')} W "
+            f"— not SPEF signoff, not IR"
+        ),
+    )
+    if sta.get("status") == "ok":
+        parent.qor.wns_cost = q.wns_cost
+        parent.qor.power_w = q.power_w
+        parent.attr = dict(parent.attr or {})
+        parent.attr["sta"] = attr
+        mem.touch(parent)
+    c = Candidate(
+        id=DesignMemory.new_id(),
+        design_id=design_id,
+        parent_id=parent.id,
+        level=parent.level,
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F3",
+        qor=q,
+        cost_s=float(sta.get("cost_s") or 0.0),
+        artifacts=sta,
+        attr=attr,
+        status="ok" if sta.get("status") == "ok" else "fail",
+        failure=sta.get("reason") if sta.get("status") != "ok" else None,
+        note=f"F3 STA child of {parent.knobs.get('name')} WNS={sta.get('wns_ns')}",
+    )
+    return mem.add(c)
+
+
+def evaluate_f2_grt(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    util: float = 35.0,
+    density: float = 0.55,
+    timeout_s: float = 45.0,
+) -> Candidate | None:
+    """Routing-level F2: GRT after place_pins+GPL. Not detailed route, not F5."""
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    knobs = {
+        "source": "f2_openroad_grt",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name"),
+        "util": util,
+        "density": density,
+    }
+    fp = knobs_fp("routing", knobs)
+    if fp in mem.seen_knobs("routing"):
+        return next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
+    grt = evaluate_grt(Path(mapped), util=util, density=density, timeout_s=timeout_s)
+    from .attribute import attribute_sta
+
+    attr = attribute_sta(grt, inherit=parent.attr or {})
+    cong = grt.get("grt_overflow")
+    if cong is None:
+        cong = grt.get("overflow")
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=wns_cost_from_slack_ns(grt.get("wns_ns")),
+        power_w=grt.get("power_w"),
+        congestion=cong,
+        fidelity="F2",
+        note=(
+            f"OpenROAD GRT WNS={grt.get('wns_ns')} overflow={cong} "
+            f"HPWL={grt.get('hpwl_um')} — not detailed route/F5, not IR"
+        ),
+    )
+    c = Candidate(
+        id=DesignMemory.new_id(),
+        design_id=design_id,
+        parent_id=parent.id,
+        level="routing",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F2",
+        qor=q,
+        cost_s=float(grt.get("cost_s") or 0.0),
+        artifacts=grt,
+        attr=attr,
+        status="ok" if grt.get("status") == "ok" else "fail",
+        failure=grt.get("reason") if grt.get("status") != "ok" else None,
+        note=f"F2 GRT child of {parent.knobs.get('name')} WNS={grt.get('wns_ns')}",
     )
     return mem.add(c)
 

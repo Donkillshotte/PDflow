@@ -8,6 +8,7 @@ Optimizers (each on its own level):
   logic        — BOiLS SSK-GP + EI, DRiLLS sequential append
   synthesis    — ORFS ABC_AREA catalog (F0)
   physical     — F2-fast netgraph + budgeted OpenROAD GPL + ingest + AutoDMP F0
+  routing      — budgeted OpenROAD GRT (not detailed route / F5)
   pdn          — F4 ingest only
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
@@ -21,7 +22,7 @@ import time
 from pathlib import Path
 
 from .abc_space import CATALOG
-from .acquire import should_pay_f2_fast, should_pay_f2_gpl
+from .acquire import should_pay_f2_fast, should_pay_f2_gpl, should_pay_f2_grt, should_pay_f3_sta
 from .arch_space import emit_gcd_variant
 from .attribute import attribute_from_path, local_scope
 from .boils import propose_logic_boils, should_pay_f1
@@ -30,6 +31,8 @@ from .fidelity import (
     evaluate_f1_abc,
     evaluate_f2_fast,
     evaluate_f2_gpl,
+    evaluate_f2_grt,
+    evaluate_f3_sta,
     ensure_mapped_netlist,
     flowlab_params,
     ingest_f2,
@@ -52,10 +55,12 @@ from .surrogate import (
     predict_f2_gnn,
     predict_f4_from_f1,
     predict_gpl_from_f1,
+    predict_power_from_f1,
+    predict_wns_from_f1,
     residual,
 )
 
-LEVELS = ("architecture", "logic", "synthesis", "physical", "pdn")
+LEVELS = ("architecture", "logic", "synthesis", "physical", "routing", "pdn")
 
 
 def propose_logic(mem: DesignMemory, focus: str = "chip") -> dict | None:
@@ -375,6 +380,72 @@ def run_controller(
                     status=child.status,
                 )
 
+    n_sta = sum(1 for c in mem.all() if (c.knobs or {}).get("source") == "f3_opensta_ideal" and c.status == "ok")
+    pay_sta, why_sta = should_pay_f3_sta(mem, budget_left=t_end - time.time(), n_sta=n_sta)
+    step("acquire", fidelity="F3", pay=pay_sta, why=why_sta)
+    if any(s["level"] == "f3_sta" for s in plan["steps"]) and pay_sta and time.time() < t_end:
+        ranked = [
+            c
+            for c in mem.all()
+            if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
+        ]
+        ranked.sort(key=lambda c: float(c.qor.area_um2))
+        for w in ranked[:4]:
+            if time.time() >= t_end:
+                break
+            w = ensure_mapped_netlist(w, rtl=rtl, liberty=lib)
+            mem.touch(w)
+            child = evaluate_f3_sta(w, mem, design_id=design_id)
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level=w.level,
+                    fidelity="F3",
+                    via="f3_opensta_ideal",
+                    parent=w.id,
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    power_w=child.qor.power_w,
+                    status=child.status,
+                )
+
+    n_grt = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f2_openroad_grt" and c.status == "ok"
+    )
+    pay_grt, why_grt = should_pay_f2_grt(mem, budget_left=t_end - time.time(), n_grt=n_grt)
+    step("acquire", fidelity="F2_GRT", pay=pay_grt, why=why_grt)
+    if any(s["level"] == "routing" for s in plan["steps"]) and pay_grt and time.time() < t_end:
+        ranked = [
+            c
+            for c in mem.all()
+            if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
+        ]
+        ranked.sort(key=lambda c: float(c.qor.area_um2))
+        pick = None
+        for cand in ranked:
+            w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib)
+            mapped = (w.artifacts or {}).get("mapped_v")
+            if mapped and is_gate_cell_netlist(Path(mapped)):
+                pick = w
+                break
+        if pick:
+            mem.touch(pick)
+            child = evaluate_f2_grt(pick, mem, design_id=design_id)
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="routing",
+                    fidelity="F2",
+                    via="f2_openroad_grt",
+                    parent=pick.id,
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    overflow=child.qor.congestion,
+                    status=child.status,
+                )
+
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:
         step("propose", level="physical", knobs=c.knobs, fidelity="F0")
@@ -395,11 +466,12 @@ def run_controller(
         "variant": variant,
         "design_id": design_id,
         "architecture": [
-            "layered search: architecture e-graph ≠ logic ABC ≠ synthesis ABC_AREA ≠ physical ≠ PDN",
+            "layered search: architecture ≠ logic ≠ synthesis ≠ physical ≠ routing ≠ PDN",
             "F0 SSK-GP area + RUDY-class congestion; not IR",
             "F1 Yosys+ABC+equiv (script file, write_verilog -noexpr) on logic and dpath extracts",
-            "F2 ingest of OpenROAD place/GRT + F2-fast netgraph + budgeted GPL skip_io",
-            "F3/F4 ingest of OpenSTA + Dynamic IR (Solver A gold unrestamped)",
+            "F2 ingest + F2-fast netgraph + budgeted GPL + budgeted GRT (routing level)",
+            "F3 OpenSTA on the candidate (ideal) + ingest signoff STA",
+            "F4 ingest Dynamic IR (Solver A gold unrestamped)",
             "IR combo on dpath → planner orders cone extracts (lt/sub/eqz), no chip restart",
             "hierarchy chip→block→region→cone; attributed cells/region from hotspot",
             "Pareto per level — no premature scalar",
@@ -427,11 +499,19 @@ def run_controller(
             for c in mem.by_level("physical")
             if c.knobs.get("source") == "f2_openroad_gpl"
         ),
+        "n_f3": sum(1 for c in mem.all() if c.fidelity == "F3"),
+        "n_f2_grt": sum(
+            1
+            for c in mem.by_level("routing")
+            if c.knobs.get("source") == "f2_openroad_grt"
+        ),
         "memory": str(mem_path),
         "surrogate_f0": pred,
         "surrogate_f1_to_f2": predict_f2_from_f1(mem.all()),
         "surrogate_f1_to_f2_gnn": predict_f2_gnn(mem.all()),
         "surrogate_f1_to_gpl": predict_gpl_from_f1(mem.all()),
+        "surrogate_f1_to_wns": predict_wns_from_f1(mem.all()),
+        "surrogate_f1_to_power": predict_power_from_f1(mem.all()),
         "surrogate_f1_to_f4": f4s,
         "plan": plan,
         "attribution": attr,
@@ -498,8 +578,17 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if c.qor.dynamic_ir_mv is not None:
             ir = f" · F4 droop {c.qor.dynamic_ir_mv:.3f} mV (ingest, not gold replace)"
             break
+    wns = ""
+    timed = [
+        (c.knobs.get("parent_name") or c.knobs.get("name"), c.qor.wns_cost)
+        for c in mem.all()
+        if c.status == "ok" and c.qor.wns_cost is not None and c.fidelity == "F3"
+    ]
+    if timed:
+        timed.sort(key=lambda t: t[1])
+        wns = f" · best ideal WNS {-timed[0][1]:+.3f} ns ({timed[0][0]})"
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best} · IR cone {mods}{ir}"
+        f"best mapped area {best}{wns} · IR cone {mods}{ir}"
     )

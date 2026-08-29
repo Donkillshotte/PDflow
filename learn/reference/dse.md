@@ -11,8 +11,10 @@ RTL
    write_verilog -noattr -noexpr  (celle liberty, non assign soup)
  → F2-fast netgraph (baricentro ancorato + HPWL + RUDY)
  → F2 OpenROAD GPL -skip_io (un colpo a budget, non finish)
+ → F3 OpenSTA sul *candidato* (interconnect ideale: WNS + potenza)
+ → F2 routing: place_pins + GPL + global_route (non detailed route)
  → F2 ingest place / GRT del layout corrente
- → F3 STA ingest
+ → F3 ingest STA signoff
  → F4 Dynamic IR / EM ingest (gold 45.298 mV unrestampato)
  → attributo hotspot → regione → celle → modulo RTL (dpath/ctrl)
  → surrogato F0 (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 solo se accoppiato)
@@ -28,6 +30,7 @@ RTL
 | **logic** | sequenze ABC `{rewrite, refactor, resub, balance, …}` (BOiLS STD) | READY F1 · GP+EI · insert |
 | **synthesis** | `ABC_AREA` ORFS | catalogo F0 (non mescolato alle ops ABC) |
 | **physical** | util, densità, netlist del candidato | F0 proxy + F2-fast + **GPL** + ingest F2/F4 — non lancia finish |
+| **routing** | GRT dopo place_pins | READY F2 budgetato — non detailed route / F5 |
 | **pdn** | `c_decap`, pkg L | **ingest** F4 |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
@@ -39,7 +42,7 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F0 | SSK-GP area ± std; congestion RUDY-class; skip F1 se l’ottimista è già peggiore | READY — **non** è IR |
 | F1 | Yosys synth + ABC (script *file* ending with `map`) + `equiv_*` + `write_verilog -noexpr` | READY |
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` | READY (GPL budgetato) |
-| F3 | OpenSTA | ingest `sta_signoff_*.json` |
+| F3 | OpenSTA sul candidato (ideale) + ingest signoff | READY sul netlist F1 |
 | F4 | Dynamic IR/EM (libdpn A/B/C/D) | ingest — **non** sostituisce il gold |
 | F5 | P&R signoff | GAP: il controller non lancia finish |
 

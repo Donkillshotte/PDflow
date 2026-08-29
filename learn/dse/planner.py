@@ -65,6 +65,20 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "chip",
         }
     )
+    steps.append(
+        {
+            "level": "f3_sta",
+            "reason": "OpenSTA ideal WNS/power on F1 winners — not SPEF signoff, not IR",
+            "scope": "block" if focus != "chip" else "chip",
+        }
+    )
+    steps.append(
+        {
+            "level": "routing",
+            "reason": "budgeted OpenROAD GRT after place_pins — not detailed route/F5",
+            "scope": "chip",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

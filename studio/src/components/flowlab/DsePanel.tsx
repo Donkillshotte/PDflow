@@ -13,8 +13,10 @@ type Cand = {
     area_um2?: number | null;
     dynamic_ir_mv?: number | null;
     congestion?: number | null;
+    wns_cost?: number | null;
+    power_w?: number | null;
   };
-  artifacts?: { hpwl?: number; hpwl_um?: number; overflow?: number };
+  artifacts?: { hpwl?: number; hpwl_um?: number; overflow?: number; wns_ns?: number };
 };
 type Attr = { status?: string; modules?: string[]; scope?: string; droop_mv?: number };
 type DseReport = {
@@ -25,6 +27,8 @@ type DseReport = {
   n_arch?: number;
   n_f2_fast?: number;
   n_f2_gpl?: number;
+  n_f3?: number;
+  n_f2_grt?: number;
   surrogate_f1_to_f2_gnn?: { n?: number; uncertainty?: string; via?: string };
   pareto?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
   attribution?: Attr;
@@ -33,7 +37,7 @@ type DseReport = {
   candidates?: Cand[];
 };
 
-const LEVELS = ["architecture", "logic", "synthesis", "physical", "pdn"] as const;
+const LEVELS = ["architecture", "logic", "synthesis", "physical", "routing", "pdn"] as const;
 
 export function DsePanel() {
   const [report, setReport] = useState<DseReport | null>(null);
@@ -65,7 +69,7 @@ export function DsePanel() {
       <header className="fl-dynir-head">
         <strong>DSE · ricerca a livelli</strong>
         <p>
-          Planner dal cono IR · ABC BOiLS/DRiLLS · F2-fast + GPL · IR F4 ·{" "}
+          Planner dal cono IR · ABC · F2-fast/GPL/GRT · STA F3 · IR F4 ·{" "}
           <Link href="/materiali/reference/dse.md">dse.md</Link>
         </p>
       </header>
@@ -113,7 +117,12 @@ export function DsePanel() {
               <dd>
                 fast {report.n_f2_fast ?? 0}
                 {report.n_f2_gpl != null ? ` · GPL ${report.n_f2_gpl}` : ""}
+                {report.n_f2_grt != null ? ` · GRT ${report.n_f2_grt}` : ""}
               </dd>
+            </div>
+            <div>
+              <dt>F3 STA</dt>
+              <dd>{report.n_f3 ?? 0}</dd>
             </div>
             <div>
               <dt>Pareto logic</dt>
@@ -149,10 +158,10 @@ export function DsePanel() {
           <PhysicalTable
             rows={cands.filter(
               (c) =>
-                c.level === "physical" &&
-                (c.knobs?.source === "f2_fast_netgraph" ||
-                  c.knobs?.source === "f2_openroad_gpl" ||
-                  c.knobs?.source === "f2_fast_barycenter"),
+                c.knobs?.source === "f2_fast_netgraph" ||
+                c.knobs?.source === "f2_openroad_gpl" ||
+                c.knobs?.source === "f2_openroad_grt" ||
+                c.knobs?.source === "f2_fast_barycenter",
             )}
           />
         </>
@@ -180,6 +189,7 @@ function LevelTable({
             <th>Nome</th>
             <th>F</th>
             <th>Area µm²</th>
+            <th>WNS</th>
             <th>Stato</th>
             <th>Pareto</th>
           </tr>
@@ -190,6 +200,9 @@ function LevelTable({
               <td>{c.knobs?.name ?? c.knobs?.extract ?? c.id}</td>
               <td>{c.fidelity}</td>
               <td>{c.qor?.area_um2 != null ? c.qor.area_um2.toFixed(3) : "—"}</td>
+              <td>
+                {c.qor?.wns_cost != null ? `${(-c.qor.wns_cost).toFixed(3)} ns` : "—"}
+              </td>
               <td>{c.status}</td>
               <td>{front.has(c.id) ? "sì" : ""}</td>
             </tr>
@@ -204,7 +217,7 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
   if (!rows.length) return null;
   return (
     <div className="fl-dynir-group">
-      <span>Physical · F2-fast / GPL (non IR)</span>
+      <span>Physical / routing · F2-fast / GPL / GRT (non IR)</span>
       <table className="fl-dynir-table">
         <thead>
           <tr>

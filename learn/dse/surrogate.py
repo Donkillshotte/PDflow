@@ -241,3 +241,48 @@ def predict_gpl_from_f1(all_cands: list[Candidate]) -> dict:
         "via": "mean OpenROAD GPL HPWL (µm)",
         "not": "F2-fast grid units or Dynamic IR",
     }
+
+
+def _f1_to_metric(all_cands: list[Candidate], *, source: str, field: str, metric: str) -> dict:
+    pairs = []
+    for c in all_cands:
+        if (c.knobs or {}).get("source") != source or c.status != "ok":
+            continue
+        val = getattr(c.qor, field, None)
+        if val is None:
+            val = (c.artifacts or {}).get(field)
+        parent = next((p for p in all_cands if p.id == c.parent_id), None)
+        area = parent.qor.area_um2 if parent else c.qor.area_um2
+        if val is None or area is None:
+            continue
+        pairs.append((float(area), float(val)))
+    if not pairs:
+        return {
+            "metric": metric,
+            "n": 0,
+            "uncertainty": "high",
+            "via": f"no F1→{source} pairs",
+            "not": "Dynamic IR",
+        }
+    mean = sum(p[1] for p in pairs) / len(pairs)
+    return {
+        "metric": metric,
+        "mean": mean,
+        "n": len(pairs),
+        "uncertainty": "high" if len(pairs) < 4 else "medium",
+        "via": f"mean {metric} from {source}",
+        "not": "Dynamic IR / a neural voltage map",
+    }
+
+
+def predict_wns_from_f1(all_cands: list[Candidate]) -> dict:
+    """F1 area → ideal-STA wns_cost. Separate from placed/GRT WNS and from IR."""
+    return _f1_to_metric(
+        all_cands, source="f3_opensta_ideal", field="wns_cost", metric="wns_cost"
+    )
+
+
+def predict_power_from_f1(all_cands: list[Candidate]) -> dict:
+    return _f1_to_metric(
+        all_cands, source="f3_opensta_ideal", field="power_w", metric="power_w"
+    )

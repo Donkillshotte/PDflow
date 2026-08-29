@@ -40,15 +40,26 @@ ADAPTERS: dict[str, dict] = {
         "note": "anchored barycenter + HPWL + RUDY on the candidate netlist",
     },
     "physical_gpl": {
-        "via": "dse.openroad_f2",
+        "via": "dse.openroad_f2.evaluate_gpl",
         "note": "OpenROAD global_placement -skip_io; not route/finish/F5",
+    },
+    "routing": {
+        "via": "dse.openroad_f2.evaluate_grt",
+        "note": "place_pins + GPL + global_route; not detailed route/F5",
+    },
+    "timing": {
+        "via": "dse.sta_f3",
+        "note": "OpenSTA ideal WNS/power on the candidate; SPEF optional",
     },
 }
 
 
 def adapter_status() -> dict:
     from .openroad_f2 import available as gpl_ok
+    from .sta_f3 import available as sta_ok
 
     out = {k: dict(v) for k, v in ADAPTERS.items()}
     out["physical_gpl"]["ready"] = bool(gpl_ok())
+    out["routing"]["ready"] = bool(gpl_ok())
+    out["timing"]["ready"] = bool(sta_ok())
     return out
