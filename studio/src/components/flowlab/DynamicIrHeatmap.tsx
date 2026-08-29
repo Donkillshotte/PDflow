@@ -16,6 +16,13 @@ type Amg = {
   n_levels?: number;
   backend?: string;
 };
+type Mor = {
+  ok?: boolean;
+  worst_droop_mv?: number;
+  abs_err_vs_A_mv?: number;
+  m?: number;
+  backend?: string;
+};
 type DynReport = {
   ok?: boolean;
   summary?: string;
@@ -63,6 +70,7 @@ type DynReport = {
     timing_impact?: Timing;
   };
   solver_b?: Amg;
+  solver_c?: Mor;
   scenarios?: Scenario[];
   timing_impact?: Timing;
 };
@@ -134,6 +142,7 @@ export function DynamicIrHeatmap({
   const nets = plat?.network_levels;
   const tiers = plat?.product_tiers;
   const amg = report?.solver_b;
+  const mor = report?.solver_c;
   const timing = report?.timing_impact ?? plat?.timing_impact;
   const scenarios = report?.scenarios ?? [];
   const worstScen = scenarios[0];
@@ -144,7 +153,7 @@ export function DynamicIrHeatmap({
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
           Piattaforma ibrida: OpenROAD frontend · Solver A golden · Solver B
-          SA-AMG · C = stessa A, molti I(t) · vyges = bootstrap ·{" "}
+          SA-AMG · C = Krylov MOR · vyges = bootstrap ·{" "}
           <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>
           {" · "}
           <a href="/materiali/reference/dynamic-ir-landscape.md">landscape</a>
@@ -201,6 +210,18 @@ export function DynamicIrHeatmap({
                 </dd>
               </div>
             )}
+            {mor && (
+              <div>
+                <dt>|A−C| MOR</dt>
+                <dd>
+                  {(mor.abs_err_vs_A_mv ?? 0) < 0.001
+                    ? "< 1 µV"
+                    : `${(mor.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
+                  {mor.m != null ? ` · m=${mor.m}` : ""}
+                  {mor.backend ? ` · ${mor.backend}` : ""}
+                </dd>
+              </div>
+            )}
             {timing?.degradation_ps != null && (
               <div>
                 <dt>Delay scale</dt>
@@ -210,7 +231,7 @@ export function DynamicIrHeatmap({
           </dl>
           {solvers && (
             <ChipList
-              label="Solver (A gold · B workhorse · C shared A)"
+              label="Solver (A gold · B workhorse · C Krylov MOR)"
               items={[
                 {
                   key: "A",
@@ -225,7 +246,7 @@ export function DynamicIrHeatmap({
                 {
                   key: "C",
                   status: solvers.C_rational_krylov_mor?.status,
-                  text: "C shared PDN",
+                  text: "C Krylov MOR",
                 },
               ]}
             />

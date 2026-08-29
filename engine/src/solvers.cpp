@@ -35,16 +35,6 @@ SpMat to_eigen(const Csr& A) {
   return M;
 }
 
-double dot(const double* a, const double* b, Index n) {
-  double s = 0.0;
-  for (Index i = 0; i < n; ++i) {
-    s += a[i] * b[i];
-  }
-  return s;
-}
-
-double nrm2(const double* a, Index n) { return std::sqrt(dot(a, a, n)); }
-
 void jacobi(const Csr& A, const std::vector<double>& dinv, const double* b, double* x,
             int sweeps) {
   std::vector<double> ax(static_cast<size_t>(A.nrows));

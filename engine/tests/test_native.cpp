@@ -1,7 +1,10 @@
 #include "dpn/c_api.h"
 #include "dpn/csr.hpp"
+#include "dpn/mor.hpp"
 #include "dpn/solvers.hpp"
+#include "dpn/transient.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -40,6 +43,46 @@ static Csr poisson_1d(Index n) {
       A.col[k] = i + 1;
       A.val[k++] = -1.0;
     }
+  }
+  return A;
+}
+
+static Csr r_chain(Index n, double r) {
+  const double g = 1.0 / r;
+  Csr A;
+  A.nrows = n;
+  A.ncols = n;
+  A.rowptr.resize(n + 1);
+  A.rowptr[0] = 0;
+  for (Index i = 0; i < n; ++i) {
+    int row_n = 1;
+    if (i > 0) {
+      ++row_n;
+    }
+    if (i + 1 < n) {
+      ++row_n;
+    }
+    A.rowptr[i + 1] = A.rowptr[i] + row_n;
+  }
+  A.col.resize(A.rowptr[n]);
+  A.val.resize(A.rowptr[n]);
+  for (Index i = 0; i < n; ++i) {
+    Index k = A.rowptr[i];
+    double diag = 0.0;
+    if (i > 0) {
+      A.col[k] = i - 1;
+      A.val[k++] = -g;
+      diag += g;
+    }
+    const Index dpos = k;
+    A.col[k] = i;
+    A.val[k++] = 0.0;
+    if (i + 1 < n) {
+      A.col[k] = i + 1;
+      A.val[k++] = -g;
+      diag += g;
+    }
+    A.val[dpos] = diag;
   }
   return A;
 }
@@ -172,6 +215,126 @@ int main() {
     check(dpn_solve(h, &b, &x, nullptr, &rel) == 0, "c_api solve 1-node");
     check(std::abs(x - v_closed) < 1e-12, "1-node BE matches closed form");
     dpn_free(h);
+  }
+  {
+    // Multi-step 1-node BE vs closed form (native timestep).
+    const double vdd = 1.1, r = 2.0, c = 50e-12, dt = 10e-12, ipulse = 5e-3;
+    const double t50 = 0.2e-9, dur = 0.2e-9, t_end = 0.8e-9;
+    const double g = 1.0 / r;
+    const double a = g + c / dt;
+    int rowptr[2] = {0, 1};
+    int col[1] = {0};
+    double val[1] = {a};
+    double C[1] = {c};
+    double leak[1] = {0.0};
+    double pad[1] = {g * vdd};
+    int ev_idx[1] = {0};
+    double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
+    DpnHandle* h = dpn_setup(0, 1, 1, rowptr, col, val);
+    const int maxs = 128;
+    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
+    int worst_node = 0, n_steps = 0;
+    double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
+    check(dpn_timestep_be(h, C, leak, pad, dt, t_end, vdd, 1, ev_idx, ev_t50, ev_dur, ev_ip,
+                          Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
+                          wv.data(), wi.data(), &n_steps) == 0,
+          "native timestep 1-node rc");
+    double v = vdd, worst_cf = vdd;
+    const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+    for (int s = 0; s < steps; ++s) {
+      const double t = s * dt;
+      const double i = dpn::triangle(t, t50, dur, ipulse);
+      v = (g * vdd - i + (c / dt) * v) / a;
+      worst_cf = std::min(worst_cf, v);
+    }
+    check(n_steps == steps, "native timestep step count");
+    check(std::abs(worst_v - worst_cf) < 1e-12, "native timestep vs closed-form BE");
+    dpn_free(h);
+
+    int bumps[1] = {0};
+    int growptr[2] = {0, 0};
+    int gcol[1] = {0};
+    double Gempty[1] = {0.0};
+    check(dpn_timestep_be_adaptive(1, 0, growptr, gcol, Gempty, C, bumps, 1, r, 0.0, vdd, leak, dt,
+                                   t_end, 1e-5, 1e-3, 1, ev_idx, ev_t50, ev_dur, ev_ip, Vw.data(),
+                                   &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
+                                   wv.data(), wi.data(), &n_steps) == 0,
+          "adaptive timestep 1-node");
+    check(std::abs(worst_v - worst_cf) < 2e-3, "adaptive vs fine BE (1 mV-class)");
+    std::printf("    adaptive steps=%d vmin=%.6f closed=%.6f\n", n_steps, worst_v, worst_cf);
+  }
+  {
+    // Rational Krylov: 1-node is exact with m=1.
+    const double vdd = 1.1, r = 2.0, c = 50e-12, dt = 10e-12, ipulse = 5e-3;
+    const double t50 = 0.2e-9, dur = 0.2e-9, t_end = 0.8e-9, g = 1.0 / r;
+    int rowptr[2] = {0, 1};
+    int col[1] = {0};
+    double Gval[1] = {g};
+    double C[1] = {c};
+    double start[1] = {1.0};
+    double shifts[2] = {0.0, 1e9};
+    DpnMor* mor = dpn_mor_setup(1, 1, rowptr, col, Gval, C, 1, start, 2, shifts, 3);
+    check(mor != nullptr && dpn_mor_m(mor) >= 1, "mor setup 1-node");
+    double leak[1] = {0.0};
+    double pad[1] = {g * vdd};
+    int ev_idx[1] = {0};
+    double ev_t50[1] = {t50}, ev_dur[1] = {dur}, ev_ip[1] = {ipulse};
+    const int maxs = 128;
+    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
+    int worst_node = 0, n_steps = 0;
+    double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
+    check(dpn_mor_timestep(mor, leak, pad, dt, t_end, vdd, 1, ev_idx, ev_t50, ev_dur, ev_ip,
+                           Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
+                           wv.data(), wi.data(), &n_steps) == 0,
+          "mor timestep 1-node");
+    const double a = g + c / dt;
+    double v = vdd, worst_cf = vdd;
+    const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
+    for (int s = 0; s < steps; ++s) {
+      const double t = s * dt;
+      const double i = dpn::triangle(t, t50, dur, ipulse);
+      v = (g * vdd - i + (c / dt) * v) / a;
+      worst_cf = std::min(worst_cf, v);
+    }
+    check(std::abs(worst_v - worst_cf) < 1e-9, "1-node MOR == full BE");
+    std::printf("    mor m=%d vmin=%.9f closed=%.9f\n", dpn_mor_m(mor), worst_v, worst_cf);
+    dpn_mor_free(mor);
+  }
+  {
+    // 1D RC line: MOR vs SparseLU BE.
+    const int n = 20;
+    Csr G = r_chain(n, 2.0);
+    std::vector<double> C(n, 20e-12);
+    std::vector<double> leak(n, 0.0);
+    std::vector<double> pad(n, 0.0);
+    const double vdd = 1.1, dt = 20e-12, t_end = 0.4e-9, g_pad = 1.0;
+    std::vector<double> dpad(n, 0.0);
+    dpad[0] = g_pad;
+    pad[0] = g_pad * vdd;
+    Csr Gp = dpn::plus_diag(G, dpad.data());
+    std::vector<double> Cd(n);
+    for (int i = 0; i < n; ++i) {
+      Cd[i] = C[i] / dt;
+    }
+    Csr A = dpn::plus_diag(Gp, Cd.data());
+    auto lu = dpn::make_direct(A);
+    dpn::TriangleSrc ev;
+    ev.idx = n - 1;
+    ev.t50 = 0.12e-9;
+    ev.dur = 0.08e-9;
+    ev.ipulse = 3e-3;
+    auto full = dpn::timestep_be(*lu, A, C.data(), leak.data(), pad.data(), dt, t_end, vdd, &ev, 1);
+    std::vector<double> start(n, 0.0);
+    start[n - 1] = 1.0;
+    start[0] = 1.0;
+    double shifts[3] = {0.0, 1e9, 1.0 / dt};
+    auto mor = dpn::make_mor(Gp, C.data(), 1, start.data(), 3, shifts, 4);
+    auto red = mor->timestep(leak.data(), pad.data(), dt, t_end, vdd, &ev, 1);
+    const double err = std::abs(full.worst_v - red.worst_v);
+    check(mor->m() >= 2, "RC line MOR multilevel basis");
+    check(err < 5e-3, "RC line MOR vs LU BE (< 5 mV)");
+    std::printf("    RC n=20 m=%d |A-C|=%.3e V  full=%.4f red=%.4f\n", mor->m(), err, full.worst_v,
+                red.worst_v);
   }
   if (fails) {
     std::fprintf(stderr, "%d checks failed\n", fails);

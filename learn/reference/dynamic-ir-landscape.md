@@ -5,8 +5,8 @@ Il “flow definitivo” **non** si costruisce intorno a un singolo progetto esi
 È un **sistema ibrido**: frontend fisico OpenROAD, motore di corrente dedicato,
 più solver a fedeltà diversa, screening attività, gold esterni.
 
-Questa slice **implementa** SA-AMG (Solver B) e il riuso dell’operatore PDN tra scenari.
-**Non** implementa CCS, Ginkgo/GPU, né un ODE rational Krylov. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
+Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo, Δt adattivo e un ODE rational Krylov (Solver C).
+**Non** implementa CCS né Ginkgo/GPU. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
 
 ## Verdetto (piattaforma, non un clone)
 
@@ -17,15 +17,15 @@ Questa slice **implementa** SA-AMG (Solver B) e il riuso dell’operatore PDN tr
 | Scenario / window engine | non simulare 100k cicli | PARTIAL (`I_tot(t)` di questo run) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
-| **Solver C** shared PDN (non Krylov ODE) | riuso tra scenari | **PARTIAL** — stessa \(A=G+C/\Delta t\), tre `I(t)` |
+| **Solver C** rational Krylov MOR | riuso tra scenari | **READY/PARTIAL** — ODE ridotto su \(\delta v=v-V_\mathrm{dd}\); gold resta A |
 | Ginkgo | backend sparso CPU/GPU | **GAP** |
 | Xyce | gold parallelo medio | **GAP** in VM |
 | ngspice | unit test fisico 1-nodo | READY |
 | MAVIREC / PowerNet / IR-Hunter | ML solo screening | **GAP** — mai dentro il physics |
 | vyges-em-ir | bootstrap + check simultaneous-switch | INTEGRATED, **non** il core |
 
-Killer feature **già nel codice**: stessa A della PDN, molti `I(t)` (clock / spatial / simultaneous).
-Manca ancora il modello ridotto rational Krylov (MATEX/Raptor).
+Killer feature **già nel codice**: modello ridotto rational Krylov (stessa G,C, molti `I(t)`).
+Il gold resta Solver A. MOR congela \(L/\Delta t\) del package all’Δt di analisi (non MNA induttivo).
 
 ## Matrice (ciò che esiste davvero)
 
@@ -52,7 +52,7 @@ Lo split da copiare è quello di EMSim *current analysis*, non il passo EM probe
 |---|---|---|---|
 | **A — Direct BE** | \((G + C/\Delta t) V_{n+1} = \mathrm{rhs}\) · LU sparso | gold, lento, indispensabile per validare | **READY** |
 | **B — SA-AMG** | V-cycle Jacobi + CG, LU sul coarse | workhorse (ESPSim-class) | **READY** |
-| **C — shared A** | stessa \(A=G+C/\Delta t\), rhs diversi | tante TRAN sulla stessa PDN | **PARTIAL** (non rational Krylov) |
+| **C — rational Krylov** | \(C_r \dot z + G_r z = -V^\top I(t)\) | tante TRAN sulla stessa PDN | **READY** se \|A−C\| < 5 mV; altrimenti PARTIAL |
 
 Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. Non si scrive una GPU fork: un giorno `LinearSolver` → Ginkgo.
 
@@ -114,7 +114,7 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM) |
 | 3 Activity | VCD/SAIF/vectorless windows | modi sintetici clock/spatial; VCD RTL non è pin-accurate |
 | 4 Current engine | I_cell(t) per arco | triangolo per ITerm |
-| 5 Solver | B AMG + C shared A + A gold | **A + B READY**; C = shared operator |
+| 5 Solver | B AMG + C Krylov MOR + A gold | **A + B READY**; C = reduced ODE |
 | 6 Analysis | map, Vmin, EM, timing | JSON + CSV + SVG heatmap |
 
 ## Classifica reale

@@ -8,9 +8,11 @@ Architecture (what this file actually does — not a product claim):
   Vmin(t) + V(x,y) heatmap at t_worst
 
 Solver A (direct BE + LU) is the golden oracle.
-Solver B (smoothed-aggregation AMG + CG) is the workhorse on the same A = G+C/Δt.
-Solver C here is shared-operator reuse across I(t) scenarios — not a rational
-Krylov reduced ODE yet. vyges-em-ir is bootstrap, not the core. No forks.
+Solver B (smoothed-aggregation AMG + CG) is the workhorse on A = G+C/Δt.
+Solver C is a rational Krylov reduced BE ODE on δv = v − Vdd (same G, C;
+many I(t)). vyges-em-ir is bootstrap, not the core. No forks.
+
+The BE time loop and MOR live in libdpn. Python orchestrates extraction and I(t).
 
 Honest limits: triangle ≠ Liberty CCS; RTL VCD does not name gate pins;
 Nangate45 has no CCS current tables.
@@ -43,7 +45,15 @@ _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from pdn_solvers import DirectLU, SAAMG, residual_rel  # noqa: E402
+from pdn_solvers import (  # noqa: E402
+    DirectLU,
+    RationalKrylov,
+    SAAMG,
+    mor_starts,
+    native_adaptive,
+    native_timestep,
+    residual_rel,
+)
 from pdn_transient import build_system, parse_spice, solve_static  # noqa: E402
 
 COORD_RE = re.compile(r"(ITermNode|Node)_metal(\d+)_(-?\d+)_(-?\d+)")
@@ -192,9 +202,12 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
         pad[i] = g_pad * vdd
     return {
         "A": A,
+        "G": Gsoft.tocsr(),
+        "G_mesh": G.tocsr(),
         "C": C,
         "leak": leak,
         "pad": pad,
+        "bump": bump,
         "n": n,
         "pkg_r": pkg_r,
         "pkg_l": pkg_l,
@@ -204,7 +217,39 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt):
     }
 
 
-def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float):
+def _map_worst_node(result: dict, order) -> dict:
+    idx = result.get("worst_node_idx")
+    if result.get("worst_node") is None and idx is not None and order:
+        result["worst_node"] = order[int(idx)]
+    result.setdefault("pkg_r", None)
+    result.setdefault("pkg_l", None)
+    result.setdefault("c_decap", None)
+    return result
+
+
+def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float, adaptive: bool = False):
+    native = None
+    if adaptive:
+        native = native_adaptive(sys, events, vdd, t_end)
+        if native is not None:
+            native["pkg_r"] = sys["pkg_r"]
+            native["pkg_l"] = sys["pkg_l"]
+            native["c_decap"] = sys["c_decap"]
+            native["solver"] = "A_direct_be_adaptive"
+            return _map_worst_node(native, order)
+        print(
+            "libdpn adaptive BE unavailable; not silently substituting fixed Δt",
+            file=__import__("sys").stderr,
+        )
+        adaptive = False
+    else:
+        native = native_timestep(solver, sys, events, vdd, t_end)
+        if native is not None:
+            native["pkg_r"] = sys["pkg_r"]
+            native["pkg_l"] = sys["pkg_l"]
+            native["c_decap"] = sys["c_decap"]
+            return _map_worst_node(native, order)
+
     C = sys["C"]
     leak = sys["leak"]
     pad = sys["pad"]
@@ -259,6 +304,8 @@ def timestep_be(sys: dict, events, solver, vdd: float, order, t_end: float):
         "wave_vmin": wave_vmin,
         "wave_itot": wave_itot,
         "V_worst": worst_V,
+        "backend": getattr(solver, "backend", "python"),
+        "timestep_loop": "python",
     }
 
 
@@ -313,18 +360,34 @@ def platform_block(
     amg: dict | None,
     scenarios: list | None,
     timing: dict | None,
+    mor: dict | None = None,
+    adaptive: dict | None = None,
 ) -> dict:
     b_status = "READY" if amg and amg.get("ok") else ("PARTIAL" if amg else "GAP")
-    c_status = "PARTIAL" if scenarios else "GAP"
+    if mor and mor.get("ok"):
+        c_status = "READY"
+        c_via = "rational Krylov reduced BE ODE on δv = v − Vdd"
+    elif mor:
+        c_status = "PARTIAL"
+        c_via = (
+            f"rational Krylov ODE, |A−C|={mor.get('abs_err_vs_A_mv')} mV "
+            "(basis does not yet replace full-order gold)"
+        )
+    elif scenarios:
+        c_status = "PARTIAL"
+        c_via = "shared A = G+C/Δt across I(t) scenarios (not reduced ODE)"
+    else:
+        c_status = "GAP"
+        c_via = "rational Krylov reduced ODE"
     fast = "READY" if b_status == "READY" else "PARTIAL"
+    accurate = "PARTIAL" if adaptive and adaptive.get("ok") else "GAP"
     return {
         "name": "hierarchical multi-fidelity power-integrity engine",
-        "slice": "native libdpn (A LU + B SA-AMG) + OpenROAD frontend + triangle I(t)",
+        "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + adaptive BE) + OpenROAD + triangle I(t)",
         "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
         "do_not_implement_this_slice": [
             "Liberty CCS/ECSM I(t) tables",
             "Ginkgo CPU/GPU backend",
-            "rational Krylov reduced ODE",
             "empty power-integrity/ tree",
         ],
         "ml": {
@@ -360,8 +423,10 @@ def platform_block(
             "C_rational_krylov_mor": {
                 "status": c_status,
                 "role": "multi-scenario reuse on the same PDN",
-                "via": "shared A = G+C/Δt across I(t) scenarios (not rational Krylov ODE)",
-                "killer_feature": "same PDN operator, many current waveforms",
+                "via": c_via,
+                "killer_feature": "one reduced ODE, many current waveforms",
+                "m": None if not mor else mor.get("m"),
+                "vs_A": mor,
                 "scenarios": scenarios,
             },
         },
@@ -398,8 +463,10 @@ def platform_block(
                 "this_slice": f"synthetic {mode} t50 + Solver B SA-AMG",
             },
             "ACCURATE": {
-                "status": "GAP",
+                "status": accurate,
                 "intended": "VCD/FSDB + CCS I(t) + AMG + adaptive timestep",
+                "this_slice": "adaptive BE LTE is PARTIAL; CCS/VCD still GAP",
+                "adaptive": adaptive,
             },
             "SIGNOFF": {
                 "status": "GAP",
@@ -691,7 +758,9 @@ def main() -> int:
     ap.add_argument("--vdd", type=float, default=0.0)
     ap.add_argument("--skip-ngspice", action="store_true")
     ap.add_argument("--no-amg", action="store_true", help="skip Solver B SA-AMG")
-    ap.add_argument("--no-scenarios", action="store_true", help="skip extra I(t) modes on shared A")
+    ap.add_argument("--no-scenarios", action="store_true", help="skip extra I(t) modes")
+    ap.add_argument("--no-mor", action="store_true", help="skip Solver C rational Krylov")
+    ap.add_argument("--adaptive", action="store_true", help="also run adaptive-Δt BE (LU)")
     args = ap.parse_args()
 
     resistors, currents, voltages = parse_spice(args.spice)
@@ -752,22 +821,76 @@ def main() -> int:
             "lu_step_s": dyn["solver_step_s"],
             "backend": getattr(solver_b, "backend", "python"),
             "lu_backend": getattr(solver_a, "backend", "python"),
+            "timestep_loop": dyn_b.get("timestep_loop"),
+            "lu_timestep_loop": dyn.get("timestep_loop"),
         }
         dyn_b.pop("V_worst", None)
         dyn["amg"] = {k: v for k, v in dyn_b.items() if not k.startswith("wave_") and k != "V_worst"}
 
+    mor_meta = None
+    mor = None
+    if not args.no_mor:
+        starts = mor_starts(sys_be["n"], events)
+        shifts = np.array([0.0, 1e9, 1.0 / dt], dtype=np.float64)
+        mor = RationalKrylov(sys_be["G"], sys_be["C"], starts, shifts, n_moments=4)
+        dyn_c = mor.timestep(sys_be, events, vdd, t_end)
+        dyn_c = _map_worst_node(dyn_c, order)
+        err_c = abs(dyn["worst_droop"] - dyn_c["worst_droop"]) * 1e3
+        mor_meta = {
+            "ok": err_c < 5.0,
+            "worst_droop_mv": dyn_c["worst_droop"] * 1e3,
+            "worst_time_ns": dyn_c["worst_time_s"] * 1e9,
+            "abs_err_vs_A_mv": err_c,
+            "rel_res_max": dyn_c.get("rel_res_max"),
+            "m": getattr(mor, "m", dyn_c.get("m")),
+            "setup_s": getattr(mor, "setup_s", dyn_c.get("solver_setup_s")),
+            "step_s": dyn_c.get("solver_step_s"),
+            "backend": getattr(mor, "backend", dyn_c.get("backend")),
+            "via": "rational Krylov + reduced BE on δv=v-Vdd",
+            "note": "MOR uses Gsoft at analysis Δt (package L/Δt frozen); not RLC MNA",
+        }
+        dyn["mor"] = {k: v for k, v in dyn_c.items() if not k.startswith("wave_") and k != "V_worst"}
+
+    adaptive_meta = None
+    if args.adaptive:
+        dyn_ad = timestep_be(sys_be, events, solver_a, vdd, order, t_end, adaptive=True)
+        err_ad = abs(dyn["worst_droop"] - dyn_ad["worst_droop"]) * 1e3
+        adaptive_meta = {
+            "ok": err_ad < 5.0,
+            "worst_droop_mv": dyn_ad["worst_droop"] * 1e3,
+            "worst_time_ns": dyn_ad["worst_time_s"] * 1e9,
+            "abs_err_vs_A_mv": err_ad,
+            "steps": dyn_ad["steps"],
+            "timestep_loop": dyn_ad.get("timestep_loop"),
+            "via": "BE LTE ½|Δ²V|; pad G frozen at analysis Δt (no MNA inductor history)",
+        }
+
     scenarios = None
-    if not args.no_scenarios and solver_b is not None:
+    if not args.no_scenarios:
         scenarios = []
+        runner = mor if mor is not None else solver_b
+        via_name = getattr(runner, "name", None) if runner is not None else None
         for m in ("clock", "spatial", "simultaneous"):
-            if m == args.mode and amg_meta is not None:
+            if m == args.mode and mor_meta is not None:
+                scenarios.append(
+                    {
+                        "mode": m,
+                        "droop_mv": mor_meta["worst_droop_mv"],
+                        "t_ns": mor_meta["worst_time_ns"],
+                        "i_peak_a": max(dyn["wave_itot"]) if dyn["wave_itot"] else 0.0,
+                        "via": via_name,
+                        "primary": True,
+                    }
+                )
+                continue
+            if m == args.mode and amg_meta is not None and mor is None:
                 scenarios.append(
                     {
                         "mode": m,
                         "droop_mv": amg_meta["worst_droop_mv"],
                         "t_ns": amg_meta["worst_time_ns"],
                         "i_peak_a": max(dyn["wave_itot"]) if dyn["wave_itot"] else 0.0,
-                        "via": solver_b.name,
+                        "via": via_name,
                         "primary": True,
                     }
                 )
@@ -783,18 +906,25 @@ def main() -> int:
                 dur_s=dur_s,
                 t50_s=t50_s,
             )
-            r_m = timestep_be(sys_be, ev_m, solver_b, vdd, order, t_end)
+            if mor is not None:
+                r_m = mor.timestep(sys_be, ev_m, vdd, t_end)
+                r_m = _map_worst_node(r_m, order)
+            elif solver_b is not None:
+                r_m = timestep_be(sys_be, ev_m, solver_b, vdd, order, t_end)
+            else:
+                continue
             scenarios.append(
                 {
                     "mode": m,
                     "droop_mv": r_m["worst_droop"] * 1e3,
                     "t_ns": r_m["worst_time_s"] * 1e9,
                     "i_peak_a": max(r_m["wave_itot"]) if r_m["wave_itot"] else 0.0,
-                    "via": solver_b.name,
+                    "via": via_name,
                     "primary": False,
                 }
             )
-        scenarios.sort(key=lambda s: -s["droop_mv"])
+        if scenarios:
+            scenarios.sort(key=lambda s: -s["droop_mv"])
     Vw = dyn.pop("V_worst")
     pts = heatmap_points(order, Vw, vdd, events)
     hottest = sorted(pts, key=lambda p: p["ir_mv"], reverse=True)[:8]
@@ -873,7 +1003,7 @@ def main() -> int:
         {"id": 2, "name": "Power model", "status": "PARTIAL", "via": "I_avg from mesh (NLDM, not CCS I(t))"},
         {"id": 3, "name": "Activity engine", "status": "PARTIAL", "via": f"synthetic {args.mode}; VCD pin-accurate = GAP"},
         {"id": 4, "name": "Current waveform", "status": "PARTIAL", "via": "per-ITerm triangle PWL"},
-        {"id": 5, "name": "Transient solver", "status": "READY", "via": "A golden LU + B SA-AMG on shared A=G+C/Δt"},
+        {"id": 5, "name": "Transient solver", "status": "READY", "via": "A LU gold + B SA-AMG + C rational Krylov MOR"},
         {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + windows + delay scaling; EM = GAP"},
     ]
     plat = platform_block(
@@ -884,10 +1014,17 @@ def main() -> int:
         amg=amg_meta,
         scenarios=scenarios,
         timing=timing,
+        mor=mor_meta,
+        adaptive=adaptive_meta,
     )
     amg_note = (
         f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
         if amg_meta
+        else ""
+    )
+    mor_note = (
+        f" · MOR m={mor_meta['m']} {mor_meta['worst_droop_mv']:.3f} mV (|A−C| {mor_meta['abs_err_vs_A_mv']:.3f} mV)"
+        if mor_meta
         else ""
     )
     report = {
@@ -899,13 +1036,13 @@ def main() -> int:
             "per-ITerm PWL triangle I(t) (leak + switch) — not CCS",
             "Solver A: direct backward-Euler sparse LU (golden)",
             "Solver B: smoothed-aggregation AMG + CG (workhorse)",
-            "Shared A = G+C/Δt across I(t) scenarios",
+            "Solver C: rational Krylov reduced BE ODE (δv = v − Vdd)",
+            "Native BE timestep loop in libdpn; Python orchestrates I(t)",
             "V(x,y) heatmap at t_worst + delay scaling at worst tap",
         ],
         "not": [
             "Liberty CCS current waveforms",
             "gate-level VCD pin times",
-            "rational Krylov reduced ODE",
             "RedHawk / Voltus / Totem sign-off",
             "vyges-em-ir fork",
             "EMSim commercial flow (VCS/Calibre/PT-PX/HSpice)",
@@ -914,7 +1051,7 @@ def main() -> int:
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
-            "this_engine": "Solver A gold + Solver B SA-AMG on write_pg_spice; triangle I(t)",
+            "this_engine": "A gold + B SA-AMG + C Krylov MOR on write_pg_spice; triangle I(t)",
             "ngspice": "unit-test gold for BE on a 1-node RC",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
@@ -931,10 +1068,10 @@ def main() -> int:
             },
             "B_pdn_solve": {
                 "status": "READY",
-                "solver": "A_direct_be + B_sa_amg",
+                "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor",
                 "replaces": "HSpice TRAN on Calibre DSPF",
-                "via": "Solver A LU golden + Solver B SA-AMG on write_pg_spice",
-                "gold": "ngspice 1-node gear/BE; A vs B droop on the chip mesh",
+                "via": "Solver A LU golden + B SA-AMG + C reduced ODE on write_pg_spice",
+                "gold": "ngspice 1-node gear/BE; A vs B vs C droop on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
@@ -968,6 +1105,8 @@ def main() -> int:
         "waveform": str(wave_path),
         "ngspice_gold": gold,
         "solver_b": amg_meta,
+        "solver_c": mor_meta,
+        "adaptive": adaptive_meta,
         "scenarios": scenarios,
         "timing_impact": timing,
         "summary": (
@@ -977,6 +1116,7 @@ def main() -> int:
             f"I_peak {i_tot_peak*1e3:.2f} mA · {len(events)} PWL · "
             f"t50 span {((max(t50s)-min(t50s))*1e9) if t50s else 0:.2f} ns"
             f"{amg_note}"
+            f"{mor_note}"
             f" · delay +{timing['degradation_ps']:.2f} ps"
         ),
     }

@@ -6,10 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(OpenMP)
 
 add_library(dpn SHARED
   src/csr.cpp
   src/solvers.cpp
+  src/transient.cpp
+  src/mor.cpp
   src/c_api.cpp
 )
 target_include_directories(dpn
@@ -17,6 +20,9 @@ target_include_directories(dpn
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 target_link_libraries(dpn PUBLIC Eigen3::Eigen)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(dpn PUBLIC OpenMP::OpenMP_CXX)
+endif()
 target_compile_options(dpn PRIVATE -O3 -fno-math-errno)
 
 add_executable(dpn_test tests/test_native.cpp)

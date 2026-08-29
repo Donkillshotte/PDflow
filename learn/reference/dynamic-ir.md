@@ -1,7 +1,7 @@
 # Dynamic IR sul GCD (I(t) per pin + Solver A gold + Solver B SA-AMG)
 
 Slice eseguibile di una **piattaforma ibrida**, non un RedHawk e non un fork.
-Frontend: OpenROAD `write_pg_spice`. **Solver A** (BE + LU) è l’oracle. **Solver B** (SA-AMG + CG) è il workhorse sulla stessa \(A=G+C/\Delta t\). **Solver C** oggi è il riuso di quella A su più `I(t)` — non un ODE Krylov ridotto. vyges-em-ir è bootstrap.
+Frontend: OpenROAD `write_pg_spice`. **Solver A** (BE + LU) è l’oracle. **Solver B** (SA-AMG + CG) è il workhorse sulla stessa \(A=G+C/\Delta t\). **Solver C** è un ODE Krylov ridotto su \(\delta v=v-V_\mathrm{dd}\). vyges-em-ir è bootstrap.
 
 ```text
 6_final.odb
@@ -16,7 +16,8 @@ pdn_dynamic.py
     A = G + C/Δt                setup una volta (indipendente da I(t))
     Solver A: LU                gold
     Solver B: SA-AMG + CG       workhorse, |A−B| sul GCD < 1 µV
-    scenari extra su B          ranking clock / spatial / simultaneous
+    Solver C: rational Krylov MOR  reduced ODE, |A−C| sul GCD in report
+    Native BE loop in libdpn
     ▼
 sim/reports/dynamic_ir_<variant>.json
                   .wave.csv     Vmin(t), I_tot(t)
@@ -35,8 +36,8 @@ vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch
 | **L2 VCD dynamic** | tempi reali di pin | **GAP** — VCD RTL ≠ ITerm gate |
 | **L3 Windowed** | simula solo finestre ad alta corrente | PARTIAL — finestre su `I_tot(t)` di **questo** run |
 
-Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A/B ci sono.
-**Non** si forka vyges, EMSim o PSM. CCS, Ginkgo GPU e rational Krylov ODE restano GAP.
+Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A/B/C ci sono.
+**Non** si forka vyges, EMSim o PSM. CCS e Ginkgo GPU restano GAP.
 
 ## Solver A / B / C e livelli prodotto
 
@@ -44,7 +45,7 @@ Il salto qualitativo restante è il modello **cella → I(t)** (CCS). I solver A
 |---|---|---|
 | **A** direct BE + LU | golden | READY (~3 ms setup, più veloce a 4k nodi) |
 | **B** SA-AMG + CG in `libdpn` | workhorse | READY · 5 livelli · \|A−B\| ≪ 1 mV · nativo |
-| **C** shared PDN | stessa A, tanti `I(t)` | PARTIAL — non ODE Krylov/MOR |
+| **C** rational Krylov MOR | reduced ODE, tanti `I(t)` | READY se \|A−C\| < 5 mV |
 
 | Rete | Equazione | GCD |
 |---|---|---|
@@ -65,7 +66,7 @@ Sul GCD Nangate45 LU è più veloce di AMG (4k nodi). AMG è il path che tiene s
 | 2 | Power model | I_avg nel `.sp` (NLDM) | no CCS I(t) |
 | 3 | Activity | clock/spatial/simultaneous | no VCD pin, no SAIF |
 | 4 | Current waveform | triangolo per ITerm | no slew/load/arc |
-| 5 | Transient solver | **A** LU gold + **B** SA-AMG | C = shared A, non Krylov ODE; ngspice = gold 1-nodo |
+| 5 | Transient solver | **A** LU gold + **B** SA-AMG + **C** Krylov | ngspice = gold 1-nodo; MOR congela L/Δt |
 | 6 | Analysis | heatmap, finestre, ranking scenari, delay scaling | no EM, no path STA |
 
 ```bash

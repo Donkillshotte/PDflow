@@ -82,6 +82,38 @@ Csr spmm(const Csr& A, const Csr& B) {
   return C;
 }
 
+Csr plus_diag(const Csr& A, const double* d) {
+  Csr B;
+  B.nrows = A.nrows;
+  B.ncols = A.ncols;
+  B.rowptr.resize(static_cast<size_t>(A.nrows + 1));
+  B.rowptr[0] = 0;
+  std::vector<Index> col;
+  std::vector<double> val;
+  col.reserve(static_cast<size_t>(A.val.size() + static_cast<size_t>(A.nrows)));
+  val.reserve(static_cast<size_t>(A.val.size() + static_cast<size_t>(A.nrows)));
+  for (Index i = 0; i < A.nrows; ++i) {
+    bool has_diag = false;
+    for (Index k = A.rowptr[i]; k < A.rowptr[i + 1]; ++k) {
+      col.push_back(A.col[k]);
+      if (A.col[k] == i) {
+        val.push_back(A.val[k] + d[i]);
+        has_diag = true;
+      } else {
+        val.push_back(A.val[k]);
+      }
+    }
+    if (!has_diag) {
+      col.push_back(i);
+      val.push_back(d[i]);
+    }
+    B.rowptr[i + 1] = static_cast<Index>(col.size());
+  }
+  B.col = std::move(col);
+  B.val = std::move(val);
+  return B;
+}
+
 void drop_small(Csr& A, double tol) {
   std::vector<Index> col;
   std::vector<double> val;

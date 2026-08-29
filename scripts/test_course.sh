@@ -299,7 +299,10 @@ assert r["emsim_split"]["B_pdn_solve"]["status"]=="READY"
 p=r["platform"]
 assert p["solvers"]["A_direct_be"]["status"]=="READY"
 assert p["solvers"]["B_sa_amg"]["status"]=="READY"
-assert p["solvers"]["C_rational_krylov_mor"]["status"]=="PARTIAL"
+assert p["solvers"]["C_rational_krylov_mor"]["status"] in ("READY", "PARTIAL")
+assert r.get("solver_c") is not None
+assert r["solver_c"]["abs_err_vs_A_mv"] < 5.0
+assert r["dynamic"].get("timestep_loop") in ("native", "python", None)
 assert p["product_tiers"]["FAST"]["status"]=="READY"
 assert p["product_tiers"]["SIGNOFF"]["status"]=="GAP"
 assert p["network_levels"]["N1_R"]["status"]=="READY"

@@ -19,6 +19,9 @@ struct Csr {
   Index nnz() const { return static_cast<Index>(val.size()); }
 
   void spmv(const double* x, double* y) const {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
     for (Index i = 0; i < nrows; ++i) {
       double s = 0.0;
       for (Index k = rowptr[i]; k < rowptr[i + 1]; ++k) {
@@ -46,5 +49,17 @@ Csr from_csr(Index n, const Index* rowptr, const Index* col, const double* val);
 Csr transpose(const Csr& A);
 Csr spmm(const Csr& A, const Csr& B);
 void drop_small(Csr& A, double tol);
+/* B = A + diag(d). Inserts a diagonal entry when A_ii is missing. */
+Csr plus_diag(const Csr& A, const double* d);
+
+inline double dot(const double* a, const double* b, Index n) {
+  double s = 0.0;
+  for (Index i = 0; i < n; ++i) {
+    s += a[i] * b[i];
+  }
+  return s;
+}
+
+inline double nrm2(const double* a, Index n) { return std::sqrt(dot(a, a, n)); }
 
 }  // namespace dpn
