@@ -44,7 +44,6 @@ from .acquire import (
     should_pay_f5_cts,
     should_pay_f5_drt,
     should_pay_f5_local,
-    latest_local_host,
     local_hosts,
     should_pay_f4_pdn,
     should_pay_f4_scale,
