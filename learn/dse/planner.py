@@ -121,6 +121,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "f5_local",
+            "reason": (
+                "OpenRCX SPEF on the cell/net netlist — F3→F5 residual vs F1 F5-lite, "
+                "not a reused SPEF, not make finish"
+            ),
+            "scope": "net",
+        }
+    )
+    steps.append(
+        {
             "level": "synthesis",
             "reason": "ORFS abc_speed.script (ABC_AREA=0) — measured synthesis F1, not logic -fast",
             "scope": "chip",

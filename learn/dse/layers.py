@@ -29,7 +29,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "surrogate": {
         "via": "dse.surrogate + dse.gnn",
-        "note": "SSK-GP / residual / GNN readout — never Dynamic IR gold",
+        "note": "SSK-GP / F1→F2 residual / F3→F5-local residual / GNN readout — never Dynamic IR gold",
     },
     "synthesis": {
         "via": "dse.synthesis + dse.fidelity.evaluate_f1_synth",
@@ -56,8 +56,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "OpenROAD GPL -skip_io; AutoDMP catalog and IR-bin create_blockage -max_density are measured here, not as F0 truth",
     },
     "routing": {
-        "via": "dse.openroad_f2.evaluate_grt + evaluate_f5_drt + evaluate_f5_cts",
-        "note": "GRT + F5-lite DRT/OpenRCX (clock ideal) + paid F5-CTS (clock propagated); not make finish",
+        "via": "dse.openroad_f2.evaluate_grt + evaluate_f5_drt + evaluate_f5_cts + evaluate_f5_local",
+        "note": "GRT + F5-lite + F5-CTS + F5-local SPEF on cell/net; not make finish",
     },
     "timing": {
         "via": "dse.sta_f3",

@@ -443,6 +443,57 @@ def should_pay_f5_cts(
     return True, "CTS + DRT + OpenRCX SPEF — propagated clock, not make finish"
 
 
+def latest_local_host(mem: DesignMemory):
+    """Prefer the net-buffered netlist, then the cell-sized one."""
+    from pathlib import Path
+
+    for level, src in (("net", "net_buffer"), ("cell", "cell_size_up")):
+        for c in reversed(list(mem.by_level(level))):
+            if c.status != "ok" or (c.knobs or {}).get("source") != src:
+                continue
+            mapped = (c.artifacts or {}).get("mapped_v")
+            if mapped and Path(mapped).is_file():
+                return c
+    return None
+
+
+def should_pay_f5_local(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_f5_local: int = 0,
+    f5_local_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay OpenRCX SPEF on the cell/net netlist. Residual vs F1 F5-lite."""
+    from .openroad_f2 import f5_available
+
+    if n_f5_local >= f5_local_max:
+        return False, "F5 local SPEF shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover local detailed_route+OpenRCX"
+    if not f5_available():
+        return False, "OpenRCX rules missing — not launching make finish"
+    have_lite = any(
+        (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+        for c in mem.by_level("routing")
+    )
+    if not have_lite:
+        return False, "F5-lite on the F1 netlist is the baseline — local SPEF is the residual"
+    if any(
+        (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
+        for c in mem.by_level("routing")
+    ):
+        return False, "already have a local-transform SPEF child"
+    host = latest_local_host(mem)
+    if host is None:
+        return False, "no cell/net mapped netlist for local SPEF"
+    return True, (
+        f"OpenRCX SPEF on {host.level} { (host.knobs or {}).get('source') } "
+        "— F3→F5 residual, not the F1 F5-lite SPEF, not make finish"
+    )
+
+
 def should_pay_f3_spef(
     mem: DesignMemory,
     *,
@@ -717,6 +768,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
     if level == "f5_drt":
         return "F5"
     if level == "f5_cts":
+        return "F5"
+    if level == "f5_local":
         return "F5"
     if level == "f2_region":
         return "F2"

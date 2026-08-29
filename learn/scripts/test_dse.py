@@ -326,6 +326,7 @@ def main() -> int:
     check(any(s["level"] == "f5_drt" for s in planned["steps"]), "planner schedules F5-lite DRT/OpenRCX")
     check(any(s["level"] == "f3_spef" for s in planned["steps"]), "planner schedules F3 SPEF")
     check(any(s["level"] == "f5_cts" for s in planned["steps"]), "planner schedules F5-CTS")
+    check(any(s["level"] == "f5_local" for s in planned["steps"]), "planner schedules F5-local SPEF")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -359,10 +360,16 @@ def main() -> int:
         != knobs_fp("routing", {"source": "f5_openroad_drt_rcx", "clock": "ideal"}),
         "F5-CTS is not flattened into the F5-lite fingerprint",
     )
+    check(
+        knobs_fp("routing", {"source": "f5_openroad_local", "host_level": "net"})
+        != knobs_fp("routing", {"source": "f5_openroad_drt_rcx", "clock": "ideal"}),
+        "F5-local is not flattened into the F5-lite fingerprint",
+    )
     from dse.acquire import next_fidelity
 
     check(next_fidelity(level="f5_drt", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-lite is its own fidelity")
     check(next_fidelity(level="f5_cts", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-CTS measures at F5")
+    check(next_fidelity(level="f5_local", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-local measures at F5")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
@@ -578,6 +585,8 @@ def main() -> int:
     check("SPEF" in (adapter_status()["timing"]["note"] or ""), "timing adapter includes OpenRCX SPEF")
     check("f5" in (adapter_status()["routing"]["via"] or "").lower() or "OpenRCX" in (adapter_status()["routing"]["note"] or ""), "routing adapter includes F5-lite")
     check("cts" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-CTS")
+    check("local" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-local")
+    check("f5-local" in (adapter_status()["surrogate"]["note"] or "").lower() or "F3→F5" in (adapter_status()["surrogate"]["note"] or ""), "surrogate adapter names the F3→F5-local residual")
     check("propagated" in (adapter_status()["timing"]["note"] or ""), "timing adapter names propagated-clock CTS SPEF")
     check("arrival" in (adapter_status()["activity"]["via"] or "").lower(), "activity adapter is candidate STA arrivals")
     check(
@@ -759,6 +768,35 @@ def main() -> int:
                     f"WNS={nb.artifacts.get('wns_ns')} vs flatten {sta_flat.get('wns_ns')} "
                     f"area={nb.qor.area_um2}"
                 )
+                from dse.fidelity import evaluate_f5_local
+                from dse.openroad_f2 import f5_available as f5_ok_local
+                from dse.surrogate import residual_f3_to_f5_local
+
+                if f5_ok_local() and (nb.artifacts or {}).get("mapped_v"):
+                    floc = evaluate_f5_local(nb, mm)
+                    check(floc is not None and floc.status == "ok", f"F5-local SPEF ({floc.failure if floc else None})")
+                    check((floc.knobs or {}).get("source") == "f5_openroad_local", "local SPEF uses f5_openroad_local")
+                    check((floc.knobs or {}).get("host_level") == "net", "local SPEF names the net host")
+                    check(floc.artifacts.get("clock") == "ideal", "F5-local keeps the clock ideal")
+                    check(
+                        (nb.artifacts or {}).get("spef_local")
+                        and Path(nb.artifacts["spef_local"]).is_file(),
+                        "local SPEF is stored on the net parent, not as a reused F1 SPEF",
+                    )
+                    check(
+                        floc.artifacts.get("wns_ns") is not None
+                        and nb.artifacts.get("wns_ns") is not None
+                        and abs(float(floc.artifacts["wns_ns"]) - float(nb.artifacts["wns_ns"])) >= 0.01,
+                        f"local SPEF WNS {floc.artifacts.get('wns_ns')} must differ from ideal {nb.artifacts.get('wns_ns')}",
+                    )
+                    res = residual_f3_to_f5_local(list(mm.all()))
+                    check((res.get("n") or 0) >= 1, f"F3→F5-local residual has a pair, got {res}")
+                    check(res.get("mean_residual_ns") is not None, "F3→F5-local residual reports a mean")
+                    print(
+                        f"    F5-local SPEF WNS={floc.artifacts.get('wns_ns')} vs ideal "
+                        f"{nb.artifacts.get('wns_ns')} residual={res.get('mean_residual_ns')} "
+                        f"({floc.cost_s:.2f}s)"
+                    )
             cs = evaluate_f1_synth(rtl=rtl, liberty=lib, mem=mm)
             check(cs.status == "ok", f"synthesis F1 abc_speed proves equiv ({cs.failure})")
             check(cs.level == "synthesis", "ORFS abc_speed is recorded on the synthesis level")
@@ -886,6 +924,7 @@ def main() -> int:
         should_pay_f4_krylov,
         should_pay_f4_ras,
         should_pay_f5_cts,
+        should_pay_f5_local,
         should_pay_net_buffer,
     )
 
@@ -1000,6 +1039,30 @@ def main() -> int:
     check(pay_n1, f"net BUF is paid after path hops ({why_n1})")
     pay_n2, why_n2 = should_pay_net_buffer(mem_pay, budget_left=80, n_net=1)
     check(not pay_n2, f"net BUF is a single shot ({why_n2})")
+    pay_l0, why_l0 = should_pay_f5_local(mem_pay, budget_left=80, n_f5_local=0)
+    check(not pay_l0, f"F5-local waits for a cell/net host ({why_l0})")
+    if mapped_ok.is_file():
+        mem_pay.add(
+            Candidate(
+                id="net1",
+                design_id="gcd",
+                parent_id="t0",
+                level="net",
+                knobs={"source": "net_buffer", "hops": ["_586_->_587_"]},
+                knobs_fp="net1",
+                rtl_fp="x",
+                netlist_fp="y",
+                fidelity="F3",
+                qor=QoR(wns_cost=0.60, fidelity="F3"),
+                cost_s=0.2,
+                status="ok",
+                artifacts={"mapped_v": str(mapped_ok), "wns_ns": -0.60},
+            )
+        )
+        pay_l1, why_l1 = should_pay_f5_local(mem_pay, budget_left=80, n_f5_local=0)
+        check(pay_l1, f"F5-local is paid after F5-lite + net host ({why_l1})")
+        pay_l2, why_l2 = should_pay_f5_local(mem_pay, budget_left=80, n_f5_local=1)
+        check(not pay_l2, f"F5-local is a single shot ({why_l2})")
 
     gold_json = _ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     gold_before = gold_json.read_text() if gold_json.is_file() else None

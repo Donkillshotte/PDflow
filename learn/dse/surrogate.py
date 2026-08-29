@@ -302,6 +302,54 @@ def predict_f5_cts_from_f1(all_cands: list[Candidate]) -> dict:
     )
 
 
+def residual_f3_to_f5_local(all_cands: list[Candidate]) -> dict:
+    """Ideal STA WNS → OpenRCX SPEF WNS on the same cell/net netlist.
+
+    This is the cross-stage residual for local transforms. It is not
+    Dynamic IR and not a reuse of the F1 F5-lite SPEF.
+    """
+    by_id = {c.id: c for c in all_cands}
+    pairs: list[dict] = []
+    for c in all_cands:
+        if (c.knobs or {}).get("source") != "f5_openroad_local" or c.status != "ok":
+            continue
+        spef_w = (c.artifacts or {}).get("wns_ns")
+        parent = by_id.get(c.parent_id)
+        ideal_w = None
+        if parent is not None:
+            ideal_w = (parent.artifacts or {}).get("wns_ns")
+        if ideal_w is None:
+            ideal_w = (c.artifacts or {}).get("ideal_wns_ns")
+        if spef_w is None or ideal_w is None:
+            continue
+        pairs.append(
+            {
+                "ideal_ns": float(ideal_w),
+                "spef_ns": float(spef_w),
+                "residual_ns": float(spef_w) - float(ideal_w),
+                "host_level": (c.knobs or {}).get("host_level"),
+            }
+        )
+    if not pairs:
+        return {
+            "metric": "wns_spef_minus_ideal",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no F3-ideal→F5-local pairs",
+            "not": "Dynamic IR or the F1 F5-lite SPEF",
+        }
+    mean_r = sum(p["residual_ns"] for p in pairs) / len(pairs)
+    return {
+        "metric": "wns_spef_minus_ideal",
+        "mean_residual_ns": mean_r,
+        "n": len(pairs),
+        "pairs": pairs,
+        "uncertainty": "high" if len(pairs) < 3 else "medium",
+        "via": "F3 ideal → F5 OpenRCX residual on the local cell/net netlist",
+        "not": "Dynamic IR or a reused F1 SPEF",
+    }
+
+
 def predict_wns_from_f1(all_cands: list[Candidate]) -> dict:
     """F1 area → ideal-STA wns_cost. Separate from placed/GRT WNS and from IR."""
     return _f1_to_metric(

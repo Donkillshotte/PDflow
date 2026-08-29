@@ -20,6 +20,7 @@ RTL
  → F5-lite: `detailed_route` (2 iter, no CTS) + OpenRCX + OpenSTA `read_spef` (clock ideale)
  → F3 OpenSTA + SPEF OpenRCX (stesso SPEF F5-lite, senza un secondo DRT)
  → F5-CTS: `clock_tree_synthesis` + DRT + OpenRCX + OpenSTA `set_propagated_clock` sul netlist post-CTS (colpo a pagamento, non sostituisce F5-lite, non `make finish`)
+ → F5-local: OpenRCX SPEF sul netlist cell/net — residuo F3→F5, non il SPEF F1, non `make finish`
  → F2 catalogo fisico: un punto AutoDMP (util/densità) misurato con GPL, non solo proxy RUDY
  → F2 regione: `create_blockage -max_density` sul bin IR (rXY / hotspot dbu) + GPL
  → F4 extract regione: `write_pg_spice` sotto lo stesso cap — mesh nuova, non gold
@@ -60,7 +61,7 @@ Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs
 | F2 | place / GRT / finish ORFS **ingest** · F2-fast netgraph · GPL `-skip_io` · GRT+SDF | READY (GPL/GRT budgetati) |
 | F3 | OpenSTA ideale (hier sul cono) + OpenSTA+SDF GRT + OpenSTA+SPEF OpenRCX + ingest | READY — SPEF F5-lite è clock ideale; F5-CTS usa `set_propagated_clock` |
 | F4 | Dynamic IR/EM (libdpn A/B/C/D) + static IR sullo stesso extract | ingest gold + **extract candidato** + arrivals + restamp DirectLU/AMG/RAS/Krylov — **non** sostituisce il gold 45.298 |
-| F5 | DRT + OpenRCX SPEF + OpenSTA `read_spef` | READY F5-lite (`droute_end_iter=2`, clock ideale) **e** F5-CTS (CLKBUF + clock propagato) — il controller **non** lancia `make finish` |
+| F5 | DRT + OpenRCX SPEF + OpenSTA `read_spef` | READY F5-lite (clock ideale) **e** F5-CTS (clock propagato) **e** F5-local sul netlist cell/net — il controller **non** lancia `make finish` |
 
 F2-fast HPWL è in **unità griglia**; GPL HPWL è in **µm**. Non stanno sullo stesso asse Pareto.
 La congestion F2-fast è `rudy_excess/(1+rudy_excess)` ∈ [0,1) — non è l’overflow GRT.

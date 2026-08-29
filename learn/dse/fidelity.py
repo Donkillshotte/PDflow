@@ -1592,6 +1592,98 @@ def evaluate_f5_drt(
     return mem.add(c)
 
 
+def evaluate_f5_local(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+    util: float = 35.0,
+    density: float = 0.55,
+    timeout_s: float = 45.0,
+) -> Candidate | None:
+    """F5 OpenRCX SPEF on a cell/net netlist. Not the F1 F5-lite SPEF.
+
+    Same DRT+RCX oracle as F5-lite, different knobs (`source=f5_openroad_local`).
+    Does not overwrite an existing F1 SPEF on a shared parent.
+    """
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    knobs = {
+        "source": "f5_openroad_local",
+        "parent_id": parent.id,
+        "parent_name": parent.knobs.get("name") or parent.knobs.get("source"),
+        "host_level": parent.level,
+        "host_source": (parent.knobs or {}).get("source"),
+        "util": util,
+        "density": density,
+        "droute_end_iter": 2,
+        "clock": "ideal",
+    }
+    fp = knobs_fp("routing", knobs)
+    if fp in mem.seen_knobs("routing"):
+        return next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
+    cid = DesignMemory.new_id()
+    spef_dest = REPO / "learn" / "sim" / "dse" / "spef" / f"{cid}_local.spef"
+    raw = run_f5_drt(
+        Path(mapped), util=util, density=density, timeout_s=timeout_s, spef_out=spef_dest
+    )
+    sta = {}
+    if raw.get("status") == "ok" and raw.get("spef"):
+        sta = evaluate_sta(Path(mapped), spef=Path(raw["spef"]))
+        raw = dict(raw)
+        raw["sta"] = sta
+        raw["wns_ns"] = sta.get("wns_ns")
+        raw["power_w"] = sta.get("power_w")
+        raw["interconnect"] = sta.get("interconnect") or "spef_openrcx"
+        raw["ideal_wns_ns"] = (parent.artifacts or {}).get("wns_ns")
+        raw["host_level"] = parent.level
+    from .attribute import attribute_sta
+
+    attr = attribute_sta(sta or raw, inherit=parent.attr or {})
+    attr["transform"] = "f5_local_spef"
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=wns_cost_from_slack_ns(raw.get("wns_ns")),
+        power_w=raw.get("power_w") or sta.get("power_w"),
+        congestion=raw.get("grt_overflow"),
+        fidelity="F5",
+        note=(
+            f"local OpenRCX SPEF WNS={raw.get('wns_ns')} on {parent.level} "
+            f"(ideal {raw.get('ideal_wns_ns')}) — not F1 F5-lite, not make finish"
+        ),
+    )
+    if raw.get("spef"):
+        parent.artifacts = dict(parent.artifacts or {})
+        parent.artifacts["spef_local"] = raw["spef"]
+        if raw.get("wns_ns") is not None:
+            parent.artifacts["spef_local_wns_ns"] = raw["wns_ns"]
+        mem.touch(parent)
+    c = Candidate(
+        id=cid,
+        design_id=design_id,
+        parent_id=parent.id,
+        level="routing",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=parent.rtl_fp,
+        netlist_fp=parent.netlist_fp,
+        fidelity="F5",
+        qor=q,
+        cost_s=float(raw.get("cost_s") or 0.0) + float(sta.get("cost_s") or 0.0),
+        artifacts=raw,
+        attr=attr,
+        status="ok" if raw.get("status") == "ok" else "fail",
+        failure=raw.get("reason") if raw.get("status") != "ok" else None,
+        note=(
+            f"F5 local SPEF child of {parent.level}/{(parent.knobs or {}).get('source')} "
+            f"WNS={raw.get('wns_ns')}"
+        ),
+    )
+    return mem.add(c)
+
+
 def evaluate_f5_cts(
     parent: Candidate,
     mem: DesignMemory,

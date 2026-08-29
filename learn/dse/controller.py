@@ -43,6 +43,8 @@ from .acquire import (
     should_pay_f4_region_extract,
     should_pay_f5_cts,
     should_pay_f5_drt,
+    should_pay_f5_local,
+    latest_local_host,
     should_pay_f4_pdn,
     should_pay_f4_scale,
     should_pay_physical_catalog,
@@ -64,6 +66,7 @@ from .fidelity import (
     evaluate_f3_sta,
     evaluate_f5_cts,
     evaluate_f5_drt,
+    evaluate_f5_local,
     evaluate_f4_extract,
     evaluate_f4_pdn,
     evaluate_f4_scale,
@@ -95,6 +98,7 @@ from .surrogate import (
     predict_wns_from_f1,
     predict_f5_from_f1,
     predict_f5_cts_from_f1,
+    residual_f3_to_f5_local,
     residual,
 )
 
@@ -811,6 +815,34 @@ def run_controller(
                     status=child.status,
                 )
 
+    n_f5_local = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
+    )
+    pay_loc, why_loc = should_pay_f5_local(
+        mem, budget_left=t_end - time.time(), n_f5_local=n_f5_local
+    )
+    step("acquire", fidelity="F5_LOCAL", pay=pay_loc, why=why_loc)
+    if any(s["level"] == "f5_local" for s in plan["steps"]) and pay_loc and time.time() < t_end:
+        host = latest_local_host(mem)
+        if host:
+            mem.touch(host)
+            child = evaluate_f5_local(host, mem, design_id=design_id)
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="routing",
+                    fidelity="F5",
+                    via="f5_openroad_local",
+                    parent=host.id,
+                    host_level=host.level,
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
+                    status=child.status,
+                )
+
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:
         step("propose", level="physical", knobs=c.knobs, fidelity="F0")
@@ -1296,6 +1328,7 @@ def run_controller(
             "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF + OpenRCX SPEF",
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
             "F5-CTS clock_tree_synthesis + DRT + OpenRCX + OpenSTA set_propagated_clock — not make finish",
+            "F5-local OpenRCX SPEF on the cell/net netlist — F3→F5 residual, not a reused F1 SPEF",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; F3 WNS reorders remaining, no chip restart",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -1363,6 +1396,11 @@ def run_controller(
             for c in mem.by_level("routing")
             if (c.knobs or {}).get("source") == "f5_openroad_cts_rcx" and c.status == "ok"
         ),
+        "n_f5_local": sum(
+            1
+            for c in mem.by_level("routing")
+            if (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
+        ),
         "n_f2_grt": sum(
             1
             for c in mem.by_level("routing")
@@ -1418,6 +1456,7 @@ def run_controller(
         "surrogate_f1_to_f4": f4s,
         "surrogate_f1_to_f5": predict_f5_from_f1(mem.all()),
         "surrogate_f1_to_f5_cts": predict_f5_cts_from_f1(mem.all()),
+        "surrogate_f3_to_f5_local": residual_f3_to_f5_local(mem.all()),
         "plan": plan,
         "attribution": attr,
         "focus": focus,
@@ -1556,8 +1595,19 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if w is not None:
             f5cts = f" · F5-CTS SPEF WNS {float(w):+.3f} ns (propagated, n_clkbuf={ncb})"
             break
+    f5loc = ""
+    for c in mem.all():
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f5_openroad_local":
+            continue
+        w = (c.artifacts or {}).get("wns_ns")
+        ideal = (c.artifacts or {}).get("ideal_wns_ns")
+        host = (c.knobs or {}).get("host_level")
+        if w is not None:
+            extra = f" vs ideal {float(ideal):+.3f}" if ideal is not None else ""
+            f5loc = f" · F5-local SPEF WNS {float(w):+.3f} ns ({host}{extra})"
+            break
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{synth}{cell}{netb}{wns}{f5}{f5cts} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{synth}{cell}{netb}{wns}{f5}{f5cts}{f5loc} · IR cone {mods}{ir}{ras}{kry}"
     )
