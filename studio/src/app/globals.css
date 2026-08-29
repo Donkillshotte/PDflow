@@ -2321,6 +2321,22 @@ button.pipeline-node {
 .fl-dynir-table tr[data-status="skip"] td {
   color: var(--fl-muted);
 }
+.fl-dynir-plan {
+  font-size: 0.78rem;
+  color: var(--fl-muted);
+}
+.fl-dynir-plan summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.fl-dynir-plan ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+.fl-vis-pkg {
+  overflow: auto;
+  min-height: 0;
+}
 .fl-dynir-gauges {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

@@ -15,6 +15,8 @@ type Cand = {
     catalog?: string;
     util?: number;
     extract_id?: string;
+    host_source?: string;
+    i_scale?: number;
   };
   qor?: {
     area_um2?: number | null;
@@ -64,7 +66,7 @@ type DseReport = {
   candidates?: Cand[];
 };
 
-const LEVELS = ["architecture", "logic", "synthesis", "physical", "routing", "pdn"] as const;
+const LEVELS = ["architecture", "logic", "synthesis", "cell", "net", "physical", "routing", "pdn"] as const;
 
 export function DsePanel() {
   const [report, setReport] = useState<DseReport | null>(null);
@@ -107,15 +109,6 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.plan?.steps?.length ? (
-            <ul className="fl-dynir-summary">
-              {report.plan.steps.map((s, i) => (
-                <li key={`${s.level}-${i}`}>
-                  {s.level}: {s.reason}
-                </li>
-              ))}
-            </ul>
-          ) : null}
           <ul className="fl-dynir-levels">
             {LEVELS.map((lv) => {
               const n = cands.filter((c) => c.level === lv).length;
@@ -190,6 +183,18 @@ export function DsePanel() {
               </dd>
             </div>
           </dl>
+          {report.plan?.steps?.length ? (
+            <details className="fl-dynir-plan">
+              <summary>Piano · {report.plan.steps.length} passi</summary>
+              <ul className="fl-dynir-summary">
+                {report.plan.steps.map((s, i) => (
+                  <li key={`${s.level}-${i}`}>
+                    {s.level}: {s.reason}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
           <LevelTable
             title="Architecture · extract e-graph"
             rows={cands.filter((c) => c.level === "architecture")}
@@ -330,7 +335,11 @@ function PdnTable({ rows }: { rows: Cand[] }) {
         <tbody>
           {rows.map((c) => (
             <tr key={c.id} data-status={c.status}>
-              <td>{c.knobs?.name ?? c.knobs?.source ?? c.id}</td>
+              <td>
+                {c.knobs?.source === "f4_iscale" && c.knobs.host_source
+                  ? `iscale · ${c.knobs.host_source}`
+                  : (c.knobs?.name ?? c.knobs?.source ?? c.id)}
+              </td>
               <td>{c.knobs?.extract_id ?? c.artifacts?.extract ?? "finish"}</td>
               <td>
                 {c.qor?.dynamic_ir_mv != null ? `${c.qor.dynamic_ir_mv.toFixed(3)} mV` : "—"}
