@@ -364,6 +364,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "cell",
         }
     )
+    steps.append(
+        {
+            "level": "ir_cell_extract",
+            "reason": (
+                "write_pg_spice on the IR-cell-sized netlist — residual vs the "
+                "unconstrained host extract, not STA-only, not gold, not ABC"
+            ),
+            "scope": "cell",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
@@ -426,6 +436,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             "f4_candidate_extract",
             "f4_host_extract",
             "f4_host_region_extract",
+            "f4_ir_cell_extract",
             "f4_region_extract",
         ):
             v = float(c.qor.dynamic_ir_mv)

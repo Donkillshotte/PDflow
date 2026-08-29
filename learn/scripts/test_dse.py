@@ -356,6 +356,7 @@ def main() -> int:
     check(any(s["level"] == "host_ir_steer" for s in planned["steps"]), "planner schedules host IR residual steer")
     check(any(s["level"] == "f4_scale_win" for s in planned["steps"]), "planner schedules winning-host I-scale")
     check(any(s["level"] == "ir_cell" for s in planned["steps"]), "planner schedules IR-hotspot cell size-up")
+    check(any(s["level"] == "ir_cell_extract" for s in planned["steps"]), "planner schedules IR-cell write_pg_spice")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -446,6 +447,7 @@ def main() -> int:
     check(next_fidelity(level="host_ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "host IR residual steer measures at F4")
     check(next_fidelity(level="f4_scale_win", pred=None, budget_left=20, cost_hint={}) == "F4", "winning-host I-scale measures at F4")
     check(next_fidelity(level="ir_cell", pred=None, budget_left=20, cost_hint={}) == "F3", "IR-hotspot cell size measures at F3")
+    check(next_fidelity(level="ir_cell_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell extract measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -532,6 +534,11 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_host_extract", "parent_id": "psteer"})
         != knobs_fp("pdn", {"source": "f4_candidate_extract", "parent_id": "synp"}),
         "host extract knobs are not flattened into the synth extract fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_ir_cell_extract", "parent_id": "ircell", "ir_join": 1})
+        != knobs_fp("pdn", {"source": "f4_host_extract", "parent_id": "psteer"}),
+        "IR-cell extract knobs are not flattened into the host extract fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_region_extract", "parent_id": "psteer", "region": "r02"})
@@ -1240,6 +1247,7 @@ def main() -> int:
         should_pay_f4_scale,
         should_pay_f4_scale_win,
         should_pay_ir_cell,
+        should_pay_ir_cell_extract,
         should_pay_host_arrivals,
         should_pay_f4_host_extract,
         should_pay_f4_host_region,
@@ -2239,6 +2247,59 @@ def main() -> int:
     check("STA path" in why_ic1, f"IR-cell acquire refuses STA-path flatten ({why_ic1})")
     pay_ic2, why_ic2 = should_pay_ir_cell(mem_hr, budget_left=80, n_cell=1)
     check(not pay_ic2, f"IR-cell is a single shot ({why_ic2})")
+    pay_ice0, why_ice0 = should_pay_ir_cell_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_ice0, f"IR-cell extract waits for a sized netlist ({why_ice0})")
+    mem_hr.add(
+        Candidate(
+            id="ircell",
+            design_id="gcd",
+            parent_id="psteer",
+            level="cell",
+            knobs={
+                "source": "cell_size_ir",
+                "cells": ["ctrl/_11_", "ctrl/_14_"],
+                "ir_join": 1,
+                "parent_id": "psteer",
+            },
+            knobs_fp="ircell",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(area_um2=564.186, wns_cost=0.297, fidelity="F3"),
+            cost_s=0.4,
+            status="ok",
+            artifacts={"mapped_v": str(dummy_host), "n_changed": 2},
+            attr={"via": "active_f4_ir_cell"},
+        )
+    )
+    pay_ice1, why_ice1 = should_pay_ir_cell_extract(mem_hr, budget_left=80, n_extract=0)
+    check(pay_ice1, f"IR-cell extract is paid after IR-cell size-up ({why_ice1})")
+    check("ctrl" in why_ice1, f"IR-cell extract acquire names the joined cone ({why_ice1})")
+    check("host extract" in why_ice1, f"IR-cell extract residuals vs host extract ({why_ice1})")
+    check("gold" in why_ice1 and "ABC" in why_ice1, f"IR-cell extract refuses gold/ABC flatten ({why_ice1})")
+    pay_ice2, why_ice2 = should_pay_ir_cell_extract(mem_hr, budget_left=80, n_extract=1)
+    check(not pay_ice2, f"IR-cell extract is a single shot ({why_ice2})")
+    mem_hr.add(
+        Candidate(
+            id="icext",
+            design_id="gcd",
+            parent_id="ircell",
+            level="pdn",
+            knobs={"source": "f4_ir_cell_extract", "parent_id": "ircell", "ir_join": 1},
+            knobs_fp="icext",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=9.40, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "f4_ir_cell_extract", "residual_mv": -0.67, "residual_via": "ir_cell_vs_host_extract"},
+        )
+    )
+    win_ice = winning_host_pdn(mem_hr)
+    check(win_ice is not None and win_ice.id != "icext", "winning host PDN does not steal the IR-cell extract")
+    pay_ice3, why_ice3 = should_pay_ir_cell_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_ice3, f"IR-cell extract skips once measured ({why_ice3})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

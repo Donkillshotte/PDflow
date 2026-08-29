@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + DirectLU/AMG/RAS/Krylov + I-scale of the attributed host (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + I-scale of the attributed host (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -45,6 +45,7 @@ from .acquire import (
     should_pay_f3_sta,
     should_pay_cell_size,
     should_pay_ir_cell,
+    should_pay_ir_cell_extract,
     should_pay_ctrl_cone,
     should_pay_net_buffer,
     should_pay_net_port,
@@ -76,6 +77,7 @@ from .active import (
     iscale_parent,
     winning_host_pdn,
     ir_hotspot_cells,
+    ir_cell_host,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -303,8 +305,8 @@ def run_controller(
         """Reserve one F1 slot for ORFS abc_speed until that layer is measured."""
         return f1_max - (0 if _synth_f1_done() else 1)
 
-    n_f1 = 0
-    n_arch = 0
+    n_f1 = sum(1 for c in mem.all() if c.fidelity == "F1")
+    n_arch = sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1")
 
     # Seed the logic baseline first so architecture ΔQoR has a teacher.
     if n_f1 < f1_max and time.time() < t_end:
@@ -1898,6 +1900,48 @@ def run_controller(
                     reason=why_irc,
                 )
 
+    n_irce = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_ir_cell_extract" and c.status == "ok"
+    )
+    pay_irce, why_irce = should_pay_ir_cell_extract(
+        mem, budget_left=t_end - time.time(), n_extract=n_irce
+    )
+    step("acquire", fidelity="F4_IR_CELL_EXTRACT", pay=pay_irce, why=why_irce)
+    if any(s["level"] == "ir_cell_extract" for s in plan["steps"]) and pay_irce and time.time() < t_end:
+        host_ice = ir_cell_host(mem)
+        if host_ice and (host_ice.artifacts or {}).get("mapped_v"):
+            params = flowlab_params()
+            util_ice = float(params.get("coreUtilization") or 35.0)
+            den_ice = gpl_density(util_ice, params.get("placeDensityAddon") or 0.2)
+            child = evaluate_f4_extract(
+                host_ice,
+                mem,
+                design_id=design_id,
+                variant=variant,
+                util=util_ice,
+                density=den_ice,
+                kind="ir_cell",
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_ir_cell_extract",
+                    parent=host_ice.id,
+                    host_source=(host_ice.knobs or {}).get("source") or host_ice.level,
+                    n_r=(child.artifacts or {}).get("n_r"),
+                    n_sta=(child.artifacts or {}).get("n_sta_inst"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_mv=(child.attr or {}).get("residual_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=why_irce,
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -1972,6 +2016,11 @@ def run_controller(
         ),
         "n_ir_cell": sum(
             1 for c in mem.by_level("cell") if (c.knobs or {}).get("source") == "cell_size_ir" and c.status == "ok"
+        ),
+        "n_f4_ir_cell_extract": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_ir_cell_extract" and c.status == "ok"
         ),
         "n_net": sum(
             1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"
@@ -2116,6 +2165,7 @@ def run_controller(
                 "f4_candidate_extract",
                 "f4_host_extract",
                 "f4_host_region_extract",
+                "f4_ir_cell_extract",
                 "f4_region_extract",
                 "f4_solver_amg",
                 "f4_solver_ras",
@@ -2273,6 +2323,19 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
                 else f" · IR-cell size-up n={nch} {mods}"
             )
             break
+    ircext = ""
+    for c in mem.by_level("pdn"):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_extract":
+            w = c.qor.dynamic_ir_mv
+            res = (c.attr or {}).get("residual_mv")
+            nr = (c.artifacts or {}).get("n_r")
+            extra = f" Δ={float(res):+.3f}" if res is not None else ""
+            ircext = (
+                f" · IR-cell extract {float(w):.3f} mV{extra} n_r={nr} (not gold)"
+                if w is not None
+                else f" · IR-cell extract n_r={nr} (not gold)"
+            )
+            break
     netb = ""
     for c in mem.by_level("net"):
         if c.status == "ok" and (c.knobs or {}).get("source") == "net_buffer":
@@ -2411,5 +2474,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircext}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )

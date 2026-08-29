@@ -17,6 +17,7 @@ F4 I-scale host:
   port-steer > port-net > net > cell > F1 with a material power delta
   never flatten ABC + c_decap + util into one box
 F4 I-scale-win hotspot → ODB inst join → cell_size_ir (ctrl combo, not STA dpath)
+  then write_pg_spice on that sized netlist — residual vs host extract, not STA-only
 """
 
 from __future__ import annotations
@@ -553,3 +554,11 @@ def ir_hotspot_cells(mem: DesignMemory) -> dict | None:
     j["combo_frac"] = attr.get("combo_frac")
     j["seq_frac"] = attr.get("seq_frac")
     return j
+
+
+def ir_cell_host(mem: DesignMemory):
+    """Newest IR-hotspot cell size-up. That netlist is the next F4 extract parent."""
+    for c in reversed(list(mem.by_level("cell"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir":
+            return c
+    return None

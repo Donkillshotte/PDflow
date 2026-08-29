@@ -1060,6 +1060,56 @@ def should_pay_ir_cell(
     )
 
 
+def should_pay_ir_cell_extract(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_extract: int = 0,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay write_pg_spice on the IR-cell-sized netlist. Residual vs host extract."""
+    if n_extract >= extract_max:
+        return False, "IR-cell PDN extract already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-cell write_pg_spice"
+    from pathlib import Path
+
+    from .active import ir_cell_host
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    host = ir_cell_host(mem)
+    if host is None:
+        return False, "no IR-cell size-up to extract a PDN from"
+    mapped = (host.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return False, "IR-cell netlist missing for write_pg_spice"
+    host_ext = latest_host_extract_cand(mem)
+    if host_ext is None:
+        return False, "no host extract to residual the IR-cell mesh against"
+    if str((host_ext.knobs or {}).get("parent_id") or "") == host.id:
+        return False, "IR-cell is already the host-extract parent"
+    if any(
+        (c.knobs or {}).get("source") == "f4_ir_cell_extract" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    ):
+        return False, "already have an IR-cell write_pg_spice mesh"
+    nch = (host.artifacts or {}).get("n_changed") or len((host.knobs or {}).get("cells") or [])
+    mods = ",".join(
+        dict.fromkeys(
+            str(x).split("/")[0]
+            for x in (host.knobs or {}).get("cells") or []
+            if "/" in str(x)
+        )
+    ) or "unjoined"
+    return True, (
+        f"write_pg_spice on IR-cell {mods} n={nch} — sized netlist IR residual "
+        "vs host extract, not gold, not ABC, not STA-only"
+    )
+
+
 def should_pay_net_buffer(
     mem: DesignMemory,
     *,
@@ -1294,6 +1344,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
         "f4_candidate_extract",
         "f4_host_extract",
         "f4_host_region_extract",
+        "f4_ir_cell_extract",
     ):
         hit = _latest_extract(mem, source=src)
         if hit and str(hit["extract_id"]) == want:
@@ -1378,6 +1429,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "ir_steer",
         "host_ir_steer",
         "f4_scale_win",
+        "ir_cell_extract",
+        "f4_ir_cell_extract",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):
