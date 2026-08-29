@@ -351,6 +351,7 @@ def main() -> int:
     check(any(s["level"] == "f5_local" for s in planned["steps"]), "planner schedules F5-local SPEF")
     check(any(s["level"] == "residual_steer" for s in planned["steps"]), "planner schedules residual-steered next level")
     check(any(s["level"] == "f5_port" for s in planned["steps"]), "planner schedules F5-port SPEF on the port-net host")
+    check(any(s["level"] == "port_steer" for s in planned["steps"]), "planner schedules F5-port residual steer")
     check(any(s["level"] == "ir_steer" for s in planned["steps"]), "planner schedules F4 IR residual steer")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
@@ -417,6 +418,11 @@ def main() -> int:
         != knobs_fp("routing", {"source": "f5_openroad_local", "host_level": "net", "parent_id": "neth"}),
         "port-net SPEF is not flattened into the intra-module net F5-local fingerprint",
     )
+    check(
+        knobs_fp("net", {"source": "net_buffer_spef", "spef_residual": 1, "parent_id": "porth"})
+        != knobs_fp("net", {"source": "net_buffer", "parent_id": "neth"}),
+        "F5-port residual BUF is not flattened into the first net BUF fingerprint",
+    )
     from dse.acquire import next_fidelity
 
     check(next_fidelity(level="f5_drt", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-lite is its own fidelity")
@@ -424,6 +430,7 @@ def main() -> int:
     check(next_fidelity(level="f5_local", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-local measures at F5")
     check(next_fidelity(level="residual_steer", pred=None, budget_left=20, cost_hint={}) == "F5", "residual steer measures at F5")
     check(next_fidelity(level="f5_port", pred=None, budget_left=20, cost_hint={}) == "F5", "F5-port measures at F5")
+    check(next_fidelity(level="port_steer", pred=None, budget_left=20, cost_hint={}) == "F3", "F5-port residual steer measures at F3")
     check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
@@ -722,6 +729,7 @@ def main() -> int:
     check("cts" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-CTS")
     check("local" in (adapter_status()["routing"]["via"] or "").lower(), "routing adapter includes F5-local")
     check("port" in (adapter_status()["routing"]["note"] or "").lower(), "routing adapter includes F5-port SPEF")
+    check("F5-port residual" in (adapter_status()["active"]["note"] or ""), "active adapter steers from the F5-port residual")
     check("f5-local" in (adapter_status()["surrogate"]["note"] or "").lower() or "F3→F5" in (adapter_status()["surrogate"]["note"] or ""), "surrogate adapter names the F3→F5-local residual")
     check("residual" in (adapter_status()["active"]["note"] or ""), "active adapter steers from the F3→F5 residual")
     check("F4" in (adapter_status()["active"]["note"] or "") or "IR" in (adapter_status()["active"]["note"] or ""), "active adapter steers from the F4 IR residual")
@@ -1135,6 +1143,7 @@ def main() -> int:
         should_pay_f5_cts,
         should_pay_f5_local,
         should_pay_f5_port,
+        should_pay_port_steer,
         should_pay_net_buffer,
         should_pay_net_port,
         should_pay_residual_steer,
@@ -1372,6 +1381,8 @@ def main() -> int:
         check(pay_fp1, f"F5-port is paid after the port-net host ({why_fp1})")
         pay_fp2, why_fp2 = should_pay_f5_port(mem_pay, budget_left=80, n_f5_port=1)
         check(not pay_fp2, f"F5-port is a single shot ({why_fp2})")
+        pay_ps0, why_ps0 = should_pay_port_steer(mem_pay, budget_left=80, steer=None)
+        check(not pay_ps0, f"port-steer waits for an F5-port residual ({why_ps0})")
         from dse.acquire import _attributed_cross_module_nets
 
         mem_pay.add(
@@ -1550,6 +1561,64 @@ def main() -> int:
     st3 = steer_from_residual(mem_al)
     check(st3 is not None and st3.get("level") == "net", f"wire local residual steers net BUF, got {st3}")
     check((st3.get("hops") or ["p->q"])[0], "wire steer names SPEF hops")
+
+    from dse.active import steer_from_port_residual
+
+    mem_ps = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-ps-")) / "p.jsonl")
+    mem_ps.add(
+        Candidate(
+            id="porth2",
+            design_id="gcd",
+            parent_id=None,
+            level="net",
+            knobs={"source": "net_buffer_port", "scope": "port"},
+            knobs_fp="porth2",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(wns_cost=0.228, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": "y", "wns_ns": -0.228},
+        )
+    )
+    mem_ps.add(
+        Candidate(
+            id="f5p",
+            design_id="gcd",
+            parent_id="porth2",
+            level="routing",
+            knobs={"source": "f5_openroad_local", "host_level": "port", "parent_id": "porth2"},
+            knobs_fp="f5p",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F5",
+            qor=QoR(wns_cost=0.332, fidelity="F5"),
+            cost_s=1.0,
+            status="ok",
+            artifacts={"wns_ns": -0.332, "ideal_wns_ns": -0.228},
+            attr={
+                "nets": [
+                    "dpath/a_lt_b/_194_->portbuf_0",
+                    "ctrl/_07_->portbuf_1",
+                    "dpath/a_mux/_39_->dpath/a_mux/_59_",
+                    "dpath/a_mux/_59_->dpath/a_mux/_61_",
+                ]
+            },
+        )
+    )
+    st_ps = steer_from_port_residual(mem_ps)
+    check(st_ps is not None and st_ps.get("level") == "net", f"wire F5-port residual steers net BUF, got {st_ps}")
+    check(st_ps.get("host_id") == "porth2", f"port-steer host is the port-net parent, got {st_ps}")
+    check(
+        (st_ps.get("hops") or [""])[0] == "dpath/a_mux/_39_->dpath/a_mux/_59_",
+        f"port-steer skips portbuf hops, got {st_ps.get('hops')}",
+    )
+    check("portbuf" not in " ".join(st_ps.get("hops") or []), "port-steer does not restamp portbuf hops")
+    pay_ps1, why_ps1 = should_pay_port_steer(mem_ps, budget_left=80, steer=st_ps)
+    check(pay_ps1, f"port-steer is paid after F5-port residual ({why_ps1})")
+    pay_ps2, why_ps2 = should_pay_port_steer(mem_ps, budget_left=80, steer=st_ps, n_steer=1)
+    check(not pay_ps2, f"port-steer is a single shot ({why_ps2})")
 
     from dse.active import steer_from_ir_residual
     from dse.surrogate import residual_f4_knob, residual_f4_mesh, residual_f4_region

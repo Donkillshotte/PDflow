@@ -8,6 +8,8 @@ F3→F5 residual + uncertainty:
 F4 IR residual (mesh / PDN knob / region):
   large |catalog − gold-knob| → that PDN family on the region mesh
   small |catalog − gold-knob| → unused pkg L on the candidate extract
+F5-port residual (this pair only, not the mixed F5-local mean):
+  large |SPEF − ideal| → intra-module BUF on SPEF hops (not another port BUF)
   never flatten ABC + c_decap + util into one box
 """
 
@@ -82,6 +84,67 @@ def _spef_path(mem: DesignMemory, child) -> tuple[list[str], list[str]]:
     if not hops:
         hops = [str(x) for x in (sta.get("path_nets") or []) if "->" in str(x)]
     return cells, hops
+
+
+def _latest_f5_port(mem: DesignMemory):
+    for c in reversed(list(mem.by_level("routing"))):
+        k = c.knobs or {}
+        if c.status == "ok" and k.get("source") == "f5_openroad_local" and k.get("host_level") == "port":
+            return c
+    return None
+
+
+def _intra_spef_hops(hops: list[str]) -> list[str]:
+    """SPEF hops that net_buffer can take. Skip portbuf and ctrl↔dpath."""
+    from .net_space import hop_is_block_port, hop_is_cross_module
+
+    out: list[str] = []
+    for hop in hops:
+        if "portbuf" in hop:
+            continue
+        if hop_is_block_port(hop) or hop_is_cross_module(hop):
+            continue
+        if "->" not in hop:
+            continue
+        a, b = hop.split("->", 1)
+        if "/" not in a or "/" not in b:
+            continue
+        out.append(hop)
+    return out
+
+
+def steer_from_port_residual(mem: DesignMemory) -> dict | None:
+    """Next local action from the F5-port pair only. Not the mixed F5-local mean."""
+    child = _latest_f5_port(mem)
+    if child is None:
+        return None
+    spef = (child.artifacts or {}).get("wns_ns")
+    ideal = (child.artifacts or {}).get("ideal_wns_ns")
+    if spef is None or ideal is None:
+        return None
+    r = float(spef) - float(ideal)
+    hops = _intra_spef_hops(
+        [str(h) for h in ((child.attr or {}).get("nets") or []) if "->" in str(h)]
+    )
+    if not hops:
+        hops = _intra_spef_hops(_spef_path(mem, child)[1])
+    host_id = child.parent_id
+    if host_id is None:
+        return None
+    if r < WIRE_NS and hops:
+        return {
+            "level": "net",
+            "host_id": host_id,
+            "hops": hops,
+            "reason": (
+                f"F5-port residual {r:+.3f} ns (wire) — BUF on SPEF intra hops "
+                f"({hops[0]}…), not another port BUF, not ABC"
+            ),
+            "residual_ns": r,
+            "via": "active_f5_port_residual",
+            "not": "a flattened black-box of port+net+ABC",
+        }
+    return None
 
 
 def steer_from_residual(mem: DesignMemory) -> dict | None:

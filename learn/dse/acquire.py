@@ -554,6 +554,27 @@ def should_pay_f5_port(
     )
 
 
+def should_pay_port_steer(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay one F5-port-residual local action. Not the first net BUF shot."""
+    if n_steer >= steer_max:
+        return False, "F5-port residual-steered shot already spent"
+    if any((c.attr or {}).get("via") == "active_f5_port" and c.status == "ok" for c in mem.all()):
+        return False, "already have an F5-port residual-steered child"
+    if not steer or steer.get("level") != "net" or not steer.get("hops"):
+        return False, "no F5-port residual action (need a wire-dominated port SPEF pair)"
+    if budget_left < min_s:
+        return False, "wall budget would not cover F5-port residual BUF"
+    return True, str(steer.get("reason") or "F5-port residual steers intra-module BUF")
+
+
 def should_pay_residual_steer(
     mem: DesignMemory,
     *,
@@ -1030,6 +1051,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F5"
     if level == "f5_port":
         return "F5"
+    if level == "port_steer":
+        return "F3"
     if level == "residual_steer":
         return "F5"
     if level == "f2_region":

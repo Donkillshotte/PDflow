@@ -52,6 +52,7 @@ from .acquire import (
     should_pay_f5_drt,
     should_pay_f5_local,
     should_pay_f5_port,
+    should_pay_port_steer,
     latest_port_host,
     should_pay_residual_steer,
     should_pay_ir_steer,
@@ -61,7 +62,12 @@ from .acquire import (
     should_pay_f4_scale,
     should_pay_physical_catalog,
 )
-from .active import order_local_hosts, steer_from_ir_residual, steer_from_residual
+from .active import (
+    order_local_hosts,
+    steer_from_ir_residual,
+    steer_from_port_residual,
+    steer_from_residual,
+)
 from .arch_space import emit_gcd_variant, stamp_cone_knobs
 from .attribute import attribute_from_path, local_scope
 from .boils import propose_logic_boils, should_pay_f1
@@ -1053,6 +1059,43 @@ def run_controller(
                     status=child.status,
                 )
 
+    steer_port = steer_from_port_residual(mem)
+    n_psteer = sum(
+        1 for c in mem.all() if (c.attr or {}).get("via") == "active_f5_port" and c.status == "ok"
+    )
+    pay_ps, why_ps = should_pay_port_steer(
+        mem, budget_left=t_end - time.time(), steer=steer_port, n_steer=n_psteer
+    )
+    step("acquire", fidelity="PORT_STEER", pay=pay_ps, why=why_ps, steer=steer_port)
+    if any(s["level"] == "port_steer" for s in plan["steps"]) and pay_ps and steer_port and time.time() < t_end:
+        host = mem.get(str(steer_port.get("host_id") or "")) if steer_port.get("host_id") else None
+        if host is not None and steer_port.get("level") == "net":
+            mem.touch(host)
+            child = evaluate_net_buffer(
+                host,
+                mem,
+                design_id=design_id,
+                hops=list(steer_port.get("hops") or []),
+                source="net_buffer_spef",
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "active_f5_port"
+                child.attr["steer"] = {k: steer_port[k] for k in steer_port if k != "hops"}
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="net",
+                    fidelity="F3",
+                    via="active_f5_port",
+                    parent=host.id,
+                    n_changed=(child.artifacts or {}).get("n_changed"),
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    status=child.status,
+                    reason=steer_port.get("reason"),
+                )
+
     phys_f0 = propose_physical_f0(mem, design_id)
     for c in phys_f0:
         step("propose", level="physical", knobs=c.knobs, fidelity="F0")
@@ -1590,6 +1633,7 @@ def run_controller(
             "F5-CTS clock_tree_synthesis + DRT + OpenRCX + OpenSTA set_propagated_clock — not make finish",
             "F5-local OpenRCX SPEF on the cell/net netlist — F3→F5 residual, not a reused F1 SPEF",
             "F5-port OpenRCX SPEF on the port-net BUF netlist — not the intra-module net host",
+            "F5-port residual steers intra-module BUF on SPEF hops — not another port BUF, not ABC",
             "active learning: F3→F5-lite residual orders cell vs net host; F3→F5-local residual + uncertainty pick the next level",
             "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
@@ -1631,6 +1675,9 @@ def run_controller(
             1
             for c in mem.by_level("net")
             if (c.knobs or {}).get("source") == "net_buffer_port" and c.status == "ok"
+        ),
+        "n_port_steer": sum(
+            1 for c in mem.all() if (c.attr or {}).get("via") == "active_f5_port" and c.status == "ok"
         ),
         "n_arch": sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1"),
         "n_f2_fast": sum(
@@ -1871,6 +1918,17 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nch = (c.artifacts or {}).get("n_changed")
             netp = f" · port-net BUF n={nch} WNS={w:+.3f} ns" if w is not None else f" · port-net BUF n={nch}"
             break
+    psteer = ""
+    for c in mem.by_level("net"):
+        if c.status == "ok" and (c.attr or {}).get("via") == "active_f5_port":
+            w = (c.artifacts or {}).get("wns_ns")
+            nch = (c.artifacts or {}).get("n_changed")
+            psteer = (
+                f" · port-steer BUF n={nch} WNS={w:+.3f} ns"
+                if w is not None
+                else f" · port-steer BUF n={nch}"
+            )
+            break
     wns = ""
     timed = [
         (c.knobs.get("parent_name") or c.knobs.get("name"), c.qor.wns_cost)
@@ -1938,5 +1996,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst} · IR cone {mods}{ir}{ras}{kry}"
     )

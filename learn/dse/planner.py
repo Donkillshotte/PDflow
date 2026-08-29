@@ -164,6 +164,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "port_steer",
+            "reason": (
+                "F5-port SPEF residual picks intra-module BUF on SPEF hops "
+                "— not another port BUF, not a mixed vector"
+            ),
+            "scope": "net",
+        }
+    )
+    steps.append(
+        {
             "level": "synthesis",
             "reason": "ORFS abc_speed.script (ABC_AREA=0) — measured synthesis F1, not logic -fast",
             "scope": "chip",

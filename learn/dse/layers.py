@@ -32,8 +32,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "SSK-GP / F1→F2 residual / F3→F5-lite+local residual steers the next level / F4 IR residual steers PDN / GNN readout — never Dynamic IR gold",
     },
     "active": {
-        "via": "dse.active.steer_from_residual + steer_from_ir_residual + order_local_hosts",
-        "note": "F3→F5 residual picks cell|net|f5_local; F4 IR residual loops region-decap then unused pkg L; not a mixed knob vector",
+        "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + order_local_hosts",
+        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 IR residual loops region-decap then unused pkg L; not a mixed knob vector",
     },
     "synthesis": {
         "via": "dse.synthesis + dse.fidelity.evaluate_f1_synth",
@@ -48,7 +48,7 @@ ADAPTERS: dict[str, dict] = {
         "note": (
             "attributed STA path BUF insert (module-scoped) and parent-scoped "
             "port-net BUF on ctrl↔dpath hops (including bus bits like a_mux_sel[0]); "
-            "not ABC, not a cell drive-up"
+            "F5-port residual may BUF SPEF intra hops; not ABC, not a cell drive-up"
         ),
     },
     "solver": {

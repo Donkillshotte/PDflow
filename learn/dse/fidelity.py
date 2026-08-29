@@ -1259,6 +1259,7 @@ def evaluate_net_buffer(
     design_id: str = "gcd",
     hops: list[str] | None = None,
     top: str = "gcd",
+    source: str = "net_buffer",
 ) -> Candidate | None:
     """Insert BUF on attributed worst-path hops. Not ABC, not a cell drive-up."""
     from .attribute import attribute_sta
@@ -1289,12 +1290,14 @@ def evaluate_net_buffer(
         if not types:
             types = dict((parent.artifacts or {}).get("path_types") or {})
     knobs = {
-        "source": "net_buffer",
+        "source": source,
         "parent_id": parent.id,
         "parent_name": parent.knobs.get("name"),
         "hops": targets,
         "buf": BUF_TYPE,
     }
+    if source == "net_buffer_spef":
+        knobs["spef_residual"] = 1
     fp = knobs_fp("net", knobs)
     if fp in mem.seen_knobs("net"):
         return next(c for c in mem.by_level("net") if c.knobs_fp == fp)
