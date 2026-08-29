@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Dynamic IR engine on the GCD write_pg_spice mesh.
-# Per-ITerm PWL currents + backward-Euler + V(x,y) heatmap.
-# Distinct from vyges-em-ir (simultaneous t50, no waveform) and from
-# pdn_transient.py (global peak-factor step).
+# Per-ITerm PWL + Solver A (direct BE + LU, golden) + V(x,y) heatmap.
+# Not the SA-AMG/MOR workhorse. Distinct from vyges-em-ir (bootstrap /
+# simultaneous t50, no waveform) and pdn_transient.py (global load-step).
 #
 # Uso: FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 # Env:

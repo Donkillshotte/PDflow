@@ -37,7 +37,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 | **StarRC** | GAP | Synopsys commerciale, no licenza | documentato | **OpenRCX** SPEF a finish |
 | **open_pdks** | GAP | Sky130 / gf180, **altro PDK** | corso pinnato Nangate45 | Non si mescola con FreePDK45 |
 | **vyges-em-ir** | INTEGRATED | IR statico CG + transiente BE sulla mesh `write_pg_spice` | azione `vyges_em_ir` · `sim/reports/vyges_em_ir_flowlab.json` · binario v0.1.33 | — |
-| **dynamic_ir (questo corso)** | INTEGRATED | I(t) per ITerm + BE LU + heatmap t_worst | azione `dynamic_ir` · `sim/reports/dynamic_ir_flowlab.json` + `.svg` | — |
+| **dynamic_ir (questo corso)** | INTEGRATED | I(t) per ITerm + **Solver A** (BE LU golden) + heatmap; B AMG / C MOR = GAP | azione `dynamic_ir` · `sim/reports/dynamic_ir_flowlab.json` + `.svg` | — |
 
 ---
 

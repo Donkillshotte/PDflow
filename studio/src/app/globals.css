@@ -2326,6 +2326,16 @@ button.pipeline-node {
   border: 1px solid var(--fl-border);
   background: #0b1220;
 }
+.fl-dynir-group {
+  display: grid;
+  gap: 0.22rem;
+}
+.fl-dynir-group > span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fl-muted);
+}
 .fl-dynir-levels {
   display: flex;
   flex-wrap: wrap;

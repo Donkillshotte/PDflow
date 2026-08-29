@@ -3,26 +3,20 @@
 
 Architecture (what this file actually does — not a product claim):
 
-  write_pg_spice (R + I_avg + bump V)     ← OpenROAD PDNSim, static mesh
-  inst_power_map.json (optional)          ← ODB placement, seq vs combo
-       │
-       ▼
-  Current engine: per ITerm PWL triangle
-       simultaneous | spatial stagger | clock-aware
-       │
-       ▼
-  Backward-Euler  (G + C/dt) V_{n+1} = I_{n+1} + (C/dt) V_n
-       sparse LU once, then timestep
-       │
-       ▼
-  Vmin(t) waveform + V(x,y) at worst time + SVG heatmap
+  OpenROAD write_pg_spice  →  PDN graph (R mesh, bump V, I_avg)
+  per-ITerm triangle I(t)  →  Solver A: direct backward-Euler + sparse LU
+  Vmin(t) + V(x,y) heatmap at t_worst
+
+This slice is Solver A (golden) on ~4k GCD nodes. It is not the SoC workhorse.
+Solver B (SA-AMG) and Solver C (rational Krylov / MOR) are documented GAP.
+vyges-em-ir is bootstrap / simultaneous-switch check — not the core, not a fork.
+Do not implement AMG, CCS tables, Ginkgo, or GPU here.
 
 Honest limits: triangle ≠ Liberty CCS; RTL VCD does not name gate pins;
-Nangate45 has no CCS current tables. This is the I(t)+BE+map layer that
-vyges-em-ir (simultaneous t50, no waveform) does not expose.
+Nangate45 has no CCS current tables.
 
-Prior art: OpenROAD PSM/PDNSim (static), vyges-em-ir (BE, simultaneous),
-EMSim (academic PWL architecture; VCS/PT-PX/HSpice), VoltSpot (arch-level).
+Prior art (concepts, not dependencies): OpenROAD PSM (frontend),
+EMSim split A/B, ESPSim SA-AMG, MATEX/Raptor MOR, Ginkgo, Xyce/ngspice gold.
 """
 
 from __future__ import annotations
@@ -243,11 +237,113 @@ def solve_be(
         "pkg_r": pkg_r,
         "pkg_l": pkg_l,
         "c_decap": c_decap,
-        "solver": "backward-euler + sparse LU",
+        "solver": "A_direct_be",
+        "solver_note": "golden backward-Euler + sparse LU — not AMG/MOR workhorse",
         "wave_t": wave_t,
         "wave_vmin": wave_vmin,
         "wave_itot": wave_itot,
         "V_worst": worst_V,
+    }
+
+
+def platform_block(*, mode: str, c_decap: float, pkg_r: float, pkg_l: float) -> dict:
+    """Hybrid multi-fidelity platform labels. Solvers B/C are GAP on purpose."""
+    return {
+        "name": "hierarchical multi-fidelity power-integrity engine",
+        "slice": "OpenROAD frontend + triangle I(t) + Solver A golden (GCD ~4k nodes)",
+        "do_not_fork": ["vyges-em-ir", "EMSim", "OpenROAD PSM"],
+        "do_not_implement_this_slice": [
+            "SA-AMG",
+            "rational Krylov / MOR",
+            "Liberty CCS/ECSM I(t) tables",
+            "Ginkgo CPU/GPU backend",
+            "empty power-integrity/ tree",
+        ],
+        "ml": {
+            "status": "GAP",
+            "role": "scenario / window ranking only (MAVIREC, PowerNet, IR-Hunter)",
+            "not": "neural voltage map as sign-off",
+        },
+        "gpu": {
+            "status": "GAP",
+            "idea": "one LinearSolver API → CPU AMG / CPU Krylov / GPU AMG / GPU Krylov (Ginkgo)",
+        },
+        "gold": {
+            "tiny": {"tool": "ngspice", "status": "READY", "scope": "1-node RC + triangle"},
+            "medium": {
+                "tool": "Xyce",
+                "status": "GAP",
+                "scope": "parallel TRAN validation — not PDN-structure-aware core",
+            },
+        },
+        "solvers": {
+            "A_direct_be": {
+                "status": "READY",
+                "role": "golden reference",
+                "via": "(G + C/dt) Vnext = rhs · sparse LU",
+                "not": "product workhorse",
+            },
+            "B_sa_amg": {
+                "status": "GAP",
+                "role": "full-chip workhorse",
+                "ref": "ESPSim smoothed-aggregation AMG",
+            },
+            "C_rational_krylov_mor": {
+                "status": "GAP",
+                "role": "multi-scenario reuse on the same PDN",
+                "ref": "MATEX + Raptor",
+                "killer_feature": "shared reduced model across I(t) scenarios",
+            },
+        },
+        "network_levels": {
+            "N1_R": {
+                "status": "READY",
+                "eq": "G V = I",
+                "via": "solve_static on write_pg_spice",
+            },
+            "N2_RC": {
+                "status": "READY",
+                "eq": "G V + C dV/dt = I(t)",
+                "via": "lumped c_decap on ITerm nodes",
+                "c_decap": c_decap,
+            },
+            "N3_RC_pkg": {
+                "status": "READY",
+                "eq": "RC + lumped package R/L at bumps",
+                "via": "pkg_r + pkg_l/dt series on pad nodes",
+                "pkg_r": pkg_r,
+                "pkg_l": pkg_l,
+                "note": "not extracted on-die inductance",
+            },
+            "N4_vrm": {
+                "status": "PARTIAL",
+                "eq": "on-die + package + bumps + VRM",
+                "via": "bumps as V sources in write_pg_spice; VRM ladder is system_pdn (not coupled TRAN)",
+            },
+        },
+        "product_tiers": {
+            "FAST": {
+                "status": "PARTIAL",
+                "intended": "vectorless + SA-AMG + coarse timestep",
+                "this_slice": f"synthetic {mode} t50 + Solver A BE (no AMG)",
+            },
+            "ACCURATE": {
+                "status": "GAP",
+                "intended": "VCD/FSDB + CCS I(t) + AMG + adaptive timestep",
+            },
+            "SIGNOFF": {
+                "status": "GAP",
+                "intended": "RLC + MOR/Krylov + direct spot checks + EM + package",
+            },
+        },
+        "timing_impact": {
+            "status": "GAP",
+            "idea": "V(t) → delay(V) → STA path degradation",
+        },
+        "em_thermal": {
+            "status": "GAP",
+            "idea": "I(t)→J→EM and P→T→R(T) as later coupling",
+        },
     }
 
 
@@ -636,34 +732,38 @@ def main() -> int:
         {"id": 2, "name": "Power model", "status": "PARTIAL", "via": "I_avg from mesh (NLDM, not CCS I(t))"},
         {"id": 3, "name": "Activity engine", "status": "PARTIAL", "via": f"synthetic {args.mode}; VCD pin-accurate = GAP"},
         {"id": 4, "name": "Current waveform", "status": "PARTIAL", "via": "per-ITerm triangle PWL"},
-        {"id": 5, "name": "Transient solver", "status": "READY", "via": "backward-Euler sparse LU (not AMG/PCG product core)"},
-        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + Vmin(t) + windows; no EM/timing coupling"},
+        {"id": 5, "name": "Transient solver", "status": "READY", "via": "Solver A golden — direct BE sparse LU. Solver B SA-AMG and Solver C Krylov/MOR = GAP"},
+        {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": "heatmap + Vmin(t) + windows; timing/EM coupling = GAP"},
     ]
+    plat = platform_block(mode=args.mode, c_decap=args.c_decap, pkg_r=args.pkg_r, pkg_l=args.pkg_l)
     report = {
         "ok": True,
         "kind": "dynamic_ir",
         "engine": "studio-dynamic-ir",
         "architecture": [
-            "OpenROAD write_pg_spice PDN (static R mesh)",
-            "per-ITerm PWL triangle I(t) (leak + switch)",
-            "backward-Euler sparse LU",
+            "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
+            "per-ITerm PWL triangle I(t) (leak + switch) — not CCS",
+            "Solver A: direct backward-Euler sparse LU (golden, not workhorse)",
             "V(x,y) heatmap at t_worst",
         ],
         "not": [
             "Liberty CCS current waveforms",
             "gate-level VCD pin times",
-            "AMG / rational Krylov / MOR",
+            "SA-AMG workhorse (Solver B)",
+            "rational Krylov / MOR (Solver C)",
             "RedHawk / Voltus / Totem sign-off",
             "vyges-em-ir fork",
             "EMSim commercial flow (VCS/Calibre/PT-PX/HSpice)",
         ],
         "roles": {
-            "openroad": "PDN extract — replaces Calibre xRC for the on-die R mesh",
+            "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
-            "vyges_em_ir": "simultaneous-switch BE prototype — not the foundation",
-            "this_engine": "A: triangle PWL per ITerm; B: BE LU on write_pg_spice",
-            "ngspice": "golden for B on a 1-node RC, not HSpice full-chip",
+            "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
+            "this_engine": "Solver A golden on write_pg_spice; triangle I(t) per ITerm",
+            "ngspice": "unit-test gold for B on a 1-node RC",
+            "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
+        "platform": plat,
         "emsim_split": {
             "upstream": "https://github.com/jinyier/EMSim",
             "citation": "Ma et al., TIFS 2023 — EM emanation, not IR sign-off",
@@ -676,15 +776,17 @@ def main() -> int:
             },
             "B_pdn_solve": {
                 "status": "READY",
+                "solver": "A_direct_be",
                 "replaces": "HSpice TRAN on Calibre DSPF",
-                "via": "backward-Euler sparse LU on write_pg_spice",
+                "via": "Solver A — backward-Euler sparse LU on write_pg_spice (golden)",
                 "gold": "ngspice 1-node gear/BE",
+                "not": "SA-AMG workhorse or Krylov/MOR",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
                 "Calibre_xRC": "MAPPED — OpenROAD write_pg_spice (R mesh, not DSPF)",
                 "PrimeTime_PX": "MAPPED — I_avg in the SPICE mesh, not time-based cell power",
-                "HSpice": "MAPPED — ngspice gold only; B is the custom BE",
+                "HSpice": "MAPPED — ngspice gold only; B is Solver A BE",
             },
         },
         "pipeline": pipeline,

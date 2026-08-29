@@ -3,7 +3,7 @@
 Engine reale: [`vyges-tools/em-ir`](https://github.com/vyges-tools/em-ir) v0.1.33, Apache-2.0.
 Non è un clone Python: Studio scarica il binario (sha256-pinnato) in `tools/vyges-em-ir/` e lo lancia su un job `.emir`.
 
-`pdn_transient.py` resta il solver di laboratorio (waveform CSV, `pkg_r`/`pkg_l` espliciti). **vyges-em-ir** è il check IR/EM dichiarativo sullo stesso mesh `write_pg_spice`.
+`pdn_transient.py` resta il solver di laboratorio (waveform CSV, `pkg_r`/`pkg_l` espliciti). **vyges-em-ir** è il check IR/EM dichiarativo sullo stesso mesh `write_pg_spice` — bootstrap e validazione, **non** il core Dynamic IR (quello è Solver A in `pdn_dynamic.py`).
 
 ## Come si aggancia
 

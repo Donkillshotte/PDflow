@@ -235,7 +235,7 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "dynamic_ir") ||
         signoffReportPass("learn", "dynamic_ir"),
-      detail: "PWL per ITerm · BE LU · heatmap V(x,y) a t_worst",
+      detail: "Solver A golden · PWL per ITerm · heatmap t_worst · B/C GAP",
       action: "dynamic_ir",
       href: "/strumenti?tab=run&action=dynamic_ir",
     },

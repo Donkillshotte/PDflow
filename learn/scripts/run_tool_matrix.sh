@@ -72,7 +72,7 @@ tools = {
     "starrc": {"status": "GAP", "bin": None, "role": "Synopsys commercial — OpenRCX SPEF is the extract"},
     "open_pdks": {"status": "GAP", "bin": None, "role": "Sky130/gf180; this course is pinned Nangate45/FreePDK45"},
     "vyges_em_ir": {"status": "INTEGRATED", "bin": shutil.which("vyges-em-ir") or str(root / "tools/vyges-em-ir/vyges-em-ir"), "role": "CG + backward Euler on write_pg_spice mesh"},
-    "dynamic_ir": {"status": "INTEGRATED", "bin": str(root / "learn/scripts/pdn_dynamic.py"), "role": "per-ITerm PWL + BE LU + heatmap on write_pg_spice mesh"},
+    "dynamic_ir": {"status": "INTEGRATED", "bin": str(root / "learn/scripts/pdn_dynamic.py"), "role": "per-ITerm PWL + Solver A BE golden + heatmap; AMG/MOR = GAP"},
 }
 odb = root / f"tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/{variant}/6_final.odb"
 skip_optional = set() if odb.exists() else {"vectorless", "vyges_em_ir", "dynamic_ir"}

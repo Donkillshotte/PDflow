@@ -1,6 +1,8 @@
-# Dynamic IR sul GCD (I(t) per pin + backward Euler)
+# Dynamic IR sul GCD (I(t) per pin + Solver A golden)
 
-Slice eseguibile, non un RedHawk. Stesso mesh OpenROAD `write_pg_spice` di `chip_pdn_ir` / vyges-em-ir, ma con **correnti PWL per ITerm**, timestep esplicito, **waveform** e **heatmap V(x,y)** all’istante di droop peggiore.
+Slice eseguibile di una **piattaforma ibrida**, non un RedHawk e non un fork.
+Frontend: OpenROAD `write_pg_spice`. Motore: **Solver A** (backward Euler + LU sparso) come **gold**, non come workhorse.
+Solver B (SA-AMG) e Solver C (rational Krylov / MOR) sono GAP. vyges-em-ir è bootstrap / check simultaneous-switch.
 
 ```text
 6_final.odb
@@ -12,8 +14,8 @@ inst_power_map.json             placement, seq vs combo (opzionale)
     ▼
 pdn_dynamic.py
     per-ITerm triangle I(t)     simultaneous | spatial | clock
-    (G + C/Δt) V_{n+1} = I_{n+1} + (C/Δt) V_n
-    sparse LU una volta, poi timestep
+    Solver A: (G + C/Δt) V_{n+1} = I_{n+1} + (C/Δt) V_n
+    sparse LU una volta, poi timestep   ← gold, non AMG/MOR
     ▼
 sim/reports/dynamic_ir_<variant>.json
                   .wave.csv     Vmin(t), I_tot(t)
@@ -32,7 +34,26 @@ vyges-em-ir oggi è essenzialmente **L1 simultaneous** (tutte le celle a `switch
 | **L2 VCD dynamic** | tempi reali di pin | **GAP** — VCD RTL ≠ ITerm gate |
 | **L3 Windowed** | simula solo finestre ad alta corrente | PARTIAL — finestre su `I_tot(t)` di **questo** run |
 
-Il cuore del prodotto futuro è il modello **cella → I(t)** (EMSim A: PT-PX), non il solver. BE+LU sul GCD è il laboratorio per **B**. **Non** si forka vyges né EMSim.
+Il salto qualitativo del prodotto è il modello **cella → I(t)** (CCS/arco/slew/load), non il solver.
+Solver A sul GCD è il **gold**. Il workhorse futuro è B (AMG); il riuso multi-scenario è C (MOR).
+**Non** si forka vyges, EMSim o PSM. **Non** si implementa AMG/CCS/GPU in questa slice.
+
+## Solver A / B / C e livelli prodotto
+
+| Solver | Ruolo | GCD |
+|---|---|---|
+| **A** direct BE + LU | golden | READY |
+| **B** SA-AMG | workhorse full-chip | GAP |
+| **C** Krylov/MOR | stessa PDN, tanti `I(t)` | GAP |
+
+| Rete | Equazione | GCD |
+|---|---|---|
+| N1 R | \(GV=I\) | READY |
+| N2 R+C | + `c_decap` | READY |
+| N3 + pkg R/L | `pkg_r` / `pkg_l` sui bump | READY (L on-die non estratta) |
+| N4 + VRM | on-die + package + VRM | PARTIAL (`system_pdn` non accoppiato) |
+
+FAST = vectorless+AMG (PARTIAL: abbiamo t50 sintetici + A). ACCURATE e SIGNOFF = GAP.
 
 ## Pipeline a 6 livelli (oggi)
 
@@ -42,7 +63,7 @@ Il cuore del prodotto futuro è il modello **cella → I(t)** (EMSim A: PT-PX), 
 | 2 | Power model | I_avg nel `.sp` (NLDM) | no CCS I(t) |
 | 3 | Activity | clock/spatial/simultaneous | no VCD pin, no SAIF |
 | 4 | Current waveform | triangolo per ITerm | no slew/load/arc |
-| 5 | Transient solver | BE + sparse LU | non SPICE full-chip; ngspice = gold 1-nodo |
+| 5 | Transient solver | **Solver A** BE + LU | B AMG / C MOR = GAP; ngspice = gold 1-nodo |
 | 6 | Analysis | heatmap, Vmin(t), finestre, hotspot seq/combo | no EM, no delay vs V |
 
 ```bash
@@ -97,8 +118,8 @@ Gold ngspice: circuito **1 nodo** RC + triangolo (non il chip). `|V_BE − V_ngs
 | `learn/scripts/run_dynamic_ir.sh` | GCD + stamp `.dynamic_ir.ok` |
 | `sim/reports/dynamic_ir_<variant>.*` | JSON / wave / map / SVG |
 
-Limiti in aula: triangolo ≠ CCS; nessun AMG/Krylov/GPU; package R/L come in `pdn_transient`; pad PDNSim su metal4.
+Limiti in aula: triangolo ≠ CCS; Solver A ≠ workhorse; nessun AMG/Krylov/GPU; package R/L come in `pdn_transient`; pad PDNSim su metal4.
 
-Landscape OSS e perché **non** forkare vyges/EMSim/PSM: [dynamic-ir-landscape.md](./dynamic-ir-landscape.md).
+Piattaforma ibrida (A/B/C, FAST/ACCURATE/SIGNOFF, perché **non** forkare): [dynamic-ir-landscape.md](./dynamic-ir-landscape.md).
 
 Cross-ref: [vyges-em-ir.md](./vyges-em-ir.md) · [spice-chip-mesh.md](./spice-chip-mesh.md) · [vectorless-power.md](./vectorless-power.md) · [oss-integrations.md](./oss-integrations.md)

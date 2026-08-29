@@ -34,7 +34,7 @@ const POST_FINISH_CHIPS = [
   { id: "vectorless", label: "Vectorless / dynamic", hint: "Najm + Kouroussis IR" },
   { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
   { id: "vyges_em_ir", label: "vyges-em-ir", hint: "CG + backward Euler" },
-  { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "PWL per pin · heatmap" },
+  { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "Solver A golden · heatmap" },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
   { id: "power_chain", label: "Catena SPICE", hint: "activity→IR→system" },
   { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },

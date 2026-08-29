@@ -273,6 +273,15 @@ assert r["sim_levels"]["L2_vcd_dynamic"]["status"]=="GAP"
 assert r["hotspot"]["droop_mv"] > 0
 assert r["emsim_split"]["A_cell_current"]["status"]=="PARTIAL"
 assert r["emsim_split"]["B_pdn_solve"]["status"]=="READY"
+p=r["platform"]
+assert p["solvers"]["A_direct_be"]["status"]=="READY"
+assert p["solvers"]["B_sa_amg"]["status"]=="GAP"
+assert p["solvers"]["C_rational_krylov_mor"]["status"]=="GAP"
+assert p["product_tiers"]["FAST"]["status"]=="PARTIAL"
+assert p["product_tiers"]["SIGNOFF"]["status"]=="GAP"
+assert p["network_levels"]["N1_R"]["status"]=="READY"
+assert p["network_levels"]["N4_vrm"]["status"]=="PARTIAL"
+assert "vyges-em-ir" in p["do_not_fork"]
 g=r.get("ngspice_gold")
 assert g is None or g.get("ok") is True, g
 print(r["summary"][:100])
