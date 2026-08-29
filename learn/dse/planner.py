@@ -281,6 +281,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     steps.append({"level": "pdn", "reason": pdn_why, "scope": "chip"})
     steps.append(
         {
+            "level": "f4_activity",
+            "reason": (
+                "OpenSTA report_arrival on the attributed host — t50 for I(t), "
+                "not the synth extract STA, not a VCD remap"
+            ),
+            "scope": "net" if focus != "chip" else "chip",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_scale",
             "reason": (
                 "I(t)×P_F3/P_base of the attributed host (port-steer/port-net/net/cell, "

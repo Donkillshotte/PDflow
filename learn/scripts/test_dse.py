@@ -362,6 +362,7 @@ def main() -> int:
     check(any(s["level"] == "net_port" for s in planned["steps"]), "planner schedules port-net BUF")
     check(any(s["level"] == "routing" for s in planned["steps"]), "planner schedules routing GRT")
     check(any(s["level"] == "f4_extract" for s in planned["steps"]), "planner schedules candidate write_pg_spice")
+    check(any(s["level"] == "f4_activity" for s in planned["steps"]), "planner schedules host report_arrival")
     check(any(s["level"] == "f4_scale" for s in planned["steps"]), "planner schedules attributed I-scale")
     check(
         "attributed host" in next(s["reason"] for s in planned["steps"] if s["level"] == "f4_scale"),
@@ -438,6 +439,7 @@ def main() -> int:
     check(next_fidelity(level="port_steer", pred=None, budget_left=20, cost_hint={}) == "F3", "F5-port residual steer measures at F3")
     check(next_fidelity(level="ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "IR residual steer measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
+    check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f2_region", pred=None, budget_left=20, cost_hint={}) == "F2", "region GPL stays on F2")
     check(next_fidelity(level="f4_region_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "region extract stays on F4")
     check(next_fidelity(level="f4_amg", pred=None, budget_left=20, cost_hint={}) == "F4", "AMG stays on F4")
@@ -482,6 +484,11 @@ def main() -> int:
             {"source": "f4_iscale", "parent_id": "synp", "host_source": "orfs_abc_script", "i_scale": 2.31},
         ),
         "I-scale of the port-steer host is not flattened into the synth I-scale fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
+        != knobs_fp("pdn", {"source": "f4_iscale", "parent_id": "psteer", "host_source": "net_buffer_spef"}),
+        "host arrivals knobs are not flattened into the I-scale fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "finish"})
@@ -1166,6 +1173,7 @@ def main() -> int:
         should_pay_residual_steer,
         should_pay_ir_steer,
         should_pay_f4_scale,
+        should_pay_host_arrivals,
     )
 
     mem_pay = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-pay-")) / "p.jsonl")
@@ -1694,6 +1702,41 @@ def main() -> int:
     )
     h1 = iscale_host(mem_is)
     check(h1 is not None and h1.id == "psteer", f"I-scale prefers port-steer over synth, got {h1}")
+    pay_ha0, why_ha0 = should_pay_host_arrivals(mem_is, budget_left=80, n_arr=0)
+    check(not pay_ha0, f"host arrivals wait for a mapped netlist ({why_ha0})")
+    dummy_v = Path(tempfile.mkdtemp(prefix="dse-arr-host-")) / "host.v"
+    dummy_v.write_text("module gcd(clk); input clk; endmodule\n")
+    psteer = next(c for c in mem_is.all() if c.id == "psteer")
+    psteer.artifacts = dict(psteer.artifacts or {})
+    psteer.artifacts["mapped_v"] = str(dummy_v)
+    mem_is.touch(psteer)
+    pay_ha1, why_ha1 = should_pay_host_arrivals(mem_is, budget_left=80, n_arr=0)
+    check(pay_ha1, f"host arrivals are paid on the attributed mapped host ({why_ha1})")
+    check("net_buffer_spef" in why_ha1, f"arrivals acquire names the port-steer host ({why_ha1})")
+    check("VCD" in why_ha1, f"arrivals acquire refuses a VCD map ({why_ha1})")
+    pay_ha2, why_ha2 = should_pay_host_arrivals(mem_is, budget_left=80, n_arr=1)
+    check(not pay_ha2, f"host arrivals are a single shot ({why_ha2})")
+    from dse.acquire import latest_host_arrivals
+
+    mem_is.add(
+        Candidate(
+            id="arrh",
+            design_id="gcd",
+            parent_id="psteer",
+            level="pdn",
+            knobs={"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"},
+            knobs_fp="arrh",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"sta_arrivals": str(dummy_v), "n_inst": 12},
+        )
+    )
+    hit = latest_host_arrivals(mem_is)
+    check(hit is not None and hit.get("host_source") == "net_buffer_spef", f"latest host arrivals prefer the attributed JSON, got {hit}")
     pay_is0, why_is0 = should_pay_f4_scale(mem_is, budget_left=80, n_scale=0)
     check(pay_is0, f"attributed I-scale is paid ({why_is0})")
     check("net_buffer_spef" in why_is0, f"acquire names the port-steer host ({why_is0})")

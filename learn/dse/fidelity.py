@@ -279,6 +279,7 @@ def evaluate_f4_scale(
     insts: Path | str | None = None,
     extract_id: str = "finish",
     sta: Path | str | None = None,
+    sta_via: str | None = None,
 ) -> Candidate | None:
     """Named extract + PDN knobs; I(t) × (attributed host F3 power / baseline).
 
@@ -306,6 +307,7 @@ def evaluate_f4_scale(
         "host_source": parent.knobs.get("source") or parent.level,
         "source": "f4_iscale",
         "extract_id": extract_id,
+        "sta_via": sta_via or ("extract" if sta else "none"),
     }
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
@@ -343,6 +345,7 @@ def evaluate_f4_scale(
     attr["extract_id"] = extract_id
     attr["host_level"] = parent.level
     attr["host_source"] = parent.knobs.get("source") or parent.level
+    attr["sta_via"] = sta_via or ("extract" if sta else "none")
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
@@ -368,6 +371,7 @@ def evaluate_f4_scale(
             "static_ir_mv": dyn.get("static_ir_mv"),
             "extract_id": extract_id,
             "em_j_a_m2": em.get("j_absmax_a_m2"),
+            "sta_via": sta_via or ("extract" if sta else "none"),
         }
         mem.touch(parent)
     c = Candidate(
@@ -389,6 +393,81 @@ def evaluate_f4_scale(
         note=f"F4 I-scale of {host} ×{scale:.3f} on {extract_id} droop={dyn.get('worst_droop_mv')}",
     )
     return mem.add(c)
+
+
+def evaluate_host_arrivals(
+    parent: Candidate,
+    mem: DesignMemory,
+    *,
+    design_id: str = "gcd",
+) -> Candidate | None:
+    """OpenSTA report_arrival on the attributed host netlist.
+
+    t50 teacher for I(t) — name-join onto the named extract. Not a VCD→ITerm
+    map and not the synth extract's arrivals.
+    """
+    mapped = (parent.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return None
+    host = parent.knobs.get("name") or parent.knobs.get("source") or parent.level
+    knobs = {
+        "name": f"arrivals_{host}",
+        "source": "f4_host_arrivals",
+        "parent_id": parent.id,
+        "parent_name": host,
+        "host_level": parent.level,
+        "host_source": parent.knobs.get("source") or parent.level,
+    }
+    fp = knobs_fp("pdn", knobs)
+    if fp in mem.seen_knobs("pdn"):
+        return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
+    cid = DesignMemory.new_id()
+    dest = REPO / "learn" / "sim" / "dse" / "arrivals" / cid / "sta_arrivals.json"
+    arr = export_arrivals(Path(mapped), dest)
+    sta_p = dest if dest.is_file() and arr.get("status") == "ok" else None
+    q = QoR(
+        area_um2=parent.qor.area_um2,
+        n_cells=parent.qor.n_cells,
+        wns_cost=parent.qor.wns_cost,
+        power_w=parent.qor.power_w,
+        fidelity="F3",
+        note=(
+            f"report_arrival on {host} n_inst={arr.get('n_inst')} "
+            "— attributed host t50, not extract STA, not VCD"
+        ),
+    )
+    return mem.add(
+        Candidate(
+            id=cid,
+            design_id=design_id,
+            parent_id=parent.id,
+            level="pdn",
+            knobs=knobs,
+            knobs_fp=fp,
+            rtl_fp=parent.rtl_fp,
+            netlist_fp=parent.netlist_fp,
+            fidelity="F3",
+            qor=q,
+            cost_s=float(arr.get("cost_s") or 0.0),
+            artifacts={
+                **arr,
+                "sta_arrivals": str(sta_p) if sta_p else None,
+                "mapped_v": mapped,
+                "n_inst": arr.get("n_inst"),
+            },
+            attr={
+                "via": "f4_host_arrivals",
+                "host_level": parent.level,
+                "host_source": parent.knobs.get("source") or parent.level,
+                "inherited_from": parent.id,
+                "n_inst": arr.get("n_inst"),
+                "not": "a VCD→ITerm map or the synth extract arrivals",
+            },
+            status="ok" if arr.get("status") == "ok" and sta_p else "fail",
+            failure=arr.get("reason") if arr.get("status") != "ok" else None,
+            note=f"F3 arrivals of {host} n_inst={arr.get('n_inst')} — not extract STA",
+        )
+    )
 
 
 def evaluate_f4_extract(

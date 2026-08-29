@@ -17,13 +17,16 @@ ADAPTERS: dict[str, dict] = {
     },
     "activity": {
         "via": "dse.sta_f3.export_arrivals + ingest",
-        "note": "OpenSTA report_arrival on the candidate (t50 teacher); no invented RTL→ITerm map",
+        "note": (
+            "OpenSTA report_arrival on the attributed host (port-steer/port-net/…) "
+            "as t50 teacher; name-join onto the named extract — no invented RTL→ITerm map"
+        ),
     },
     "current": {
         "via": "ingest + F3 power scale",
         "note": (
             "triangle I(t) on named extract; amplitude × P_F3/P_base of the "
-            "attributed host (port-steer > port-net > net > cell > F1) — "
+            "attributed host; t50 from host report_arrival when paid — "
             "no invented RTL→ITerm map"
         ),
     },

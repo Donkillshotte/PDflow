@@ -261,6 +261,58 @@ def should_pay_f4_scale(
     )
 
 
+def latest_host_arrivals(mem: DesignMemory) -> dict | None:
+    """Most recent report_arrival JSON on an attributed host. Not extract STA."""
+    from pathlib import Path
+
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_host_arrivals":
+            continue
+        p = (c.artifacts or {}).get("sta_arrivals")
+        if p and Path(p).is_file():
+            return {
+                "sta": p,
+                "parent_id": (c.knobs or {}).get("parent_id"),
+                "n_inst": (c.artifacts or {}).get("n_inst"),
+                "host_source": (c.knobs or {}).get("host_source"),
+                "candidate": c,
+            }
+    return None
+
+
+def should_pay_host_arrivals(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_arr: int = 0,
+    arr_max: int = 1,
+    min_s: float = 4.0,
+) -> tuple[bool, str]:
+    """Pay OpenSTA report_arrival on the I-scale host. Not extract STA, not VCD."""
+    if n_arr >= arr_max:
+        return False, "host arrivals shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover report_arrival"
+    from pathlib import Path
+
+    from .active import iscale_host
+    from .sta_f3 import available as sta_ok
+
+    if not sta_ok():
+        return False, "opensta missing — not inventing t50"
+    host = iscale_host(mem)
+    if host is None:
+        return False, "no attributed host to measure arrivals on"
+    mapped = (host.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return False, "attributed host has no mapped netlist for report_arrival"
+    host_src = (host.knobs or {}).get("source") or (host.knobs or {}).get("name") or host.level
+    return True, (
+        f"OpenSTA report_arrival on {host_src} — t50 of the attributed host, "
+        "not the synth extract, not a VCD map"
+    )
+
+
 def should_pay_f2_region(
     mem: DesignMemory,
     *,
@@ -1044,6 +1096,8 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level in ("f4_krylov", "f4_mor"):
         return "F4"
+    if level in ("f4_activity", "f4_host_arrivals"):
+        return "F3"
     if level in ("pdn", "f4_extract", "f4_scale", "f4_region_extract", "ir_steer"):
         return "F4"
     if level in ("synthesis", "f1_synth"):

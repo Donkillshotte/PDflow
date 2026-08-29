@@ -6,5 +6,6 @@ reports/*
 previews/
 dse/netlists/
 dse/extracts/
+dse/arrivals/
 dse/sdf/
 dse/spef/

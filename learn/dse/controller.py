@@ -30,6 +30,8 @@ from pathlib import Path
 from .abc_space import CATALOG
 from .acquire import (
     latest_ok_extract,
+    latest_host_arrivals,
+    should_pay_host_arrivals,
     should_pay_f2_fast,
     should_pay_f2_gpl,
     should_pay_f2_region,
@@ -91,6 +93,7 @@ from .fidelity import (
     evaluate_f4_extract,
     evaluate_f4_pdn,
     evaluate_f4_scale,
+    evaluate_host_arrivals,
     ensure_mapped_netlist,
     flowlab_params,
     ingest_f2,
@@ -1500,6 +1503,33 @@ def run_controller(
                 reason="mf-krylov-mor-residual-vs-direct",
             )
 
+    n_arr = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_host_arrivals" and c.status == "ok"
+    )
+    pay_arr, why_arr = should_pay_host_arrivals(
+        mem, budget_left=t_end - time.time(), n_arr=n_arr
+    )
+    step("acquire", fidelity="F3_HOST_ARRIVALS", pay=pay_arr, why=why_arr)
+    if any(s["level"] == "f4_activity" for s in plan["steps"]) and pay_arr and time.time() < t_end:
+        host_arr = iscale_host(mem)
+        if host_arr:
+            child = evaluate_host_arrivals(host_arr, mem, design_id=design_id)
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F3",
+                    via="f4_host_arrivals",
+                    parent=host_arr.id,
+                    host_source=(host_arr.knobs or {}).get("source") or host_arr.level,
+                    n_inst=(child.artifacts or {}).get("n_inst"),
+                    status=child.status,
+                    reason=why_arr,
+                )
+
     n_scale = sum(
         1
         for c in mem.by_level("pdn")
@@ -1520,6 +1550,9 @@ def run_controller(
         pick = iscale_host(mem)
         if pick and base_p:
             use_ext = bool(ext_hit)
+            arr_hit = latest_host_arrivals(mem)
+            sta = arr_hit["sta"] if arr_hit else (ext_hit.get("sta") if use_ext else None)
+            sta_via = "f4_host_arrivals" if arr_hit else ("extract" if use_ext else None)
             child = evaluate_f4_scale(
                 pick,
                 mem,
@@ -1529,7 +1562,8 @@ def run_controller(
                 spice=ext_hit["spice"] if use_ext else None,
                 insts=ext_hit["insts"] if use_ext else None,
                 extract_id=str(ext_hit["extract_id"]) if use_ext else "finish",
-                sta=ext_hit.get("sta") if use_ext else None,
+                sta=sta,
+                sta_via=sta_via,
             )
             if child:
                 step(
@@ -1543,6 +1577,7 @@ def run_controller(
                     host_source=(pick.knobs or {}).get("source") or pick.level,
                     i_scale=(child.knobs or {}).get("i_scale"),
                     extract_id=(child.knobs or {}).get("extract_id"),
+                    sta_via=(child.knobs or {}).get("sta_via"),
                     droop_mv=child.qor.dynamic_ir_mv,
                     em_j=child.qor.em_j_a_m2,
                     gold=False,
@@ -1631,6 +1666,7 @@ def run_controller(
             "F5-port residual steers intra-module BUF on SPEF hops — not another port BUF, not ABC",
             "active learning: F3→F5-lite residual orders cell vs net host; F3→F5-local residual + uncertainty pick the next level",
             "F4 I-scale uses F3 power of the attributed host (port-steer/port-net/net/cell), not synth-only WNS-winner",
+            "F3 host arrivals: report_arrival on that same host — t50 for I(t), not extract STA, not VCD",
             "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
@@ -1770,6 +1806,11 @@ def run_controller(
             1
             for c in mem.by_level("pdn")
             if (c.knobs or {}).get("source") == "f4_iscale" and c.status == "ok"
+        ),
+        "n_host_arrivals": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_host_arrivals" and c.status == "ok"
         ),
         "n_f4_solve": sum(
             1
@@ -2002,10 +2043,20 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         host = (c.knobs or {}).get("parent_name") or (c.knobs or {}).get("host_source")
         w = c.qor.dynamic_ir_mv
         if sc is not None and w is not None:
-            isc = f" · I-scale {host} ×{float(sc):.3f} {float(w):.3f} mV"
+            via = (c.knobs or {}).get("sta_via")
+            extra = f" sta={via}" if via else ""
+            isc = f" · I-scale {host} ×{float(sc):.3f} {float(w):.3f} mV{extra}"
+        break
+    arrs = ""
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_host_arrivals":
+            continue
+        ninst = (c.artifacts or {}).get("n_inst")
+        h = (c.knobs or {}).get("host_source") or (c.knobs or {}).get("parent_name")
+        arrs = f" · host arrivals {h} n_inst={ninst}"
         break
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )
