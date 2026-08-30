@@ -239,7 +239,7 @@ export function DsePanel() {
                 : report.n_ir_cell_champ_cone_pdn != null
                   ? ` · IR-cnp ${report.n_ir_cell_champ_cone_pdn}`
                   : ""}
-              {report.ir_champ_amg_mv != null}
+              {report.ir_champ_amg_mv != null
                 ? ` · AMG-c ${report.ir_champ_amg_mv.toFixed(3)} mV${
                     report.ir_champ_amg_vs_direct_mv != null
                       ? ` Δ=${report.ir_champ_amg_vs_direct_mv >= 0 ? "+" : ""}${report.ir_champ_amg_vs_direct_mv.toFixed(3)}`
