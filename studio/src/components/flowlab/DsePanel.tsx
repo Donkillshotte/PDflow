@@ -64,6 +64,9 @@ type DseReport = {
   ir_cell_iscale_champ_scale?: number;
   ir_cell_iscale_champ_vs_win_mv?: number;
   n_ir_cell?: number;
+  n_ir_cell_champ?: number;
+  ir_cell_champ_wns_ns?: number;
+  ir_cell_champ_modules?: string;
   n_f4_ir_cell_extract?: number;
   n_ir_cell_pdn?: number;
   ir_cell_extract_mv?: number;
@@ -132,10 +135,15 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.n_ir_cell || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
+          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
+              {report.ir_cell_champ_wns_ns != null
+                ? ` · IR-cc ${report.ir_cell_champ_modules ?? "dpath"} WNS ${report.ir_cell_champ_wns_ns >= 0 ? "+" : ""}${report.ir_cell_champ_wns_ns.toFixed(3)}`
+                : report.n_ir_cell_champ != null
+                  ? ` · IR-cc ${report.n_ir_cell_champ}`
+                  : ""}
               {report.ir_cell_extract_mv != null
                 ? ` · IR-x ${report.ir_cell_extract_mv.toFixed(3)} mV${
                     report.ir_cell_extract_residual_mv != null
@@ -222,6 +230,7 @@ export function DsePanel() {
                 {report.n_f3_sdf != null ? ` · SDF ${report.n_f3_sdf}` : ""}
                 {report.n_f3_spef != null ? ` · SPEF ${report.n_f3_spef}` : ""}
                 {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
+                {report.n_ir_cell_champ != null ? ` · IR-cc ${report.n_ir_cell_champ}` : ""}
               </dd>
             </div>
             <div>

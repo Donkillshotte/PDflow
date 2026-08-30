@@ -361,6 +361,7 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_region" for s in planned["steps"]), "planner schedules IR-cell-region density cap")
     check(any(s["level"] == "ir_cell_region_pdn" for s in planned["steps"]), "planner schedules IR-cell-region PDN restamp")
     check(any(s["level"] == "f4_scale_champ" for s in planned["steps"]), "planner schedules champion I-scale")
+    check(any(s["level"] == "ir_cell_champ" for s in planned["steps"]), "planner schedules I-scale-champ cell size-up")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -456,6 +457,7 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_region", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region extract measures at F4")
     check(next_fidelity(level="ir_cell_region_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region PDN restamp measures at F4")
     check(next_fidelity(level="f4_scale_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion I-scale measures at F4")
+    check(next_fidelity(level="ir_cell_champ", pred=None, budget_left=20, cost_hint={}) == "F3", "I-scale-champ cell size measures at F3")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -555,6 +557,11 @@ def main() -> int:
             },
         ),
         "champion I-scale is not flattened into the winning-host I-scale fingerprint",
+    )
+    check(
+        knobs_fp("cell", {"source": "cell_size_ir_champ", "cells": ["dpath/a_reg/_078_"], "ir_join": 1, "champ": 1})
+        != knobs_fp("cell", {"source": "cell_size_ir", "cells": ["ctrl/_11_"], "ir_join": 1}),
+        "I-scale-champ cell knobs are not flattened into the first IR-cell fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1298,6 +1305,7 @@ def main() -> int:
         should_pay_f4_scale,
         should_pay_f4_scale_win,
         should_pay_f4_scale_champ,
+        should_pay_ir_cell_champ,
         iscale_champ_sta,
         should_pay_ir_cell,
         should_pay_ir_cell_extract,
@@ -2500,6 +2508,22 @@ def main() -> int:
     check("3.921" in why_sc1, f"champion I-scale names the 3.921 point ({why_sc1})")
     pay_sc2, why_sc2 = should_pay_f4_scale_champ(mem_hr, budget_left=80, n_scale=1)
     check(not pay_sc2, f"champion I-scale is a single shot ({why_sc2})")
+    champ_inst = inst_dir / "champ_inst_power_map.json"
+    champ_inst.write_text(
+        json.dumps(
+            {
+                "insts": [
+                    {"name": "dpath/a_reg/_078_", "cell": "DFF_X1", "x": 25400, "y": 19800, "seq": True, "filler": False},
+                    {"name": "dpath/b_mux/_45_", "cell": "MUX2_X1", "x": 25600, "y": 19900, "seq": False, "filler": False},
+                    {"name": "dpath/a_reg/_076_", "cell": "INV_X1", "x": 25200, "y": 19700, "seq": False, "filler": False},
+                    {"name": "dpath/b_mux/_46_", "cell": "NAND2_X1", "x": 25800, "y": 20000, "seq": False, "filler": False},
+                    {"name": "ctrl/_11_", "cell": "NOR2_X1", "x": 38950, "y": 15400, "seq": False, "filler": False},
+                    {"name": "FILLCELL_X1", "cell": "FILLCELL_X1", "x": 25463, "y": 19826, "seq": False, "filler": True},
+                ]
+            }
+        )
+        + "\n"
+    )
     mem_hr.add(
         Candidate(
             id="iscchamp",
@@ -2514,12 +2538,44 @@ def main() -> int:
             qor=QoR(dynamic_ir_mv=16.52, fidelity="F4"),
             cost_s=1.0,
             status="ok",
-            attr={"via": "f4_iscale_champ"},
+            attr={
+                "via": "f4_iscale_champ",
+                "x_dbu": 25463.0,
+                "y_dbu": 19826.0,
+                "region": "r10",
+                "combo_frac": 0.86,
+            },
+            artifacts={"insts": str(champ_inst), "x_dbu": 25463.0, "y_dbu": 19826.0},
         )
     )
     pay_sc3, why_sc3 = should_pay_f4_scale_champ(mem_hr, budget_left=80, n_scale=0)
     check(not pay_sc3, f"champion I-scale skips once measured ({why_sc3})")
     check(winning_ir_pdn(mem_hr).id == "icrp", "scaled I-scale-champ does not steal the 1× champion")
+    from dse.active import steer_from_iscale_champ_hotspot
+
+    pay_icc0, why_icc0 = should_pay_ir_cell_champ(mem_hr, budget_left=80, steer=None)
+    check(not pay_icc0, f"I-scale-champ cell waits for a hotspot steer ({why_icc0})")
+    st_icc = steer_from_iscale_champ_hotspot(mem_hr)
+    check(st_icc is not None and st_icc.get("level") == "ir_cell_champ", f"combo-heavy champ hotspot steers a cell size-up, got {st_icc}")
+    check("dpath" in (st_icc.get("modules") or []), f"champ join names dpath, got {st_icc}")
+    check("ctrl/_11_" not in (st_icc.get("cells") or []), f"champ join is not the first ctrl IR-cell set, got {st_icc}")
+    check("first ctrl" in (st_icc.get("reason") or ""), f"champ steer refuses first ctrl flatten ({st_icc})")
+    pay_icc1, why_icc1 = should_pay_ir_cell_champ(mem_hr, budget_left=80, steer=st_icc)
+    check(pay_icc1, f"I-scale-champ cell is paid after a combo-heavy join ({why_icc1})")
+    check("dpath" in why_icc1, f"I-scale-champ cell acquire names dpath ({why_icc1})")
+    fake_ctrl = dict(st_icc)
+    fake_ctrl["cells"] = ["ctrl/_11_", "ctrl/_14_"]
+    pay_icc_ref, why_icc_ref = should_pay_ir_cell_champ(mem_hr, budget_left=80, steer=fake_ctrl)
+    check(not pay_icc_ref, f"I-scale-champ cell refuses the first IR-cell set ({why_icc_ref})")
+    pay_icc2, why_icc2 = should_pay_ir_cell_champ(mem_hr, budget_left=80, steer=st_icc, n_cell=1)
+    check(not pay_icc2, f"I-scale-champ cell is a single shot ({why_icc2})")
+    ice_c2 = next(c for c in mem_hr.all() if c.id == "iscchamp")
+    ice_c2.attr = dict(ice_c2.attr or {})
+    ice_c2.attr["combo_frac"] = 0.32
+    mem_hr.touch(ice_c2)
+    check(steer_from_iscale_champ_hotspot(mem_hr) is None, "seq-heavy I-scale-champ hotspot does not steal another combo size-up")
+    ice_c2.attr["combo_frac"] = 0.86
+    mem_hr.touch(ice_c2)
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

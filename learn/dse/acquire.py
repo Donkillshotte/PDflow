@@ -1135,6 +1135,53 @@ def should_pay_ir_cell(
     )
 
 
+def should_pay_ir_cell_champ(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_cell: int = 0,
+    cell_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay one drive-up on the I-scale-champ ODB join. Not the first ctrl IR-cell."""
+    if n_cell >= cell_max:
+        return False, "I-scale-champ cell size shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover I-scale-champ cell STA"
+    if any((c.knobs or {}).get("source") == "cell_size_ir_champ" and c.status == "ok" for c in mem.by_level("cell")):
+        return False, "already have an I-scale-champ cell-local size child"
+    if not steer or steer.get("level") != "ir_cell_champ":
+        return False, "no I-scale-champ hotspot residual (need combo-heavy join ≠ first IR-cell)"
+    cells = [str(x) for x in steer.get("cells") or []]
+    if len(cells) < 1:
+        return False, "I-scale-champ join has no cells"
+    if not steer.get("modules"):
+        return False, "I-scale-champ join has no module — not inventing a cone"
+    from pathlib import Path
+
+    from .active import ir_cell_host
+
+    host = ir_cell_host(mem)
+    mapped = None
+    if host:
+        mapped = (host.artifacts or {}).get("mapped_hier_v") or (host.artifacts or {}).get("mapped_v")
+    if not host or not mapped or not Path(mapped).is_file():
+        return False, "IR-cell host missing — not flattening champ size-up onto unsized port-steer"
+    first = {str(x) for x in (host.knobs or {}).get("cells") or []}
+    if first and set(cells) <= first:
+        return False, "I-scale-champ cells already covered by the first IR-cell size-up"
+    mods = ",".join(steer.get("modules") or [])
+    region = steer.get("region") or "unjoined"
+    return True, str(
+        steer.get("reason")
+        or (
+            f"upsize {len(cells)} I-scale-champ cells on {mods} region {region} — "
+            "not the first ctrl IR-cell, not STA path, not ABC, not VCD"
+        )
+    )
+
+
 def should_pay_ir_cell_extract(
     mem: DesignMemory,
     *,
@@ -1611,7 +1658,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level in ("synthesis", "f1_synth"):
         return "F1"
-    if level in ("cell", "cell_size", "ir_cell"):
+    if level in ("cell", "cell_size", "ir_cell", "ir_cell_champ"):
         return "F3"
     if level in ("net", "net_buffer", "net_port", "net_buffer_port"):
         return "F3"

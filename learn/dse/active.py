@@ -20,6 +20,8 @@ F4 I-scale-win hotspot → ODB inst join → cell_size_ir (ctrl combo, not STA d
   then write_pg_spice on that sized netlist — residual vs host extract, not STA-only
 IR-cell 1× hotspot bin ≠ host bin:
   seq-heavy → density-cap extract on the sized netlist (region, not more combo size-up)
+F4 I-scale-champ hotspot (activity on winning_ir_pdn):
+  combo-heavy + cells ≠ first IR-cell join → cell_size_ir_champ on the sized netlist
 """
 
 from __future__ import annotations
@@ -719,4 +721,73 @@ def steer_from_ir_cell_region_residual(mem: DesignMemory) -> dict | None:
         "knob_residual_mv": knob_r,
         "via": "active_f4_ir_cell_region_pdn",
         "not": "a flattened cell+PDN vector / gold / host-region",
+    }
+
+
+def iscale_champ_cand(mem: DesignMemory):
+    """Newest I(t)×P shot on winning_ir_pdn. Not I-scale-win."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_iscale_champ":
+            return c
+    return None
+
+
+def ir_champ_hotspot_cells(mem: DesignMemory) -> dict | None:
+    """I-scale-champ xy → nearest ODB instances on the champion extract."""
+    from .acquire import extract_on_disk
+    from .attribute import join_hotspot_insts
+
+    host = iscale_champ_cand(mem)
+    if host is None:
+        return None
+    attr = host.attr or {}
+    art = host.artifacts or {}
+    eid = str((host.knobs or {}).get("extract_id") or host.id)
+    hit = extract_on_disk(mem, eid)
+    insts = (hit or {}).get("insts") or art.get("insts")
+    j = join_hotspot_insts(
+        insts,
+        attr.get("x_dbu") if attr.get("x_dbu") is not None else art.get("x_dbu"),
+        attr.get("y_dbu") if attr.get("y_dbu") is not None else art.get("y_dbu"),
+    )
+    if int(j.get("n") or 0) < 1:
+        return None
+    j["parent"] = host
+    j["region"] = attr.get("region") or j.get("region")
+    j["combo_frac"] = attr.get("combo_frac")
+    j["seq_frac"] = attr.get("seq_frac")
+    j["extract_id"] = eid
+    return j
+
+
+def steer_from_iscale_champ_hotspot(mem: DesignMemory) -> dict | None:
+    """Combo-heavy I-scale-champ join that is not the first ctrl IR-cell set."""
+    ice = ir_cell_host(mem)
+    spec = ir_champ_hotspot_cells(mem)
+    if spec is None or ice is None:
+        return None
+    combo = float(spec.get("combo_frac") or 0.0)
+    if combo < 0.5:
+        return None
+    first = {str(x) for x in (ice.knobs or {}).get("cells") or []}
+    cells = [str(x) for x in spec.get("cells") or []]
+    if not cells or (first and set(cells) <= first):
+        return None
+    if not spec.get("modules"):
+        return None
+    mods = ",".join(spec.get("modules") or [])
+    return {
+        "level": "ir_cell_champ",
+        "cells": cells,
+        "modules": spec.get("modules"),
+        "cones": spec.get("cones"),
+        "region": spec.get("region"),
+        "combo_frac": combo,
+        "extract_id": spec.get("extract_id"),
+        "reason": (
+            f"I-scale-champ hotspot {spec.get('region')} combo {combo:.2f} joins "
+            f"{mods} — not the first ctrl IR-cell, not STA-path size-up, not ABC, not VCD"
+        ),
+        "via": "active_f4_ir_cell_champ",
+        "not": "a flattened cell+I-scale vector / host-win join",
     }

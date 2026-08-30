@@ -414,6 +414,17 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
+    steps.append(
+        {
+            "level": "ir_cell_champ",
+            "reason": (
+                "I-scale-champ IR hotspot → nearest ODB instances on the champion "
+                "extract → module-scoped drive-up — not the first ctrl IR-cell, "
+                "not STA-path size-up, not ABC, not VCD"
+            ),
+            "scope": "cell",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

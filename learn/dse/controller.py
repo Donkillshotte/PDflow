@@ -45,6 +45,7 @@ from .acquire import (
     should_pay_f3_sta,
     should_pay_cell_size,
     should_pay_ir_cell,
+    should_pay_ir_cell_champ,
     should_pay_ir_cell_extract,
     should_pay_ir_cell_pdn,
     should_pay_ir_cell_region,
@@ -87,6 +88,7 @@ from .active import (
     steer_from_ir_cell_residual,
     steer_from_ir_cell_hotspot,
     steer_from_ir_cell_region_residual,
+    steer_from_iscale_champ_hotspot,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -2183,6 +2185,48 @@ def run_controller(
                     reason=why_sch,
                 )
 
+    n_icc = sum(
+        1
+        for c in mem.by_level("cell")
+        if (c.knobs or {}).get("source") == "cell_size_ir_champ" and c.status == "ok"
+    )
+    steer_icc = steer_from_iscale_champ_hotspot(mem)
+    pay_icc, why_icc = should_pay_ir_cell_champ(
+        mem, budget_left=t_end - time.time(), steer=steer_icc, n_cell=n_icc
+    )
+    step("acquire", fidelity="IR_CELL_CHAMP", pay=pay_icc, why=why_icc, steer=steer_icc)
+    if any(s["level"] == "ir_cell_champ" for s in plan["steps"]) and pay_icc and steer_icc and time.time() < t_end:
+        host_icc = ir_cell_host(mem)
+        cells_icc = list(steer_icc.get("cells") or [])
+        if host_icc and cells_icc:
+            if not (host_icc.artifacts or {}).get("mapped_v"):
+                host_icc = ensure_mapped_netlist(host_icc, rtl=rtl, liberty=lib)
+                mem.touch(host_icc)
+            child = evaluate_cell_size(
+                host_icc,
+                mem,
+                design_id=design_id,
+                cells=cells_icc,
+                source="cell_size_ir_champ",
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="cell",
+                    fidelity="F3",
+                    via="active_f4_ir_cell_champ",
+                    parent=host_icc.id,
+                    modules=steer_icc.get("modules"),
+                    region=steer_icc.get("region"),
+                    n_changed=(child.artifacts or {}).get("n_changed"),
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    area_um2=child.qor.area_um2,
+                    gold=False,
+                    status=child.status,
+                    reason=why_icc,
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -2228,6 +2272,7 @@ def run_controller(
             "F4 IR-cell region: seq-heavy 1× bin ≠ host bin — density cap on the sized netlist, not more combo size-up",
             "F4 IR-cell-region PDN: large spatial residual restamps the winning family on the capped mesh — not host IR-steer",
             "F4 I-scale-champ: I(t)×P of the IR-cell host on winning_ir_pdn — not I-scale-win on the stale host-win mesh, not host arrivals",
+            "F3 IR-cell-champ: I-scale-champ xy → ODB join on the champion extract → drive-up — not the first ctrl IR-cell, not STA path",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -2262,6 +2307,35 @@ def run_controller(
         ),
         "n_ir_cell": sum(
             1 for c in mem.by_level("cell") if (c.knobs or {}).get("source") == "cell_size_ir" and c.status == "ok"
+        ),
+        "n_ir_cell_champ": sum(
+            1
+            for c in mem.by_level("cell")
+            if (c.knobs or {}).get("source") == "cell_size_ir_champ" and c.status == "ok"
+        ),
+        "ir_cell_champ_wns_ns": next(
+            (
+                float((c.artifacts or {}).get("wns_ns"))
+                for c in reversed(list(mem.by_level("cell")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "cell_size_ir_champ"
+                and (c.artifacts or {}).get("wns_ns") is not None
+            ),
+            None,
+        ),
+        "ir_cell_champ_modules": next(
+            (
+                ",".join(
+                    dict.fromkeys(
+                        str(x).split("/")[0]
+                        for x in (c.knobs or {}).get("cells") or []
+                        if "/" in str(x)
+                    )
+                )
+                for c in reversed(list(mem.by_level("cell")))
+                if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir_champ"
+            ),
+            None,
         ),
         "n_f4_ir_cell_extract": sum(
             1
@@ -2715,6 +2789,24 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
                 else f" · IR-cell size-up n={nch} {mods}"
             )
             break
+    ircchamp = ""
+    for c in mem.by_level("cell"):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir_champ":
+            w = (c.artifacts or {}).get("wns_ns")
+            nch = (c.artifacts or {}).get("n_changed")
+            mods = ",".join(
+                dict.fromkeys(
+                    str(x).split("/")[0]
+                    for x in (c.knobs or {}).get("cells") or []
+                    if "/" in str(x)
+                )
+            )
+            ircchamp = (
+                f" · IR-cell-champ size-up n={nch} {mods} WNS={w:+.3f} ns"
+                if w is not None
+                else f" · IR-cell-champ size-up n={nch} {mods}"
+            )
+            break
     ircext = ""
     for c in mem.by_level("pdn"):
         if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_extract":
@@ -2920,5 +3012,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircext}{icpdn}{icreg}{icrpdn}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircchamp}{ircext}{icpdn}{icreg}{icrpdn}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )

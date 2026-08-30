@@ -1322,7 +1322,11 @@ def evaluate_cell_size(
     top: str = "gcd",
     source: str = "cell_size_up",
 ) -> Candidate | None:
-    """Upsize attributed cells. source=cell_size_ir is the IR-hotspot ODB join."""
+    """Upsize attributed cells.
+
+    source=cell_size_ir is the I-scale-win IR-hotspot ODB join.
+    source=cell_size_ir_champ is the I-scale-champ join (not the first ctrl set).
+    """
     from .attribute import attribute_sta
     from .cell_space import upsize_file
     from .sta_f3 import evaluate_sta
@@ -1360,6 +1364,9 @@ def evaluate_cell_size(
     }
     if source == "cell_size_ir":
         knobs["ir_join"] = 1
+    if source == "cell_size_ir_champ":
+        knobs["ir_join"] = 1
+        knobs["champ"] = 1
     fp = knobs_fp("cell", knobs)
     if fp in mem.seen_knobs("cell"):
         return next(c for c in mem.by_level("cell") if c.knobs_fp == fp)
@@ -1412,6 +1419,13 @@ def evaluate_cell_size(
         note = (
             f"IR-hotspot cell upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
             "— ODB join, not STA path, not ABC"
+        )
+    elif source == "cell_size_ir_champ":
+        attr["via"] = "active_f4_ir_cell_champ"
+        attr["cells"] = list(targets)
+        note = (
+            f"I-scale-champ cell upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
+            "— ODB join on winning_ir_pdn activity, not first ctrl IR-cell, not STA path"
         )
     else:
         note = (
