@@ -170,7 +170,7 @@ def main() -> int:
     )
     report_path.write_text(json.dumps(report, indent=2) + "\n")
     print(f"wrote {report_path} status={c.status}")
-    return 0 if ext.get("status") == "ok" else 1
+    return 0 if spice_ok else 1
 
 
 if __name__ == "__main__":
