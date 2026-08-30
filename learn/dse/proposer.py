@@ -43,13 +43,21 @@ def stagnating(mem: DesignMemory, *, n: int = 3, tol: float = 0.01) -> bool:
     return max(tail) <= min(tail) * (1.0 + tol)
 
 
-def symbolic_propose(mem: DesignMemory, *, focus: str, attr: dict | None = None) -> list[dict]:
+def symbolic_propose(
+    mem: DesignMemory, *, focus: str, attr: dict | None = None, design_id: str = "gcd"
+) -> list[dict]:
     """Rule proposer: unused cone extracts, unused STD append, stagnation nudge."""
+    from .designs import resolve
+
+    spec = resolve(design_id)
     out: list[dict] = []
     attr = attr or {}
     combo = float(attr.get("combo_frac") or 0.0)
-    _eg, _r, extracts, _st = plan_dpath_extracts()
+    extracts: list[str] = []
+    if spec.arch_extracts:
+        _eg, _r, extracts, _st = plan_dpath_extracts()
     seen_ex = {c.knobs.get("extract") for c in mem.by_level("architecture") if c.status == "ok"}
+    default_mod = spec.cones[0] if spec.cones else spec.top
     for name in extracts:
         if name in seen_ex:
             continue
@@ -58,7 +66,7 @@ def symbolic_propose(mem: DesignMemory, *, focus: str, attr: dict | None = None)
                 "level": "architecture",
                 "name": name,
                 "extract": name,
-                "module": focus if focus != "chip" else "dpath",
+                "module": focus if focus != "chip" else default_mod,
                 "scope": "logic_cone",
                 "via": "symbolic_proposer",
                 "why": f"unused e-graph extract on {focus} (combo={combo:.2f})",
@@ -90,8 +98,28 @@ def symbolic_propose(mem: DesignMemory, *, focus: str, attr: dict | None = None)
     return out
 
 
-def llm_propose(mem: DesignMemory, *, focus: str, attr: dict | None = None) -> list[dict] | None:
-    """Optional HTTP proposer. Returns None if unconfigured or the call fails."""
+def llm_propose(
+    mem: DesignMemory, *, focus: str, attr: dict | None = None, design_id: str = "gcd"
+) -> list[dict] | None:
+    """Optional HTTP proposer. Returns None if unconfigured or the call fails.
+
+    `DSE_LLM=mock` is the CI path: one BOiLS-alphabet proposal, no network,
+    never a physical/PDN knob.
+    """
+    if os.environ.get("DSE_LLM") == "mock":
+        return [
+            {
+                "level": "logic",
+                "name": "llm_mock_rewrite",
+                "abc_args": [],
+                "abc_ops": ["rewrite"],
+                "abc_script": "file",
+                "via": "llm_proposer_mock",
+                "why": "CI mock — proposer only, not the optimizer",
+                "focus": focus,
+                "design_id": design_id,
+            }
+        ]
     url = os.environ.get("DSE_LLM_URL")
     if not url:
         return None
@@ -137,8 +165,10 @@ def llm_propose(mem: DesignMemory, *, focus: str, attr: dict | None = None) -> l
     return clean or None
 
 
-def propose(mem: DesignMemory, *, focus: str, attr: dict | None = None) -> list[dict]:
-    llm = llm_propose(mem, focus=focus, attr=attr)
+def propose(
+    mem: DesignMemory, *, focus: str, attr: dict | None = None, design_id: str = "gcd"
+) -> list[dict]:
+    llm = llm_propose(mem, focus=focus, attr=attr, design_id=design_id)
     if llm:
         return llm
-    return symbolic_propose(mem, focus=focus, attr=attr)
+    return symbolic_propose(mem, focus=focus, attr=attr, design_id=design_id)

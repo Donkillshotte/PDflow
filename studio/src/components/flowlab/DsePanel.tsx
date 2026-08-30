@@ -152,6 +152,16 @@ type DseReport = {
   focus?: { focus?: string; scope?: string };
   plan?: { steps?: { level?: string; reason?: string }[] };
   candidates?: Cand[];
+  refine?: {
+    depth?: number;
+    label?: string;
+    n_cells?: number;
+    modules?: string | null;
+    extract_mv?: number | null;
+    pdn_mv?: number | null;
+    catalog_mv?: number | null;
+    leftover_n?: number;
+  }[];
 };
 
 const LEVELS = ["architecture", "logic", "synthesis", "cell", "net", "physical", "routing", "pdn"] as const;
@@ -333,12 +343,20 @@ export function DsePanel() {
                 : report.n_winning_ir_region_cell_leftover_pdn != null
                   ? ` · IR-wrlp ${report.n_winning_ir_region_cell_leftover_pdn}`
                   : ""}
-              {report.winning_ir_region_cell_leftover2_wns_ns != null
+              {report.refine && report.refine.length
+                ? report.refine.map((fr) => {
+                    const mv = fr.catalog_mv ?? fr.pdn_mv ?? fr.extract_mv;
+                    const extra = mv != null ? ` ${mv.toFixed(3)} mV` : fr.n_cells != null ? ` n=${fr.n_cells}` : "";
+                    return ` · ${fr.label ?? `refine[${fr.depth}]`}${extra}`;
+                  }).join("")
+                : report.winning_ir_region_cell_leftover2_wns_ns != null
                 ? ` · IR-wrl2 ${report.winning_ir_region_cell_leftover2_modules ?? "dpath"} WNS ${report.winning_ir_region_cell_leftover2_wns_ns >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_wns_ns.toFixed(3)}`
                 : report.n_winning_ir_region_cell_leftover2 != null
                   ? ` · IR-wrl2 ${report.n_winning_ir_region_cell_leftover2}`
                   : ""}
-              {report.winning_ir_region_cell_leftover2_extract_mv != null
+              {report.refine && report.refine.length
+                ? ""
+                : report.winning_ir_region_cell_leftover2_extract_mv != null
                 ? ` · IR-wrl2e ${report.winning_ir_region_cell_leftover2_extract_mv.toFixed(3)} mV${
                     report.winning_ir_region_cell_leftover2_extract_residual_mv != null
                       ? ` Δ=${report.winning_ir_region_cell_leftover2_extract_residual_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_extract_residual_mv.toFixed(3)}`
@@ -347,7 +365,9 @@ export function DsePanel() {
                 : report.n_f4_winning_ir_region_cell_leftover2_extract != null
                   ? ` · IR-wrl2e ${report.n_f4_winning_ir_region_cell_leftover2_extract}`
                   : ""}
-              {report.winning_ir_region_cell_leftover2_pdn_mv != null
+              {report.refine && report.refine.length
+                ? ""
+                : report.winning_ir_region_cell_leftover2_pdn_mv != null
                 ? ` · IR-wrl2p ${report.winning_ir_region_cell_leftover2_pdn_name ?? "PDN"} ${report.winning_ir_region_cell_leftover2_pdn_mv.toFixed(3)} mV${
                     report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv != null
                       ? ` vs host-win ${report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv.toFixed(3)}`
@@ -572,15 +592,21 @@ export function DsePanel() {
                 {report.n_winning_ir_region_cell_leftover_pdn != null
                   ? ` · IR-wrlp ${report.n_winning_ir_region_cell_leftover_pdn}`
                   : ""}
-                {report.n_winning_ir_region_cell_leftover2 != null
-                  ? ` · IR-wrl2 ${report.n_winning_ir_region_cell_leftover2}`
-                  : ""}
-                {report.n_f4_winning_ir_region_cell_leftover2_extract != null
-                  ? ` · IR-wrl2e ${report.n_f4_winning_ir_region_cell_leftover2_extract}`
-                  : ""}
-                {report.n_winning_ir_region_cell_leftover2_pdn != null
-                  ? ` · IR-wrl2p ${report.n_winning_ir_region_cell_leftover2_pdn}`
-                  : ""}
+                {report.refine && report.refine.length
+                  ? report.refine.map((fr) => ` · ${fr.label ?? `refine[${fr.depth}]`}`).join("")
+                  : report.n_winning_ir_region_cell_leftover2 != null
+                    ? ` · IR-wrl2 ${report.n_winning_ir_region_cell_leftover2}`
+                    : ""}
+                {report.refine && report.refine.length
+                  ? ""
+                  : report.n_f4_winning_ir_region_cell_leftover2_extract != null
+                    ? ` · IR-wrl2e ${report.n_f4_winning_ir_region_cell_leftover2_extract}`
+                    : ""}
+                {report.refine && report.refine.length
+                  ? ""
+                  : report.n_winning_ir_region_cell_leftover2_pdn != null
+                    ? ` · IR-wrl2p ${report.n_winning_ir_region_cell_leftover2_pdn}`
+                    : ""}
                 {report.n_f4_amg_champ != null ? ` · AMG-c ${report.n_f4_amg_champ}` : ""}
                 {report.n_f4_ras_champ != null ? ` · RAS-c ${report.n_f4_ras_champ}` : ""}
                 {report.n_f4_krylov_champ != null ? ` · Kry-c ${report.n_f4_krylov_champ}` : ""}

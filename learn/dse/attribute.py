@@ -27,24 +27,35 @@ def _module_of(name: str | None) -> str | None:
         return "dpath"
     if "ctrl" in n:
         return "ctrl"
+    for sep in ("/", "."):
+        if sep in n:
+            head = n.split(sep)[0]
+            if head:
+                return head
     return None
 
 
 def _cones_of(name: str | None) -> list[str]:
-    """Hierarchical STA: dpath/sub/_122_ → [dpath, dpath/sub]."""
+    """Hierarchical STA: dpath/sub/_122_ → [dpath, dpath/sub]; aes/sa00/u0 → [aes, aes/sa00]."""
     if not name:
         return []
     n = str(name).replace("\\", "").split()[0]
     if "/" in n:
         parts = [p for p in n.split("/") if p]
-    elif n.startswith("dpath.") or n.startswith("ctrl."):
+    elif "." in n:
         parts = [p for p in n.split(".") if p]
     else:
         m = _module_of(n)
         return [m] if m else []
-    if not parts or parts[0] not in ("dpath", "ctrl"):
+    if not parts:
+        return []
+    if parts[0] not in ("dpath", "ctrl"):
         m = _module_of(n)
-        return [m] if m else []
+        head = m or parts[0]
+        out = [head]
+        if len(parts) >= 2 and not parts[1].startswith("_"):
+            out.append(f"{head}/{parts[1]}")
+        return out
     out = [parts[0]]
     if len(parts) >= 2 and not parts[1].startswith("_"):
         out.append(f"{parts[0]}/{parts[1]}")

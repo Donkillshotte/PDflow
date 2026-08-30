@@ -136,6 +136,7 @@ from .active import (
     steer_from_residual,
 )
 from .arch_space import emit_gcd_variant, stamp_cone_knobs
+from .designs import resolve
 from .attribute import attribute_from_path, local_scope, persist_hotspot_join
 from .dispatch import run_next_refine
 from .boils import propose_logic_boils, should_pay_f1
@@ -211,13 +212,19 @@ def propose_logic(mem: DesignMemory, focus: str = "chip") -> dict | None:
     return propose_logic_boils(mem, focus=focus)
 
 
-def _logic_cone_focus(plan: dict, attr: dict) -> str:
-    """Prefer dpath cone ABC when both modules are on the path. Ctrl is a later shot."""
+def _logic_cone_focus(plan: dict, attr: dict, *, design_id: str = "gcd") -> str:
+    """Prefer dpath cone ABC when both modules are on the path. Ctrl is a later shot.
+
+    GCD cone names stay in GCD fixtures — aes/ibex never invent dpath/ctrl.
+    """
+    from .designs import resolve
+
+    spec = resolve(design_id)
     mods = list(attr.get("modules") or [])
     focus = str(plan.get("focus") or "chip")
-    if "dpath" in mods or focus == "dpath":
+    if spec.has_cone("dpath") and ("dpath" in mods or focus == "dpath"):
         return "dpath"
-    if "ctrl" in mods or focus == "ctrl":
+    if spec.has_cone("ctrl") and ("ctrl" in mods or focus == "ctrl"):
         return "ctrl"
     return focus
 
@@ -256,15 +263,66 @@ def f1_pareto_parents(mem: DesignMemory) -> list:
     return out
 
 
-def _mapped_pick(cands, *, rtl, liberty):
+def _mapped_pick(cands, *, rtl, liberty, top: str = "gcd"):
     for cand in cands:
         if cand is None:
             continue
-        w = ensure_mapped_netlist(cand, rtl=rtl, liberty=liberty)
+        w = ensure_mapped_netlist(cand, rtl=rtl, liberty=liberty, top=top)
         mapped = (w.artifacts or {}).get("mapped_v")
         if mapped and is_gate_cell_netlist(Path(mapped)):
             return w
     return None
+
+
+def _refine_report(mem: DesignMemory) -> list[dict]:
+    """Studio-facing refine[N] frames. Legacy leftover2 keys stay for replay."""
+    from .frame import leftover_cells, refine_chain, refine_label
+
+    out: list[dict] = []
+    for f in refine_chain(mem):
+        mods = []
+        if f.cell is not None:
+            mods = list(
+                dict.fromkeys(
+                    str(x).split("/")[0]
+                    for x in (f.cell.knobs or {}).get("cells") or []
+                    if "/" in str(x)
+                )
+            )
+        cat = f.catalog[-1] if f.catalog else None
+        out.append(
+            {
+                "depth": f.depth,
+                "label": f"refine[{f.depth}]",
+                "legacy": refine_label(f.depth),
+                "n_cells": len(f.cells),
+                "modules": ",".join(mods) if mods else None,
+                "extract_id": f.extract_id or None,
+                "extract_mv": (
+                    float(f.extract.qor.dynamic_ir_mv)
+                    if f.extract is not None and f.extract.qor.dynamic_ir_mv is not None
+                    else None
+                ),
+                "pdn_mv": (
+                    float(f.pdn.qor.dynamic_ir_mv)
+                    if f.pdn is not None and f.pdn.qor.dynamic_ir_mv is not None
+                    else None
+                ),
+                "pdn_name": (
+                    str((f.pdn.knobs or {}).get("name") or "") if f.pdn is not None else None
+                ),
+                "catalog_mv": (
+                    float(cat.qor.dynamic_ir_mv)
+                    if cat is not None and cat.qor.dynamic_ir_mv is not None
+                    else None
+                ),
+                "catalog_name": (
+                    str((cat.knobs or {}).get("name") or "") if cat is not None else None
+                ),
+                "leftover_n": len(leftover_cells(mem, f.depth)),
+            }
+        )
+    return out
 
 
 def run_controller(
@@ -280,7 +338,9 @@ def run_controller(
 ) -> dict:
     t_end = time.time() + max(float(budget_s), 1.0)
     root = Path(__file__).resolve().parents[1].parent
-    rtl = Path(rtl) if rtl else root / "learn" / "flowlab" / "gcd.v"
+    spec = resolve(design_id)
+    rtl = Path(rtl) if rtl else spec.rtl
+    top = spec.top
     mem_path = Path(memory_path) if memory_path else root / "learn" / "sim" / "dse" / f"memory_{variant}.jsonl"
     if fresh and mem_path.is_file():
         mem_path.unlink()
@@ -314,7 +374,7 @@ def run_controller(
             for c in mem.all()
         ):
             return None
-        w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib)
+        w = ensure_mapped_netlist(cand, rtl=rtl, liberty=lib, top=top)
         mem.touch(w)
         child = evaluate_f3_sta(w, mem, design_id=design_id)
         if child:
@@ -374,7 +434,7 @@ def run_controller(
             mem.touch(c)
 
     f2_cong = f2.qor.congestion if f2 and f2.qor.congestion is not None else None
-    plan = plan_search(attr, mem, f2_cong=f2_cong)
+    plan = plan_search(attr, mem, f2_cong=f2_cong, design_id=design_id)
     step("plan", **{k: plan[k] for k in ("focus", "combo_frac", "f2_cong") if k in plan})
     for s in plan["steps"]:
         step("plan_step", **s)
@@ -407,6 +467,7 @@ def run_controller(
                 design_id=design_id,
                 parent_id=phys.id if phys else None,
                 level="logic",
+                top=top,
             )
             cand.attr = {
                 "inherited_from": "physical_ir",
@@ -429,11 +490,11 @@ def run_controller(
             time_candidate(cand, reason="F3 teacher on liberty_default before extracts")
 
     # Re-plan once WNS exists so logic acquisition is EHVI, not area-only EI.
-    plan = plan_search(attr, mem, f2_cong=f2_cong)
+    plan = plan_search(attr, mem, f2_cong=f2_cong, design_id=design_id)
 
     # Hierarchical architecture: planner orders extracts from IR attribution.
     arch_step = next((s for s in plan["steps"] if s["level"] == "architecture"), None)
-    if arch_step and time.time() < t_end:
+    if spec.arch_extracts and arch_step and time.time() < t_end:
         from .arch_space import plan_dpath_extracts
 
         _eg, _roots, _ex, stats = plan_dpath_extracts()
@@ -479,6 +540,7 @@ def run_controller(
                     design_id=design_id,
                     parent_id=phys.id if phys else None,
                     level="architecture",
+                    top=top,
                 )
             cand.egraph = stats
             cand.attr = {
@@ -506,7 +568,7 @@ def run_controller(
             time_candidate(cand, reason=f"F3 after extract {name} — reorder remaining")
 
     while n_f1 < _f1_room() and time.time() < t_end:
-        logic_focus = _logic_cone_focus(plan, attr)
+        logic_focus = _logic_cone_focus(plan, attr, design_id=design_id)
         knobs = propose_logic_boils(mem, focus=logic_focus)
         if knobs is None:
             extra = next(
@@ -572,6 +634,7 @@ def run_controller(
             design_id=design_id,
             parent_id=phys.id if phys else None,
             level="logic",
+            top=top,
         )
         cand.pred = residual(cand.qor.area_um2, pred) or pred
         if attr.get("status") == "READY":
@@ -600,11 +663,13 @@ def run_controller(
         for c in mem.by_level("logic")
         if c.status == "ok" and c.fidelity == "F1" and (c.knobs or {}).get("cone") == "ctrl"
     )
-    pay_ctrl, why_ctrl = should_pay_ctrl_cone(
-        mem, budget_left=t_end - time.time(), attr=attr, n_ctrl=n_ctrl
+    pay_ctrl, why_ctrl = (
+        should_pay_ctrl_cone(mem, budget_left=t_end - time.time(), attr=attr, n_ctrl=n_ctrl)
+        if spec.has_cone("ctrl")
+        else (False, "design has no FSM cone — not inventing GCD ctrl")
     )
     step("acquire", fidelity="F1_CTRL_CONE", pay=pay_ctrl, why=why_ctrl)
-    if pay_ctrl and time.time() < t_end:
+    if spec.has_cone("ctrl") and pay_ctrl and time.time() < t_end:
         knobs = propose_logic_boils(mem, focus="ctrl") or {
             "name": "boils_rewrite_balance",
             "abc_args": [],
@@ -622,6 +687,7 @@ def run_controller(
                 design_id=design_id,
                 parent_id=phys.id if phys else None,
                 level="logic",
+                top=top,
             )
             cand.attr = {
                 "inherited_from": "sta_path",
@@ -663,6 +729,7 @@ def run_controller(
             mem=mem,
             design_id=design_id,
             parent_id=phys.id if phys else None,
+            top=top,
         )
         if attr.get("status") == "READY":
             cand.attr = {
@@ -697,6 +764,7 @@ def run_controller(
             [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             mem.touch(pick)
@@ -826,7 +894,7 @@ def run_controller(
         for w in winners:
             if n_f2 >= 4 or time.time() >= t_end:
                 break
-            w = ensure_mapped_netlist(w, rtl=rtl, liberty=lib)
+            w = ensure_mapped_netlist(w, rtl=rtl, liberty=lib, top=top)
             mem.touch(w)
             child = evaluate_f2_fast(w, mem, design_id=design_id)
             if child:
@@ -854,6 +922,7 @@ def run_controller(
             [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             w = pick
@@ -888,7 +957,7 @@ def run_controller(
         for w in ranked[:4]:
             if time.time() >= t_end:
                 break
-            w = ensure_mapped_netlist(w, rtl=rtl, liberty=lib)
+            w = ensure_mapped_netlist(w, rtl=rtl, liberty=lib, top=top)
             mem.touch(w)
             child = evaluate_f3_sta(w, mem, design_id=design_id)
             if child:
@@ -916,6 +985,7 @@ def run_controller(
             [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             mem.touch(pick)
@@ -979,6 +1049,7 @@ def run_controller(
             [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             mem.touch(pick)
@@ -1040,6 +1111,7 @@ def run_controller(
             [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             mem.touch(pick)
@@ -1210,6 +1282,7 @@ def run_controller(
             [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             mem.touch(pick)
@@ -1260,6 +1333,7 @@ def run_controller(
             [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             mem.touch(pick)
@@ -1325,6 +1399,7 @@ def run_controller(
             prefer + [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             mem.touch(pick)
@@ -1373,6 +1448,7 @@ def run_controller(
             [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
             rtl=rtl,
             liberty=lib,
+            top=top,
         )
         if pick:
             mem.touch(pick)
@@ -1954,7 +2030,7 @@ def run_controller(
         spec_ic = ir_hotspot_cells(mem)
         if host_ic and spec_ic and spec_ic.get("cells"):
             if not (host_ic.artifacts or {}).get("mapped_v"):
-                host_ic = ensure_mapped_netlist(host_ic, rtl=rtl, liberty=lib)
+                host_ic = ensure_mapped_netlist(host_ic, rtl=rtl, liberty=lib, top=top)
                 mem.touch(host_ic)
             child = evaluate_cell_size(
                 host_ic,
@@ -2343,7 +2419,7 @@ def run_controller(
         cells_icc = list(steer_icc.get("cells") or [])
         if host_icc and cells_icc:
             if not (host_icc.artifacts or {}).get("mapped_v"):
-                host_icc = ensure_mapped_netlist(host_icc, rtl=rtl, liberty=lib)
+                host_icc = ensure_mapped_netlist(host_icc, rtl=rtl, liberty=lib, top=top)
                 mem.touch(host_icc)
             child = evaluate_cell_size(
                 host_icc,
@@ -2498,7 +2574,7 @@ def run_controller(
         cells_iccc = list(steer_iccc.get("cells") or [])
         if host_iccc and cells_iccc:
             if not (host_iccc.artifacts or {}).get("mapped_v"):
-                host_iccc = ensure_mapped_netlist(host_iccc, rtl=rtl, liberty=lib)
+                host_iccc = ensure_mapped_netlist(host_iccc, rtl=rtl, liberty=lib, top=top)
                 mem.touch(host_iccc)
             child = evaluate_cell_size(
                 host_iccc,
@@ -2892,7 +2968,7 @@ def run_controller(
         cells_wirc = list(steer_wirc.get("cells") or [])
         if host_wirc and cells_wirc:
             if not (host_wirc.artifacts or {}).get("mapped_v"):
-                host_wirc = ensure_mapped_netlist(host_wirc, rtl=rtl, liberty=lib)
+                host_wirc = ensure_mapped_netlist(host_wirc, rtl=rtl, liberty=lib, top=top)
                 mem.touch(host_wirc)
             child = evaluate_cell_size(
                 host_wirc,
@@ -4204,6 +4280,7 @@ def run_controller(
             ),
             None,
         ),
+        "refine": _refine_report(mem),
         "n_f4_amg_champ": sum(
             1
             for c in mem.by_level("pdn")

@@ -16,7 +16,10 @@ from .memory import DesignMemory
 from .mo import baseline_wns, extract_wns, timing_bound
 
 
-def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict:
+def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_id: str = "gcd") -> dict:
+    from .designs import resolve
+
+    spec = resolve(design_id)
     modules = list(attr.get("modules") or [])
     region = attr.get("region")
     focus = modules[0] if modules else (region or "chip")
@@ -30,9 +33,11 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         slack = float(timing["path_slack_ns"])
     bound = timing_bound(mem, slack_ns=slack)
     steps: list[dict] = []
-    _eg, _r, extracts, _st = plan_dpath_extracts()
+    extracts: list[str] = []
+    if spec.arch_extracts:
+        _eg, _r, extracts, _st = plan_dpath_extracts()
     unseen_arch = rank_extracts(extracts, mem, combo=combo)
-    if scope == "logic_cone" and focus != "chip" and combo >= 0.5 and unseen_arch:
+    if spec.arch_extracts and scope == "logic_cone" and focus != "chip" and combo >= 0.5 and unseen_arch:
         why = f"combo IR {combo:.2f} on {focus} — cone extracts, no chip restart"
         if bound:
             why += "; F3 WNS reorders remaining extracts"
@@ -55,16 +60,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         logic_why = "BOiLS SSK-GP + DRiLLS UCB on ABC sequences"
         if bound or extract_wns(mem):
             logic_why = "BOiLS EHVI(area, WNS) + DRiLLS UCB — F3 steers ABC, not area-only"
-        if focus == "dpath" or "dpath" in modules:
+        if spec.has_cone("dpath") and (focus == "dpath" or "dpath" in modules):
             logic_why += "; cone-local ABC on dpath (chip flatten-first teacher already measured)"
         steps.append(
             {
                 "level": "logic",
                 "reason": logic_why,
-                "scope": "logic_cone" if (focus == "dpath" or "dpath" in modules) else ("block" if focus != "chip" else "chip"),
+                "scope": "logic_cone" if (spec.has_cone("dpath") and (focus == "dpath" or "dpath" in modules)) else ("block" if focus != "chip" else "chip"),
             }
         )
-        if focus == "ctrl" or "ctrl" in modules:
+        if spec.has_cone("ctrl") and (focus == "ctrl" or "ctrl" in modules):
             steps.append(
                 {
                     "level": "logic_ctrl",

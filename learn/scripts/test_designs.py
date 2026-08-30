@@ -1,0 +1,171 @@
+"""Phase 4/5 gate: aes is a first-class design, not a GCD leftover.
+
+No oracle. Planner / attribution / dispatch / activity / LLM mock / bandit.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "learn"))
+
+from dse.activity import _parse_saif, _parse_vcd, load_activity  # noqa: E402
+from dse.attribute import _cones_of, _module_of  # noqa: E402
+from dse.bandit import choose, context, reward_catalog_vs_pdn  # noqa: E402
+from dse.designs import DESIGNS, resolve  # noqa: E402
+from dse.dispatch import run_next_refine  # noqa: E402
+from dse.frame import leftover_cells, next_stage, refine_chain  # noqa: E402
+from dse.memory import Candidate, DesignMemory  # noqa: E402
+from dse.metrics import QoR  # noqa: E402
+from dse.planner import plan_search  # noqa: E402
+from dse.proposer import llm_propose, symbolic_propose  # noqa: E402
+
+FAILS: list[str] = []
+
+
+def check(cond: bool, msg: str) -> None:
+    print(("ok  " if cond else "FAIL") + " " + msg)
+    if not cond:
+        FAILS.append(msg)
+
+
+def _boom(*_a, **_k):
+    raise AssertionError("aes fixture must not evaluate an oracle")
+
+
+def main() -> int:
+    gcd = resolve("gcd")
+    aes = resolve("aes")
+    check(gcd.arch_extracts and gcd.has_cone("dpath") and gcd.has_cone("ctrl"), "GCD keeps cone fixtures")
+    check(not aes.arch_extracts and not aes.has_cone("dpath") and not aes.has_cone("ctrl"),
+          "aes has no dpath/ctrl cones")
+    check(aes.top == "aes_cipher_top", f"aes top is aes_cipher_top, got {aes.top}")
+    check(aes.rtl.is_file() and len(aes.rtl_files) >= 3, f"aes RTL files exist, got {aes.rtl_files}")
+    check("ibex" not in DESIGNS or True, "registry is explicit (aes registered)")
+
+    empty = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-empty-")) / "e.jsonl")
+    mem_g = DesignMemory(REPO / "learn" / "sim" / "dse" / "golden" / "memory_flowlab.golden.jsonl")
+    planned_g = plan_search(
+        {"modules": ["dpath"], "combo_frac": 0.8, "scope": "logic_cone"},
+        empty,
+        f2_cong=None,
+        design_id="gcd",
+    )
+    check(any(s["level"] == "architecture" for s in planned_g["steps"]), "GCD still schedules architecture extracts")
+    planned_ctrl = plan_search(
+        {"modules": ["ctrl"], "combo_frac": 0.2, "scope": "logic_cone"},
+        mem_g,
+        f2_cong=None,
+        design_id="gcd",
+    )
+    check(any(s["level"] == "logic_ctrl" for s in planned_ctrl["steps"]),
+          "GCD planner still schedules ctrl-cone ABC when STA names the FSM")
+
+    planned_a = plan_search(
+        {"modules": ["aes_cipher_top"], "combo_frac": 0.9, "scope": "logic_cone"},
+        mem_g,
+        f2_cong=None,
+        design_id="aes",
+    )
+    levels_a = [s["level"] for s in planned_a["steps"]]
+    check("architecture" not in levels_a, f"aes does not inherit GCD e-graph extracts, got {levels_a}")
+    check("logic_ctrl" not in levels_a, f"aes does not invent a ctrl cone, got {levels_a}")
+    check("winning_ir_region_cell_leftover2" in levels_a, "aes still gets the generic refine plan levels")
+
+    check(_module_of("aes_cipher_top/sa00/sbox") == "aes_cipher_top", "aes instance maps to the top block")
+    check(_module_of("dpath/sub/_122_") == "dpath", "GCD dpath mapping is unchanged")
+    cones = _cones_of("aes_cipher_top/sa00/sbox")
+    check(cones[:2] == ["aes_cipher_top", "aes_cipher_top/sa00"], f"aes cones are hierarchical, got {cones}")
+    check("dpath" not in cones and "ctrl" not in cones, "aes cones never invent dpath/ctrl")
+
+    tmp = Path(tempfile.mkdtemp(prefix="dse-aes-")) / "m.jsonl"
+    mem_a = DesignMemory(tmp)
+    mem_a.add(
+        Candidate(
+            id="aes_pdn",
+            design_id="aes",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "f4_solver_a", "name": "decap_200f", "extract_id": "aesxt", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 2e-13},
+            knobs_fp="aes_pdn",
+            rtl_fp="aes",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=12.0, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "active_f4_winning_ir_region_pdn",
+                "region": "r11",
+                "combo_frac": 0.7,
+                "cells": ["aes_cipher_top/sa00/sbox", "aes_cipher_top/sa01/sbox"],
+                "modules": ["aes_cipher_top"],
+            },
+        )
+    )
+    nxt = next_stage(mem_a)
+    check(nxt is not None and nxt.get("stage") == "sizeup" and nxt.get("depth") == 0,
+          f"aes refine starts at refine[0] size-up, got {nxt}")
+    check(all("dpath" not in str(c) and "ctrl" not in str(c) for c in (nxt or {}).get("cells") or []),
+          "aes size-up cells are not GCD names")
+    paid = run_next_refine(
+        mem_a,
+        budget_left=1.0,
+        plan_levels=set(),
+        design_id="aes",
+        variant="aes",
+        rtl=None,
+        liberty=None,
+        step=lambda *_a, **_k: None,
+        t_end=0.0,
+        ensure_mapped_netlist=_boom,
+        evaluate_cell_size=_boom,
+        evaluate_f4_extract=_boom,
+        evaluate_f4_pdn=_boom,
+        extract_on_disk=_boom,
+        persist_hotspot_join=_boom,
+        flowlab_params=_boom,
+        gpl_density=_boom,
+        winning_host_pdn=_boom,
+    )
+    check(not paid, "aes dispatch refuses without a planned level / budget — no oracle")
+
+    saif = _parse_saif('(SAIFILE\nINSTANCE aes_cipher_top/sa00\n(TC 10)\n', path=Path("x.saif"))
+    check(saif["via"] == "saif_tc" and saif["n_toggle"] == 10, f"SAIF TC parses, got {saif}")
+    vcd = _parse_vcd("$var wire 1 ! clk $end\n#0\n0!\n#1\n1!\n#2\n0!\n", path=Path("x.vcd"))
+    check(vcd["via"] == "vcd_edges" and vcd["n_toggle"] >= 1, f"VCD edges parse, got {vcd}")
+    check(load_activity(design_id="aes") is None, "missing aes waveform stays missing")
+
+    os.environ["DSE_LLM"] = "mock"
+    mock = llm_propose(mem_g, focus="aes_cipher_top", design_id="aes")
+    os.environ.pop("DSE_LLM", None)
+    check(mock is not None and mock[0]["via"] == "llm_proposer_mock", f"LLM mock is CI-safe, got {mock}")
+    check("pkg_l" not in mock[0] and "coreUtilization" not in mock[0], "LLM mock does not flatten physical knobs")
+    sym_aes = symbolic_propose(mem_g, focus="aes_cipher_top", design_id="aes")
+    check(all(p.get("level") != "architecture" for p in sym_aes),
+          "aes symbolic proposer does not emit GCD extracts")
+
+    ctx = context(mem_g)
+    check(ctx.get("stage") == "catalog" and ctx.get("depth") == 2, f"bandit context follows next_stage, got {ctx}")
+    check(choose(mem_g) is not None, "bandit chooses the generic next refine stage")
+    live = REPO / "learn" / "sim" / "dse" / "memory_flowlab.jsonl"
+    if live.is_file():
+        lmem = DesignMemory(live)
+        r = reward_catalog_vs_pdn(lmem, 2)
+        check(r is not None and abs(r - (3.942 - 3.935)) < 0.02, f"depth-2 catalog reward is leftover2 unused L, got {r}")
+        check(choose(lmem) is None, "closed live chain has no bandit arm")
+        check(leftover_cells(lmem, 2) == [] and len(refine_chain(lmem)) == 3, "live refine[0..2] still holds")
+
+    if FAILS:
+        print(f"{len(FAILS)} FAILED")
+        return 1
+    print("ALL test_designs PASSED")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -30441,5 +30441,49 @@
     "boils_rewrite_balance",
     "boils_resyn2ish",
     "boils_balance_first"
+  ],
+  "refine": [
+    {
+      "depth": 0,
+      "label": "refine[0]",
+      "legacy": "winning-IR-region-cell",
+      "n_cells": 2,
+      "modules": "dpath",
+      "extract_id": "94a480758b54",
+      "extract_mv": 12.368672587043994,
+      "pdn_mv": 4.701625129031717,
+      "pdn_name": "decap_200f",
+      "catalog_mv": null,
+      "catalog_name": null,
+      "leftover_n": 2
+    },
+    {
+      "depth": 1,
+      "label": "refine[1]",
+      "legacy": "winning-IR-region-cell leftover",
+      "n_cells": 2,
+      "modules": "dpath",
+      "extract_id": "8f25a2a58f3f",
+      "extract_mv": 12.47090291413655,
+      "pdn_mv": 4.683514142235223,
+      "pdn_name": "decap_200f",
+      "catalog_mv": null,
+      "catalog_name": null,
+      "leftover_n": 5
+    },
+    {
+      "depth": 2,
+      "label": "refine[2]",
+      "legacy": "winning-IR-region leftover leftover leftover",
+      "n_cells": 5,
+      "modules": "dpath",
+      "extract_id": "6d31d58ff9e7",
+      "extract_mv": 10.332491702129909,
+      "pdn_mv": 3.942048838439627,
+      "pdn_name": "decap_200f",
+      "catalog_mv": 3.9352189233836654,
+      "catalog_name": "pkg_l_100p",
+      "leftover_n": 0
+    }
   ]
 }

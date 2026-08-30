@@ -20,6 +20,7 @@ from pathlib import Path
 
 from .abc_space import write_abc_script
 from .arch_space import is_cone_abc
+from .designs import design_rtl
 from .fingerprint import knobs_fp, sha256_file, sha256_text
 from .frame import (
     _suffix as _refine_suffix,
@@ -83,8 +84,11 @@ def orfs_logs(variant: str) -> Path:
     return ORFS / "logs" / "nangate45" / "gcd" / variant
 
 
-def orfs_results(variant: str) -> Path:
-    return ORFS / "results" / "nangate45" / "gcd" / variant
+def orfs_results(variant: str, design_id: str = "gcd") -> Path:
+    from .designs import resolve
+
+    spec = resolve(design_id)
+    return ORFS / "results" / spec.platform / spec.orfs_design / variant
 
 
 def flowlab_params(root: Path | None = None) -> dict:
@@ -134,7 +138,7 @@ def ingest_physical(variant: str, mem: DesignMemory, design_id: str = "gcd") -> 
         fidelity="F4" if ir else "F3",
         note="ingested layout oracles — not a new P&R",
     )
-    rtl = REPO / "learn" / "flowlab" / "gcd.v"
+    rtl = design_rtl(design_id)
     c = Candidate(
         id=DesignMemory.new_id(),
         design_id=design_id,
@@ -184,7 +188,7 @@ def ingest_pdn(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candi
         level="pdn",
         knobs=knobs,
         knobs_fp=fp,
-        rtl_fp=sha256_file(REPO / "learn" / "flowlab" / "gcd.v"),
+        rtl_fp=sha256_file(design_rtl(design_id)),
         netlist_fp=None,
         fidelity="F4",
         qor=q,
@@ -253,7 +257,7 @@ def evaluate_f4_pdn(
         level="pdn",
         knobs=knobs,
         knobs_fp=fp,
-        rtl_fp=sha256_file(REPO / "learn" / "flowlab" / "gcd.v"),
+        rtl_fp=sha256_file(design_rtl(design_id)),
         netlist_fp=None,
         fidelity="F4",
         qor=q,
@@ -362,7 +366,7 @@ def evaluate_f4_static_mesh(
         level="pdn",
         knobs=knobs,
         knobs_fp=fp,
-        rtl_fp=sha256_file(REPO / "learn" / "flowlab" / "gcd.v"),
+        rtl_fp=sha256_file(design_rtl(design_id)),
         netlist_fp=None,
         fidelity="F4",
         qor=q,
@@ -471,7 +475,7 @@ def evaluate_f4_static_straps(
         level="pdn",
         knobs=knobs,
         knobs_fp=fp,
-        rtl_fp=sha256_file(REPO / "learn" / "flowlab" / "gcd.v"),
+        rtl_fp=sha256_file(design_rtl(design_id)),
         netlist_fp=None,
         fidelity="F4",
         qor=q,
@@ -580,7 +584,7 @@ def evaluate_f4_em_straps(
         level="pdn",
         knobs=knobs,
         knobs_fp=fp,
-        rtl_fp=sha256_file(REPO / "learn" / "flowlab" / "gcd.v"),
+        rtl_fp=sha256_file(design_rtl(design_id)),
         netlist_fp=None,
         fidelity="F4",
         qor=q,
@@ -1248,7 +1252,7 @@ def ingest_f2(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candid
         level="physical",
         knobs=knobs,
         knobs_fp=fp,
-        rtl_fp=sha256_file(REPO / "learn" / "flowlab" / "gcd.v"),
+        rtl_fp=sha256_file(design_rtl(design_id)),
         netlist_fp=sha256_file(orfs_results(variant) / "1_2_yosys.v")
         if (orfs_results(variant) / "1_2_yosys.v").is_file()
         else None,

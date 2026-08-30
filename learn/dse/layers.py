@@ -20,10 +20,11 @@ ADAPTERS: dict[str, dict] = {
         "note": "ORFS finish power / STA power reports",
     },
     "activity": {
-        "via": "dse.sta_f3.export_arrivals + ingest",
+        "via": "dse.activity (VCD/SAIF TC) + dse.sta_f3.export_arrivals + ingest",
         "note": (
-            "OpenSTA report_arrival on the attributed host (port-steer/port-net/…) "
-            "as t50 teacher; name-join onto the named extract — no invented RTL→ITerm map"
+            "Waveform toggle density when DSE_ACTIVITY/saif/vcd is on disk; else "
+            "OpenSTA report_arrival on the attributed host as t50 teacher; "
+            "name-join onto the named extract — no invented RTL→ITerm map"
         ),
     },
     "current": {
