@@ -503,6 +503,8 @@ def should_pay_f4_scale_champ(
         "active_f4_winning_ir_region_cell_pdn",
         "f4_winning_ir_region_cell_leftover_extract",
         "active_f4_winning_ir_region_cell_leftover_pdn",
+        "f4_winning_ir_region_cell_leftover2_extract",
+        "active_f4_winning_ir_region_cell_leftover2_pdn",
         "f4_static_strap_extract",
         "active_f4_static_straps",
         "f4_em_strap_extract",
@@ -1994,6 +1996,165 @@ def should_pay_winning_ir_region_cell_leftover_pdn(
     )
 
 
+def should_pay_winning_ir_region_cell_leftover2(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_cell: int = 0,
+    cell_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay leftover leftover leftover drive-up on leftover leftover PDN join. Not leftover leftover flatten."""
+    if n_cell >= cell_max:
+        return False, "winning-IR-region leftover leftover leftover size shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover leftover leftover leftover STA"
+    if not steer or steer.get("level") != "winning_ir_region_cell_leftover2":
+        return False, "no leftover leftover leftover residual (need leftover leftover leftover cells ≠ leftover leftover)"
+    src = str(steer.get("host_source") or "")
+    if src not in ("f4_winning_ir_region_cell_leftover_extract", "active_f4_winning_ir_region_cell_leftover_pdn"):
+        return False, "leftover leftover leftover refuses leftover-combo / leftover-cone / region flatten"
+    eid = str(steer.get("extract_id") or "")
+    if any(
+        (c.knobs or {}).get("source") == "cell_size_ir_winning_region_leftover2"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == eid
+        for c in mem.by_level("cell")
+    ):
+        return False, "already have a leftover leftover leftover size child on this extract"
+    cells = [str(x) for x in steer.get("cells") or []]
+    if len(cells) < 1:
+        return False, "leftover leftover leftover join has no leftover leftover leftover cells"
+    if not steer.get("modules"):
+        return False, "leftover leftover leftover join has no module — not inventing a cone"
+    from pathlib import Path
+
+    from .active import (
+        ir_cell_champ_cone_host,
+        ir_cell_champ_host,
+        ir_cell_host,
+        winning_ir_region_cell_host,
+        winning_ir_region_cell_leftover_host,
+    )
+
+    host = winning_ir_region_cell_leftover_host(mem)
+    mapped = None
+    if host:
+        mapped = (host.artifacts or {}).get("mapped_hier_v") or (host.artifacts or {}).get("mapped_v")
+    if not host or not mapped or not Path(mapped).is_file():
+        return False, "leftover leftover netlist missing — not flattening leftover leftover leftover onto leftover-combo"
+    sized = set()
+    for h in (
+        host,
+        winning_ir_region_cell_host(mem),
+        ir_cell_host(mem),
+        ir_cell_champ_host(mem),
+        ir_cell_champ_cone_host(mem),
+    ):
+        if h is None:
+            continue
+        sized.update(str(x) for x in (h.knobs or {}).get("cells") or [])
+    if sized and set(cells) <= sized:
+        return False, "leftover leftover leftover cells already covered by leftover leftover / leftover-combo / IR-cell / champ / leftover-cone"
+    mods = ",".join(steer.get("modules") or [])
+    region = steer.get("region") or "unjoined"
+    return True, str(
+        steer.get("reason")
+        or (
+            f"upsize {len(cells)} leftover leftover leftover {mods} cells on leftover leftover PDN region {region} — "
+            "not leftover leftover flatten, not leftover-combo, not leftover-cone, not champ ctrl, not first IR-cell, not STA path, not ABC, not VCD"
+        )
+    )
+
+
+def should_pay_winning_ir_region_cell_leftover2_extract(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_extract: int = 0,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay write_pg_spice on the leftover leftover leftover netlist."""
+    if n_extract >= extract_max:
+        return False, "leftover leftover leftover PDN extract already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover leftover leftover leftover write_pg_spice"
+    from pathlib import Path
+
+    from .active import (
+        winning_ir_region_cell_leftover_extract_cand,
+        winning_ir_region_cell_leftover2_host,
+    )
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    host = winning_ir_region_cell_leftover2_host(mem)
+    if host is None:
+        return False, "no leftover leftover leftover size-up to extract a PDN from"
+    mapped = (host.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return False, "leftover leftover leftover netlist missing for write_pg_spice"
+    ice = winning_ir_region_cell_leftover_extract_cand(mem)
+    if ice is None:
+        return False, "no leftover leftover extract to residual the leftover leftover leftover mesh against"
+    if str((ice.knobs or {}).get("parent_id") or "") == host.id:
+        return False, "leftover leftover leftover is already the leftover leftover extract parent"
+    host_eid = str((host.knobs or {}).get("extract_id") or "")
+    if any(
+        (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_leftover2_extract"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("parent_extract_id") or "") == host_eid
+        for c in mem.by_level("pdn")
+    ):
+        return False, "already have a leftover leftover leftover write_pg_spice mesh on this extract"
+    nch = (host.artifacts or {}).get("n_changed") or len((host.knobs or {}).get("cells") or [])
+    mods = ",".join(
+        dict.fromkeys(
+            str(x).split("/")[0]
+            for x in (host.knobs or {}).get("cells") or []
+            if "/" in str(x)
+        )
+    ) or "unjoined"
+    return True, (
+        f"write_pg_spice on leftover leftover leftover {mods} n={nch} — leftover leftover leftover "
+        "IR residual vs leftover leftover extract, not leftover-combo, not leftover-cone, not gold, not ABC"
+    )
+
+
+def should_pay_winning_ir_region_cell_leftover2_pdn(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay the winning PDN family on the leftover leftover leftover extract."""
+    if n_steer >= steer_max:
+        return False, "leftover leftover leftover PDN restamp already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover leftover leftover leftover PDN restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no leftover leftover leftover residual-steered PDN action (need a 1× residual)"
+    if str(steer.get("host_source") or "") != "f4_winning_ir_region_cell_leftover2_extract":
+        return False, "leftover leftover leftover PDN restamp refuses leftover leftover / leftover-combo / leftover-cone extract"
+    spec = steer["spec"]
+    from .pdn_space import measured_pdn_keys
+
+    have = measured_pdn_keys(mem, extract_id=str(steer["extract_id"]))
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that PDN point is already measured on the leftover leftover leftover extract"
+    return True, str(
+        steer.get("reason")
+        or "leftover leftover leftover residual steers a PDN restamp on the leftover leftover leftover mesh"
+    )
+
+
 def should_pay_ir_cell_extract(
     mem: DesignMemory,
     *,
@@ -2730,6 +2891,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
         "f4_winning_ir_region_extract",
         "f4_winning_ir_region_cell_extract",
         "f4_winning_ir_region_cell_leftover_extract",
+        "f4_winning_ir_region_cell_leftover2_extract",
         "f4_static_mesh_extract",
         "f4_static_strap_extract",
         "f4_em_strap_extract",
@@ -2758,6 +2920,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
             "f4_winning_ir_region_extract",
             "f4_winning_ir_region_cell_extract",
             "f4_winning_ir_region_cell_leftover_extract",
+            "f4_winning_ir_region_cell_leftover2_extract",
             "f4_static_mesh_extract",
             "f4_static_strap_extract",
             "f4_em_strap_extract",
@@ -2858,6 +3021,9 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "winning_ir_region_cell_leftover_extract",
         "f4_winning_ir_region_cell_leftover_extract",
         "winning_ir_region_cell_leftover_pdn",
+        "winning_ir_region_cell_leftover2_extract",
+        "f4_winning_ir_region_cell_leftover2_extract",
+        "winning_ir_region_cell_leftover2_pdn",
         "static_ir_steer",
         "static_mesh",
         "static_straps",
@@ -2875,6 +3041,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "ir_cell_champ_cone",
         "winning_ir_region_cell",
         "winning_ir_region_cell_leftover",
+        "winning_ir_region_cell_leftover2",
     ):
         return "F3"
     if level in ("net", "net_buffer", "net_port", "net_buffer_port"):

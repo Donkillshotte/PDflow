@@ -604,6 +604,39 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "winning_ir_region_cell_leftover2",
+            "reason": (
+                "leftover leftover PDN leftover leftover leftover cells ≠ leftover leftover / leftover-combo / "
+                "IR-cell / champ / leftover-cone — drive-up on the leftover leftover netlist, not leftover leftover "
+                "flatten, not leftover-combo, not leftover-cone, not more density cap, not STA path, not ABC"
+            ),
+            "scope": "cell",
+        }
+    )
+    steps.append(
+        {
+            "level": "winning_ir_region_cell_leftover2_extract",
+            "reason": (
+                "write_pg_spice on the leftover leftover leftover netlist — residual vs "
+                "the leftover leftover extract, re-paid per leftover leftover extract, not leftover-combo, "
+                "not leftover-cone, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
+            "level": "winning_ir_region_cell_leftover2_pdn",
+            "reason": (
+                "leftover leftover leftover 1× residual chooses the winning PDN family on "
+                "that leftover leftover leftover mesh — re-paid on a new leftover leftover leftover extract, not leftover leftover "
+                "PDN, not leftover-combo PDN, not leftover-cone PDN, not champ IR-steer, not a flattened cell+decap vector"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_amg_champ",
             "reason": (
                 "SA-AMG on winning_ir_pdn with the same DirectLU knobs — MF solver "
@@ -743,6 +776,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             "f4_winning_ir_region_extract",
             "f4_winning_ir_region_cell_extract",
             "f4_winning_ir_region_cell_leftover_extract",
+            "f4_winning_ir_region_cell_leftover2_extract",
             "f4_region_extract",
         ):
             v = float(c.qor.dynamic_ir_mv)

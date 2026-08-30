@@ -560,6 +560,7 @@ def winning_ir_pdn(mem: DesignMemory):
         "f4_winning_ir_region_extract",
         "f4_winning_ir_region_cell_extract",
         "f4_winning_ir_region_cell_leftover_extract",
+        "f4_winning_ir_region_cell_leftover2_extract",
         "f4_static_strap_extract",
         "f4_em_strap_extract",
     )
@@ -572,6 +573,7 @@ def winning_ir_pdn(mem: DesignMemory):
         "active_f4_winning_ir_region_pdn",
         "active_f4_winning_ir_region_cell_pdn",
         "active_f4_winning_ir_region_cell_leftover_pdn",
+        "active_f4_winning_ir_region_cell_leftover2_pdn",
         "active_f4_static_straps",
         "active_f4_em_straps",
         "active_f4_winning_ir_pdn",
@@ -606,6 +608,7 @@ def _ir_family_1x_member(c) -> bool:
         "f4_winning_ir_region_extract",
         "f4_winning_ir_region_cell_extract",
         "f4_winning_ir_region_cell_leftover_extract",
+        "f4_winning_ir_region_cell_leftover2_extract",
     ):
         return True
     if via in (
@@ -618,6 +621,7 @@ def _ir_family_1x_member(c) -> bool:
         "active_f4_winning_ir_region_pdn",
         "active_f4_winning_ir_region_cell_pdn",
         "active_f4_winning_ir_region_cell_leftover_pdn",
+        "active_f4_winning_ir_region_cell_leftover2_pdn",
         "active_f4_static_ir",
         "active_f4_static_mesh",
         "active_f4_static_straps",
@@ -1539,6 +1543,7 @@ WINNING_IR_EXTRACT_SRC = (
     "f4_winning_ir_region_extract",
     "f4_winning_ir_region_cell_extract",
     "f4_winning_ir_region_cell_leftover_extract",
+    "f4_winning_ir_region_cell_leftover2_extract",
     "f4_host_extract",
     "f4_host_region_extract",
 )
@@ -1920,4 +1925,113 @@ def steer_from_winning_ir_region_cell_leftover_residual(mem: DesignMemory) -> di
         "knob_residual_mv": knob_r,
         "via": "active_f4_winning_ir_region_cell_leftover_pdn",
         "not": "a flattened cell+PDN vector / gold / leftover-combo / leftover-cone",
+    }
+
+
+def winning_ir_region_cell_leftover_pdn_cand(mem: DesignMemory):
+    """Newest leftover leftover PDN restamp. Combo join lives here after |Δ| decap."""
+    for c in reversed(list(mem.all())):
+        if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover_pdn":
+            return c
+    return None
+
+
+def winning_ir_region_cell_leftover2_host(mem: DesignMemory):
+    """Newest leftover leftover leftover size-up. Not leftover leftover flatten."""
+    for c in reversed(list(mem.by_level("cell"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir_winning_region_leftover2":
+            return c
+    return None
+
+
+def winning_ir_region_cell_leftover2_extract_cand(mem: DesignMemory):
+    """Newest leftover leftover leftover write_pg_spice. Residual vs leftover leftover extract."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_leftover2_extract":
+            return c
+    return None
+
+
+def steer_from_winning_ir_region_cell_leftover_pdn_hotspot(mem: DesignMemory) -> dict | None:
+    """Combo-heavy leftover leftover PDN leftover cells ≠ leftover leftover / leftover-combo / IR-cell / champ / leftover-cone."""
+    pdn = winning_ir_region_cell_leftover_pdn_cand(mem)
+    if pdn is None:
+        return None
+    attr = pdn.attr or {}
+    combo = float(attr.get("combo_frac") or 0.0)
+    if combo < 0.5:
+        return None
+    ice = ir_cell_host(mem)
+    icc = ir_cell_champ_host(mem)
+    iccc = ir_cell_champ_cone_host(mem)
+    wrc = winning_ir_region_cell_host(mem)
+    wrl = winning_ir_region_cell_leftover_host(mem)
+    sized = set()
+    for host in (ice, icc, iccc, wrc, wrl):
+        if host is None:
+            continue
+        sized.update(str(x) for x in (host.knobs or {}).get("cells") or [])
+    cells = [str(x) for x in (attr.get("cells") or []) if str(x) not in sized]
+    if not cells:
+        return None
+    modules = list(dict.fromkeys(str(c).split("/")[0] for c in cells if "/" in str(c)))
+    if not modules:
+        return None
+    eid = str((pdn.knobs or {}).get("extract_id") or pdn.id)
+    mods = ",".join(modules)
+    return {
+        "level": "winning_ir_region_cell_leftover2",
+        "cells": cells,
+        "modules": modules,
+        "cones": attr.get("cones"),
+        "region": attr.get("region"),
+        "combo_frac": combo,
+        "extract_id": eid,
+        "host_id": pdn.id,
+        "host_source": "f4_winning_ir_region_cell_leftover_extract",
+        "reason": (
+            f"winning-IR-region leftover leftover PDN hotspot {attr.get('region') or 'xy'} combo {combo:.2f} "
+            f"joins leftover leftover leftover {mods} — not leftover leftover flatten, not leftover-combo, "
+            "not leftover-cone, not champ ctrl, not first IR-cell, not STA-path size-up, not ABC, not VCD"
+        ),
+        "via": "active_f4_winning_ir_region_cell_leftover2",
+        "not": "leftover leftover flatten / leftover-combo / leftover-cone / a flattened cell+decap vector",
+    }
+
+
+def steer_from_winning_ir_region_cell_leftover2_residual(mem: DesignMemory) -> dict | None:
+    """Winning PDN family on the leftover leftover leftover mesh after the 1× residual."""
+    from .pdn_space import measured_pdn_keys
+
+    ice = winning_ir_region_cell_leftover2_extract_cand(mem)
+    if ice is None or ice.qor.dynamic_ir_mv is None:
+        return None
+    res = (ice.attr or {}).get("residual_mv")
+    if res is None:
+        return None
+    spec_win, knob_r = _winning_pdn_family(mem)
+    if spec_win is None:
+        return None
+    eid = str((ice.knobs or {}).get("extract_id") or ice.id)
+    have = measured_pdn_keys(mem, extract_id=eid)
+    key = (float(spec_win["pkg_r"]), float(spec_win["pkg_l"]), float(spec_win["c_decap"]))
+    if key in have:
+        return None
+    sign = "raised" if float(res) > 0 else "lowered"
+    return {
+        "level": "pdn",
+        "spec": spec_win,
+        "extract_id": eid,
+        "host_id": ice.id,
+        "host_source": "f4_winning_ir_region_cell_leftover2_extract",
+        "region": (ice.knobs or {}).get("region") or (ice.attr or {}).get("region"),
+        "reason": (
+            f"winning-IR-region leftover leftover leftover 1× residual {float(res):+.3f} mV ({sign} droop vs "
+            f"leftover leftover extract) — restamp {spec_win['name']} on the leftover leftover leftover "
+            "mesh, not leftover leftover PDN, not leftover-combo PDN, not leftover-cone PDN, not champ IR-steer, not ABC"
+        ),
+        "winning_ir_region_cell_leftover2_residual_mv": float(res),
+        "knob_residual_mv": knob_r,
+        "via": "active_f4_winning_ir_region_cell_leftover2_pdn",
+        "not": "a flattened cell+PDN vector / gold / leftover leftover / leftover-combo / leftover-cone",
     }

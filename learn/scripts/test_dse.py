@@ -403,6 +403,9 @@ def main() -> int:
     check(any(s["level"] == "winning_ir_region_cell_leftover" for s in planned["steps"]), "planner schedules leftover-combo leftover size-up")
     check(any(s["level"] == "winning_ir_region_cell_leftover_extract" for s in planned["steps"]), "planner schedules leftover leftover write_pg_spice")
     check(any(s["level"] == "winning_ir_region_cell_leftover_pdn" for s in planned["steps"]), "planner schedules leftover leftover PDN restamp")
+    check(any(s["level"] == "winning_ir_region_cell_leftover2" for s in planned["steps"]), "planner schedules leftover leftover leftover size-up")
+    check(any(s["level"] == "winning_ir_region_cell_leftover2_extract" for s in planned["steps"]), "planner schedules leftover leftover leftover write_pg_spice")
+    check(any(s["level"] == "winning_ir_region_cell_leftover2_pdn" for s in planned["steps"]), "planner schedules leftover leftover leftover PDN restamp")
     check(any(s["level"] == "f4_amg_champ" for s in planned["steps"]), "planner schedules champion AMG residual")
     check(any(s["level"] == "f4_ras_champ" for s in planned["steps"]), "planner schedules champion RAS residual")
     check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
@@ -522,6 +525,9 @@ def main() -> int:
     check(next_fidelity(level="winning_ir_region_cell_leftover", pred=None, budget_left=20, cost_hint={}) == "F3", "leftover leftover size measures at F3")
     check(next_fidelity(level="winning_ir_region_cell_leftover_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover leftover extract measures at F4")
     check(next_fidelity(level="winning_ir_region_cell_leftover_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover leftover PDN restamp measures at F4")
+    check(next_fidelity(level="winning_ir_region_cell_leftover2", pred=None, budget_left=20, cost_hint={}) == "F3", "leftover leftover leftover size measures at F3")
+    check(next_fidelity(level="winning_ir_region_cell_leftover2_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover leftover leftover extract measures at F4")
+    check(next_fidelity(level="winning_ir_region_cell_leftover2_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover leftover leftover PDN restamp measures at F4")
     check(next_fidelity(level="f4_amg_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion AMG measures at F4")
     check(next_fidelity(level="f4_ras_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion RAS measures at F4")
     check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
@@ -812,6 +818,29 @@ def main() -> int:
             },
         ),
         "leftover leftover knobs are not flattened into leftover-combo size-up",
+    )
+    check(
+        knobs_fp(
+            "cell",
+            {
+                "source": "cell_size_ir_winning_region_leftover2",
+                "parent_id": "wirclcell",
+                "cells": ["dpath/b_reg/_075_", "dpath/b_mux/_41_"],
+                "ir_join": 1,
+                "winning_ir_region_leftover2": 1,
+            },
+        )
+        != knobs_fp(
+            "cell",
+            {
+                "source": "cell_size_ir_winning_region_leftover",
+                "parent_id": "wircell",
+                "cells": ["dpath/sub/_192_", "dpath/sub/_196_"],
+                "ir_join": 1,
+                "winning_ir_region_leftover": 1,
+            },
+        ),
+        "leftover leftover leftover knobs are not flattened into leftover leftover size-up",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "iccext", "c_decap": 200e-15})
@@ -1622,6 +1651,9 @@ def main() -> int:
         should_pay_winning_ir_region_cell_leftover,
         should_pay_winning_ir_region_cell_leftover_extract,
         should_pay_winning_ir_region_cell_leftover_pdn,
+        should_pay_winning_ir_region_cell_leftover2,
+        should_pay_winning_ir_region_cell_leftover2_extract,
+        should_pay_winning_ir_region_cell_leftover2_pdn,
         iscale_champ_sta,
         should_pay_ir_cell,
         should_pay_ir_cell_extract,
@@ -4413,6 +4445,154 @@ def main() -> int:
     check(not pay_wirclp_ref, f"leftover leftover PDN refuses the leftover-combo extract ({why_wirclp_ref})")
     pay_wirclp2, why_wirclp2 = should_pay_winning_ir_region_cell_leftover_pdn(mem_hr, budget_left=80, steer=st_wirclp, n_steer=1)
     check(not pay_wirclp2, f"leftover leftover PDN is a single shot ({why_wirclp2})")
+    from dse.active import (
+        steer_from_winning_ir_region_cell_leftover2_residual,
+        steer_from_winning_ir_region_cell_leftover_pdn_hotspot,
+        winning_ir_region_cell_leftover2_extract_cand,
+        winning_ir_region_cell_leftover2_host,
+    )
+
+    pay_wircl20, why_wircl20 = should_pay_winning_ir_region_cell_leftover2(mem_hr, budget_left=80, steer=None)
+    check(not pay_wircl20, f"leftover leftover leftover waits for leftover leftover leftover cells ({why_wircl20})")
+    check(steer_from_winning_ir_region_cell_leftover_pdn_hotspot(mem_hr) is None, "leftover leftover leftover waits for a leftover leftover PDN join")
+    mem_hr.add(
+        Candidate(
+            id="wirclp",
+            design_id="gcd",
+            parent_id="wirclxt",
+            level="pdn",
+            knobs={
+                "name": "decap_200f",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 2e-13,
+                "i_scale": 1.0,
+                "source": "f4_solver_a",
+                "extract_id": "wirclxt",
+            },
+            knobs_fp="wirclp",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=4.684, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "active_f4_winning_ir_region_cell_leftover_pdn",
+                "region": "r00",
+                "combo_frac": 0.82,
+                "seq_frac": 0.18,
+                "cells": [
+                    "dpath/b_reg/_075_",
+                    "dpath/b_reg/_074_",
+                    "dpath/b_mux/_41_",
+                    "dpath/b_reg/_073_",
+                    "dpath/b_mux/_43_",
+                ],
+                "modules": ["dpath"],
+            },
+        )
+    )
+    st_wircl2 = steer_from_winning_ir_region_cell_leftover_pdn_hotspot(mem_hr)
+    check(st_wircl2 is not None and st_wircl2.get("level") == "winning_ir_region_cell_leftover2", f"combo-heavy leftover leftover PDN steers leftover leftover leftover cells, got {st_wircl2}")
+    check(st_wircl2.get("extract_id") == "wirclxt", f"leftover leftover leftover stays on the leftover leftover extract, got {st_wircl2}")
+    check("dpath/b_reg/_075_" in (st_wircl2.get("cells") or []) and "dpath/b_mux/_41_" in (st_wircl2.get("cells") or []), f"leftover leftover leftover names leftover leftover leftover mux/reg, got {st_wircl2}")
+    check("dpath/sub/_192_" not in (st_wircl2.get("cells") or []), f"leftover leftover leftover drops leftover leftover sub, got {st_wircl2}")
+    check("dpath" in (st_wircl2.get("modules") or []), f"leftover leftover leftover names dpath, got {st_wircl2}")
+    pay_wircl21, why_wircl21 = should_pay_winning_ir_region_cell_leftover2(mem_hr, budget_left=80, steer=st_wircl2)
+    check(pay_wircl21, f"leftover leftover leftover is paid after leftover leftover leftover cells ({why_wircl21})")
+    fake_ll_c = dict(st_wircl2)
+    fake_ll_c["host_source"] = "f4_winning_ir_region_cell_extract"
+    pay_wircl2_ref, why_wircl2_ref = should_pay_winning_ir_region_cell_leftover2(mem_hr, budget_left=80, steer=fake_ll_c)
+    check(not pay_wircl2_ref, f"leftover leftover leftover refuses leftover-combo flatten ({why_wircl2_ref})")
+    pay_wircl22, why_wircl22 = should_pay_winning_ir_region_cell_leftover2(mem_hr, budget_left=80, steer=st_wircl2, n_cell=1)
+    check(not pay_wircl22, f"leftover leftover leftover is a single shot ({why_wircl22})")
+    wirclp_c = next(c for c in mem_hr.all() if c.id == "wirclp")
+    wirclp_c.attr["combo_frac"] = 0.16
+    mem_hr.touch(wirclp_c)
+    check(steer_from_winning_ir_region_cell_leftover_pdn_hotspot(mem_hr) is None, "seq-heavy leftover leftover PDN does not steal leftover leftover leftover size-up")
+    wirclp_c.attr["combo_frac"] = 0.82
+    mem_hr.touch(wirclp_c)
+    mem_hr.add(
+        Candidate(
+            id="wircl2cell",
+            design_id="gcd",
+            parent_id="wirclcell",
+            level="cell",
+            knobs={
+                "source": "cell_size_ir_winning_region_leftover2",
+                "cells": ["dpath/b_reg/_075_", "dpath/b_reg/_074_", "dpath/b_mux/_41_", "dpath/b_reg/_073_", "dpath/b_mux/_43_"],
+                "ir_join": 1,
+                "winning_ir_region_leftover2": 1,
+                "parent_id": "wirclcell",
+                "extract_id": "wirclxt",
+            },
+            knobs_fp="wircl2cell",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(area_um2=568.0, wns_cost=0.31, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": str(dummy_host), "n_changed": 5, "wns_ns": -0.307},
+            attr={"via": "active_f4_winning_ir_region_cell_leftover2"},
+        )
+    )
+    check(winning_ir_region_cell_leftover2_host(mem_hr).id == "wircl2cell", "leftover leftover leftover host is the leftover leftover leftover size-up")
+    pay_wircl23, why_wircl23 = should_pay_winning_ir_region_cell_leftover2(mem_hr, budget_left=80, steer=st_wircl2)
+    check(not pay_wircl23, f"leftover leftover leftover skips once sized on that extract ({why_wircl23})")
+    pay_wircl2e0, why_wircl2e0 = should_pay_winning_ir_region_cell_leftover2_extract(mem_hr, budget_left=80, n_extract=0)
+    check(pay_wircl2e0, f"leftover leftover leftover extract is paid after leftover leftover leftover size-up ({why_wircl2e0})")
+    pay_wircl2e1, why_wircl2e1 = should_pay_winning_ir_region_cell_leftover2_extract(mem_hr, budget_left=80, n_extract=1)
+    check(not pay_wircl2e1, f"leftover leftover leftover extract is a single shot ({why_wircl2e1})")
+    mem_hr.add(
+        Candidate(
+            id="wircl2xt",
+            design_id="gcd",
+            parent_id="wircl2cell",
+            level="pdn",
+            knobs={
+                "source": "f4_winning_ir_region_cell_leftover2_extract",
+                "parent_id": "wircl2cell",
+                "extract_id": "wircl2xt",
+                "parent_extract_id": "wirclxt",
+                "ir_join": 1,
+                "winning_ir_region_leftover2": 1,
+            },
+            knobs_fp="wircl2xt",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=13.100, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_winning_ir_region_cell_leftover2_extract",
+                "residual_mv": 0.629,
+                "residual_via": "winning_ir_region_cell_leftover2_vs_winning_ir_region_cell_leftover_extract",
+                "residual_vs": "wirclxt",
+            },
+        )
+    )
+    check(winning_ir_region_cell_leftover2_extract_cand(mem_hr).id == "wircl2xt", "leftover leftover leftover extract is the leftover leftover leftover cand")
+    check(winning_ir_pdn(mem_hr).id == "wirl", "high leftover leftover leftover droop does not steal the 1× champion")
+    pay_wircl2e2, why_wircl2e2 = should_pay_winning_ir_region_cell_leftover2_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_wircl2e2, f"leftover leftover leftover extract skips once measured ({why_wircl2e2})")
+    st_wircl2p = steer_from_winning_ir_region_cell_leftover2_residual(mem_hr)
+    check(st_wircl2p is not None and (st_wircl2p.get("spec") or {}).get("name") in ("decap_200f", "pkg_l_100p"), f"leftover leftover leftover residual steers the winning PDN family, got {st_wircl2p}")
+    check(st_wircl2p.get("extract_id") == "wircl2xt", f"leftover leftover leftover PDN stays on the leftover leftover leftover mesh, got {st_wircl2p}")
+    check(st_wircl2p.get("host_source") == "f4_winning_ir_region_cell_leftover2_extract", "leftover leftover leftover PDN names the leftover leftover leftover extract")
+    check(st_wircl2p.get("extract_id") != "wirclxt", "leftover leftover leftover PDN does not restamp the leftover leftover extract")
+    pay_wircl2p0, why_wircl2p0 = should_pay_winning_ir_region_cell_leftover2_pdn(mem_hr, budget_left=80, steer=None)
+    check(not pay_wircl2p0, f"leftover leftover leftover PDN waits for a 1× residual ({why_wircl2p0})")
+    pay_wircl2p1, why_wircl2p1 = should_pay_winning_ir_region_cell_leftover2_pdn(mem_hr, budget_left=80, steer=st_wircl2p)
+    check(pay_wircl2p1, f"leftover leftover leftover PDN is paid after the 1× residual ({why_wircl2p1})")
+    fake_ll_p = dict(st_wircl2p)
+    fake_ll_p["host_source"] = "f4_winning_ir_region_cell_leftover_extract"
+    pay_wircl2p_ref, why_wircl2p_ref = should_pay_winning_ir_region_cell_leftover2_pdn(mem_hr, budget_left=80, steer=fake_ll_p)
+    check(not pay_wircl2p_ref, f"leftover leftover leftover PDN refuses the leftover leftover extract ({why_wircl2p_ref})")
+    pay_wircl2p2, why_wircl2p2 = should_pay_winning_ir_region_cell_leftover2_pdn(mem_hr, budget_left=80, steer=st_wircl2p, n_steer=1)
+    check(not pay_wircl2p2, f"leftover leftover leftover PDN is a single shot ({why_wircl2p2})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

@@ -333,6 +333,29 @@ export function DsePanel() {
                 : report.n_winning_ir_region_cell_leftover_pdn != null
                   ? ` · IR-wrlp ${report.n_winning_ir_region_cell_leftover_pdn}`
                   : ""}
+              {report.winning_ir_region_cell_leftover2_wns_ns != null
+                ? ` · IR-wrl2 ${report.winning_ir_region_cell_leftover2_modules ?? "dpath"} WNS ${report.winning_ir_region_cell_leftover2_wns_ns >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_wns_ns.toFixed(3)}`
+                : report.n_winning_ir_region_cell_leftover2 != null
+                  ? ` · IR-wrl2 ${report.n_winning_ir_region_cell_leftover2}`
+                  : ""}
+              {report.winning_ir_region_cell_leftover2_extract_mv != null
+                ? ` · IR-wrl2e ${report.winning_ir_region_cell_leftover2_extract_mv.toFixed(3)} mV${
+                    report.winning_ir_region_cell_leftover2_extract_residual_mv != null
+                      ? ` Δ=${report.winning_ir_region_cell_leftover2_extract_residual_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_extract_residual_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_winning_ir_region_cell_leftover2_extract != null
+                  ? ` · IR-wrl2e ${report.n_f4_winning_ir_region_cell_leftover2_extract}`
+                  : ""}
+              {report.winning_ir_region_cell_leftover2_pdn_mv != null
+                ? ` · IR-wrl2p ${report.winning_ir_region_cell_leftover2_pdn_name ?? "PDN"} ${report.winning_ir_region_cell_leftover2_pdn_mv.toFixed(3)} mV${
+                    report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv != null
+                      ? ` vs host-win ${report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_winning_ir_region_cell_leftover2_pdn != null
+                  ? ` · IR-wrl2p ${report.n_winning_ir_region_cell_leftover2_pdn}`
+                  : ""}
               {report.ir_champ_amg_mv != null
                 ? ` · AMG-c ${report.ir_champ_amg_mv.toFixed(3)} mV${
                     report.ir_champ_amg_vs_direct_mv != null
@@ -548,6 +571,15 @@ export function DsePanel() {
                   : ""}
                 {report.n_winning_ir_region_cell_leftover_pdn != null
                   ? ` · IR-wrlp ${report.n_winning_ir_region_cell_leftover_pdn}`
+                  : ""}
+                {report.n_winning_ir_region_cell_leftover2 != null
+                  ? ` · IR-wrl2 ${report.n_winning_ir_region_cell_leftover2}`
+                  : ""}
+                {report.n_f4_winning_ir_region_cell_leftover2_extract != null
+                  ? ` · IR-wrl2e ${report.n_f4_winning_ir_region_cell_leftover2_extract}`
+                  : ""}
+                {report.n_winning_ir_region_cell_leftover2_pdn != null
+                  ? ` · IR-wrl2p ${report.n_winning_ir_region_cell_leftover2_pdn}`
                   : ""}
                 {report.n_f4_amg_champ != null ? ` · AMG-c ${report.n_f4_amg_champ}` : ""}
                 {report.n_f4_ras_champ != null ? ` · RAS-c ${report.n_f4_ras_champ}` : ""}
