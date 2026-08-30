@@ -252,7 +252,7 @@ export function DsePanel() {
                 : report.n_static_straps != null
                   ? ` · ST ${report.n_static_straps}`
                   : ""}
-              {report.ir_cell_extract_mv != null}
+              {report.ir_cell_extract_mv != null
                 ? ` · IR-x ${report.ir_cell_extract_mv.toFixed(3)} mV${
                     report.ir_cell_extract_residual_mv != null
                       ? ` Δ=${report.ir_cell_extract_residual_mv >= 0 ? "+" : ""}${report.ir_cell_extract_residual_mv.toFixed(3)}`
