@@ -602,7 +602,7 @@ def evaluate_f4_scale(
     source=f4_iscale_win restamps the winning host PDN point after host IR-steer.
     source=f4_iscale_champ restamps winning_ir_pdn (IR-cell family) — not host-win.
     """
-    from .attribute import attribute_dynamic_ir, ir_report_from_solve
+    from .attribute import attribute_dynamic_ir, ir_report_from_solve, persist_hotspot_join
     from .f4_oracle import solve_f4
     from .mo import timing_of
 
@@ -702,7 +702,10 @@ def evaluate_f4_scale(
         failure=dyn.get("reason") if dyn.get("status") != "ok" else None,
         note=f"F4 I-scale of {host} ×{scale:.3f} on {extract_id} droop={dyn.get('worst_droop_mv')}",
     )
-    return mem.add(c)
+    added = mem.add(c)
+    if source == "f4_iscale_champ" and persist_hotspot_join(added):
+        mem.touch(added)
+    return added
 
 
 def evaluate_host_arrivals(
@@ -816,8 +819,9 @@ def evaluate_f4_extract(
     kind=ir_cell_champ extracts the I-scale-champ dpath-sized netlist and residuals vs IR-cell extract.
     kind=ir_cell_champ_cone extracts leftover-cone size-up and residuals vs the IR-cell-champ extract.
     kind=ir_cell_champ_cone_region density-caps the leftover-cone 1× bin (not IR-cell-region rXY, not gold rXY).
+    kind=winning_ir_region density-caps the winning-IR 1× bin (not leftover-cone rXY, not IR-cell-region rXY, not gold rXY).
     """
-    from .attribute import attribute_dynamic_ir, ir_report_from_solve
+    from .attribute import attribute_dynamic_ir, ir_report_from_solve, persist_hotspot_join
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn
 
@@ -900,6 +904,22 @@ def evaluate_f4_extract(
         knobs["y_dbu"] = y_dbu
         knobs["region_density"] = region_density if region_density is not None else 0.30
         prior = ir_cell_champ_cone_region_extract_cand(mem) or ir_cell_champ_cone_extract_cand(mem)
+        knobs["parent_extract_id"] = (
+            str((prior.knobs or {}).get("extract_id") or prior.id) if prior else ""
+        )
+    elif kind == "winning_ir_region":
+        from .active import winning_ir_extract_cand
+
+        knobs["source"] = "f4_winning_ir_region_extract"
+        knobs["name"] = f"extract_winning_ir_region_{host}"
+        knobs["host_level"] = parent.level
+        knobs["host_source"] = parent.knobs.get("source") or parent.level
+        knobs["ir_join"] = 1
+        knobs["region"] = region
+        knobs["x_dbu"] = x_dbu
+        knobs["y_dbu"] = y_dbu
+        knobs["region_density"] = region_density if region_density is not None else 0.30
+        prior = winning_ir_extract_cand(mem)
         knobs["parent_extract_id"] = (
             str((prior.knobs or {}).get("extract_id") or prior.id) if prior else ""
         )
@@ -1028,6 +1048,17 @@ def evaluate_f4_extract(
                 if (prior.knobs or {}).get("source") == "f4_ir_cell_champ_cone_region_extract"
                 else "ir_cell_champ_cone_region_vs_ir_cell_champ_cone_extract"
             )
+    if kind == "winning_ir_region":
+        from .active import winning_ir_extract_cand
+
+        attr["via"] = "f4_winning_ir_region_extract"
+        attr["host_level"] = parent.level
+        attr["host_source"] = parent.knobs.get("source") or parent.level
+        prior = winning_ir_extract_cand(mem)
+        if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
+            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
+            attr["residual_vs"] = prior.id
+            attr["residual_via"] = "winning_ir_region_vs_winning_ir_extract"
     kind_note = {
         "host": "host",
         "host_region": "host-region",
@@ -1036,6 +1067,7 @@ def evaluate_f4_extract(
         "ir_cell_champ": "IR-cell-champ",
         "ir_cell_champ_cone": "IR-cell-champ-cone",
         "ir_cell_champ_cone_region": "IR-cell-champ-cone-region",
+        "winning_ir_region": "winning-IR-region",
     }.get(kind, "candidate")
     q = QoR(
         area_um2=parent.qor.area_um2,
@@ -1094,7 +1126,10 @@ def evaluate_f4_extract(
         failure=ext.get("reason") if not ok else None,
         note=f"F4 extract of {host} n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')}",
     )
-    return mem.add(c)
+    added = mem.add(c)
+    if persist_hotspot_join(added):
+        mem.touch(added)
+    return added
 
 
 def ingest_f2(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candidate | None:

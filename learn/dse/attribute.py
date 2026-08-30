@@ -253,6 +253,30 @@ def join_hotspot_insts(
     }
 
 
+def persist_hotspot_join(cand) -> bool:
+    """Fill empty IR cells from ODB-geom. Does not invent an RTL→ITerm map."""
+    attr = dict(cand.attr or {})
+    if attr.get("cells"):
+        return False
+    art = cand.artifacts or {}
+    j = join_hotspot_insts(
+        art.get("insts") or attr.get("insts"),
+        attr.get("x_dbu") if attr.get("x_dbu") is not None else art.get("x_dbu"),
+        attr.get("y_dbu") if attr.get("y_dbu") is not None else art.get("y_dbu"),
+    )
+    if int(j.get("n") or 0) < 1:
+        return False
+    attr["cells"] = list(j.get("cells") or [])
+    attr["modules"] = list(j.get("modules") or [])
+    attr["cones"] = list(j.get("cones") or [])
+    attr["join"] = "odb-geom"
+    if j.get("region") and not attr.get("region"):
+        attr["region"] = j.get("region")
+    attr["scope"] = "logic_cone" if attr.get("modules") else attr.get("scope") or "region"
+    cand.attr = attr
+    return True
+
+
 def local_scope(attr: dict) -> dict:
     """chip → block → region → cone. Do not flatten back into a global restart."""
     modules = list(attr.get("modules") or [])
