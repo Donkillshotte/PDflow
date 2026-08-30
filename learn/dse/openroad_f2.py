@@ -830,7 +830,7 @@ read_lef {SC_LEF}
 read_liberty {LIB}
 read_db {odb}
 read_sdc {SDC}
-set_pdnsim_source_settings -bump_dx {float(bump_dx)} -bump_dy {float(bump_dy)} -bump_size {float(bump_size)} -bump_interval {int(bump_interval)} -external_resistance {float(pkg_r)}
+set_pdnsim_source_settings -bump_dx {int(bump_dx)} -bump_dy {int(bump_dy)} -bump_size {int(bump_size)} -bump_interval {int(bump_interval)} -external_resistance {float(pkg_r)}
 write_pg_spice -net VDD -source_type BUMPS {spice}
 write_db {out_odb}
 puts DSE_PDN_BUMPS_OK
