@@ -1777,6 +1777,46 @@ def should_pay_static_mesh(
     return True, str(steer.get("reason") or "static IR steers unused bump pitch — not pkg_r, not gold")
 
 
+def should_pay_static_straps(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 12.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """Pay denser metal4 straps after a null bump residual. Not bumps, not pkg_r."""
+    from pathlib import Path
+
+    if n_steer >= steer_max:
+        return False, "static-IR strap mesh shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover static-IR strap restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no static-IR residual-steered strap action"
+    spec = steer["spec"]
+    from .pdn_space import PDN_CATALOG, STATIC_MESH_CATALOG, STATIC_PDN_CATALOG
+
+    names = (
+        {s["name"] for s in PDN_CATALOG}
+        | {s["name"] for s in STATIC_PDN_CATALOG}
+        | {s["name"] for s in STATIC_MESH_CATALOG}
+    )
+    if str(spec.get("name") or "") in names:
+        return False, "static-IR straps refuse a bump / pkg_r / decap / pkg L catalog point"
+    if spec.get("m4_pitch") is None:
+        return False, "static-IR straps require an m4_pitch delta, not a bump restamp"
+    eid = str(steer["extract_id"])
+    if eid in ("finish", ""):
+        return False, "static-IR straps refuse the gold finish extract"
+    odb = steer.get("odb")
+    if not odb or not Path(odb).is_file():
+        return False, "static-IR champion ODB is not on disk"
+    return True, str(steer.get("reason") or "static IR steers unused metal4 pitch — not bumps, not gold")
+
+
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
     return _latest_extract(mem, source="f4_candidate_extract")
@@ -1837,6 +1877,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
         "f4_ir_cell_region_extract",
         "f4_ir_cell_champ_extract",
         "f4_static_mesh_extract",
+        "f4_static_strap_extract",
     ):
         hit = _latest_extract(mem, source=src)
         if hit and str(hit["extract_id"]) == want:
@@ -1858,6 +1899,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
             "f4_ir_cell_region_extract",
             "f4_ir_cell_champ_extract",
             "f4_static_mesh_extract",
+            "f4_static_strap_extract",
         ):
             continue
         art = c.artifacts or {}
@@ -1942,6 +1984,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "ir_cell_champ_pdn",
         "static_ir_steer",
         "static_mesh",
+        "static_straps",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):

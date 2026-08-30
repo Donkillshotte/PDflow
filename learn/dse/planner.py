@@ -495,6 +495,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
+    steps.append(
+        {
+            "level": "static_straps",
+            "reason": (
+                "Null bump residual (same n_v on this die) pays denser metal4 "
+                "straps on the static-IR champ ODB — pdngen -ripup, not bumps, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

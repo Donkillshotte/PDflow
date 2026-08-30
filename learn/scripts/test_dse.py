@@ -36,9 +36,11 @@ from dse.pdn_space import (
     PDN_CATALOG,
     STATIC_MESH_CATALOG,
     STATIC_PDN_CATALOG,
+    STATIC_STRAP_CATALOG,
     next_pdn_spec,
     next_static_mesh_spec,
     next_static_pdn_spec,
+    next_static_strap_spec,
 )
 
 
@@ -197,6 +199,10 @@ def main() -> int:
     check(all(s["name"] != "bumps_80" for s in PDN_CATALOG), "bump pitch is not flattened into the Dynamic IR catalog")
     check(all(s["name"] != "bumps_80" for s in STATIC_PDN_CATALOG), "bump pitch is not flattened into the pkg_r catalog")
     check(STATIC_MESH_CATALOG[0]["name"] == "bumps_80", "static-IR mesh catalog starts with bumps_80")
+    check(all(s["name"] != "m4_pitch_8" for s in PDN_CATALOG), "metal4 pitch is not flattened into the Dynamic IR catalog")
+    check(all(s["name"] != "m4_pitch_8" for s in STATIC_PDN_CATALOG), "metal4 pitch is not flattened into the pkg_r catalog")
+    check(all(s["name"] != "m4_pitch_8" for s in STATIC_MESH_CATALOG), "metal4 pitch is not flattened into the bump catalog")
+    check(STATIC_STRAP_CATALOG[0]["name"] == "m4_pitch_8", "static-IR strap catalog starts with m4_pitch_8")
     check(
         knobs_fp("pdn", {"pkg_l": 2e-10, "c_decap": 50e-15})
         != knobs_fp("logic", {"pkg_l": 2e-10, "c_decap": 50e-15}),
@@ -381,6 +387,7 @@ def main() -> int:
     check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
     check(any(s["level"] == "static_ir_steer" for s in planned["steps"]), "planner schedules static-IR pkg_r steer")
     check(any(s["level"] == "static_mesh" for s in planned["steps"]), "planner schedules static-IR bump mesh")
+    check(any(s["level"] == "static_straps" for s in planned["steps"]), "planner schedules static-IR metal4 straps")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -484,6 +491,7 @@ def main() -> int:
     check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
     check(next_fidelity(level="static_ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR pkg_r steer measures at F4")
     check(next_fidelity(level="static_mesh", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR bump mesh measures at F4")
+    check(next_fidelity(level="static_straps", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR metal4 straps measure at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -623,6 +631,11 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_static_mesh_extract", "name": "bumps_80", "bump_dx": 80, "extract_id": "icreg"})
         != knobs_fp("pdn", {"source": "f4_solver_a", "name": "pkg_r_25m", "extract_id": "icreg", "pkg_r": 0.025, "c_decap": 200e-15}),
         "static-IR bump mesh is not flattened into the pkg_r fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_static_strap_extract", "name": "m4_pitch_8", "m4_pitch": 8, "extract_id": "icreg"})
+        != knobs_fp("pdn", {"source": "f4_static_mesh_extract", "name": "bumps_80", "bump_dx": 80, "extract_id": "icreg"}),
+        "static-IR metal4 straps are not flattened into the bump fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1371,6 +1384,7 @@ def main() -> int:
         should_pay_f4_krylov_champ,
         should_pay_static_ir_steer,
         should_pay_static_mesh,
+        should_pay_static_straps,
         should_pay_ir_cell_champ,
         should_pay_ir_cell_champ_extract,
         should_pay_ir_cell_champ_pdn,
@@ -2937,6 +2951,72 @@ def main() -> int:
         )
     )
     check(next_static_mesh_spec(mem_hr) is not None, "a failed bump extract does not consume the static-mesh catalog")
+    from dse.active import steer_from_static_strap_residual
+
+    check(steer_from_static_strap_residual(mem_hr) is None, "static straps wait for a null bump residual")
+    mem_hr.add(
+        Candidate(
+            id="smok",
+            design_id="gcd",
+            parent_id="icreg",
+            level="pdn",
+            knobs={
+                "source": "f4_static_mesh_extract",
+                "name": "bumps_80",
+                "bump_dx": 80.0,
+                "bump_dy": 80.0,
+                "extract_id": "smok",
+                "parent_extract_id": "icreg",
+            },
+            knobs_fp="smok",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=3.920, static_ir_mv=6.178, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "active_f4_static_mesh", "residual_vs_static_champ_mv": 0.0},
+        )
+    )
+    st_st = steer_from_static_strap_residual(mem_hr)
+    check(st_st is not None and (st_st.get("spec") or {}).get("name") == "m4_pitch_8", f"null bump residual steers metal4, got {st_st}")
+    check(st_st.get("extract_id") == "icreg", f"static straps stay on the static champ extract, got {st_st}")
+    check((st_st.get("spec") or {}).get("name") not in ("decap_200f", "pkg_l_100p", "pkg_r_25m", "bumps_80"), "static straps do not consume bump / pkg_r / Dynamic IR catalogs")
+    check(st_st.get("odb") == str(odb_sm), f"static straps name the champ ODB, got {st_st}")
+    pay_st0, why_st0 = should_pay_static_straps(mem_hr, budget_left=80, steer=None)
+    check(not pay_st0, f"static straps wait for a strap steer ({why_st0})")
+    pay_st1, why_st1 = should_pay_static_straps(mem_hr, budget_left=80, steer=st_st)
+    check(pay_st1, f"static straps are paid after a null bump residual ({why_st1})")
+    check("not bumps" in why_st1 and "not gold" in why_st1, f"static straps refuse bump flatten ({why_st1})")
+    fake_bump = dict(st_st)
+    fake_bump["spec"] = {"name": "bumps_80", "bump_dx": 80.0, "bump_dy": 80.0}
+    pay_st_ref, why_st_ref = should_pay_static_straps(mem_hr, budget_left=80, steer=fake_bump)
+    check(not pay_st_ref, f"static straps refuse a bump catalog point ({why_st_ref})")
+    pay_st2, why_st2 = should_pay_static_straps(mem_hr, budget_left=80, steer=st_st, n_steer=1)
+    check(not pay_st2, f"static straps are a single shot ({why_st2})")
+    spec_st = next_static_strap_spec(mem_hr)
+    check(spec_st is not None and spec_st["name"] == "m4_pitch_8", f"next_static_strap_spec proposes m4_pitch_8, got {spec_st}")
+    mem_hr.add(
+        Candidate(
+            id="stfail",
+            design_id="gcd",
+            parent_id="icreg",
+            level="pdn",
+            knobs={"source": "f4_static_strap_extract", "name": "m4_pitch_8", "m4_pitch": 8.0},
+            knobs_fp="stfail",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(fidelity="F4"),
+            cost_s=0.2,
+            status="fail",
+        )
+    )
+    check(next_static_strap_spec(mem_hr) is not None, "a failed strap extract does not consume the static-strap catalog")
+    from dse.active import winning_ir_pdn as _win_ir
+
+    win_after_st = _win_ir(mem_hr)
+    check(win_after_st is not None and win_after_st.id == "icrp", f"winning_ir_pdn ignores the strap axis, got {getattr(win_after_st, 'id', None)}")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

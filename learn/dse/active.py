@@ -588,9 +588,12 @@ def _ir_family_1x_member(c) -> bool:
         "active_f4_ir_cell_champ_pdn",
         "active_f4_static_ir",
         "active_f4_static_mesh",
+        "active_f4_static_straps",
     ):
         return True
     if src == "f4_static_mesh_extract":
+        return True
+    if src == "f4_static_strap_extract":
         return True
     if src == "f4_solver_a" and (c.knobs or {}).get("name") == "pkg_r_25m":
         return True
@@ -743,6 +746,64 @@ def steer_from_static_mesh_residual(mem: DesignMemory) -> dict | None:
         ),
         "via": "active_f4_static_mesh",
         "not": "a flattened pkg_r+bump / decap / GPL / gold vector",
+    }
+
+
+def _null_bump_residual(mem: DesignMemory) -> dict | None:
+    """Latest bump-mesh shot whose on-die static residual is ~0. Not pkg_r."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_static_mesh":
+            continue
+        res = (c.attr or {}).get("residual_vs_static_champ_mv")
+        if res is None:
+            continue
+        if abs(float(res)) < 0.05:
+            return {
+                "id": c.id,
+                "residual_mv": float(res),
+                "extract_id": str((c.knobs or {}).get("parent_extract_id") or (c.knobs or {}).get("extract_id") or c.id),
+            }
+    return None
+
+
+def steer_from_static_strap_residual(mem: DesignMemory) -> dict | None:
+    """Denser metal4 straps on the static-IR champ ODB after a null bump residual.
+
+    Not bumps, not pkg_r, not decap, not a new GPL, not gold.
+    """
+    from .pdn_space import next_static_strap_spec
+
+    null = _null_bump_residual(mem)
+    if null is None:
+        return None
+    host = winning_static_pdn(mem)
+    if host is None or host.qor.static_ir_mv is None:
+        return None
+    eid = str((host.knobs or {}).get("extract_id") or host.id)
+    if eid in ("finish", ""):
+        return None
+    spec = next_static_strap_spec(mem)
+    if spec is None:
+        return None
+    odb = _odb_for_extract(mem, eid)
+    src = (host.knobs or {}).get("name") or (host.attr or {}).get("via") or host.id
+    return {
+        "level": "pdn",
+        "spec": spec,
+        "extract_id": eid,
+        "odb": odb,
+        "host_id": host.id,
+        "host_source": (host.knobs or {}).get("source") or host.level,
+        "static_ir_mv": float(host.qor.static_ir_mv),
+        "bump_residual_mv": null["residual_mv"],
+        "bump_id": null["id"],
+        "reason": (
+            f"bump residual {null['residual_mv']:+.3f} mV is null on-die — "
+            f"{spec['name']} m4_pitch={spec['m4_pitch']} on {src} extract {eid}, "
+            "same place, not bumps, not Dynamic IR-steer, not gold"
+        ),
+        "via": "active_f4_static_straps",
+        "not": "a flattened bump+strap / pkg_r / decap / GPL / gold vector",
     }
 
 

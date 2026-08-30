@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + AMG/RAS/Krylov on winning_ir_pdn + static-IR pkg_r then on-die bump pitch on winning_static_pdn + I-scale of the attributed host (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + AMG/RAS/Krylov on winning_ir_pdn + static-IR pkg_r then on-die bump pitch then metal4 straps on winning_static_pdn + I-scale of the attributed host (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -82,6 +82,7 @@ from .acquire import (
     should_pay_f4_scale_champ,
     should_pay_static_ir_steer,
     should_pay_static_mesh,
+    should_pay_static_straps,
     iscale_champ_sta,
     should_pay_physical_catalog,
 )
@@ -93,6 +94,7 @@ from .active import (
     winning_static_pdn,
     steer_from_static_ir_residual,
     steer_from_static_mesh_residual,
+    steer_from_static_strap_residual,
     ir_hotspot_cells,
     ir_cell_host,
     steer_from_ir_cell_residual,
@@ -129,6 +131,7 @@ from .fidelity import (
     evaluate_f4_extract,
     evaluate_f4_pdn,
     evaluate_f4_static_mesh,
+    evaluate_f4_static_straps,
     evaluate_f4_scale,
     evaluate_host_arrivals,
     ensure_mapped_netlist,
@@ -167,6 +170,7 @@ from .surrogate import (
     residual_f4_host_region,
     residual_f4_static,
     residual_f4_static_mesh,
+    residual_f4_static_straps,
     residual,
 )
 
@@ -2654,6 +2658,70 @@ def run_controller(
                     reason=steer_sm.get("reason"),
                 )
 
+    n_st = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.attr or {}).get("via") == "active_f4_static_straps" and c.status == "ok"
+    )
+    steer_st = steer_from_static_strap_residual(mem)
+    pay_st, why_st = should_pay_static_straps(
+        mem, budget_left=t_end - time.time(), steer=steer_st, n_steer=n_st, variant=variant
+    )
+    step("acquire", fidelity="F4_STATIC_STRAPS", pay=pay_st, why=why_st, steer=steer_st)
+    if (
+        any(s["level"] == "static_straps" for s in plan["steps"])
+        and pay_st
+        and steer_st
+        and time.time() < t_end
+    ):
+        spec_st = steer_st.get("spec") or {}
+        eid_st = str(steer_st.get("extract_id") or "")
+        hit_st = extract_on_disk(mem, eid_st) if eid_st else None
+        odb_st = steer_st.get("odb") or ((hit_st or {}).get("odb") if hit_st else None)
+        host_s = winning_static_pdn(mem)
+        if spec_st and odb_st:
+            child = evaluate_f4_static_straps(
+                mem,
+                spec_st,
+                variant=variant,
+                design_id=design_id,
+                parent_id=(hit_st or {}).get("candidate").id if hit_st else (host_s.id if host_s else None),
+                odb=odb_st,
+                insts_src=(hit_st or {}).get("insts"),
+                sta=(hit_st or {}).get("sta"),
+                host=host_s,
+                parent_extract_id=eid_st,
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "active_f4_static_straps"
+                child.attr["steer"] = {k: steer_st[k] for k in steer_st if k != "spec"}
+                if host_s and host_s.qor.static_ir_mv is not None and child.qor.static_ir_mv is not None:
+                    child.attr["residual_vs_static_champ_mv"] = float(child.qor.static_ir_mv) - float(
+                        host_s.qor.static_ir_mv
+                    )
+                    child.attr["residual_vs_static_champ"] = host_s.id
+                child.attr["residual_via"] = "static_straps_vs_static_champ"
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="active_f4_static_straps",
+                    parent=(hit_st or {}).get("candidate").id if hit_st else None,
+                    catalog=spec_st.get("name"),
+                    extract_id=child.knobs.get("extract_id"),
+                    parent_extract_id=eid_st,
+                    m4_pitch=spec_st.get("m4_pitch"),
+                    static_ir_mv=child.qor.static_ir_mv,
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_static_champ_mv=(child.attr or {}).get("residual_vs_static_champ_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=steer_st.get("reason"),
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -2706,6 +2774,7 @@ def run_controller(
             "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — not candidate AMG, not gold",
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",
             "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not gold",
+            "F4 static straps: null bump residual (same n_v on this die) pays denser metal4 on the champ ODB — pdngen -ripup, not bumps, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -2987,6 +3056,57 @@ def run_controller(
                 if c.status == "ok"
                 and (c.attr or {}).get("via") == "active_f4_static_mesh"
                 and (c.attr or {}).get("residual_vs_static_champ_mv") is not None
+            ),
+            None,
+        ),
+        "n_static_straps": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.attr or {}).get("via") == "active_f4_static_straps" and c.status == "ok"
+        ),
+        "static_straps_mv": next(
+            (
+                float(c.qor.static_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_static_straps"
+                and c.qor.static_ir_mv is not None
+            ),
+            None,
+        ),
+        "static_straps_dyn_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_static_straps"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "static_straps_name": next(
+            (
+                str((c.knobs or {}).get("name") or "")
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_static_straps"
+            ),
+            None,
+        ),
+        "static_straps_vs_champ_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_static_champ_mv"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_static_straps"
+                and (c.attr or {}).get("residual_vs_static_champ_mv") is not None
+            ),
+            None,
+        ),
+        "static_straps_n_r": next(
+            (
+                (c.artifacts or {}).get("n_r")
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_static_straps"
             ),
             None,
         ),
@@ -3320,6 +3440,7 @@ def run_controller(
         "surrogate_f4_host_region": residual_f4_host_region(mem.all()),
         "surrogate_f4_static": residual_f4_static(mem.all()),
         "surrogate_f4_static_mesh": residual_f4_static_mesh(mem.all()),
+        "surrogate_f4_static_straps": residual_f4_static_straps(mem.all()),
         "plan": plan,
         "attribution": attr,
         "focus": focus,
@@ -3476,6 +3597,19 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         )
     if sm_bits:
         sir += " · static-mesh " + "; ".join(sm_bits) + " (not gold)"
+    st_bits: list[str] = []
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_static_straps":
+            continue
+        smv = c.qor.static_ir_mv
+        cat = (c.knobs or {}).get("name")
+        vs = (c.attr or {}).get("residual_vs_static_champ_mv")
+        extra = f" Δ={float(vs):+.3f}" if vs is not None else ""
+        st_bits.append(
+            f"{cat} {float(smv):.3f} mV{extra}" if smv is not None else str(cat)
+        )
+    if st_bits:
+        sir += " · static-straps " + "; ".join(st_bits) + " (not gold)"
     ctrlc = ""
     for c in mem.by_level("logic"):
         if c.status == "ok" and c.fidelity == "F1" and (c.knobs or {}).get("cone") == "ctrl" and c.qor.area_um2 is not None:

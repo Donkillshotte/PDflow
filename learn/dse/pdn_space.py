@@ -29,6 +29,20 @@ STATIC_MESH_CATALOG: list[dict] = [
     {"name": "bumps_80", "bump_dx": 80.0, "bump_dy": 80.0, "bump_size": 40.0, "bump_interval": 3},
 ]
 
+# On-die static IR after a null bump residual (GCD die ~40 µm: bump_dx 80
+# still n_v=5). Denser metal4 straps, same legalized ODB — pdngen -ripup,
+# not a new GPL, not flattened into PDN / STATIC_PDN / STATIC_MESH.
+# Pitch 28 is a no-op on this core (same n_r as 56); 8.0 adds M4 straps.
+STATIC_STRAP_CATALOG: list[dict] = [
+    {
+        "name": "m4_pitch_8",
+        "m4_pitch": 8.0,
+        "m4_width": 0.48,
+        "m7_pitch": 30.0,
+        "m7_width": 1.40,
+    },
+]
+
 GOLD_KNOBS = {"pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 50e-15}
 
 
@@ -100,5 +114,25 @@ def next_static_mesh_spec(mem: DesignMemory) -> dict | None:
     for spec in STATIC_MESH_CATALOG:
         key = (float(spec["bump_dx"]), float(spec["bump_dy"]))
         if key not in have:
+            return dict(spec)
+    return None
+
+
+def measured_static_strap_keys(mem: DesignMemory) -> set[float]:
+    keys: set[float] = set()
+    for c in mem.by_level("pdn"):
+        k = c.knobs or {}
+        if c.status != "ok" or k.get("source") != "f4_static_strap_extract":
+            continue
+        if k.get("m4_pitch") is None:
+            continue
+        keys.add(float(k["m4_pitch"]))
+    return keys
+
+
+def next_static_strap_spec(mem: DesignMemory) -> dict | None:
+    have = measured_static_strap_keys(mem)
+    for spec in STATIC_STRAP_CATALOG:
+        if float(spec["m4_pitch"]) not in have:
             return dict(spec)
     return None
