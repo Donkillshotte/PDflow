@@ -39,6 +39,7 @@ RTL
  → F3 IR-cell-champ: hotspot I-scale-champ → join ODB sull’extract campione → drive-up (dpath, non il primo set ctrl)
  → F4 extract IR-cell-champ (`write_pg_spice` sul netlist dpath-sized — residuo vs extract IR-cell, non host)
  → F4 IR-cell-champ-PDN: famiglia vincente sul mesh dpath-sized (non host-IR-steer)
+ → F4 AMG-champ / RAS-champ / Krylov-champ: residuo solver sullo extract `winning_ir_pdn` (stessi knobs DirectLU, non AMG candidato, non gold)
  → F4 restamp DirectLU / SA-AMG / RAS / Krylov-MOR (knobs PDN / I(t)×power dell’host attribuito / **static IR**) sullo extract nominato
  → F4 ingest gold (45.298 mV unrestampato)
  → attributo hotspot → regione → celle/net → modulo RTL (dpath/ctrl)
@@ -61,7 +62,7 @@ RTL
 | **net** | `BUF` sugli hop attribuiti del worst path | READY F3 — scope di modulo **e** scope di porta (parent) sui crossing ctrl↔dpath; non un drive-up di cella |
 | **physical** | util, densità, **regione IR**, netlist del candidato | F0 proxy + F2-fast + **GPL** + catalogo + **density cap sul bin IR** + ingest — non lancia finish |
 | **routing** | GRT dopo place_pins + F5-lite DRT/OpenRCX + F5-CTS | READY F2 GRT + F5-lite SPEF (clock ideale) + F5-CTS SPEF (clock propagato) — non `make finish` |
-| **pdn** | `c_decap`, pkg L, I(t)×power, mesh candidato/host, solver MF | ingest gold + extract candidato + **extract host** + **extract host-regione** + DirectLU/AMG/RAS/Krylov (non gold) |
+| **pdn** | `c_decap`, pkg L, I(t)×power, mesh candidato/host, solver MF | ingest gold + extract candidato + **extract host** + **extract host-regione** + DirectLU/AMG/RAS/Krylov + **AMG/RAS/Krylov su winning_ir_pdn** (non gold) |
 
 Concatenare `rewrite` e `coreUtilization` in un unico box è **vietato** (`knobs_fp` include il livello).
 

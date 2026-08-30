@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + I-scale of the attributed host (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + AMG/RAS/Krylov on winning_ir_pdn + I-scale of the attributed host (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -58,9 +58,12 @@ from .acquire import (
     _attributed_cross_module_nets,
     should_pay_f1_synth,
     should_pay_f4_amg,
+    should_pay_f4_amg_champ,
     should_pay_f4_extract,
     should_pay_f4_krylov,
+    should_pay_f4_krylov_champ,
     should_pay_f4_ras,
+    should_pay_f4_ras_champ,
     should_pay_f4_region_extract,
     should_pay_f5_cts,
     should_pay_f5_drt,
@@ -2331,6 +2334,187 @@ def run_controller(
                     reason=steer_iccp.get("reason"),
                 )
 
+    n_amg_c = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_solver_amg"
+        and c.status == "ok"
+        and (c.attr or {}).get("via") == "f4_solver_amg_champ"
+    )
+    pay_amgc, why_amgc = should_pay_f4_amg_champ(
+        mem, budget_left=t_end - time.time(), n_amg=n_amg_c, variant=variant
+    )
+    step("acquire", fidelity="F4_AMG_CHAMP", pay=pay_amgc, why=why_amgc)
+    if any(s["level"] == "f4_amg_champ" for s in plan["steps"]) and pay_amgc and time.time() < t_end:
+        champ_s = winning_ir_pdn(mem)
+        eid_s = str((champ_s.knobs or {}).get("extract_id") or champ_s.id) if champ_s else ""
+        hit_s = extract_on_disk(mem, eid_s) if eid_s else None
+        if champ_s and hit_s:
+            spec_amgc = {
+                "name": "amg_champ",
+                "pkg_r": float((champ_s.knobs or {}).get("pkg_r") or 0.05),
+                "pkg_l": float((champ_s.knobs or {}).get("pkg_l") or 2e-10),
+                "c_decap": float((champ_s.knobs or {}).get("c_decap") or 50e-15),
+            }
+            child = evaluate_f4_pdn(
+                mem,
+                spec_amgc,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit_s["candidate"].id,
+                spice=hit_s["spice"],
+                insts=hit_s["insts"],
+                extract_id=eid_s,
+                solver="amg",
+                sta=hit_s.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "f4_solver_amg_champ"
+                if champ_s.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+                    child.attr["residual_vs_direct_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                        champ_s.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_direct"] = champ_s.id
+                    child.attr["residual_via"] = "amg_champ_vs_direct"
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_solver_amg_champ",
+                    parent=hit_s["candidate"].id,
+                    extract_id=eid_s,
+                    c_decap=spec_amgc["c_decap"],
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_direct_mv=(child.attr or {}).get("residual_vs_direct_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=why_amgc,
+                )
+
+    n_ras_c = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_solver_ras"
+        and c.status == "ok"
+        and (c.attr or {}).get("via") == "f4_solver_ras_champ"
+    )
+    pay_rasc, why_rasc = should_pay_f4_ras_champ(
+        mem, budget_left=t_end - time.time(), n_ras=n_ras_c, variant=variant
+    )
+    step("acquire", fidelity="F4_RAS_CHAMP", pay=pay_rasc, why=why_rasc)
+    if any(s["level"] == "f4_ras_champ" for s in plan["steps"]) and pay_rasc and time.time() < t_end:
+        champ_s = winning_ir_pdn(mem)
+        eid_s = str((champ_s.knobs or {}).get("extract_id") or champ_s.id) if champ_s else ""
+        hit_s = extract_on_disk(mem, eid_s) if eid_s else None
+        if champ_s and hit_s:
+            spec_rasc = {
+                "name": "ras_champ",
+                "pkg_r": float((champ_s.knobs or {}).get("pkg_r") or 0.05),
+                "pkg_l": float((champ_s.knobs or {}).get("pkg_l") or 2e-10),
+                "c_decap": float((champ_s.knobs or {}).get("c_decap") or 50e-15),
+            }
+            child = evaluate_f4_pdn(
+                mem,
+                spec_rasc,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit_s["candidate"].id,
+                spice=hit_s["spice"],
+                insts=hit_s["insts"],
+                extract_id=eid_s,
+                solver="ras",
+                sta=hit_s.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "f4_solver_ras_champ"
+                if champ_s.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+                    child.attr["residual_vs_direct_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                        champ_s.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_direct"] = champ_s.id
+                    child.attr["residual_via"] = "ras_champ_vs_direct"
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_solver_ras_champ",
+                    parent=hit_s["candidate"].id,
+                    extract_id=eid_s,
+                    c_decap=spec_rasc["c_decap"],
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_direct_mv=(child.attr or {}).get("residual_vs_direct_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=why_rasc,
+                )
+
+    n_kry_c = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_solver_krylov"
+        and c.status == "ok"
+        and (c.attr or {}).get("via") == "f4_solver_krylov_champ"
+    )
+    pay_kryc, why_kryc = should_pay_f4_krylov_champ(
+        mem, budget_left=t_end - time.time(), n_krylov=n_kry_c, variant=variant
+    )
+    step("acquire", fidelity="F4_KRYLOV_CHAMP", pay=pay_kryc, why=why_kryc)
+    if any(s["level"] == "f4_krylov_champ" for s in plan["steps"]) and pay_kryc and time.time() < t_end:
+        champ_s = winning_ir_pdn(mem)
+        eid_s = str((champ_s.knobs or {}).get("extract_id") or champ_s.id) if champ_s else ""
+        hit_s = extract_on_disk(mem, eid_s) if eid_s else None
+        if champ_s and hit_s:
+            spec_kryc = {
+                "name": "krylov_champ",
+                "pkg_r": float((champ_s.knobs or {}).get("pkg_r") or 0.05),
+                "pkg_l": float((champ_s.knobs or {}).get("pkg_l") or 2e-10),
+                "c_decap": float((champ_s.knobs or {}).get("c_decap") or 50e-15),
+            }
+            child = evaluate_f4_pdn(
+                mem,
+                spec_kryc,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit_s["candidate"].id,
+                spice=hit_s["spice"],
+                insts=hit_s["insts"],
+                extract_id=eid_s,
+                solver="krylov",
+                sta=hit_s.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "f4_solver_krylov_champ"
+                if champ_s.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+                    child.attr["residual_vs_direct_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                        champ_s.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_direct"] = champ_s.id
+                    child.attr["residual_via"] = "krylov_champ_vs_direct"
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_solver_krylov_champ",
+                    parent=hit_s["candidate"].id,
+                    extract_id=eid_s,
+                    c_decap=spec_kryc["c_decap"],
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_direct_mv=(child.attr or {}).get("residual_vs_direct_mv"),
+                    gold=False,
+                    status=child.status,
+                    m=(child.artifacts or {}).get("m"),
+                    reason=why_kryc,
+                )
+
     synth_f0 = propose_synthesis_f0(mem, design_id, current_abc_area=flowlab_params().get("abcArea"))
     for c in synth_f0:
         step("propose", level="synthesis", knobs=c.knobs, fidelity="F0")
@@ -2379,6 +2563,7 @@ def run_controller(
             "F3 IR-cell-champ: I-scale-champ xy → ODB join on the champion extract → drive-up — not the first ctrl IR-cell, not STA path",
             "F4 IR-cell-champ extract: write_pg_spice on the dpath-sized netlist — residual vs IR-cell extract, not host",
             "F4 IR-cell-champ PDN: 1× residual restamps the winning family on the dpath-sized mesh — not host IR-steer",
+            "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — not candidate AMG, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -2498,6 +2683,81 @@ def run_controller(
                 if c.status == "ok"
                 and (c.attr or {}).get("via") == "active_f4_ir_cell_champ_pdn"
                 and (c.attr or {}).get("residual_vs_host_win_mv") is not None
+            ),
+            None,
+        ),
+        "n_f4_amg_champ": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.attr or {}).get("via") == "f4_solver_amg_champ" and c.status == "ok"
+        ),
+        "ir_champ_amg_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "f4_solver_amg_champ"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "ir_champ_amg_vs_direct_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_direct_mv"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "f4_solver_amg_champ"
+                and (c.attr or {}).get("residual_vs_direct_mv") is not None
+            ),
+            None,
+        ),
+        "n_f4_ras_champ": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.attr or {}).get("via") == "f4_solver_ras_champ" and c.status == "ok"
+        ),
+        "ir_champ_ras_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "f4_solver_ras_champ"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "ir_champ_ras_vs_direct_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_direct_mv"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "f4_solver_ras_champ"
+                and (c.attr or {}).get("residual_vs_direct_mv") is not None
+            ),
+            None,
+        ),
+        "n_f4_krylov_champ": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.attr or {}).get("via") == "f4_solver_krylov_champ" and c.status == "ok"
+        ),
+        "ir_champ_krylov_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "f4_solver_krylov_champ"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "ir_champ_krylov_vs_direct_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_direct_mv"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "f4_solver_krylov_champ"
+                and (c.attr or {}).get("residual_vs_direct_mv") is not None
             ),
             None,
         ),

@@ -1590,6 +1590,119 @@ def should_pay_f4_krylov(
     return True, f"rational Krylov/MOR restamp on {extract_id} — reduced-order residual, not gold"
 
 
+def _solver_on_extract(mem: DesignMemory, source: str, extract_id: str) -> bool:
+    want = str(extract_id)
+    return any(
+        c.status == "ok"
+        and (c.knobs or {}).get("source") == source
+        and str((c.knobs or {}).get("extract_id") or "finish") == want
+        for c in mem.by_level("pdn")
+    )
+
+
+def champ_mf_target(
+    mem: DesignMemory, *, variant: str = "flowlab"
+) -> tuple[object | None, str, str]:
+    """winning_ir_pdn extract for an MF solver residual. Not finish, not candidate."""
+    from .active import winning_ir_pdn
+    from .f4_oracle import available
+
+    champ = winning_ir_pdn(mem)
+    if champ is None:
+        return None, "", "no 1× IR champion to restamp with an MF solver"
+    eid = str((champ.knobs or {}).get("extract_id") or champ.id)
+    if eid in ("finish", ""):
+        return None, eid, "champion MF solver refuses the gold finish extract"
+    cand = latest_ok_extract(mem)
+    if cand and str(cand.get("extract_id") or "") == eid:
+        return None, eid, "champion mesh is already the candidate extract — MF residual already measured there"
+    if not extract_on_disk(mem, eid) and not available(variant):
+        return None, eid, "champion extract is not on disk"
+    return champ, eid, ""
+
+
+def should_pay_f4_amg_champ(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_amg: int = 0,
+    amg_max: int = 1,
+    min_s: float = 6.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """SA-AMG on winning_ir_pdn with the same DirectLU knobs. Not candidate AMG, not gold."""
+    if n_amg >= amg_max:
+        return False, "champion AMG shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover champion AMG"
+    champ, eid, why = champ_mf_target(mem, variant=variant)
+    if champ is None:
+        return False, why
+    if _solver_on_extract(mem, "f4_solver_amg", eid):
+        return False, "this champion extract already has an AMG child"
+    src = (champ.knobs or {}).get("name") or (champ.attr or {}).get("via")
+    return True, (
+        f"SA-AMG on winning_ir_pdn {src} {float(champ.qor.dynamic_ir_mv):.3f} mV "
+        f"extract {eid} — same DirectLU knobs, not candidate AMG, not gold"
+    )
+
+
+def should_pay_f4_ras_champ(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_ras: int = 0,
+    ras_max: int = 1,
+    min_s: float = 8.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """RAS on winning_ir_pdn after AMG on the same extract. Not candidate RAS, not gold."""
+    if n_ras >= ras_max:
+        return False, "champion RAS shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover champion RAS"
+    champ, eid, why = champ_mf_target(mem, variant=variant)
+    if champ is None:
+        return False, why
+    if not _solver_on_extract(mem, "f4_solver_amg", eid):
+        return False, "champion AMG residual not yet measured on this extract"
+    if _solver_on_extract(mem, "f4_solver_ras", eid):
+        return False, "this champion extract already has a RAS child"
+    src = (champ.knobs or {}).get("name") or (champ.attr or {}).get("via")
+    return True, (
+        f"RAS on winning_ir_pdn {src} {float(champ.qor.dynamic_ir_mv):.3f} mV "
+        f"extract {eid} — domain-decomp after champion AMG, not candidate RAS, not gold"
+    )
+
+
+def should_pay_f4_krylov_champ(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_krylov: int = 0,
+    krylov_max: int = 1,
+    min_s: float = 10.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """Krylov/MOR on winning_ir_pdn after RAS on the same extract. Not candidate Krylov, not gold."""
+    if n_krylov >= krylov_max:
+        return False, "champion Krylov shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover champion Krylov/MOR"
+    champ, eid, why = champ_mf_target(mem, variant=variant)
+    if champ is None:
+        return False, why
+    if not _solver_on_extract(mem, "f4_solver_ras", eid):
+        return False, "champion RAS residual not yet measured on this extract"
+    if _solver_on_extract(mem, "f4_solver_krylov", eid):
+        return False, "this champion extract already has a Krylov/MOR child"
+    src = (champ.knobs or {}).get("name") or (champ.attr or {}).get("via")
+    return True, (
+        f"Krylov/MOR on winning_ir_pdn {src} {float(champ.qor.dynamic_ir_mv):.3f} mV "
+        f"extract {eid} — reduced-order after champion RAS, not candidate Krylov, not gold"
+    )
+
+
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
     return _latest_extract(mem, source="f4_candidate_extract")
@@ -1714,7 +1827,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level == "f4_ras":
         return "F4"
-    if level in ("f4_krylov", "f4_mor"):
+    if level in ("f4_krylov", "f4_mor", "f4_amg_champ", "f4_ras_champ", "f4_krylov_champ"):
         return "F4"
     if level in ("f4_activity", "f4_host_arrivals"):
         return "F3"

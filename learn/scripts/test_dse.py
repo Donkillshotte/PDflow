@@ -364,6 +364,9 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_champ" for s in planned["steps"]), "planner schedules I-scale-champ cell size-up")
     check(any(s["level"] == "ir_cell_champ_extract" for s in planned["steps"]), "planner schedules IR-cell-champ write_pg_spice")
     check(any(s["level"] == "ir_cell_champ_pdn" for s in planned["steps"]), "planner schedules IR-cell-champ PDN restamp")
+    check(any(s["level"] == "f4_amg_champ" for s in planned["steps"]), "planner schedules champion AMG residual")
+    check(any(s["level"] == "f4_ras_champ" for s in planned["steps"]), "planner schedules champion RAS residual")
+    check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -462,6 +465,9 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_champ", pred=None, budget_left=20, cost_hint={}) == "F3", "I-scale-champ cell size measures at F3")
     check(next_fidelity(level="ir_cell_champ_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-champ extract measures at F4")
     check(next_fidelity(level="ir_cell_champ_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-champ PDN restamp measures at F4")
+    check(next_fidelity(level="f4_amg_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion AMG measures at F4")
+    check(next_fidelity(level="f4_ras_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion RAS measures at F4")
+    check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -576,6 +582,21 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "iccext", "c_decap": 200e-15})
         != knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "icreg", "c_decap": 200e-15}),
         "IR-cell-champ PDN restamp is not flattened into the IR-cell-region decap fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_solver_amg", "extract_id": "icreg", "name": "amg_champ", "c_decap": 200e-15})
+        != knobs_fp("pdn", {"source": "f4_solver_amg", "extract_id": "finish", "name": "amg_residual", "c_decap": 50e-15}),
+        "champion AMG is not flattened into the candidate/finish AMG fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "icreg", "name": "ras_champ", "c_decap": 200e-15})
+        != knobs_fp("pdn", {"source": "f4_solver_amg", "extract_id": "icreg", "name": "amg_champ", "c_decap": 200e-15}),
+        "champion RAS is not flattened into the champion AMG fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_solver_krylov", "extract_id": "icreg", "name": "krylov_champ", "c_decap": 200e-15})
+        != knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "icreg", "name": "ras_champ", "c_decap": 200e-15}),
+        "champion Krylov is not flattened into the champion RAS fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1319,6 +1340,9 @@ def main() -> int:
         should_pay_f4_scale,
         should_pay_f4_scale_win,
         should_pay_f4_scale_champ,
+        should_pay_f4_amg_champ,
+        should_pay_f4_ras_champ,
+        should_pay_f4_krylov_champ,
         should_pay_ir_cell_champ,
         should_pay_ir_cell_champ_extract,
         should_pay_ir_cell_champ_pdn,
@@ -2669,6 +2693,124 @@ def main() -> int:
     check(not pay_iccp_ref, f"IR-cell-champ PDN refuses the first IR-cell extract ({why_iccp_ref})")
     pay_iccp2, why_iccp2 = should_pay_ir_cell_champ_pdn(mem_hr, budget_left=80, steer=st_iccp, n_steer=1)
     check(not pay_iccp2, f"IR-cell-champ PDN is a single shot ({why_iccp2})")
+    pay_amgc1, why_amgc1 = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
+    check(pay_amgc1, f"champion AMG is paid on winning_ir_pdn ({why_amgc1})")
+    check("3.921" in why_amgc1, f"champion AMG names the 3.921 point ({why_amgc1})")
+    check("not candidate AMG" in why_amgc1 and "not gold" in why_amgc1, f"champion AMG refuses candidate/gold flatten ({why_amgc1})")
+    check("icreg" in why_amgc1, f"champion AMG names the IR-cell-region extract ({why_amgc1})")
+    pay_amgc2, why_amgc2 = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=1)
+    check(not pay_amgc2, f"champion AMG is a single shot ({why_amgc2})")
+    pay_rasc0, why_rasc0 = should_pay_f4_ras_champ(mem_hr, budget_left=80, n_ras=0)
+    check(not pay_rasc0, f"champion RAS waits for champion AMG on the same extract ({why_rasc0})")
+    mem_hr.add(
+        Candidate(
+            id="amgfin",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={"source": "f4_solver_amg", "extract_id": "finish", "name": "amg_residual"},
+            knobs_fp="amgfin",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=45.3, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+        )
+    )
+    pay_rasc_fin, why_rasc_fin = should_pay_f4_ras_champ(mem_hr, budget_left=80, n_ras=0)
+    check(not pay_rasc_fin, f"finish AMG does not unlock champion RAS ({why_rasc_fin})")
+    mem_hr.add(
+        Candidate(
+            id="amgc",
+            design_id="gcd",
+            parent_id="icreg",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_amg",
+                "name": "amg_champ",
+                "extract_id": "icreg",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 200e-15,
+            },
+            knobs_fp="amgc",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=3.920, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "f4_solver_amg_champ", "residual_vs_direct_mv": -0.001},
+        )
+    )
+    pay_amgc3, why_amgc3 = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
+    check(not pay_amgc3, f"champion AMG skips once measured on that extract ({why_amgc3})")
+    check(winning_ir_pdn(mem_hr).id == "icrp", "champion AMG does not steal the 1× DirectLU champion")
+    pay_rasc1, why_rasc1 = should_pay_f4_ras_champ(mem_hr, budget_left=80, n_ras=0)
+    check(pay_rasc1, f"champion RAS is paid after AMG on the same extract ({why_rasc1})")
+    check("not candidate RAS" in why_rasc1 and "not gold" in why_rasc1, f"champion RAS refuses candidate/gold flatten ({why_rasc1})")
+    pay_rasc2, why_rasc2 = should_pay_f4_ras_champ(mem_hr, budget_left=80, n_ras=1)
+    check(not pay_rasc2, f"champion RAS is a single shot ({why_rasc2})")
+    pay_kryc0, why_kryc0 = should_pay_f4_krylov_champ(mem_hr, budget_left=80, n_krylov=0)
+    check(not pay_kryc0, f"champion Krylov waits for champion RAS on the same extract ({why_kryc0})")
+    mem_hr.add(
+        Candidate(
+            id="rasc",
+            design_id="gcd",
+            parent_id="icreg",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_ras",
+                "name": "ras_champ",
+                "extract_id": "icreg",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 200e-15,
+            },
+            knobs_fp="rasc",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=3.919, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "f4_solver_ras_champ", "residual_vs_direct_mv": -0.002},
+        )
+    )
+    pay_kryc1, why_kryc1 = should_pay_f4_krylov_champ(mem_hr, budget_left=80, n_krylov=0)
+    check(pay_kryc1, f"champion Krylov is paid after RAS on the same extract ({why_kryc1})")
+    check("not candidate Krylov" in why_kryc1 and "not gold" in why_kryc1, f"champion Krylov refuses candidate/gold flatten ({why_kryc1})")
+    pay_kryc2, why_kryc2 = should_pay_f4_krylov_champ(mem_hr, budget_left=80, n_krylov=1)
+    check(not pay_kryc2, f"champion Krylov is a single shot ({why_kryc2})")
+    mem_fin = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-mf-fin-")) / "f.jsonl")
+    mem_fin.add(
+        Candidate(
+            id="goldwin",
+            design_id="gcd",
+            parent_id=None,
+            level="pdn",
+            knobs={
+                "source": "f4_host_extract",
+                "extract_id": "finish",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 50e-15,
+                "i_scale": 1.0,
+            },
+            knobs_fp="goldwin",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=45.298, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "f4_host_extract"},
+        )
+    )
+    pay_amg_fin, why_amg_fin = should_pay_f4_amg_champ(mem_fin, budget_left=80, n_amg=0)
+    check(not pay_amg_fin, f"champion AMG refuses gold finish ({why_amg_fin})")
+    check("finish" in why_amg_fin or "gold" in why_amg_fin, f"champion AMG names the gold refuse ({why_amg_fin})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

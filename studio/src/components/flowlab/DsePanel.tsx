@@ -74,6 +74,15 @@ type DseReport = {
   ir_cell_champ_pdn_mv?: number;
   ir_cell_champ_pdn_name?: string;
   ir_cell_champ_pdn_vs_host_win_mv?: number;
+  n_f4_amg_champ?: number;
+  ir_champ_amg_mv?: number;
+  ir_champ_amg_vs_direct_mv?: number;
+  n_f4_ras_champ?: number;
+  ir_champ_ras_mv?: number;
+  ir_champ_ras_vs_direct_mv?: number;
+  n_f4_krylov_champ?: number;
+  ir_champ_krylov_mv?: number;
+  ir_champ_krylov_vs_direct_mv?: number;
   n_f4_ir_cell_extract?: number;
   n_ir_cell_pdn?: number;
   ir_cell_extract_mv?: number;
@@ -142,7 +151,7 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
+          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -168,6 +177,33 @@ export function DsePanel() {
                   }`
                 : report.n_ir_cell_champ_pdn != null
                   ? ` · IR-cp ${report.n_ir_cell_champ_pdn}`
+                  : ""}
+              {report.ir_champ_amg_mv != null
+                ? ` · AMG-c ${report.ir_champ_amg_mv.toFixed(3)} mV${
+                    report.ir_champ_amg_vs_direct_mv != null
+                      ? ` Δ=${report.ir_champ_amg_vs_direct_mv >= 0 ? "+" : ""}${report.ir_champ_amg_vs_direct_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_amg_champ != null
+                  ? ` · AMG-c ${report.n_f4_amg_champ}`
+                  : ""}
+              {report.ir_champ_ras_mv != null
+                ? ` · RAS-c ${report.ir_champ_ras_mv.toFixed(3)} mV${
+                    report.ir_champ_ras_vs_direct_mv != null
+                      ? ` Δ=${report.ir_champ_ras_vs_direct_mv >= 0 ? "+" : ""}${report.ir_champ_ras_vs_direct_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_ras_champ != null
+                  ? ` · RAS-c ${report.n_f4_ras_champ}`
+                  : ""}
+              {report.ir_champ_krylov_mv != null
+                ? ` · Kry-c ${report.ir_champ_krylov_mv.toFixed(3)} mV${
+                    report.ir_champ_krylov_vs_direct_mv != null
+                      ? ` Δ=${report.ir_champ_krylov_vs_direct_mv >= 0 ? "+" : ""}${report.ir_champ_krylov_vs_direct_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_krylov_champ != null
+                  ? ` · Kry-c ${report.n_f4_krylov_champ}`
                   : ""}
               {report.ir_cell_extract_mv != null
                 ? ` · IR-x ${report.ir_cell_extract_mv.toFixed(3)} mV${
@@ -274,6 +310,9 @@ export function DsePanel() {
                 {report.n_f4_iscale_champ != null ? ` · I×c ${report.n_f4_iscale_champ}` : ""}
                 {report.n_f4_ir_cell_champ_extract != null ? ` · IR-cx ${report.n_f4_ir_cell_champ_extract}` : ""}
                 {report.n_ir_cell_champ_pdn != null ? ` · IR-cp ${report.n_ir_cell_champ_pdn}` : ""}
+                {report.n_f4_amg_champ != null ? ` · AMG-c ${report.n_f4_amg_champ}` : ""}
+                {report.n_f4_ras_champ != null ? ` · RAS-c ${report.n_f4_ras_champ}` : ""}
+                {report.n_f4_krylov_champ != null ? ` · Kry-c ${report.n_f4_krylov_champ}` : ""}
                 {report.n_f4_ir_cell_extract != null ? ` · IR-x ${report.n_f4_ir_cell_extract}` : ""}
                 {report.n_ir_cell_pdn != null ? ` · IR-p ${report.n_ir_cell_pdn}` : ""}
                 {report.n_f4_ir_cell_region_extract != null

@@ -445,6 +445,36 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
+    steps.append(
+        {
+            "level": "f4_amg_champ",
+            "reason": (
+                "SA-AMG on winning_ir_pdn with the same DirectLU knobs — MF solver "
+                "residual, not candidate AMG, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
+            "level": "f4_ras_champ",
+            "reason": (
+                "RAS on winning_ir_pdn after champion AMG — domain-decomp residual "
+                "on the 1× champion mesh, not candidate RAS, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
+            "level": "f4_krylov_champ",
+            "reason": (
+                "Krylov/MOR on winning_ir_pdn after champion RAS — reduced-order "
+                "residual on the 1× champion mesh, not candidate Krylov, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
