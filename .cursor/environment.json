@@ -1,0 +1,17 @@
+{
+  "name": "pd-flow — OpenROAD physical design",
+  "install": "bash scripts/cloud_agent_install.sh",
+  "terminals": [
+    {
+      "name": "studio",
+      "command": "cd /workspace && ./scripts/run_studio.sh",
+      "description": "OpenROAD Physical Design Studio (Next.js) su http://127.0.0.1:43217 — UI del corso, FlowLab RTL→GDSII, dashboard e API."
+    }
+  ],
+  "ports": [
+    {
+      "name": "studio",
+      "port": 43217
+    }
+  ]
+}
