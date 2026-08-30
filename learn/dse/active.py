@@ -548,6 +548,7 @@ def winning_ir_pdn(mem: DesignMemory):
         "f4_ir_cell_extract",
         "f4_ir_cell_region_extract",
         "f4_ir_cell_champ_extract",
+        "f4_ir_cell_champ_cone_extract",
         "f4_static_strap_extract",
         "f4_em_strap_extract",
     )
@@ -555,6 +556,7 @@ def winning_ir_pdn(mem: DesignMemory):
         "active_f4_ir_cell_pdn",
         "active_f4_ir_cell_region_pdn",
         "active_f4_ir_cell_champ_pdn",
+        "active_f4_ir_cell_champ_cone_pdn",
         "active_f4_static_straps",
         "active_f4_em_straps",
         "active_f4_winning_ir_pdn",
@@ -584,6 +586,7 @@ def _ir_family_1x_member(c) -> bool:
         "f4_ir_cell_extract",
         "f4_ir_cell_region_extract",
         "f4_ir_cell_champ_extract",
+        "f4_ir_cell_champ_cone_extract",
     ):
         return True
     if via in (
@@ -591,6 +594,7 @@ def _ir_family_1x_member(c) -> bool:
         "active_f4_ir_cell_pdn",
         "active_f4_ir_cell_region_pdn",
         "active_f4_ir_cell_champ_pdn",
+        "active_f4_ir_cell_champ_cone_pdn",
         "active_f4_static_ir",
         "active_f4_static_mesh",
         "active_f4_static_straps",
@@ -1230,4 +1234,137 @@ def steer_from_ir_cell_champ_residual(mem: DesignMemory) -> dict | None:
         "knob_residual_mv": knob_r,
         "via": "active_f4_ir_cell_champ_pdn",
         "not": "a flattened cell+PDN vector / gold / first IR-cell extract",
+    }
+
+
+def ir_cell_champ_extract_hotspot(mem: DesignMemory) -> dict | None:
+    """1× IR-cell-champ extract xy → cells (attr join, else ODB insts)."""
+    from .acquire import extract_on_disk
+    from .attribute import join_hotspot_insts
+
+    ice = ir_cell_champ_extract_cand(mem)
+    if ice is None:
+        return None
+    attr = ice.attr or {}
+    art = ice.artifacts or {}
+    cells = [str(x) for x in (attr.get("cells") or []) if x]
+    modules = list(attr.get("modules") or [])
+    cones = list(attr.get("cones") or [])
+    if not cells:
+        eid = str((ice.knobs or {}).get("extract_id") or ice.id)
+        hit = extract_on_disk(mem, eid)
+        insts = (hit or {}).get("insts") or art.get("insts")
+        j = join_hotspot_insts(
+            insts,
+            attr.get("x_dbu") if attr.get("x_dbu") is not None else art.get("x_dbu"),
+            attr.get("y_dbu") if attr.get("y_dbu") is not None else art.get("y_dbu"),
+        )
+        if int(j.get("n") or 0) < 1:
+            return None
+        cells = [str(x) for x in (j.get("cells") or []) if x]
+        modules = list(j.get("modules") or [])
+        cones = list(j.get("cones") or [])
+    if not cells:
+        return None
+    return {
+        "parent": ice,
+        "cells": cells,
+        "modules": modules,
+        "cones": cones,
+        "region": attr.get("region"),
+        "combo_frac": attr.get("combo_frac"),
+        "seq_frac": attr.get("seq_frac"),
+        "extract_id": str((ice.knobs or {}).get("extract_id") or ice.id),
+        "x_dbu": attr.get("x_dbu"),
+        "y_dbu": attr.get("y_dbu"),
+        "join": attr.get("join"),
+    }
+
+
+def steer_from_ir_cell_champ_extract_hotspot(mem: DesignMemory) -> dict | None:
+    """Combo-heavy champ-extract join whose cells are not the champ size-up set."""
+    host = ir_cell_champ_host(mem)
+    spec = ir_cell_champ_extract_hotspot(mem)
+    if spec is None or host is None:
+        return None
+    combo = float(spec.get("combo_frac") or 0.0)
+    if combo < 0.5:
+        return None
+    sized = {str(x) for x in (host.knobs or {}).get("cells") or []}
+    cells = [str(x) for x in spec.get("cells") or [] if str(x) not in sized]
+    if not cells:
+        return None
+    modules = list(
+        dict.fromkeys(str(c).split("/")[0] for c in cells if "/" in str(c))
+    )
+    if not modules:
+        return None
+    mods = ",".join(modules)
+    return {
+        "level": "ir_cell_champ_cone",
+        "cells": cells,
+        "modules": modules,
+        "cones": spec.get("cones"),
+        "region": spec.get("region"),
+        "combo_frac": combo,
+        "extract_id": spec.get("extract_id"),
+        "reason": (
+            f"IR-cell-champ extract hotspot {spec.get('region')} combo {combo:.2f} "
+            f"joins leftover {mods} — not the champ size-up set, not first ctrl IR-cell, "
+            "not STA-path size-up, not ABC, not VCD"
+        ),
+        "via": "active_f4_ir_cell_champ_cone",
+        "not": "a flattened cell+champ vector / I-scale-champ join",
+    }
+
+
+def ir_cell_champ_cone_host(mem: DesignMemory):
+    """Newest leftover-cone size-up on an IR-cell-champ extract. Not champ ctrl."""
+    for c in reversed(list(mem.by_level("cell"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir_champ_cone":
+            return c
+    return None
+
+
+def ir_cell_champ_cone_extract_cand(mem: DesignMemory):
+    """Newest cone write_pg_spice. Residual vs the IR-cell-champ extract."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_champ_cone_extract":
+            return c
+    return None
+
+
+def steer_from_ir_cell_champ_cone_residual(mem: DesignMemory) -> dict | None:
+    """Winning PDN family on the champ-cone mesh after the 1× residual."""
+    from .pdn_space import measured_pdn_keys
+
+    ice = ir_cell_champ_cone_extract_cand(mem)
+    if ice is None or ice.qor.dynamic_ir_mv is None:
+        return None
+    res = (ice.attr or {}).get("residual_mv")
+    if res is None:
+        return None
+    spec_win, knob_r = _winning_pdn_family(mem)
+    if spec_win is None:
+        return None
+    eid = str((ice.knobs or {}).get("extract_id") or ice.id)
+    have = measured_pdn_keys(mem, extract_id=eid)
+    key = (float(spec_win["pkg_r"]), float(spec_win["pkg_l"]), float(spec_win["c_decap"]))
+    if key in have:
+        return None
+    sign = "raised" if float(res) > 0 else "lowered"
+    return {
+        "level": "pdn",
+        "spec": spec_win,
+        "extract_id": eid,
+        "host_id": ice.id,
+        "host_source": "f4_ir_cell_champ_cone_extract",
+        "reason": (
+            f"IR-cell-champ-cone 1× residual {float(res):+.3f} mV ({sign} droop vs champ extract) — "
+            f"restamp {spec_win['name']} on the leftover-cone mesh, not champ IR-steer, not ABC"
+        ),
+        "ir_cell_champ_cone_residual_mv": float(res),
+        "knob_residual_mv": knob_r,
+        "via": "active_f4_ir_cell_champ_cone_pdn",
+        "not": "a flattened cell+PDN vector / gold / champ extract",
     }

@@ -75,6 +75,16 @@ type DseReport = {
   ir_cell_champ_pdn_mv?: number;
   ir_cell_champ_pdn_name?: string;
   ir_cell_champ_pdn_vs_host_win_mv?: number;
+  n_ir_cell_champ_cone?: number;
+  ir_cell_champ_cone_wns_ns?: number;
+  ir_cell_champ_cone_modules?: string;
+  n_f4_ir_cell_champ_cone_extract?: number;
+  ir_cell_champ_cone_extract_mv?: number;
+  ir_cell_champ_cone_extract_residual_mv?: number;
+  n_ir_cell_champ_cone_pdn?: number;
+  ir_cell_champ_cone_pdn_mv?: number;
+  ir_cell_champ_cone_pdn_name?: string;
+  ir_cell_champ_cone_pdn_vs_host_win_mv?: number;
   n_f4_amg_champ?: number;
   ir_champ_amg_mv?: number;
   ir_champ_amg_vs_direct_mv?: number;
@@ -179,7 +189,7 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.n_static_mesh || report.n_static_straps || report.n_em_straps || report.n_winning_ir_pdn || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
+          {report.n_ir_cell || report.n_ir_cell_champ || report.n_ir_cell_champ_cone || report.n_f4_ir_cell_champ_extract || report.n_f4_ir_cell_champ_cone_extract || report.n_ir_cell_champ_pdn || report.n_ir_cell_champ_cone_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.n_static_mesh || report.n_static_straps || report.n_em_straps || report.n_winning_ir_pdn || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -206,7 +216,30 @@ export function DsePanel() {
                 : report.n_ir_cell_champ_pdn != null
                   ? ` · IR-cp ${report.n_ir_cell_champ_pdn}`
                   : ""}
-              {report.ir_champ_amg_mv != null
+              {report.ir_cell_champ_cone_wns_ns != null
+                ? ` · IR-cn ${report.ir_cell_champ_cone_modules ?? "dpath"} WNS ${report.ir_cell_champ_cone_wns_ns >= 0 ? "+" : ""}${report.ir_cell_champ_cone_wns_ns.toFixed(3)}`
+                : report.n_ir_cell_champ_cone != null
+                  ? ` · IR-cn ${report.n_ir_cell_champ_cone}`
+                  : ""}
+              {report.ir_cell_champ_cone_extract_mv != null
+                ? ` · IR-cne ${report.ir_cell_champ_cone_extract_mv.toFixed(3)} mV${
+                    report.ir_cell_champ_cone_extract_residual_mv != null
+                      ? ` Δ=${report.ir_cell_champ_cone_extract_residual_mv >= 0 ? "+" : ""}${report.ir_cell_champ_cone_extract_residual_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_ir_cell_champ_cone_extract != null
+                  ? ` · IR-cne ${report.n_f4_ir_cell_champ_cone_extract}`
+                  : ""}
+              {report.ir_cell_champ_cone_pdn_mv != null
+                ? ` · IR-cnp ${report.ir_cell_champ_cone_pdn_name ?? "PDN"} ${report.ir_cell_champ_cone_pdn_mv.toFixed(3)} mV${
+                    report.ir_cell_champ_cone_pdn_vs_host_win_mv != null
+                      ? ` vs host-win ${report.ir_cell_champ_cone_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.ir_cell_champ_cone_pdn_vs_host_win_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_ir_cell_champ_cone_pdn != null
+                  ? ` · IR-cnp ${report.n_ir_cell_champ_cone_pdn}`
+                  : ""}
+              {report.ir_champ_amg_mv != null}
                 ? ` · AMG-c ${report.ir_champ_amg_mv.toFixed(3)} mV${
                     report.ir_champ_amg_vs_direct_mv != null
                       ? ` Δ=${report.ir_champ_amg_vs_direct_mv >= 0 ? "+" : ""}${report.ir_champ_amg_vs_direct_mv.toFixed(3)}`
@@ -371,6 +404,7 @@ export function DsePanel() {
                 {report.n_f3_spef != null ? ` · SPEF ${report.n_f3_spef}` : ""}
                 {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
                 {report.n_ir_cell_champ != null ? ` · IR-cc ${report.n_ir_cell_champ}` : ""}
+                {report.n_ir_cell_champ_cone != null ? ` · IR-cn ${report.n_ir_cell_champ_cone}` : ""}
               </dd>
             </div>
             <div>
@@ -389,6 +423,8 @@ export function DsePanel() {
                 {report.n_f4_iscale_champ != null ? ` · I×c ${report.n_f4_iscale_champ}` : ""}
                 {report.n_f4_ir_cell_champ_extract != null ? ` · IR-cx ${report.n_f4_ir_cell_champ_extract}` : ""}
                 {report.n_ir_cell_champ_pdn != null ? ` · IR-cp ${report.n_ir_cell_champ_pdn}` : ""}
+                {report.n_f4_ir_cell_champ_cone_extract != null ? ` · IR-cne ${report.n_f4_ir_cell_champ_cone_extract}` : ""}
+                {report.n_ir_cell_champ_cone_pdn != null ? ` · IR-cnp ${report.n_ir_cell_champ_cone_pdn}` : ""}
                 {report.n_f4_amg_champ != null ? ` · AMG-c ${report.n_f4_amg_champ}` : ""}
                 {report.n_f4_ras_champ != null ? ` · RAS-c ${report.n_f4_ras_champ}` : ""}
                 {report.n_f4_krylov_champ != null ? ` · Kry-c ${report.n_f4_krylov_champ}` : ""}

@@ -814,6 +814,7 @@ def evaluate_f4_extract(
     kind=ir_cell extracts the IR-hotspot sized netlist and residuals vs host extract.
     kind=ir_cell_region density-caps the IR-cell 1× bin (not host rXY, not gold rXY).
     kind=ir_cell_champ extracts the I-scale-champ dpath-sized netlist and residuals vs IR-cell extract.
+    kind=ir_cell_champ_cone extracts leftover-cone size-up and residuals vs the IR-cell-champ extract.
     """
     from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
@@ -873,6 +874,15 @@ def evaluate_f4_extract(
         knobs["host_source"] = parent.knobs.get("source") or parent.level
         knobs["ir_join"] = 1
         knobs["champ"] = 1
+        knobs["parent_extract_id"] = str((parent.knobs or {}).get("extract_id") or "")
+    elif kind == "ir_cell_champ_cone":
+        knobs["source"] = "f4_ir_cell_champ_cone_extract"
+        knobs["name"] = f"extract_ir_cell_champ_cone_{host}"
+        knobs["host_level"] = parent.level
+        knobs["host_source"] = parent.knobs.get("source") or parent.level
+        knobs["ir_join"] = 1
+        knobs["champ"] = 1
+        knobs["champ_cone"] = 1
         knobs["parent_extract_id"] = str((parent.knobs or {}).get("extract_id") or "")
     elif region or x_dbu is not None:
         knobs["source"] = "f4_region_extract"
@@ -973,12 +983,24 @@ def evaluate_f4_extract(
             attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
             attr["residual_vs"] = ice.id
             attr["residual_via"] = "ir_cell_champ_vs_ir_cell_extract"
+    if kind == "ir_cell_champ_cone":
+        from .active import ir_cell_champ_extract_cand
+
+        attr["via"] = "f4_ir_cell_champ_cone_extract"
+        attr["host_level"] = parent.level
+        attr["host_source"] = parent.knobs.get("source") or parent.level
+        ice = ir_cell_champ_extract_cand(mem)
+        if ice and ice.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
+            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
+            attr["residual_vs"] = ice.id
+            attr["residual_via"] = "ir_cell_champ_cone_vs_ir_cell_champ_extract"
     kind_note = {
         "host": "host",
         "host_region": "host-region",
         "ir_cell": "IR-cell",
         "ir_cell_region": "IR-cell-region",
         "ir_cell_champ": "IR-cell-champ",
+        "ir_cell_champ_cone": "IR-cell-champ-cone",
     }.get(kind, "candidate")
     q = QoR(
         area_um2=parent.qor.area_um2,
@@ -998,7 +1020,13 @@ def evaluate_f4_extract(
         ),
     )
     ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
-    if ok and ext.get("worst_droop_mv") is not None and kind in ("candidate", "host", "ir_cell", "ir_cell_champ"):
+    if ok and ext.get("worst_droop_mv") is not None and kind in (
+        "candidate",
+        "host",
+        "ir_cell",
+        "ir_cell_champ",
+        "ir_cell_champ_cone",
+    ):
         parent.qor.dynamic_ir_mv = float(ext["worst_droop_mv"])
         if ext.get("static_ir_mv") is not None or dyn.get("static_ir_mv") is not None:
             parent.qor.static_ir_mv = float(ext.get("static_ir_mv") or dyn["static_ir_mv"])
@@ -1633,8 +1661,9 @@ def evaluate_cell_size(
 
     source=cell_size_ir is the I-scale-win IR-hotspot ODB join.
     source=cell_size_ir_champ is the I-scale-champ join (not the first ctrl set).
-    extract_id stamps the I-scale-champ winning_ir extract so a later
-    R-graph can re-pay size-up — not a session-global one-shot.
+    source=cell_size_ir_champ_cone is leftover cells on the champ extract
+    (not the champ size-up set). extract_id stamps the champ extract so a
+    later R-graph can re-pay leftover-cone size-up — not a session-global one-shot.
     """
     from .attribute import attribute_sta
     from .cell_space import upsize_file
@@ -1676,6 +1705,12 @@ def evaluate_cell_size(
     if source == "cell_size_ir_champ":
         knobs["ir_join"] = 1
         knobs["champ"] = 1
+        if extract_id:
+            knobs["extract_id"] = str(extract_id)
+    if source == "cell_size_ir_champ_cone":
+        knobs["ir_join"] = 1
+        knobs["champ"] = 1
+        knobs["champ_cone"] = 1
         if extract_id:
             knobs["extract_id"] = str(extract_id)
     fp = knobs_fp("cell", knobs)
@@ -1737,6 +1772,13 @@ def evaluate_cell_size(
         note = (
             f"I-scale-champ cell upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
             "— ODB join on winning_ir_pdn activity, not first ctrl IR-cell, not STA path"
+        )
+    elif source == "cell_size_ir_champ_cone":
+        attr["via"] = "active_f4_ir_cell_champ_cone"
+        attr["cells"] = list(targets)
+        note = (
+            f"IR-cell-champ leftover-cone upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
+            "— champ-extract join minus champ size-up, not first ctrl IR-cell, not STA path"
         )
     else:
         note = (

@@ -460,6 +460,39 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "ir_cell_champ_cone",
+            "reason": (
+                "IR-cell-champ extract hotspot leftover cells (minus champ size-up) "
+                "→ module-scoped drive-up on the champ-sized netlist — not first "
+                "ctrl IR-cell, not STA-path size-up, not ABC, not VCD"
+            ),
+            "scope": "cell",
+        }
+    )
+    steps.append(
+        {
+            "level": "ir_cell_champ_cone_extract",
+            "reason": (
+                "write_pg_spice on the leftover-cone netlist — residual vs the "
+                "IR-cell-champ extract; re-paid when the leftover cone extract moves, "
+                "not host extract, not gold, not ABC"
+            ),
+            "scope": "cell",
+        }
+    )
+    steps.append(
+        {
+            "level": "ir_cell_champ_cone_pdn",
+            "reason": (
+                "IR-cell-champ-cone 1× residual chooses the winning PDN family on "
+                "that leftover-cone mesh — re-paid on a new cone extract, not champ "
+                "IR-steer, not a flattened cell+decap vector"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_amg_champ",
             "reason": (
                 "SA-AMG on winning_ir_pdn with the same DirectLU knobs — MF solver "
@@ -594,6 +627,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             "f4_ir_cell_extract",
             "f4_ir_cell_region_extract",
             "f4_ir_cell_champ_extract",
+            "f4_ir_cell_champ_cone_extract",
             "f4_region_extract",
         ):
             v = float(c.qor.dynamic_ir_mv)

@@ -493,6 +493,8 @@ def should_pay_f4_scale_champ(
         "active_f4_ir_cell_region_pdn",
         "f4_ir_cell_champ_extract",
         "active_f4_ir_cell_champ_pdn",
+        "f4_ir_cell_champ_cone_extract",
+        "active_f4_ir_cell_champ_cone_pdn",
         "f4_static_strap_extract",
         "active_f4_static_straps",
         "f4_em_strap_extract",
@@ -1278,6 +1280,147 @@ def should_pay_ir_cell_champ_pdn(
     return True, str(steer.get("reason") or "IR-cell-champ residual steers a PDN restamp on the dpath-sized mesh")
 
 
+def should_pay_ir_cell_champ_cone(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_cell: int = 0,
+    cell_max: int = 1,
+    min_s: float = 3.0,
+) -> tuple[bool, str]:
+    """Pay leftover-cone drive-up on the IR-cell-champ extract join. Not champ ctrl."""
+    if n_cell >= cell_max:
+        return False, "IR-cell-champ-cone cell size shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-cell-champ-cone cell STA"
+    if not steer or steer.get("level") != "ir_cell_champ_cone":
+        return False, "no IR-cell-champ-cone hotspot residual (need leftover cells ≠ champ size-up)"
+    champ_eid = str(steer.get("extract_id") or "")
+    if any(
+        (c.knobs or {}).get("source") == "cell_size_ir_champ_cone"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == champ_eid
+        for c in mem.by_level("cell")
+    ):
+        return False, "already have an IR-cell-champ-cone cell-local size child on this extract"
+    cells = [str(x) for x in steer.get("cells") or []]
+    if len(cells) < 1:
+        return False, "IR-cell-champ-cone join has no leftover cells"
+    if not steer.get("modules"):
+        return False, "IR-cell-champ-cone join has no module — not inventing a cone"
+    from pathlib import Path
+
+    from .active import ir_cell_champ_host, ir_cell_host
+
+    host = ir_cell_champ_host(mem)
+    mapped = None
+    if host:
+        mapped = (host.artifacts or {}).get("mapped_hier_v") or (host.artifacts or {}).get("mapped_v")
+    if not host or not mapped or not Path(mapped).is_file():
+        return False, "IR-cell-champ host missing — not flattening cone size-up onto first ctrl IR-cell"
+    sized = {str(x) for x in (host.knobs or {}).get("cells") or []}
+    if sized and set(cells) <= sized:
+        return False, "IR-cell-champ-cone cells already covered by the champ size-up"
+    first = ir_cell_host(mem)
+    first_cells = {str(x) for x in (first.knobs or {}).get("cells") or []} if first else set()
+    if first_cells and set(cells) <= first_cells:
+        return False, "IR-cell-champ-cone cells already covered by the first IR-cell size-up"
+    mods = ",".join(steer.get("modules") or [])
+    region = steer.get("region") or "unjoined"
+    return True, str(
+        steer.get("reason")
+        or (
+            f"upsize {len(cells)} leftover {mods} cells on champ-extract region {region} — "
+            "not the champ size-up set, not first ctrl IR-cell, not STA path, not ABC, not VCD"
+        )
+    )
+
+
+def should_pay_ir_cell_champ_cone_extract(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_extract: int = 0,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay write_pg_spice on the leftover-cone netlist. Residual vs champ extract."""
+    if n_extract >= extract_max:
+        return False, "IR-cell-champ-cone PDN extract already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-cell-champ-cone write_pg_spice"
+    from pathlib import Path
+
+    from .active import ir_cell_champ_cone_host, ir_cell_champ_extract_cand
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    host = ir_cell_champ_cone_host(mem)
+    if host is None:
+        return False, "no IR-cell-champ-cone size-up to extract a PDN from"
+    mapped = (host.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return False, "IR-cell-champ-cone netlist missing for write_pg_spice"
+    ice = ir_cell_champ_extract_cand(mem)
+    if ice is None:
+        return False, "no IR-cell-champ extract to residual the cone mesh against"
+    if str((ice.knobs or {}).get("parent_id") or "") == host.id:
+        return False, "IR-cell-champ-cone is already the champ-extract parent"
+    host_eid = str((host.knobs or {}).get("extract_id") or "")
+    if any(
+        (c.knobs or {}).get("source") == "f4_ir_cell_champ_cone_extract"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("parent_extract_id") or "") == host_eid
+        for c in mem.by_level("pdn")
+    ):
+        return False, "already have an IR-cell-champ-cone write_pg_spice mesh on this extract"
+    nch = (host.artifacts or {}).get("n_changed") or len((host.knobs or {}).get("cells") or [])
+    mods = ",".join(
+        dict.fromkeys(
+            str(x).split("/")[0]
+            for x in (host.knobs or {}).get("cells") or []
+            if "/" in str(x)
+        )
+    ) or "unjoined"
+    return True, (
+        f"write_pg_spice on IR-cell-champ-cone {mods} n={nch} — leftover-cone netlist IR residual "
+        "vs IR-cell-champ extract, not host extract, not gold, not ABC"
+    )
+
+
+def should_pay_ir_cell_champ_cone_pdn(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay the winning PDN family on the leftover-cone extract. Not champ IR-steer."""
+    if n_steer >= steer_max:
+        return False, "IR-cell-champ-cone PDN restamp already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-cell-champ-cone PDN restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no IR-cell-champ-cone residual-steered PDN action (need a 1× residual)"
+    if str(steer.get("host_source") or "") != "f4_ir_cell_champ_cone_extract":
+        return False, "IR-cell-champ-cone PDN restamp refuses a champ/host/IR-cell extract"
+    spec = steer["spec"]
+    from .pdn_space import measured_pdn_keys
+
+    have = measured_pdn_keys(mem, extract_id=str(steer["extract_id"]))
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that PDN point is already measured on the IR-cell-champ-cone extract"
+    return True, str(
+        steer.get("reason")
+        or "IR-cell-champ-cone residual steers a PDN restamp on the leftover-cone mesh"
+    )
+
+
 def should_pay_ir_cell_extract(
     mem: DesignMemory,
     *,
@@ -2009,6 +2152,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
         "f4_ir_cell_extract",
         "f4_ir_cell_region_extract",
         "f4_ir_cell_champ_extract",
+        "f4_ir_cell_champ_cone_extract",
         "f4_static_mesh_extract",
         "f4_static_strap_extract",
         "f4_em_strap_extract",
@@ -2032,6 +2176,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
             "f4_ir_cell_extract",
             "f4_ir_cell_region_extract",
             "f4_ir_cell_champ_extract",
+            "f4_ir_cell_champ_cone_extract",
             "f4_static_mesh_extract",
             "f4_static_strap_extract",
             "f4_em_strap_extract",
@@ -2117,6 +2262,9 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "ir_cell_champ_extract",
         "f4_ir_cell_champ_extract",
         "ir_cell_champ_pdn",
+        "ir_cell_champ_cone_extract",
+        "f4_ir_cell_champ_cone_extract",
+        "ir_cell_champ_cone_pdn",
         "static_ir_steer",
         "static_mesh",
         "static_straps",
@@ -2126,7 +2274,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         return "F4"
     if level in ("synthesis", "f1_synth"):
         return "F1"
-    if level in ("cell", "cell_size", "ir_cell", "ir_cell_champ"):
+    if level in ("cell", "cell_size", "ir_cell", "ir_cell_champ", "ir_cell_champ_cone"):
         return "F3"
     if level in ("net", "net_buffer", "net_port", "net_buffer_port"):
         return "F3"

@@ -390,6 +390,9 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_champ" for s in planned["steps"]), "planner schedules I-scale-champ cell size-up")
     check(any(s["level"] == "ir_cell_champ_extract" for s in planned["steps"]), "planner schedules IR-cell-champ write_pg_spice")
     check(any(s["level"] == "ir_cell_champ_pdn" for s in planned["steps"]), "planner schedules IR-cell-champ PDN restamp")
+    check(any(s["level"] == "ir_cell_champ_cone" for s in planned["steps"]), "planner schedules leftover-cone cell size-up")
+    check(any(s["level"] == "ir_cell_champ_cone_extract" for s in planned["steps"]), "planner schedules leftover-cone write_pg_spice")
+    check(any(s["level"] == "ir_cell_champ_cone_pdn" for s in planned["steps"]), "planner schedules leftover-cone PDN restamp")
     check(any(s["level"] == "f4_amg_champ" for s in planned["steps"]), "planner schedules champion AMG residual")
     check(any(s["level"] == "f4_ras_champ" for s in planned["steps"]), "planner schedules champion RAS residual")
     check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
@@ -496,6 +499,9 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_champ", pred=None, budget_left=20, cost_hint={}) == "F3", "I-scale-champ cell size measures at F3")
     check(next_fidelity(level="ir_cell_champ_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-champ extract measures at F4")
     check(next_fidelity(level="ir_cell_champ_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-champ PDN restamp measures at F4")
+    check(next_fidelity(level="ir_cell_champ_cone", pred=None, budget_left=20, cost_hint={}) == "F3", "leftover-cone cell size measures at F3")
+    check(next_fidelity(level="ir_cell_champ_cone_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover-cone extract measures at F4")
+    check(next_fidelity(level="ir_cell_champ_cone_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover-cone PDN restamp measures at F4")
     check(next_fidelity(level="f4_amg_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion AMG measures at F4")
     check(next_fidelity(level="f4_ras_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion RAS measures at F4")
     check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
@@ -612,6 +618,37 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_ir_cell_champ_extract", "parent_id": "icchamp", "ir_join": 1, "champ": 1})
         != knobs_fp("pdn", {"source": "f4_ir_cell_extract", "parent_id": "ircell", "ir_join": 1}),
         "IR-cell-champ extract knobs are not flattened into the IR-cell extract fingerprint",
+    )
+    check(
+        knobs_fp(
+            "cell",
+            {
+                "source": "cell_size_ir_champ_cone",
+                "cells": ["dpath/b_reg/_078_"],
+                "ir_join": 1,
+                "champ": 1,
+                "champ_cone": 1,
+            },
+        )
+        != knobs_fp(
+            "cell",
+            {"source": "cell_size_ir_champ", "cells": ["ctrl/_04_"], "ir_join": 1, "champ": 1},
+        ),
+        "leftover-cone cell knobs are not flattened into the champ size-up fingerprint",
+    )
+    check(
+        knobs_fp(
+            "pdn",
+            {
+                "source": "f4_ir_cell_champ_cone_extract",
+                "parent_id": "iccone",
+                "ir_join": 1,
+                "champ": 1,
+                "champ_cone": 1,
+            },
+        )
+        != knobs_fp("pdn", {"source": "f4_ir_cell_champ_extract", "parent_id": "icchamp", "ir_join": 1, "champ": 1}),
+        "leftover-cone extract knobs are not flattened into the champ extract fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "iccext", "c_decap": 200e-15})
@@ -1407,6 +1444,9 @@ def main() -> int:
         should_pay_ir_cell_champ,
         should_pay_ir_cell_champ_extract,
         should_pay_ir_cell_champ_pdn,
+        should_pay_ir_cell_champ_cone,
+        should_pay_ir_cell_champ_cone_extract,
+        should_pay_ir_cell_champ_cone_pdn,
         iscale_champ_sta,
         should_pay_ir_cell,
         should_pay_ir_cell_extract,
@@ -2920,6 +2960,148 @@ def main() -> int:
     check(st_iccp2 is not None and st_iccp2.get("extract_id") == "iccext2", f"new champ extract steers its own PDN, got {st_iccp2}")
     pay_iccp_new, why_iccp_new = should_pay_ir_cell_champ_pdn(mem_hr, budget_left=80, steer=st_iccp2, n_steer=0)
     check(pay_iccp_new, f"IR-cell-champ PDN re-pays on the new champ extract ({why_iccp_new})")
+    from dse.active import (
+        ir_cell_champ_cone_host,
+        ir_cell_champ_extract_cand,
+        steer_from_ir_cell_champ_cone_residual,
+        steer_from_ir_cell_champ_extract_hotspot,
+    )
+
+    ice_c2x = next(c for c in mem_hr.all() if c.id == "iccext2")
+    ice_c2x.attr = dict(ice_c2x.attr or {})
+    ice_c2x.attr.update(
+        {
+            "join": "odb-geom",
+            "combo_frac": 0.90,
+            "region": "r00",
+            "cells": [
+                "ctrl/_04_",
+                "ctrl/_11_",
+                "dpath/b_reg/_078_",
+                "dpath/b_mux/_46_",
+                "dpath/b_reg/_077_",
+            ],
+            "modules": ["ctrl", "dpath"],
+        }
+    )
+    mem_hr.touch(ice_c2x)
+    pay_iccc0, why_iccc0 = should_pay_ir_cell_champ_cone(mem_hr, budget_left=80, steer=None)
+    check(not pay_iccc0, f"leftover-cone cell waits for a hotspot residual ({why_iccc0})")
+    st_iccc = steer_from_ir_cell_champ_extract_hotspot(mem_hr)
+    check(st_iccc is not None and st_iccc.get("level") == "ir_cell_champ_cone", f"champ-extract leftover steers a cone size-up, got {st_iccc}")
+    check(st_iccc.get("extract_id") == "iccext2", f"leftover-cone stays on the champ extract, got {st_iccc}")
+    check("dpath" in (st_iccc.get("modules") or []), f"leftover-cone names dpath, got {st_iccc}")
+    check("dpath/b_reg/_078_" in (st_iccc.get("cells") or []), f"leftover-cone keeps dpath/_078_, got {st_iccc}")
+    check("dpath/b_mux/_46_" in (st_iccc.get("cells") or []), f"leftover-cone keeps dpath mux, got {st_iccc}")
+    check("ctrl/_04_" not in (st_iccc.get("cells") or []), f"leftover-cone drops the champ size-up set, got {st_iccc}")
+    check("champ size-up" in (st_iccc.get("reason") or ""), f"leftover-cone reason refuses champ flatten ({st_iccc})")
+    pay_iccc1, why_iccc1 = should_pay_ir_cell_champ_cone(mem_hr, budget_left=80, steer=st_iccc)
+    check(pay_iccc1, f"leftover-cone cell is paid after a combo-heavy residual ({why_iccc1})")
+    check("dpath" in why_iccc1, f"leftover-cone acquire names dpath ({why_iccc1})")
+    fake_cone_ctrl = dict(st_iccc)
+    fake_cone_ctrl["cells"] = ["ctrl/_11_", "ctrl/_14_"]
+    pay_iccc_first, why_iccc_first = should_pay_ir_cell_champ_cone(mem_hr, budget_left=80, steer=fake_cone_ctrl)
+    check(not pay_iccc_first, f"leftover-cone refuses the first IR-cell set ({why_iccc_first})")
+    fake_cone_champ = dict(st_iccc)
+    fake_cone_champ["cells"] = ["ctrl/_04_", "ctrl/_07_", "ctrl/_08_"]
+    pay_iccc_champ, why_iccc_champ = should_pay_ir_cell_champ_cone(mem_hr, budget_left=80, steer=fake_cone_champ)
+    check(not pay_iccc_champ, f"leftover-cone refuses the champ size-up set ({why_iccc_champ})")
+    pay_iccc2, why_iccc2 = should_pay_ir_cell_champ_cone(mem_hr, budget_left=80, steer=st_iccc, n_cell=1)
+    check(not pay_iccc2, f"leftover-cone cell is a single shot ({why_iccc2})")
+    ice_c2x.attr["combo_frac"] = 0.32
+    mem_hr.touch(ice_c2x)
+    check(steer_from_ir_cell_champ_extract_hotspot(mem_hr) is None, "seq-heavy champ-extract hotspot does not steal another leftover cone")
+    ice_c2x.attr["combo_frac"] = 0.90
+    mem_hr.touch(ice_c2x)
+    pay_iccce0, why_iccce0 = should_pay_ir_cell_champ_cone_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_iccce0, f"leftover-cone extract waits for a leftover-cone netlist ({why_iccce0})")
+    mem_hr.add(
+        Candidate(
+            id="iccone",
+            design_id="gcd",
+            parent_id="icchamp2",
+            level="cell",
+            knobs={
+                "source": "cell_size_ir_champ_cone",
+                "cells": ["dpath/b_reg/_078_", "dpath/b_mux/_46_", "dpath/b_reg/_077_"],
+                "ir_join": 1,
+                "champ": 1,
+                "champ_cone": 1,
+                "parent_id": "icchamp2",
+                "extract_id": "iccext2",
+            },
+            knobs_fp="iccone",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(area_um2=572.0, wns_cost=0.32, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": str(dummy_host), "n_changed": 3},
+            attr={"via": "active_f4_ir_cell_champ_cone"},
+        )
+    )
+    check(ir_cell_champ_cone_host(mem_hr) is not None and ir_cell_champ_cone_host(mem_hr).id == "iccone", "ir_cell_champ_cone_host is the leftover dpath size-up")
+    check(ir_cell_champ_host(mem_hr).id == "icchamp2", "ir_cell_champ_host stays the champ ctrl size-up")
+    check(ir_cell_host(mem_hr).id == "ircell", "ir_cell_host stays the first ctrl IR-cell")
+    pay_iccce1, why_iccce1 = should_pay_ir_cell_champ_cone_extract(mem_hr, budget_left=80, n_extract=0)
+    check(pay_iccce1, f"leftover-cone extract is paid after leftover size-up ({why_iccce1})")
+    check("dpath" in why_iccce1, f"leftover-cone extract acquire names dpath ({why_iccce1})")
+    check("IR-cell-champ extract" in why_iccce1, f"leftover-cone extract residuals vs champ extract ({why_iccce1})")
+    check("host extract" in why_iccce1, f"leftover-cone extract refuses host flatten ({why_iccce1})")
+    pay_iccce2, why_iccce2 = should_pay_ir_cell_champ_cone_extract(mem_hr, budget_left=80, n_extract=1)
+    check(not pay_iccce2, f"leftover-cone extract is a single shot ({why_iccce2})")
+    mem_hr.add(
+        Candidate(
+            id="icccxt",
+            design_id="gcd",
+            parent_id="iccone",
+            level="pdn",
+            knobs={
+                "source": "f4_ir_cell_champ_cone_extract",
+                "parent_id": "iccone",
+                "extract_id": "icccxt",
+                "parent_extract_id": "iccext2",
+                "ir_join": 1,
+                "champ": 1,
+                "champ_cone": 1,
+            },
+            knobs_fp="icccxt",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=15.20, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_ir_cell_champ_cone_extract",
+                "residual_mv": 7.10,
+                "residual_via": "ir_cell_champ_cone_vs_ir_cell_champ_extract",
+            },
+        )
+    )
+    check(ir_cell_champ_extract_cand(mem_hr).id == "iccext2", "cone extract does not steal ir_cell_champ_extract_cand")
+    check(winning_ir_pdn(mem_hr).id == "icrp", "high leftover-cone droop does not steal the 1× champion")
+    pay_iccce3, why_iccce3 = should_pay_ir_cell_champ_cone_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_iccce3, f"leftover-cone extract skips once measured ({why_iccce3})")
+    st_icccp = steer_from_ir_cell_champ_cone_residual(mem_hr)
+    check(st_icccp is not None and (st_icccp.get("spec") or {}).get("name") == "decap_200f", f"leftover-cone residual steers winning decap, got {st_icccp}")
+    check(st_icccp.get("extract_id") == "icccxt", f"leftover-cone PDN stays on the leftover mesh, got {st_icccp}")
+    check(st_icccp.get("host_source") == "f4_ir_cell_champ_cone_extract", "leftover-cone PDN names the cone extract")
+    check(st_icccp.get("extract_id") != "iccext2", "leftover-cone PDN does not restamp the champ extract")
+    pay_icccp0, why_icccp0 = should_pay_ir_cell_champ_cone_pdn(mem_hr, budget_left=80, steer=None)
+    check(not pay_icccp0, f"leftover-cone PDN waits for a residual steer ({why_icccp0})")
+    pay_icccp1, why_icccp1 = should_pay_ir_cell_champ_cone_pdn(mem_hr, budget_left=80, steer=st_icccp)
+    check(pay_icccp1, f"leftover-cone PDN is paid after the 1× residual ({why_icccp1})")
+    fake_cone_ext = dict(st_icccp)
+    fake_cone_ext["host_source"] = "f4_ir_cell_champ_extract"
+    pay_icccp_ref, why_icccp_ref = should_pay_ir_cell_champ_cone_pdn(mem_hr, budget_left=80, steer=fake_cone_ext)
+    check(not pay_icccp_ref, f"leftover-cone PDN refuses the champ extract ({why_icccp_ref})")
+    pay_icccp2, why_icccp2 = should_pay_ir_cell_champ_cone_pdn(mem_hr, budget_left=80, steer=st_icccp, n_steer=1)
+    check(not pay_icccp2, f"leftover-cone PDN is a single shot ({why_icccp2})")
+    pay_iccc_same, why_iccc_same = should_pay_ir_cell_champ_cone(mem_hr, budget_left=80, steer=st_iccc)
+    check(not pay_iccc_same, f"leftover-cone cell refuses a second shot on the same extract ({why_iccc_same})")
+    check("this extract" in why_iccc_same, f"leftover-cone cell names the extract cap ({why_iccc_same})")
     pay_amgc1, why_amgc1 = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
     check(pay_amgc1, f"champion AMG is paid on winning_ir_pdn ({why_amgc1})")
     check("3.921" in why_amgc1, f"champion AMG names the 3.921 point ({why_amgc1})")
