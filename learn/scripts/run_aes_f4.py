@@ -47,53 +47,65 @@ def main() -> int:
     if not mapped or not Path(mapped).is_file():
         print("mapped netlist missing")
         return 1
-    existing = [
+    existing_ok = [
         c
         for c in mem.by_level("pdn")
-        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_candidate_extract"
+        if c.status == "ok"
+        and (c.knobs or {}).get("source") == "f4_candidate_extract"
+        and c.qor.dynamic_ir_mv is not None
     ]
-    if existing:
-        print(f"reuse F4 {existing[-1].id} droop={existing[-1].qor.dynamic_ir_mv}")
+    if existing_ok:
+        print(f"reuse F4 {existing_ok[-1].id} droop={existing_ok[-1].qor.dynamic_ir_mv}")
         return 0
-    cid = DesignMemory.new_id()
-    out_dir = REPO / "learn" / "sim" / "dse" / "extracts" / cid
-    print(f"extract {cid} top={spec.top} sdc={spec.constraint}")
-    ext = extract_pdn(
-        Path(mapped),
-        out_dir,
-        top=spec.top,
-        sdc=spec.constraint,
-        util=35.0,
-        density=0.55,
-        timeout_s=240.0,
-    )
+    prior = [
+        c
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_candidate_extract"
+        and (c.artifacts or {}).get("spice")
+        and Path((c.artifacts or {}).get("spice")).is_file()
+    ]
+    if prior:
+        extract_id = str((prior[-1].knobs or {}).get("extract_id") or prior[-1].id)
+        ext = dict(prior[-1].artifacts or {})
+        print(f"reuse extract {extract_id} n_r={ext.get('n_r')} sdc={ext.get('sdc')}")
+        cid = DesignMemory.new_id()
+    else:
+        cid = DesignMemory.new_id()
+        extract_id = cid
+        out_dir = REPO / "learn" / "sim" / "dse" / "extracts" / cid
+        print(f"extract {cid} top={spec.top} sdc={spec.constraint}")
+        ext = extract_pdn(
+            Path(mapped),
+            out_dir,
+            top=spec.top,
+            sdc=spec.constraint,
+            util=35.0,
+            density=0.55,
+            timeout_s=240.0,
+        )
     print(
         f"extract status={ext.get('status')} n_r={ext.get('n_r')} n_i={ext.get('n_i')} "
         f"sdc={ext.get('sdc')} cost={ext.get('cost_s')} fail={ext.get('reason')}"
     )
     n_r = int(ext.get("n_r") or 0)
     dyn: dict = {}
-    if ext.get("status") == "ok" and n_r and n_r <= MAX_R_DIRECT:
+    solver = "direct" if n_r and n_r <= MAX_R_DIRECT else "amg"
+    if ext.get("status") == "ok" and n_r:
+        if n_r > MAX_R_DIRECT:
+            print(f"n_r={n_r} > {MAX_R_DIRECT} — paying AMG, not DirectLU, period={spec.clk_period_ns} ns")
         dyn = solve_f4(
             variant="aes",
             spice=ext.get("spice"),
             insts=ext.get("insts"),
             extract_kind="candidate",
             design_id="aes",
-            timeout_s=90.0,
+            solver=solver,
+            timeout_s=180.0,
         )
         print(
-            f"solve status={dyn.get('status')} droop={dyn.get('worst_droop_mv')} "
-            f"gold={dyn.get('gold')} cost={dyn.get('cost_s')}"
+            f"solve {solver} status={dyn.get('status')} droop={dyn.get('worst_droop_mv')} "
+            f"gold={dyn.get('gold')} period_ns={spec.clk_period_ns} cost={dyn.get('cost_s')}"
         )
-    elif ext.get("status") == "ok" and n_r > MAX_R_DIRECT:
-        dyn = {
-            "status": "GAP",
-            "reason": f"aes mesh n_r={n_r} exceeds DirectLU bound {MAX_R_DIRECT} — not a fake droop",
-            "gold": False,
-            "via": "aes-f4-bound",
-        }
-        print(dyn["reason"])
     art = {**ext, **{k: v for k, v in dyn.items() if k != "cost_s"}}
     droop = dyn.get("worst_droop_mv")
     c = Candidate(
@@ -107,10 +119,12 @@ def main() -> int:
             "parent_name": "liberty_default",
             "util": 35.0,
             "density": 0.55,
-            "extract_id": cid,
+            "extract_id": extract_id,
             "name": "extract_liberty_default",
+            "solver": solver,
+            "clk_period_ns": spec.clk_period_ns,
         },
-        knobs_fp=f"aes_extract_{cid}",
+        knobs_fp=f"aes_extract_{extract_id}_{solver}",
         rtl_fp=f1.rtl_fp,
         netlist_fp=f1.netlist_fp,
         fidelity="F4",
@@ -123,19 +137,10 @@ def main() -> int:
         ),
         cost_s=float(ext.get("cost_s") or 0.0) + float(dyn.get("cost_s") or 0.0),
         artifacts=art,
-        status="ok" if dyn.get("status") == "ok" else ("ok" if ext.get("status") == "ok" and droop is None else "fail"),
-        failure=dyn.get("reason") or ext.get("reason"),
-        note=f"aes F4 extract n_r={n_r} droop={droop}",
+        status="ok" if dyn.get("status") == "ok" and droop is not None else "fail",
+        failure=None if dyn.get("status") == "ok" and droop is not None else (dyn.get("reason") or ext.get("reason")),
+        note=f"aes F4 {solver} n_r={n_r} period={spec.clk_period_ns} ns droop={droop}",
     )
-    if droop is not None:
-        c.status = "ok"
-        c.failure = None
-    elif ext.get("status") == "ok" and n_r > MAX_R_DIRECT:
-        c.status = "fail"
-        c.failure = dyn.get("reason")
-    elif ext.get("status") != "ok":
-        c.status = "fail"
-        c.failure = ext.get("reason")
     mem.add(c)
     report_path = REPO / "learn" / "sim" / "reports" / "dse_aes.json"
     report = json.loads(report_path.read_text()) if report_path.is_file() else {}

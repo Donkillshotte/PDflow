@@ -30,6 +30,7 @@ class DesignSpec:
     f1_timeout_s: float = 60.0
     f1_ready: bool = True
     f3_timeout_s: float = 20.0
+    clk_period_ns: float = 0.46
 
     @property
     def orfs_design(self) -> str:
@@ -82,6 +83,7 @@ DESIGNS: dict[str, DesignSpec] = {
         f1_equiv=False,
         f1_timeout_s=240.0,
         f3_timeout_s=60.0,
+        clk_period_ns=0.82,
     ),
     "ibex": DesignSpec(
         id="ibex",

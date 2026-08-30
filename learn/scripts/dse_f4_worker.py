@@ -65,6 +65,12 @@ def main() -> int:
     ap.add_argument("--c-decap", type=float, default=50e-15)
     ap.add_argument("--i-scale", type=float, default=1.0)
     ap.add_argument("--dt-ps", type=float, default=10.0)
+    ap.add_argument(
+        "--period-ns",
+        type=float,
+        default=0.46,
+        help="Clock period for I(t) triangles. aes is 0.82; never silently reuse GCD 0.46.",
+    )
     ap.add_argument("--spice", type=Path, default=None)
     ap.add_argument("--insts", type=Path, default=None)
     ap.add_argument("--sta", type=Path, default=None)
@@ -114,7 +120,7 @@ def main() -> int:
         mode="clock",
         peak_factor=8.0,
         leak_frac=0.2,
-        period_s=0.46e-9,
+        period_s=float(args.period_ns) * 1e-9,
         dur_s=0.08e-9,
         t50_s=0.12e-9,
         sta_arrivals=sta or None,
@@ -133,7 +139,8 @@ def main() -> int:
         events = scaled
     vdd = float(next(iter(ext["voltages"].values())))
     dt = float(args.dt_ps) * 1e-12
-    t_end = max(0.46e-9 * 1.6, 0.12e-9 + 0.08e-9 * 3)
+    period_s = float(args.period_ns) * 1e-9
+    t_end = max(period_s * 1.6, 0.12e-9 + 0.08e-9 * 3)
     sys_be = assemble_be(
         G,
         idx,
@@ -205,7 +212,7 @@ def main() -> int:
                 tech=ext.get("tech"),
                 currents=ext.get("currents"),
                 vdd=vdd,
-                f_hz=1.0 / 0.46e-9,
+                f_hz=1.0 / period_s,
             )
             raw.pop("_scaled_resistors", None)
             raw.pop("branches", None)

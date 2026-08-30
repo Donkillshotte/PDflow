@@ -100,6 +100,9 @@ def solve_f4(
             "via": "f4_oracle",
             "device": "cpu",
         }
+    from .designs import resolve as _resolve_design
+
+    period_ns = float(_resolve_design(design_id).clk_period_ns)
     kind = "candidate" if spice or insts else extract_kind
     if spice or insts:
         if not extract_ready(spice, insts):
@@ -139,6 +142,8 @@ def solve_f4(
         kind,
         "--solver",
         str(solver or "direct"),
+        "--period-ns",
+        str(period_ns),
     ]
     if spice:
         cmd.extend(["--spice", str(spice), "--no-spef"])
