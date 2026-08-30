@@ -18,6 +18,7 @@ sys.path.insert(0, str(REPO / "learn"))
 
 from dse.designs import resolve  # noqa: E402
 from dse.fidelity import (  # noqa: E402
+    ensure_mapped_netlist,
     evaluate_f1_abc,
     evaluate_f2_fast,
     evaluate_f2_gpl,
@@ -45,11 +46,25 @@ def main() -> int:
     lib = liberty_path()
     knobs = {"name": "liberty_default", "abc_args": [], "abc_ops": [], "abc_script": "file"}
     f1 = _reuse(mem, "logic", name="liberty_default")
-    if f1:
+    mapped = (f1.artifacts or {}).get("mapped_v") if f1 else None
+    if f1 and mapped and Path(mapped).is_file():
         if f1.qor.n_cells is None:
             f1.qor.n_cells = (f1.artifacts or {}).get("n_cells")
             mem.touch(f1)
         print(f"reuse F1 {f1.id} area={f1.qor.area_um2} cells={f1.qor.n_cells}")
+    elif f1:
+        print(f"F1 {f1.id} netlist missing — remapping")
+        f1 = ensure_mapped_netlist(
+            f1, rtl=spec.rtl, liberty=lib, top=spec.top, timeout_s=spec.f1_timeout_s
+        )
+        mapped = (f1.artifacts or {}).get("mapped_v")
+        if not mapped or not Path(mapped).is_file():
+            print("remap failed")
+            return 1
+        if f1.qor.n_cells is None:
+            f1.qor.n_cells = (f1.artifacts or {}).get("n_cells")
+            mem.touch(f1)
+        print(f"remapped F1 {f1.id} cells={f1.qor.n_cells}")
     else:
         f1 = evaluate_f1_abc(
             rtl=spec.rtl,
