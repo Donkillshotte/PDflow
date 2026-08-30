@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + AMG/RAS/Krylov on winning_ir_pdn + static-IR pkg_r then on-die bump pitch then metal4 straps then EM width on winning_static_pdn + I-scale of the attributed host (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + unused Dynamic IR catalog on a strap/EM winning_ir extract + AMG/RAS/Krylov on winning_ir_pdn + static-IR pkg_r then on-die bump pitch then metal4 straps then EM width + I-scale of the attributed host (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -85,6 +85,7 @@ from .acquire import (
     should_pay_static_mesh,
     should_pay_static_straps,
     should_pay_em_straps,
+    should_pay_winning_ir_catalog,
     iscale_champ_sta,
     should_pay_physical_catalog,
 )
@@ -98,6 +99,7 @@ from .active import (
     steer_from_static_mesh_residual,
     steer_from_static_strap_residual,
     steer_from_em_width_residual,
+    steer_from_winning_ir_catalog,
     winning_em_pdn,
     strap_extract_host,
     ir_hotspot_cells,
@@ -2129,6 +2131,72 @@ def run_controller(
                     reason=steer_icrp.get("reason"),
                 )
 
+    _wir = winning_ir_pdn(mem)
+    _wir_eid = str((_wir.knobs or {}).get("extract_id") or _wir.id) if _wir else ""
+    n_wir = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.attr or {}).get("via") == "active_f4_winning_ir_pdn"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == _wir_eid
+    )
+    steer_wir = steer_from_winning_ir_catalog(mem)
+    pay_wir, why_wir = should_pay_winning_ir_catalog(
+        mem, budget_left=t_end - time.time(), steer=steer_wir, n_steer=n_wir, variant=variant
+    )
+    step("acquire", fidelity="F4_WINNING_IR_PDN", pay=pay_wir, why=why_wir, steer=steer_wir)
+    if (
+        any(s["level"] == "winning_ir_pdn" for s in plan["steps"])
+        and pay_wir
+        and steer_wir
+        and time.time() < t_end
+    ):
+        spec_wir = steer_wir.get("spec") or {}
+        eid_wir = str(steer_wir.get("extract_id") or "")
+        hit_wir = extract_on_disk(mem, eid_wir) if eid_wir else None
+        host_w = winning_ir_pdn(mem)
+        if spec_wir and hit_wir:
+            child = evaluate_f4_pdn(
+                mem,
+                spec_wir,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit_wir["candidate"].id,
+                spice=hit_wir["spice"],
+                insts=hit_wir["insts"],
+                extract_id=eid_wir,
+                sta=hit_wir.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "active_f4_winning_ir_pdn"
+                child.attr["steer"] = {k: steer_wir[k] for k in steer_wir if k != "spec"}
+                if host_w and host_w.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+                    child.attr["residual_vs_winning_ir_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                        host_w.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_winning_ir"] = host_w.id
+                child.attr["residual_via"] = "winning_ir_catalog_vs_champ"
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="active_f4_winning_ir_pdn",
+                    parent=hit_wir["candidate"].id,
+                    catalog=spec_wir.get("name"),
+                    extract_id=eid_wir,
+                    pkg_r=spec_wir.get("pkg_r"),
+                    pkg_l=spec_wir.get("pkg_l"),
+                    c_decap=spec_wir.get("c_decap"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_winning_ir_mv=(child.attr or {}).get("residual_vs_winning_ir_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=steer_wir.get("reason"),
+                )
+
     _isc_champ = winning_ir_pdn(mem)
     _isc_eid = str((_isc_champ.knobs or {}).get("extract_id") or _isc_champ.id) if _isc_champ else ""
     n_sc = sum(
@@ -2764,7 +2832,7 @@ def run_controller(
                         host_em.qor.em_j_a_m2
                     )
                     child.attr["residual_vs_strap"] = host_em.id
-                child.attr["residual_via"] = "em_width_vs_em_champ"
+                child.attr["residual_via"] = "em_width_vs_strap_and_em_champ"
                 mem.touch(child)
                 step(
                     "evaluate",
@@ -2782,6 +2850,7 @@ def run_controller(
                     static_ir_mv=child.qor.static_ir_mv,
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_em_champ_j=(child.attr or {}).get("residual_vs_em_champ_j"),
+                    residual_vs_strap_j=(child.attr or {}).get("residual_vs_strap_j"),
                     gold=False,
                     status=child.status,
                     reason=steer_em.get("reason"),
@@ -2833,6 +2902,7 @@ def run_controller(
             "F4 IR-cell PDN: 1× residual restamps the winning family on the sized mesh — not a flattened cell+decap vector",
             "F4 IR-cell region: seq-heavy 1× bin ≠ host bin — density cap on the sized netlist, not more combo size-up",
             "F4 IR-cell-region PDN: large spatial residual restamps the winning family on the capped mesh — not host IR-steer",
+            "F4 winning-IR catalog: unused Dynamic IR (decap then pkg L, inherit host pkg_r) on a strap/EM R-graph — not pitch, not width, not host/candidate IR-steer, not gold",
             "F4 I-scale-champ: I(t)×P of the IR-cell host on winning_ir_pdn — not I-scale-win on the stale host-win mesh, not host arrivals",
             "F3 IR-cell-champ: I-scale-champ xy → ODB join on the champion extract → drive-up — not the first ctrl IR-cell, not STA path",
             "F4 IR-cell-champ extract: write_pg_spice on the dpath-sized netlist — residual vs IR-cell extract, not host",
@@ -2841,7 +2911,7 @@ def run_controller(
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",
             "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not gold",
             "F4 static straps: null bump residual (same n_v on this die) pays denser metal4 on the champ ODB — pdngen -ripup, not bumps, not gold",
-            "F4 EM width: after strap pitch, unused metal4 width searches J=I/(wt) on the same place — not pitch, not decap, not gold",
+            "F4 EM width: after strap pitch, unused metal4 width searches J=I/(wt) on the same place — same-mesh residual vs strap J, mixed-mesh vs EM champ, not pitch, not decap, not gold",
             "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
@@ -3206,6 +3276,39 @@ def run_controller(
             ),
             None,
         ),
+        "n_winning_ir_pdn": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.attr or {}).get("via") == "active_f4_winning_ir_pdn" and c.status == "ok"
+        ),
+        "winning_ir_pdn_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_winning_ir_pdn"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "winning_ir_pdn_name": next(
+            (
+                str((c.knobs or {}).get("name") or "")
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_winning_ir_pdn"
+            ),
+            None,
+        ),
+        "winning_ir_pdn_vs_champ_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_winning_ir_mv"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_winning_ir_pdn"
+                and (c.attr or {}).get("residual_vs_winning_ir_mv") is not None
+            ),
+            None,
+        ),
         "em_straps_vs_champ_j": next(
             (
                 float((c.attr or {}).get("residual_vs_em_champ_j"))
@@ -3213,6 +3316,16 @@ def run_controller(
                 if c.status == "ok"
                 and (c.attr or {}).get("via") == "active_f4_em_straps"
                 and (c.attr or {}).get("residual_vs_em_champ_j") is not None
+            ),
+            None,
+        ),
+        "em_straps_vs_strap_j": next(
+            (
+                float((c.attr or {}).get("residual_vs_strap_j"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_em_straps"
+                and (c.attr or {}).get("residual_vs_strap_j") is not None
             ),
             None,
         ),
@@ -3734,12 +3847,30 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         ej = c.qor.em_j_a_m2
         cat = (c.knobs or {}).get("name")
         vs = (c.attr or {}).get("residual_vs_em_champ_j")
-        extra = f" ΔJ={float(vs):+.3e}" if vs is not None else ""
+        vs_s = (c.attr or {}).get("residual_vs_strap_j")
+        extra = ""
+        if vs_s is not None:
+            extra += f" ΔJstrap={float(vs_s):+.3e}"
+        if vs is not None:
+            extra += f" ΔJchamp={float(vs):+.3e}"
         em_bits.append(
             f"{cat} {float(ej):.3e} A/m²{extra}" if ej is not None else str(cat)
         )
     if em_bits:
         sir += " · EM-width " + "; ".join(em_bits) + " (not gold)"
+    wir_bits: list[str] = []
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_winning_ir_pdn":
+            continue
+        dmv = c.qor.dynamic_ir_mv
+        cat = (c.knobs or {}).get("name")
+        vs = (c.attr or {}).get("residual_vs_winning_ir_mv")
+        extra = f" Δ={float(vs):+.3f}" if vs is not None else ""
+        wir_bits.append(
+            f"{cat} {float(dmv):.3f} mV{extra}" if dmv is not None else str(cat)
+        )
+    if wir_bits:
+        sir += " · winning-IR catalog " + "; ".join(wir_bits) + " (not gold)"
     ctrlc = ""
     for c in mem.by_level("logic"):
         if c.status == "ok" and c.fidelity == "F1" and (c.knobs or {}).get("cone") == "ctrl" and c.qor.area_um2 is not None:

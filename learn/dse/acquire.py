@@ -497,6 +497,7 @@ def should_pay_f4_scale_champ(
         "active_f4_static_straps",
         "f4_em_strap_extract",
         "active_f4_em_straps",
+        "active_f4_winning_ir_pdn",
     ):
         return False, "champion I-scale refuses a host-only 1× point"
     if ir_cell_host(mem) is None:
@@ -1882,6 +1883,64 @@ def should_pay_em_straps(
     return True, str(steer.get("reason") or "EM steers unused metal4 width — not pitch, not gold")
 
 
+def should_pay_winning_ir_catalog(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 2,
+    min_s: float = 8.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """Pay unused Dynamic IR catalog on a strap/EM winning_ir extract.
+
+    Shot 1: unused C (decap) with host pkg_r/L. Shot 2: unused pkg L with
+    host pkg_r/C. Not pitch, not width, not static pkg_r, not gold.
+    """
+    if n_steer >= steer_max:
+        return False, "winning-IR Dynamic IR catalog spent (decap + unused pkg L)"
+    if budget_left < min_s:
+        return False, "wall budget would not cover winning-IR catalog restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no winning-IR unused Dynamic IR catalog action"
+    spec = steer["spec"]
+    from .pdn_space import (
+        EM_STRAP_CATALOG,
+        PDN_CATALOG,
+        STATIC_MESH_CATALOG,
+        STATIC_PDN_CATALOG,
+        STATIC_STRAP_CATALOG,
+        measured_pdn_keys,
+    )
+
+    name = str(spec.get("name") or "")
+    refuse = (
+        {s["name"] for s in STATIC_PDN_CATALOG}
+        | {s["name"] for s in STATIC_MESH_CATALOG}
+        | {s["name"] for s in STATIC_STRAP_CATALOG}
+        | {s["name"] for s in EM_STRAP_CATALOG}
+    )
+    if name in refuse:
+        return False, "winning-IR catalog refuses a pitch / width / bump / pkg_r point"
+    if name not in {s["name"] for s in PDN_CATALOG}:
+        return False, "winning-IR catalog requires a Dynamic IR catalog point"
+    if spec.get("m4_pitch") is not None or spec.get("m4_width") is not None or spec.get("bump_dx") is not None:
+        return False, "winning-IR catalog refuses a geometry restamp"
+    eid = str(steer["extract_id"])
+    if eid in ("finish", ""):
+        return False, "winning-IR catalog refuses the gold finish extract"
+    from .active import extract_is_new_rgraph
+
+    if not extract_is_new_rgraph(mem, eid):
+        return False, "winning-IR catalog refuses a host/candidate mesh (not a new R-graph)"
+    have = measured_pdn_keys(mem, extract_id=eid)
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that Dynamic IR point is already measured on the winning-IR extract"
+    return True, str(steer.get("reason") or "winning_ir unused Dynamic IR catalog — not pitch, not gold")
+
+
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
     return _latest_extract(mem, source="f4_candidate_extract")
@@ -2053,6 +2112,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "static_mesh",
         "static_straps",
         "em_straps",
+        "winning_ir_pdn",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):

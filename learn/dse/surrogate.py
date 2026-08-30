@@ -746,8 +746,8 @@ def residual_f4_static_straps(all_cands: list[Candidate]) -> dict:
 
 
 def residual_f4_em(all_cands: list[Candidate]) -> dict:
-    """Metal4-width EM residual vs EM champ. Not a pitch/IR copy."""
-    from .active import winning_em_pdn
+    """Metal4-width EM residual vs strap-pitch J (same mesh) and EM champ."""
+    from .active import strap_extract_host, winning_em_pdn
 
     by_level: dict[str, list[Candidate]] = {}
     for c in all_cands:
@@ -762,6 +762,7 @@ def residual_f4_em(all_cands: list[Candidate]) -> dict:
 
     view = _View()
     win_e = winning_em_pdn(view)  # type: ignore[arg-type]
+    strap = strap_extract_host(view)  # type: ignore[arg-type]
     width = None
     for c in reversed(all_cands):
         if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_em_straps":
@@ -777,6 +778,10 @@ def residual_f4_em(all_cands: list[Candidate]) -> dict:
         }
     w_j = float(width.qor.em_j_a_m2)
     e_j = float(win_e.qor.em_j_a_m2) if win_e and win_e.qor.em_j_a_m2 is not None else None
+    s_j = float(strap.qor.em_j_a_m2) if strap and strap.qor.em_j_a_m2 is not None else None
+    attr_s = (width.attr or {}).get("residual_vs_strap_j")
+    if s_j is None and attr_s is not None:
+        s_j = w_j - float(attr_s)
     out = {
         "metric": "em_j_a_m2",
         "width_j": w_j,
@@ -785,9 +790,12 @@ def residual_f4_em(all_cands: list[Candidate]) -> dict:
         "m4_width": (width.knobs or {}).get("m4_width"),
         "n": 1,
         "uncertainty": "medium",
-        "via": "F4 metal4 width vs EM champ — not strap pitch",
+        "via": "F4 metal4 width vs strap-pitch J (same mesh) and EM champ — not a mixed-mesh-only residual",
         "not": "Dynamic IR gold / a mixed ABC+PDN vector",
     }
+    if s_j is not None:
+        out["strap_j"] = s_j
+        out["width_vs_strap_j"] = w_j - s_j
     if e_j is not None:
         out["winning_em_j"] = e_j
         out["width_vs_em_champ_j"] = w_j - e_j

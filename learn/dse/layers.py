@@ -44,8 +44,8 @@ ADAPTERS: dict[str, dict] = {
         "note": "SSK-GP / F1→F2 residual / F3→F5-lite+local residual steers the next level / F4 IR residual steers PDN / F4 host-region residual vs unconstrained host / GNN readout — never Dynamic IR gold",
     },
     "active": {
-        "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + steer_from_host_ir_residual + iscale_host + order_local_hosts",
-        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; I-scale-champ measures activity on winning_ir_pdn (not host-win); AMG/RAS/Krylov-champ restamp that same 1× mesh; static IR is a separate 1× ranking that pays unused pkg_r then, on a null on-die residual, denser bumps then metal4 straps on the champ ODB (decap does not move DC); not a mixed knob vector",
+        "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + steer_from_host_ir_residual + steer_from_winning_ir_catalog + iscale_host + order_local_hosts",
+        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; unused Dynamic IR catalog on a strap/EM winning_ir extract (inherit pkg_r; C then L); I-scale-champ measures activity on winning_ir_pdn (not host-win); AMG/RAS/Krylov-champ restamp that same 1× mesh; static IR is a separate 1× ranking that pays unused pkg_r then, on a null on-die residual, denser bumps then metal4 straps on the champ ODB (decap does not move DC); EM width residual is same-mesh vs strap J; not a mixed knob vector",
     },
     "synthesis": {
         "via": "dse.synthesis + dse.fidelity.evaluate_f1_synth",
@@ -65,7 +65,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "solver": {
         "via": "dse.f4_oracle + dse_f4_worker (direct|amg|bicg|ras|krylov/MOR)",
-        "note": "DirectLU restamp on named extract; AMG, RAS, and rational Krylov/MOR are MF residuals on the candidate mesh and again on winning_ir_pdn (same DirectLU knobs; re-paid when the 1× extract moves to a new strap R-graph); static IR searches pkg_r then on-die bump pitch then metal4 straps; EM searches unused metal4 width on that pitch (not flattened); GCD gold 45.298 mV unrestamped",
+        "note": "DirectLU restamp on named extract; AMG, RAS, and rational Krylov/MOR are MF residuals on the candidate mesh and again on winning_ir_pdn (same DirectLU knobs; re-paid when the 1× extract moves to a new strap R-graph); unused Dynamic IR catalog (decap then pkg L, inherit host pkg_r) restamps that R-graph; static IR searches pkg_r then on-die bump pitch then metal4 straps; EM searches unused metal4 width on that pitch with a same-mesh strap-J residual (not flattened); GCD gold 45.298 mV unrestamped",
     },
     "physical_fast": {
         "via": "dse.netgraph",

@@ -40,6 +40,7 @@ from dse.pdn_space import (
     STATIC_STRAP_CATALOG,
     next_em_strap_spec,
     next_pdn_spec,
+    next_winning_ir_pdn_spec,
     next_static_mesh_spec,
     next_static_pdn_spec,
     next_static_strap_spec,
@@ -383,6 +384,7 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_pdn" for s in planned["steps"]), "planner schedules IR-cell PDN restamp")
     check(any(s["level"] == "ir_cell_region" for s in planned["steps"]), "planner schedules IR-cell-region density cap")
     check(any(s["level"] == "ir_cell_region_pdn" for s in planned["steps"]), "planner schedules IR-cell-region PDN restamp")
+    check(any(s["level"] == "winning_ir_pdn" for s in planned["steps"]), "planner schedules unused Dynamic IR on winning_ir extract")
     check(any(s["level"] == "f4_scale_champ" for s in planned["steps"]), "planner schedules champion I-scale")
     check(any(s["level"] == "ir_cell_champ" for s in planned["steps"]), "planner schedules I-scale-champ cell size-up")
     check(any(s["level"] == "ir_cell_champ_extract" for s in planned["steps"]), "planner schedules IR-cell-champ write_pg_spice")
@@ -488,6 +490,7 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell PDN restamp measures at F4")
     check(next_fidelity(level="ir_cell_region", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region extract measures at F4")
     check(next_fidelity(level="ir_cell_region_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region PDN restamp measures at F4")
+    check(next_fidelity(level="winning_ir_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "winning-IR catalog measures at F4")
     check(next_fidelity(level="f4_scale_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion I-scale measures at F4")
     check(next_fidelity(level="ir_cell_champ", pred=None, budget_left=20, cost_hint={}) == "F3", "I-scale-champ cell size measures at F3")
     check(next_fidelity(level="ir_cell_champ_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-champ extract measures at F4")
@@ -1399,6 +1402,7 @@ def main() -> int:
         should_pay_static_mesh,
         should_pay_static_straps,
         should_pay_em_straps,
+        should_pay_winning_ir_catalog,
         should_pay_ir_cell_champ,
         should_pay_ir_cell_champ_extract,
         should_pay_ir_cell_champ_pdn,
@@ -3095,6 +3099,71 @@ def main() -> int:
     check(spec_em is not None and spec_em["name"] == "m4_width_96", f"next_em_strap_spec proposes m4_width_96, got {spec_em}")
     win_em0 = winning_em_pdn(mem_hr)
     check(win_em0 is not None and win_em0.qor.em_j_a_m2 is not None, f"winning_em_pdn ranks J, got {win_em0}")
+    from dse.active import steer_from_winning_ir_catalog
+
+    check(
+        steer_from_winning_ir_catalog(mem_ir) is None,
+        "winning-IR catalog waits for a strap/EM R-graph",
+    )
+    stok_c = next(c for c in mem_hr.all() if c.id == "stok")
+    spec_w = next_winning_ir_pdn_spec(mem_hr, stok_c)
+    check(spec_w is not None and spec_w["name"] == "pkg_l_100p", f"unused Dynamic IR on strap mesh is pkg L, got {spec_w}")
+    check(abs(float(spec_w["pkg_r"]) - 0.025) < 1e-12, "winning-IR catalog inherits host pkg_r — not gold 50 mΩ")
+    check(abs(float(spec_w["c_decap"]) - 2e-13) < 1e-18, "winning-IR catalog inherits host 200 fF — inductance-only")
+    check(abs(float(spec_w["pkg_l"]) - 1e-10) < 1e-18, "unused pkg L is 100 pH")
+    st_w = steer_from_winning_ir_catalog(mem_hr)
+    check(st_w is not None and (st_w.get("spec") or {}).get("name") == "pkg_l_100p", f"strap/EM champ unlocks unused pkg L, got {st_w}")
+    check(st_w.get("extract_id") == "stok", f"winning-IR catalog restamps the strap extract, got {st_w}")
+    check(
+        (st_w.get("spec") or {}).get("name") not in ("m4_pitch_8", "m4_width_96", "bumps_80", "pkg_r_25m"),
+        "winning-IR catalog does not consume pitch / width / bump / pkg_r catalogs",
+    )
+    pay_w0, why_w0 = should_pay_winning_ir_catalog(mem_hr, budget_left=80, steer=None)
+    check(not pay_w0, f"winning-IR catalog waits for a steer ({why_w0})")
+    pay_w1, why_w1 = should_pay_winning_ir_catalog(mem_hr, budget_left=80, steer=st_w)
+    check(pay_w1, f"winning-IR catalog is paid on the strap extract ({why_w1})")
+    check("not pitch" in why_w1 and "not gold" in why_w1, f"winning-IR catalog refuses flatten ({why_w1})")
+    fake_w = dict(st_w)
+    fake_w["spec"] = {"name": "m4_width_96", "m4_width": 0.96, "pkg_r": 0.025, "pkg_l": 2e-10, "c_decap": 2e-13}
+    pay_w_ref, why_w_ref = should_pay_winning_ir_catalog(mem_hr, budget_left=80, steer=fake_w)
+    check(not pay_w_ref, f"winning-IR catalog refuses a width catalog point ({why_w_ref})")
+    mem_hr.add(
+        Candidate(
+            id="wirl",
+            design_id="gcd",
+            parent_id="stok",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "pkg_l_100p",
+                "extract_id": "stok",
+                "pkg_r": 0.025,
+                "pkg_l": 1e-10,
+                "c_decap": 2e-13,
+                "i_scale": 1.0,
+            },
+            knobs_fp="wirl",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=1.700, static_ir_mv=0.963, em_j_a_m2=9.22e9, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "active_f4_winning_ir_pdn", "residual_vs_winning_ir_mv": -0.510},
+        )
+    )
+    win_l = _win_ir(mem_hr)
+    check(win_l is not None and win_l.id == "wirl", f"unused pkg L on the strap mesh can become winning_ir_pdn, got {getattr(win_l, 'id', None)}")
+    check(winning_host_pdn(mem_hr).id == "hdecapr", "winning_host_pdn stays host-only after winning-IR catalog")
+    check(champ_mf_n(mem_hr, "f4_solver_amg_champ") == 0, "AMG-champ on the old extract does not spend the catalog extract")
+    pay_amg_w, why_amg_w = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
+    check(pay_amg_w, f"champion AMG is re-paid after winning-IR catalog ({why_amg_w})")
+    pay_sc_w, why_sc_w = should_pay_f4_scale_champ(mem_hr, budget_left=80, n_scale=0)
+    check(pay_sc_w, f"champion I-scale re-pays after winning-IR catalog ({why_sc_w})")
+    st_w2 = steer_from_winning_ir_catalog(mem_hr)
+    check(st_w2 is None, f"Dynamic IR catalog on the strap extract is exhausted, got {st_w2}")
+    pay_w2, why_w2 = should_pay_winning_ir_catalog(mem_hr, budget_left=80, steer=st_w, n_steer=2)
+    check(not pay_w2, f"winning-IR catalog caps at decap + pkg L ({why_w2})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

@@ -557,6 +557,7 @@ def winning_ir_pdn(mem: DesignMemory):
         "active_f4_ir_cell_champ_pdn",
         "active_f4_static_straps",
         "active_f4_em_straps",
+        "active_f4_winning_ir_pdn",
     )
     for c in mem.by_level("pdn"):
         if c.status != "ok" or c.qor.dynamic_ir_mv is None:
@@ -594,6 +595,7 @@ def _ir_family_1x_member(c) -> bool:
         "active_f4_static_mesh",
         "active_f4_static_straps",
         "active_f4_em_straps",
+        "active_f4_winning_ir_pdn",
     ):
         return True
     if src == "f4_static_mesh_extract":
@@ -880,6 +882,66 @@ def steer_from_em_width_residual(mem: DesignMemory) -> dict | None:
         ),
         "via": "active_f4_em_straps",
         "not": "a flattened pitch+width / pkg_r / decap / GPL / gold vector",
+    }
+
+
+NEW_RGRAPH_SOURCES = ("f4_static_strap_extract", "f4_em_strap_extract")
+
+
+def extract_is_new_rgraph(mem: DesignMemory, eid: str) -> bool:
+    """True when extract_id is a pdngen -ripup strap or EM-width mesh. Not gold."""
+    want = str(eid)
+    if want in ("finish", ""):
+        return False
+    for c in mem.by_level("pdn"):
+        if c.status != "ok":
+            continue
+        if str((c.knobs or {}).get("extract_id") or c.id) != want:
+            continue
+        if (c.knobs or {}).get("source") in NEW_RGRAPH_SOURCES:
+            return True
+    return False
+
+
+def steer_from_winning_ir_catalog(mem: DesignMemory) -> dict | None:
+    """Unused Dynamic IR catalog on a strap/EM winning_ir extract.
+
+    Inherits host pkg_r (C then L). Not pitch, not width, not pkg_r, not
+    host/candidate IR-steer, not gold.
+    """
+    from .pdn_space import PDN_CATALOG, next_winning_ir_pdn_spec
+
+    champ = winning_ir_pdn(mem)
+    if champ is None or champ.qor.dynamic_ir_mv is None:
+        return None
+    eid = str((champ.knobs or {}).get("extract_id") or champ.id)
+    if eid in ("finish", ""):
+        return None
+    if not extract_is_new_rgraph(mem, eid):
+        return None
+    spec = next_winning_ir_pdn_spec(mem, champ)
+    if spec is None:
+        return None
+    if spec["name"] not in {s["name"] for s in PDN_CATALOG}:
+        return None
+    src = (champ.knobs or {}).get("name") or (champ.attr or {}).get("via") or champ.id
+    host_l = float((champ.knobs or {}).get("pkg_l") or 2e-10)
+    axis = "inductance" if abs(float(spec["pkg_l"]) - host_l) > 1e-18 else "decap"
+    return {
+        "level": "pdn",
+        "spec": spec,
+        "extract_id": eid,
+        "host_id": champ.id,
+        "host_source": (champ.knobs or {}).get("source") or champ.level,
+        "dynamic_ir_mv": float(champ.qor.dynamic_ir_mv),
+        "axis": axis,
+        "reason": (
+            f"winning_ir {src} {float(champ.qor.dynamic_ir_mv):.3f} mV extract {eid} "
+            f"is a new R-graph — unused {spec['name']} ({axis}, inherit pkg_r="
+            f"{spec['pkg_r']}), not pitch, not width, not pkg_r catalog, not gold"
+        ),
+        "via": "active_f4_winning_ir_pdn",
+        "not": "a flattened pitch+width+pkg_r+decap / host IR-steer / gold vector",
     }
 
 

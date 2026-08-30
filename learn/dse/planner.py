@@ -406,6 +406,17 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "winning_ir_pdn",
+            "reason": (
+                "After a strap/EM R-graph becomes winning_ir_pdn, unused Dynamic IR "
+                "catalog (decap then pkg L, inherit host pkg_r) restamps that extract "
+                "— not pitch, not width, not host/candidate IR-steer, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_scale_champ",
             "reason": (
                 "I-scale-champ: I(t)×P on winning_ir_pdn (IR-cell-region-PDN mesh) "

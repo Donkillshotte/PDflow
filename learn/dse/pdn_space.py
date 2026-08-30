@@ -166,6 +166,51 @@ def measured_em_strap_keys(mem: DesignMemory) -> set[tuple[float, float]]:
     return keys
 
 
+def next_winning_ir_pdn_spec(mem: DesignMemory, host) -> dict | None:
+    """Unused Dynamic IR catalog on a new strap/EM R-graph.
+
+    Inherits host pkg_r so the residual is C then L — not a flattened
+    pkg_r+decap vector, not pitch, not width. Host (R,L,C) is already the 1×
+    extract solve.
+    """
+    if host is None:
+        return None
+    k = host.knobs or {}
+    eid = str(k.get("extract_id") or getattr(host, "id", "finish"))
+    have = set(measured_pdn_keys(mem, extract_id=eid))
+    host_r = float(k.get("pkg_r") or GOLD_KNOBS["pkg_r"])
+    host_l = float(k.get("pkg_l") or GOLD_KNOBS["pkg_l"])
+    host_c = float(k.get("c_decap") or GOLD_KNOBS["c_decap"])
+    have.add((host_r, host_l, host_c))
+    gold_l = float(GOLD_KNOBS["pkg_l"])
+    gold_c = float(GOLD_KNOBS["c_decap"])
+    for spec in PDN_CATALOG:
+        if abs(float(spec["pkg_l"]) - gold_l) > 1e-18:
+            continue
+        out = {
+            "name": spec["name"],
+            "pkg_r": host_r,
+            "pkg_l": host_l,
+            "c_decap": float(spec["c_decap"]),
+        }
+        key = (out["pkg_r"], out["pkg_l"], out["c_decap"])
+        if key not in have:
+            return out
+    for spec in PDN_CATALOG:
+        if abs(float(spec["c_decap"]) - gold_c) > 1e-18:
+            continue
+        out = {
+            "name": spec["name"],
+            "pkg_r": host_r,
+            "pkg_l": float(spec["pkg_l"]),
+            "c_decap": host_c,
+        }
+        key = (out["pkg_r"], out["pkg_l"], out["c_decap"])
+        if key not in have:
+            return out
+    return None
+
+
 def next_em_strap_spec(mem: DesignMemory, host) -> dict | None:
     """Wider metal4 on the strap-pitch host. Residual is width-only."""
     geom = host_m4_geometry(host)
