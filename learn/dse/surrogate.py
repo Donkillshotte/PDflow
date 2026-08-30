@@ -743,3 +743,52 @@ def residual_f4_static_straps(all_cands: list[Candidate]) -> dict:
         out["winning_static_mv"] = s_mv
         out["strap_vs_static_champ_mv"] = t_mv - s_mv
     return out
+
+
+def residual_f4_em(all_cands: list[Candidate]) -> dict:
+    """Metal4-width EM residual vs EM champ. Not a pitch/IR copy."""
+    from .active import winning_em_pdn
+
+    by_level: dict[str, list[Candidate]] = {}
+    for c in all_cands:
+        by_level.setdefault(c.level, []).append(c)
+
+    class _View:
+        def by_level(self, level):
+            return by_level.get(level, [])
+
+        def all(self):
+            return all_cands
+
+    view = _View()
+    win_e = winning_em_pdn(view)  # type: ignore[arg-type]
+    width = None
+    for c in reversed(all_cands):
+        if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_em_straps":
+            width = c
+            break
+    if width is None or width.qor.em_j_a_m2 is None:
+        return {
+            "metric": "em_j_a_m2",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no EM width restamp on the strap-pitch mesh",
+            "not": "pitch / decap / a mixed ABC+PDN vector",
+        }
+    w_j = float(width.qor.em_j_a_m2)
+    e_j = float(win_e.qor.em_j_a_m2) if win_e and win_e.qor.em_j_a_m2 is not None else None
+    out = {
+        "metric": "em_j_a_m2",
+        "width_j": w_j,
+        "width_id": width.id,
+        "width_name": (width.knobs or {}).get("name"),
+        "m4_width": (width.knobs or {}).get("m4_width"),
+        "n": 1,
+        "uncertainty": "medium",
+        "via": "F4 metal4 width vs EM champ — not strap pitch",
+        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+    }
+    if e_j is not None:
+        out["winning_em_j"] = e_j
+        out["width_vs_em_champ_j"] = w_j - e_j
+    return out

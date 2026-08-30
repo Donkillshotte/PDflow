@@ -101,6 +101,11 @@ type DseReport = {
   static_straps_dyn_mv?: number;
   static_straps_name?: string;
   static_straps_vs_champ_mv?: number;
+  n_em_straps?: number;
+  em_straps_j?: number;
+  em_straps_name?: string;
+  em_straps_vs_champ_j?: number;
+  winning_em_j?: number;
   n_f4_ir_cell_extract?: number;
   n_ir_cell_pdn?: number;
   ir_cell_extract_mv?: number;
@@ -169,7 +174,7 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.n_static_mesh || report.n_static_straps || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
+          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.n_static_mesh || report.n_static_straps || report.n_em_straps || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -251,6 +256,15 @@ export function DsePanel() {
                   }`
                 : report.n_static_straps != null
                   ? ` · ST ${report.n_static_straps}`
+                  : ""}
+              {report.em_straps_j != null
+                ? ` · EM ${report.em_straps_name ?? "width"} ${(report.em_straps_j / 1e9).toFixed(2)}e9${
+                    report.em_straps_vs_champ_j != null
+                      ? ` Δ=${report.em_straps_vs_champ_j >= 0 ? "+" : ""}${(report.em_straps_vs_champ_j / 1e9).toFixed(2)}e9`
+                      : ""
+                  }`
+                : report.n_em_straps != null
+                  ? ` · EM ${report.n_em_straps}`
                   : ""}
               {report.ir_cell_extract_mv != null
                 ? ` · IR-x ${report.ir_cell_extract_mv.toFixed(3)} mV${
@@ -363,6 +377,7 @@ export function DsePanel() {
                 {report.n_static_ir_steer != null ? ` · SI ${report.n_static_ir_steer}` : ""}
                 {report.n_static_mesh != null ? ` · SM ${report.n_static_mesh}` : ""}
                 {report.n_static_straps != null ? ` · ST ${report.n_static_straps}` : ""}
+                {report.n_em_straps != null ? ` · EM ${report.n_em_straps}` : ""}
                 {report.n_f4_ir_cell_extract != null ? ` · IR-x ${report.n_f4_ir_cell_extract}` : ""}
                 {report.n_ir_cell_pdn != null ? ` · IR-p ${report.n_ir_cell_pdn}` : ""}
                 {report.n_f4_ir_cell_region_extract != null

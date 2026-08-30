@@ -549,12 +549,14 @@ def winning_ir_pdn(mem: DesignMemory):
         "f4_ir_cell_region_extract",
         "f4_ir_cell_champ_extract",
         "f4_static_strap_extract",
+        "f4_em_strap_extract",
     )
     extra_via = (
         "active_f4_ir_cell_pdn",
         "active_f4_ir_cell_region_pdn",
         "active_f4_ir_cell_champ_pdn",
         "active_f4_static_straps",
+        "active_f4_em_straps",
     )
     for c in mem.by_level("pdn"):
         if c.status != "ok" or c.qor.dynamic_ir_mv is None:
@@ -591,11 +593,14 @@ def _ir_family_1x_member(c) -> bool:
         "active_f4_static_ir",
         "active_f4_static_mesh",
         "active_f4_static_straps",
+        "active_f4_em_straps",
     ):
         return True
     if src == "f4_static_mesh_extract":
         return True
     if src == "f4_static_strap_extract":
+        return True
+    if src == "f4_em_strap_extract":
         return True
     if src == "f4_solver_a" and (c.knobs or {}).get("name") == "pkg_r_25m":
         return True
@@ -806,6 +811,75 @@ def steer_from_static_strap_residual(mem: DesignMemory) -> dict | None:
         ),
         "via": "active_f4_static_straps",
         "not": "a flattened bump+strap / pkg_r / decap / GPL / gold vector",
+    }
+
+
+def strap_extract_host(mem: DesignMemory):
+    """Newest ok metal4-pitch extract. EM width inherits this geometry."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_static_strap_extract":
+            return c
+    return None
+
+
+def winning_em_pdn(mem: DesignMemory):
+    """Lowest 1× em_j_a_m2 on the IR/host family. Not gold, not I-scale."""
+    best = None
+    best_j = None
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or c.qor.em_j_a_m2 is None:
+            continue
+        if not _ir_family_1x_member(c):
+            continue
+        if abs(float((c.knobs or {}).get("i_scale") or 1.0) - 1.0) > 1e-9:
+            continue
+        eid = str((c.knobs or {}).get("extract_id") or c.id)
+        if eid in ("finish", ""):
+            continue
+        j = float(c.qor.em_j_a_m2)
+        if best_j is None or j < best_j:
+            best, best_j = c, j
+    return best
+
+
+def steer_from_em_width_residual(mem: DesignMemory) -> dict | None:
+    """Wider metal4 on the strap-pitch mesh. Not pitch, not decap, not gold.
+
+    Waits until the pitch catalog is consumed so the residual is width-only.
+    """
+    from .pdn_space import next_em_strap_spec, next_static_strap_spec
+
+    if next_static_strap_spec(mem) is not None:
+        return None
+    host = strap_extract_host(mem)
+    if host is None or (host.knobs or {}).get("m4_pitch") is None:
+        return None
+    spec = next_em_strap_spec(mem, host)
+    if spec is None:
+        return None
+    parent_eid = str((host.knobs or {}).get("parent_extract_id") or (host.knobs or {}).get("extract_id") or host.id)
+    if parent_eid in ("finish", ""):
+        return None
+    odb = _odb_for_extract(mem, parent_eid) or _odb_for_extract(mem, str((host.knobs or {}).get("extract_id") or host.id))
+    em_win = winning_em_pdn(mem)
+    return {
+        "level": "pdn",
+        "spec": spec,
+        "extract_id": parent_eid,
+        "odb": odb,
+        "host_id": host.id,
+        "host_source": (host.knobs or {}).get("source") or host.level,
+        "em_j_a_m2": float(host.qor.em_j_a_m2) if host.qor.em_j_a_m2 is not None else None,
+        "winning_em_id": em_win.id if em_win else None,
+        "winning_em_j": float(em_win.qor.em_j_a_m2) if em_win and em_win.qor.em_j_a_m2 is not None else None,
+        "strap_pitch": spec["m4_pitch"],
+        "reason": (
+            f"EM width on strap mesh {host.id} m4_pitch={spec['m4_pitch']} — "
+            f"{spec['name']} m4_width={spec['m4_width']} (host width "
+            f"{(host.knobs or {}).get('m4_width')}), not pitch, not Dynamic IR-steer, not gold"
+        ),
+        "via": "active_f4_em_straps",
+        "not": "a flattened pitch+width / pkg_r / decap / GPL / gold vector",
     }
 
 

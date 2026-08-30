@@ -33,10 +33,12 @@ from dse.metrics import QoR, dominates, pareto_front, wns_cost_from_slack_ns
 from dse.mo import ehvi_2d, hypervolume_2d
 from dse.physical_space import PHYSICAL_CATALOG, gpl_density, next_catalog_spec, rudy_congestion
 from dse.pdn_space import (
+    EM_STRAP_CATALOG,
     PDN_CATALOG,
     STATIC_MESH_CATALOG,
     STATIC_PDN_CATALOG,
     STATIC_STRAP_CATALOG,
+    next_em_strap_spec,
     next_pdn_spec,
     next_static_mesh_spec,
     next_static_pdn_spec,
@@ -203,6 +205,9 @@ def main() -> int:
     check(all(s["name"] != "m4_pitch_8" for s in STATIC_PDN_CATALOG), "metal4 pitch is not flattened into the pkg_r catalog")
     check(all(s["name"] != "m4_pitch_8" for s in STATIC_MESH_CATALOG), "metal4 pitch is not flattened into the bump catalog")
     check(STATIC_STRAP_CATALOG[0]["name"] == "m4_pitch_8", "static-IR strap catalog starts with m4_pitch_8")
+    check(all(s["name"] != "m4_width_96" for s in STATIC_STRAP_CATALOG), "EM width is not flattened into the pitch catalog")
+    check(all(s["name"] != "m4_width_96" for s in PDN_CATALOG), "EM width is not flattened into the Dynamic IR catalog")
+    check(EM_STRAP_CATALOG[0]["name"] == "m4_width_96", "EM catalog starts with m4_width_96")
     check(
         knobs_fp("pdn", {"pkg_l": 2e-10, "c_decap": 50e-15})
         != knobs_fp("logic", {"pkg_l": 2e-10, "c_decap": 50e-15}),
@@ -388,6 +393,7 @@ def main() -> int:
     check(any(s["level"] == "static_ir_steer" for s in planned["steps"]), "planner schedules static-IR pkg_r steer")
     check(any(s["level"] == "static_mesh" for s in planned["steps"]), "planner schedules static-IR bump mesh")
     check(any(s["level"] == "static_straps" for s in planned["steps"]), "planner schedules static-IR metal4 straps")
+    check(any(s["level"] == "em_straps" for s in planned["steps"]), "planner schedules EM metal4 width")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -492,6 +498,7 @@ def main() -> int:
     check(next_fidelity(level="static_ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR pkg_r steer measures at F4")
     check(next_fidelity(level="static_mesh", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR bump mesh measures at F4")
     check(next_fidelity(level="static_straps", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR metal4 straps measure at F4")
+    check(next_fidelity(level="em_straps", pred=None, budget_left=20, cost_hint={}) == "F4", "EM metal4 width measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -636,6 +643,11 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_static_strap_extract", "name": "m4_pitch_8", "m4_pitch": 8, "extract_id": "icreg"})
         != knobs_fp("pdn", {"source": "f4_static_mesh_extract", "name": "bumps_80", "bump_dx": 80, "extract_id": "icreg"}),
         "static-IR metal4 straps are not flattened into the bump fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_em_strap_extract", "name": "m4_width_96", "m4_pitch": 8, "m4_width": 0.96, "extract_id": "icreg"})
+        != knobs_fp("pdn", {"source": "f4_static_strap_extract", "name": "m4_pitch_8", "m4_pitch": 8, "m4_width": 0.48, "extract_id": "icreg"}),
+        "EM metal4 width is not flattened into the pitch fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1386,6 +1398,7 @@ def main() -> int:
         should_pay_static_ir_steer,
         should_pay_static_mesh,
         should_pay_static_straps,
+        should_pay_em_straps,
         should_pay_ir_cell_champ,
         should_pay_ir_cell_champ_extract,
         should_pay_ir_cell_champ_pdn,
@@ -3028,7 +3041,9 @@ def main() -> int:
                 "source": "f4_static_strap_extract",
                 "name": "m4_pitch_8",
                 "m4_pitch": 8.0,
+                "m4_width": 0.48,
                 "extract_id": "stok",
+                "parent_extract_id": "icreg",
                 "c_decap": 2e-13,
                 "pkg_r": 0.025,
                 "pkg_l": 2e-10,
@@ -3038,7 +3053,7 @@ def main() -> int:
             rtl_fp="x",
             netlist_fp="y",
             fidelity="F4",
-            qor=QoR(dynamic_ir_mv=2.210, static_ir_mv=0.963, fidelity="F4"),
+            qor=QoR(dynamic_ir_mv=2.210, static_ir_mv=0.963, em_j_a_m2=9.22e9, fidelity="F4"),
             cost_s=1.0,
             status="ok",
             attr={"via": "active_f4_static_straps", "residual_vs_static_champ_mv": -5.215},
@@ -3052,6 +3067,34 @@ def main() -> int:
     pay_amg_st, why_amg_st = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
     check(pay_amg_st, f"champion AMG is re-paid on the strap extract ({why_amg_st})")
     check("stok" in why_amg_st or "2.210" in why_amg_st or "m4_pitch_8" in why_amg_st, f"champion AMG names the strap champ ({why_amg_st})")
+    pay_sc_st, why_sc_st = should_pay_f4_scale_champ(mem_hr, budget_left=80, n_scale=0)
+    check(pay_sc_st, f"champion I-scale re-pays when winning_ir moves to the strap extract ({why_sc_st})")
+    check("2.210" in why_sc_st or "m4_pitch_8" in why_sc_st or "stok" in why_sc_st, f"champion I-scale names the strap champ ({why_sc_st})")
+    from dse.active import steer_from_em_width_residual, winning_em_pdn
+
+    check(steer_from_em_width_residual(mem_hr) is not None or next_static_strap_spec(mem_hr) is None, "EM width sees a consumed pitch catalog")
+    # pitch catalog is consumed by stok
+    check(next_static_strap_spec(mem_hr) is None, "ok strap extract consumes the pitch catalog")
+    st_em = steer_from_em_width_residual(mem_hr)
+    check(st_em is not None and (st_em.get("spec") or {}).get("name") == "m4_width_96", f"strap pitch unlocks EM width, got {st_em}")
+    check(abs(float((st_em.get("spec") or {}).get("m4_pitch") or 0) - 8.0) < 1e-9, "EM width inherits strap pitch 8")
+    check((st_em.get("spec") or {}).get("name") not in ("m4_pitch_8", "bumps_80", "pkg_r_25m", "decap_200f"), "EM width does not consume pitch / bump / Dynamic IR catalogs")
+    check(st_em.get("odb") == str(odb_sm), f"EM width names the place ODB, got {st_em}")
+    pay_em0, why_em0 = should_pay_em_straps(mem_hr, budget_left=80, steer=None)
+    check(not pay_em0, f"EM width waits for a width steer ({why_em0})")
+    pay_em1, why_em1 = should_pay_em_straps(mem_hr, budget_left=80, steer=st_em)
+    check(pay_em1, f"EM width is paid after strap pitch ({why_em1})")
+    check("not pitch" in why_em1 and "not gold" in why_em1, f"EM width refuses pitch flatten ({why_em1})")
+    fake_pitch = dict(st_em)
+    fake_pitch["spec"] = {"name": "m4_pitch_8", "m4_pitch": 8.0, "m4_width": 0.48}
+    pay_em_ref, why_em_ref = should_pay_em_straps(mem_hr, budget_left=80, steer=fake_pitch)
+    check(not pay_em_ref, f"EM width refuses a pitch catalog point ({why_em_ref})")
+    pay_em2, why_em2 = should_pay_em_straps(mem_hr, budget_left=80, steer=st_em, n_steer=1)
+    check(not pay_em2, f"EM width is a single shot ({why_em2})")
+    spec_em = next_em_strap_spec(mem_hr, next(c for c in mem_hr.all() if c.id == "stok"))
+    check(spec_em is not None and spec_em["name"] == "m4_width_96", f"next_em_strap_spec proposes m4_width_96, got {spec_em}")
+    win_em0 = winning_em_pdn(mem_hr)
+    check(win_em0 is not None and win_em0.qor.em_j_a_m2 is not None, f"winning_em_pdn ranks J, got {win_em0}")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

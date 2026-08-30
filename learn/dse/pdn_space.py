@@ -43,6 +43,12 @@ STATIC_STRAP_CATALOG: list[dict] = [
     },
 ]
 
+# EM J = I/(w t). Pitch already moved IR; width is its own catalog — inherit
+# host m4_pitch so the residual is width-only. Not flattened into STATIC_STRAP.
+EM_STRAP_CATALOG: list[dict] = [
+    {"name": "m4_width_96", "m4_width": 0.96},
+]
+
 GOLD_KNOBS = {"pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 50e-15}
 
 
@@ -135,4 +141,44 @@ def next_static_strap_spec(mem: DesignMemory) -> dict | None:
     for spec in STATIC_STRAP_CATALOG:
         if float(spec["m4_pitch"]) not in have:
             return dict(spec)
+    return None
+
+
+def host_m4_geometry(host) -> dict:
+    k = (host.knobs if host is not None else {}) or {}
+    return {
+        "m4_pitch": float(k.get("m4_pitch") or 8.0),
+        "m4_width": float(k.get("m4_width") or 0.48),
+        "m7_pitch": float(k.get("m7_pitch") or 30.0),
+        "m7_width": float(k.get("m7_width") or 1.40),
+    }
+
+
+def measured_em_strap_keys(mem: DesignMemory) -> set[tuple[float, float]]:
+    keys: set[tuple[float, float]] = set()
+    for c in mem.by_level("pdn"):
+        k = c.knobs or {}
+        if c.status != "ok" or k.get("source") != "f4_em_strap_extract":
+            continue
+        if k.get("m4_pitch") is None or k.get("m4_width") is None:
+            continue
+        keys.add((float(k["m4_pitch"]), float(k["m4_width"])))
+    return keys
+
+
+def next_em_strap_spec(mem: DesignMemory, host) -> dict | None:
+    """Wider metal4 on the strap-pitch host. Residual is width-only."""
+    geom = host_m4_geometry(host)
+    have = measured_em_strap_keys(mem)
+    for spec in EM_STRAP_CATALOG:
+        out = {
+            "name": spec["name"],
+            "m4_pitch": geom["m4_pitch"],
+            "m4_width": float(spec["m4_width"]),
+            "m7_pitch": geom["m7_pitch"],
+            "m7_width": geom["m7_width"],
+        }
+        key = (out["m4_pitch"], out["m4_width"])
+        if key not in have and abs(out["m4_width"] - geom["m4_width"]) > 1e-9:
+            return out
     return None

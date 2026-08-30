@@ -505,6 +505,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
+    steps.append(
+        {
+            "level": "em_straps",
+            "reason": (
+                "After strap pitch is measured, unused metal4 width searches EM J "
+                "on the same place — width-only residual, not pitch, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
