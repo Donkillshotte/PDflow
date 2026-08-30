@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "kind": "dse",
+  "engine": "aes-slice",
+  "design_id": "aes",
+  "top": "aes_cipher_top",
+  "sdc": "/workspace/tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/constraint.sdc",
+  "clk_period_ns": 0.82,
+  "n_candidates": 4,
+  "f1_id": "c6c1a7e0ad2c",
+  "f1_area_um2": 13615.742,
+  "f1_n_cells": 9964,
+  "f2_id": "313057802125",
+  "f2_congestion": 0.6073214572001339,
+  "f3_id": "e99b74ca0235",
+  "f3_wns_ns": -1.3258,
+  "f3_power_w": 0.289,
+  "f3_sdc": "/workspace/tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/constraint.sdc",
+  "f2_gpl_id": "bd74975200c1",
+  "f2_gpl_overflow": 0.0991,
+  "f2_gpl_hpwl_um": 107788.4,
+  "not": [
+    "gcd dpath/ctrl",
+    "gcd 0.46 ns SDC",
+    "gold 45.298 restamp",
+    "flattened cell+PDN vector"
+  ],
+  "memory": "/workspace/learn/sim/dse/memory_aes.jsonl"
+}

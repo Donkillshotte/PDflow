@@ -192,6 +192,19 @@ def main() -> int:
         check(choose(lmem) is None, "closed live chain has no bandit arm")
         check(leftover_cells(lmem, 2) == [] and len(refine_chain(lmem)) == 3, "live refine[0..2] still holds")
 
+    aes_mem = REPO / "learn" / "sim" / "dse" / "memory_aes.jsonl"
+    if aes_mem.is_file():
+        am = DesignMemory(aes_mem)
+        check(all(c.design_id == "aes" for c in am.all()), "aes memory is not a GCD leftover")
+        f3s = [c for c in am.all() if c.fidelity == "F3" and c.status == "ok"]
+        check(bool(f3s), "live aes F3 is on disk")
+        if f3s:
+            sdc = str((f3s[-1].artifacts or {}).get("sdc") or "")
+            check("aes" in sdc and "gcd" not in sdc, f"live aes F3 used the 0.82 ns SDC, got {sdc}")
+            check((f3s[-1].artifacts or {}).get("wns_ns") is not None, "live aes F3 recorded WNS")
+        gpls = [c for c in am.by_level("physical") if (c.knobs or {}).get("source") == "f2_openroad_gpl" and c.status == "ok"]
+        check(bool(gpls), "live aes OpenROAD GPL is on disk")
+
     if FAILS:
         print(f"{len(FAILS)} FAILED")
         return 1
