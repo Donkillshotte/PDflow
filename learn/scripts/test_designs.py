@@ -206,6 +206,14 @@ def main() -> int:
             check((f3s[-1].artifacts or {}).get("wns_ns") is not None, "live aes F3 recorded WNS")
         gpls = [c for c in am.by_level("physical") if (c.knobs or {}).get("source") == "f2_openroad_gpl" and c.status == "ok"]
         check(bool(gpls), "live aes OpenROAD GPL is on disk")
+        f4s = [c for c in am.by_level("pdn") if c.status == "ok" and c.qor.static_ir_mv is not None]
+        check(bool(f4s), "live aes F4 static IR is on disk")
+        if f4s:
+            ir = float(f4s[-1].qor.static_ir_mv)
+            check(abs(ir - 6.954) < 0.05, f"aes on-die static IR is 6.954 mV, got {ir}")
+            check((f4s[-1].artifacts or {}).get("n_r") == 73139, "aes mesh is the 73k-R candidate extract")
+            check("aes" in str((f4s[-1].artifacts or {}).get("sdc") or ""), "aes F4 used the 0.82 ns SDC")
+            check(f4s[-1].qor.dynamic_ir_mv is None, "aes dynamic IR stays GAP until AMG finishes — not a gold restamp")
 
     if FAILS:
         print(f"{len(FAILS)} FAILED")

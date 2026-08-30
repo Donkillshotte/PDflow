@@ -27,11 +27,14 @@ from dse.designs import resolve
 resolve("aes").rtl  # ORFS nangate45 aes_cipher_top
 ```
 
-Live aes F1 + F2-fast + F3 (aes 0.82 ns SDC) + budgeted GPL
-(separate memory, never FlowLab GCD / gold 45.298):
+Live aes F1 + F2-fast + F3 (aes 0.82 ns SDC) + budgeted GPL + candidate
+write_pg_spice. Meshes above 40k R pay AMG, not DirectLU. Clock for I(t)
+is `DesignSpec.clk_period_ns` (aes 0.82, gcd 0.46). Separate memory,
+never FlowLab GCD / gold 45.298:
 
 ```bash
 python3 learn/scripts/run_aes_slice.py
+python3 learn/scripts/run_aes_f4.py
 ```
 
 ## Refine chain

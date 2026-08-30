@@ -6,7 +6,7 @@
   "top": "aes_cipher_top",
   "sdc": "/workspace/tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/constraint.sdc",
   "clk_period_ns": 0.82,
-  "n_candidates": 4,
+  "n_candidates": 8,
   "f1_id": "c6c1a7e0ad2c",
   "f1_area_um2": 13615.742,
   "f1_n_cells": 9964,
@@ -25,5 +25,17 @@
     "gold 45.298 restamp",
     "flattened cell+PDN vector"
   ],
-  "memory": "/workspace/learn/sim/dse/memory_aes.jsonl"
+  "memory": "/workspace/learn/sim/dse/memory_aes.jsonl",
+  "f4_id": "febe6804241c",
+  "f4_dynamic_ir_mv": null,
+  "f4_n_r": 73139,
+  "f4_sdc": "/workspace/tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/constraint.sdc",
+  "f4_status": "ok",
+  "f4_failure": null,
+  "f4_solver": "static_direct",
+  "f4_clk_period_ns": 0.82,
+  "f4_static_ir_mv": 6.954201796472992,
+  "f4_static_ir_pkg_mv": 6.994393869011795,
+  "f4_n_nodes": 54241,
+  "f4_dynamic": "AMG transient timeout 180s \u2014 not a fake droop"
 }
