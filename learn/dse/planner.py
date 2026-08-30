@@ -571,6 +571,39 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "winning_ir_region_cell_leftover",
+            "reason": (
+                "winning-IR-region-cell PDN leftover combo cells ≠ leftover-combo / IR-cell / "
+                "champ / leftover-cone — drive-up on the leftover-combo netlist, not leftover-combo "
+                "flatten, not leftover-cone, not more density cap, not STA path, not ABC"
+            ),
+            "scope": "cell",
+        }
+    )
+    steps.append(
+        {
+            "level": "winning_ir_region_cell_leftover_extract",
+            "reason": (
+                "write_pg_spice on the leftover-combo leftover netlist — residual vs "
+                "the leftover-combo extract, re-paid per cell extract, not leftover-cone, "
+                "not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
+            "level": "winning_ir_region_cell_leftover_pdn",
+            "reason": (
+                "winning-IR-region-cell leftover 1× residual chooses the winning PDN family on "
+                "that leftover mesh — re-paid on a new leftover extract, not leftover-combo "
+                "PDN, not leftover-cone PDN, not champ IR-steer, not a flattened cell+decap vector"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_amg_champ",
             "reason": (
                 "SA-AMG on winning_ir_pdn with the same DirectLU knobs — MF solver "
@@ -709,6 +742,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             "f4_ir_cell_champ_cone_region_extract",
             "f4_winning_ir_region_extract",
             "f4_winning_ir_region_cell_extract",
+            "f4_winning_ir_region_cell_leftover_extract",
             "f4_region_extract",
         ):
             v = float(c.qor.dynamic_ir_mv)

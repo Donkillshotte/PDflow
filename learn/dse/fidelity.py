@@ -821,6 +821,7 @@ def evaluate_f4_extract(
     kind=ir_cell_champ_cone_region density-caps the leftover-cone 1× bin (not IR-cell-region rXY, not gold rXY).
     kind=winning_ir_region density-caps the winning-IR 1× bin (not leftover-cone rXY, not IR-cell-region rXY, not gold rXY); re-pays when the residual hotspot leaves the capped bin.
     kind=winning_ir_region_cell extracts leftover combo size-up on the IR-cell netlist (not leftover-cone) and residuals vs the winning-IR-region extract.
+    kind=winning_ir_region_cell_leftover extracts leftover leftover size-up on the leftover-combo netlist (not leftover-combo flatten) and residuals vs the leftover-combo extract.
     """
     from .attribute import attribute_dynamic_ir, ir_report_from_solve, persist_hotspot_join
     from .f4_oracle import solve_f4
@@ -934,6 +935,21 @@ def evaluate_f4_extract(
         knobs["ir_join"] = 1
         knobs["winning_ir_region"] = 1
         prior = winning_ir_region_extract_cand(mem)
+        knobs["parent_extract_id"] = (
+            str((prior.knobs or {}).get("extract_id") or prior.id)
+            if prior
+            else str((parent.knobs or {}).get("extract_id") or "")
+        )
+    elif kind == "winning_ir_region_cell_leftover":
+        from .active import winning_ir_region_cell_extract_cand
+
+        knobs["source"] = "f4_winning_ir_region_cell_leftover_extract"
+        knobs["name"] = f"extract_winning_ir_region_cell_leftover_{host}"
+        knobs["host_level"] = parent.level
+        knobs["host_source"] = parent.knobs.get("source") or parent.level
+        knobs["ir_join"] = 1
+        knobs["winning_ir_region_leftover"] = 1
+        prior = winning_ir_region_cell_extract_cand(mem)
         knobs["parent_extract_id"] = (
             str((prior.knobs or {}).get("extract_id") or prior.id)
             if prior
@@ -1090,6 +1106,17 @@ def evaluate_f4_extract(
             attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
             attr["residual_vs"] = prior.id
             attr["residual_via"] = "winning_ir_region_cell_vs_winning_ir_region_extract"
+    if kind == "winning_ir_region_cell_leftover":
+        from .active import winning_ir_region_cell_extract_cand
+
+        attr["via"] = "f4_winning_ir_region_cell_leftover_extract"
+        attr["host_level"] = parent.level
+        attr["host_source"] = parent.knobs.get("source") or parent.level
+        prior = winning_ir_region_cell_extract_cand(mem)
+        if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
+            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
+            attr["residual_vs"] = prior.id
+            attr["residual_via"] = "winning_ir_region_cell_leftover_vs_winning_ir_region_cell_extract"
     kind_note = {
         "host": "host",
         "host_region": "host-region",
@@ -1100,6 +1127,7 @@ def evaluate_f4_extract(
         "ir_cell_champ_cone_region": "IR-cell-champ-cone-region",
         "winning_ir_region": "winning-IR-region",
         "winning_ir_region_cell": "winning-IR-region-cell",
+        "winning_ir_region_cell_leftover": "winning-IR-region-cell leftover",
     }.get(kind, "candidate")
     q = QoR(
         area_um2=parent.qor.area_um2,
@@ -1768,6 +1796,8 @@ def evaluate_cell_size(
     later R-graph can re-pay leftover-cone size-up — not a session-global one-shot.
     source=cell_size_ir_winning_region is leftover combo cells on the
     winning-IR-region PDN join (not leftover-cone, not champ ctrl).
+    source=cell_size_ir_winning_region_leftover is leftover leftover cells on the
+    leftover-combo PDN join (not leftover-combo flatten, not leftover-cone).
     """
     from .attribute import attribute_sta
     from .cell_space import upsize_file
@@ -1820,6 +1850,11 @@ def evaluate_cell_size(
     if source == "cell_size_ir_winning_region":
         knobs["ir_join"] = 1
         knobs["winning_ir_region"] = 1
+        if extract_id:
+            knobs["extract_id"] = str(extract_id)
+    if source == "cell_size_ir_winning_region_leftover":
+        knobs["ir_join"] = 1
+        knobs["winning_ir_region_leftover"] = 1
         if extract_id:
             knobs["extract_id"] = str(extract_id)
     fp = knobs_fp("cell", knobs)
@@ -1895,6 +1930,13 @@ def evaluate_cell_size(
         note = (
             f"winning-IR-region leftover-combo upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
             "— region-PDN join minus IR-cell/champ/leftover-cone, not leftover-cone flatten, not STA path"
+        )
+    elif source == "cell_size_ir_winning_region_leftover":
+        attr["via"] = "active_f4_winning_ir_region_cell_leftover"
+        attr["cells"] = list(targets)
+        note = (
+            f"winning-IR-region leftover leftover upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
+            "— leftover-combo PDN join minus leftover-combo/IR-cell/champ/leftover-cone, not leftover-combo flatten, not STA path"
         )
     else:
         note = (

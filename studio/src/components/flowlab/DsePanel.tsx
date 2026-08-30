@@ -310,6 +310,29 @@ export function DsePanel() {
                 : report.n_winning_ir_region_cell_pdn != null
                   ? ` · IR-wrcp ${report.n_winning_ir_region_cell_pdn}`
                   : ""}
+              {report.winning_ir_region_cell_leftover_wns_ns != null
+                ? ` · IR-wrl ${report.winning_ir_region_cell_leftover_modules ?? "dpath"} WNS ${report.winning_ir_region_cell_leftover_wns_ns >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover_wns_ns.toFixed(3)}`
+                : report.n_winning_ir_region_cell_leftover != null
+                  ? ` · IR-wrl ${report.n_winning_ir_region_cell_leftover}`
+                  : ""}
+              {report.winning_ir_region_cell_leftover_extract_mv != null
+                ? ` · IR-wrle ${report.winning_ir_region_cell_leftover_extract_mv.toFixed(3)} mV${
+                    report.winning_ir_region_cell_leftover_extract_residual_mv != null
+                      ? ` Δ=${report.winning_ir_region_cell_leftover_extract_residual_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover_extract_residual_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_f4_winning_ir_region_cell_leftover_extract != null
+                  ? ` · IR-wrle ${report.n_f4_winning_ir_region_cell_leftover_extract}`
+                  : ""}
+              {report.winning_ir_region_cell_leftover_pdn_mv != null
+                ? ` · IR-wrlp ${report.winning_ir_region_cell_leftover_pdn_name ?? "PDN"} ${report.winning_ir_region_cell_leftover_pdn_mv.toFixed(3)} mV${
+                    report.winning_ir_region_cell_leftover_pdn_vs_host_win_mv != null
+                      ? ` vs host-win ${report.winning_ir_region_cell_leftover_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover_pdn_vs_host_win_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_winning_ir_region_cell_leftover_pdn != null
+                  ? ` · IR-wrlp ${report.n_winning_ir_region_cell_leftover_pdn}`
+                  : ""}
               {report.ir_champ_amg_mv != null
                 ? ` · AMG-c ${report.ir_champ_amg_mv.toFixed(3)} mV${
                     report.ir_champ_amg_vs_direct_mv != null
@@ -516,6 +539,15 @@ export function DsePanel() {
                   : ""}
                 {report.n_winning_ir_region_cell_pdn != null
                   ? ` · IR-wrcp ${report.n_winning_ir_region_cell_pdn}`
+                  : ""}
+                {report.n_winning_ir_region_cell_leftover != null
+                  ? ` · IR-wrl ${report.n_winning_ir_region_cell_leftover}`
+                  : ""}
+                {report.n_f4_winning_ir_region_cell_leftover_extract != null
+                  ? ` · IR-wrle ${report.n_f4_winning_ir_region_cell_leftover_extract}`
+                  : ""}
+                {report.n_winning_ir_region_cell_leftover_pdn != null
+                  ? ` · IR-wrlp ${report.n_winning_ir_region_cell_leftover_pdn}`
                   : ""}
                 {report.n_f4_amg_champ != null ? ` · AMG-c ${report.n_f4_amg_champ}` : ""}
                 {report.n_f4_ras_champ != null ? ` · RAS-c ${report.n_f4_ras_champ}` : ""}
