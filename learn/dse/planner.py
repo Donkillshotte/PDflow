@@ -493,6 +493,28 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "ir_cell_champ_cone_region",
+            "reason": (
+                "leftover-cone 1× hotspot bin ≠ champ-extract bin and seq-heavy — "
+                "density cap on the leftover-cone netlist, not more combo size-up, "
+                "not IR-cell-region rXY, not gold rXY, not ABC"
+            ),
+            "scope": "region",
+        }
+    )
+    steps.append(
+        {
+            "level": "ir_cell_champ_cone_region_pdn",
+            "reason": (
+                "leftover-cone-region |Δ| ≥ 1 mV chooses the winning PDN family on "
+                "the capped leftover mesh — re-paid on a new cone extract, not champ "
+                "IR-steer, not a flattened cell+decap vector"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_amg_champ",
             "reason": (
                 "SA-AMG on winning_ir_pdn with the same DirectLU knobs — MF solver "
@@ -628,6 +650,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             "f4_ir_cell_region_extract",
             "f4_ir_cell_champ_extract",
             "f4_ir_cell_champ_cone_extract",
+            "f4_ir_cell_champ_cone_region_extract",
             "f4_region_extract",
         ):
             v = float(c.qor.dynamic_ir_mv)

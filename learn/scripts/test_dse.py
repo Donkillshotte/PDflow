@@ -393,6 +393,8 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_champ_cone" for s in planned["steps"]), "planner schedules leftover-cone cell size-up")
     check(any(s["level"] == "ir_cell_champ_cone_extract" for s in planned["steps"]), "planner schedules leftover-cone write_pg_spice")
     check(any(s["level"] == "ir_cell_champ_cone_pdn" for s in planned["steps"]), "planner schedules leftover-cone PDN restamp")
+    check(any(s["level"] == "ir_cell_champ_cone_region" for s in planned["steps"]), "planner schedules leftover-cone-region density cap")
+    check(any(s["level"] == "ir_cell_champ_cone_region_pdn" for s in planned["steps"]), "planner schedules leftover-cone-region PDN restamp")
     check(any(s["level"] == "f4_amg_champ" for s in planned["steps"]), "planner schedules champion AMG residual")
     check(any(s["level"] == "f4_ras_champ" for s in planned["steps"]), "planner schedules champion RAS residual")
     check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
@@ -502,6 +504,8 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_champ_cone", pred=None, budget_left=20, cost_hint={}) == "F3", "leftover-cone cell size measures at F3")
     check(next_fidelity(level="ir_cell_champ_cone_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover-cone extract measures at F4")
     check(next_fidelity(level="ir_cell_champ_cone_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover-cone PDN restamp measures at F4")
+    check(next_fidelity(level="ir_cell_champ_cone_region", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover-cone-region extract measures at F4")
+    check(next_fidelity(level="ir_cell_champ_cone_region_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover-cone-region PDN restamp measures at F4")
     check(next_fidelity(level="f4_amg_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion AMG measures at F4")
     check(next_fidelity(level="f4_ras_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion RAS measures at F4")
     check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
@@ -649,6 +653,23 @@ def main() -> int:
         )
         != knobs_fp("pdn", {"source": "f4_ir_cell_champ_extract", "parent_id": "icchamp", "ir_join": 1, "champ": 1}),
         "leftover-cone extract knobs are not flattened into the champ extract fingerprint",
+    )
+    check(
+        knobs_fp(
+            "pdn",
+            {
+                "source": "f4_ir_cell_champ_cone_region_extract",
+                "parent_id": "iccone",
+                "region": "r03",
+                "ir_join": 1,
+                "champ_cone": 1,
+            },
+        )
+        != knobs_fp(
+            "pdn",
+            {"source": "f4_ir_cell_region_extract", "parent_id": "ircell", "region": "r00", "ir_join": 1},
+        ),
+        "leftover-cone-region knobs are not flattened into the IR-cell-region fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "iccext", "c_decap": 200e-15})
@@ -1447,6 +1468,8 @@ def main() -> int:
         should_pay_ir_cell_champ_cone,
         should_pay_ir_cell_champ_cone_extract,
         should_pay_ir_cell_champ_cone_pdn,
+        should_pay_ir_cell_champ_cone_region,
+        should_pay_ir_cell_champ_cone_region_pdn,
         iscale_champ_sta,
         should_pay_ir_cell,
         should_pay_ir_cell_extract,
@@ -3102,6 +3125,105 @@ def main() -> int:
     pay_iccc_same, why_iccc_same = should_pay_ir_cell_champ_cone(mem_hr, budget_left=80, steer=st_iccc)
     check(not pay_iccc_same, f"leftover-cone cell refuses a second shot on the same extract ({why_iccc_same})")
     check("this extract" in why_iccc_same, f"leftover-cone cell names the extract cap ({why_iccc_same})")
+    from dse.active import (
+        ir_cell_champ_cone_extract_cand,
+        ir_cell_champ_cone_region_extract_cand,
+        steer_from_ir_cell_champ_cone_hotspot,
+        steer_from_ir_cell_champ_cone_region_residual,
+    )
+
+    ice_cx = next(c for c in mem_hr.all() if c.id == "icccxt")
+    ice_cx.attr = dict(ice_cx.attr or {})
+    ice_cx.attr.update(
+        {
+            "join": "odb-geom",
+            "combo_frac": 0.16,
+            "seq_frac": 0.84,
+            "region": "r03",
+            "x_dbu": 10529.0,
+            "y_dbu": 80945.0,
+            "modules": ["ctrl"],
+            "cells": ["ctrl/state/_08_", "ctrl/_11_", "ctrl/state/_09_"],
+        }
+    )
+    mem_hr.touch(ice_cx)
+    pay_icccr0, why_icccr0 = should_pay_ir_cell_champ_cone_region(mem_hr, budget_left=80, steer=None)
+    check(not pay_icccr0, f"leftover-cone region waits for a seq-heavy bin residual ({why_icccr0})")
+    st_icccr = steer_from_ir_cell_champ_cone_hotspot(mem_hr)
+    check(st_icccr is not None and st_icccr.get("level") == "ir_cell_champ_cone_region", f"seq-heavy leftover-cone bin steers a region cap, got {st_icccr}")
+    check(st_icccr.get("region") == "r03", f"leftover-cone region names r03, got {st_icccr}")
+    check(st_icccr.get("champ_region") == "r00", f"leftover-cone region names the champ bin, got {st_icccr}")
+    check(st_icccr.get("extract_id") == "icccxt", f"leftover-cone region stays on the cone extract, got {st_icccr}")
+    check("combo size-up" in (st_icccr.get("reason") or ""), f"leftover-cone region refuses more combo size-up ({st_icccr})")
+    pay_icccr1, why_icccr1 = should_pay_ir_cell_champ_cone_region(mem_hr, budget_left=80, steer=st_icccr)
+    check(pay_icccr1, f"leftover-cone region is paid after a seq-heavy bin residual ({why_icccr1})")
+    check("r03" in why_icccr1 and "r00" in why_icccr1, f"leftover-cone region acquire names both bins ({why_icccr1})")
+    fake_icr = dict(st_icccr)
+    fake_icr["host_source"] = "f4_ir_cell_region_extract"
+    pay_icccr_ref, why_icccr_ref = should_pay_ir_cell_champ_cone_region(mem_hr, budget_left=80, steer=fake_icr)
+    check(not pay_icccr_ref, f"leftover-cone region refuses IR-cell-region flatten ({why_icccr_ref})")
+    pay_icccr2, why_icccr2 = should_pay_ir_cell_champ_cone_region(mem_hr, budget_left=80, steer=st_icccr, n_extract=1)
+    check(not pay_icccr2, f"leftover-cone region is a single shot ({why_icccr2})")
+    ice_cx.attr["combo_frac"] = 0.78
+    mem_hr.touch(ice_cx)
+    check(steer_from_ir_cell_champ_cone_hotspot(mem_hr) is None, "combo-heavy leftover-cone hotspot does not steal a region cap")
+    ice_cx.attr["combo_frac"] = 0.16
+    ice_cx.attr["region"] = "r00"
+    mem_hr.touch(ice_cx)
+    check(steer_from_ir_cell_champ_cone_hotspot(mem_hr) is None, "leftover-cone region skips when the bin matches the champ extract")
+    ice_cx.attr["region"] = "r03"
+    mem_hr.touch(ice_cx)
+    mem_hr.add(
+        Candidate(
+            id="icccrxt",
+            design_id="gcd",
+            parent_id="iccone",
+            level="pdn",
+            knobs={
+                "source": "f4_ir_cell_champ_cone_region_extract",
+                "parent_id": "iccone",
+                "extract_id": "icccrxt",
+                "parent_extract_id": "icccxt",
+                "region": "r03",
+                "ir_join": 1,
+                "champ": 1,
+                "champ_cone": 1,
+            },
+            knobs_fp="icccrxt",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=14.10, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_ir_cell_champ_cone_region_extract",
+                "residual_mv": -1.10,
+                "residual_via": "ir_cell_champ_cone_region_vs_ir_cell_champ_cone_extract",
+                "region": "r03",
+            },
+        )
+    )
+    check(ir_cell_champ_cone_region_extract_cand(mem_hr).id == "icccrxt", "region extract is the leftover-cone-region cand")
+    check(ir_cell_champ_cone_extract_cand(mem_hr).id == "icccxt", "region extract does not steal ir_cell_champ_cone_extract_cand")
+    check(winning_ir_pdn(mem_hr).id == "icrp", "high leftover-cone-region droop does not steal the 1× champion")
+    pay_icccr3, why_icccr3 = should_pay_ir_cell_champ_cone_region(mem_hr, budget_left=80, steer=st_icccr, n_extract=0)
+    check(not pay_icccr3, f"leftover-cone region skips once measured on that extract ({why_icccr3})")
+    st_icccrp = steer_from_ir_cell_champ_cone_region_residual(mem_hr)
+    check(st_icccrp is not None and (st_icccrp.get("spec") or {}).get("name") == "decap_200f", f"leftover-cone-region residual steers winning decap, got {st_icccrp}")
+    check(st_icccrp.get("extract_id") == "icccrxt", f"leftover-cone-region PDN stays on the capped mesh, got {st_icccrp}")
+    check(st_icccrp.get("host_source") == "f4_ir_cell_champ_cone_region_extract", "leftover-cone-region PDN names the region extract")
+    check(st_icccrp.get("extract_id") != "icccxt", "leftover-cone-region PDN does not restamp the unconstrained cone extract")
+    pay_icccrp0, why_icccrp0 = should_pay_ir_cell_champ_cone_region_pdn(mem_hr, budget_left=80, steer=None)
+    check(not pay_icccrp0, f"leftover-cone-region PDN waits for |Δ| ≥ 1 mV ({why_icccrp0})")
+    pay_icccrp1, why_icccrp1 = should_pay_ir_cell_champ_cone_region_pdn(mem_hr, budget_left=80, steer=st_icccrp)
+    check(pay_icccrp1, f"leftover-cone-region PDN is paid after |Δ| ≥ 1 mV ({why_icccrp1})")
+    fake_cone_r = dict(st_icccrp)
+    fake_cone_r["host_source"] = "f4_ir_cell_champ_cone_extract"
+    pay_icccrp_ref, why_icccrp_ref = should_pay_ir_cell_champ_cone_region_pdn(mem_hr, budget_left=80, steer=fake_cone_r)
+    check(not pay_icccrp_ref, f"leftover-cone-region PDN refuses the unconstrained cone extract ({why_icccrp_ref})")
+    pay_icccrp2, why_icccrp2 = should_pay_ir_cell_champ_cone_region_pdn(mem_hr, budget_left=80, steer=st_icccrp, n_steer=1)
+    check(not pay_icccrp2, f"leftover-cone-region PDN is a single shot ({why_icccrp2})")
     pay_amgc1, why_amgc1 = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
     check(pay_amgc1, f"champion AMG is paid on winning_ir_pdn ({why_amgc1})")
     check("3.921" in why_amgc1, f"champion AMG names the 3.921 point ({why_amgc1})")

@@ -815,6 +815,7 @@ def evaluate_f4_extract(
     kind=ir_cell_region density-caps the IR-cell 1× bin (not host rXY, not gold rXY).
     kind=ir_cell_champ extracts the I-scale-champ dpath-sized netlist and residuals vs IR-cell extract.
     kind=ir_cell_champ_cone extracts leftover-cone size-up and residuals vs the IR-cell-champ extract.
+    kind=ir_cell_champ_cone_region density-caps the leftover-cone 1× bin (not IR-cell-region rXY, not gold rXY).
     """
     from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
@@ -884,6 +885,24 @@ def evaluate_f4_extract(
         knobs["champ"] = 1
         knobs["champ_cone"] = 1
         knobs["parent_extract_id"] = str((parent.knobs or {}).get("extract_id") or "")
+    elif kind == "ir_cell_champ_cone_region":
+        from .active import ir_cell_champ_cone_extract_cand
+
+        knobs["source"] = "f4_ir_cell_champ_cone_region_extract"
+        knobs["name"] = f"extract_ir_cell_champ_cone_region_{host}"
+        knobs["host_level"] = parent.level
+        knobs["host_source"] = parent.knobs.get("source") or parent.level
+        knobs["ir_join"] = 1
+        knobs["champ"] = 1
+        knobs["champ_cone"] = 1
+        knobs["region"] = region
+        knobs["x_dbu"] = x_dbu
+        knobs["y_dbu"] = y_dbu
+        knobs["region_density"] = region_density if region_density is not None else 0.30
+        ice_pe = ir_cell_champ_cone_extract_cand(mem)
+        knobs["parent_extract_id"] = (
+            str((ice_pe.knobs or {}).get("extract_id") or ice_pe.id) if ice_pe else ""
+        )
     elif region or x_dbu is not None:
         knobs["source"] = "f4_region_extract"
         knobs["region"] = region
@@ -994,6 +1013,17 @@ def evaluate_f4_extract(
             attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
             attr["residual_vs"] = ice.id
             attr["residual_via"] = "ir_cell_champ_cone_vs_ir_cell_champ_extract"
+    if kind == "ir_cell_champ_cone_region":
+        from .active import ir_cell_champ_cone_extract_cand
+
+        attr["via"] = "f4_ir_cell_champ_cone_region_extract"
+        attr["host_level"] = parent.level
+        attr["host_source"] = parent.knobs.get("source") or parent.level
+        ice = ir_cell_champ_cone_extract_cand(mem)
+        if ice and ice.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
+            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
+            attr["residual_vs"] = ice.id
+            attr["residual_via"] = "ir_cell_champ_cone_region_vs_ir_cell_champ_cone_extract"
     kind_note = {
         "host": "host",
         "host_region": "host-region",
@@ -1001,6 +1031,7 @@ def evaluate_f4_extract(
         "ir_cell_region": "IR-cell-region",
         "ir_cell_champ": "IR-cell-champ",
         "ir_cell_champ_cone": "IR-cell-champ-cone",
+        "ir_cell_champ_cone_region": "IR-cell-champ-cone-region",
     }.get(kind, "candidate")
     q = QoR(
         area_um2=parent.qor.area_um2,
