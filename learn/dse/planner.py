@@ -485,6 +485,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
+    steps.append(
+        {
+            "level": "static_mesh",
+            "reason": (
+                "Null pkg_r residual (ideal bump V sources) pays denser bumps on "
+                "the static-IR champ ODB — same place, not a new GPL, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

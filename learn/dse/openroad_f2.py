@@ -788,3 +788,131 @@ exit
             else {}
         ),
     }
+
+
+def extract_pdn_bumps(
+    odb: Path,
+    out_dir: Path,
+    *,
+    bump_dx: float = 80.0,
+    bump_dy: float = 80.0,
+    bump_size: float = 40.0,
+    bump_interval: int = 3,
+    pkg_r: float = 0.05,
+    timeout_s: float = 45.0,
+    insts_src: Path | str | None = None,
+) -> dict:
+    """Same legalized ODB, denser bump sources. Not a new GPL, not gold, not pkg_r.
+
+    write_pg_spice voltage sources are ideal; on-die static IR moves with bump
+    pitch. Package R stays a worker-side Thevenin pad (static_ir_pkg_mv).
+    """
+    if not extract_available():
+        return {
+            "status": "GAP",
+            "reason": "openroad/LEF/PDN tcl missing",
+            "via": "openroad_pdn_bumps",
+            "gold": False,
+        }
+    odb = Path(odb)
+    out_dir = Path(out_dir)
+    if not odb.is_file():
+        return {"status": "fail", "reason": f"missing {odb}", "via": "openroad_pdn_bumps", "gold": False}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    spice = out_dir / "pg_vdd_bumps.sp"
+    out_odb = out_dir / "candidate.odb"
+    insts = out_dir / "inst_power_map.json"
+    logp = out_dir / "extract.log"
+    tcl = f"""
+set_thread_count 1
+read_lef {TECH_LEF}
+read_lef {SC_LEF}
+read_liberty {LIB}
+read_db {odb}
+set_power_activity -global -activity 0.2 -duty 0.5
+set_pdnsim_source_settings -bump_dx {float(bump_dx)} -bump_dy {float(bump_dy)} -bump_size {float(bump_size)} -bump_interval {int(bump_interval)} -external_resistance {float(pkg_r)}
+analyze_power_grid -net VDD -source_type BUMPS
+write_pg_spice -net VDD -source_type BUMPS {spice}
+write_db {out_odb}
+puts DSE_PDN_BUMPS_OK
+exit
+"""
+    t0 = time.time()
+    script = out_dir / "extract.tcl"
+    script.write_text(tcl)
+    try:
+        proc = subprocess.run(
+            ["openroad", "-exit", "-no_init", str(script)],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "fail",
+            "reason": f"PDN bump extract timeout {timeout_s}s",
+            "via": "openroad_pdn_bumps",
+            "gold": False,
+            "cost_s": time.time() - t0,
+        }
+    log = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    logp.write_text(log)
+    err = next(
+        (ln.strip() for ln in log.splitlines() if ln.startswith("[ERROR") or ln.startswith("Error:")),
+        "",
+    )
+    if "DSE_PDN_BUMPS_OK" not in log or proc.returncode != 0 or not spice.is_file():
+        return {
+            "status": "fail",
+            "reason": err or "pdn_bump_extract_failed",
+            "via": "openroad_pdn_bumps",
+            "gold": False,
+            "cost_s": time.time() - t0,
+            "log": str(logp),
+        }
+    if out_odb.is_file():
+        try:
+            exp = subprocess.run(
+                ["openroad", "-python", "-no_init", "-exit", str(EXPORT_INSTS), str(out_odb), str(insts)],
+                capture_output=True,
+                text=True,
+                timeout=min(30.0, timeout_s),
+            )
+            if exp.returncode != 0 or not insts.is_file():
+                insts = Path(insts_src) if insts_src and Path(insts_src).is_file() else insts
+        except subprocess.TimeoutExpired:
+            if insts_src and Path(insts_src).is_file():
+                insts = Path(insts_src)
+    elif insts_src and Path(insts_src).is_file():
+        insts = Path(insts_src)
+    if not Path(insts).is_file():
+        return {
+            "status": "fail",
+            "reason": "inst map missing after bump restamp",
+            "via": "openroad_pdn_bumps",
+            "gold": False,
+            "spice": str(spice),
+            "cost_s": time.time() - t0,
+        }
+    n_r, n_i = _spice_counts(spice)
+    n_v = sum(1 for ln in spice.read_text(errors="replace").splitlines() if ln.startswith("V"))
+    return {
+        "status": "ok",
+        "spice": str(spice),
+        "insts": str(insts),
+        "odb": str(out_odb) if out_odb.is_file() else str(odb),
+        "n_r": n_r,
+        "n_i": n_i,
+        "n_v": n_v,
+        "bump_dx": float(bump_dx),
+        "bump_dy": float(bump_dy),
+        "bump_size": float(bump_size),
+        "bump_interval": int(bump_interval),
+        "legalize": "reuse_odb",
+        "gold": False,
+        "via": (
+            f"openroad write_pg_spice bump_dx={bump_dx} on the static-IR champ ODB "
+            "— same place, not a new GPL, not decap, not gold"
+        ),
+        "cost_s": time.time() - t0,
+    }

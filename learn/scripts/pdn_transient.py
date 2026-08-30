@@ -64,34 +64,55 @@ def build_system(resistors, currents, voltages):
     return order, idx, G
 
 
-def solve_static(G, idx, order, currents, voltages, vdd):
-    n = G.shape[0]
-    fixed_set = {idx[nm] for nm in voltages if nm in idx}
-    free_idx = [i for i in range(n) if i not in fixed_set]
-    fixed_idx = sorted(fixed_set)
-    if not free_idx:
-        raise SystemExit("no free nodes")
+def solve_static(G, idx, order, currents, voltages, vdd, pkg_r=0.0):
+    """On-die DC IR. pkg_r>0 stamps a Thevenin pad (same DC limit as assemble_be).
 
+    Default pkg_r=0 keeps bump nodes fixed at VDD — on-die drop only.
+    Live champ extract showed pkg_r restamp is a null residual under that model
+    because write_pg_spice voltage sources are ideal 1.1 V bumps.
+    """
+    n = G.shape[0]
+    bump = [idx[nm] for nm in voltages if nm in idx]
+    bump_v = [float(voltages[nm]) for nm in voltages if nm in idx]
+    pkg = float(pkg_r or 0.0)
     I = np.zeros(n)
     for nm, cur in currents.items():
         if nm in idx:
             I[idx[nm]] -= cur
 
+    Gwork = G.tolil()
+    if pkg > 0 and bump:
+        g_pad = 1.0 / max(pkg, 1e-9)
+        for i, vs in zip(bump, bump_v):
+            Gwork[i, i] += g_pad
+            I[i] += g_pad * vs
+        fixed_set = set()
+    else:
+        fixed_set = set(bump)
+        Vfix = np.zeros(n)
+        for i, vs in zip(bump, bump_v):
+            Vfix[i] = vs
+
+    free_idx = [i for i in range(n) if i not in fixed_set]
+    fixed_idx = sorted(fixed_set)
+    if not free_idx:
+        raise SystemExit("no free nodes")
+
     V = np.zeros(n)
-    for nm, volt in voltages.items():
-        if nm in idx:
-            V[idx[nm]] = volt
+    if fixed_idx:
+        V[fixed_idx] = Vfix[fixed_idx]
 
     # Regularize floating islands (tiny shunt to a reference)
-    G = G.tolil()
     for i in free_idx:
-        G[i, i] += 1e-8
-    G = G.tocsr()
+        Gwork[i, i] += 1e-8
+    Gwork = Gwork.tocsr()
 
-    Gff = G[free_idx][:, free_idx].tocsc()
-    Gfp = G[free_idx][:, fixed_idx]
-    Vp = V[fixed_idx]
-    rhs = I[free_idx] - Gfp @ Vp
+    Gff = Gwork[free_idx][:, free_idx].tocsc()
+    if fixed_idx:
+        Gfp = Gwork[free_idx][:, fixed_idx]
+        rhs = I[free_idx] - Gfp @ V[fixed_idx]
+    else:
+        rhs = I[free_idx]
     Vf = spsolve(Gff, rhs)
     V[free_idx] = Vf
 
@@ -105,10 +126,12 @@ def solve_static(G, idx, order, currents, voltages, vdd):
         "worst_node": order[imin],
         "total_current_a": float(sum(currents.values())),
         "nodes": n,
-        "resistors": int(G.nnz // 2),
+        "resistors": int(Gwork.nnz // 2),
         "loads": len(currents),
         "sources": len(voltages),
         "solver": "spsolve",
+        "pkg_r": pkg,
+        "pad": "thevenin" if pkg > 0 and bump else "ideal_bump",
     }
 
 

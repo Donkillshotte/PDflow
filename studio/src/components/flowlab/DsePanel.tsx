@@ -91,6 +91,11 @@ type DseReport = {
   static_ir_steer_dyn_mv?: number;
   static_ir_steer_name?: string;
   static_ir_steer_vs_champ_mv?: number;
+  n_static_mesh?: number;
+  static_mesh_mv?: number;
+  static_mesh_dyn_mv?: number;
+  static_mesh_name?: string;
+  static_mesh_vs_champ_mv?: number;
   n_f4_ir_cell_extract?: number;
   n_ir_cell_pdn?: number;
   ir_cell_extract_mv?: number;
@@ -159,7 +164,7 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
+          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.n_static_mesh || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -224,6 +229,15 @@ export function DsePanel() {
                   : report.n_static_ir_steer != null
                     ? ` · SI ${report.n_static_ir_steer}`
                     : ""}
+              {report.static_mesh_mv != null
+                ? ` · SM ${report.static_mesh_name ?? "bumps"} ${report.static_mesh_mv.toFixed(3)} mV${
+                    report.static_mesh_vs_champ_mv != null
+                      ? ` Δ=${report.static_mesh_vs_champ_mv >= 0 ? "+" : ""}${report.static_mesh_vs_champ_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.n_static_mesh != null
+                  ? ` · SM ${report.n_static_mesh}`
+                  : ""}
               {report.ir_cell_extract_mv != null
                 ? ` · IR-x ${report.ir_cell_extract_mv.toFixed(3)} mV${
                     report.ir_cell_extract_residual_mv != null
@@ -333,6 +347,7 @@ export function DsePanel() {
                 {report.n_f4_ras_champ != null ? ` · RAS-c ${report.n_f4_ras_champ}` : ""}
                 {report.n_f4_krylov_champ != null ? ` · Kry-c ${report.n_f4_krylov_champ}` : ""}
                 {report.n_static_ir_steer != null ? ` · SI ${report.n_static_ir_steer}` : ""}
+                {report.n_static_mesh != null ? ` · SM ${report.n_static_mesh}` : ""}
                 {report.n_f4_ir_cell_extract != null ? ` · IR-x ${report.n_f4_ir_cell_extract}` : ""}
                 {report.n_ir_cell_pdn != null ? ` · IR-p ${report.n_ir_cell_pdn}` : ""}
                 {report.n_f4_ir_cell_region_extract != null

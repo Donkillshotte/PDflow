@@ -1741,6 +1741,42 @@ def should_pay_static_ir_steer(
     return True, str(steer.get("reason") or "static IR steers unused pkg_r — not decap, not gold")
 
 
+def should_pay_static_mesh(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 12.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """Pay denser bumps on the static-IR champ ODB after a null pkg_r residual."""
+    from pathlib import Path
+
+    if n_steer >= steer_max:
+        return False, "static-IR bump mesh shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover static-IR bump restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no static-IR residual-steered bump action"
+    spec = steer["spec"]
+    from .pdn_space import PDN_CATALOG, STATIC_PDN_CATALOG
+
+    names = {s["name"] for s in PDN_CATALOG} | {s["name"] for s in STATIC_PDN_CATALOG}
+    if str(spec.get("name") or "") in names:
+        return False, "static-IR mesh refuses a pkg_r / decap / pkg L catalog point"
+    if spec.get("bump_dx") is None:
+        return False, "static-IR mesh requires a bump_dx delta, not a PDN restamp"
+    eid = str(steer["extract_id"])
+    if eid in ("finish", ""):
+        return False, "static-IR mesh refuses the gold finish extract"
+    odb = steer.get("odb")
+    if not odb or not Path(odb).is_file():
+        return False, "static-IR champion ODB is not on disk"
+    return True, str(steer.get("reason") or "static IR steers unused bump pitch — not pkg_r, not gold")
+
+
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
     return _latest_extract(mem, source="f4_candidate_extract")
@@ -1778,6 +1814,13 @@ def _latest_extract(mem: DesignMemory, *, source: str) -> dict | None:
                 "n_r": art.get("n_r"),
                 "sta": art.get("sta_arrivals"),
                 "candidate": c,
+                "odb": art.get("odb")
+                if art.get("odb") and Path(str(art.get("odb"))).is_file()
+                else (
+                    str(Path(spice).parent / "candidate.odb")
+                    if spice and (Path(spice).parent / "candidate.odb").is_file()
+                    else None
+                ),
             }
     return None
 
@@ -1793,6 +1836,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
         "f4_ir_cell_extract",
         "f4_ir_cell_region_extract",
         "f4_ir_cell_champ_extract",
+        "f4_static_mesh_extract",
     ):
         hit = _latest_extract(mem, source=src)
         if hit and str(hit["extract_id"]) == want:
@@ -1813,14 +1857,20 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
             "f4_ir_cell_extract",
             "f4_ir_cell_region_extract",
             "f4_ir_cell_champ_extract",
+            "f4_static_mesh_extract",
         ):
             continue
         art = c.artifacts or {}
         spice, insts = art.get("spice"), art.get("insts")
         if spice and insts and Path(spice).is_file() and Path(insts).is_file():
+            odb = art.get("odb")
+            if not odb or not Path(str(odb)).is_file():
+                guess = Path(spice).parent / "candidate.odb"
+                odb = str(guess) if guess.is_file() else None
             return {
                 "spice": spice,
                 "insts": insts,
+                "odb": odb,
                 "extract_id": want,
                 "parent_id": (c.knobs or {}).get("parent_id"),
                 "n_r": art.get("n_r"),
@@ -1891,6 +1941,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "f4_ir_cell_champ_extract",
         "ir_cell_champ_pdn",
         "static_ir_steer",
+        "static_mesh",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):

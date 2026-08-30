@@ -32,7 +32,14 @@ from dse.memory import Candidate, DesignMemory
 from dse.metrics import QoR, dominates, pareto_front, wns_cost_from_slack_ns
 from dse.mo import ehvi_2d, hypervolume_2d
 from dse.physical_space import PHYSICAL_CATALOG, gpl_density, next_catalog_spec, rudy_congestion
-from dse.pdn_space import PDN_CATALOG, STATIC_PDN_CATALOG, next_pdn_spec, next_static_pdn_spec
+from dse.pdn_space import (
+    PDN_CATALOG,
+    STATIC_MESH_CATALOG,
+    STATIC_PDN_CATALOG,
+    next_pdn_spec,
+    next_static_mesh_spec,
+    next_static_pdn_spec,
+)
 
 
 def check(ok: bool, msg: str) -> None:
@@ -187,6 +194,9 @@ def main() -> int:
     check(next_pdn_spec(mem).get("name") == "decap_200f", "empty PDN memory proposes extra decap first")
     check(all(s["name"] != "pkg_r_25m" for s in PDN_CATALOG), "pkg_r is not flattened into the Dynamic IR catalog")
     check(STATIC_PDN_CATALOG[0]["name"] == "pkg_r_25m", "static-IR catalog starts with pkg_r_25m")
+    check(all(s["name"] != "bumps_80" for s in PDN_CATALOG), "bump pitch is not flattened into the Dynamic IR catalog")
+    check(all(s["name"] != "bumps_80" for s in STATIC_PDN_CATALOG), "bump pitch is not flattened into the pkg_r catalog")
+    check(STATIC_MESH_CATALOG[0]["name"] == "bumps_80", "static-IR mesh catalog starts with bumps_80")
     check(
         knobs_fp("pdn", {"pkg_l": 2e-10, "c_decap": 50e-15})
         != knobs_fp("logic", {"pkg_l": 2e-10, "c_decap": 50e-15}),
@@ -370,6 +380,7 @@ def main() -> int:
     check(any(s["level"] == "f4_ras_champ" for s in planned["steps"]), "planner schedules champion RAS residual")
     check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
     check(any(s["level"] == "static_ir_steer" for s in planned["steps"]), "planner schedules static-IR pkg_r steer")
+    check(any(s["level"] == "static_mesh" for s in planned["steps"]), "planner schedules static-IR bump mesh")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -472,6 +483,7 @@ def main() -> int:
     check(next_fidelity(level="f4_ras_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion RAS measures at F4")
     check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
     check(next_fidelity(level="static_ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR pkg_r steer measures at F4")
+    check(next_fidelity(level="static_mesh", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR bump mesh measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -606,6 +618,11 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_solver_a", "name": "pkg_r_25m", "extract_id": "icreg", "pkg_r": 0.025, "c_decap": 200e-15})
         != knobs_fp("pdn", {"source": "f4_solver_a", "name": "decap_200f", "extract_id": "icreg", "pkg_r": 0.05, "c_decap": 200e-15}),
         "static-IR pkg_r is not flattened into the Dynamic IR decap fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_static_mesh_extract", "name": "bumps_80", "bump_dx": 80, "extract_id": "icreg"})
+        != knobs_fp("pdn", {"source": "f4_solver_a", "name": "pkg_r_25m", "extract_id": "icreg", "pkg_r": 0.025, "c_decap": 200e-15}),
+        "static-IR bump mesh is not flattened into the pkg_r fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1353,6 +1370,7 @@ def main() -> int:
         should_pay_f4_ras_champ,
         should_pay_f4_krylov_champ,
         should_pay_static_ir_steer,
+        should_pay_static_mesh,
         should_pay_ir_cell_champ,
         should_pay_ir_cell_champ_extract,
         should_pay_ir_cell_champ_pdn,
@@ -2850,6 +2868,58 @@ def main() -> int:
     spec_st = next_static_pdn_spec(mem_hr, win_st)
     check(spec_st is not None and spec_st["name"] == "pkg_r_25m", f"next_static_pdn_spec proposes pkg_r, got {spec_st}")
     check(next_pdn_spec(mem_hr, extract_id="icreg") is not None, "Dynamic IR catalog is still independent of pkg_r")
+    from dse.active import steer_from_static_mesh_residual
+
+    check(steer_from_static_mesh_residual(mem_hr) is None, "static mesh waits for a null pkg_r residual")
+    odb_sm = Path(tempfile.mkdtemp(prefix="dse-sm-")) / "candidate.odb"
+    odb_sm.write_bytes(b"odb")
+    ice_reg = next(c for c in mem_hr.all() if c.id == "icreg")
+    ice_reg.artifacts = dict(ice_reg.artifacts or {})
+    ice_reg.artifacts["odb"] = str(odb_sm)
+    mem_hr.touch(ice_reg)
+    mem_hr.add(
+        Candidate(
+            id="pkgr",
+            design_id="gcd",
+            parent_id="icreg",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "pkg_r_25m",
+                "extract_id": "icreg",
+                "pkg_r": 0.025,
+                "pkg_l": 2e-10,
+                "c_decap": 200e-15,
+                "i_scale": 1.0,
+            },
+            knobs_fp="pkgr",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=3.920, static_ir_mv=6.178, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "active_f4_static_ir", "residual_vs_static_champ_mv": 0.0},
+        )
+    )
+    st_sm = steer_from_static_mesh_residual(mem_hr)
+    check(st_sm is not None and (st_sm.get("spec") or {}).get("name") == "bumps_80", f"null pkg_r residual steers bumps, got {st_sm}")
+    check(st_sm.get("extract_id") == "icreg", f"static mesh stays on the static champ extract, got {st_sm}")
+    check((st_sm.get("spec") or {}).get("name") not in ("decap_200f", "pkg_l_100p", "pkg_r_25m"), "static mesh does not consume pkg_r / Dynamic IR catalogs")
+    check(st_sm.get("odb") == str(odb_sm), f"static mesh names the champ ODB, got {st_sm}")
+    pay_sm0, why_sm0 = should_pay_static_mesh(mem_hr, budget_left=80, steer=None)
+    check(not pay_sm0, f"static mesh waits for a bump steer ({why_sm0})")
+    pay_sm1, why_sm1 = should_pay_static_mesh(mem_hr, budget_left=80, steer=st_sm)
+    check(pay_sm1, f"static mesh bumps are paid after a null pkg_r residual ({why_sm1})")
+    check("not Dynamic IR-steer" in why_sm1 and "not gold" in why_sm1, f"static mesh refuses Dynamic IR flatten ({why_sm1})")
+    fake_pkg = dict(st_sm)
+    fake_pkg["spec"] = {"name": "pkg_r_25m", "pkg_r": 0.025, "pkg_l": 2e-10, "c_decap": 200e-15}
+    pay_sm_ref, why_sm_ref = should_pay_static_mesh(mem_hr, budget_left=80, steer=fake_pkg)
+    check(not pay_sm_ref, f"static mesh refuses a pkg_r catalog point ({why_sm_ref})")
+    pay_sm2, why_sm2 = should_pay_static_mesh(mem_hr, budget_left=80, steer=st_sm, n_steer=1)
+    check(not pay_sm2, f"static mesh is a single shot ({why_sm2})")
+    spec_sm = next_static_mesh_spec(mem_hr)
+    check(spec_sm is not None and spec_sm["name"] == "bumps_80", f"next_static_mesh_spec proposes bumps_80, got {spec_sm}")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

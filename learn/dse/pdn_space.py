@@ -22,6 +22,13 @@ STATIC_PDN_CATALOG: list[dict] = [
     {"name": "pkg_r_25m", "pkg_r": 0.025, "pkg_l": 2e-10, "c_decap": 50e-15},
 ]
 
+# On-die static IR. Live pkg_r_25m on b7cc was Δ=+0.000 because solve_static
+# fixes ideal bump V sources. Denser bumps restamp the same ODB — not GPL,
+# not flattened into PDN_CATALOG / STATIC_PDN_CATALOG.
+STATIC_MESH_CATALOG: list[dict] = [
+    {"name": "bumps_80", "bump_dx": 80.0, "bump_dy": 80.0, "bump_size": 40.0, "bump_interval": 3},
+]
+
 GOLD_KNOBS = {"pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 50e-15}
 
 
@@ -73,4 +80,25 @@ def next_static_pdn_spec(mem: DesignMemory, host) -> dict | None:
         key = (out["pkg_r"], out["pkg_l"], out["c_decap"])
         if key not in have:
             return out
+    return None
+
+
+def measured_static_mesh_keys(mem: DesignMemory) -> set[tuple[float, float]]:
+    keys: set[tuple[float, float]] = set()
+    for c in mem.by_level("pdn"):
+        k = c.knobs or {}
+        if k.get("source") != "f4_static_mesh_extract":
+            continue
+        if k.get("bump_dx") is None or k.get("bump_dy") is None:
+            continue
+        keys.add((float(k["bump_dx"]), float(k["bump_dy"])))
+    return keys
+
+
+def next_static_mesh_spec(mem: DesignMemory) -> dict | None:
+    have = measured_static_mesh_keys(mem)
+    for spec in STATIC_MESH_CATALOG:
+        key = (float(spec["bump_dx"]), float(spec["bump_dy"]))
+        if key not in have:
+            return dict(spec)
     return None

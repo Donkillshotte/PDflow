@@ -265,6 +265,126 @@ def evaluate_f4_pdn(
     return mem.add(c)
 
 
+def evaluate_f4_static_mesh(
+    mem: DesignMemory,
+    spec: dict,
+    *,
+    variant: str = "flowlab",
+    design_id: str = "gcd",
+    parent_id: str | None = None,
+    odb: Path | str,
+    insts_src: Path | str | None = None,
+    sta: Path | str | None = None,
+    host=None,
+    parent_extract_id: str = "",
+) -> Candidate | None:
+    """Denser bump write_pg_spice on an existing ODB. Not a new GPL, not gold."""
+    from .attribute import attribute_dynamic_ir
+    from .f4_oracle import solve_f4
+    from .openroad_f2 import extract_pdn_bumps
+
+    knobs = {
+        "source": "f4_static_mesh_extract",
+        "name": spec.get("name"),
+        "bump_dx": float(spec["bump_dx"]),
+        "bump_dy": float(spec["bump_dy"]),
+        "bump_size": float(spec.get("bump_size") or 40.0),
+        "bump_interval": int(spec.get("bump_interval") or 3),
+        "pkg_r": float((host.knobs or {}).get("pkg_r") or 0.05) if host else 0.05,
+        "pkg_l": float((host.knobs or {}).get("pkg_l") or 2e-10) if host else 2e-10,
+        "c_decap": float((host.knobs or {}).get("c_decap") or 50e-15) if host else 50e-15,
+        "i_scale": 1.0,
+        "parent_extract_id": parent_extract_id,
+        "parent_id": parent_id,
+    }
+    fp = knobs_fp("pdn", knobs)
+    if fp in mem.seen_knobs("pdn"):
+        return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
+    cid = DesignMemory.new_id()
+    out_dir = REPO / "learn" / "sim" / "dse" / "extracts" / cid
+    ext = extract_pdn_bumps(
+        Path(odb),
+        out_dir,
+        bump_dx=float(spec["bump_dx"]),
+        bump_dy=float(spec["bump_dy"]),
+        bump_size=float(spec.get("bump_size") or 40.0),
+        bump_interval=int(spec.get("bump_interval") or 3),
+        pkg_r=float(knobs["pkg_r"]),
+        insts_src=insts_src,
+    )
+    spice, insts = ext.get("spice"), ext.get("insts")
+    dyn: dict = {}
+    extract_cost = float(ext.get("cost_s") or 0.0)
+    if ext.get("status") == "ok" and spice and insts:
+        sta_p = Path(sta) if sta and Path(sta).is_file() else None
+        dyn = solve_f4(
+            variant=variant,
+            pkg_r=float(knobs["pkg_r"]),
+            pkg_l=float(knobs["pkg_l"]),
+            c_decap=float(knobs["c_decap"]),
+            i_scale=1.0,
+            spice=spice,
+            insts=insts,
+            extract_kind="candidate",
+            sta=sta_p,
+        )
+        ext = {**ext, **{k: v for k, v in dyn.items() if k != "cost_s"}}
+        ext["extract_cost_s"] = extract_cost
+        ext["solve_cost_s"] = dyn.get("cost_s")
+        ext["cost_s"] = extract_cost + float(dyn.get("cost_s") or 0.0)
+    knobs["extract_id"] = cid
+    em = (dyn.get("em") or ext.get("em") or {}) if isinstance(dyn, dict) else {}
+    attr = attribute_dynamic_ir(
+        {
+            "hotspot": {
+                "node": ext.get("worst_node"),
+                "droop_mv": ext.get("worst_droop_mv"),
+                "x_dbu": ext.get("x_dbu"),
+                "y_dbu": ext.get("y_dbu"),
+                "contributors": {
+                    "seq_frac": ext.get("seq_frac"),
+                    "combo_frac": ext.get("combo_frac"),
+                },
+            },
+            "em": em,
+        }
+    )
+    attr["via"] = "active_f4_static_mesh"
+    attr["extract_id"] = cid
+    attr["parent_extract_id"] = parent_extract_id
+    q = QoR(
+        static_ir_mv=ext.get("static_ir_mv") or dyn.get("static_ir_mv"),
+        dynamic_ir_mv=ext.get("worst_droop_mv") or dyn.get("worst_droop_mv"),
+        em_j_a_m2=em.get("j_absmax_a_m2"),
+        ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
+        fidelity="F4",
+        note=(
+            f"static-IR bump mesh {spec.get('name')} n_v={ext.get('n_v')} "
+            f"static={ext.get('static_ir_mv')} — not finish, not gold"
+        ),
+    )
+    ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
+    c = Candidate(
+        id=cid,
+        design_id=design_id,
+        parent_id=parent_id,
+        level="pdn",
+        knobs=knobs,
+        knobs_fp=fp,
+        rtl_fp=sha256_file(REPO / "learn" / "flowlab" / "gcd.v"),
+        netlist_fp=None,
+        fidelity="F4",
+        qor=q,
+        cost_s=float(ext.get("cost_s") or 0.0),
+        artifacts=ext,
+        attr=attr,
+        status="ok" if ok else "fail",
+        failure=ext.get("reason") if not ok else None,
+        note=f"F4 static mesh {spec.get('name')} on {parent_extract_id} — not gold",
+    )
+    return mem.add(c)
+
+
 def evaluate_f4_scale(
     parent: Candidate,
     mem: DesignMemory,

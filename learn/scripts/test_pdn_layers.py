@@ -242,8 +242,21 @@ I1 ITermNode_metal1_100_1 0 DC 2.0e-3
     check(len(remapped) == 2 and remapped[0]["idx"] == 10 and remapped[1]["idx"] == 11, "remap VDD idx → VSS idx")
     check(all(r.get("rail") == "VSS" for r in remapped), "remapped events tagged VSS")
 
-    from pdn_transient import build_system
+    from pdn_transient import build_system, solve_static
     from pdn_dynamic import run_return_rail
+    from scipy import sparse as _sp
+
+    g_on = 1.0
+    Gtiny = _sp.csr_matrix([[g_on, -g_on], [-g_on, g_on]])
+    st0 = solve_static(Gtiny, {"bump": 0, "load": 1}, ["bump", "load"], {"load": 0.01}, {"bump": 1.1}, 1.1)
+    check(abs(st0["worst_ir"] - 0.01) < 1e-9, f"ideal-bump static is on-die only, got {st0['worst_ir']}")
+    check(st0.get("pad") == "ideal_bump", "default static pad is ideal bump")
+    st1 = solve_static(Gtiny, {"bump": 0, "load": 1}, ["bump", "load"], {"load": 0.01}, {"bump": 1.1}, 1.1, pkg_r=1.0)
+    check(abs(st1["worst_ir"] - 0.02) < 1e-9, f"Thevenin pkg_r adds package drop, got {st1['worst_ir']}")
+    check(st1["worst_ir"] > st0["worst_ir"], "pkg_r in the DC oracle moves static IR")
+    st2 = solve_static(Gtiny, {"bump": 0, "load": 1}, ["bump", "load"], {"load": 0.01}, {"bump": 1.1}, 1.1, pkg_r=0.5)
+    check(st2["worst_ir"] < st1["worst_ir"], "lower pkg_r lowers package-inclusive static IR")
+    check(st2.get("pad") == "thevenin", "pkg_r>0 uses a Thevenin pad")
 
     ext_vdd = extract_pdn(vdd_sp)
     _ord, idx_vdd, _G = build_system(ext_vdd["resistors"], ext_vdd["currents"], ext_vdd["voltages"])

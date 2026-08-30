@@ -645,3 +645,52 @@ def residual_f4_static(all_cands: list[Candidate]) -> dict:
     if d_static is not None:
         out["static_vs_dynamic_champ_mv"] = s_mv - d_static
     return out
+
+
+def residual_f4_static_mesh(all_cands: list[Candidate]) -> dict:
+    """On-die bump-mesh residual vs static-IR champ. Not a pkg_r copy."""
+    from .active import winning_static_pdn
+
+    by_level: dict[str, list[Candidate]] = {}
+    for c in all_cands:
+        by_level.setdefault(c.level, []).append(c)
+
+    class _View:
+        def by_level(self, level):
+            return by_level.get(level, [])
+
+        def all(self):
+            return all_cands
+
+    view = _View()
+    win_s = winning_static_pdn(view)  # type: ignore[arg-type]
+    mesh = None
+    for c in reversed(all_cands):
+        if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_static_mesh":
+            mesh = c
+            break
+    if mesh is None or mesh.qor.static_ir_mv is None:
+        return {
+            "metric": "static_ir_mv",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no on-die bump mesh on the static-IR family",
+            "not": "pkg_r / decap / a mixed ABC+PDN vector",
+        }
+    m_mv = float(mesh.qor.static_ir_mv)
+    s_mv = float(win_s.qor.static_ir_mv) if win_s and win_s.qor.static_ir_mv is not None else None
+    out = {
+        "metric": "static_ir_mv",
+        "mesh_mv": m_mv,
+        "mesh_id": mesh.id,
+        "mesh_name": (mesh.knobs or {}).get("name"),
+        "bump_dx": (mesh.knobs or {}).get("bump_dx"),
+        "n": 1,
+        "uncertainty": "medium",
+        "via": "F4 on-die bump pitch vs static-IR champ — not pkg_r",
+        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+    }
+    if s_mv is not None:
+        out["winning_static_mv"] = s_mv
+        out["mesh_vs_static_champ_mv"] = m_mv - s_mv
+    return out
