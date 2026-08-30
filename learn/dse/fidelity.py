@@ -972,9 +972,12 @@ def evaluate_f4_extract(
         return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
     cid = DesignMemory.new_id()
     out_dir = REPO / "learn" / "sim" / "dse" / "extracts" / cid
+    spec = resolve(design_id)
     ext = extract_pdn(
         Path(mapped),
         out_dir,
+        top=spec.top,
+        sdc=spec.constraint,
         util=util,
         density=density,
         timeout_s=timeout_s,
@@ -2307,8 +2310,15 @@ def evaluate_f2_grt(
         return next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
     cid = DesignMemory.new_id()
     sdf_dest = REPO / "learn" / "sim" / "dse" / "sdf" / f"{cid}.sdf"
+    spec = resolve(design_id)
     grt = evaluate_grt(
-        Path(mapped), util=util, density=density, timeout_s=timeout_s, sdf_out=sdf_dest
+        Path(mapped),
+        top=spec.top,
+        sdc=spec.constraint,
+        util=util,
+        density=density,
+        timeout_s=timeout_s,
+        sdf_out=sdf_dest,
     )
     from .attribute import attribute_sta
 

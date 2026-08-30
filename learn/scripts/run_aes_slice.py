@@ -22,6 +22,7 @@ from dse.fidelity import (  # noqa: E402
     evaluate_f2_fast,
     evaluate_f2_gpl,
     evaluate_f3_sta,
+    evaluate_f4_extract,
     liberty_path,
 )
 from dse.memory import DesignMemory  # noqa: E402
@@ -93,8 +94,23 @@ def main() -> int:
         f"hpwl_um={(f2g.artifacts or {}).get('hpwl_um')} cost={f2g.cost_s:.1f}s "
         f"fail={f2g.failure}"
     )
+    f4 = evaluate_f4_extract(f1, mem, design_id="aes", variant="aes", timeout_s=300.0)
+    if f4 is None:
+        print("F4 extract skipped")
+        return 1
+    print(
+        f"F4 {f4.id} status={f4.status} droop={f4.qor.dynamic_ir_mv} "
+        f"n_r={(f4.artifacts or {}).get('n_r')} sdc={(f4.artifacts or {}).get('sdc')} "
+        f"cost={f4.cost_s:.1f}s fail={f4.failure}"
+    )
     report = {
-        "ok": f1.status == "ok" and f2.status == "ok" and f3.status == "ok" and f2g.status == "ok",
+        "ok": (
+            f1.status == "ok"
+            and f2.status == "ok"
+            and f3.status == "ok"
+            and f2g.status == "ok"
+            and f4.status == "ok"
+        ),
         "kind": "dse",
         "engine": "aes-slice",
         "design_id": "aes",
@@ -114,6 +130,10 @@ def main() -> int:
         "f2_gpl_id": f2g.id,
         "f2_gpl_overflow": f2g.qor.congestion,
         "f2_gpl_hpwl_um": (f2g.artifacts or {}).get("hpwl_um"),
+        "f4_id": f4.id,
+        "f4_dynamic_ir_mv": f4.qor.dynamic_ir_mv,
+        "f4_n_r": (f4.artifacts or {}).get("n_r"),
+        "f4_sdc": (f4.artifacts or {}).get("sdc"),
         "not": [
             "gcd dpath/ctrl",
             "gcd 0.46 ns SDC",

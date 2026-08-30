@@ -252,14 +252,16 @@ def evaluate_grt(
     verilog: Path,
     *,
     top: str = "gcd",
+    sdc: Path | None = None,
     util: float = 35.0,
     density: float = 0.55,
     timeout_s: float = 45.0,
     sdf_out: Path | None = None,
 ) -> dict:
     """Place pins + GPL + global_route. Routing-level F2. Not detailed route/F5."""
-    if not available() or not SDC.is_file():
-        return {"status": "GAP", "reason": "openroad/LEF/SDC missing", "via": "openroad_grt"}
+    sdc_path = Path(sdc) if sdc else SDC
+    if not available() or not sdc_path.is_file():
+        return {"status": "GAP", "reason": "openroad/LEF/SDC missing — not borrowing gcd", "via": "openroad_grt"}
     verilog = Path(verilog)
     if not verilog.is_file():
         return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_grt"}
@@ -277,7 +279,7 @@ read_lef {SC_LEF}
 read_liberty {LIB}
 read_verilog {verilog}
 link_design {top}
-read_sdc {SDC}
+read_sdc {sdc_path}
 initialize_floorplan -utilization {float(util)} -aspect_ratio 1.0 -core_space 2.0 -site {SITE}
 source {TRACKS}
 {rc}
@@ -634,6 +636,7 @@ def extract_pdn(
     out_dir: Path,
     *,
     top: str = "gcd",
+    sdc: Path | None = None,
     util: float = 35.0,
     density: float = 0.55,
     pkg_r: float = 0.05,
@@ -669,6 +672,14 @@ def extract_pdn(
     blk = region_blockage_tcl(
         x_dbu=x_dbu, y_dbu=y_dbu, region=region, max_density=cap
     )
+    sdc_path = Path(sdc) if sdc else SDC
+    if not sdc_path.is_file():
+        return {
+            "status": "GAP",
+            "reason": f"{top} SDC missing — not borrowing gcd 0.46 ns",
+            "via": "openroad_pdn_extract",
+            "gold": False,
+        }
     tcl = f"""
 set_thread_count 1
 read_lef {TECH_LEF}
@@ -676,7 +687,7 @@ read_lef {SC_LEF}
 read_liberty {LIB}
 read_verilog {verilog}
 link_design {top}
-read_sdc {SDC}
+read_sdc {sdc_path}
 initialize_floorplan -utilization {float(util)} -aspect_ratio 1.0 -core_space 2.0 -site {SITE}
 source {TRACKS}
 tapcell -distance 25 -tapcell_master {TAP_MASTER} -endcap_master {TAP_MASTER}
@@ -769,6 +780,8 @@ exit
         "util": float(util),
         "density": float(density),
         "legalize": "detailed_placement",
+        "top": top,
+        "sdc": str(sdc_path),
         "gold": False,
         "via": (
             "openroad write_pg_spice after place_pins+tapcell+pdngen+GPL+DP"
