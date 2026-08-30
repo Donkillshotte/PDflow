@@ -65,7 +65,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "solver": {
         "via": "dse.f4_oracle + dse_f4_worker (direct|amg|bicg|ras|krylov/MOR)",
-        "note": "DirectLU restamp on named extract; AMG, RAS, and rational Krylov/MOR are MF residuals on the candidate mesh and again on winning_ir_pdn (same DirectLU knobs); static IR searches pkg_r then on-die bump pitch then metal4 straps after null residuals; GCD gold 45.298 mV unrestamped",
+        "note": "DirectLU restamp on named extract; AMG, RAS, and rational Krylov/MOR are MF residuals on the candidate mesh and again on winning_ir_pdn (same DirectLU knobs; re-paid when the 1× extract moves to a new strap R-graph); static IR searches pkg_r then on-die bump pitch then metal4 straps after null residuals; GCD gold 45.298 mV unrestamped",
     },
     "physical_fast": {
         "via": "dse.netgraph",
