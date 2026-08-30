@@ -202,6 +202,18 @@ def next_stage(mem: DesignMemory) -> dict | None:
         for c in reversed(list(mem.all())):
             if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_winning_ir_region_pdn":
                 return {"depth": 0, "stage": "sizeup"}
+        for c in reversed(list(mem.by_level("pdn"))):
+            if (
+                c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_candidate_extract"
+                and (c.attr or {}).get("cells")
+            ):
+                return {
+                    "depth": 0,
+                    "stage": "sizeup",
+                    "cells": [str(x) for x in (c.attr or {}).get("cells") or []],
+                    "via": "inspect_f4",
+                }
         return None
     tail = chain[-1]
     if tail.extract is None:

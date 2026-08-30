@@ -251,13 +251,22 @@ def join_hotspot_insts(
         for cone in _cones_of(n):
             if cone not in cones:
                 cones.append(cone)
+    die = data.get("die") if isinstance(data.get("die"), dict) else {}
+    die_dbu = max(float(die.get("x1") or 0.0), float(die.get("y1") or 0.0)) or 80000.0
+    n_seq = sum(1 for i in picked if i.get("seq"))
+    n_combo = len(picked) - n_seq
+    n_pick = max(len(picked), 1)
     return {
         "n": len(cells),
         "cells": cells,
         "modules": modules,
         "cones": cones,
+        "n_seq": n_seq,
+        "n_combo": n_combo,
+        "combo_frac": n_combo / n_pick,
+        "seq_frac": n_seq / n_pick,
         "nearest_dbu": ranked[0][0] if ranked else None,
-        "region": _region(hx, hy),
+        "region": _region(hx, hy, die_dbu=die_dbu),
         "insts": str(p),
         "via": "ODB inst_power_map geometric join — not a VCD remap",
         "not": "an invented RTL→ITerm map",
@@ -281,11 +290,86 @@ def persist_hotspot_join(cand) -> bool:
     attr["modules"] = list(j.get("modules") or [])
     attr["cones"] = list(j.get("cones") or [])
     attr["join"] = "odb-geom"
+    if j.get("combo_frac") is not None and attr.get("combo_frac") is None:
+        attr["combo_frac"] = j.get("combo_frac")
+        attr["seq_frac"] = j.get("seq_frac")
     if j.get("region") and not attr.get("region"):
         attr["region"] = j.get("region")
     attr["scope"] = "logic_cone" if attr.get("modules") else attr.get("scope") or "region"
     cand.attr = attr
     return True
+
+
+def inspect_f4(cand, *, design_id: str | None = None) -> dict:
+    """Attribute a paid F4 candidate: node → xy → ODB join → block/cone.
+
+    Flattened Yosys names keep ``DesignSpec.top`` as the block. A design
+    without ``dpath``/``ctrl`` cones never inherits those GCD names.
+    """
+    from .designs import resolve
+
+    spec = resolve(design_id or getattr(cand, "design_id", None) or "gcd")
+    art = dict(cand.artifacts or {})
+    attr = dict(cand.attr or {})
+    node = attr.get("node") or art.get("worst_node") or art.get("static_node")
+    x = attr.get("x_dbu") if attr.get("x_dbu") is not None else art.get("x_dbu")
+    y = attr.get("y_dbu") if attr.get("y_dbu") is not None else art.get("y_dbu")
+    if (x is None or y is None) and node:
+        try:
+            from pdn_activity import node_xy
+        except ImportError:
+            import sys
+
+            scripts = Path(__file__).resolve().parents[1] / "scripts"
+            if str(scripts) not in sys.path:
+                sys.path.insert(0, str(scripts))
+            from pdn_activity import node_xy  # type: ignore
+
+        xy = node_xy(str(node))
+        if xy:
+            x, y = xy
+    if x is not None:
+        attr["x_dbu"] = float(x)
+    if y is not None:
+        attr["y_dbu"] = float(y)
+    if node:
+        attr["node"] = node
+    cand.attr = attr
+    persist_hotspot_join(cand)
+    attr = dict(cand.attr or {})
+    modules = [str(m) for m in (attr.get("modules") or []) if m]
+    cones = [str(c) for c in (attr.get("cones") or []) if c]
+    if not spec.has_cone("dpath"):
+        modules = [m for m in modules if m not in ("dpath", "ctrl")]
+        cones = [
+            c
+            for c in cones
+            if not str(c).startswith("dpath") and not str(c).startswith("ctrl")
+        ]
+    if not modules:
+        modules = [spec.top]
+    if not cones:
+        cones = [spec.top]
+    attr["modules"] = modules
+    attr["cones"] = cones
+    attr["scope"] = "logic_cone" if modules else (attr.get("scope") or "region")
+    attr["via"] = attr.get("via") or "inspect_f4"
+    attr["kind"] = "ir_hotspot"
+    attr["status"] = "READY" if (attr.get("cells") or node) else "GAP"
+    attr["design_id"] = spec.id
+    attr["not"] = [
+        "gcd dpath/ctrl leftover",
+        "invented RTL→ITerm map",
+        "gold 45.298 restamp",
+        "flattened cell+PDN vector",
+    ]
+    attr["note"] = (
+        f"F4 inspect {spec.id} node={node} region={attr.get('region')} "
+        f"join={attr.get('join')} cells={len(attr.get('cells') or [])} "
+        f"block={','.join(modules)} — hierarchy from ODB/names, not a chip restart"
+    )
+    cand.attr = attr
+    return attr
 
 
 def local_scope(attr: dict) -> dict:

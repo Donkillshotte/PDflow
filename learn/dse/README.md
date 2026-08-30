@@ -28,8 +28,14 @@ resolve("aes").rtl  # ORFS nangate45 aes_cipher_top
 ```
 
 Live aes F1 + F2-fast + F3 (aes 0.82 ns SDC) + budgeted GPL + candidate
-write_pg_spice. Meshes above 40k R pay AMG, not DirectLU. Clock for I(t)
-is `DesignSpec.clk_period_ns` (aes 0.82, gcd 0.46). Separate memory,
+write_pg_spice. Meshes above 40k R pay Krylov/MOR (DirectLU refuses above 40k R; AMG
+timed out on the 73k-R aes mesh). Clock for I(t) is
+`DesignSpec.clk_period_ns` (aes 0.82, gcd 0.46). A VCD/SAIF on disk is
+passed to the F4 worker as a name-join only — missing stays missing,
+SAIF TC=0 idle-zeros a matched pulse and never invents t50.
+`inspect_and_choose` attributes the latest F4 via the ODB hotspot join
+and opens refine[0] size-up on that design's cells (aes flattened names
+stay under `aes_cipher_top`, never GCD `dpath`/`ctrl`). Separate memory,
 never FlowLab GCD / gold 45.298:
 
 ```bash
@@ -87,6 +93,8 @@ python3 learn/scripts/test_frame.py
 python3 learn/scripts/test_actions.py
 python3 learn/scripts/test_dispatch.py
 python3 learn/scripts/test_designs.py
+python3 learn/scripts/test_krylov_rlc.py
+python3 learn/scripts/test_activity_it.py
 python3 learn/scripts/run_aes_slice.py
 ```
 

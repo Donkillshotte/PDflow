@@ -14,10 +14,11 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "learn"))
 
 from dse.activity import _parse_saif, _parse_vcd, load_activity  # noqa: E402
-from dse.attribute import _cones_of, _module_of  # noqa: E402
+from dse.attribute import _cones_of, _module_of, inspect_f4  # noqa: E402
 from dse.bandit import choose, context, reward_catalog_vs_pdn  # noqa: E402
 from dse.designs import rtl_inputs, resolve  # noqa: E402
-from dse.f4_oracle import solve_f4, solver_devices  # noqa: E402
+from dse.f4_oracle import attach_activity_flags, build_worker_cmd, solve_f4, solver_devices  # noqa: E402
+from dse.inspect import inspect_and_choose  # noqa: E402
 from dse.fidelity import _read_verilog_block, evaluate_f1_abc  # noqa: E402
 from dse.dispatch import run_next_refine  # noqa: E402
 from dse.frame import leftover_cells, next_stage, refine_chain  # noqa: E402
@@ -213,7 +214,36 @@ def main() -> int:
             check(abs(ir - 6.954) < 0.05, f"aes on-die static IR is 6.954 mV, got {ir}")
             check((f4s[-1].artifacts or {}).get("n_r") == 73139, "aes mesh is the 73k-R candidate extract")
             check("aes" in str((f4s[-1].artifacts or {}).get("sdc") or ""), "aes F4 used the 0.82 ns SDC")
-            check(f4s[-1].qor.dynamic_ir_mv is None, "aes dynamic IR stays GAP until AMG finishes — not a gold restamp")
+            dyn_mv = f4s[-1].qor.dynamic_ir_mv
+            if dyn_mv is None:
+                check(True, "aes dynamic IR still GAP — not a gold restamp")
+            else:
+                check(abs(float(dyn_mv) - 45.298) > 1.0, f"aes dynamic IR is not gold 45.298, got {dyn_mv}")
+                check(float(dyn_mv) > 0.0, f"aes dynamic IR is a paid droop, got {dyn_mv}")
+            insts = (f4s[-1].artifacts or {}).get("insts")
+            if insts and Path(insts).is_file():
+                attr = inspect_f4(f4s[-1], design_id="aes")
+                check(attr.get("join") == "odb-geom", f"aes F4 inspect is an ODB join, got {attr.get('join')}")
+                check(attr.get("modules") == ["aes_cipher_top"], f"aes inspect block is the cipher top, got {attr.get('modules')}")
+                check("dpath" not in (attr.get("modules") or []) and "ctrl" not in (attr.get("cones") or []),
+                      "aes inspect never invents dpath/ctrl")
+                check(bool(attr.get("cells")) and all(not str(x).startswith("dpath") for x in attr.get("cells") or []),
+                      f"aes inspect cells are ODB instances, got {attr.get('cells')}")
+                chosen = inspect_and_choose(am, design_id="aes", persist=False)
+                nxt = chosen.get("next_stage")
+                check(nxt is not None and nxt.get("stage") == "sizeup", f"aes inspect opens refine[0] size-up, got {nxt}")
+                check(all("dpath" not in str(x) and "ctrl" not in str(x) for x in (nxt or {}).get("cells") or []),
+                      "aes next size-up cells are not GCD names")
+                steer = chosen.get("steer")
+                if steer:
+                    check(steer.get("modules") == ["aes_cipher_top"], f"aes size-up steer stays on the cipher top, got {steer.get('modules')}")
+                    check(steer.get("host_source") == "f4_candidate_extract", f"aes join host is the candidate extract, got {steer.get('host_source')}")
+
+    missing = attach_activity_flags(["worker"], variant="aes", design_id="aes")
+    check(missing == ["worker"], "missing aes waveform does not invent --saif/--vcd")
+    cmd = build_worker_cmd(design_id="aes", period_ns=0.82, solver="krylov")
+    check("--period-ns" in cmd and "0.82" in cmd, f"aes worker clock stays 0.82 ns, got {cmd}")
+    check("--saif" not in cmd and "--vcd" not in cmd, "aes worker cmd stays waveform-free when no file exists")
 
     if FAILS:
         print(f"{len(FAILS)} FAILED")

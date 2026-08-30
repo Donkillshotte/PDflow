@@ -2042,6 +2042,9 @@ def native_mor_descriptor(sys, starts, shifts, n_moments: int = 4):
         except Exception as exc:
             print(f"libdpn gen MOR unavailable ({exc}); using SciPy fallback", file=sys.stderr)
     return PyMorDescriptor(sys, starts, shifts, n_moments)
+
+
+def _descriptor_rlc(Gmesh, bumps, pkg_r: float):
     """Unsymmetric MNA: C v' + G v − i = −I, L i' + R i + v = Vsrc."""
     Gmesh = Gmesh.tocsr().astype(np.float64)
     n = Gmesh.shape[0]

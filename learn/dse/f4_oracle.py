@@ -74,6 +74,72 @@ def extract_ready(spice: Path | str | None, insts: Path | str | None) -> bool:
     return bool(spice and insts and Path(spice).is_file() and Path(insts).is_file() and WORKER.is_file())
 
 
+def attach_activity_flags(cmd: list[str], *, variant: str, design_id: str) -> list[str]:
+    """Append --saif/--vcd when a waveform is on disk. Missing stays missing."""
+    from .activity import activity_path
+
+    wave = activity_path(variant=variant, design_id=design_id)
+    if not wave.is_file():
+        return cmd
+    suf = wave.suffix.lower()
+    head = wave.read_text(errors="replace")[:80]
+    if suf == ".saif" or "(SAIFILE" in head:
+        cmd.extend(["--saif", str(wave)])
+    elif suf == ".vcd":
+        cmd.extend(["--vcd", str(wave)])
+    return cmd
+
+
+def build_worker_cmd(
+    *,
+    variant: str = "flowlab",
+    pkg_r: float = 0.05,
+    pkg_l: float = 2e-10,
+    c_decap: float = 50e-15,
+    i_scale: float = 1.0,
+    dt_ps: float = 10.0,
+    kind: str = "finish",
+    solver: str = "direct",
+    period_ns: float = 0.46,
+    spice: Path | str | None = None,
+    insts: Path | str | None = None,
+    sta: Path | str | None = None,
+    design_id: str = "gcd",
+) -> list[str]:
+    """F4 worker argv. Activity flags only when a waveform file exists."""
+    cmd = [
+        sys.executable,
+        str(WORKER),
+        "--variant",
+        variant,
+        "--pkg-r",
+        str(pkg_r),
+        "--pkg-l",
+        str(pkg_l),
+        "--c-decap",
+        str(c_decap),
+        "--i-scale",
+        str(i_scale),
+        "--dt-ps",
+        str(dt_ps),
+        "--extract-kind",
+        kind,
+        "--solver",
+        str(solver or "direct"),
+        "--period-ns",
+        str(period_ns),
+    ]
+    if spice:
+        cmd.extend(["--spice", str(spice), "--no-spef"])
+        if sta:
+            cmd.extend(["--sta", str(sta)])
+        else:
+            cmd.append("--no-sta")
+    if insts:
+        cmd.extend(["--insts", str(insts)])
+    return attach_activity_flags(cmd, variant=variant, design_id=design_id)
+
+
 def solve_f4(
     *,
     variant: str = "flowlab",
@@ -123,36 +189,21 @@ def solve_f4(
         }
     env = os.environ.copy()
     env["PYTHONPATH"] = f"{_DIST}:{SCRIPTS}"
-    cmd = [
-        sys.executable,
-        str(WORKER),
-        "--variant",
-        variant,
-        "--pkg-r",
-        str(pkg_r),
-        "--pkg-l",
-        str(pkg_l),
-        "--c-decap",
-        str(c_decap),
-        "--i-scale",
-        str(i_scale),
-        "--dt-ps",
-        str(dt_ps),
-        "--extract-kind",
-        kind,
-        "--solver",
-        str(solver or "direct"),
-        "--period-ns",
-        str(period_ns),
-    ]
-    if spice:
-        cmd.extend(["--spice", str(spice), "--no-spef"])
-        if sta:
-            cmd.extend(["--sta", str(sta)])
-        else:
-            cmd.append("--no-sta")
-    if insts:
-        cmd.extend(["--insts", str(insts)])
+    cmd = build_worker_cmd(
+        variant=variant,
+        pkg_r=pkg_r,
+        pkg_l=pkg_l,
+        c_decap=c_decap,
+        i_scale=i_scale,
+        dt_ps=dt_ps,
+        kind=kind,
+        solver=solver,
+        period_ns=period_ns,
+        spice=spice,
+        insts=insts,
+        sta=sta,
+        design_id=design_id,
+    )
     try:
         proc = subprocess.run(
             cmd,

@@ -37,5 +37,36 @@
   "f4_static_ir_mv": 6.954201796472992,
   "f4_static_ir_pkg_mv": 6.994393869011795,
   "f4_n_nodes": 54241,
-  "f4_dynamic": "AMG transient timeout 180s \u2014 not a fake droop"
+  "f4_dynamic": "AMG transient timeout 180s \u2014 not a fake droop",
+  "inspect": {
+    "candidate_id": "febe6804241c",
+    "region": "r01",
+    "modules": [
+      "aes_cipher_top"
+    ],
+    "n_cells": 5,
+    "cells": [
+      "_20803_",
+      "_20800_",
+      "_20794_",
+      "_20784_",
+      "_20795_"
+    ],
+    "combo_frac": 1.0,
+    "join": "odb-geom",
+    "next_stage": {
+      "depth": 0,
+      "stage": "sizeup",
+      "cells": [
+        "_20803_",
+        "_20800_",
+        "_20794_",
+        "_20784_",
+        "_20795_"
+      ],
+      "via": "inspect_f4"
+    },
+    "should_pay": true,
+    "why": "refine[0] PDN hotspot r01 combo 1.00 joins unsized aes_cipher_top cells \u2014 sized lineage subtracted, not a flatten of the previous depth, not champ ctrl, not first IR-cell, not STA-path size-up, not ABC, not VCD"
+  }
 }

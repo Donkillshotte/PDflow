@@ -22,7 +22,15 @@ _REPO = _SCRIPTS.parent.parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from pdn_activity import load_insts, load_sta_arrivals, node_xy, plan_events, t50_via_counts  # noqa: E402
+from pdn_activity import (  # noqa: E402
+    load_insts,
+    load_sta_arrivals,
+    node_xy,
+    parse_saif,
+    parse_vcd,
+    plan_events,
+    t50_via_counts,
+)
 from pdn_dynamic import _map_worst_node, assemble_be, contributors_at, timestep_be  # noqa: E402
 from pdn_em import em_thermal_snapshot  # noqa: E402
 from pdn_extract import extract_pdn  # noqa: E402
@@ -77,6 +85,8 @@ def main() -> int:
     ap.add_argument("--spef", type=Path, default=None)
     ap.add_argument("--no-sta", action="store_true")
     ap.add_argument("--no-spef", action="store_true")
+    ap.add_argument("--vcd", type=Path, default=None, help="VCD name-join t50. Missing stays missing.")
+    ap.add_argument("--saif", type=Path, default=None, help="SAIF TC idle-zero. Never invents t50.")
     ap.add_argument(
         "--extract-kind",
         default="finish",
@@ -113,6 +123,8 @@ def main() -> int:
     order, idx, G = build_system(ext["resistors"], ext["currents"], ext["voltages"])
     insts = load_insts(insts_p)
     sta = load_sta_arrivals(sta_p) if sta_p is not None and sta_p.is_file() else {}
+    vcd = parse_vcd(args.vcd) if args.vcd is not None and Path(args.vcd).is_file() else None
+    saif = parse_saif(args.saif) if args.saif is not None and Path(args.saif).is_file() else None
     events = plan_events(
         ext["currents"],
         idx,
@@ -124,8 +136,8 @@ def main() -> int:
         dur_s=0.08e-9,
         t50_s=0.12e-9,
         sta_arrivals=sta or None,
-        vcd=None,
-        saif=None,
+        vcd=vcd,
+        saif=saif,
     )
     scale = float(args.i_scale)
     if abs(scale - 1.0) > 1e-15:
@@ -267,6 +279,9 @@ def main() -> int:
                 "n_i": ext.get("n_i"),
                 "n_events": len(events),
                 "n_sta_applied": t50_via_counts(events).get("sta_arrival", 0),
+                "n_vcd_join": t50_via_counts(events).get("vcd_name_join", 0),
+                "n_saif_idle": sum(1 for e in events if e.get("saif_idle")),
+                "n_saif_toggled": sum(1 for e in events if e.get("saif_idle") is False),
                 "t50_via": t50_via_counts(events),
                 "solver": dyn.get("solver") or solver_kind,
                 "solver_kind": solver_kind,

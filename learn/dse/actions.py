@@ -46,6 +46,13 @@ def _join_host(mem: DesignMemory, depth: int):
         for c in reversed(list(mem.all())):
             if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_winning_ir_region_pdn":
                 return c
+        for c in reversed(list(mem.by_level("pdn"))):
+            if (
+                c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_candidate_extract"
+                and (c.attr or {}).get("cells")
+            ):
+                return c
         return None
     chain = refine_chain(mem)
     prev = next((f for f in chain if f.depth == depth - 1), None)
@@ -53,7 +60,12 @@ def _join_host(mem: DesignMemory, depth: int):
 
 
 def _join_host_source(mem: DesignMemory, depth: int) -> str:
-    return "f4_winning_ir_region_extract" if depth == 0 else refine_extract_source(depth - 1)
+    if depth == 0:
+        host = _join_host(mem, 0)
+        if host is not None and (host.knobs or {}).get("source") == "f4_candidate_extract":
+            return "f4_candidate_extract"
+        return "f4_winning_ir_region_extract"
+    return refine_extract_source(depth - 1)
 
 
 def _frame(mem: DesignMemory, depth: int) -> RefinementFrame | None:
@@ -65,7 +77,14 @@ def _sizeup_host(mem: DesignMemory, depth: int):
     if depth == 0:
         from .active import ir_cell_host
 
-        return ir_cell_host(mem)
+        host = ir_cell_host(mem)
+        if host is not None:
+            return host
+        for c in reversed(list(mem.by_level("logic"))):
+            mapped = (c.artifacts or {}).get("mapped_hier_v") or (c.artifacts or {}).get("mapped_v")
+            if c.status == "ok" and mapped:
+                return c
+        return None
     prev = _frame(mem, depth - 1)
     return prev.cell if prev else None
 
@@ -84,6 +103,8 @@ def steer_refine_sizeup(mem: DesignMemory, depth: int) -> dict | None:
     if not cells:
         return None
     modules = list(dict.fromkeys(str(c).split("/")[0] for c in cells if "/" in str(c)))
+    if not modules:
+        modules = [str(m) for m in (attr.get("modules") or []) if m]
     if not modules:
         return None
     eid = str((pdn.knobs or {}).get("extract_id") or pdn.id)
