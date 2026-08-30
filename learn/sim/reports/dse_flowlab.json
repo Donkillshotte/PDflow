@@ -42,6 +42,9 @@
     "F4 IR-cell-champ-cone PDN: 1\u00d7 residual restamps the winning family on that leftover-cone mesh \u2014 re-paid on a new cone extract, not champ IR-steer",
     "F4 IR-cell-champ-cone-region: leftover-cone 1\u00d7 bin \u2260 champ extract and seq-heavy \u2014 density cap on the leftover-cone netlist; re-paid when the residual hotspot leaves the capped bin, not more combo size-up, not IR-cell-region rXY",
     "F4 IR-cell-champ-cone-region PDN: |\u0394| \u2265 1 mV restamps the winning family on that capped leftover mesh \u2014 re-paid on a new cone extract, not champ IR-steer",
+    "F4 leftover-cone-region loop: inspect \u2192 density cap \u2192 |\u0394| PDN \u2192 residual hotspot \u2192 next bin, up to 4 shots \u2014 not one-pass, not a flattened region vector",
+    "F4 winning-IR-region: winning-IR 1\u00d7 bin \u2260 leftover-cone / IR-cell-region and seq-heavy \u2014 density cap on the IR-cell netlist, not leftover-cone rXY, not more combo size-up, not gold rXY",
+    "F4 winning-IR-region PDN: |\u0394| \u2265 1 mV restamps the winning family on that capped winning-IR mesh \u2014 not leftover-cone-region PDN, not champ IR-steer",
     "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs \u2014 re-paid when the 1\u00d7 extract moves (strap mesh), not candidate AMG, not gold",
     "F4 static IR: winning_static_pdn is a separate 1\u00d7 ranking; unused pkg_r (DC ohmic) \u2014 decap/pkg L do not move static, not Dynamic IR-steer",
     "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB \u2014 same place, not a new GPL, not gold",
@@ -90,7 +93,7 @@
     },
     "active": {
       "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + steer_from_host_ir_residual + steer_from_winning_ir_catalog + iscale_host + order_local_hosts",
-      "note": "F3\u2192F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; unused Dynamic IR catalog on a strap/EM winning_ir extract (inherit pkg_r; C then L); I-scale-champ measures activity on winning_ir_pdn (not host-win); combo-heavy champ hotspot ODB-joins cells and re-pays size-up/extract/PDN when that extract moves; leftover cells on the champ extract (minus champ size-up) pay a cone size-up/extract/PDN residual vs the champ extract; a seq-heavy leftover-cone 1\u00d7 bin \u2260 champ extract pays a density cap (not more combo size-up) then |\u0394| PDN, and re-pays when the residual hotspot leaves the capped bin; AMG/RAS/Krylov-champ restamp that same 1\u00d7 mesh; static IR is a separate 1\u00d7 ranking that pays unused pkg_r then, on a null on-die residual, denser bumps then metal4 straps on the champ ODB (decap does not move DC); EM width residual is same-mesh vs strap J; not a mixed knob vector",
+      "note": "F3\u2192F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; unused Dynamic IR catalog on a strap/EM winning_ir extract (inherit pkg_r; C then L); I-scale-champ measures activity on winning_ir_pdn (not host-win); combo-heavy champ hotspot ODB-joins cells and re-pays size-up/extract/PDN when that extract moves; leftover cells on the champ extract (minus champ size-up) pay a cone size-up/extract/PDN residual vs the champ extract; a seq-heavy leftover-cone 1\u00d7 bin \u2260 champ extract pays a density cap (not more combo size-up) then |\u0394| PDN, and re-pays when the residual hotspot leaves the capped bin (inspect loop); a seq-heavy winning-IR 1\u00d7 bin \u2260 leftover-cone / IR-cell-region pays a density cap on the IR-cell netlist then |\u0394| PDN; AMG/RAS/Krylov-champ restamp that same 1\u00d7 mesh; static IR is a separate 1\u00d7 ranking that pays unused pkg_r then, on a null on-die residual, denser bumps then metal4 straps on the champ ODB (decap does not move DC); EM width residual is same-mesh vs strap J; not a mixed knob vector",
       "ready": true
     },
     "synthesis": {
@@ -100,7 +103,7 @@
     },
     "cell": {
       "via": "dse.cell_space.upsize_path_cells + dse.fidelity.evaluate_cell_size",
-      "note": "attributed STA path drive-up (module-scoped), I-scale-win IR-hotspot ODB-join, I-scale-champ ODB-join + write_pg_spice residual vs IR-cell extract (re-paid per winning_ir extract), leftover champ-extract cone size-up + write_pg_spice residual vs IR-cell-champ extract, and seq-heavy leftover-cone region density cap (not more combo size-up); not ABC ops, not a chip restart",
+      "note": "attributed STA path drive-up (module-scoped), I-scale-win IR-hotspot ODB-join, I-scale-champ ODB-join + write_pg_spice residual vs IR-cell extract (re-paid per winning_ir extract), leftover champ-extract cone size-up + write_pg_spice residual vs IR-cell-champ extract, seq-heavy leftover-cone region density cap (not more combo size-up), and seq-heavy winning-IR 1\u00d7 rXY density cap on the IR-cell netlist (not leftover-cone rXY); not ABC ops, not a chip restart",
       "ready": true
     },
     "net": {
@@ -134,8 +137,8 @@
     }
   },
   "budget_s": 90.0,
-  "spent_s": 363.6459503173828,
-  "n_candidates": 101,
+  "spent_s": 374.78194212913513,
+  "n_candidates": 103,
   "n_f1": 13,
   "n_f1_synth": 1,
   "n_ctrl_cone": 1,
@@ -170,6 +173,14 @@
   "ir_cell_champ_cone_region_pdn_mv": 7.655075092018349,
   "ir_cell_champ_cone_region_pdn_name": "decap_200f",
   "ir_cell_champ_cone_region_pdn_vs_host_win_mv": 3.6391275705094372,
+  "n_f4_winning_ir_region_extract": 1,
+  "winning_ir_region_mv": 10.713240164762716,
+  "winning_ir_region_residual_mv": 8.816786616455241,
+  "winning_ir_region_bin": "r30",
+  "n_winning_ir_region_pdn": 1,
+  "winning_ir_region_pdn_mv": 5.569648362627078,
+  "winning_ir_region_pdn_name": "decap_200f",
+  "winning_ir_region_pdn_vs_host_win_mv": 1.5537008411181663,
   "n_f4_amg_champ": 3,
   "ir_champ_amg_mv": 1.7054966456535592,
   "ir_champ_amg_vs_direct_mv": 3.368683110238635e-08,
@@ -247,7 +258,7 @@
   "n_ir_steer": 2,
   "n_host_ir_steer": 2,
   "n_f2_grt": 1,
-  "n_f4": 48,
+  "n_f4": 50,
   "n_f4_extract": 1,
   "n_f4_host_extract": 1,
   "n_f4_host_region_extract": 1,
@@ -258,7 +269,7 @@
   "n_f4_iscale": 1,
   "n_f4_iscale_win": 1,
   "n_host_arrivals": 1,
-  "n_f4_solve": 42,
+  "n_f4_solve": 44,
   "memory": "/workspace/learn/sim/dse/memory_flowlab.jsonl",
   "surrogate_f0": {
     "metric": "area_um2",
@@ -282,8 +293,8 @@
   },
   "surrogate_f1_to_f2_gnn": {
     "metric": "hpwl",
-    "mean": 1196.0696500261313,
-    "std": 7.966826158393673,
+    "mean": 1196.069650026131,
+    "std": 7.966826158394311,
     "n": 4,
     "uncertainty": "medium",
     "via": "2-layer mean-aggregate GNN + ridge on F2-fast HPWL",
@@ -315,9 +326,9 @@
   },
   "surrogate_f1_to_f4": {
     "metric": "dynamic_ir_mv",
-    "mean": 11.442552646455477,
-    "n": 53,
-    "pairs": 53,
+    "mean": 11.322512341627819,
+    "n": 55,
+    "pairs": 55,
     "uncertainty": "medium",
     "via": "RTLDistil-shaped residual (need \u22654 pairs to fit a slope)",
     "not": "Dynamic IR gold / a neural voltage map"
@@ -760,6 +771,16 @@
         "scope": "pdn"
       },
       {
+        "level": "winning_ir_region",
+        "reason": "winning-IR 1\u00d7 hotspot bin \u2260 leftover-cone / IR-cell-region and seq-heavy \u2014 density cap on the IR-cell netlist, not leftover-cone rXY, not more combo size-up, not gold rXY, not ABC",
+        "scope": "region"
+      },
+      {
+        "level": "winning_ir_region_pdn",
+        "reason": "winning-IR-region |\u0394| \u2265 1 mV chooses the winning PDN family on the capped winning-IR mesh \u2014 not leftover-cone-region PDN, not champ IR-steer, not a flattened cell+decap vector",
+        "scope": "pdn"
+      },
+      {
         "level": "f4_amg_champ",
         "reason": "SA-AMG on winning_ir_pdn with the same DirectLU knobs \u2014 MF solver residual, not candidate AMG, not gold",
         "scope": "pdn"
@@ -931,7 +952,8 @@
       "8e1bdc5c3e78",
       "0600949f644a",
       "7d97596a7ef5",
-      "6935d1b41b11"
+      "6935d1b41b11",
+      "9711e13bf165"
     ],
     "note": "frontiers are per level; do not rank ABC area against IR droop"
   },
@@ -22080,9 +22102,19 @@
       "cost_s": 5.282594919204712,
       "pred": {},
       "attr": {
-        "cells": [],
+        "cells": [
+          "dpath/a_reg/_078_",
+          "dpath/b_mux/_45_",
+          "dpath/a_reg/_076_",
+          "dpath/a_reg/_077_",
+          "dpath/b_mux/_46_"
+        ],
         "combo_frac": 0.8607399049762638,
-        "cones": [],
+        "cones": [
+          "dpath",
+          "dpath/a_reg",
+          "dpath/b_mux"
+        ],
         "dT_mesh_k": 0.30902581392387807,
         "droop_mv": 16.5227364857512,
         "em_j_a_m2": 35215731165.07168,
@@ -22100,7 +22132,9 @@
         "i_scale": 4.2142857142857135,
         "inherited_from": "eb36579147a7",
         "kind": "ir_hotspot",
-        "modules": [],
+        "modules": [
+          "dpath"
+        ],
         "nets": [],
         "node": "ITermNode_metal1_25463_19826",
         "note": "IR hotspot + OpenSTA worst path \u2192 (no module join) \u00b7 region r10; hierarchical focus, not a chip-wide restart",
@@ -22112,14 +22146,15 @@
         "residual_vs_host_win_mv": 12.506788964242288,
         "residual_vs_iscale_win": "441ad5e00525",
         "residual_vs_iscale_win_mv": -0.40161411604855246,
-        "scope": "region",
+        "scope": "logic_cone",
         "seq_frac": 0.13926009502373612,
         "sta_via": "extract",
         "status": "READY",
         "transform": "cell_size_ir",
         "via": "f4_iscale_champ",
         "x_dbu": 25463.0,
-        "y_dbu": 19826.0
+        "y_dbu": 19826.0,
+        "join": "odb-geom"
       },
       "egraph": {},
       "artifacts": {
@@ -23640,9 +23675,20 @@
       "cost_s": 6.064808368682861,
       "pred": {},
       "attr": {
-        "cells": [],
+        "cells": [
+          "dpath/b_mux/_37_",
+          "dpath/a_reg/_067_",
+          "dpath/a_reg/_069_",
+          "dpath/b_mux/_35_",
+          "dpath/b_reg/_070_"
+        ],
         "combo_frac": 0.1851022371470828,
-        "cones": [],
+        "cones": [
+          "dpath",
+          "dpath/b_mux",
+          "dpath/a_reg",
+          "dpath/b_reg"
+        ],
         "dT_mesh_k": 0.3071888775894513,
         "droop_mv": 2.209637505540263,
         "em_j_a_m2": 9220763718.800016,
@@ -23656,7 +23702,9 @@
           "net"
         ],
         "kind": "ir_hotspot",
-        "modules": [],
+        "modules": [
+          "dpath"
+        ],
         "nets": [],
         "node": "ITermNode_metal1_70949_19855",
         "note": "IR hotspot + OpenSTA worst path \u2192 (no module join) \u00b7 region r30; hierarchical focus, not a chip-wide restart",
@@ -23668,7 +23716,7 @@
         "residual_via": "static_straps_vs_static_champ",
         "residual_vs_static_champ": "a0fd00e10c9f",
         "residual_vs_static_champ_mv": -5.2149838611450505,
-        "scope": "region",
+        "scope": "logic_cone",
         "seq_frac": 0.8148977628529172,
         "status": "READY",
         "steer": {
@@ -23686,7 +23734,8 @@
         },
         "via": "active_f4_static_straps",
         "x_dbu": 70949.0,
-        "y_dbu": 19855.0
+        "y_dbu": 19855.0,
+        "join": "odb-geom"
       },
       "egraph": {},
       "artifacts": {
@@ -24168,9 +24217,17 @@
       "cost_s": 5.746945858001709,
       "pred": {},
       "attr": {
-        "cells": [],
+        "cells": [
+          "ctrl/_07_",
+          "ctrl/_08_",
+          "ctrl/_10_",
+          "ctrl/_12_",
+          "ctrl/_14_"
+        ],
         "combo_frac": 0.9621312346583815,
-        "cones": [],
+        "cones": [
+          "ctrl"
+        ],
         "dT_mesh_k": 0.31002344258840747,
         "droop_mv": 10.548179039167271,
         "em_j_a_m2": 22402830987.145473,
@@ -24188,7 +24245,9 @@
         "i_scale": 4.2142857142857135,
         "inherited_from": "eb36579147a7",
         "kind": "ir_hotspot",
-        "modules": [],
+        "modules": [
+          "ctrl"
+        ],
         "nets": [],
         "node": "ITermNode_metal1_42013_14166",
         "note": "IR hotspot + OpenSTA worst path \u2192 (no module join) \u00b7 region r20; hierarchical focus, not a chip-wide restart",
@@ -24200,14 +24259,15 @@
         "residual_vs_host_win_mv": 6.53223151765836,
         "residual_vs_iscale_win": "441ad5e00525",
         "residual_vs_iscale_win_mv": -6.37617156263248,
-        "scope": "region",
+        "scope": "logic_cone",
         "seq_frac": 0.03786876534161854,
         "sta_via": "f4_iscale_champ",
         "status": "READY",
         "transform": "cell_size_ir",
         "via": "f4_iscale_champ",
         "x_dbu": 42013.0,
-        "y_dbu": 14166.0
+        "y_dbu": 14166.0,
+        "join": "odb-geom"
       },
       "egraph": {},
       "artifacts": {
@@ -24307,9 +24367,20 @@
       "cost_s": 6.69440484046936,
       "pred": {},
       "attr": {
-        "cells": [],
+        "cells": [
+          "dpath/b_mux/_37_",
+          "dpath/a_reg/_067_",
+          "dpath/a_reg/_069_",
+          "dpath/b_mux/_35_",
+          "dpath/b_reg/_070_"
+        ],
         "combo_frac": 0.1851022371470828,
-        "cones": [],
+        "cones": [
+          "dpath",
+          "dpath/b_mux",
+          "dpath/a_reg",
+          "dpath/b_reg"
+        ],
         "dT_mesh_k": 0.30716708811227456,
         "droop_mv": 1.8964535483074751,
         "em_j_a_m2": 8117415398.220996,
@@ -24323,7 +24394,9 @@
           "net"
         ],
         "kind": "ir_hotspot",
-        "modules": [],
+        "modules": [
+          "dpath"
+        ],
         "nets": [],
         "node": "ITermNode_metal1_70949_19855",
         "note": "IR hotspot + OpenSTA worst path \u2192 (no module join) \u00b7 region r30; hierarchical focus, not a chip-wide restart",
@@ -24337,7 +24410,7 @@
         "residual_vs_em_champ_j": 1196863835.0551481,
         "residual_vs_strap": "f0670cebc9e6",
         "residual_vs_strap_j": -1103348320.5790205,
-        "scope": "region",
+        "scope": "logic_cone",
         "seq_frac": 0.8148977628529172,
         "status": "READY",
         "steer": {
@@ -24356,7 +24429,8 @@
         },
         "via": "active_f4_em_straps",
         "x_dbu": 70949.0,
-        "y_dbu": 19855.0
+        "y_dbu": 19855.0,
+        "join": "odb-geom"
       },
       "egraph": {},
       "artifacts": {
@@ -24459,9 +24533,17 @@
       "cost_s": 6.4769110679626465,
       "pred": {},
       "attr": {
-        "cells": [],
+        "cells": [
+          "ctrl/_14_",
+          "ctrl/_11_",
+          "ctrl/_08_",
+          "ctrl/_07_",
+          "ctrl/_04_"
+        ],
         "combo_frac": 0.9634051331485523,
-        "cones": [],
+        "cones": [
+          "ctrl"
+        ],
         "dT_mesh_k": 0.30737326830471595,
         "droop_mv": 1.705496611966728,
         "em_j_a_m2": 5230042541.14622,
@@ -24474,7 +24556,9 @@
           "net"
         ],
         "kind": "ir_hotspot",
-        "modules": [],
+        "modules": [
+          "ctrl"
+        ],
         "nets": [],
         "node": "ITermNode_metal1_38965_14055",
         "note": "IR hotspot + OpenSTA worst path \u2192 (no module join) \u00b7 region r10; hierarchical focus, not a chip-wide restart",
@@ -24485,7 +24569,7 @@
         "residual_via": "winning_ir_catalog_vs_champ",
         "residual_vs_winning_ir": "9cdf547704cc",
         "residual_vs_winning_ir_mv": -0.19095693634074706,
-        "scope": "region",
+        "scope": "logic_cone",
         "seq_frac": 0.03659486685144781,
         "status": "READY",
         "steer": {
@@ -24501,7 +24585,8 @@
         },
         "via": "active_f4_winning_ir_pdn",
         "x_dbu": 38965.0,
-        "y_dbu": 14055.0
+        "y_dbu": 14055.0,
+        "join": "odb-geom"
       },
       "egraph": {},
       "artifacts": {
@@ -24599,9 +24684,17 @@
       "cost_s": 6.348321199417114,
       "pred": {},
       "attr": {
-        "cells": [],
+        "cells": [
+          "ctrl/_14_",
+          "ctrl/_11_",
+          "ctrl/_08_",
+          "ctrl/_07_",
+          "ctrl/_04_"
+        ],
         "combo_frac": 0.9634051331485521,
-        "cones": [],
+        "cones": [
+          "ctrl"
+        ],
         "dT_mesh_k": 0.31140352069737987,
         "droop_mv": 7.187450025282205,
         "em_j_a_m2": 22040893559.21497,
@@ -24619,7 +24712,9 @@
         "i_scale": 4.2142857142857135,
         "inherited_from": "eb36579147a7",
         "kind": "ir_hotspot",
-        "modules": [],
+        "modules": [
+          "ctrl"
+        ],
         "nets": [],
         "node": "ITermNode_metal1_38965_14055",
         "note": "IR hotspot + OpenSTA worst path \u2192 (no module join) \u00b7 region r10; hierarchical focus, not a chip-wide restart",
@@ -24631,14 +24726,15 @@
         "residual_vs_host_win_mv": 3.1715025037732936,
         "residual_vs_iscale_win": "441ad5e00525",
         "residual_vs_iscale_win_mv": -9.736900576517547,
-        "scope": "region",
+        "scope": "logic_cone",
         "seq_frac": 0.03659486685144783,
         "sta_via": "f4_iscale_champ",
         "status": "READY",
         "transform": "cell_size_ir",
         "via": "f4_iscale_champ",
         "x_dbu": 38965.0,
-        "y_dbu": 14055.0
+        "y_dbu": 14055.0,
+        "join": "odb-geom"
       },
       "egraph": {},
       "artifacts": {
@@ -26548,28 +26644,28 @@
       "parent_id": "61e998374827",
       "level": "pdn",
       "knobs": {
-        "source": "f4_ir_cell_champ_cone_region_extract",
-        "parent_id": "61e998374827",
-        "parent_name": "cell_size_ir_champ_cone",
-        "util": 35.0,
-        "density": 0.55,
-        "legalize": "detailed_placement",
-        "pkg_r": 0.05,
-        "pkg_l": 2e-10,
         "c_decap": 5e-14,
-        "i_scale": 1.0,
-        "name": "extract_ir_cell_champ_cone_region_cell_size_ir_champ_cone",
-        "host_level": "cell",
-        "host_source": "cell_size_ir_champ_cone",
-        "ir_join": 1,
         "champ": 1,
         "champ_cone": 1,
-        "region": "r13",
-        "x_dbu": 25520.0,
-        "y_dbu": 80993.0,
-        "region_density": 0.3,
+        "density": 0.55,
+        "extract_id": "6935d1b41b11",
+        "host_level": "cell",
+        "host_source": "cell_size_ir_champ_cone",
+        "i_scale": 1.0,
+        "ir_join": 1,
+        "legalize": "detailed_placement",
+        "name": "extract_ir_cell_champ_cone_region_cell_size_ir_champ_cone",
         "parent_extract_id": "7d97596a7ef5",
-        "extract_id": "6935d1b41b11"
+        "parent_id": "61e998374827",
+        "parent_name": "cell_size_ir_champ_cone",
+        "pkg_l": 2e-10,
+        "pkg_r": 0.05,
+        "region": "r13",
+        "region_density": 0.3,
+        "source": "f4_ir_cell_champ_cone_region_extract",
+        "util": 35.0,
+        "x_dbu": 25520.0,
+        "y_dbu": 80993.0
       },
       "knobs_fp": "3481e08714a67d737d305a763e186102643a02a86690b14de952d40a59db4b86",
       "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
@@ -26591,28 +26687,6 @@
       "cost_s": 5.693196773529053,
       "pred": {},
       "attr": {
-        "status": "READY",
-        "kind": "ir_hotspot",
-        "node": "ITermNode_metal1_10149_80945",
-        "x_dbu": 10149.0,
-        "y_dbu": 80945.0,
-        "region": "r03",
-        "droop_mv": 15.677979218590377,
-        "seq_frac": 0.8395157815884121,
-        "combo_frac": 0.16048421841158797,
-        "path_start": null,
-        "path_end": null,
-        "path_slack_ns": null,
-        "modules": [
-          "dpath",
-          "ctrl"
-        ],
-        "cones": [
-          "dpath",
-          "dpath/b_reg",
-          "ctrl",
-          "ctrl/state"
-        ],
         "cells": [
           "dpath/b_reg/_078_",
           "ctrl/state/_08_",
@@ -26620,9 +26694,17 @@
           "ctrl/_14_",
           "ctrl/state/_07_"
         ],
-        "nets": [],
-        "scope": "logic_cone",
-        "join": "odb-geom",
+        "combo_frac": 0.16048421841158797,
+        "cones": [
+          "dpath",
+          "dpath/b_reg",
+          "ctrl",
+          "ctrl/state"
+        ],
+        "dT_mesh_k": 0.10372799273667585,
+        "droop_mv": 15.677979218590377,
+        "em_j_a_m2": 17806462640.812954,
+        "extract_id": "6935d1b41b11",
         "hierarchy": [
           "chip",
           "block",
@@ -26631,35 +26713,70 @@
           "cell",
           "net"
         ],
-        "em_j_a_m2": 17806462640.812954,
-        "dT_mesh_k": 0.10372799273667585,
-        "note": "IR hotspot + ODB inst join \u2192 cone dpath,ctrl \u00b7 region r03; hierarchical focus, not a chip-wide restart",
-        "transform": "cell_size_ir_champ_cone",
-        "inherited_from": "61e998374827",
-        "extract_id": "6935d1b41b11",
-        "via": "f4_ir_cell_champ_cone_region_extract",
         "host_level": "cell",
         "host_source": "cell_size_ir_champ_cone",
+        "inherited_from": "61e998374827",
+        "join": "odb-geom",
+        "kind": "ir_hotspot",
+        "modules": [
+          "dpath",
+          "ctrl"
+        ],
+        "nets": [],
+        "node": "ITermNode_metal1_10149_80945",
+        "note": "IR hotspot + ODB inst join \u2192 cone dpath,ctrl \u00b7 region r03; hierarchical focus, not a chip-wide restart",
+        "path_end": null,
+        "path_slack_ns": null,
+        "path_start": null,
+        "region": "r03",
         "residual_mv": 3.7718205955830086,
+        "residual_via": "ir_cell_champ_cone_region_vs_prior_region",
         "residual_vs": "7d97596a7ef5",
-        "residual_via": "ir_cell_champ_cone_region_vs_prior_region"
+        "scope": "logic_cone",
+        "seq_frac": 0.8395157815884121,
+        "status": "READY",
+        "transform": "cell_size_ir_champ_cone",
+        "via": "f4_ir_cell_champ_cone_region_extract",
+        "x_dbu": 10149.0,
+        "y_dbu": 80945.0
       },
       "egraph": {},
       "artifacts": {
-        "status": "ok",
-        "spice": "/workspace/learn/sim/dse/extracts/6935d1b41b11/pg_vdd_bumps.sp",
-        "insts": "/workspace/learn/sim/dse/extracts/6935d1b41b11/inst_power_map.json",
-        "odb": "/workspace/learn/sim/dse/extracts/6935d1b41b11/candidate.odb",
-        "n_r": 3434,
-        "n_i": 499,
-        "hpwl_um": 3008.479,
-        "overflow": 0.0985,
-        "util": 35.0,
-        "density": 0.55,
-        "legalize": "detailed_placement",
-        "gold": false,
-        "via": "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) \u2014 not finish, not gold",
+        "backend": "native",
+        "c_decap": 5e-14,
+        "combo_frac": 0.16048421841158797,
         "cost_s": 5.693196773529053,
+        "delta_vs_gold_mv": -29.620020781409625,
+        "density": 0.55,
+        "em": {
+          "dT_mesh_absmax_k": 0.10372799273667585,
+          "i_absmax_a": 0.0010732767871416786,
+          "j_absmax_a_m2": 17806462640.812954,
+          "n_with_j": 3389,
+          "status": "READY",
+          "ttf_rel_min": 0.31538765807672703,
+          "via": "pdn_em.em_thermal_snapshot on V_worst \u2014 not foundry TTF, not gold"
+        },
+        "extract": "candidate",
+        "extract_cost_s": 0.6145534515380859,
+        "gold": false,
+        "gold_ref_mv": 45.298,
+        "hpwl_um": 3008.479,
+        "i_scale": 1.0,
+        "insts": "/workspace/learn/sim/dse/extracts/6935d1b41b11/inst_power_map.json",
+        "legalize": "detailed_placement",
+        "m": null,
+        "n_events": 499,
+        "n_i": 499,
+        "n_r": 3434,
+        "n_sta_applied": 499,
+        "n_sta_inst": 499,
+        "note": "candidate PDN R-graph after legalized place; do not replace gold 45.298 mV",
+        "odb": "/workspace/learn/sim/dse/extracts/6935d1b41b11/candidate.odb",
+        "overflow": 0.0985,
+        "pkg_l": 2e-10,
+        "pkg_r": 0.05,
+        "region": "r13",
         "region_bin": "r13",
         "region_box_um": [
           12.16,
@@ -26667,54 +26784,33 @@
           22.23,
           42.0
         ],
-        "region": "r13",
-        "x_dbu": 10149.0,
-        "y_dbu": 80945.0,
         "region_density": 0.3,
-        "n_sta_inst": 499,
+        "seq_frac": 0.8395157815884121,
+        "solve_cost_s": 5.078643321990967,
+        "solver": "A_direct_be",
+        "solver_kind": "direct",
+        "spice": "/workspace/learn/sim/dse/extracts/6935d1b41b11/pg_vdd_bumps.sp",
         "sta_arrivals": "/workspace/learn/sim/dse/extracts/6935d1b41b11/sta_arrivals.json",
         "sta_via": "extract",
-        "worst_droop_mv": 15.677979218590377,
-        "worst_droop_pct": 1.4252708380536705,
         "static_ir_mv": 7.425605277024072,
         "static_ir_pct": 0.6750550251840065,
         "static_ir_pkg_mv": 7.472563691023115,
         "static_node": "ITermNode_metal1_4370_75345",
-        "worst_time_ns": 0.06999999999999999,
-        "worst_node": "ITermNode_metal1_10149_80945",
-        "seq_frac": 0.8395157815884121,
-        "combo_frac": 0.16048421841158797,
-        "pkg_r": 0.05,
-        "pkg_l": 2e-10,
-        "c_decap": 5e-14,
-        "i_scale": 1.0,
-        "n_events": 499,
-        "n_sta_applied": 499,
+        "status": "ok",
         "t50_via": {
-          "synthetic": 0,
           "sta_arrival": 499,
+          "synthetic": 0,
           "vcd_name_join": 0
         },
-        "solver": "A_direct_be",
-        "solver_kind": "direct",
-        "m": null,
-        "backend": "native",
         "timestep_loop": "native_hist",
-        "gold_ref_mv": 45.298,
-        "delta_vs_gold_mv": -29.620020781409625,
-        "extract": "candidate",
-        "em": {
-          "status": "READY",
-          "j_absmax_a_m2": 17806462640.812954,
-          "ttf_rel_min": 0.31538765807672703,
-          "n_with_j": 3389,
-          "dT_mesh_absmax_k": 0.10372799273667585,
-          "i_absmax_a": 0.0010732767871416786,
-          "via": "pdn_em.em_thermal_snapshot on V_worst \u2014 not foundry TTF, not gold"
-        },
-        "note": "candidate PDN R-graph after legalized place; do not replace gold 45.298 mV",
-        "extract_cost_s": 0.6145534515380859,
-        "solve_cost_s": 5.078643321990967
+        "util": 35.0,
+        "via": "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) \u2014 not finish, not gold",
+        "worst_droop_mv": 15.677979218590377,
+        "worst_droop_pct": 1.4252708380536705,
+        "worst_node": "ITermNode_metal1_10149_80945",
+        "worst_time_ns": 0.06999999999999999,
+        "x_dbu": 10149.0,
+        "y_dbu": 80945.0
       },
       "status": "ok",
       "failure": null,
@@ -26727,14 +26823,14 @@
       "parent_id": "6935d1b41b11",
       "level": "pdn",
       "knobs": {
-        "name": "decap_200f",
-        "pkg_r": 0.05,
-        "pkg_l": 2e-10,
         "c_decap": 2e-13,
+        "extract_id": "6935d1b41b11",
         "i_scale": 1.0,
+        "name": "decap_200f",
+        "pkg_l": 2e-10,
+        "pkg_r": 0.05,
         "solver": "direct",
-        "source": "f4_solver_a",
-        "extract_id": "6935d1b41b11"
+        "source": "f4_solver_a"
       },
       "knobs_fp": "12b9fec665cbf89a57b538d2fe8cf11a9d967e14d4be156f1fdea283f3bb8c33",
       "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
@@ -26756,15 +26852,178 @@
       "cost_s": 5.067052841186523,
       "pred": {},
       "attr": {
+        "cells": [
+          "dpath/b_reg/_078_",
+          "ctrl/state/_08_",
+          "ctrl/state/_06_",
+          "ctrl/_14_",
+          "ctrl/state/_07_"
+        ],
+        "combo_frac": 0.2817040101264505,
+        "cones": [
+          "dpath",
+          "dpath/b_reg",
+          "ctrl",
+          "ctrl/state"
+        ],
+        "dT_mesh_k": 0.10363672883123574,
+        "droop_mv": 7.655075092018349,
+        "em_j_a_m2": 9745280689.535067,
+        "hierarchy": [
+          "chip",
+          "block",
+          "region",
+          "logic_cone",
+          "cell",
+          "net"
+        ],
+        "join": "odb-geom",
+        "kind": "ir_hotspot",
+        "modules": [
+          "dpath",
+          "ctrl"
+        ],
+        "nets": [],
+        "node": "ITermNode_metal1_10149_80945",
+        "note": "IR hotspot + ODB inst join \u2192 cone dpath,ctrl \u00b7 region r03; hierarchical focus, not a chip-wide restart",
+        "path_end": null,
+        "path_slack_ns": null,
+        "path_start": null,
+        "region": "r03",
+        "residual_vs_host_win": "9a4ec426fb61",
+        "residual_vs_host_win_mv": 3.6391275705094372,
+        "scope": "logic_cone",
+        "seq_frac": 0.7182959898735495,
+        "status": "READY",
+        "steer": {
+          "extract_id": "6935d1b41b11",
+          "host_id": "6935d1b41b11",
+          "host_source": "f4_ir_cell_champ_cone_region_extract",
+          "ir_cell_champ_cone_region_residual_mv": 3.7718205955830086,
+          "knob_residual_mv": -7.773352279386357,
+          "level": "pdn",
+          "not": "a flattened cell+PDN vector / gold / IR-cell-region / champ extract",
+          "reason": "IR-cell-champ-cone-region residual +3.772 mV (raised droop vs cone extract) \u2014 restamp decap_200f on the r13-capped leftover mesh, not champ IR-steer, not IR-cell-region PDN, not ABC",
+          "region": "r13",
+          "via": "active_f4_ir_cell_champ_cone_region_pdn"
+        },
+        "via": "active_f4_ir_cell_champ_cone_region_pdn",
+        "x_dbu": 10149.0,
+        "y_dbu": 80945.0
+      },
+      "egraph": {},
+      "artifacts": {
+        "backend": "native",
+        "c_decap": 2e-13,
+        "combo_frac": 0.2817040101264505,
+        "cost_s": 5.067052841186523,
+        "delta_vs_gold_mv": -37.64292490798165,
+        "em": {
+          "dT_mesh_absmax_k": 0.10363672883123574,
+          "i_absmax_a": 0.0003850326198776936,
+          "j_absmax_a_m2": 9745280689.535067,
+          "n_with_j": 3389,
+          "status": "READY",
+          "ttf_rel_min": 1.0529585977640734,
+          "via": "pdn_em.em_thermal_snapshot on V_worst \u2014 not foundry TTF, not gold"
+        },
+        "extract": "candidate",
+        "gold": false,
+        "gold_ref_mv": 45.298,
+        "i_scale": 1.0,
+        "insts": "/workspace/learn/sim/dse/extracts/6935d1b41b11/inst_power_map.json",
+        "m": null,
+        "n_events": 499,
+        "n_i": 499,
+        "n_r": 3434,
+        "n_sta_applied": 499,
+        "note": "candidate PDN R-graph after legalized place; do not replace gold 45.298 mV",
+        "pkg_l": 2e-10,
+        "pkg_r": 0.05,
+        "seq_frac": 0.7182959898735495,
+        "solver": "A_direct_be",
+        "solver_kind": "direct",
+        "spice": "/workspace/learn/sim/dse/extracts/6935d1b41b11/pg_vdd_bumps.sp",
+        "static_ir_mv": 7.425605277024072,
+        "static_ir_pct": 0.6750550251840065,
+        "static_ir_pkg_mv": 7.472563691023115,
+        "static_node": "ITermNode_metal1_4370_75345",
+        "status": "ok",
+        "t50_via": {
+          "sta_arrival": 499,
+          "synthetic": 0,
+          "vcd_name_join": 0
+        },
+        "timestep_loop": "native_hist",
+        "via": "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) \u2014 not finish, not gold",
+        "worst_droop_mv": 7.655075092018349,
+        "worst_droop_pct": 0.6959159174562134,
+        "worst_node": "ITermNode_metal1_10149_80945",
+        "worst_time_ns": 0.08,
+        "x_dbu": 10149.0,
+        "y_dbu": 80945.0
+      },
+      "status": "ok",
+      "failure": null,
+      "created_at": 1788057552.9660525,
+      "note": "F4 PDN decap_200f on 6935d1b41b11 droop=7.655075092018349 \u2014 not gold"
+    },
+    {
+      "id": "9711e13bf165",
+      "design_id": "gcd",
+      "parent_id": "eb36579147a7",
+      "level": "pdn",
+      "knobs": {
+        "source": "f4_winning_ir_region_extract",
+        "parent_id": "eb36579147a7",
+        "parent_name": "cell_size_ir",
+        "util": 35.0,
+        "density": 0.55,
+        "legalize": "detailed_placement",
+        "pkg_r": 0.05,
+        "pkg_l": 2e-10,
+        "c_decap": 5e-14,
+        "i_scale": 1.0,
+        "name": "extract_winning_ir_region_cell_size_ir",
+        "host_level": "cell",
+        "host_source": "cell_size_ir",
+        "ir_join": 1,
+        "region": "r30",
+        "x_dbu": 70949.0,
+        "y_dbu": 19855.0,
+        "region_density": 0.3,
+        "parent_extract_id": "9cdf547704cc",
+        "extract_id": "9711e13bf165"
+      },
+      "knobs_fp": "7d38e900fcd263766b52273560125b6593ac9d12e73982084759e2587a612993",
+      "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
+      "netlist_fp": "652f2f76b64ae9e6061e7bf3ef0bc23f601aba057ae062058bf0d9e650ccf5af",
+      "fidelity": "F4",
+      "qor": {
+        "area_um2": 564.186,
+        "n_cells": null,
+        "wns_cost": 0.2967,
+        "power_w": 0.00531,
+        "congestion": 0.0991,
+        "static_ir_mv": 8.195642724250662,
+        "dynamic_ir_mv": 10.713240164762716,
+        "em_j_a_m2": 12477708216.659132,
+        "ttf_rel_inv": 1.5569320234008281,
+        "fidelity": "F4",
+        "note": "winning-IR-region write_pg_spice n_r=3410 droop=10.713240164762716 \u2014 not finish, not gold"
+      },
+      "cost_s": 5.887741804122925,
+      "pred": {},
+      "attr": {
         "status": "READY",
         "kind": "ir_hotspot",
-        "node": "ITermNode_metal1_10149_80945",
-        "x_dbu": 10149.0,
-        "y_dbu": 80945.0,
-        "region": "r03",
-        "droop_mv": 7.655075092018349,
-        "seq_frac": 0.7182959898735495,
-        "combo_frac": 0.2817040101264505,
+        "node": "ITermNode_metal1_9123_14226",
+        "x_dbu": 9123.0,
+        "y_dbu": 14226.0,
+        "region": "r00",
+        "droop_mv": 10.713240164762716,
+        "seq_frac": 0.6750432903507018,
+        "combo_frac": 0.3249567096492982,
         "path_start": null,
         "path_end": null,
         "path_slack_ns": null,
@@ -26775,15 +27034,15 @@
         "cones": [
           "dpath",
           "dpath/b_reg",
-          "ctrl",
-          "ctrl/state"
+          "dpath/b_mux",
+          "ctrl"
         ],
         "cells": [
           "dpath/b_reg/_078_",
-          "ctrl/state/_08_",
-          "ctrl/state/_06_",
-          "ctrl/_14_",
-          "ctrl/state/_07_"
+          "dpath/b_reg/_077_",
+          "dpath/b_reg/_076_",
+          "dpath/b_mux/_46_",
+          "ctrl/_11_"
         ],
         "nets": [],
         "scope": "logic_cone",
@@ -26796,45 +27055,210 @@
           "cell",
           "net"
         ],
-        "em_j_a_m2": 9745280689.535067,
-        "dT_mesh_k": 0.10363672883123574,
-        "note": "IR hotspot + ODB inst join \u2192 cone dpath,ctrl \u00b7 region r03; hierarchical focus, not a chip-wide restart",
-        "via": "active_f4_ir_cell_champ_cone_region_pdn",
+        "em_j_a_m2": 12477708216.659132,
+        "dT_mesh_k": 0.23200383020402784,
+        "note": "IR hotspot + ODB inst join \u2192 cone dpath,ctrl \u00b7 region r00; hierarchical focus, not a chip-wide restart",
+        "transform": "cell_size_ir",
+        "inherited_from": "eb36579147a7",
+        "extract_id": "9711e13bf165",
+        "via": "f4_winning_ir_region_extract",
+        "host_level": "cell",
+        "host_source": "cell_size_ir",
+        "residual_mv": 8.816786616455241,
+        "residual_vs": "9cdf547704cc",
+        "residual_via": "winning_ir_region_vs_winning_ir_extract"
+      },
+      "egraph": {},
+      "artifacts": {
+        "status": "ok",
+        "spice": "/workspace/learn/sim/dse/extracts/9711e13bf165/pg_vdd_bumps.sp",
+        "insts": "/workspace/learn/sim/dse/extracts/9711e13bf165/inst_power_map.json",
+        "odb": "/workspace/learn/sim/dse/extracts/9711e13bf165/candidate.odb",
+        "n_r": 3410,
+        "n_i": 499,
+        "hpwl_um": 3008.841,
+        "overflow": 0.0991,
+        "util": 35.0,
+        "density": 0.55,
+        "legalize": "detailed_placement",
+        "gold": false,
+        "via": "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) \u2014 not finish, not gold",
+        "cost_s": 5.887741804122925,
+        "region_bin": "r30",
+        "region_box_um": [
+          32.015,
+          2.8,
+          41.99,
+          12.600000000000001
+        ],
+        "region": "r30",
+        "x_dbu": 9123.0,
+        "y_dbu": 14226.0,
+        "region_density": 0.3,
+        "n_sta_inst": 499,
+        "sta_arrivals": "/workspace/learn/sim/dse/extracts/9711e13bf165/sta_arrivals.json",
+        "sta_via": "extract",
+        "worst_droop_mv": 10.713240164762716,
+        "worst_droop_pct": 0.9739309240693378,
+        "static_ir_mv": 8.195642724250662,
+        "static_ir_pct": 0.7450584294773329,
+        "static_ir_pkg_mv": 8.241901888458303,
+        "static_node": "ITermNode_metal1_4370_13745",
+        "worst_time_ns": 0.08,
+        "worst_node": "ITermNode_metal1_9123_14226",
+        "seq_frac": 0.6750432903507018,
+        "combo_frac": 0.3249567096492982,
+        "pkg_r": 0.05,
+        "pkg_l": 2e-10,
+        "c_decap": 5e-14,
+        "i_scale": 1.0,
+        "n_events": 499,
+        "n_sta_applied": 499,
+        "t50_via": {
+          "synthetic": 0,
+          "sta_arrival": 499,
+          "vcd_name_join": 0
+        },
+        "solver": "A_direct_be",
+        "solver_kind": "direct",
+        "m": null,
+        "backend": "native",
+        "timestep_loop": "native_hist",
+        "gold_ref_mv": 45.298,
+        "delta_vs_gold_mv": -34.584759835237286,
+        "extract": "candidate",
+        "em": {
+          "status": "READY",
+          "j_absmax_a_m2": 12477708216.659132,
+          "ttf_rel_min": 0.6422887993630487,
+          "n_with_j": 3364,
+          "dT_mesh_absmax_k": 0.23200383020402784,
+          "i_absmax_a": 0.0012436174669101518,
+          "via": "pdn_em.em_thermal_snapshot on V_worst \u2014 not foundry TTF, not gold"
+        },
+        "note": "candidate PDN R-graph after legalized place; do not replace gold 45.298 mV",
+        "extract_cost_s": 0.6173629760742188,
+        "solve_cost_s": 5.270378828048706
+      },
+      "status": "ok",
+      "failure": null,
+      "created_at": 1788059464.0026066,
+      "note": "F4 extract of cell_size_ir n_r=3410 droop=10.713240164762716"
+    },
+    {
+      "id": "f1b4c44b2450",
+      "design_id": "gcd",
+      "parent_id": "9711e13bf165",
+      "level": "pdn",
+      "knobs": {
+        "name": "decap_200f",
+        "pkg_r": 0.05,
+        "pkg_l": 2e-10,
+        "c_decap": 2e-13,
+        "i_scale": 1.0,
+        "solver": "direct",
+        "source": "f4_solver_a",
+        "extract_id": "9711e13bf165"
+      },
+      "knobs_fp": "8aedcfdc7e2560bd11f6d03622481a3fae81e1664a9d7fce71a9d1bd4d156625",
+      "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
+      "netlist_fp": null,
+      "fidelity": "F4",
+      "qor": {
+        "area_um2": null,
+        "n_cells": null,
+        "wns_cost": null,
+        "power_w": null,
+        "congestion": null,
+        "static_ir_mv": 8.195642724250662,
+        "dynamic_ir_mv": 5.569648362627078,
+        "em_j_a_m2": 11463387643.78615,
+        "ttf_rel_inv": 1.3140925627170899,
+        "fidelity": "F4",
+        "note": "candidate PDN R-graph after legalized place; do not replace gold 45.298 mV"
+      },
+      "cost_s": 5.2482500076293945,
+      "pred": {},
+      "attr": {
+        "status": "READY",
+        "kind": "ir_hotspot",
+        "node": "ITermNode_metal1_14273_13820",
+        "x_dbu": 14273.0,
+        "y_dbu": 13820.0,
+        "region": "r00",
+        "droop_mv": 5.569648362627078,
+        "seq_frac": 0.14965502645050957,
+        "combo_frac": 0.8503449735494903,
+        "path_start": null,
+        "path_end": null,
+        "path_slack_ns": null,
+        "modules": [
+          "ctrl",
+          "dpath"
+        ],
+        "cones": [
+          "ctrl",
+          "dpath",
+          "dpath/b_mux",
+          "dpath/b_reg"
+        ],
+        "cells": [
+          "ctrl/_11_",
+          "dpath/b_mux/_46_",
+          "dpath/b_mux/_44_",
+          "dpath/b_reg/_077_",
+          "dpath/b_mux/_51_"
+        ],
+        "nets": [],
+        "scope": "logic_cone",
+        "join": "odb-geom",
+        "hierarchy": [
+          "chip",
+          "block",
+          "region",
+          "logic_cone",
+          "cell",
+          "net"
+        ],
+        "em_j_a_m2": 11463387643.78615,
+        "dT_mesh_k": 0.23192419993946953,
+        "note": "IR hotspot + ODB inst join \u2192 cone ctrl,dpath \u00b7 region r00; hierarchical focus, not a chip-wide restart",
+        "via": "active_f4_winning_ir_region_pdn",
         "steer": {
           "level": "pdn",
-          "extract_id": "6935d1b41b11",
-          "host_id": "6935d1b41b11",
-          "host_source": "f4_ir_cell_champ_cone_region_extract",
-          "region": "r13",
-          "reason": "IR-cell-champ-cone-region residual +3.772 mV (raised droop vs cone extract) \u2014 restamp decap_200f on the r13-capped leftover mesh, not champ IR-steer, not IR-cell-region PDN, not ABC",
-          "ir_cell_champ_cone_region_residual_mv": 3.7718205955830086,
+          "extract_id": "9711e13bf165",
+          "host_id": "9711e13bf165",
+          "host_source": "f4_winning_ir_region_extract",
+          "region": "r30",
+          "reason": "winning-IR-region residual +8.817 mV (raised droop vs winning-IR extract) \u2014 restamp decap_200f on the r30-capped winning-IR mesh, not leftover-cone-region PDN, not ABC",
+          "winning_ir_region_residual_mv": 8.816786616455241,
           "knob_residual_mv": -7.773352279386357,
-          "via": "active_f4_ir_cell_champ_cone_region_pdn",
-          "not": "a flattened cell+PDN vector / gold / IR-cell-region / champ extract"
+          "via": "active_f4_winning_ir_region_pdn",
+          "not": "a flattened cell+PDN vector / gold / leftover-cone-region / champ extract"
         },
-        "residual_vs_host_win_mv": 3.6391275705094372,
+        "residual_vs_host_win_mv": 1.5537008411181663,
         "residual_vs_host_win": "9a4ec426fb61"
       },
       "egraph": {},
       "artifacts": {
         "status": "ok",
-        "worst_droop_mv": 7.655075092018349,
-        "worst_droop_pct": 0.6959159174562134,
-        "static_ir_mv": 7.425605277024072,
-        "static_ir_pct": 0.6750550251840065,
-        "static_ir_pkg_mv": 7.472563691023115,
-        "static_node": "ITermNode_metal1_4370_75345",
-        "worst_time_ns": 0.08,
-        "worst_node": "ITermNode_metal1_10149_80945",
-        "x_dbu": 10149.0,
-        "y_dbu": 80945.0,
-        "seq_frac": 0.7182959898735495,
-        "combo_frac": 0.2817040101264505,
+        "worst_droop_mv": 5.569648362627078,
+        "worst_droop_pct": 0.5063316693297343,
+        "static_ir_mv": 8.195642724250662,
+        "static_ir_pct": 0.7450584294773329,
+        "static_ir_pkg_mv": 8.241901888458303,
+        "static_node": "ITermNode_metal1_4370_13745",
+        "worst_time_ns": 0.27,
+        "worst_node": "ITermNode_metal1_14273_13820",
+        "x_dbu": 14273.0,
+        "y_dbu": 13820.0,
+        "seq_frac": 0.14965502645050957,
+        "combo_frac": 0.8503449735494903,
         "pkg_r": 0.05,
         "pkg_l": 2e-10,
         "c_decap": 2e-13,
         "i_scale": 1.0,
-        "n_r": 3434,
+        "n_r": 3410,
         "n_i": 499,
         "n_events": 499,
         "n_sta_applied": 499,
@@ -26850,34 +27274,34 @@
         "timestep_loop": "native_hist",
         "gold": false,
         "gold_ref_mv": 45.298,
-        "delta_vs_gold_mv": -37.64292490798165,
+        "delta_vs_gold_mv": -39.728351637372924,
         "extract": "candidate",
         "em": {
           "status": "READY",
-          "j_absmax_a_m2": 9745280689.535067,
-          "ttf_rel_min": 1.0529585977640734,
-          "n_with_j": 3389,
-          "dT_mesh_absmax_k": 0.10363672883123574,
-          "i_absmax_a": 0.0003850326198776936,
+          "j_absmax_a_m2": 11463387643.78615,
+          "ttf_rel_min": 0.7609814014412692,
+          "n_with_j": 3364,
+          "dT_mesh_absmax_k": 0.23192419993946953,
+          "i_absmax_a": 0.0006056431109324004,
           "via": "pdn_em.em_thermal_snapshot on V_worst \u2014 not foundry TTF, not gold"
         },
         "via": "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) \u2014 not finish, not gold",
-        "spice": "/workspace/learn/sim/dse/extracts/6935d1b41b11/pg_vdd_bumps.sp",
-        "insts": "/workspace/learn/sim/dse/extracts/6935d1b41b11/inst_power_map.json",
-        "cost_s": 5.067052841186523,
+        "spice": "/workspace/learn/sim/dse/extracts/9711e13bf165/pg_vdd_bumps.sp",
+        "insts": "/workspace/learn/sim/dse/extracts/9711e13bf165/inst_power_map.json",
+        "cost_s": 5.2482500076293945,
         "note": "candidate PDN R-graph after legalized place; do not replace gold 45.298 mV"
       },
       "status": "ok",
       "failure": null,
-      "created_at": 1788057552.9660525,
-      "note": "F4 PDN decap_200f on 6935d1b41b11 droop=7.655075092018349 \u2014 not gold"
+      "created_at": 1788059469.412485,
+      "note": "F4 PDN decap_200f on 9711e13bf165 droop=5.569648362627078 \u2014 not gold"
     }
   ],
   "log": [
     {
-      "t": 1788057541.54489,
+      "t": 1788059457.5217102,
       "kind": "inspect",
-      "n": 99,
+      "n": 101,
       "levels": [
         "architecture",
         "cell",
@@ -26890,182 +27314,188 @@
       ]
     },
     {
-      "t": 1788057541.5457582,
+      "t": 1788059457.6205392,
+      "kind": "inspect",
+      "persist_hotspot_join": 6,
+      "via": "odb-geom"
+    },
+    {
+      "t": 1788059457.6213608,
       "kind": "ingest",
       "level": "physical",
       "id": "5b128c74747e",
       "fidelity": "F4"
     },
     {
-      "t": 1788057541.545898,
+      "t": 1788059457.621498,
       "kind": "ingest",
       "level": "physical",
       "id": "dae774044e37",
       "fidelity": "F2"
     },
     {
-      "t": 1788057541.5464222,
+      "t": 1788059457.6220279,
       "kind": "ingest",
       "level": "pdn",
       "id": "4a73dc1359e1",
       "fidelity": "F4"
     },
     {
-      "t": 1788057541.5974057,
+      "t": 1788059457.6698496,
       "kind": "plan",
       "focus": "dpath",
       "combo_frac": 0.983563683518776,
       "f2_cong": 0.0
     },
     {
-      "t": 1788057541.5974073,
+      "t": 1788059457.6698508,
       "kind": "plan_step",
       "level": "logic",
       "reason": "BOiLS EHVI(area, WNS) + DRiLLS UCB \u2014 F3 steers ABC, not area-only; cone-local ABC on dpath (chip flatten-first teacher already measured)",
       "scope": "logic_cone"
     },
     {
-      "t": 1788057541.597408,
+      "t": 1788059457.6698513,
       "kind": "plan_step",
       "level": "f2_fast",
       "reason": "anchored barycenter HPWL/RUDY on the best F1 netlist (not make finish)",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974083,
+      "t": 1788059457.669852,
       "kind": "plan_step",
       "level": "f2_gpl",
       "reason": "budgeted OpenROAD GPL -skip_io on the F1 winner \u2014 not route/F5/IR",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974085,
+      "t": 1788059457.6698523,
       "kind": "plan_step",
       "level": "f3_sta",
       "reason": "OpenSTA ideal WNS/power interleaved after each F1 \u2014 not SPEF, not IR",
       "scope": "block"
     },
     {
-      "t": 1788057541.597409,
+      "t": 1788059457.6698527,
       "kind": "plan_step",
       "level": "routing",
       "reason": "budgeted OpenROAD GRT after place_pins \u2014 not detailed route/F5",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974092,
+      "t": 1788059457.669853,
       "kind": "plan_step",
       "level": "f3_sdf",
       "reason": "OpenSTA + GRT SDF after estimate_parasitics \u2014 not SPEF/OpenRCX, not F5",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974097,
+      "t": 1788059457.6698532,
       "kind": "plan_step",
       "level": "f5_drt",
       "reason": "budgeted detailed_route + OpenRCX SPEF \u2014 F5-lite, not make finish",
       "scope": "chip"
     },
     {
-      "t": 1788057541.59741,
+      "t": 1788059457.6698537,
       "kind": "plan_step",
       "level": "f3_spef",
       "reason": "OpenSTA + OpenRCX SPEF on the F5 netlist \u2014 not GRT SDF, not finish launch",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974107,
+      "t": 1788059457.669854,
       "kind": "plan_step",
       "level": "f5_cts",
       "reason": "budgeted CTS + DRT + OpenRCX SPEF \u2014 propagated clock, not make finish",
       "scope": "chip"
     },
     {
-      "t": 1788057541.597411,
+      "t": 1788059457.6698542,
       "kind": "plan_step",
       "level": "f5_local",
       "reason": "OpenRCX SPEF on the cell/net netlist \u2014 F3\u2192F5 residual vs F1 F5-lite, not a reused SPEF, not make finish",
       "scope": "net"
     },
     {
-      "t": 1788057541.5974112,
+      "t": 1788059457.6698544,
       "kind": "plan_step",
       "level": "residual_steer",
       "reason": "F3\u2192F5 residual + uncertainty pick the next local level (other host SPEF, or SPEF-path cell/net) \u2014 not a mixed knob vector",
       "scope": "net"
     },
     {
-      "t": 1788057541.5974116,
+      "t": 1788059457.6698549,
       "kind": "plan_step",
       "level": "f5_port",
       "reason": "OpenRCX SPEF on the port-net BUF netlist \u2014 F3\u2192F5 residual, not the intra-module net host, not make finish",
       "scope": "port"
     },
     {
-      "t": 1788057541.5974119,
+      "t": 1788059457.669855,
       "kind": "plan_step",
       "level": "port_steer",
       "reason": "F5-port SPEF residual picks intra-module BUF on SPEF hops \u2014 not another port BUF, not a mixed vector",
       "scope": "net"
     },
     {
-      "t": 1788057541.597412,
+      "t": 1788059457.6698556,
       "kind": "plan_step",
       "level": "synthesis",
       "reason": "ORFS abc_speed.script (ABC_AREA=0) \u2014 measured synthesis F1, not logic -fast",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974126,
+      "t": 1788059457.6698558,
       "kind": "plan_step",
       "level": "cell",
       "reason": "upsize 2 attributed worst-path cells \u2014 not more ABC, not a chip restart",
       "scope": "cell"
     },
     {
-      "t": 1788057541.5974128,
+      "t": 1788059457.6698563,
       "kind": "plan_step",
       "level": "net",
       "reason": "insert BUF on OpenSTA worst-path hops after F3 \u2014 net-local, not ABC",
       "scope": "net"
     },
     {
-      "t": 1788057541.597413,
+      "t": 1788059457.6698565,
       "kind": "plan_step",
       "level": "net_port",
       "reason": "insert BUF on attributed ctrl\u2194dpath port nets at the parent \u2014 not intra-module hops, not ABC",
       "scope": "port"
     },
     {
-      "t": 1788057541.5974133,
+      "t": 1788059457.6698568,
       "kind": "plan_step",
       "level": "f4_amg",
       "reason": "SA-AMG restamp on the named extract \u2014 MF solver residual vs DirectLU, not gold",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974135,
+      "t": 1788059457.669857,
       "kind": "plan_step",
       "level": "f4_ras",
       "reason": "RAS restamp after AMG \u2014 domain-decomp MF residual vs DirectLU, not gold",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974138,
+      "t": 1788059457.6698575,
       "kind": "plan_step",
       "level": "f4_krylov",
       "reason": "rational Krylov/MOR restamp after RAS \u2014 reduced-order residual vs DirectLU, not gold",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974145,
+      "t": 1788059457.6698577,
       "kind": "plan_step",
       "level": "physical_catalog",
       "reason": "measure one AutoDMP util/density point with GPL (not F0-only RUDY)",
       "scope": "region"
     },
     {
-      "t": 1788057541.597415,
+      "t": 1788059457.6698582,
       "kind": "plan_step",
       "level": "f2_region",
       "reason": "IR hotspot region r31 \u2014 OpenROAD density cap on that bin, not more ABC, not a chip restart",
@@ -27073,7 +27503,7 @@
       "region": "r31"
     },
     {
-      "t": 1788057541.5974154,
+      "t": 1788059457.669859,
       "kind": "plan_step",
       "level": "f4_region_extract",
       "reason": "write_pg_spice under the r31 density cap \u2014 new R-graph, not the unconstrained extract, not gold",
@@ -27081,259 +27511,273 @@
       "region": "r31"
     },
     {
-      "t": 1788057541.5974157,
+      "t": 1788059457.6698594,
       "kind": "plan_step",
       "level": "f4_extract",
       "reason": "write_pg_spice after place_pins+GPL+DP+pdngen on the F1 incumbent \u2014 new R-graph, not the finish mesh, not gold",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974162,
+      "t": 1788059457.6698596,
       "kind": "plan_step",
       "level": "pdn",
       "reason": "Solver A restamp on the named extract (c_decap/pkg L) \u2014 not gold, not finish",
       "scope": "chip"
     },
     {
-      "t": 1788057541.5974164,
+      "t": 1788059457.66986,
       "kind": "plan_step",
       "level": "f4_activity",
       "reason": "OpenSTA report_arrival on the attributed host \u2014 t50 for I(t), not the synth extract STA, not a VCD remap",
       "scope": "net"
     },
     {
-      "t": 1788057541.5974166,
+      "t": 1788059457.6698601,
       "kind": "plan_step",
       "level": "f4_host_extract",
       "reason": "write_pg_spice on the attributed host netlist \u2014 host R-graph, not the synth F1 extract, not gold",
       "scope": "net"
     },
     {
-      "t": 1788057541.5974169,
+      "t": 1788059457.6698606,
       "kind": "plan_step",
       "level": "f4_host_region",
       "reason": "host IR bin \u2260 gold/candidate bin \u2014 write_pg_spice under a density cap on the host netlist, not gold rXY on synth F1, not more ABC",
       "scope": "region"
     },
     {
-      "t": 1788057541.597417,
+      "t": 1788059457.6698608,
       "kind": "plan_step",
       "level": "f4_scale",
       "reason": "I(t)\u00d7P_F3/P_base of the attributed host (port-steer/port-net/net/cell, else F1) on the host extract mesh (else candidate) \u2014 not synth-only, not a VCD remap; IR feedback to the cone, no chip restart",
       "scope": "logic_cone"
     },
     {
-      "t": 1788057541.5974178,
+      "t": 1788059457.669861,
       "kind": "plan_step",
       "level": "ir_steer",
       "reason": "F4 IR residual loop: winning decap on the region mesh, then unused pkg L on the candidate \u2014 inspect after each shot, not a mixed vector",
       "scope": "region"
     },
     {
-      "t": 1788057541.597418,
+      "t": 1788059457.6698616,
       "kind": "plan_step",
       "level": "host_ir_steer",
       "reason": "F4 host-region residual loop: winning family on the host-region mesh, then unused pkg L on the unconstrained host \u2014 not candidate IR-steer, not gold rXY, not ABC",
       "scope": "region"
     },
     {
-      "t": 1788057541.5974183,
+      "t": 1788059457.6698618,
       "kind": "plan_step",
       "level": "f4_scale_win",
       "reason": "I(t)\u00d7P_F3/P_base of the attributed host on the winning host PDN point after host IR-steer \u2014 not the unconstrained first I-scale, not a VCD remap",
       "scope": "region"
     },
     {
-      "t": 1788057541.5974185,
+      "t": 1788059457.669862,
       "kind": "plan_step",
       "level": "ir_cell",
       "reason": "I-scale-win IR hotspot \u2192 nearest ODB instances (geometric join) \u2192 module-scoped drive-up \u2014 not STA-path cell size-up, not ABC, not a VCD remap",
       "scope": "cell"
     },
     {
-      "t": 1788057541.5974188,
+      "t": 1788059457.6698625,
       "kind": "plan_step",
       "level": "ir_cell_extract",
       "reason": "write_pg_spice on the IR-cell-sized netlist \u2014 residual vs the unconstrained host extract, not STA-only, not gold, not ABC",
       "scope": "cell"
     },
     {
-      "t": 1788057541.597419,
+      "t": 1788059457.669863,
       "kind": "plan_step",
       "level": "ir_cell_pdn",
       "reason": "IR-cell 1\u00d7 residual chooses the winning PDN family on the sized mesh \u2014 not host IR-steer, not a flattened cell+decap vector, not ABC",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974195,
+      "t": 1788059457.6698632,
       "kind": "plan_step",
       "level": "ir_cell_region",
       "reason": "IR-cell 1\u00d7 hotspot bin \u2260 host bin and seq-heavy \u2014 density cap on the sized netlist, not more combo size-up, not gold rXY, not ABC",
       "scope": "region"
     },
     {
-      "t": 1788057541.5974197,
+      "t": 1788059457.6698635,
       "kind": "plan_step",
       "level": "ir_cell_region_pdn",
       "reason": "IR-cell-region |\u0394| \u2265 1 mV chooses the winning PDN family on the capped sized mesh \u2014 not host IR-steer, not a flattened cell+decap vector",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974202,
+      "t": 1788059457.6698637,
       "kind": "plan_step",
       "level": "winning_ir_pdn",
       "reason": "After a strap/EM R-graph becomes winning_ir_pdn, unused Dynamic IR catalog (decap then pkg L, inherit host pkg_r) restamps that extract \u2014 not pitch, not width, not host/candidate IR-steer, not gold",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974205,
+      "t": 1788059457.669864,
       "kind": "plan_step",
       "level": "f4_scale_champ",
       "reason": "I-scale-champ: I(t)\u00d7P on winning_ir_pdn (IR-cell-region-PDN mesh) \u2014 not I-scale-win on the stale host-win mesh, not host arrivals",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974212,
+      "t": 1788059457.6698644,
       "kind": "plan_step",
       "level": "ir_cell_champ",
       "reason": "I-scale-champ IR hotspot \u2192 nearest ODB instances on the champion extract \u2192 module-scoped drive-up \u2014 re-paid when winning_ir extract moves, not the first ctrl IR-cell, not STA-path size-up, not ABC, not VCD",
       "scope": "cell"
     },
     {
-      "t": 1788057541.5974214,
+      "t": 1788059457.6698647,
       "kind": "plan_step",
       "level": "ir_cell_champ_extract",
       "reason": "write_pg_spice on the I-scale-champ sized netlist \u2014 residual vs the IR-cell extract; re-paid when the champ size-up extract moves, not host extract, not gold, not ABC",
       "scope": "cell"
     },
     {
-      "t": 1788057541.5974216,
+      "t": 1788059457.669865,
       "kind": "plan_step",
       "level": "ir_cell_champ_pdn",
       "reason": "IR-cell-champ 1\u00d7 residual chooses the winning PDN family on that sized mesh \u2014 re-paid on a new champ extract, not host IR-steer, not a flattened cell+decap vector",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.597422,
+      "t": 1788059457.6698651,
       "kind": "plan_step",
       "level": "ir_cell_champ_cone",
       "reason": "IR-cell-champ extract hotspot leftover cells (minus champ size-up) \u2192 module-scoped drive-up on the champ-sized netlist \u2014 not first ctrl IR-cell, not STA-path size-up, not ABC, not VCD",
       "scope": "cell"
     },
     {
-      "t": 1788057541.5974221,
+      "t": 1788059457.6698654,
       "kind": "plan_step",
       "level": "ir_cell_champ_cone_extract",
       "reason": "write_pg_spice on the leftover-cone netlist \u2014 residual vs the IR-cell-champ extract; re-paid when the leftover cone extract moves, not host extract, not gold, not ABC",
       "scope": "cell"
     },
     {
-      "t": 1788057541.5974224,
+      "t": 1788059457.669866,
       "kind": "plan_step",
       "level": "ir_cell_champ_cone_pdn",
       "reason": "IR-cell-champ-cone 1\u00d7 residual chooses the winning PDN family on that leftover-cone mesh \u2014 re-paid on a new cone extract, not champ IR-steer, not a flattened cell+decap vector",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974228,
+      "t": 1788059457.6698663,
       "kind": "plan_step",
       "level": "ir_cell_champ_cone_region",
       "reason": "leftover-cone 1\u00d7 hotspot bin \u2260 champ-extract bin and seq-heavy \u2014 density cap on the leftover-cone netlist, not more combo size-up, not IR-cell-region rXY, not gold rXY, not ABC",
       "scope": "region"
     },
     {
-      "t": 1788057541.597423,
+      "t": 1788059457.6698666,
       "kind": "plan_step",
       "level": "ir_cell_champ_cone_region_pdn",
       "reason": "leftover-cone-region |\u0394| \u2265 1 mV chooses the winning PDN family on the capped leftover mesh \u2014 re-paid on a new cone extract, not champ IR-steer, not a flattened cell+decap vector",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974233,
+      "t": 1788059457.6698673,
+      "kind": "plan_step",
+      "level": "winning_ir_region",
+      "reason": "winning-IR 1\u00d7 hotspot bin \u2260 leftover-cone / IR-cell-region and seq-heavy \u2014 density cap on the IR-cell netlist, not leftover-cone rXY, not more combo size-up, not gold rXY, not ABC",
+      "scope": "region"
+    },
+    {
+      "t": 1788059457.6698675,
+      "kind": "plan_step",
+      "level": "winning_ir_region_pdn",
+      "reason": "winning-IR-region |\u0394| \u2265 1 mV chooses the winning PDN family on the capped winning-IR mesh \u2014 not leftover-cone-region PDN, not champ IR-steer, not a flattened cell+decap vector",
+      "scope": "pdn"
+    },
+    {
+      "t": 1788059457.6698678,
       "kind": "plan_step",
       "level": "f4_amg_champ",
       "reason": "SA-AMG on winning_ir_pdn with the same DirectLU knobs \u2014 MF solver residual, not candidate AMG, not gold",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974238,
+      "t": 1788059457.669868,
       "kind": "plan_step",
       "level": "f4_ras_champ",
       "reason": "RAS on winning_ir_pdn after champion AMG \u2014 domain-decomp residual on the 1\u00d7 champion mesh, not candidate RAS, not gold",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.597424,
+      "t": 1788059457.6698682,
       "kind": "plan_step",
       "level": "f4_krylov_champ",
       "reason": "Krylov/MOR on winning_ir_pdn after champion RAS \u2014 reduced-order residual on the 1\u00d7 champion mesh, not candidate Krylov, not gold",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974243,
+      "t": 1788059457.6698685,
       "kind": "plan_step",
       "level": "static_ir_steer",
       "reason": "Static IR 1\u00d7 champion (not winning_ir_pdn) pays unused pkg_r \u2014 decap/pkg L do not move DC drop, not Dynamic IR-steer, not gold",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974247,
+      "t": 1788059457.669869,
       "kind": "plan_step",
       "level": "static_mesh",
       "reason": "Null pkg_r residual (ideal bump V sources) pays denser bumps on the static-IR champ ODB \u2014 same place, not a new GPL, not gold",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974252,
+      "t": 1788059457.6698694,
       "kind": "plan_step",
       "level": "static_straps",
       "reason": "Null bump residual (same n_v on this die) pays denser metal4 straps on the static-IR champ ODB \u2014 pdngen -ripup, not bumps, not gold",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5974255,
+      "t": 1788059457.6698697,
       "kind": "plan_step",
       "level": "em_straps",
       "reason": "After strap pitch is measured, unused metal4 width searches EM J on the same place \u2014 width-only residual, not pitch, not gold",
       "scope": "pdn"
     },
     {
-      "t": 1788057541.5977192,
+      "t": 1788059457.6701725,
       "kind": "acquire",
       "fidelity": "F1_CTRL_CONE",
       "pay": false,
       "why": "ctrl-cone ABC shot already spent"
     },
     {
-      "t": 1788057541.5977232,
+      "t": 1788059457.6701767,
       "kind": "acquire",
       "fidelity": "F1_SYNTH",
       "pay": false,
       "why": "synthesis F1 already measured"
     },
     {
-      "t": 1788057541.5977294,
+      "t": 1788059457.670183,
       "kind": "acquire",
       "fidelity": "CELL_SIZE",
       "pay": false,
       "why": "cell-local size shot already spent"
     },
     {
-      "t": 1788057541.5977354,
+      "t": 1788059457.670188,
       "kind": "acquire",
       "fidelity": "NET_BUF",
       "pay": false,
       "why": "net-local buffer shot already spent"
     },
     {
-      "t": 1788057541.597741,
+      "t": 1788059457.6701934,
       "kind": "acquire",
       "fidelity": "NET_PORT",
       "pay": false,
       "why": "port-net buffer shot already spent"
     },
     {
-      "t": 1788057541.6196098,
+      "t": 1788059457.69237,
       "kind": "evaluate",
       "id": "f459158674ff",
       "level": "physical",
@@ -27344,7 +27788,7 @@
       "congestion": 0.6254339471248483
     },
     {
-      "t": 1788057541.6435719,
+      "t": 1788059457.7179914,
       "kind": "evaluate",
       "id": "f6c4c1196268",
       "level": "physical",
@@ -27355,7 +27799,7 @@
       "congestion": 0.6843306125415817
     },
     {
-      "t": 1788057541.6664276,
+      "t": 1788059457.7396526,
       "kind": "evaluate",
       "id": "dab9249760f4",
       "level": "physical",
@@ -27366,7 +27810,7 @@
       "congestion": 0.627166124373926
     },
     {
-      "t": 1788057541.6885583,
+      "t": 1788059457.7598813,
       "kind": "evaluate",
       "id": "a12e7be8d598",
       "level": "physical",
@@ -27377,56 +27821,56 @@
       "congestion": 0.5826939215921353
     },
     {
-      "t": 1788057541.688573,
+      "t": 1788059457.759892,
       "kind": "acquire",
       "fidelity": "F2_GPL",
       "pay": false,
       "why": "GPL shot already spent this run"
     },
     {
-      "t": 1788057541.6885936,
+      "t": 1788059457.759909,
       "kind": "acquire",
       "fidelity": "F3",
       "pay": false,
       "why": "F3 STA budget exhausted"
     },
     {
-      "t": 1788057541.6885993,
+      "t": 1788059457.7599146,
       "kind": "acquire",
       "fidelity": "F2_GRT",
       "pay": false,
       "why": "GRT shot already spent this run"
     },
     {
-      "t": 1788057541.6886113,
+      "t": 1788059457.759924,
       "kind": "acquire",
       "fidelity": "F3_SDF",
       "pay": false,
       "why": "F3 SDF-GRT shot already spent"
     },
     {
-      "t": 1788057541.68862,
+      "t": 1788059457.7599318,
       "kind": "acquire",
       "fidelity": "F5",
       "pay": false,
       "why": "F5 DRT/RCX shot already spent"
     },
     {
-      "t": 1788057541.68863,
+      "t": 1788059457.7599397,
       "kind": "acquire",
       "fidelity": "F3_SPEF",
       "pay": false,
       "why": "F3 SPEF shot already spent"
     },
     {
-      "t": 1788057541.6886356,
+      "t": 1788059457.7599452,
       "kind": "acquire",
       "fidelity": "F5_CTS",
       "pay": false,
       "why": "F5 CTS shot already spent"
     },
     {
-      "t": 1788057541.68873,
+      "t": 1788059457.7600489,
       "kind": "acquire",
       "fidelity": "F5_LOCAL",
       "pay": false,
@@ -27438,7 +27882,7 @@
       "n": 1
     },
     {
-      "t": 1788057541.6888523,
+      "t": 1788059457.7601564,
       "kind": "acquire",
       "fidelity": "RESIDUAL_STEER",
       "pay": false,
@@ -27473,14 +27917,14 @@
       }
     },
     {
-      "t": 1788057541.688864,
+      "t": 1788059457.760164,
       "kind": "acquire",
       "fidelity": "F5_PORT",
       "pay": false,
       "why": "F5 port-net SPEF shot already spent"
     },
     {
-      "t": 1788057541.6901505,
+      "t": 1788059457.7613945,
       "kind": "acquire",
       "fidelity": "PORT_STEER",
       "pay": false,
@@ -27507,91 +27951,91 @@
       }
     },
     {
-      "t": 1788057541.690206,
+      "t": 1788059457.7614472,
       "kind": "acquire",
       "fidelity": "F2_GPL_CATALOG",
       "pay": false,
       "why": "physical catalog GPL shot already spent"
     },
     {
-      "t": 1788057541.6902118,
+      "t": 1788059457.7614534,
       "kind": "acquire",
       "fidelity": "F2_REGION",
       "pay": false,
       "why": "region GPL shot already spent"
     },
     {
-      "t": 1788057541.6902244,
+      "t": 1788059457.7614648,
       "kind": "acquire",
       "fidelity": "F4_EXTRACT",
       "pay": false,
       "why": "candidate PDN extract already spent this run"
     },
     {
-      "t": 1788057541.6902325,
+      "t": 1788059457.7614732,
       "kind": "acquire",
       "fidelity": "F4_REGION_EXTRACT",
       "pay": false,
       "why": "region PDN extract already spent"
     },
     {
-      "t": 1788057541.6903288,
+      "t": 1788059457.761564,
       "kind": "acquire",
       "fidelity": "F4_PDN",
       "pay": false,
       "why": "PDN catalog F4 shot already spent"
     },
     {
-      "t": 1788057541.6903367,
+      "t": 1788059457.7615714,
       "kind": "acquire",
       "fidelity": "F4_AMG",
       "pay": false,
       "why": "AMG F4 scout already spent"
     },
     {
-      "t": 1788057541.690345,
+      "t": 1788059457.7615795,
       "kind": "acquire",
       "fidelity": "F4_RAS",
       "pay": false,
       "why": "RAS F4 scout already spent"
     },
     {
-      "t": 1788057541.6903532,
+      "t": 1788059457.761587,
       "kind": "acquire",
       "fidelity": "F4_KRYLOV",
       "pay": false,
       "why": "Krylov F4 scout already spent"
     },
     {
-      "t": 1788057541.69036,
+      "t": 1788059457.7615938,
       "kind": "acquire",
       "fidelity": "F3_HOST_ARRIVALS",
       "pay": false,
       "why": "host arrivals shot already spent"
     },
     {
-      "t": 1788057541.6903672,
+      "t": 1788059457.7616003,
       "kind": "acquire",
       "fidelity": "F4_HOST_EXTRACT",
       "pay": false,
       "why": "host PDN extract already spent"
     },
     {
-      "t": 1788057541.690374,
+      "t": 1788059457.7616076,
       "kind": "acquire",
       "fidelity": "F4_HOST_REGION",
       "pay": false,
       "why": "host-region PDN extract already spent"
     },
     {
-      "t": 1788057541.6903806,
+      "t": 1788059457.7616153,
       "kind": "acquire",
       "fidelity": "F4_ISCALE",
       "pay": false,
       "why": "I(t)-scale F4 shot already spent"
     },
     {
-      "t": 1788057541.690505,
+      "t": 1788059457.7617185,
       "kind": "acquire",
       "fidelity": "IR_STEER",
       "pay": false,
@@ -27599,7 +28043,7 @@
       "steer": null
     },
     {
-      "t": 1788057541.6905856,
+      "t": 1788059457.7617967,
       "kind": "acquire",
       "fidelity": "HOST_IR_STEER",
       "pay": false,
@@ -27623,28 +28067,28 @@
       }
     },
     {
-      "t": 1788057541.6905928,
+      "t": 1788059457.7618039,
       "kind": "acquire",
       "fidelity": "F4_ISCALE_WIN",
       "pay": false,
       "why": "winning-host I-scale shot already spent"
     },
     {
-      "t": 1788057541.6905985,
+      "t": 1788059457.7618093,
       "kind": "acquire",
       "fidelity": "IR_CELL",
       "pay": false,
       "why": "IR-hotspot cell size shot already spent"
     },
     {
-      "t": 1788057541.690606,
+      "t": 1788059457.761817,
       "kind": "acquire",
       "fidelity": "F4_IR_CELL_EXTRACT",
       "pay": false,
       "why": "IR-cell PDN extract already spent"
     },
     {
-      "t": 1788057541.6906483,
+      "t": 1788059457.7618587,
       "kind": "acquire",
       "fidelity": "IR_CELL_PDN",
       "pay": false,
@@ -27652,7 +28096,7 @@
       "steer": null
     },
     {
-      "t": 1788057541.690673,
+      "t": 1788059457.7618828,
       "kind": "acquire",
       "fidelity": "F4_IR_CELL_REGION",
       "pay": false,
@@ -27673,7 +28117,7 @@
       }
     },
     {
-      "t": 1788057541.690712,
+      "t": 1788059457.761921,
       "kind": "acquire",
       "fidelity": "IR_CELL_REGION_PDN",
       "pay": false,
@@ -27681,7 +28125,7 @@
       "steer": null
     },
     {
-      "t": 1788057541.690795,
+      "t": 1788059457.7620015,
       "kind": "acquire",
       "fidelity": "F4_WINNING_IR_PDN",
       "pay": false,
@@ -27689,14 +28133,14 @@
       "steer": null
     },
     {
-      "t": 1788057541.6908278,
+      "t": 1788059457.7620318,
       "kind": "acquire",
       "fidelity": "F4_ISCALE_CHAMP",
       "pay": false,
       "why": "champion I-scale shot already spent"
     },
     {
-      "t": 1788057541.6920624,
+      "t": 1788059457.7631884,
       "kind": "acquire",
       "fidelity": "IR_CELL_CHAMP",
       "pay": false,
@@ -27725,14 +28169,14 @@
       }
     },
     {
-      "t": 1788057541.6920795,
+      "t": 1788059457.7632043,
       "kind": "acquire",
       "fidelity": "F4_IR_CELL_CHAMP_EXTRACT",
       "pay": false,
       "why": "IR-cell-champ PDN extract already spent"
     },
     {
-      "t": 1788057541.6921327,
+      "t": 1788059457.763257,
       "kind": "acquire",
       "fidelity": "IR_CELL_CHAMP_PDN",
       "pay": false,
@@ -27740,7 +28184,7 @@
       "steer": null
     },
     {
-      "t": 1788057541.6921592,
+      "t": 1788059457.763284,
       "kind": "acquire",
       "fidelity": "IR_CELL_CHAMP_CONE",
       "pay": false,
@@ -27770,14 +28214,14 @@
       }
     },
     {
-      "t": 1788057541.6921709,
+      "t": 1788059457.763295,
       "kind": "acquire",
       "fidelity": "F4_IR_CELL_CHAMP_CONE_EXTRACT",
       "pay": false,
       "why": "IR-cell-champ-cone PDN extract already spent"
     },
     {
-      "t": 1788057541.6922097,
+      "t": 1788059457.7633336,
       "kind": "acquire",
       "fidelity": "IR_CELL_CHAMP_CONE_PDN",
       "pay": false,
@@ -27785,50 +28229,56 @@
       "steer": null
     },
     {
-      "t": 1788057541.6924233,
+      "t": 1788059457.7634108,
       "kind": "acquire",
       "fidelity": "F4_IR_CELL_CHAMP_CONE_REGION",
+      "pay": false,
+      "why": "no leftover-cone-region extract or |\u0394| PDN"
+    },
+    {
+      "t": 1788059457.7636368,
+      "kind": "acquire",
+      "fidelity": "F4_WINNING_IR_REGION",
       "pay": true,
-      "why": "IR-cell-champ-cone-region 1\u00d7 hotspot r13 combo 0.16 \u2260 cap r03 \u2014 seq-heavy: density cap on the leftover-cone netlist, not more combo size-up, not IR-cell-region rXY, not gold rXY, not ABC",
+      "why": "winning-IR 1\u00d7 bin r30 combo 0.19 \u2260 leftover-cone / IR-cell-region r00 \u2014 seq-heavy: density cap on the IR-cell netlist, not leftover-cone rXY, not more combo size-up, not gold rXY, not ABC",
       "steer": {
-        "level": "ir_cell_champ_cone_region",
-        "extract_id": "7d97596a7ef5",
-        "host_id": "7d97596a7ef5",
-        "host_source": "f4_ir_cell_champ_cone_region_extract",
-        "region": "r13",
-        "x_dbu": 25520.0,
-        "y_dbu": 80993.0,
-        "combo_frac": 0.16048421841158797,
-        "cap_region": "r03",
-        "champ_region": "r00",
-        "reason": "IR-cell-champ-cone-region 1\u00d7 hotspot r13 combo 0.16 \u2260 cap r03 \u2014 seq-heavy: density cap on the leftover-cone netlist, not more combo size-up, not IR-cell-region rXY, not gold rXY, not ABC",
-        "via": "active_f4_ir_cell_champ_cone_region",
-        "not": "IR-cell-region / a flattened leftover-cone-region vector / more combo size-up"
+        "level": "winning_ir_region",
+        "extract_id": "9cdf547704cc",
+        "host_id": "9cdf547704cc",
+        "host_source": "f4_em_strap_extract",
+        "region": "r30",
+        "x_dbu": 70949.0,
+        "y_dbu": 19855.0,
+        "combo_frac": 0.1851022371470828,
+        "ir_cell_region": "r00",
+        "reason": "winning-IR 1\u00d7 bin r30 combo 0.19 \u2260 leftover-cone / IR-cell-region r00 \u2014 seq-heavy: density cap on the IR-cell netlist, not leftover-cone rXY, not more combo size-up, not gold rXY, not ABC",
+        "via": "active_f4_winning_ir_region",
+        "not": "leftover-cone-region / IR-cell-region / a flattened cell+util vector"
       }
     },
     {
-      "t": 1788057547.7615914,
+      "t": 1788059464.0400977,
       "kind": "evaluate",
-      "id": "6935d1b41b11",
+      "id": "9711e13bf165",
       "level": "pdn",
       "fidelity": "F4",
-      "via": "f4_ir_cell_champ_cone_region_extract",
-      "parent": "61e998374827",
-      "parent_extract_id": "7d97596a7ef5",
-      "region": "r13",
-      "n_r": 3434,
-      "droop_mv": 15.677979218590377,
-      "residual_mv": 3.7718205955830086,
+      "via": "f4_winning_ir_region_extract",
+      "parent": "eb36579147a7",
+      "parent_extract_id": "9cdf547704cc",
+      "region": "r30",
+      "n_r": 3410,
+      "droop_mv": 10.713240164762716,
+      "residual_mv": 8.816786616455241,
       "gold": false,
       "status": "ok",
-      "reason": "IR-cell-champ-cone-region 1\u00d7 hotspot r13 combo 0.16 \u2260 cap r03 \u2014 seq-heavy: density cap on the leftover-cone netlist, not more combo size-up, not IR-cell-region rXY, not gold rXY, not ABC"
+      "reason": "winning-IR 1\u00d7 bin r30 combo 0.19 \u2260 leftover-cone / IR-cell-region r00 \u2014 seq-heavy: density cap on the IR-cell netlist, not leftover-cone rXY, not more combo size-up, not gold rXY, not ABC"
     },
     {
-      "t": 1788057547.7617497,
+      "t": 1788059464.040302,
       "kind": "acquire",
-      "fidelity": "IR_CELL_CHAMP_CONE_REGION_PDN",
+      "fidelity": "WINNING_IR_REGION_PDN",
       "pay": true,
-      "why": "IR-cell-champ-cone-region residual +3.772 mV (raised droop vs cone extract) \u2014 restamp decap_200f on the r13-capped leftover mesh, not champ IR-steer, not IR-cell-region PDN, not ABC",
+      "why": "winning-IR-region residual +8.817 mV (raised droop vs winning-IR extract) \u2014 restamp decap_200f on the r30-capped winning-IR mesh, not leftover-cone-region PDN, not ABC",
       "steer": {
         "level": "pdn",
         "spec": {
@@ -27837,57 +28287,57 @@
           "pkg_l": 2e-10,
           "c_decap": 2e-13
         },
-        "extract_id": "6935d1b41b11",
-        "host_id": "6935d1b41b11",
-        "host_source": "f4_ir_cell_champ_cone_region_extract",
-        "region": "r13",
-        "reason": "IR-cell-champ-cone-region residual +3.772 mV (raised droop vs cone extract) \u2014 restamp decap_200f on the r13-capped leftover mesh, not champ IR-steer, not IR-cell-region PDN, not ABC",
-        "ir_cell_champ_cone_region_residual_mv": 3.7718205955830086,
+        "extract_id": "9711e13bf165",
+        "host_id": "9711e13bf165",
+        "host_source": "f4_winning_ir_region_extract",
+        "region": "r30",
+        "reason": "winning-IR-region residual +8.817 mV (raised droop vs winning-IR extract) \u2014 restamp decap_200f on the r30-capped winning-IR mesh, not leftover-cone-region PDN, not ABC",
+        "winning_ir_region_residual_mv": 8.816786616455241,
         "knob_residual_mv": -7.773352279386357,
-        "via": "active_f4_ir_cell_champ_cone_region_pdn",
-        "not": "a flattened cell+PDN vector / gold / IR-cell-region / champ extract"
+        "via": "active_f4_winning_ir_region_pdn",
+        "not": "a flattened cell+PDN vector / gold / leftover-cone-region / champ extract"
       }
     },
     {
-      "t": 1788057553.004097,
+      "t": 1788059469.44525,
       "kind": "evaluate",
-      "id": "42e2fb069146",
+      "id": "f1b4c44b2450",
       "level": "pdn",
       "fidelity": "F4",
-      "via": "active_f4_ir_cell_champ_cone_region_pdn",
-      "parent": "6935d1b41b11",
+      "via": "active_f4_winning_ir_region_pdn",
+      "parent": "9711e13bf165",
       "catalog": "decap_200f",
-      "extract_id": "6935d1b41b11",
-      "region": "r13",
-      "droop_mv": 7.655075092018349,
-      "residual_vs_host_win_mv": 3.6391275705094372,
+      "extract_id": "9711e13bf165",
+      "region": "r30",
+      "droop_mv": 5.569648362627078,
+      "residual_vs_host_win_mv": 1.5537008411181663,
       "gold": false,
       "status": "ok",
-      "reason": "IR-cell-champ-cone-region residual +3.772 mV (raised droop vs cone extract) \u2014 restamp decap_200f on the r13-capped leftover mesh, not champ IR-steer, not IR-cell-region PDN, not ABC"
+      "reason": "winning-IR-region residual +8.817 mV (raised droop vs winning-IR extract) \u2014 restamp decap_200f on the r30-capped winning-IR mesh, not leftover-cone-region PDN, not ABC"
     },
     {
-      "t": 1788057553.0041795,
+      "t": 1788059469.445341,
       "kind": "acquire",
       "fidelity": "F4_AMG_CHAMP",
       "pay": false,
       "why": "champion AMG shot already spent"
     },
     {
-      "t": 1788057553.004231,
+      "t": 1788059469.445389,
       "kind": "acquire",
       "fidelity": "F4_RAS_CHAMP",
       "pay": false,
       "why": "champion RAS shot already spent"
     },
     {
-      "t": 1788057553.0042703,
+      "t": 1788059469.445427,
       "kind": "acquire",
       "fidelity": "F4_KRYLOV_CHAMP",
       "pay": false,
       "why": "champion Krylov shot already spent"
     },
     {
-      "t": 1788057553.004342,
+      "t": 1788059469.4455109,
       "kind": "acquire",
       "fidelity": "F4_STATIC_IR",
       "pay": false,
@@ -27895,7 +28345,7 @@
       "steer": null
     },
     {
-      "t": 1788057553.0044022,
+      "t": 1788059469.4455822,
       "kind": "acquire",
       "fidelity": "F4_STATIC_MESH",
       "pay": false,
@@ -27903,7 +28353,7 @@
       "steer": null
     },
     {
-      "t": 1788057553.0044477,
+      "t": 1788059469.4456365,
       "kind": "acquire",
       "fidelity": "F4_STATIC_STRAPS",
       "pay": false,
@@ -27911,7 +28361,7 @@
       "steer": null
     },
     {
-      "t": 1788057553.0044837,
+      "t": 1788059469.4456844,
       "kind": "acquire",
       "fidelity": "F4_EM_STRAPS",
       "pay": false,
@@ -27919,7 +28369,7 @@
       "steer": null
     }
   ],
-  "summary": "DSE 101 candidates \u00b7 F1 13 (arch 3) \u00b7 logic Pareto 10 \u00b7 best mapped area architecture/sub_twos_complement 407.512 \u00b5m\u00b2 \u00b7 ctrl-cone boils_rewrite_balance 474.012 \u00b5m\u00b2 \u00b7 synth abc_speed 618.982 \u00b5m\u00b2 \u00b7 cell size-up n=5 WNS=-0.119 ns \u00b7 IR-cell size-up n=5 ctrl WNS=-0.297 ns \u00b7 IR-cell-champ size-up n=5 ctrl WNS=-0.288 ns \u00b7 IR-cell-champ-cone size-up n=3 dpath WNS=-0.293 ns \u00b7 IR-cell-champ extract 10.566 mV \u0394=-3.441 n_r=3439 (not gold) \u00b7 IR-cell-champ-cone extract 16.698 mV \u0394=+6.132 n_r=3438 (not gold) \u00b7 IR-cell-champ-PDN decap_200f on 6ea248314396 4.138 mV vs host-win +0.122; decap_200f on 8e1bdc5c3e78 5.786 mV vs host-win +1.770 \u00b7 IR-cell-champ-cone-PDN decap_200f on 0600949f644a 7.812 mV vs host-win +3.796 \u00b7 IR-cell-champ-cone-region 15.678 mV \u0394=+3.772 bin=r13 (not gold) \u00b7 IR-cell-champ-cone-region-PDN decap_200f on 7d97596a7ef5 6.063 mV vs host-win +2.047; decap_200f on 6935d1b41b11 7.655 mV vs host-win +3.639 \u00b7 IR-cell extract 14.008 mV \u0394=+3.938 n_r=3424 (not gold) \u00b7 IR-cell-PDN decap_200f on 2930904f0d3c 5.172 mV \u00b7 IR-cell-region 9.356 mV \u0394=-4.652 bin=r00 (not gold) \u00b7 IR-cell-region-PDN decap_200f on b7cc602e6e93 3.921 mV vs host-win -0.095 \u00b7 AMG-champ 1.705 mV \u0394=+0.000 (not gold) \u00b7 RAS-champ 1.705 mV \u0394=+0.000 (not gold) \u00b7 Krylov-champ 1.717 mV \u0394=+0.012 m=96 (not gold) \u00b7 static-IR champ 0.565 mV \u00b7 static-IR pkg_r_25m 6.178 mV \u0394=+0.000 (not gold) \u00b7 static-mesh bumps_80 6.178 mV \u0394=+0.000 (not gold) \u00b7 static-straps m4_pitch_8 0.963 mV \u0394=-5.215 (not gold) \u00b7 EM-width m4_width_96 8.117e+09 A/m\u00b2 \u0394Jstrap=-1.103e+09 \u0394Jchamp=+1.197e+09 (not gold) \u00b7 winning-IR catalog pkg_l_100p 1.705 mV \u0394=-0.191 (not gold) \u00b7 net BUF n=4 WNS=-0.207 ns \u00b7 port-net BUF n=2 WNS=-0.228 ns \u00b7 port-steer BUF n=4 WNS=-0.309 ns \u00b7 best ideal WNS -0.114 ns (orfs_abc_speed) \u00b7 F5 SPEF WNS -0.641 ns \u00b7 F5-CTS SPEF WNS -0.648 ns (propagated, n_clkbuf=6) \u00b7 F5-local SPEF WNS -0.232 ns (net vs ideal -0.207) \u00b7 F5-port SPEF WNS -0.332 ns vs ideal -0.228 \u00b7 residual-steer routing \u00b7 IR-steer decap_200f on 38390e4d52d4 7.507 mV; pkg_l_100p on a8aa3cbc8318 16.346 mV \u00b7 host-IR-steer decap_200f on b4d1c9b000fd 4.016 mV; pkg_l_100p on 14c4b674baac 9.936 mV \u00b7 host arrivals net_buffer_spef n_inst=499 \u00b7 I-scale net_buffer_spef \u00d74.214 42.436 mV sta=f4_host_arrivals \u00b7 I-scale-win net_buffer_spef \u00d74.214 16.924 mV on b4d1c9b000fd \u00b7 I-scale-champ cell_size_ir \u00d74.214 16.523 mV on b7cc602e6e93 vs I\u00d7w -0.402 \u00b7 IR cone dpath \u00b7 F4 host-region extract 8.511 mV bin=r02 n_r=3395 (not gold) \u00b7 RAS residual 16.616 mV (not gold) \u00b7 Krylov/MOR residual 16.632 mV m=92 (not gold)",
+  "summary": "DSE 103 candidates \u00b7 F1 13 (arch 3) \u00b7 logic Pareto 10 \u00b7 best mapped area architecture/sub_twos_complement 407.512 \u00b5m\u00b2 \u00b7 ctrl-cone boils_rewrite_balance 474.012 \u00b5m\u00b2 \u00b7 synth abc_speed 618.982 \u00b5m\u00b2 \u00b7 cell size-up n=5 WNS=-0.119 ns \u00b7 IR-cell size-up n=5 ctrl WNS=-0.297 ns \u00b7 IR-cell-champ size-up n=5 ctrl WNS=-0.288 ns \u00b7 IR-cell-champ-cone size-up n=3 dpath WNS=-0.293 ns \u00b7 IR-cell-champ extract 10.566 mV \u0394=-3.441 n_r=3439 (not gold) \u00b7 IR-cell-champ-cone extract 16.698 mV \u0394=+6.132 n_r=3438 (not gold) \u00b7 IR-cell-champ-PDN decap_200f on 6ea248314396 4.138 mV vs host-win +0.122; decap_200f on 8e1bdc5c3e78 5.786 mV vs host-win +1.770 \u00b7 IR-cell-champ-cone-PDN decap_200f on 0600949f644a 7.812 mV vs host-win +3.796 \u00b7 IR-cell-champ-cone-region 15.678 mV \u0394=+3.772 bin=r13 (not gold) \u00b7 IR-cell-champ-cone-region-PDN decap_200f on 7d97596a7ef5 6.063 mV vs host-win +2.047; decap_200f on 6935d1b41b11 7.655 mV vs host-win +3.639 \u00b7 winning-IR-region 10.713 mV \u0394=+8.817 bin=r30 (not gold) \u00b7 winning-IR-region-PDN decap_200f on 9711e13bf165 5.570 mV vs host-win +1.554 \u00b7 IR-cell extract 14.008 mV \u0394=+3.938 n_r=3424 (not gold) \u00b7 IR-cell-PDN decap_200f on 2930904f0d3c 5.172 mV \u00b7 IR-cell-region 9.356 mV \u0394=-4.652 bin=r00 (not gold) \u00b7 IR-cell-region-PDN decap_200f on b7cc602e6e93 3.921 mV vs host-win -0.095 \u00b7 AMG-champ 1.705 mV \u0394=+0.000 (not gold) \u00b7 RAS-champ 1.705 mV \u0394=+0.000 (not gold) \u00b7 Krylov-champ 1.717 mV \u0394=+0.012 m=96 (not gold) \u00b7 static-IR champ 0.565 mV \u00b7 static-IR pkg_r_25m 6.178 mV \u0394=+0.000 (not gold) \u00b7 static-mesh bumps_80 6.178 mV \u0394=+0.000 (not gold) \u00b7 static-straps m4_pitch_8 0.963 mV \u0394=-5.215 (not gold) \u00b7 EM-width m4_width_96 8.117e+09 A/m\u00b2 \u0394Jstrap=-1.103e+09 \u0394Jchamp=+1.197e+09 (not gold) \u00b7 winning-IR catalog pkg_l_100p 1.705 mV \u0394=-0.191 (not gold) \u00b7 net BUF n=4 WNS=-0.207 ns \u00b7 port-net BUF n=2 WNS=-0.228 ns \u00b7 port-steer BUF n=4 WNS=-0.309 ns \u00b7 best ideal WNS -0.114 ns (orfs_abc_speed) \u00b7 F5 SPEF WNS -0.641 ns \u00b7 F5-CTS SPEF WNS -0.648 ns (propagated, n_clkbuf=6) \u00b7 F5-local SPEF WNS -0.232 ns (net vs ideal -0.207) \u00b7 F5-port SPEF WNS -0.332 ns vs ideal -0.228 \u00b7 residual-steer routing \u00b7 IR-steer decap_200f on 38390e4d52d4 7.507 mV; pkg_l_100p on a8aa3cbc8318 16.346 mV \u00b7 host-IR-steer decap_200f on b4d1c9b000fd 4.016 mV; pkg_l_100p on 14c4b674baac 9.936 mV \u00b7 host arrivals net_buffer_spef n_inst=499 \u00b7 I-scale net_buffer_spef \u00d74.214 42.436 mV sta=f4_host_arrivals \u00b7 I-scale-win net_buffer_spef \u00d74.214 16.924 mV on b4d1c9b000fd \u00b7 I-scale-champ cell_size_ir \u00d74.214 16.523 mV on b7cc602e6e93 vs I\u00d7w -0.402 \u00b7 IR cone dpath \u00b7 F4 host-region extract 8.511 mV bin=r02 n_r=3395 (not gold) \u00b7 RAS residual 16.616 mV (not gold) \u00b7 Krylov/MOR residual 16.632 mV m=92 (not gold)",
   "catalog": [
     "liberty_default",
     "liberty_fast",
