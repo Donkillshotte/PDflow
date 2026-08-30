@@ -17,6 +17,7 @@ Base lineage (outside the refine chain, always subtracted from joins):
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from .memory import DesignMemory
@@ -34,6 +35,39 @@ def _suffix(depth: int) -> str:
     if depth == 1:
         return "_leftover"
     return f"_leftover{depth}"
+
+
+def refine_depth(text: str, *, prefix: str) -> int | None:
+    """Inverse of the suffix convention: prefix / prefix_leftover / prefix_leftoverN.
+
+    Trailing stage suffixes (_extract, _pdn, _catalog) are ignored so
+    `winning_ir_region_cell_leftover2_extract` is depth 2.
+    """
+    t = str(text)
+    for trail in ("_extract", "_pdn", "_catalog"):
+        if t.endswith(trail):
+            t = t[: -len(trail)]
+            break
+    if not t.startswith(prefix):
+        return None
+    rest = t[len(prefix):]
+    if rest == "":
+        return 0
+    if rest == "_leftover":
+        return 1
+    m = re.fullmatch(r"_leftover(\d+)", rest)
+    return int(m.group(1)) if m else None
+
+
+REFINE_LABELS = {
+    0: "winning-IR-region-cell",
+    1: "winning-IR-region-cell leftover",
+    2: "winning-IR-region leftover leftover leftover",
+}
+
+
+def refine_label(depth: int) -> str:
+    return REFINE_LABELS.get(depth, f"winning-IR refine[{depth}]")
 
 
 def refine_cell_source(depth: int) -> str:
@@ -142,34 +176,41 @@ def leftover_cells(mem: DesignMemory, depth: int) -> list[str]:
     frame = next((f for f in chain if f.depth == depth), None)
     if frame is None:
         return []
-    host = frame.pdn or frame.extract
-    if host is None:
+    cells: list[str] = []
+    if frame.pdn is not None:
+        cells = [str(x) for x in ((frame.pdn.attr or {}).get("cells") or [])]
+    if not cells and frame.extract is not None:
+        cells = [str(x) for x in ((frame.extract.attr or {}).get("cells") or [])]
+    if not cells:
         return []
     sized = sized_through(mem, depth)
-    cells = [str(x) for x in ((host.attr or {}).get("cells") or [])]
     return [c for c in cells if c not in sized]
 
 
 def next_stage(mem: DesignMemory) -> dict | None:
     """First missing stage of the chain: the next generic action to consider.
 
-    Order per depth: sizeup → extract → pdn → catalog → (leftover ≠ ∅ →
-    sizeup at depth+1). Returns None when the chain is closed (leftover
-    empty and catalog exhausted at the deepest frame).
+    Order per depth: sizeup → extract → pdn → leftover size-up if cells
+    remain → catalog only when leftover is empty. Returns None when the
+    chain is closed (leftover empty and catalog exhausted at the deepest
+    frame). Catalog mid-chain is never paid — that matches live depth 0/1.
     """
     from .pdn_space import next_winning_ir_pdn_spec
 
     chain = refine_chain(mem)
     if not chain:
+        for c in reversed(list(mem.all())):
+            if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_winning_ir_region_pdn":
+                return {"depth": 0, "stage": "sizeup"}
         return None
     tail = chain[-1]
     if tail.extract is None:
         return {"depth": tail.depth, "stage": "extract"}
     if tail.pdn is None:
         return {"depth": tail.depth, "stage": "pdn"}
-    if next_winning_ir_pdn_spec(mem, tail.pdn) is not None:
-        return {"depth": tail.depth, "stage": "catalog"}
     left = leftover_cells(mem, tail.depth)
     if left:
         return {"depth": tail.depth + 1, "stage": "sizeup", "cells": left}
+    if next_winning_ir_pdn_spec(mem, tail.pdn) is not None:
+        return {"depth": tail.depth, "stage": "catalog"}
     return None

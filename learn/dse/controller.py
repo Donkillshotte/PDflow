@@ -58,13 +58,6 @@ from .acquire import (
     should_pay_winning_ir_region_cell,
     should_pay_winning_ir_region_cell_extract,
     should_pay_winning_ir_region_cell_pdn,
-    should_pay_winning_ir_region_cell_leftover,
-    should_pay_winning_ir_region_cell_leftover_extract,
-    should_pay_winning_ir_region_cell_leftover_pdn,
-    should_pay_winning_ir_region_cell_leftover2,
-    should_pay_winning_ir_region_cell_leftover2_extract,
-    should_pay_winning_ir_region_cell_leftover2_pdn,
-    should_pay_winning_ir_region_cell_leftover2_catalog,
     should_pay_ir_cell_extract,
     should_pay_ir_cell_pdn,
     should_pay_ir_cell_region,
@@ -134,15 +127,8 @@ from .active import (
     steer_from_ir_cell_champ_cone_region_hotspot,
     steer_from_ir_cell_champ_cone_region_residual,
     winning_ir_region_cell_host,
-    winning_ir_region_cell_leftover_host,
-    winning_ir_region_cell_leftover2_host,
     steer_from_winning_ir_region_pdn_hotspot,
     steer_from_winning_ir_region_cell_residual,
-    steer_from_winning_ir_region_cell_pdn_hotspot,
-    steer_from_winning_ir_region_cell_leftover_residual,
-    steer_from_winning_ir_region_cell_leftover_pdn_hotspot,
-    steer_from_winning_ir_region_cell_leftover2_residual,
-    steer_from_winning_ir_region_cell_leftover2_catalog,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -151,6 +137,7 @@ from .active import (
 )
 from .arch_space import emit_gcd_variant, stamp_cone_knobs
 from .attribute import attribute_from_path, local_scope, persist_hotspot_join
+from .dispatch import run_next_refine
 from .boils import propose_logic_boils, should_pay_f1
 from .fidelity import (
     COST_HINT,
@@ -350,21 +337,18 @@ def run_controller(
     for c in mem.by_level("pdn"):
         if c.status != "ok":
             continue
-        src = (c.knobs or {}).get("source")
-        via = (c.attr or {}).get("via")
+        src = str((c.knobs or {}).get("source") or "")
+        via = str((c.attr or {}).get("via") or "")
+        refine_extract = src.startswith("f4_winning_ir_region_cell") and src.endswith("_extract")
+        refine_restamp = via.startswith("active_f4_winning_ir_region_cell") and (
+            via.endswith("_pdn") or via.endswith("_catalog")
+        )
         if src not in (
             "f4_iscale_champ",
             "f4_em_strap_extract",
             "f4_static_strap_extract",
             "f4_winning_ir_region_extract",
-            "f4_winning_ir_region_cell_extract",
-            "f4_winning_ir_region_cell_leftover_extract",
-            "f4_winning_ir_region_cell_leftover2_extract",
-        ) and via not in (
-            "active_f4_winning_ir_pdn",
-            "active_f4_winning_ir_region_cell_leftover2_pdn",
-            "active_f4_winning_ir_region_cell_leftover2_catalog",
-        ):
+        ) and via != "active_f4_winning_ir_pdn" and not refine_extract and not refine_restamp:
             continue
         if persist_hotspot_join(c):
             mem.touch(c)
@@ -3032,6 +3016,7 @@ def run_controller(
                         host_win.qor.dynamic_ir_mv
                     )
                     child.attr["residual_vs_host_win"] = host_win.id
+                persist_hotspot_join(child)
                 mem.touch(child)
                 step(
                     "evaluate",
@@ -3049,417 +3034,34 @@ def run_controller(
                     reason=steer_wircp.get("reason"),
                 )
 
-    steer_wircl = steer_from_winning_ir_region_cell_pdn_hotspot(mem)
-    _wircl_eid = str((steer_wircl or {}).get("extract_id") or "")
-    n_wircl = sum(
-        1
-        for c in mem.by_level("cell")
-        if (c.knobs or {}).get("source") == "cell_size_ir_winning_region_leftover"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "") == _wircl_eid
-    )
-    pay_wircl, why_wircl = should_pay_winning_ir_region_cell_leftover(
-        mem, budget_left=t_end - time.time(), steer=steer_wircl, n_cell=n_wircl
-    )
-    step("acquire", fidelity="WINNING_IR_REGION_CELL_LEFTOVER", pay=pay_wircl, why=why_wircl, steer=steer_wircl)
-    if (
-        any(s["level"] == "winning_ir_region_cell_leftover" for s in plan["steps"])
-        and pay_wircl
-        and steer_wircl
-        and time.time() < t_end
-    ):
-        host_wircl = winning_ir_region_cell_host(mem)
-        cells_wircl = list(steer_wircl.get("cells") or [])
-        if host_wircl and cells_wircl:
-            if not (host_wircl.artifacts or {}).get("mapped_v"):
-                host_wircl = ensure_mapped_netlist(host_wircl, rtl=rtl, liberty=lib)
-                mem.touch(host_wircl)
-            child = evaluate_cell_size(
-                host_wircl,
-                mem,
-                design_id=design_id,
-                cells=cells_wircl,
-                source="cell_size_ir_winning_region_leftover",
-                extract_id=_wircl_eid or None,
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="cell",
-                    fidelity="F3",
-                    via="active_f4_winning_ir_region_cell_leftover",
-                    parent=host_wircl.id,
-                    modules=steer_wircl.get("modules"),
-                    extract_id=_wircl_eid,
-                    region=steer_wircl.get("region"),
-                    n_changed=(child.artifacts or {}).get("n_changed"),
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    area_um2=child.qor.area_um2,
-                    gold=False,
-                    status=child.status,
-                    reason=why_wircl,
-                )
-
-    host_wircle_pre = winning_ir_region_cell_leftover_host(mem)
-    _wircle_eid = str((host_wircle_pre.knobs or {}).get("extract_id") or "") if host_wircle_pre else ""
-    n_wircle = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_leftover_extract"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("parent_extract_id") or "") == _wircle_eid
-    )
-    pay_wircle, why_wircle = should_pay_winning_ir_region_cell_leftover_extract(
-        mem, budget_left=t_end - time.time(), n_extract=n_wircle
-    )
-    step("acquire", fidelity="F4_WINNING_IR_REGION_CELL_LEFTOVER_EXTRACT", pay=pay_wircle, why=why_wircle)
-    if (
-        any(s["level"] == "winning_ir_region_cell_leftover_extract" for s in plan["steps"])
-        and pay_wircle
-        and time.time() < t_end
-    ):
-        host_wircle = winning_ir_region_cell_leftover_host(mem)
-        if host_wircle and (host_wircle.artifacts or {}).get("mapped_v"):
-            params = flowlab_params()
-            util_wircle = float(params.get("coreUtilization") or 35.0)
-            den_wircle = gpl_density(util_wircle, params.get("placeDensityAddon") or 0.2)
-            child = evaluate_f4_extract(
-                host_wircle,
-                mem,
-                design_id=design_id,
-                variant=variant,
-                util=util_wircle,
-                density=den_wircle,
-                kind="winning_ir_region_cell_leftover",
-            )
-            if child:
-                persist_hotspot_join(child)
-                mem.touch(child)
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_winning_ir_region_cell_leftover_extract",
-                    parent=host_wircle.id,
-                    parent_extract_id=_wircle_eid,
-                    n_r=(child.artifacts or {}).get("n_r"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    residual_mv=(child.attr or {}).get("residual_mv"),
-                    gold=False,
-                    status=child.status,
-                    reason=why_wircle,
-                )
-
-    steer_wirclp = steer_from_winning_ir_region_cell_leftover_residual(mem)
-    _wirclp_eid = str((steer_wirclp or {}).get("extract_id") or "")
-    n_wirclp = sum(
-        1
-        for c in mem.all()
-        if (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover_pdn"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "") == _wirclp_eid
-    )
-    pay_wirclp, why_wirclp = should_pay_winning_ir_region_cell_leftover_pdn(
-        mem, budget_left=t_end - time.time(), steer=steer_wirclp, n_steer=n_wirclp
-    )
-    step("acquire", fidelity="WINNING_IR_REGION_CELL_LEFTOVER_PDN", pay=pay_wirclp, why=why_wirclp, steer=steer_wirclp)
-    if (
-        any(s["level"] == "winning_ir_region_cell_leftover_pdn" for s in plan["steps"])
-        and pay_wirclp
-        and steer_wirclp
-        and time.time() < t_end
-    ):
-        spec_wirclp = steer_wirclp.get("spec") or {}
-        eid_wirclp = str(steer_wirclp.get("extract_id") or "")
-        hit_wirclp = extract_on_disk(mem, eid_wirclp) if eid_wirclp else None
-        if spec_wirclp and hit_wirclp:
-            child = evaluate_f4_pdn(
-                mem,
-                spec_wirclp,
-                variant=variant,
-                design_id=design_id,
-                parent_id=hit_wirclp["candidate"].id,
-                spice=hit_wirclp["spice"],
-                insts=hit_wirclp["insts"],
-                extract_id=eid_wirclp,
-                sta=hit_wirclp.get("sta"),
-            )
-            if child:
-                child.attr = dict(child.attr or {})
-                child.attr["via"] = "active_f4_winning_ir_region_cell_leftover_pdn"
-                child.attr["steer"] = {k: steer_wirclp[k] for k in steer_wirclp if k != "spec"}
-                host_win = winning_host_pdn(mem)
-                if host_win and host_win.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
-                    child.attr["residual_vs_host_win_mv"] = float(child.qor.dynamic_ir_mv) - float(
-                        host_win.qor.dynamic_ir_mv
-                    )
-                    child.attr["residual_vs_host_win"] = host_win.id
-                mem.touch(child)
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="active_f4_winning_ir_region_cell_leftover_pdn",
-                    parent=hit_wirclp["candidate"].id,
-                    catalog=spec_wirclp.get("name"),
-                    extract_id=eid_wirclp,
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
-                    gold=False,
-                    status=child.status,
-                    reason=steer_wirclp.get("reason"),
-                )
-
-    steer_wircl2 = steer_from_winning_ir_region_cell_leftover_pdn_hotspot(mem)
-    _wircl2_eid = str((steer_wircl2 or {}).get("extract_id") or "")
-    n_wircl2 = sum(
-        1
-        for c in mem.by_level("cell")
-        if (c.knobs or {}).get("source") == "cell_size_ir_winning_region_leftover2"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "") == _wircl2_eid
-    )
-    pay_wircl2, why_wircl2 = should_pay_winning_ir_region_cell_leftover2(
-        mem, budget_left=t_end - time.time(), steer=steer_wircl2, n_cell=n_wircl2
-    )
-    step("acquire", fidelity="WINNING_IR_REGION_CELL_LEFTOVER2", pay=pay_wircl2, why=why_wircl2, steer=steer_wircl2)
-    if (
-        any(s["level"] == "winning_ir_region_cell_leftover2" for s in plan["steps"])
-        and pay_wircl2
-        and steer_wircl2
-        and time.time() < t_end
-    ):
-        host_wircl2 = winning_ir_region_cell_leftover_host(mem)
-        cells_wircl2 = list(steer_wircl2.get("cells") or [])
-        if host_wircl2 and cells_wircl2:
-            if not (host_wircl2.artifacts or {}).get("mapped_v"):
-                host_wircl2 = ensure_mapped_netlist(host_wircl2, rtl=rtl, liberty=lib)
-                mem.touch(host_wircl2)
-            child = evaluate_cell_size(
-                host_wircl2,
-                mem,
-                design_id=design_id,
-                cells=cells_wircl2,
-                source="cell_size_ir_winning_region_leftover2",
-                extract_id=_wircl2_eid or None,
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="cell",
-                    fidelity="F3",
-                    via="active_f4_winning_ir_region_cell_leftover2",
-                    parent=host_wircl2.id,
-                    modules=steer_wircl2.get("modules"),
-                    extract_id=_wircl2_eid,
-                    region=steer_wircl2.get("region"),
-                    n_changed=(child.artifacts or {}).get("n_changed"),
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    area_um2=child.qor.area_um2,
-                    gold=False,
-                    status=child.status,
-                    reason=why_wircl2,
-                )
-
-    host_wircl2e_pre = winning_ir_region_cell_leftover2_host(mem)
-    _wircl2e_eid = str((host_wircl2e_pre.knobs or {}).get("extract_id") or "") if host_wircl2e_pre else ""
-    n_wircl2e = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_leftover2_extract"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("parent_extract_id") or "") == _wircl2e_eid
-    )
-    pay_wircl2e, why_wircl2e = should_pay_winning_ir_region_cell_leftover2_extract(
-        mem, budget_left=t_end - time.time(), n_extract=n_wircl2e
-    )
-    step("acquire", fidelity="F4_WINNING_IR_REGION_CELL_LEFTOVER2_EXTRACT", pay=pay_wircl2e, why=why_wircl2e)
-    if (
-        any(s["level"] == "winning_ir_region_cell_leftover2_extract" for s in plan["steps"])
-        and pay_wircl2e
-        and time.time() < t_end
-    ):
-        host_wircl2e = winning_ir_region_cell_leftover2_host(mem)
-        if host_wircl2e and (host_wircl2e.artifacts or {}).get("mapped_v"):
-            params = flowlab_params()
-            util_wircl2e = float(params.get("coreUtilization") or 35.0)
-            den_wircl2e = gpl_density(util_wircl2e, params.get("placeDensityAddon") or 0.2)
-            child = evaluate_f4_extract(
-                host_wircl2e,
-                mem,
-                design_id=design_id,
-                variant=variant,
-                util=util_wircl2e,
-                density=den_wircl2e,
-                kind="winning_ir_region_cell_leftover2",
-            )
-            if child:
-                persist_hotspot_join(child)
-                mem.touch(child)
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_winning_ir_region_cell_leftover2_extract",
-                    parent=host_wircl2e.id,
-                    parent_extract_id=_wircl2e_eid,
-                    n_r=(child.artifacts or {}).get("n_r"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    residual_mv=(child.attr or {}).get("residual_mv"),
-                    gold=False,
-                    status=child.status,
-                    reason=why_wircl2e,
-                )
-
-    steer_wircl2p = steer_from_winning_ir_region_cell_leftover2_residual(mem)
-    _wircl2p_eid = str((steer_wircl2p or {}).get("extract_id") or "")
-    n_wircl2p = sum(
-        1
-        for c in mem.all()
-        if (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_pdn"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "") == _wircl2p_eid
-    )
-    pay_wircl2p, why_wircl2p = should_pay_winning_ir_region_cell_leftover2_pdn(
-        mem, budget_left=t_end - time.time(), steer=steer_wircl2p, n_steer=n_wircl2p
-    )
-    step("acquire", fidelity="WINNING_IR_REGION_CELL_LEFTOVER2_PDN", pay=pay_wircl2p, why=why_wircl2p, steer=steer_wircl2p)
-    if (
-        any(s["level"] == "winning_ir_region_cell_leftover2_pdn" for s in plan["steps"])
-        and pay_wircl2p
-        and steer_wircl2p
-        and time.time() < t_end
-    ):
-        spec_wircl2p = steer_wircl2p.get("spec") or {}
-        eid_wircl2p = str(steer_wircl2p.get("extract_id") or "")
-        hit_wircl2p = extract_on_disk(mem, eid_wircl2p) if eid_wircl2p else None
-        if spec_wircl2p and hit_wircl2p:
-            child = evaluate_f4_pdn(
-                mem,
-                spec_wircl2p,
-                variant=variant,
-                design_id=design_id,
-                parent_id=hit_wircl2p["candidate"].id,
-                spice=hit_wircl2p["spice"],
-                insts=hit_wircl2p["insts"],
-                extract_id=eid_wircl2p,
-                sta=hit_wircl2p.get("sta"),
-            )
-            if child:
-                child.attr = dict(child.attr or {})
-                child.attr["via"] = "active_f4_winning_ir_region_cell_leftover2_pdn"
-                child.attr["steer"] = {k: steer_wircl2p[k] for k in steer_wircl2p if k != "spec"}
-                host_win = winning_host_pdn(mem)
-                if host_win and host_win.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
-                    child.attr["residual_vs_host_win_mv"] = float(child.qor.dynamic_ir_mv) - float(
-                        host_win.qor.dynamic_ir_mv
-                    )
-                    child.attr["residual_vs_host_win"] = host_win.id
-                mem.touch(child)
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="active_f4_winning_ir_region_cell_leftover2_pdn",
-                    parent=hit_wircl2p["candidate"].id,
-                    catalog=spec_wircl2p.get("name"),
-                    extract_id=eid_wircl2p,
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
-                    gold=False,
-                    status=child.status,
-                    reason=steer_wircl2p.get("reason"),
-                )
-
-    steer_wircl2c = steer_from_winning_ir_region_cell_leftover2_catalog(mem)
-    _wircl2c_eid = str((steer_wircl2c or {}).get("extract_id") or "")
-    n_wircl2c = sum(
-        1
-        for c in mem.all()
-        if (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_catalog"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "") == _wircl2c_eid
-    )
-    pay_wircl2c, why_wircl2c = should_pay_winning_ir_region_cell_leftover2_catalog(
-        mem, budget_left=t_end - time.time(), steer=steer_wircl2c, n_steer=n_wircl2c
-    )
-    step(
-        "acquire",
-        fidelity="WINNING_IR_REGION_CELL_LEFTOVER2_CATALOG",
-        pay=pay_wircl2c,
-        why=why_wircl2c,
-        steer=steer_wircl2c,
-    )
-    if (
-        any(s["level"] == "winning_ir_region_cell_leftover2_catalog" for s in plan["steps"])
-        and pay_wircl2c
-        and steer_wircl2c
-        and time.time() < t_end
-    ):
-        spec_wircl2c = steer_wircl2c.get("spec") or {}
-        eid_wircl2c = str(steer_wircl2c.get("extract_id") or "")
-        hit_wircl2c = extract_on_disk(mem, eid_wircl2c) if eid_wircl2c else None
-        if spec_wircl2c and hit_wircl2c:
-            child = evaluate_f4_pdn(
-                mem,
-                spec_wircl2c,
-                variant=variant,
-                design_id=design_id,
-                parent_id=hit_wircl2c["candidate"].id,
-                spice=hit_wircl2c["spice"],
-                insts=hit_wircl2c["insts"],
-                extract_id=eid_wircl2c,
-                sta=hit_wircl2c.get("sta"),
-            )
-            if child:
-                child.attr = dict(child.attr or {})
-                child.attr["via"] = "active_f4_winning_ir_region_cell_leftover2_catalog"
-                child.attr["steer"] = {k: steer_wircl2c[k] for k in steer_wircl2c if k != "spec"}
-                host_l2p = None
-                for c in reversed(list(mem.all())):
-                    if (
-                        c.status == "ok"
-                        and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_pdn"
-                        and str((c.knobs or {}).get("extract_id") or "") == eid_wircl2c
-                    ):
-                        host_l2p = c
-                        break
-                if (
-                    host_l2p
-                    and host_l2p.qor.dynamic_ir_mv is not None
-                    and child.qor.dynamic_ir_mv is not None
-                ):
-                    child.attr["residual_vs_leftover2_pdn_mv"] = float(child.qor.dynamic_ir_mv) - float(
-                        host_l2p.qor.dynamic_ir_mv
-                    )
-                    child.attr["residual_vs_leftover2_pdn"] = host_l2p.id
-                child.attr["residual_via"] = "leftover2_catalog_vs_leftover2_pdn"
-                persist_hotspot_join(child)
-                mem.touch(child)
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="active_f4_winning_ir_region_cell_leftover2_catalog",
-                    parent=hit_wircl2c["candidate"].id,
-                    catalog=spec_wircl2c.get("name"),
-                    extract_id=eid_wircl2c,
-                    pkg_r=spec_wircl2c.get("pkg_r"),
-                    pkg_l=spec_wircl2c.get("pkg_l"),
-                    c_decap=spec_wircl2c.get("c_decap"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    residual_vs_leftover2_pdn_mv=(child.attr or {}).get("residual_vs_leftover2_pdn_mv"),
-                    gold=False,
-                    status=child.status,
-                    reason=steer_wircl2c.get("reason"),
-                )
+    # Depth ≥ 1 of the refine chain is a generic action queue. Depth 0
+    # (winning_ir_region_cell size-up / extract / PDN) stays above; leftover
+    # leftover leftover leftover is not a new block — next_stage returns None
+    # when the leftover is empty and the unused catalog is exhausted.
+    plan_levels = {s["level"] for s in plan["steps"]}
+    while time.time() < t_end:
+        paid = run_next_refine(
+            mem,
+            budget_left=t_end - time.time(),
+            plan_levels=plan_levels,
+            design_id=design_id,
+            variant=variant,
+            rtl=rtl,
+            liberty=lib,
+            step=step,
+            t_end=t_end,
+            ensure_mapped_netlist=ensure_mapped_netlist,
+            evaluate_cell_size=evaluate_cell_size,
+            evaluate_f4_extract=evaluate_f4_extract,
+            evaluate_f4_pdn=evaluate_f4_pdn,
+            extract_on_disk=extract_on_disk,
+            persist_hotspot_join=persist_hotspot_join,
+            flowlab_params=flowlab_params,
+            gpl_density=gpl_density,
+            winning_host_pdn=winning_host_pdn,
+        )
+        if not paid:
+            break
 
     n_amg_c = champ_mf_n(mem, "f4_solver_amg_champ")
     pay_amgc, why_amgc = should_pay_f4_amg_champ(
@@ -5201,8 +4803,8 @@ def run_controller(
         "n_f4_solve": sum(
             1
             for c in mem.by_level("pdn")
-            if (c.knobs or {}).get("source")
-            in (
+            if str((c.knobs or {}).get("source") or "")
+            in {
                 "f4_solver_a",
                 "f4_iscale",
                 "f4_iscale_win",
@@ -5223,6 +4825,10 @@ def run_controller(
                 "f4_solver_amg",
                 "f4_solver_ras",
                 "f4_solver_krylov",
+            }
+            or (
+                str((c.knobs or {}).get("source") or "").startswith("f4_winning_ir_region_cell")
+                and str((c.knobs or {}).get("source") or "").endswith("_extract")
             )
         ),
         "memory": str(mem_path),

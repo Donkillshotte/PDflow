@@ -21,6 +21,13 @@ from pathlib import Path
 from .abc_space import write_abc_script
 from .arch_space import is_cone_abc
 from .fingerprint import knobs_fp, sha256_file, sha256_text
+from .frame import (
+    _suffix as _refine_suffix,
+    refine_cell_source,
+    refine_depth,
+    refine_extract_source,
+    refine_label,
+)
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, wns_cost_from_slack_ns
 from .netgraph import (
@@ -43,6 +50,15 @@ NANGATE_LIB = (
     / "tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 )
 ORFS = REPO / "tools/OpenROAD-flow-scripts/flow"
+
+
+def _refine_prior_extract(mem: DesignMemory, depth: int):
+    """Residual target for a depth-N refine extract: depth N−1 mesh (region at 0)."""
+    src = "f4_winning_ir_region_extract" if depth <= 0 else refine_extract_source(depth - 1)
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == src:
+            return c
+    return None
 COST_HINT = {
     "F0": 0.05,
     "F1": 2.0,
@@ -926,46 +942,15 @@ def evaluate_f4_extract(
         knobs["parent_extract_id"] = (
             str((prior.knobs or {}).get("extract_id") or prior.id) if prior else ""
         )
-    elif kind == "winning_ir_region_cell":
-        from .active import winning_ir_region_extract_cand
-
-        knobs["source"] = "f4_winning_ir_region_cell_extract"
-        knobs["name"] = f"extract_winning_ir_region_cell_{host}"
+    elif refine_depth(kind, prefix="winning_ir_region_cell") is not None:
+        _rd = refine_depth(kind, prefix="winning_ir_region_cell")
+        knobs["source"] = refine_extract_source(_rd)
+        knobs["name"] = f"extract_{kind}_{host}"
         knobs["host_level"] = parent.level
         knobs["host_source"] = parent.knobs.get("source") or parent.level
         knobs["ir_join"] = 1
-        knobs["winning_ir_region"] = 1
-        prior = winning_ir_region_extract_cand(mem)
-        knobs["parent_extract_id"] = (
-            str((prior.knobs or {}).get("extract_id") or prior.id)
-            if prior
-            else str((parent.knobs or {}).get("extract_id") or "")
-        )
-    elif kind == "winning_ir_region_cell_leftover":
-        from .active import winning_ir_region_cell_extract_cand
-
-        knobs["source"] = "f4_winning_ir_region_cell_leftover_extract"
-        knobs["name"] = f"extract_winning_ir_region_cell_leftover_{host}"
-        knobs["host_level"] = parent.level
-        knobs["host_source"] = parent.knobs.get("source") or parent.level
-        knobs["ir_join"] = 1
-        knobs["winning_ir_region_leftover"] = 1
-        prior = winning_ir_region_cell_extract_cand(mem)
-        knobs["parent_extract_id"] = (
-            str((prior.knobs or {}).get("extract_id") or prior.id)
-            if prior
-            else str((parent.knobs or {}).get("extract_id") or "")
-        )
-    elif kind == "winning_ir_region_cell_leftover2":
-        from .active import winning_ir_region_cell_leftover_extract_cand
-
-        knobs["source"] = "f4_winning_ir_region_cell_leftover2_extract"
-        knobs["name"] = f"extract_winning_ir_region_cell_leftover2_{host}"
-        knobs["host_level"] = parent.level
-        knobs["host_source"] = parent.knobs.get("source") or parent.level
-        knobs["ir_join"] = 1
-        knobs["winning_ir_region_leftover2"] = 1
-        prior = winning_ir_region_cell_leftover_extract_cand(mem)
+        knobs[f"winning_ir_region{_refine_suffix(_rd)}"] = 1
+        prior = _refine_prior_extract(mem, _rd)
         knobs["parent_extract_id"] = (
             str((prior.knobs or {}).get("extract_id") or prior.id)
             if prior
@@ -1111,39 +1096,21 @@ def evaluate_f4_extract(
                 if (prior.knobs or {}).get("source") == "f4_winning_ir_region_extract"
                 else "winning_ir_region_vs_winning_ir_extract"
             )
-    if kind == "winning_ir_region_cell":
-        from .active import winning_ir_region_extract_cand
-
-        attr["via"] = "f4_winning_ir_region_cell_extract"
+    if refine_depth(kind, prefix="winning_ir_region_cell") is not None:
+        _rd = refine_depth(kind, prefix="winning_ir_region_cell")
+        attr["via"] = refine_extract_source(_rd)
         attr["host_level"] = parent.level
         attr["host_source"] = parent.knobs.get("source") or parent.level
-        prior = winning_ir_region_extract_cand(mem)
+        prior = _refine_prior_extract(mem, _rd)
         if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
             attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
             attr["residual_vs"] = prior.id
-            attr["residual_via"] = "winning_ir_region_cell_vs_winning_ir_region_extract"
-    if kind == "winning_ir_region_cell_leftover":
-        from .active import winning_ir_region_cell_extract_cand
-
-        attr["via"] = "f4_winning_ir_region_cell_leftover_extract"
-        attr["host_level"] = parent.level
-        attr["host_source"] = parent.knobs.get("source") or parent.level
-        prior = winning_ir_region_cell_extract_cand(mem)
-        if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
-            attr["residual_vs"] = prior.id
-            attr["residual_via"] = "winning_ir_region_cell_leftover_vs_winning_ir_region_cell_extract"
-    if kind == "winning_ir_region_cell_leftover2":
-        from .active import winning_ir_region_cell_leftover_extract_cand
-
-        attr["via"] = "f4_winning_ir_region_cell_leftover2_extract"
-        attr["host_level"] = parent.level
-        attr["host_source"] = parent.knobs.get("source") or parent.level
-        prior = winning_ir_region_cell_leftover_extract_cand(mem)
-        if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
-            attr["residual_vs"] = prior.id
-            attr["residual_via"] = "winning_ir_region_cell_leftover2_vs_winning_ir_region_cell_leftover_extract"
+            prev = (
+                f"winning_ir_region_cell{_refine_suffix(_rd - 1)}_extract"
+                if _rd >= 1
+                else "winning_ir_region_extract"
+            )
+            attr["residual_via"] = f"{kind}_vs_{prev}"
     kind_note = {
         "host": "host",
         "host_region": "host-region",
@@ -1153,10 +1120,11 @@ def evaluate_f4_extract(
         "ir_cell_champ_cone": "IR-cell-champ-cone",
         "ir_cell_champ_cone_region": "IR-cell-champ-cone-region",
         "winning_ir_region": "winning-IR-region",
-        "winning_ir_region_cell": "winning-IR-region-cell",
-        "winning_ir_region_cell_leftover": "winning-IR-region-cell leftover",
-        "winning_ir_region_cell_leftover2": "winning-IR-region leftover leftover leftover",
-    }.get(kind, "candidate")
+    }.get(kind) or (
+        refine_label(refine_depth(kind, prefix="winning_ir_region_cell"))
+        if refine_depth(kind, prefix="winning_ir_region_cell") is not None
+        else "candidate"
+    )
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
@@ -1877,19 +1845,10 @@ def evaluate_cell_size(
         knobs["champ_cone"] = 1
         if extract_id:
             knobs["extract_id"] = str(extract_id)
-    if source == "cell_size_ir_winning_region":
+    _rd_src = refine_depth(source, prefix="cell_size_ir_winning_region")
+    if _rd_src is not None:
         knobs["ir_join"] = 1
-        knobs["winning_ir_region"] = 1
-        if extract_id:
-            knobs["extract_id"] = str(extract_id)
-    if source == "cell_size_ir_winning_region_leftover":
-        knobs["ir_join"] = 1
-        knobs["winning_ir_region_leftover"] = 1
-        if extract_id:
-            knobs["extract_id"] = str(extract_id)
-    if source == "cell_size_ir_winning_region_leftover2":
-        knobs["ir_join"] = 1
-        knobs["winning_ir_region_leftover2"] = 1
+        knobs[f"winning_ir_region{_refine_suffix(_rd_src)}"] = 1
         if extract_id:
             knobs["extract_id"] = str(extract_id)
     fp = knobs_fp("cell", knobs)
@@ -1959,26 +1918,13 @@ def evaluate_cell_size(
             f"IR-cell-champ leftover-cone upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
             "— champ-extract join minus champ size-up, not first ctrl IR-cell, not STA path"
         )
-    elif source == "cell_size_ir_winning_region":
-        attr["via"] = "active_f4_winning_ir_region_cell"
+    elif refine_depth(source, prefix="cell_size_ir_winning_region") is not None:
+        _rd = refine_depth(source, prefix="cell_size_ir_winning_region")
+        attr["via"] = f"active_f4_winning_ir_region_cell{_refine_suffix(_rd)}"
         attr["cells"] = list(targets)
         note = (
-            f"winning-IR-region leftover-combo upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
-            "— region-PDN join minus IR-cell/champ/leftover-cone, not leftover-cone flatten, not STA path"
-        )
-    elif source == "cell_size_ir_winning_region_leftover":
-        attr["via"] = "active_f4_winning_ir_region_cell_leftover"
-        attr["cells"] = list(targets)
-        note = (
-            f"winning-IR-region leftover leftover upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
-            "— leftover-combo PDN join minus leftover-combo/IR-cell/champ/leftover-cone, not leftover-combo flatten, not STA path"
-        )
-    elif source == "cell_size_ir_winning_region_leftover2":
-        attr["via"] = "active_f4_winning_ir_region_cell_leftover2"
-        attr["cells"] = list(targets)
-        note = (
-            f"winning-IR-region leftover leftover leftover upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
-            "— leftover leftover PDN join minus leftover leftover/leftover-combo/IR-cell/champ/leftover-cone, not leftover leftover flatten, not STA path"
+            f"{refine_label(_rd)} upsize n={sized['n_changed']} WNS={sta.get('wns_ns')} "
+            f"— refine[{_rd}] join minus sized lineage, not previous-depth flatten, not STA path"
         )
     else:
         note = (

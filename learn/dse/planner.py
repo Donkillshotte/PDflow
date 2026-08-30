@@ -569,83 +569,51 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
-    steps.append(
-        {
-            "level": "winning_ir_region_cell_leftover",
-            "reason": (
-                "winning-IR-region-cell PDN leftover combo cells ≠ leftover-combo / IR-cell / "
-                "champ / leftover-cone — drive-up on the leftover-combo netlist, not leftover-combo "
-                "flatten, not leftover-cone, not more density cap, not STA path, not ABC"
-            ),
-            "scope": "cell",
-        }
-    )
-    steps.append(
-        {
-            "level": "winning_ir_region_cell_leftover_extract",
-            "reason": (
-                "write_pg_spice on the leftover-combo leftover netlist — residual vs "
-                "the leftover-combo extract, re-paid per cell extract, not leftover-cone, "
-                "not gold"
-            ),
-            "scope": "pdn",
-        }
-    )
-    steps.append(
-        {
-            "level": "winning_ir_region_cell_leftover_pdn",
-            "reason": (
-                "winning-IR-region-cell leftover 1× residual chooses the winning PDN family on "
-                "that leftover mesh — re-paid on a new leftover extract, not leftover-combo "
-                "PDN, not leftover-cone PDN, not champ IR-steer, not a flattened cell+decap vector"
-            ),
-            "scope": "pdn",
-        }
-    )
-    steps.append(
-        {
-            "level": "winning_ir_region_cell_leftover2",
-            "reason": (
-                "leftover leftover PDN leftover leftover leftover cells ≠ leftover leftover / leftover-combo / "
-                "IR-cell / champ / leftover-cone — drive-up on the leftover leftover netlist, not leftover leftover "
-                "flatten, not leftover-combo, not leftover-cone, not more density cap, not STA path, not ABC"
-            ),
-            "scope": "cell",
-        }
-    )
-    steps.append(
-        {
-            "level": "winning_ir_region_cell_leftover2_extract",
-            "reason": (
-                "write_pg_spice on the leftover leftover leftover netlist — residual vs "
-                "the leftover leftover extract, re-paid per leftover leftover extract, not leftover-combo, "
-                "not leftover-cone, not gold"
-            ),
-            "scope": "pdn",
-        }
-    )
-    steps.append(
-        {
-            "level": "winning_ir_region_cell_leftover2_pdn",
-            "reason": (
-                "leftover leftover leftover 1× residual chooses the winning PDN family on "
-                "that leftover leftover leftover mesh — re-paid on a new leftover leftover leftover extract, not leftover leftover "
-                "PDN, not leftover-combo PDN, not leftover-cone PDN, not champ IR-steer, not a flattened cell+decap vector"
-            ),
-            "scope": "pdn",
-        }
-    )
-    steps.append(
-        {
-            "level": "winning_ir_region_cell_leftover2_catalog",
-            "reason": (
-                "unused Dynamic IR catalog (C then L, inherit leftover leftover leftover PDN pkg_r) "
-                "on the leftover leftover leftover extract after winning family — not winning_ir "
-                "catalog, not leftover leftover leftover leftover combo size-up, not pitch, not gold"
-            ),
-            "scope": "pdn",
-        }
-    )
+    from .frame import _suffix as _refine_suffix, refine_label
+
+    for _rd in range(1, 8):
+        _suf = _refine_suffix(_rd)
+        _lab = refine_label(_rd)
+        steps.append(
+            {
+                "level": f"winning_ir_region_cell{_suf}",
+                "reason": (
+                    f"{_lab} unsized join cells — drive-up on the previous-depth netlist, "
+                    "not previous-depth flatten, not leftover-cone, not more density cap, not STA path, not ABC"
+                ),
+                "scope": "cell",
+            }
+        )
+        steps.append(
+            {
+                "level": f"winning_ir_region_cell{_suf}_extract",
+                "reason": (
+                    f"write_pg_spice on the {_lab} netlist — residual vs the previous-depth extract, "
+                    "re-paid per previous extract, not leftover-cone, not gold"
+                ),
+                "scope": "pdn",
+            }
+        )
+        steps.append(
+            {
+                "level": f"winning_ir_region_cell{_suf}_pdn",
+                "reason": (
+                    f"{_lab} 1× residual restamps the winning PDN family on that mesh — "
+                    "re-paid on a new extract, not previous-depth PDN, not champ IR-steer, not a flattened cell+decap vector"
+                ),
+                "scope": "pdn",
+            }
+        )
+        steps.append(
+            {
+                "level": f"winning_ir_region_cell{_suf}_catalog",
+                "reason": (
+                    f"unused Dynamic IR catalog (C then L, inherit {_lab} PDN pkg_r) after winning family "
+                    "when leftover is empty — not winning_ir catalog, not a deeper combo size-up, not pitch, not gold"
+                ),
+                "scope": "pdn",
+            }
+        )
     steps.append(
         {
             "level": "f4_amg_champ",

@@ -3097,6 +3097,12 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "winning_ir_pdn",
     ):
         return "F4"
+    from .frame import refine_depth as _refine_depth
+
+    if _refine_depth(level, prefix="winning_ir_region_cell") is not None:
+        return "F3" if not (
+            level.endswith("_extract") or level.endswith("_pdn") or level.endswith("_catalog")
+        ) else "F4"
     if level in ("synthesis", "f1_synth"):
         return "F1"
     if level in (
