@@ -637,6 +637,17 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
     )
     steps.append(
         {
+            "level": "winning_ir_region_cell_leftover2_catalog",
+            "reason": (
+                "unused Dynamic IR catalog (C then L, inherit leftover leftover leftover PDN pkg_r) "
+                "on the leftover leftover leftover extract after winning family — not winning_ir "
+                "catalog, not leftover leftover leftover leftover combo size-up, not pitch, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
+    steps.append(
+        {
             "level": "f4_amg_champ",
             "reason": (
                 "SA-AMG on winning_ir_pdn with the same DirectLU knobs — MF solver "

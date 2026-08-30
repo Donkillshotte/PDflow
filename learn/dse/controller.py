@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + unused Dynamic IR catalog on a strap/EM winning_ir extract + AMG/RAS/Krylov on winning_ir_pdn + static-IR pkg_r then on-die bump pitch then metal4 straps then EM width + I-scale of the attributed host (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + unused Dynamic IR catalog on a strap/EM winning_ir extract + unused catalog on leftover leftover leftover extract after winning family + AMG/RAS/Krylov on winning_ir_pdn + static-IR pkg_r then on-die bump pitch then metal4 straps then EM width + I-scale of the attributed host (not gold)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -64,6 +64,7 @@ from .acquire import (
     should_pay_winning_ir_region_cell_leftover2,
     should_pay_winning_ir_region_cell_leftover2_extract,
     should_pay_winning_ir_region_cell_leftover2_pdn,
+    should_pay_winning_ir_region_cell_leftover2_catalog,
     should_pay_ir_cell_extract,
     should_pay_ir_cell_pdn,
     should_pay_ir_cell_region,
@@ -141,6 +142,7 @@ from .active import (
     steer_from_winning_ir_region_cell_leftover_residual,
     steer_from_winning_ir_region_cell_leftover_pdn_hotspot,
     steer_from_winning_ir_region_cell_leftover2_residual,
+    steer_from_winning_ir_region_cell_leftover2_catalog,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -358,7 +360,11 @@ def run_controller(
             "f4_winning_ir_region_cell_extract",
             "f4_winning_ir_region_cell_leftover_extract",
             "f4_winning_ir_region_cell_leftover2_extract",
-        ) and via != "active_f4_winning_ir_pdn":
+        ) and via not in (
+            "active_f4_winning_ir_pdn",
+            "active_f4_winning_ir_region_cell_leftover2_pdn",
+            "active_f4_winning_ir_region_cell_leftover2_catalog",
+        ):
             continue
         if persist_hotspot_join(c):
             mem.touch(c)
@@ -3371,6 +3377,90 @@ def run_controller(
                     reason=steer_wircl2p.get("reason"),
                 )
 
+    steer_wircl2c = steer_from_winning_ir_region_cell_leftover2_catalog(mem)
+    _wircl2c_eid = str((steer_wircl2c or {}).get("extract_id") or "")
+    n_wircl2c = sum(
+        1
+        for c in mem.all()
+        if (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_catalog"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == _wircl2c_eid
+    )
+    pay_wircl2c, why_wircl2c = should_pay_winning_ir_region_cell_leftover2_catalog(
+        mem, budget_left=t_end - time.time(), steer=steer_wircl2c, n_steer=n_wircl2c
+    )
+    step(
+        "acquire",
+        fidelity="WINNING_IR_REGION_CELL_LEFTOVER2_CATALOG",
+        pay=pay_wircl2c,
+        why=why_wircl2c,
+        steer=steer_wircl2c,
+    )
+    if (
+        any(s["level"] == "winning_ir_region_cell_leftover2_catalog" for s in plan["steps"])
+        and pay_wircl2c
+        and steer_wircl2c
+        and time.time() < t_end
+    ):
+        spec_wircl2c = steer_wircl2c.get("spec") or {}
+        eid_wircl2c = str(steer_wircl2c.get("extract_id") or "")
+        hit_wircl2c = extract_on_disk(mem, eid_wircl2c) if eid_wircl2c else None
+        if spec_wircl2c and hit_wircl2c:
+            child = evaluate_f4_pdn(
+                mem,
+                spec_wircl2c,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit_wircl2c["candidate"].id,
+                spice=hit_wircl2c["spice"],
+                insts=hit_wircl2c["insts"],
+                extract_id=eid_wircl2c,
+                sta=hit_wircl2c.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "active_f4_winning_ir_region_cell_leftover2_catalog"
+                child.attr["steer"] = {k: steer_wircl2c[k] for k in steer_wircl2c if k != "spec"}
+                host_l2p = None
+                for c in reversed(list(mem.all())):
+                    if (
+                        c.status == "ok"
+                        and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_pdn"
+                        and str((c.knobs or {}).get("extract_id") or "") == eid_wircl2c
+                    ):
+                        host_l2p = c
+                        break
+                if (
+                    host_l2p
+                    and host_l2p.qor.dynamic_ir_mv is not None
+                    and child.qor.dynamic_ir_mv is not None
+                ):
+                    child.attr["residual_vs_leftover2_pdn_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                        host_l2p.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_leftover2_pdn"] = host_l2p.id
+                child.attr["residual_via"] = "leftover2_catalog_vs_leftover2_pdn"
+                persist_hotspot_join(child)
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="active_f4_winning_ir_region_cell_leftover2_catalog",
+                    parent=hit_wircl2c["candidate"].id,
+                    catalog=spec_wircl2c.get("name"),
+                    extract_id=eid_wircl2c,
+                    pkg_r=spec_wircl2c.get("pkg_r"),
+                    pkg_l=spec_wircl2c.get("pkg_l"),
+                    c_decap=spec_wircl2c.get("c_decap"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_leftover2_pdn_mv=(child.attr or {}).get("residual_vs_leftover2_pdn_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=steer_wircl2c.get("reason"),
+                )
+
     n_amg_c = champ_mf_n(mem, "f4_solver_amg_champ")
     pay_amgc, why_amgc = should_pay_f4_amg_champ(
         mem, budget_left=t_end - time.time(), n_amg=n_amg_c, variant=variant
@@ -3871,6 +3961,7 @@ def run_controller(
             "F3 leftover leftover leftover: leftover leftover leftover cells on the leftover leftover PDN join (minus leftover leftover / leftover-combo / IR-cell / champ / leftover-cone) — drive-up on the leftover leftover netlist, not leftover leftover flatten, not leftover-combo, not leftover-cone, not more density cap",
             "F4 leftover leftover leftover extract: write_pg_spice on that leftover leftover leftover netlist — residual vs the leftover leftover extract; re-paid per leftover leftover extract, not leftover-combo",
             "F4 leftover leftover leftover PDN: 1× residual restamps the winning family on that leftover leftover leftover mesh — re-paid on a new leftover leftover leftover extract, not leftover leftover PDN, not leftover-combo PDN, not leftover-cone PDN, not champ IR-steer",
+            "F4 leftover leftover leftover catalog: unused Dynamic IR (C then L, inherit leftover leftover leftover PDN pkg_r) on the leftover leftover leftover extract after winning family — not winning_ir catalog, not leftover leftover leftover leftover combo size-up, not pitch, not gold",
             "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — re-paid when the 1× extract moves (strap mesh), not candidate AMG, not gold",
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",
             "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not gold",
@@ -4475,6 +4566,39 @@ def run_controller(
                 if c.status == "ok"
                 and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_pdn"
                 and (c.attr or {}).get("residual_vs_host_win_mv") is not None
+            ),
+            None,
+        ),
+        "n_winning_ir_region_cell_leftover2_catalog": sum(
+            1
+            for c in mem.all()
+            if (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_catalog" and c.status == "ok"
+        ),
+        "winning_ir_region_cell_leftover2_catalog_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_catalog"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "winning_ir_region_cell_leftover2_catalog_name": next(
+            (
+                str((c.knobs or {}).get("name") or "")
+                for c in reversed(list(mem.all()))
+                if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_catalog"
+            ),
+            None,
+        ),
+        "winning_ir_region_cell_leftover2_catalog_vs_pdn_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_leftover2_pdn_mv"))
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_catalog"
+                and (c.attr or {}).get("residual_vs_leftover2_pdn_mv") is not None
             ),
             None,
         ),
@@ -5644,6 +5768,21 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         )
     if wircl2p_bits:
         wircl2pdn = " · leftover leftover leftover-PDN " + "; ".join(wircl2p_bits)
+    wircl2cat = ""
+    wircl2c_bits: list[str] = []
+    for c in mem.all():
+        if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_winning_ir_region_cell_leftover2_catalog":
+            continue
+        w = c.qor.dynamic_ir_mv
+        cat = (c.knobs or {}).get("name")
+        eid = (c.knobs or {}).get("extract_id")
+        vs = (c.attr or {}).get("residual_vs_leftover2_pdn_mv")
+        extra = f" vs leftover leftover leftover-PDN {float(vs):+.3f}" if vs is not None else ""
+        wircl2c_bits.append(
+            f"{cat} on {eid} {float(w):.3f} mV{extra}" if w is not None else str(cat)
+        )
+    if wircl2c_bits:
+        wircl2cat = " · leftover leftover leftover-catalog " + "; ".join(wircl2c_bits)
     ircext = ""
     for c in mem.by_level("pdn"):
         if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_extract":
@@ -5849,5 +5988,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircchamp}{icccone}{iccext}{icccext}{iccpdn}{icccpdn}{icccreg}{icccrpdn}{wirreg}{wirpdn}{wircell}{wircext}{wircpdn}{wircl}{wirclext}{wirclpdn}{wircl2}{wircl2ext}{wircl2pdn}{ircext}{icpdn}{icreg}{icrpdn}{amgc}{rasc}{kryc}{sir}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircchamp}{icccone}{iccext}{icccext}{iccpdn}{icccpdn}{icccreg}{icccrpdn}{wirreg}{wirpdn}{wircell}{wircext}{wircpdn}{wircl}{wirclext}{wirclpdn}{wircl2}{wircl2ext}{wircl2pdn}{wircl2cat}{ircext}{icpdn}{icreg}{icrpdn}{amgc}{rasc}{kryc}{sir}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )

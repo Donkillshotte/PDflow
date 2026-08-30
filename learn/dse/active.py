@@ -2035,3 +2035,61 @@ def steer_from_winning_ir_region_cell_leftover2_residual(mem: DesignMemory) -> d
         "via": "active_f4_winning_ir_region_cell_leftover2_pdn",
         "not": "a flattened cell+PDN vector / gold / leftover leftover / leftover-combo / leftover-cone",
     }
+
+
+def winning_ir_region_cell_leftover2_pdn_cand(mem: DesignMemory):
+    """Newest leftover leftover leftover PDN restamp. Unused catalog inherits this family."""
+    for c in reversed(list(mem.all())):
+        if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_leftover2_pdn":
+            return c
+    return None
+
+
+def leftover2_catalog_host(mem: DesignMemory):
+    """leftover leftover leftover PDN if present, else leftover leftover leftover extract."""
+    return winning_ir_region_cell_leftover2_pdn_cand(mem) or winning_ir_region_cell_leftover2_extract_cand(
+        mem
+    )
+
+
+def steer_from_winning_ir_region_cell_leftover2_catalog(mem: DesignMemory) -> dict | None:
+    """Unused Dynamic IR catalog on leftover leftover leftover extract after winning family.
+
+    Inherits leftover leftover leftover PDN pkg_r (C then L). Not winning_ir catalog,
+    not leftover leftover leftover leftover combo size-up, not pitch, not gold.
+    """
+    from .pdn_space import PDN_CATALOG, next_winning_ir_pdn_spec
+
+    ice = winning_ir_region_cell_leftover2_extract_cand(mem)
+    host = leftover2_catalog_host(mem)
+    if ice is None or host is None or host.qor.dynamic_ir_mv is None:
+        return None
+    if (host.attr or {}).get("via") != "active_f4_winning_ir_region_cell_leftover2_pdn":
+        return None
+    eid = str((ice.knobs or {}).get("extract_id") or ice.id)
+    if eid in ("finish", ""):
+        return None
+    spec = next_winning_ir_pdn_spec(mem, host)
+    if spec is None:
+        return None
+    if spec["name"] not in {s["name"] for s in PDN_CATALOG}:
+        return None
+    host_l = float((host.knobs or {}).get("pkg_l") or 2e-10)
+    axis = "inductance" if abs(float(spec["pkg_l"]) - host_l) > 1e-18 else "decap"
+    src = (host.knobs or {}).get("name") or (host.attr or {}).get("via") or host.id
+    return {
+        "level": "pdn",
+        "spec": spec,
+        "extract_id": eid,
+        "host_id": host.id,
+        "host_source": "f4_winning_ir_region_cell_leftover2_extract",
+        "dynamic_ir_mv": float(host.qor.dynamic_ir_mv),
+        "axis": axis,
+        "reason": (
+            f"leftover leftover leftover {src} {float(host.qor.dynamic_ir_mv):.3f} mV extract {eid} "
+            f"— unused {spec['name']} ({axis}, inherit pkg_r={spec['pkg_r']}), not winning_ir "
+            "catalog, not leftover leftover leftover leftover combo size-up, not pitch, not gold"
+        ),
+        "via": "active_f4_winning_ir_region_cell_leftover2_catalog",
+        "not": "winning_ir catalog / leftover leftover leftover leftover flatten / pitch / gold",
+    }

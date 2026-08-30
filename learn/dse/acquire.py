@@ -2155,6 +2155,71 @@ def should_pay_winning_ir_region_cell_leftover2_pdn(
     )
 
 
+def should_pay_winning_ir_region_cell_leftover2_catalog(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 2,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay unused Dynamic IR catalog on leftover leftover leftover extract after winning family.
+
+    Shot 1: unused C with leftover leftover leftover PDN pkg_r/L. Shot 2: unused pkg L
+    with leftover leftover leftover PDN pkg_r/C. Not winning_ir catalog, not pitch, not gold.
+    """
+    if n_steer >= steer_max:
+        return False, "leftover leftover leftover Dynamic IR catalog spent (decap + unused pkg L)"
+    if budget_left < min_s:
+        return False, "wall budget would not cover leftover leftover leftover catalog restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no leftover leftover leftover unused Dynamic IR catalog action"
+    if str(steer.get("host_source") or "") != "f4_winning_ir_region_cell_leftover2_extract":
+        return False, "leftover leftover leftover catalog refuses leftover leftover / leftover-combo / leftover-cone / winning_ir catalog"
+    spec = steer["spec"]
+    from .pdn_space import (
+        EM_STRAP_CATALOG,
+        PDN_CATALOG,
+        STATIC_MESH_CATALOG,
+        STATIC_PDN_CATALOG,
+        STATIC_STRAP_CATALOG,
+        measured_pdn_keys,
+    )
+
+    name = str(spec.get("name") or "")
+    refuse = (
+        {s["name"] for s in STATIC_PDN_CATALOG}
+        | {s["name"] for s in STATIC_MESH_CATALOG}
+        | {s["name"] for s in STATIC_STRAP_CATALOG}
+        | {s["name"] for s in EM_STRAP_CATALOG}
+    )
+    if name in refuse:
+        return False, "leftover leftover leftover catalog refuses a pitch / width / bump / pkg_r point"
+    if name not in {s["name"] for s in PDN_CATALOG}:
+        return False, "leftover leftover leftover catalog requires a Dynamic IR catalog point"
+    if spec.get("m4_pitch") is not None or spec.get("m4_width") is not None or spec.get("bump_dx") is not None:
+        return False, "leftover leftover leftover catalog refuses a geometry restamp"
+    eid = str(steer["extract_id"])
+    if eid in ("finish", ""):
+        return False, "leftover leftover leftover catalog refuses the gold finish extract"
+    from .active import winning_ir_region_cell_leftover2_extract_cand
+
+    ice = winning_ir_region_cell_leftover2_extract_cand(mem)
+    if ice is None:
+        return False, "no leftover leftover leftover extract to restamp unused catalog on"
+    if str((ice.knobs or {}).get("extract_id") or ice.id) != eid:
+        return False, "leftover leftover leftover catalog stays on the leftover leftover leftover extract"
+    have = measured_pdn_keys(mem, extract_id=eid)
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that Dynamic IR point is already measured on the leftover leftover leftover extract"
+    return True, str(
+        steer.get("reason")
+        or "leftover leftover leftover unused Dynamic IR catalog — not winning_ir catalog, not pitch, not gold"
+    )
+
+
 def should_pay_ir_cell_extract(
     mem: DesignMemory,
     *,
@@ -3024,6 +3089,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "winning_ir_region_cell_leftover2_extract",
         "f4_winning_ir_region_cell_leftover2_extract",
         "winning_ir_region_cell_leftover2_pdn",
+        "winning_ir_region_cell_leftover2_catalog",
         "static_ir_steer",
         "static_mesh",
         "static_straps",

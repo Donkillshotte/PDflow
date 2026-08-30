@@ -406,6 +406,7 @@ def main() -> int:
     check(any(s["level"] == "winning_ir_region_cell_leftover2" for s in planned["steps"]), "planner schedules leftover leftover leftover size-up")
     check(any(s["level"] == "winning_ir_region_cell_leftover2_extract" for s in planned["steps"]), "planner schedules leftover leftover leftover write_pg_spice")
     check(any(s["level"] == "winning_ir_region_cell_leftover2_pdn" for s in planned["steps"]), "planner schedules leftover leftover leftover PDN restamp")
+    check(any(s["level"] == "winning_ir_region_cell_leftover2_catalog" for s in planned["steps"]), "planner schedules leftover leftover leftover unused catalog")
     check(any(s["level"] == "f4_amg_champ" for s in planned["steps"]), "planner schedules champion AMG residual")
     check(any(s["level"] == "f4_ras_champ" for s in planned["steps"]), "planner schedules champion RAS residual")
     check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
@@ -528,6 +529,7 @@ def main() -> int:
     check(next_fidelity(level="winning_ir_region_cell_leftover2", pred=None, budget_left=20, cost_hint={}) == "F3", "leftover leftover leftover size measures at F3")
     check(next_fidelity(level="winning_ir_region_cell_leftover2_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover leftover leftover extract measures at F4")
     check(next_fidelity(level="winning_ir_region_cell_leftover2_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover leftover leftover PDN restamp measures at F4")
+    check(next_fidelity(level="winning_ir_region_cell_leftover2_catalog", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover leftover leftover unused catalog measures at F4")
     check(next_fidelity(level="f4_amg_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion AMG measures at F4")
     check(next_fidelity(level="f4_ras_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion RAS measures at F4")
     check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
@@ -1654,6 +1656,7 @@ def main() -> int:
         should_pay_winning_ir_region_cell_leftover2,
         should_pay_winning_ir_region_cell_leftover2_extract,
         should_pay_winning_ir_region_cell_leftover2_pdn,
+        should_pay_winning_ir_region_cell_leftover2_catalog,
         iscale_champ_sta,
         should_pay_ir_cell,
         should_pay_ir_cell_extract,
@@ -4446,6 +4449,7 @@ def main() -> int:
     pay_wirclp2, why_wirclp2 = should_pay_winning_ir_region_cell_leftover_pdn(mem_hr, budget_left=80, steer=st_wirclp, n_steer=1)
     check(not pay_wirclp2, f"leftover leftover PDN is a single shot ({why_wirclp2})")
     from dse.active import (
+        steer_from_winning_ir_region_cell_leftover2_catalog,
         steer_from_winning_ir_region_cell_leftover2_residual,
         steer_from_winning_ir_region_cell_leftover_pdn_hotspot,
         winning_ir_region_cell_leftover2_extract_cand,
@@ -4593,6 +4597,94 @@ def main() -> int:
     check(not pay_wircl2p_ref, f"leftover leftover leftover PDN refuses the leftover leftover extract ({why_wircl2p_ref})")
     pay_wircl2p2, why_wircl2p2 = should_pay_winning_ir_region_cell_leftover2_pdn(mem_hr, budget_left=80, steer=st_wircl2p, n_steer=1)
     check(not pay_wircl2p2, f"leftover leftover leftover PDN is a single shot ({why_wircl2p2})")
+    check(
+        steer_from_winning_ir_region_cell_leftover2_catalog(mem_hr) is None,
+        "leftover leftover leftover catalog waits for leftover leftover leftover PDN",
+    )
+    mem_hr.add(
+        Candidate(
+            id="wircl2p",
+            design_id="gcd",
+            parent_id="wircl2xt",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "decap_200f",
+                "extract_id": "wircl2xt",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 2e-13,
+                "i_scale": 1.0,
+            },
+            knobs_fp="wircl2p",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=3.942, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "active_f4_winning_ir_region_cell_leftover2_pdn"},
+        )
+    )
+    check(winning_ir_pdn(mem_hr).id == "wirl", "leftover leftover leftover PDN does not steal the 1× champion")
+    st_wircl2c = steer_from_winning_ir_region_cell_leftover2_catalog(mem_hr)
+    check(
+        st_wircl2c is not None and (st_wircl2c.get("spec") or {}).get("name") == "pkg_l_100p",
+        f"leftover leftover leftover catalog unused L after winning family, got {st_wircl2c}",
+    )
+    check(st_wircl2c.get("extract_id") == "wircl2xt", f"leftover leftover leftover catalog stays on leftover leftover leftover extract, got {st_wircl2c}")
+    check(abs(float((st_wircl2c.get("spec") or {}).get("pkg_r") or 0) - 0.05) < 1e-12, "leftover leftover leftover catalog inherits leftover leftover leftover PDN pkg_r")
+    check(abs(float((st_wircl2c.get("spec") or {}).get("c_decap") or 0) - 2e-13) < 1e-18, "leftover leftover leftover catalog inherits leftover leftover leftover PDN 200 fF")
+    check(
+        (st_wircl2c.get("spec") or {}).get("name") not in ("m4_pitch_8", "m4_width_96", "bumps_80", "pkg_r_25m"),
+        "leftover leftover leftover catalog does not consume pitch / width / bump / pkg_r catalogs",
+    )
+    pay_wircl2c0, why_wircl2c0 = should_pay_winning_ir_region_cell_leftover2_catalog(mem_hr, budget_left=80, steer=None)
+    check(not pay_wircl2c0, f"leftover leftover leftover catalog waits for a steer ({why_wircl2c0})")
+    pay_wircl2c1, why_wircl2c1 = should_pay_winning_ir_region_cell_leftover2_catalog(mem_hr, budget_left=80, steer=st_wircl2c)
+    check(pay_wircl2c1, f"leftover leftover leftover catalog is paid after leftover leftover leftover PDN ({why_wircl2c1})")
+    check("not winning_ir" in why_wircl2c1 and "not gold" in why_wircl2c1, f"leftover leftover leftover catalog refuses flatten ({why_wircl2c1})")
+    fake_wircl2c = dict(st_wircl2c)
+    fake_wircl2c["spec"] = {"name": "m4_width_96", "m4_width": 0.96, "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 2e-13}
+    pay_wircl2c_ref, why_wircl2c_ref = should_pay_winning_ir_region_cell_leftover2_catalog(mem_hr, budget_left=80, steer=fake_wircl2c)
+    check(not pay_wircl2c_ref, f"leftover leftover leftover catalog refuses a width catalog point ({why_wircl2c_ref})")
+    fake_wir_c = dict(st_wircl2c)
+    fake_wir_c["host_source"] = "f4_em_strap_extract"
+    pay_wircl2c_wir, why_wircl2c_wir = should_pay_winning_ir_region_cell_leftover2_catalog(mem_hr, budget_left=80, steer=fake_wir_c)
+    check(not pay_wircl2c_wir, f"leftover leftover leftover catalog refuses winning_ir catalog flatten ({why_wircl2c_wir})")
+    pay_wircl2c2, why_wircl2c2 = should_pay_winning_ir_region_cell_leftover2_catalog(mem_hr, budget_left=80, steer=st_wircl2c, n_steer=2)
+    check(not pay_wircl2c2, f"leftover leftover leftover catalog caps at decap + pkg L ({why_wircl2c2})")
+    mem_hr.add(
+        Candidate(
+            id="wircl2l",
+            design_id="gcd",
+            parent_id="wircl2xt",
+            level="pdn",
+            knobs={
+                "source": "f4_solver_a",
+                "name": "pkg_l_100p",
+                "extract_id": "wircl2xt",
+                "pkg_r": 0.05,
+                "pkg_l": 1e-10,
+                "c_decap": 2e-13,
+                "i_scale": 1.0,
+            },
+            knobs_fp="wircl2l",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=3.880, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "active_f4_winning_ir_region_cell_leftover2_catalog",
+                "residual_vs_leftover2_pdn_mv": -0.062,
+                "residual_via": "leftover2_catalog_vs_leftover2_pdn",
+            },
+        )
+    )
+    check(winning_ir_pdn(mem_hr).id == "wirl", "leftover leftover leftover unused L does not steal winning_ir_pdn")
+    check(steer_from_winning_ir_region_cell_leftover2_catalog(mem_hr) is None, "leftover leftover leftover catalog is exhausted after unused L")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")
