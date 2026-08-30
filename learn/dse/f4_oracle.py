@@ -26,9 +26,36 @@ GOLD_MV = 45.298
 _DIST = "/usr/lib/python3/dist-packages"
 
 
-def spice_paths(variant: str = "flowlab") -> dict[str, Path]:
-    res = ORFS / "results" / "nangate45" / "gcd" / variant
-    plat = ORFS / "platforms" / "nangate45"
+def solver_devices() -> dict:
+    """CPU is the F4 default. CUDA is reported, never claimed as sign-off."""
+    import shutil
+
+    cuda = False
+    why = "no nvidia-smi"
+    smi = shutil.which("nvidia-smi")
+    if smi:
+        try:
+            proc = subprocess.run([smi, "-L"], capture_output=True, text=True, timeout=4)
+            cuda = proc.returncode == 0 and "GPU" in (proc.stdout or "")
+            why = (proc.stdout or "").strip().splitlines()[0] if cuda else "nvidia-smi listed no GPU"
+        except (OSError, subprocess.TimeoutExpired):
+            why = "nvidia-smi failed"
+    return {
+        "cpu": True,
+        "cuda": cuda,
+        "default_solver": "direct",
+        "via": "f4_oracle.solver_devices",
+        "note": why if not cuda else f"CUDA visible ({why}) — DirectLU remains the default F4 solver, gold unrestamped",
+        "not": "a GPU voltage map / gold restamp",
+    }
+
+
+def spice_paths(variant: str = "flowlab", design_id: str = "gcd") -> dict[str, Path]:
+    from .designs import resolve
+
+    spec = resolve(design_id)
+    res = ORFS / "results" / spec.platform / spec.orfs_design / variant
+    plat = ORFS / "platforms" / spec.platform
     return {
         "spice": res / "pdn" / "pg_vdd_bumps.sp",
         "insts": res / "pdn" / "inst_power_map.json",
@@ -61,8 +88,18 @@ def solve_f4(
     extract_kind: str = "finish",
     solver: str = "direct",
     sta: Path | str | None = None,
+    device: str = "cpu",
+    design_id: str = "gcd",
 ) -> dict:
     """Named extract + named solver (direct/amg/bicg/ras/krylov). Not gold."""
+    if str(device or "cpu") == "cuda" and not solver_devices().get("cuda"):
+        return {
+            "status": "GAP",
+            "reason": "no CUDA device — not claiming a GPU solve, not gold",
+            "gold": False,
+            "via": "f4_oracle",
+            "device": "cpu",
+        }
     kind = "candidate" if spice or insts else extract_kind
     if spice or insts:
         if not extract_ready(spice, insts):

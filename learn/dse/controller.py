@@ -393,6 +393,15 @@ def run_controller(
         return child
 
     step("inspect", n=len(mem), levels=sorted({c.level for c in mem.all()}))
+    from .activity import load_activity, persist_activity
+
+    act = load_activity(variant=variant, design_id=design_id)
+    if act:
+        persist_activity(act, variant=variant, design_id=design_id)
+        step("inspect", activity=act.get("via"), n_inst=act.get("n_inst"), n_toggle=act.get("n_toggle"))
+    from .f4_oracle import solver_devices as _solver_devices
+
+    step("inspect", solver_devices=_solver_devices())
     n_join = 0
     for c in mem.by_level("pdn"):
         if c.status != "ok":
@@ -450,7 +459,14 @@ def run_controller(
     n_arch = sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1")
 
     # Seed the logic baseline first so architecture ΔQoR has a teacher.
-    if n_f1 < f1_max and time.time() < t_end:
+    if not spec.f1_ready:
+        step(
+            "acquire",
+            fidelity="F1",
+            pay=False,
+            why=f"{design_id} F1 needs {spec.hdl} frontend — not inventing a Verilog remap",
+        )
+    if spec.f1_ready and n_f1 < f1_max and time.time() < t_end:
         seed = {
             "name": "liberty_default",
             "abc_args": [],

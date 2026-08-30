@@ -24,6 +24,11 @@ class DesignSpec:
     orfs_name: str = ""
     cones: tuple[str, ...] = ()
     arch_extracts: bool = False
+    include_dirs: tuple[Path, ...] = ()
+    hdl: str = "verilog"
+    f1_equiv: bool = True
+    f1_timeout_s: float = 60.0
+    f1_ready: bool = True
 
     @property
     def orfs_design(self) -> str:
@@ -34,13 +39,10 @@ class DesignSpec:
 
 
 def _aes_rtl_files() -> tuple[Path, ...]:
+    """Cipher-top closure only — inv_* is a second top, not this design."""
     src = ORFS_SRC / "aes"
-    files = tuple(
-        p
-        for p in sorted(src.glob("*.v"))
-        if p.name != "timescale.v"
-    )
-    return files
+    names = ("aes_cipher_top.v", "aes_key_expand_128.v", "aes_sbox.v", "aes_rcon.v")
+    return tuple(src / n for n in names)
 
 
 DESIGNS: dict[str, DesignSpec] = {
@@ -61,6 +63,23 @@ DESIGNS: dict[str, DesignSpec] = {
         orfs_name="aes",
         cones=(),
         arch_extracts=False,
+        include_dirs=(ORFS_SRC / "aes",),
+        f1_equiv=False,
+        f1_timeout_s=240.0,
+    ),
+    "ibex": DesignSpec(
+        id="ibex",
+        top="ibex_core",
+        rtl=ORFS_SRC / "ibex_sv" / "ibex_core.sv",
+        rtl_files=(ORFS_SRC / "ibex_sv" / "ibex_core.sv",),
+        orfs_name="ibex",
+        cones=(),
+        arch_extracts=False,
+        include_dirs=(ORFS_SRC / "ibex_sv" / "vendor" / "lowrisc_ip" / "prim" / "rtl",),
+        hdl="systemverilog",
+        f1_equiv=False,
+        f1_timeout_s=300.0,
+        f1_ready=False,
     ),
 }
 
@@ -73,3 +92,12 @@ def resolve(design_id: str) -> DesignSpec:
 
 def design_rtl(design_id: str = "gcd") -> Path:
     return resolve(design_id).rtl
+
+
+def rtl_inputs(rtl: Path, design_id: str) -> tuple[list[Path], list[Path]]:
+    """Files + include dirs for Yosys. Architecture extract copies stay single-file."""
+    spec = resolve(design_id)
+    src = Path(rtl)
+    if src.resolve() == spec.rtl.resolve():
+        return list(spec.rtl_files), list(spec.include_dirs)
+    return [src], list(spec.include_dirs)

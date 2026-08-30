@@ -20,7 +20,7 @@ from pathlib import Path
 
 from .abc_space import write_abc_script
 from .arch_space import is_cone_abc
-from .designs import design_rtl
+from .designs import design_rtl, resolve, rtl_inputs
 from .fingerprint import knobs_fp, sha256_file, sha256_text
 from .frame import (
     _suffix as _refine_suffix,
@@ -1264,8 +1264,14 @@ def ingest_f2(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candid
     return mem.add(c)
 
 
+def _read_verilog_block(rtl: Path | list[Path], include_dirs: list[Path] | None = None) -> str:
+    files = list(rtl) if isinstance(rtl, (list, tuple)) else [rtl]
+    inc = "".join(f" -I{d}" for d in (include_dirs or []))
+    return "\n".join(f"read_verilog{inc} {f}" for f in files)
+
+
 def _f1_yscript(
-    rtl: Path,
+    rtl: Path | list[Path],
     top: str,
     lib: str,
     map_cmd: str,
@@ -1275,6 +1281,7 @@ def _f1_yscript(
     abc_file: Path | None = None,
     *,
     equiv: bool = True,
+    include_dirs: list[Path] | None = None,
 ) -> str:
     """Chip F1 flattens first (area teacher 409.108). Cone F1 keeps hierarchy.
 
@@ -1282,10 +1289,11 @@ def _f1_yscript(
     have no SAT model. Architecture extracts use flatten-first even when
     `scope=logic_cone`. Cone ABC requires `cone=dpath|ctrl` / `cone_module`.
     """
+    reads = _read_verilog_block(rtl, include_dirs)
     cone = is_cone_abc(knobs)
     if not cone:
         body = f"""
-read_verilog {rtl}
+{reads}
 hierarchy -check -top {top}
 proc; flatten; opt_expr; opt_clean
 design -save rtl
@@ -1321,7 +1329,7 @@ write_verilog -noattr -noexpr {net}
         return "".join(f"cd {m}\ndfflibmap -liberty {lib}\n{cmd}\ncd ..\n" for m in mods)
 
     body = f"""
-read_verilog {rtl}
+{reads}
 hierarchy -check -top {top}
 proc; opt_expr; opt_clean
 design -save rtl_hier
@@ -1372,6 +1380,12 @@ def evaluate_f1_abc(
     knobs = dict(knobs)
     if level == "synthesis":
         knobs.pop("abc_ops", None)
+    spec = resolve(design_id)
+    if not spec.f1_ready:
+        raise ValueError(f"{design_id} F1 needs {spec.hdl} frontend — not inventing a Verilog remap")
+    files, incs = rtl_inputs(Path(rtl), design_id)
+    timeout_s = max(float(timeout_s), float(spec.f1_timeout_s))
+    want_equiv = bool(spec.f1_equiv)
     ops = list(knobs.get("abc_ops") or [])
     args = list(knobs.get("abc_args") or [])
     fp = knobs_fp(level, knobs)
@@ -1390,7 +1404,20 @@ def evaluate_f1_abc(
         if ops:
             write_abc_script(ops, abc_file, map_liberty=True)
             map_cmd += f" -script {abc_file}"
-        ys.write_text(_f1_yscript(rtl, top, lib, map_cmd, net, hier, knobs, abc_file))
+        ys.write_text(
+            _f1_yscript(
+                files,
+                top,
+                lib,
+                map_cmd,
+                net,
+                hier,
+                knobs,
+                abc_file,
+                equiv=want_equiv,
+                include_dirs=incs,
+            )
+        )
         proc = subprocess.run(
             ["yosys", "-q", "-l", str(log), "-s", str(ys)],
             capture_output=True,
@@ -1408,8 +1435,8 @@ def evaluate_f1_abc(
         mapped_text = net.read_text() if net.is_file() else None
         hier_text = hier.read_text() if hier.is_file() else None
     cost = time.time() - t0
-    ok = equiv and area is not None and proc.returncode == 0
-    fail = None if ok else (err or "equiv_or_map_failed")
+    ok = area is not None and proc.returncode == 0 and (equiv if want_equiv else True)
+    fail = None if ok else (err or ("equiv_or_map_failed" if want_equiv else "map_failed"))
     cid = DesignMemory.new_id()
     artifacts: dict = {}
     if mapped_text and ok:
@@ -1456,7 +1483,7 @@ def evaluate_f1_abc(
         artifacts=artifacts,
         status="ok" if ok else "fail",
         failure=fail,
-        note=f"F1 {knobs.get('name')} equiv={'PASS' if equiv else 'FAIL'}"
+        note=f"F1 {knobs.get('name')} equiv={'PASS' if equiv else ('SKIP' if not want_equiv else 'FAIL')}"
         + (f" · cone {knobs.get('cone') or knobs.get('cone_module')}" if is_cone_abc(knobs) else "")
         + (" · ORFS abc_speed" if level == "synthesis" else "")
         + (f" · {err}" if err and not ok else ""),
@@ -1518,6 +1545,7 @@ def ensure_mapped_netlist(
     lib = str(liberty)
     src_rtl = Path(rtl)
     extract = knobs.get("extract")
+    spec = resolve(str(cand.design_id or "gcd"))
     with tempfile.TemporaryDirectory(prefix="dse-map-") as tmp:
         tmp_p = Path(tmp)
         net = tmp_p / "mapped.v"
@@ -1529,7 +1557,7 @@ def ensure_mapped_netlist(
         if ops:
             write_abc_script(ops, abc_file, map_liberty=True)
             map_cmd += f" -script {abc_file}"
-        if extract:
+        if extract and spec.arch_extracts:
             from .arch_space import emit_gcd_variant
 
             variant = tmp_p / "variant.v"
@@ -1538,9 +1566,23 @@ def ensure_mapped_netlist(
                 src_rtl = variant
             except ValueError:
                 pass
+        files, incs = rtl_inputs(src_rtl, spec.id)
+        if extract and spec.arch_extracts:
+            files, incs = [src_rtl], list(spec.include_dirs)
         hier = tmp_p / "hier.v"
         ys.write_text(
-            _f1_yscript(src_rtl, top, lib, map_cmd, net, hier, knobs, abc_file, equiv=False)
+            _f1_yscript(
+                files,
+                top,
+                lib,
+                map_cmd,
+                net,
+                hier,
+                knobs,
+                abc_file,
+                equiv=False,
+                include_dirs=incs,
+            )
         )
         proc = subprocess.run(
             ["yosys", "-q", "-s", str(ys)],

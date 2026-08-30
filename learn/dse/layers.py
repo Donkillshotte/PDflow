@@ -97,8 +97,15 @@ def adapter_status() -> dict:
     out["physical_gpl"]["ready"] = bool(gpl_ok())
     out["routing"]["ready"] = bool(gpl_ok() or f5_available())
     out["timing"]["ready"] = bool(sta_ok())
-    out["activity"]["ready"] = bool(sta_ok())
+    from .activity import load_activity
+    from .f4_oracle import solver_devices
+
+    act = load_activity()
+    out["activity"]["ready"] = bool(sta_ok() or act)
+    if act:
+        out["activity"]["waveform"] = act.get("via")
     out["solver"]["ready"] = bool(f4_ok())
+    out["solver"]["devices"] = solver_devices()
     out["current"]["ready"] = bool(f4_ok())
     out["extraction"]["ready"] = bool(extract_available() or f4_ok())
     out["synthesis"]["ready"] = bool(synth_ok())

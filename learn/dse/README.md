@@ -6,17 +6,30 @@ oracle, never a neural voltage map.
 
 ## Designs
 
-| id | top | cones | architecture extracts |
-|----|-----|-------|------------------------|
-| `gcd` | `gcd` | `dpath`, `ctrl` | e-graph (GCD fixtures only) |
-| `aes` | `aes_cipher_top` | none | none |
+| id | top | cones | architecture extracts | F1 |
+|----|-----|-------|------------------------|----|
+| `gcd` | `gcd` | `dpath`, `ctrl` | e-graph (GCD fixtures only) | Yosys Verilog + equiv |
+| `aes` | `aes_cipher_top` | none | none | 4-file Verilog, equiv off |
+| `ibex` | `ibex_core` | none | none | refused (`f1_ready=False`, slang) |
 
 `dpath` / `ctrl` exist only on GCD. aes uses the same refine / F4 / PDN stack
-without inheriting those names.
+without inheriting those names. Inverse-cipher RTL (`aes_inv_*`) is a
+different top and is not mixed into `aes`.
+
+F1 for aes reads **four** Verilog files (cipher + key_expand + sbox + rcon)
+with `-I` so `` `include "timescale.v" `` resolves. Equiv is skipped
+(`f1_equiv=False`); timeout 240s. ibex stays GAP until a slang frontend
+exists — not a fake Verilog remap.
 
 ```python
 from dse.designs import resolve
 resolve("aes").rtl  # ORFS nangate45 aes_cipher_top
+```
+
+Live aes F1 + F2-fast (separate memory, never FlowLab GCD / gold 45.298):
+
+```bash
+python3 learn/scripts/run_aes_slice.py
 ```
 
 ## Refine chain
@@ -43,7 +56,10 @@ Replaceable adapters in `dse.layers.ADAPTERS`:
 - **extraction** — `write_pg_spice` / ingest
 - **activity** — VCD/SAIF (`dse.activity`) or OpenSTA arrivals; no invented RTL→ITerm map
 - **current** — triangle I(t) × F3 power scale
-- **solver** — DirectLU (default F4), AMG, RAS, Krylov/MOR
+- **solver** — DirectLU (default F4), AMG, RAS, Krylov/MOR. `solver_devices()`
+  reports `cpu` always and `cuda` only when `nvidia-smi -L` lists a GPU.
+  `solve_f4(..., device="cuda")` is GAP when CUDA is absent — not a host
+  solve restamped as GPU.
 - **surrogate** — SSK-GP, GNN, residual models
 - **proposer** — symbolic + optional LLM (`DSE_LLM=mock` in CI, or `DSE_LLM_URL`)
 
@@ -66,6 +82,7 @@ python3 learn/scripts/test_frame.py
 python3 learn/scripts/test_actions.py
 python3 learn/scripts/test_dispatch.py
 python3 learn/scripts/test_designs.py
+python3 learn/scripts/run_aes_slice.py
 ```
 
 Studio: `cd studio && npm run dev` (port 43217).

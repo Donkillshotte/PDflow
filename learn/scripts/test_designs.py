@@ -16,7 +16,9 @@ sys.path.insert(0, str(REPO / "learn"))
 from dse.activity import _parse_saif, _parse_vcd, load_activity  # noqa: E402
 from dse.attribute import _cones_of, _module_of  # noqa: E402
 from dse.bandit import choose, context, reward_catalog_vs_pdn  # noqa: E402
-from dse.designs import DESIGNS, resolve  # noqa: E402
+from dse.designs import rtl_inputs, resolve  # noqa: E402
+from dse.f4_oracle import solve_f4, solver_devices  # noqa: E402
+from dse.fidelity import _read_verilog_block, evaluate_f1_abc  # noqa: E402
 from dse.dispatch import run_next_refine  # noqa: E402
 from dse.frame import leftover_cells, next_stage, refine_chain  # noqa: E402
 from dse.memory import Candidate, DesignMemory  # noqa: E402
@@ -44,8 +46,23 @@ def main() -> int:
     check(not aes.arch_extracts and not aes.has_cone("dpath") and not aes.has_cone("ctrl"),
           "aes has no dpath/ctrl cones")
     check(aes.top == "aes_cipher_top", f"aes top is aes_cipher_top, got {aes.top}")
-    check(aes.rtl.is_file() and len(aes.rtl_files) >= 3, f"aes RTL files exist, got {aes.rtl_files}")
-    check("ibex" not in DESIGNS or True, "registry is explicit (aes registered)")
+    check(aes.rtl.is_file() and len(aes.rtl_files) == 4, f"aes cipher-top closure is 4 files, got {aes.rtl_files}")
+    check(all(p.name != "aes_inv_cipher_top.v" for p in aes.rtl_files), "aes F1 does not pull the inverse-cipher top")
+    ibex = resolve("ibex")
+    check(ibex.top == "ibex_core" and ibex.hdl == "systemverilog" and not ibex.f1_ready,
+          "ibex is registered as SV/slang — F1 is not a fake Verilog remap")
+    try:
+        evaluate_f1_abc(
+            rtl=ibex.rtl,
+            liberty=Path("/dev/null"),
+            knobs={"name": "liberty_default"},
+            mem=DesignMemory(Path(tempfile.mkdtemp(prefix="dse-ibex-")) / "e.jsonl"),
+            design_id="ibex",
+            top=ibex.top,
+        )
+        check(False, "ibex F1 must refuse rather than remap SystemVerilog as Verilog")
+    except ValueError as e:
+        check("frontend" in str(e).lower(), f"ibex F1 is a loud GAP, got {e}")
 
     empty = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-empty-")) / "e.jsonl")
     mem_g = DesignMemory(REPO / "learn" / "sim" / "dse" / "golden" / "memory_flowlab.golden.jsonl")
@@ -139,6 +156,17 @@ def main() -> int:
     vcd = _parse_vcd("$var wire 1 ! clk $end\n#0\n0!\n#1\n1!\n#2\n0!\n", path=Path("x.vcd"))
     check(vcd["via"] == "vcd_edges" and vcd["n_toggle"] >= 1, f"VCD edges parse, got {vcd}")
     check(load_activity(design_id="aes") is None, "missing aes waveform stays missing")
+    files, incs = rtl_inputs(aes.rtl, "aes")
+    ys = _read_verilog_block(files, incs)
+    check("aes_sbox.v" in ys and "aes_rcon.v" in ys and any(str(d) in ys for d in incs),
+          f"aes F1 reads the cipher closure with include dirs, got {ys}")
+    gfiles, _gincs = rtl_inputs(gcd.rtl, "gcd")
+    check(gfiles == [gcd.rtl], f"GCD F1 stays single-file, got {gfiles}")
+    dev = solver_devices()
+    check(dev.get("cpu") is True and dev.get("default_solver") == "direct", f"F4 default stays DirectLU, got {dev}")
+    if not dev.get("cuda"):
+        gap = solve_f4(device="cuda")
+        check(gap.get("status") == "GAP" and gap.get("gold") is False, f"CUDA gap is loud, not a fake GPU solve ({gap})")
 
     os.environ["DSE_LLM"] = "mock"
     mock = llm_propose(mem_g, focus="aes_cipher_top", design_id="aes")
