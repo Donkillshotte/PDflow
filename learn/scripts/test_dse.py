@@ -397,6 +397,9 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_champ_cone_region_pdn" for s in planned["steps"]), "planner schedules leftover-cone-region PDN restamp")
     check(any(s["level"] == "winning_ir_region" for s in planned["steps"]), "planner schedules winning-IR-region density cap")
     check(any(s["level"] == "winning_ir_region_pdn" for s in planned["steps"]), "planner schedules winning-IR-region PDN restamp")
+    check(any(s["level"] == "winning_ir_region_cell" for s in planned["steps"]), "planner schedules winning-IR-region leftover-combo size-up")
+    check(any(s["level"] == "winning_ir_region_cell_extract" for s in planned["steps"]), "planner schedules winning-IR-region-cell write_pg_spice")
+    check(any(s["level"] == "winning_ir_region_cell_pdn" for s in planned["steps"]), "planner schedules winning-IR-region-cell PDN restamp")
     check(any(s["level"] == "f4_amg_champ" for s in planned["steps"]), "planner schedules champion AMG residual")
     check(any(s["level"] == "f4_ras_champ" for s in planned["steps"]), "planner schedules champion RAS residual")
     check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
@@ -510,6 +513,9 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_champ_cone_region_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "leftover-cone-region PDN restamp measures at F4")
     check(next_fidelity(level="winning_ir_region", pred=None, budget_left=20, cost_hint={}) == "F4", "winning-IR-region extract measures at F4")
     check(next_fidelity(level="winning_ir_region_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "winning-IR-region PDN restamp measures at F4")
+    check(next_fidelity(level="winning_ir_region_cell", pred=None, budget_left=20, cost_hint={}) == "F3", "winning-IR-region-cell size measures at F3")
+    check(next_fidelity(level="winning_ir_region_cell_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "winning-IR-region-cell extract measures at F4")
+    check(next_fidelity(level="winning_ir_region_cell_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "winning-IR-region-cell PDN restamp measures at F4")
     check(next_fidelity(level="f4_amg_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion AMG measures at F4")
     check(next_fidelity(level="f4_ras_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion RAS measures at F4")
     check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
@@ -733,6 +739,50 @@ def main() -> int:
             },
         ),
         "winning-IR-region r30 knobs are not flattened into a second-bin r13 fingerprint",
+    )
+    check(
+        knobs_fp(
+            "cell",
+            {
+                "source": "cell_size_ir_winning_region",
+                "parent_id": "ircell",
+                "cells": ["dpath/b_mux/_44_", "dpath/b_mux/_51_"],
+                "ir_join": 1,
+                "winning_ir_region": 1,
+            },
+        )
+        != knobs_fp(
+            "cell",
+            {
+                "source": "cell_size_ir_champ_cone",
+                "parent_id": "icchamp",
+                "cells": ["dpath/b_reg/_078_", "dpath/b_mux/_46_"],
+                "ir_join": 1,
+                "champ_cone": 1,
+            },
+        ),
+        "winning-IR-region-cell knobs are not flattened into leftover-cone size-up",
+    )
+    check(
+        knobs_fp(
+            "pdn",
+            {
+                "source": "f4_winning_ir_region_cell_extract",
+                "parent_id": "wircell",
+                "ir_join": 1,
+                "winning_ir_region": 1,
+            },
+        )
+        != knobs_fp(
+            "pdn",
+            {
+                "source": "f4_winning_ir_region_extract",
+                "parent_id": "ircell",
+                "region": "r30",
+                "ir_join": 1,
+            },
+        ),
+        "winning-IR-region-cell extract knobs are not flattened into the region extract fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "iccext", "c_decap": 200e-15})
@@ -1537,6 +1587,9 @@ def main() -> int:
         should_pay_ir_cell_champ_cone_region_pdn,
         should_pay_winning_ir_region,
         should_pay_winning_ir_region_pdn,
+        should_pay_winning_ir_region_cell,
+        should_pay_winning_ir_region_cell_extract,
+        should_pay_winning_ir_region_cell_pdn,
         iscale_champ_sta,
         should_pay_ir_cell,
         should_pay_ir_cell_extract,
@@ -4026,6 +4079,157 @@ def main() -> int:
     nxt_wir13 = winning_ir_region_next(mem_hr, budget_left=80)
     check(nxt_wir13 is not None and nxt_wir13.get("kind") == "pdn", f"winning-IR-region next is r13 PDN, got {nxt_wir13}")
     check((nxt_wir13.get("steer") or {}).get("extract_id") == "wirxt2", f"winning-IR-region next PDN stays on r13, got {nxt_wir13}")
+    from dse.active import (
+        steer_from_winning_ir_region_cell_residual,
+        steer_from_winning_ir_region_pdn_hotspot,
+        winning_ir_region_cell_extract_cand,
+        winning_ir_region_cell_host,
+    )
+
+    pay_wirc0, why_wirc0 = should_pay_winning_ir_region_cell(mem_hr, budget_left=80, steer=None)
+    check(not pay_wirc0, f"winning-IR-region-cell waits for leftover combo cells ({why_wirc0})")
+    check(steer_from_winning_ir_region_pdn_hotspot(mem_hr) is None, "winning-IR-region-cell waits for a region PDN join")
+    mem_hr.add(
+        Candidate(
+            id="wirp",
+            design_id="gcd",
+            parent_id="wirxt",
+            level="pdn",
+            knobs={
+                "name": "decap_200f",
+                "pkg_r": 0.05,
+                "pkg_l": 2e-10,
+                "c_decap": 2e-13,
+                "i_scale": 1.0,
+                "source": "f4_solver_a",
+                "extract_id": "wirxt",
+            },
+            knobs_fp="wirp",
+            rtl_fp="x",
+            netlist_fp=None,
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=5.570, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "active_f4_winning_ir_region_pdn",
+                "region": "r00",
+                "combo_frac": 0.85,
+                "seq_frac": 0.15,
+                "cells": [
+                    "ctrl/_11_",
+                    "dpath/b_mux/_46_",
+                    "dpath/b_mux/_44_",
+                    "dpath/b_reg/_077_",
+                    "dpath/b_mux/_51_",
+                ],
+                "modules": ["ctrl", "dpath"],
+            },
+        )
+    )
+    st_wirc = steer_from_winning_ir_region_pdn_hotspot(mem_hr)
+    check(st_wirc is not None and st_wirc.get("level") == "winning_ir_region_cell", f"combo-heavy region PDN steers leftover cells, got {st_wirc}")
+    check(st_wirc.get("extract_id") == "wirxt", f"winning-IR-region-cell stays on the region extract, got {st_wirc}")
+    check("dpath/b_mux/_44_" in (st_wirc.get("cells") or []) and "dpath/b_mux/_51_" in (st_wirc.get("cells") or []), f"winning-IR-region-cell names leftover mux, got {st_wirc}")
+    check("dpath/b_mux/_46_" not in (st_wirc.get("cells") or []), f"winning-IR-region-cell drops leftover-cone cells, got {st_wirc}")
+    check("ctrl/_11_" not in (st_wirc.get("cells") or []), f"winning-IR-region-cell drops first IR-cell ctrl, got {st_wirc}")
+    check("dpath" in (st_wirc.get("modules") or []), f"winning-IR-region-cell names dpath, got {st_wirc}")
+    check("leftover-cone" in (st_wirc.get("reason") or ""), f"winning-IR-region-cell refuses leftover-cone flatten ({st_wirc})")
+    pay_wirc1, why_wirc1 = should_pay_winning_ir_region_cell(mem_hr, budget_left=80, steer=st_wirc)
+    check(pay_wirc1, f"winning-IR-region-cell is paid after leftover combo cells ({why_wirc1})")
+    fake_cone_c = dict(st_wirc)
+    fake_cone_c["host_source"] = "f4_ir_cell_champ_cone_extract"
+    pay_wirc_ref, why_wirc_ref = should_pay_winning_ir_region_cell(mem_hr, budget_left=80, steer=fake_cone_c)
+    check(not pay_wirc_ref, f"winning-IR-region-cell refuses leftover-cone flatten ({why_wirc_ref})")
+    pay_wirc2, why_wirc2 = should_pay_winning_ir_region_cell(mem_hr, budget_left=80, steer=st_wirc, n_cell=1)
+    check(not pay_wirc2, f"winning-IR-region-cell is a single shot ({why_wirc2})")
+    wirp_c = next(c for c in mem_hr.all() if c.id == "wirp")
+    wirp_c.attr["combo_frac"] = 0.16
+    mem_hr.touch(wirp_c)
+    check(steer_from_winning_ir_region_pdn_hotspot(mem_hr) is None, "seq-heavy winning-IR-region PDN does not steal combo size-up")
+    wirp_c.attr["combo_frac"] = 0.85
+    mem_hr.touch(wirp_c)
+    mem_hr.add(
+        Candidate(
+            id="wircell",
+            design_id="gcd",
+            parent_id="ircell",
+            level="cell",
+            knobs={
+                "source": "cell_size_ir_winning_region",
+                "cells": ["dpath/b_mux/_44_", "dpath/b_mux/_51_"],
+                "ir_join": 1,
+                "winning_ir_region": 1,
+                "parent_id": "ircell",
+                "extract_id": "wirxt",
+            },
+            knobs_fp="wircell",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(area_um2=566.0, wns_cost=0.30, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": str(dummy_host), "n_changed": 2, "wns_ns": -0.301},
+            attr={"via": "active_f4_winning_ir_region_cell"},
+        )
+    )
+    check(winning_ir_region_cell_host(mem_hr).id == "wircell", "winning-IR-region-cell host is the leftover-combo size-up")
+    pay_wirc3, why_wirc3 = should_pay_winning_ir_region_cell(mem_hr, budget_left=80, steer=st_wirc)
+    check(not pay_wirc3, f"winning-IR-region-cell skips once sized on that extract ({why_wirc3})")
+    pay_wirce0, why_wirce0 = should_pay_winning_ir_region_cell_extract(mem_hr, budget_left=80, n_extract=0)
+    check(pay_wirce0, f"winning-IR-region-cell extract is paid after leftover-combo size-up ({why_wirce0})")
+    check("leftover-cone" in why_wirce0 and "winning-IR-region" in why_wirce0, f"winning-IR-region-cell extract names both meshes ({why_wirce0})")
+    pay_wirce1, why_wirce1 = should_pay_winning_ir_region_cell_extract(mem_hr, budget_left=80, n_extract=1)
+    check(not pay_wirce1, f"winning-IR-region-cell extract is a single shot ({why_wirce1})")
+    mem_hr.add(
+        Candidate(
+            id="wircxt",
+            design_id="gcd",
+            parent_id="wircell",
+            level="pdn",
+            knobs={
+                "source": "f4_winning_ir_region_cell_extract",
+                "parent_id": "wircell",
+                "extract_id": "wircxt",
+                "parent_extract_id": "wirxt",
+                "ir_join": 1,
+                "winning_ir_region": 1,
+            },
+            knobs_fp="wircxt",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=9.200, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_winning_ir_region_cell_extract",
+                "residual_mv": -1.513,
+                "residual_via": "winning_ir_region_cell_vs_winning_ir_region_extract",
+                "residual_vs": "wirxt",
+            },
+        )
+    )
+    check(winning_ir_region_cell_extract_cand(mem_hr).id == "wircxt", "cell extract is the winning-IR-region-cell cand")
+    check(winning_ir_pdn(mem_hr).id == "wirl", "high winning-IR-region-cell droop does not steal the 1× champion")
+    pay_wirce2, why_wirce2 = should_pay_winning_ir_region_cell_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_wirce2, f"winning-IR-region-cell extract skips once measured ({why_wirce2})")
+    st_wircp = steer_from_winning_ir_region_cell_residual(mem_hr)
+    check(st_wircp is not None and (st_wircp.get("spec") or {}).get("name") in ("decap_200f", "pkg_l_100p"), f"winning-IR-region-cell residual steers the winning PDN family, got {st_wircp}")
+    check(st_wircp.get("extract_id") == "wircxt", f"winning-IR-region-cell PDN stays on the leftover-combo mesh, got {st_wircp}")
+    check(st_wircp.get("host_source") == "f4_winning_ir_region_cell_extract", "winning-IR-region-cell PDN names the cell extract")
+    check(st_wircp.get("extract_id") != "wirxt", "winning-IR-region-cell PDN does not restamp the region extract")
+    pay_wircp0, why_wircp0 = should_pay_winning_ir_region_cell_pdn(mem_hr, budget_left=80, steer=None)
+    check(not pay_wircp0, f"winning-IR-region-cell PDN waits for a 1× residual ({why_wircp0})")
+    pay_wircp1, why_wircp1 = should_pay_winning_ir_region_cell_pdn(mem_hr, budget_left=80, steer=st_wircp)
+    check(pay_wircp1, f"winning-IR-region-cell PDN is paid after the 1× residual ({why_wircp1})")
+    fake_reg_p = dict(st_wircp)
+    fake_reg_p["host_source"] = "f4_winning_ir_region_extract"
+    pay_wircp_ref, why_wircp_ref = should_pay_winning_ir_region_cell_pdn(mem_hr, budget_left=80, steer=fake_reg_p)
+    check(not pay_wircp_ref, f"winning-IR-region-cell PDN refuses the region extract ({why_wircp_ref})")
+    pay_wircp2, why_wircp2 = should_pay_winning_ir_region_cell_pdn(mem_hr, budget_left=80, steer=st_wircp, n_steer=1)
+    check(not pay_wircp2, f"winning-IR-region-cell PDN is a single shot ({why_wircp2})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

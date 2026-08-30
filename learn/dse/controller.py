@@ -55,6 +55,9 @@ from .acquire import (
     should_pay_ir_cell_champ_cone_region_pdn,
     leftover_cone_region_next,
     winning_ir_region_next,
+    should_pay_winning_ir_region_cell,
+    should_pay_winning_ir_region_cell_extract,
+    should_pay_winning_ir_region_cell_pdn,
     should_pay_ir_cell_extract,
     should_pay_ir_cell_pdn,
     should_pay_ir_cell_region,
@@ -123,6 +126,9 @@ from .active import (
     steer_from_ir_cell_champ_cone_hotspot,
     steer_from_ir_cell_champ_cone_region_hotspot,
     steer_from_ir_cell_champ_cone_region_residual,
+    winning_ir_region_cell_host,
+    steer_from_winning_ir_region_pdn_hotspot,
+    steer_from_winning_ir_region_cell_residual,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -337,6 +343,7 @@ def run_controller(
             "f4_em_strap_extract",
             "f4_static_strap_extract",
             "f4_winning_ir_region_extract",
+            "f4_winning_ir_region_cell_extract",
         ) and via != "active_f4_winning_ir_pdn":
             continue
         if persist_hotspot_join(c):
@@ -2858,6 +2865,170 @@ def run_controller(
             continue
         break
 
+    steer_wirc = steer_from_winning_ir_region_pdn_hotspot(mem)
+    _wirc_eid = str((steer_wirc or {}).get("extract_id") or "")
+    n_wirc = sum(
+        1
+        for c in mem.by_level("cell")
+        if (c.knobs or {}).get("source") == "cell_size_ir_winning_region"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == _wirc_eid
+    )
+    pay_wirc, why_wirc = should_pay_winning_ir_region_cell(
+        mem, budget_left=t_end - time.time(), steer=steer_wirc, n_cell=n_wirc
+    )
+    step("acquire", fidelity="WINNING_IR_REGION_CELL", pay=pay_wirc, why=why_wirc, steer=steer_wirc)
+    if (
+        any(s["level"] == "winning_ir_region_cell" for s in plan["steps"])
+        and pay_wirc
+        and steer_wirc
+        and time.time() < t_end
+    ):
+        host_wirc = ir_cell_host(mem)
+        cells_wirc = list(steer_wirc.get("cells") or [])
+        if host_wirc and cells_wirc:
+            if not (host_wirc.artifacts or {}).get("mapped_v"):
+                host_wirc = ensure_mapped_netlist(host_wirc, rtl=rtl, liberty=lib)
+                mem.touch(host_wirc)
+            child = evaluate_cell_size(
+                host_wirc,
+                mem,
+                design_id=design_id,
+                cells=cells_wirc,
+                source="cell_size_ir_winning_region",
+                extract_id=_wirc_eid or None,
+            )
+            if child:
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="cell",
+                    fidelity="F3",
+                    via="active_f4_winning_ir_region_cell",
+                    parent=host_wirc.id,
+                    modules=steer_wirc.get("modules"),
+                    extract_id=_wirc_eid,
+                    region=steer_wirc.get("region"),
+                    n_changed=(child.artifacts or {}).get("n_changed"),
+                    wns_ns=(child.artifacts or {}).get("wns_ns"),
+                    area_um2=child.qor.area_um2,
+                    gold=False,
+                    status=child.status,
+                    reason=why_wirc,
+                )
+
+    host_wirce_pre = winning_ir_region_cell_host(mem)
+    _wirce_eid = str((host_wirce_pre.knobs or {}).get("extract_id") or "") if host_wirce_pre else ""
+    n_wirce = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_extract"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("parent_extract_id") or "") == _wirce_eid
+    )
+    pay_wirce, why_wirce = should_pay_winning_ir_region_cell_extract(
+        mem, budget_left=t_end - time.time(), n_extract=n_wirce
+    )
+    step("acquire", fidelity="F4_WINNING_IR_REGION_CELL_EXTRACT", pay=pay_wirce, why=why_wirce)
+    if (
+        any(s["level"] == "winning_ir_region_cell_extract" for s in plan["steps"])
+        and pay_wirce
+        and time.time() < t_end
+    ):
+        host_wirce = winning_ir_region_cell_host(mem)
+        if host_wirce and (host_wirce.artifacts or {}).get("mapped_v"):
+            params = flowlab_params()
+            util_wirce = float(params.get("coreUtilization") or 35.0)
+            den_wirce = gpl_density(util_wirce, params.get("placeDensityAddon") or 0.2)
+            child = evaluate_f4_extract(
+                host_wirce,
+                mem,
+                design_id=design_id,
+                variant=variant,
+                util=util_wirce,
+                density=den_wirce,
+                kind="winning_ir_region_cell",
+            )
+            if child:
+                persist_hotspot_join(child)
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="f4_winning_ir_region_cell_extract",
+                    parent=host_wirce.id,
+                    parent_extract_id=_wirce_eid,
+                    n_r=(child.artifacts or {}).get("n_r"),
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_mv=(child.attr or {}).get("residual_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=why_wirce,
+                )
+
+    steer_wircp = steer_from_winning_ir_region_cell_residual(mem)
+    _wircp_eid = str((steer_wircp or {}).get("extract_id") or "")
+    n_wircp = sum(
+        1
+        for c in mem.all()
+        if (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_pdn"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == _wircp_eid
+    )
+    pay_wircp, why_wircp = should_pay_winning_ir_region_cell_pdn(
+        mem, budget_left=t_end - time.time(), steer=steer_wircp, n_steer=n_wircp
+    )
+    step("acquire", fidelity="WINNING_IR_REGION_CELL_PDN", pay=pay_wircp, why=why_wircp, steer=steer_wircp)
+    if (
+        any(s["level"] == "winning_ir_region_cell_pdn" for s in plan["steps"])
+        and pay_wircp
+        and steer_wircp
+        and time.time() < t_end
+    ):
+        spec_wircp = steer_wircp.get("spec") or {}
+        eid_wircp = str(steer_wircp.get("extract_id") or "")
+        hit_wircp = extract_on_disk(mem, eid_wircp) if eid_wircp else None
+        if spec_wircp and hit_wircp:
+            child = evaluate_f4_pdn(
+                mem,
+                spec_wircp,
+                variant=variant,
+                design_id=design_id,
+                parent_id=hit_wircp["candidate"].id,
+                spice=hit_wircp["spice"],
+                insts=hit_wircp["insts"],
+                extract_id=eid_wircp,
+                sta=hit_wircp.get("sta"),
+            )
+            if child:
+                child.attr = dict(child.attr or {})
+                child.attr["via"] = "active_f4_winning_ir_region_cell_pdn"
+                child.attr["steer"] = {k: steer_wircp[k] for k in steer_wircp if k != "spec"}
+                host_win = winning_host_pdn(mem)
+                if host_win and host_win.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+                    child.attr["residual_vs_host_win_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                        host_win.qor.dynamic_ir_mv
+                    )
+                    child.attr["residual_vs_host_win"] = host_win.id
+                mem.touch(child)
+                step(
+                    "evaluate",
+                    id=child.id,
+                    level="pdn",
+                    fidelity="F4",
+                    via="active_f4_winning_ir_region_cell_pdn",
+                    parent=hit_wircp["candidate"].id,
+                    catalog=spec_wircp.get("name"),
+                    extract_id=eid_wircp,
+                    droop_mv=child.qor.dynamic_ir_mv,
+                    residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
+                    gold=False,
+                    status=child.status,
+                    reason=steer_wircp.get("reason"),
+                )
+
     n_amg_c = champ_mf_n(mem, "f4_solver_amg_champ")
     pay_amgc, why_amgc = should_pay_f4_amg_champ(
         mem, budget_left=t_end - time.time(), n_amg=n_amg_c, variant=variant
@@ -3349,6 +3520,9 @@ def run_controller(
             "F4 winning-IR-region: winning-IR 1× bin ≠ leftover-cone / IR-cell-region and seq-heavy — density cap on the IR-cell netlist; re-paid when the residual hotspot leaves the capped bin, not leftover-cone rXY, not more combo size-up, not IR-cell-region rXY, not gold rXY",
             "F4 winning-IR-region PDN: |Δ| ≥ 1 mV restamps the winning family on that capped winning-IR mesh — re-paid on a new region extract, not leftover-cone-region PDN, not champ IR-steer",
             "F4 winning-IR-region loop: inspect → density cap → |Δ| PDN → residual hotspot → next bin ≠ IR-cell-region, up to 4 shots — not one-pass, not leftover-cone rXY, not a flattened region vector",
+            "F3 winning-IR-region-cell: leftover combo cells on the region PDN join (minus IR-cell / champ / leftover-cone) — drive-up on the IR-cell netlist, not leftover-cone flatten, not more density cap",
+            "F4 winning-IR-region-cell extract: write_pg_spice on that leftover-combo netlist — residual vs the winning-IR-region extract; re-paid per region extract, not leftover-cone",
+            "F4 winning-IR-region-cell PDN: 1× residual restamps the winning family on that leftover-combo mesh — re-paid on a new cell extract, not leftover-cone PDN, not champ IR-steer",
             "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — re-paid when the 1× extract moves (strap mesh), not candidate AMG, not gold",
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",
             "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not gold",
@@ -3691,6 +3865,93 @@ def run_controller(
                 for c in reversed(list(mem.all()))
                 if c.status == "ok"
                 and (c.attr or {}).get("via") == "active_f4_winning_ir_region_pdn"
+                and (c.attr or {}).get("residual_vs_host_win_mv") is not None
+            ),
+            None,
+        ),
+        "n_winning_ir_region_cell": sum(
+            1
+            for c in mem.by_level("cell")
+            if (c.knobs or {}).get("source") == "cell_size_ir_winning_region" and c.status == "ok"
+        ),
+        "winning_ir_region_cell_wns_ns": next(
+            (
+                float((c.artifacts or {}).get("wns_ns"))
+                for c in reversed(list(mem.by_level("cell")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "cell_size_ir_winning_region"
+                and (c.artifacts or {}).get("wns_ns") is not None
+            ),
+            None,
+        ),
+        "winning_ir_region_cell_modules": next(
+            (
+                ",".join(
+                    dict.fromkeys(
+                        str(x).split("/")[0]
+                        for x in (c.knobs or {}).get("cells") or []
+                        if "/" in str(x)
+                    )
+                )
+                for c in reversed(list(mem.by_level("cell")))
+                if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir_winning_region"
+            ),
+            None,
+        ),
+        "n_f4_winning_ir_region_cell_extract": sum(
+            1
+            for c in mem.by_level("pdn")
+            if (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_extract" and c.status == "ok"
+        ),
+        "winning_ir_region_cell_extract_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_extract"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "winning_ir_region_cell_extract_residual_mv": next(
+            (
+                float((c.attr or {}).get("residual_mv"))
+                for c in reversed(list(mem.by_level("pdn")))
+                if c.status == "ok"
+                and (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_extract"
+                and (c.attr or {}).get("residual_mv") is not None
+            ),
+            None,
+        ),
+        "n_winning_ir_region_cell_pdn": sum(
+            1
+            for c in mem.all()
+            if (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_pdn" and c.status == "ok"
+        ),
+        "winning_ir_region_cell_pdn_mv": next(
+            (
+                float(c.qor.dynamic_ir_mv)
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_pdn"
+                and c.qor.dynamic_ir_mv is not None
+            ),
+            None,
+        ),
+        "winning_ir_region_cell_pdn_name": next(
+            (
+                str((c.knobs or {}).get("name") or "")
+                for c in reversed(list(mem.all()))
+                if c.status == "ok" and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_pdn"
+            ),
+            None,
+        ),
+        "winning_ir_region_cell_pdn_vs_host_win_mv": next(
+            (
+                float((c.attr or {}).get("residual_vs_host_win_mv"))
+                for c in reversed(list(mem.all()))
+                if c.status == "ok"
+                and (c.attr or {}).get("via") == "active_f4_winning_ir_region_cell_pdn"
                 and (c.attr or {}).get("residual_vs_host_win_mv") is not None
             ),
             None,
@@ -4309,6 +4570,7 @@ def run_controller(
                 "f4_ir_cell_champ_cone_extract",
                 "f4_ir_cell_champ_cone_region_extract",
                 "f4_winning_ir_region_extract",
+                "f4_winning_ir_region_cell_extract",
                 "f4_region_extract",
                 "f4_solver_amg",
                 "f4_solver_ras",
@@ -4720,6 +4982,52 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         )
     if wirp_bits:
         wirpdn = " · winning-IR-region-PDN " + "; ".join(wirp_bits)
+    wircell = ""
+    for c in reversed(list(mem.by_level("cell"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir_winning_region":
+            w = (c.artifacts or {}).get("wns_ns")
+            nch = (c.artifacts or {}).get("n_changed")
+            mods = ",".join(
+                dict.fromkeys(
+                    str(x).split("/")[0]
+                    for x in (c.knobs or {}).get("cells") or []
+                    if "/" in str(x)
+                )
+            )
+            wircell = (
+                f" · winning-IR-region-cell size-up n={nch} {mods} WNS={w:+.3f} ns"
+                if w is not None
+                else f" · winning-IR-region-cell size-up n={nch} {mods}"
+            )
+            break
+    wircext = ""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_winning_ir_region_cell_extract":
+            w = c.qor.dynamic_ir_mv
+            res = (c.attr or {}).get("residual_mv")
+            nr = (c.artifacts or {}).get("n_r")
+            extra = f" Δ={float(res):+.3f}" if res is not None else ""
+            wircext = (
+                f" · winning-IR-region-cell extract {float(w):.3f} mV{extra} n_r={nr} (not gold)"
+                if w is not None
+                else f" · winning-IR-region-cell extract n_r={nr} (not gold)"
+            )
+            break
+    wircpdn = ""
+    wircp_bits: list[str] = []
+    for c in mem.all():
+        if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_winning_ir_region_cell_pdn":
+            continue
+        w = c.qor.dynamic_ir_mv
+        cat = (c.knobs or {}).get("name")
+        eid = (c.knobs or {}).get("extract_id")
+        vs = (c.attr or {}).get("residual_vs_host_win_mv")
+        extra = f" vs host-win {float(vs):+.3f}" if vs is not None else ""
+        wircp_bits.append(
+            f"{cat} on {eid} {float(w):.3f} mV{extra}" if w is not None else str(cat)
+        )
+    if wircp_bits:
+        wircpdn = " · winning-IR-region-cell-PDN " + "; ".join(wircp_bits)
     ircext = ""
     for c in mem.by_level("pdn"):
         if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_extract":
@@ -4925,5 +5233,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircchamp}{icccone}{iccext}{icccext}{iccpdn}{icccpdn}{icccreg}{icccrpdn}{wirreg}{wirpdn}{ircext}{icpdn}{icreg}{icrpdn}{amgc}{rasc}{kryc}{sir}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircchamp}{icccone}{iccext}{icccext}{iccpdn}{icccpdn}{icccreg}{icccrpdn}{wirreg}{wirpdn}{wircell}{wircext}{wircpdn}{ircext}{icpdn}{icreg}{icrpdn}{amgc}{rasc}{kryc}{sir}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )
