@@ -20,6 +20,7 @@ type Cand = {
   };
   qor?: {
     area_um2?: number | null;
+    static_ir_mv?: number | null;
     dynamic_ir_mv?: number | null;
     congestion?: number | null;
     wns_cost?: number | null;
@@ -83,6 +84,13 @@ type DseReport = {
   n_f4_krylov_champ?: number;
   ir_champ_krylov_mv?: number;
   ir_champ_krylov_vs_direct_mv?: number;
+  winning_static_mv?: number;
+  winning_static_extract?: string;
+  n_static_ir_steer?: number;
+  static_ir_steer_mv?: number;
+  static_ir_steer_dyn_mv?: number;
+  static_ir_steer_name?: string;
+  static_ir_steer_vs_champ_mv?: number;
   n_f4_ir_cell_extract?: number;
   n_ir_cell_pdn?: number;
   ir_cell_extract_mv?: number;
@@ -151,7 +159,7 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
-          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
+          {report.n_ir_cell || report.n_ir_cell_champ || report.n_f4_ir_cell_champ_extract || report.n_ir_cell_champ_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -205,6 +213,17 @@ export function DsePanel() {
                 : report.n_f4_krylov_champ != null
                   ? ` · Kry-c ${report.n_f4_krylov_champ}`
                   : ""}
+              {report.static_ir_steer_mv != null
+                ? ` · SI ${report.static_ir_steer_name ?? "pkg_r"} ${report.static_ir_steer_mv.toFixed(3)} mV${
+                    report.static_ir_steer_vs_champ_mv != null
+                      ? ` Δ=${report.static_ir_steer_vs_champ_mv >= 0 ? "+" : ""}${report.static_ir_steer_vs_champ_mv.toFixed(3)}`
+                      : ""
+                  }`
+                : report.winning_static_mv != null
+                  ? ` · SI-champ ${report.winning_static_mv.toFixed(3)} mV`
+                  : report.n_static_ir_steer != null
+                    ? ` · SI ${report.n_static_ir_steer}`
+                    : ""}
               {report.ir_cell_extract_mv != null
                 ? ` · IR-x ${report.ir_cell_extract_mv.toFixed(3)} mV${
                     report.ir_cell_extract_residual_mv != null
@@ -313,6 +332,7 @@ export function DsePanel() {
                 {report.n_f4_amg_champ != null ? ` · AMG-c ${report.n_f4_amg_champ}` : ""}
                 {report.n_f4_ras_champ != null ? ` · RAS-c ${report.n_f4_ras_champ}` : ""}
                 {report.n_f4_krylov_champ != null ? ` · Kry-c ${report.n_f4_krylov_champ}` : ""}
+                {report.n_static_ir_steer != null ? ` · SI ${report.n_static_ir_steer}` : ""}
                 {report.n_f4_ir_cell_extract != null ? ` · IR-x ${report.n_f4_ir_cell_extract}` : ""}
                 {report.n_ir_cell_pdn != null ? ` · IR-p ${report.n_ir_cell_pdn}` : ""}
                 {report.n_f4_ir_cell_region_extract != null

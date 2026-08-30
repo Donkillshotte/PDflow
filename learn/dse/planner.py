@@ -475,6 +475,16 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "pdn",
         }
     )
+    steps.append(
+        {
+            "level": "static_ir_steer",
+            "reason": (
+                "Static IR 1× champion (not winning_ir_pdn) pays unused pkg_r — "
+                "decap/pkg L do not move DC drop, not Dynamic IR-steer, not gold"
+            ),
+            "scope": "pdn",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,

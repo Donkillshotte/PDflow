@@ -32,7 +32,7 @@ from dse.memory import Candidate, DesignMemory
 from dse.metrics import QoR, dominates, pareto_front, wns_cost_from_slack_ns
 from dse.mo import ehvi_2d, hypervolume_2d
 from dse.physical_space import PHYSICAL_CATALOG, gpl_density, next_catalog_spec, rudy_congestion
-from dse.pdn_space import PDN_CATALOG, next_pdn_spec
+from dse.pdn_space import PDN_CATALOG, STATIC_PDN_CATALOG, next_pdn_spec, next_static_pdn_spec
 
 
 def check(ok: bool, msg: str) -> None:
@@ -185,6 +185,8 @@ def main() -> int:
     check(next_catalog_spec(mem).get("name") == "util30_den010", "empty memory proposes first catalog point")
     check(len(PDN_CATALOG) >= 2, "PDN catalog has more than the gold knobs")
     check(next_pdn_spec(mem).get("name") == "decap_200f", "empty PDN memory proposes extra decap first")
+    check(all(s["name"] != "pkg_r_25m" for s in PDN_CATALOG), "pkg_r is not flattened into the Dynamic IR catalog")
+    check(STATIC_PDN_CATALOG[0]["name"] == "pkg_r_25m", "static-IR catalog starts with pkg_r_25m")
     check(
         knobs_fp("pdn", {"pkg_l": 2e-10, "c_decap": 50e-15})
         != knobs_fp("logic", {"pkg_l": 2e-10, "c_decap": 50e-15}),
@@ -367,6 +369,7 @@ def main() -> int:
     check(any(s["level"] == "f4_amg_champ" for s in planned["steps"]), "planner schedules champion AMG residual")
     check(any(s["level"] == "f4_ras_champ" for s in planned["steps"]), "planner schedules champion RAS residual")
     check(any(s["level"] == "f4_krylov_champ" for s in planned["steps"]), "planner schedules champion Krylov/MOR residual")
+    check(any(s["level"] == "static_ir_steer" for s in planned["steps"]), "planner schedules static-IR pkg_r steer")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -468,6 +471,7 @@ def main() -> int:
     check(next_fidelity(level="f4_amg_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion AMG measures at F4")
     check(next_fidelity(level="f4_ras_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion RAS measures at F4")
     check(next_fidelity(level="f4_krylov_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion Krylov/MOR measures at F4")
+    check(next_fidelity(level="static_ir_steer", pred=None, budget_left=20, cost_hint={}) == "F4", "static-IR pkg_r steer measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -597,6 +601,11 @@ def main() -> int:
         knobs_fp("pdn", {"source": "f4_solver_krylov", "extract_id": "icreg", "name": "krylov_champ", "c_decap": 200e-15})
         != knobs_fp("pdn", {"source": "f4_solver_ras", "extract_id": "icreg", "name": "ras_champ", "c_decap": 200e-15}),
         "champion Krylov is not flattened into the champion RAS fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_solver_a", "name": "pkg_r_25m", "extract_id": "icreg", "pkg_r": 0.025, "c_decap": 200e-15})
+        != knobs_fp("pdn", {"source": "f4_solver_a", "name": "decap_200f", "extract_id": "icreg", "pkg_r": 0.05, "c_decap": 200e-15}),
+        "static-IR pkg_r is not flattened into the Dynamic IR decap fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1343,6 +1352,7 @@ def main() -> int:
         should_pay_f4_amg_champ,
         should_pay_f4_ras_champ,
         should_pay_f4_krylov_champ,
+        should_pay_static_ir_steer,
         should_pay_ir_cell_champ,
         should_pay_ir_cell_champ_extract,
         should_pay_ir_cell_champ_pdn,
@@ -2193,7 +2203,7 @@ def main() -> int:
             rtl_fp="x",
             netlist_fp=None,
             fidelity="F4",
-            qor=QoR(dynamic_ir_mv=6.80, fidelity="F4"),
+            qor=QoR(dynamic_ir_mv=6.80, static_ir_mv=7.639, fidelity="F4"),
             cost_s=1.0,
             status="ok",
             attr={"via": "active_f4_host_ir"},
@@ -2475,7 +2485,7 @@ def main() -> int:
             rtl_fp="x",
             netlist_fp="y",
             fidelity="F4",
-            qor=QoR(dynamic_ir_mv=9.356, fidelity="F4"),
+            qor=QoR(dynamic_ir_mv=9.356, static_ir_mv=6.178, fidelity="F4"),
             cost_s=1.0,
             status="ok",
             attr={"via": "f4_ir_cell_region_extract", "residual_mv": -4.652, "region": "r00"},
@@ -2533,7 +2543,7 @@ def main() -> int:
             rtl_fp="x",
             netlist_fp="y",
             fidelity="F4",
-            qor=QoR(dynamic_ir_mv=3.921, fidelity="F4"),
+            qor=QoR(dynamic_ir_mv=3.921, static_ir_mv=6.178, fidelity="F4"),
             cost_s=1.0,
             status="ok",
             attr={"via": "active_f4_ir_cell_region_pdn", "residual_vs_host_win_mv": -0.095},
@@ -2811,6 +2821,35 @@ def main() -> int:
     pay_amg_fin, why_amg_fin = should_pay_f4_amg_champ(mem_fin, budget_left=80, n_amg=0)
     check(not pay_amg_fin, f"champion AMG refuses gold finish ({why_amg_fin})")
     check("finish" in why_amg_fin or "gold" in why_amg_fin, f"champion AMG names the gold refuse ({why_amg_fin})")
+    from dse.active import winning_static_pdn, steer_from_static_ir_residual
+    from dse.surrogate import residual_f4_static
+
+    win_st = winning_static_pdn(mem_hr)
+    check(win_st is not None and win_st.id == "icrp", f"winning_static_pdn tie-breaks to the 3.921 Dynamic IR point, got {win_st}")
+    check(winning_ir_pdn(mem_hr).id == "icrp", "winning_ir_pdn stays the 3.921 Dynamic IR champ")
+    check(winning_host_pdn(mem_hr).id == "hdecapr", "winning_host_pdn still does not steal the static-IR champ")
+    st_sir = steer_from_static_ir_residual(mem_hr)
+    check(st_sir is not None and (st_sir.get("spec") or {}).get("name") == "pkg_r_25m", f"static IR steers pkg_r, got {st_sir}")
+    check(st_sir.get("extract_id") == "icreg", f"static IR stays on the static champ extract, got {st_sir}")
+    check(abs(float((st_sir.get("spec") or {}).get("c_decap") or 0) - 200e-15) < 1e-18, "pkg_r inherits champ decap — residual is pkg_r-only")
+    check((st_sir.get("spec") or {}).get("name") not in ("decap_200f", "pkg_l_100p"), "static IR does not consume the Dynamic IR catalog")
+    pay_sir0, why_sir0 = should_pay_static_ir_steer(mem_hr, budget_left=80, steer=None)
+    check(not pay_sir0, f"static IR waits for a pkg_r steer ({why_sir0})")
+    pay_sir1, why_sir1 = should_pay_static_ir_steer(mem_hr, budget_left=80, steer=st_sir)
+    check(pay_sir1, f"static IR pkg_r is paid on the 6.178 champ ({why_sir1})")
+    check("not Dynamic IR-steer" in why_sir1 and "not gold" in why_sir1, f"static IR refuses Dynamic IR flatten ({why_sir1})")
+    fake_decap = dict(st_sir)
+    fake_decap["spec"] = {"name": "decap_200f", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 200e-15}
+    pay_sir_ref, why_sir_ref = should_pay_static_ir_steer(mem_hr, budget_left=80, steer=fake_decap)
+    check(not pay_sir_ref, f"static IR refuses a decap catalog point ({why_sir_ref})")
+    pay_sir2, why_sir2 = should_pay_static_ir_steer(mem_hr, budget_left=80, steer=st_sir, n_steer=1)
+    check(not pay_sir2, f"static IR pkg_r is a single shot ({why_sir2})")
+    rstat = residual_f4_static(list(mem_hr.all()))
+    check(rstat.get("metric") == "static_ir_mv", f"static residual is not Dynamic IR, got {rstat}")
+    check(abs(float(rstat.get("winning_static_mv") or 0) - 6.178) < 1e-6, f"static residual names 6.178, got {rstat}")
+    spec_st = next_static_pdn_spec(mem_hr, win_st)
+    check(spec_st is not None and spec_st["name"] == "pkg_r_25m", f"next_static_pdn_spec proposes pkg_r, got {spec_st}")
+    check(next_pdn_spec(mem_hr, extract_id="icreg") is not None, "Dynamic IR catalog is still independent of pkg_r")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

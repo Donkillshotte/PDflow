@@ -587,3 +587,61 @@ def residual_f4_host_region(all_cands: list[Candidate]) -> dict:
         "via": "F4 host-region mesh vs unconstrained host — density cap, not gold rXY",
         "not": "a solver residual or a mixed ABC+PDN vector",
     }
+
+
+def residual_f4_static(all_cands: list[Candidate]) -> dict:
+    """Static IR champion vs Dynamic IR champion vs gold. Not a Dynamic IR copy."""
+    from .active import winning_ir_pdn, winning_static_pdn
+
+    by_level: dict[str, list[Candidate]] = {}
+    for c in all_cands:
+        by_level.setdefault(c.level, []).append(c)
+
+    class _View:
+        def by_level(self, level):
+            return by_level.get(level, [])
+
+        def all(self):
+            return all_cands
+
+    view = _View()
+    gold = None
+    for c in all_cands:
+        if c.status == "ok" and (c.knobs or {}).get("source") == "ingest_pdn" and c.qor.static_ir_mv is not None:
+            gold = float(c.qor.static_ir_mv)
+            break
+    # winning_* expect DesignMemory; call the ranking loops here instead.
+    win_s = winning_static_pdn(view)  # type: ignore[arg-type]
+    win_d = winning_ir_pdn(view)  # type: ignore[arg-type]
+    if win_s is None or win_s.qor.static_ir_mv is None:
+        return {
+            "metric": "static_ir_mv",
+            "n": 0,
+            "uncertainty": "high",
+            "via": "no 1× static-IR champion on the host/IR-cell family",
+            "not": "Dynamic IR gold / a decap restamp",
+        }
+    s_mv = float(win_s.qor.static_ir_mv)
+    d_static = float(win_d.qor.static_ir_mv) if win_d and win_d.qor.static_ir_mv is not None else None
+    s_eid = str((win_s.knobs or {}).get("extract_id") or win_s.id)
+    d_eid = str((win_d.knobs or {}).get("extract_id") or win_d.id) if win_d else None
+    out = {
+        "metric": "static_ir_mv",
+        "winning_static_mv": s_mv,
+        "winning_static_id": win_s.id,
+        "winning_static_extract": s_eid,
+        "winning_dynamic_id": win_d.id if win_d else None,
+        "winning_dynamic_extract": d_eid,
+        "winning_dynamic_static_mv": d_static,
+        "same_extract": bool(d_eid) and d_eid == s_eid,
+        "n": 1,
+        "uncertainty": "medium",
+        "via": "F4 static IR 1× ranking vs Dynamic IR champion — pkg_r axis, not decap",
+        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+    }
+    if gold is not None:
+        out["gold_static_mv"] = gold
+        out["static_vs_gold_mv"] = s_mv - gold
+    if d_static is not None:
+        out["static_vs_dynamic_champ_mv"] = s_mv - d_static
+    return out

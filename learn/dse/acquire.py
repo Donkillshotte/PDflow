@@ -1703,6 +1703,44 @@ def should_pay_f4_krylov_champ(
     )
 
 
+def should_pay_static_ir_steer(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 8.0,
+    variant: str = "flowlab",
+) -> tuple[bool, str]:
+    """Pay unused pkg_r on winning_static_pdn. Not decap, not pkg L, not Dynamic IR-steer."""
+    if n_steer >= steer_max:
+        return False, "static-IR pkg_r shot already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover static-IR pkg_r restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no static-IR residual-steered pkg_r action"
+    spec = steer["spec"]
+    from .pdn_space import PDN_CATALOG, measured_pdn_keys
+
+    if str(spec.get("name") or "") in {s["name"] for s in PDN_CATALOG}:
+        return False, "static-IR steer refuses a Dynamic IR / decap / pkg L catalog point"
+    if abs(float(spec.get("pkg_r") or 0.05) - 0.05) < 1e-12:
+        return False, "static-IR steer requires a pkg_r delta, not gold 50 mΩ"
+    eid = str(steer["extract_id"])
+    if eid in ("finish", ""):
+        return False, "static-IR steer refuses the gold finish extract"
+    have = measured_pdn_keys(mem, extract_id=eid)
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that pkg_r point is already measured on the static-IR extract"
+    from .f4_oracle import available
+
+    if not extract_on_disk(mem, eid) and not available(variant):
+        return False, "static-IR champion extract is not on disk"
+    return True, str(steer.get("reason") or "static IR steers unused pkg_r — not decap, not gold")
+
+
 def latest_ok_extract(mem: DesignMemory) -> dict | None:
     """Most recent successful candidate write_pg_spice (spice+insts on disk)."""
     return _latest_extract(mem, source="f4_candidate_extract")
@@ -1852,6 +1890,7 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "ir_cell_champ_extract",
         "f4_ir_cell_champ_extract",
         "ir_cell_champ_pdn",
+        "static_ir_steer",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):

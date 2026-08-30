@@ -23,6 +23,9 @@ IR-cell 1× hotspot bin ≠ host bin:
 F4 I-scale-champ hotspot (activity on winning_ir_pdn):
   combo-heavy + cells ≠ first IR-cell join → cell_size_ir_champ on the sized netlist
   then write_pg_spice on that netlist — residual vs the IR-cell extract, not host
+F4 static IR (DC ohmic, not Dynamic IR):
+  winning_static_pdn is a separate 1× ranking — decap/pkg L do not move static
+  unused pkg_r on that extract, not a flattened static+dynamic / decap vector
 """
 
 from __future__ import annotations
@@ -564,6 +567,99 @@ def winning_ir_pdn(mem: DesignMemory):
         if best_mv is None or mv < best_mv:
             best, best_mv = c, mv
     return best
+
+
+def _ir_family_1x_member(c) -> bool:
+    """Host-extract / host-IR / IR-cell family. Not gold, not candidate-only."""
+    src = (c.knobs or {}).get("source")
+    via = (c.attr or {}).get("via")
+    if src in (
+        "f4_host_extract",
+        "f4_host_region_extract",
+        "f4_ir_cell_extract",
+        "f4_ir_cell_region_extract",
+        "f4_ir_cell_champ_extract",
+    ):
+        return True
+    if via in (
+        "active_f4_host_ir",
+        "active_f4_ir_cell_pdn",
+        "active_f4_ir_cell_region_pdn",
+        "active_f4_ir_cell_champ_pdn",
+        "active_f4_static_ir",
+    ):
+        return True
+    if src == "f4_solver_a" and (c.knobs or {}).get("name") == "pkg_r_25m":
+        return True
+    return False
+
+
+def winning_static_pdn(mem: DesignMemory):
+    """Lowest 1× static_ir_mv on the IR/host family. Not gold, not winning_ir_pdn.
+
+    Decap and pkg L do not move static IR (live champ stays 6.178 mV). Ties
+    break toward the lower Dynamic IR point so pkg_r inherits champ L/C.
+    """
+    best = None
+    best_mv = None
+    best_dyn = None
+    for c in mem.by_level("pdn"):
+        if c.status != "ok" or c.qor.static_ir_mv is None:
+            continue
+        if not _ir_family_1x_member(c):
+            continue
+        if abs(float((c.knobs or {}).get("i_scale") or 1.0) - 1.0) > 1e-9:
+            continue
+        eid = str((c.knobs or {}).get("extract_id") or c.id)
+        if eid in ("finish", ""):
+            continue
+        mv = float(c.qor.static_ir_mv)
+        dyn = float(c.qor.dynamic_ir_mv) if c.qor.dynamic_ir_mv is not None else 1e9
+        if best_mv is None or mv < best_mv - 1e-12:
+            best, best_mv, best_dyn = c, mv, dyn
+        elif abs(mv - best_mv) <= 1e-12 and dyn < (best_dyn if best_dyn is not None else 1e9):
+            best, best_dyn = c, dyn
+    return best
+
+
+def steer_from_static_ir_residual(mem: DesignMemory) -> dict | None:
+    """Unused pkg_r on winning_static_pdn. Not decap, not pkg L, not Dynamic IR-steer."""
+    from .pdn_space import next_static_pdn_spec
+
+    host = winning_static_pdn(mem)
+    if host is None or host.qor.static_ir_mv is None:
+        return None
+    eid = str((host.knobs or {}).get("extract_id") or host.id)
+    if eid in ("finish", ""):
+        return None
+    spec = next_static_pdn_spec(mem, host)
+    if spec is None:
+        return None
+    win_d = winning_ir_pdn(mem)
+    dyn_eid = str((win_d.knobs or {}).get("extract_id") or win_d.id) if win_d else ""
+    same = bool(dyn_eid) and dyn_eid == eid
+    src = (host.knobs or {}).get("name") or (host.attr or {}).get("via") or host.id
+    extra = (
+        " — same extract as winning_ir_pdn, pkg_r not decap"
+        if same
+        else f" — static champ extract ≠ dynamic champ {dyn_eid or 'none'}"
+    )
+    return {
+        "level": "pdn",
+        "spec": spec,
+        "extract_id": eid,
+        "host_id": host.id,
+        "host_source": (host.knobs or {}).get("source") or host.level,
+        "static_ir_mv": float(host.qor.static_ir_mv),
+        "dynamic_ir_mv": float(host.qor.dynamic_ir_mv) if host.qor.dynamic_ir_mv is not None else None,
+        "same_extract_as_winning_ir": same,
+        "reason": (
+            f"static IR {float(host.qor.static_ir_mv):.3f} mV on {src} — "
+            f"{spec['name']} pkg_r={spec['pkg_r']}{extra}, not Dynamic IR-steer, not gold"
+        ),
+        "via": "active_f4_static_ir",
+        "not": "a flattened static+dynamic / decap / pkg L / gold vector",
+    }
 
 
 def ir_hotspot_cells(mem: DesignMemory) -> dict | None:
