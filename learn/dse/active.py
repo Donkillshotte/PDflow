@@ -536,11 +536,11 @@ def winning_host_pdn(mem: DesignMemory):
 
 
 def winning_ir_pdn(mem: DesignMemory):
-    """Lowest 1× droop among host-win and the IR-cell family. Not gold.
+    """Lowest 1× droop among host-win, IR-cell family, and a new strap R-graph.
 
-    winning_host_pdn stays host-only so host IR-steer cannot steal the
-    IR-cell mesh. I-scale-champ uses this so activity is measured on
-    the IR-cell-region-PDN point (live 3.921 mV), not the host-win (4.016).
+    pkg_r / bump restamps stay off this ranking (same spice as the host).
+    A pdngen -ripup strap extract is a new mesh — it may become the 1× champ.
+    winning_host_pdn stays host-only. Not gold.
     """
     best = winning_host_pdn(mem)
     best_mv = float(best.qor.dynamic_ir_mv) if best and best.qor.dynamic_ir_mv is not None else None
@@ -548,11 +548,13 @@ def winning_ir_pdn(mem: DesignMemory):
         "f4_ir_cell_extract",
         "f4_ir_cell_region_extract",
         "f4_ir_cell_champ_extract",
+        "f4_static_strap_extract",
     )
     extra_via = (
         "active_f4_ir_cell_pdn",
         "active_f4_ir_cell_region_pdn",
         "active_f4_ir_cell_champ_pdn",
+        "active_f4_static_straps",
     )
     for c in mem.by_level("pdn"):
         if c.status != "ok" or c.qor.dynamic_ir_mv is None:

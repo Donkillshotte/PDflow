@@ -1380,6 +1380,7 @@ def main() -> int:
         should_pay_f4_scale_win,
         should_pay_f4_scale_champ,
         should_pay_f4_amg_champ,
+        champ_mf_n,
         should_pay_f4_ras_champ,
         should_pay_f4_krylov_champ,
         should_pay_static_ir_steer,
@@ -3016,7 +3017,41 @@ def main() -> int:
     from dse.active import winning_ir_pdn as _win_ir
 
     win_after_st = _win_ir(mem_hr)
-    check(win_after_st is not None and win_after_st.id == "icrp", f"winning_ir_pdn ignores the strap axis, got {getattr(win_after_st, 'id', None)}")
+    check(win_after_st is not None and win_after_st.id == "icrp", f"winning_ir_pdn ignores a failed strap extract, got {getattr(win_after_st, 'id', None)}")
+    mem_hr.add(
+        Candidate(
+            id="stok",
+            design_id="gcd",
+            parent_id="icreg",
+            level="pdn",
+            knobs={
+                "source": "f4_static_strap_extract",
+                "name": "m4_pitch_8",
+                "m4_pitch": 8.0,
+                "extract_id": "stok",
+                "c_decap": 2e-13,
+                "pkg_r": 0.025,
+                "pkg_l": 2e-10,
+                "i_scale": 1.0,
+            },
+            knobs_fp="stok",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=2.210, static_ir_mv=0.963, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={"via": "active_f4_static_straps", "residual_vs_static_champ_mv": -5.215},
+            artifacts={"spice": "/tmp/x.sp", "insts": "/tmp/x.json", "n_r": 3649},
+        )
+    )
+    win_strap = _win_ir(mem_hr)
+    check(win_strap is not None and win_strap.id == "stok", f"a new strap R-graph can become winning_ir_pdn, got {getattr(win_strap, 'id', None)}")
+    check(winning_host_pdn(mem_hr).id == "hdecapr", "winning_host_pdn stays host-only after a strap champ")
+    check(champ_mf_n(mem_hr, "f4_solver_amg_champ") == 0, "AMG-champ on the old extract does not spend the new strap extract")
+    pay_amg_st, why_amg_st = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
+    check(pay_amg_st, f"champion AMG is re-paid on the strap extract ({why_amg_st})")
+    check("stok" in why_amg_st or "2.210" in why_amg_st or "m4_pitch_8" in why_amg_st, f"champion AMG names the strap champ ({why_amg_st})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

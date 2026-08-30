@@ -1600,6 +1600,23 @@ def _solver_on_extract(mem: DesignMemory, source: str, extract_id: str) -> bool:
     )
 
 
+def champ_mf_n(mem: DesignMemory, via: str) -> int:
+    """Champion MF shots already paid on the *current* winning_ir extract."""
+    from .active import winning_ir_pdn
+
+    champ = winning_ir_pdn(mem)
+    if champ is None:
+        return 0
+    eid = str((champ.knobs or {}).get("extract_id") or champ.id)
+    return sum(
+        1
+        for c in mem.by_level("pdn")
+        if c.status == "ok"
+        and (c.attr or {}).get("via") == via
+        and str((c.knobs or {}).get("extract_id") or "") == eid
+    )
+
+
 def champ_mf_target(
     mem: DesignMemory, *, variant: str = "flowlab"
 ) -> tuple[object | None, str, str]:

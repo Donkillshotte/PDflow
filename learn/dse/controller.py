@@ -59,6 +59,7 @@ from .acquire import (
     should_pay_f1_synth,
     should_pay_f4_amg,
     should_pay_f4_amg_champ,
+    champ_mf_n,
     should_pay_f4_extract,
     should_pay_f4_krylov,
     should_pay_f4_krylov_champ,
@@ -2346,13 +2347,7 @@ def run_controller(
                     reason=steer_iccp.get("reason"),
                 )
 
-    n_amg_c = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_solver_amg"
-        and c.status == "ok"
-        and (c.attr or {}).get("via") == "f4_solver_amg_champ"
-    )
+    n_amg_c = champ_mf_n(mem, "f4_solver_amg_champ")
     pay_amgc, why_amgc = should_pay_f4_amg_champ(
         mem, budget_left=t_end - time.time(), n_amg=n_amg_c, variant=variant
     )
@@ -2406,13 +2401,7 @@ def run_controller(
                     reason=why_amgc,
                 )
 
-    n_ras_c = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_solver_ras"
-        and c.status == "ok"
-        and (c.attr or {}).get("via") == "f4_solver_ras_champ"
-    )
+    n_ras_c = champ_mf_n(mem, "f4_solver_ras_champ")
     pay_rasc, why_rasc = should_pay_f4_ras_champ(
         mem, budget_left=t_end - time.time(), n_ras=n_ras_c, variant=variant
     )
@@ -2466,13 +2455,7 @@ def run_controller(
                     reason=why_rasc,
                 )
 
-    n_kry_c = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_solver_krylov"
-        and c.status == "ok"
-        and (c.attr or {}).get("via") == "f4_solver_krylov_champ"
-    )
+    n_kry_c = champ_mf_n(mem, "f4_solver_krylov_champ")
     pay_kryc, why_kryc = should_pay_f4_krylov_champ(
         mem, budget_left=t_end - time.time(), n_krylov=n_kry_c, variant=variant
     )
@@ -2771,7 +2754,7 @@ def run_controller(
             "F3 IR-cell-champ: I-scale-champ xy → ODB join on the champion extract → drive-up — not the first ctrl IR-cell, not STA path",
             "F4 IR-cell-champ extract: write_pg_spice on the dpath-sized netlist — residual vs IR-cell extract, not host",
             "F4 IR-cell-champ PDN: 1× residual restamps the winning family on the dpath-sized mesh — not host IR-steer",
-            "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — not candidate AMG, not gold",
+            "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — re-paid when the 1× extract moves (strap mesh), not candidate AMG, not gold",
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",
             "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not gold",
             "F4 static straps: null bump residual (same n_v on this die) pays denser metal4 on the champ ODB — pdngen -ripup, not bumps, not gold",
