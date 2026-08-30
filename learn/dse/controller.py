@@ -54,8 +54,7 @@ from .acquire import (
     should_pay_ir_cell_champ_cone_region,
     should_pay_ir_cell_champ_cone_region_pdn,
     leftover_cone_region_next,
-    should_pay_winning_ir_region,
-    should_pay_winning_ir_region_pdn,
+    winning_ir_region_next,
     should_pay_ir_cell_extract,
     should_pay_ir_cell_pdn,
     should_pay_ir_cell_region,
@@ -124,8 +123,6 @@ from .active import (
     steer_from_ir_cell_champ_cone_hotspot,
     steer_from_ir_cell_champ_cone_region_hotspot,
     steer_from_ir_cell_champ_cone_region_residual,
-    steer_from_winning_ir_hotspot,
-    steer_from_winning_ir_region_residual,
     order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
@@ -2744,127 +2741,122 @@ def run_controller(
             continue
         break
 
-    steer_wir = steer_from_winning_ir_hotspot(mem)
-    _wir_eid = str((steer_wir or {}).get("extract_id") or "")
-    n_wir = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_winning_ir_region_extract"
-        and c.status == "ok"
-        and (
-            str((c.knobs or {}).get("parent_extract_id") or "") == _wir_eid
-            or str((c.knobs or {}).get("region") or "") == str((steer_wir or {}).get("region") or "")
-        )
-    )
-    pay_wir, why_wir = should_pay_winning_ir_region(
-        mem, budget_left=t_end - time.time(), steer=steer_wir, n_extract=n_wir
-    )
-    step("acquire", fidelity="F4_WINNING_IR_REGION", pay=pay_wir, why=why_wir, steer=steer_wir)
-    if (
-        any(s["level"] == "winning_ir_region" for s in plan["steps"])
-        and pay_wir
-        and steer_wir
-        and time.time() < t_end
-    ):
-        host_wir = ir_cell_host(mem)
-        if host_wir and (host_wir.artifacts or {}).get("mapped_v"):
-            params = flowlab_params()
-            util_wir = float(params.get("coreUtilization") or 35.0)
-            den_wir = gpl_density(util_wir, params.get("placeDensityAddon") or 0.2)
-            child = evaluate_f4_extract(
-                host_wir,
-                mem,
-                design_id=design_id,
-                variant=variant,
-                util=util_wir,
-                density=den_wir,
-                kind="winning_ir_region",
-                region=steer_wir.get("region"),
-                x_dbu=steer_wir.get("x_dbu"),
-                y_dbu=steer_wir.get("y_dbu"),
-                region_density=0.30,
-            )
-            if child:
-                persist_hotspot_join(child)
-                mem.touch(child)
+    plan_wir = any(s["level"] == "winning_ir_region" for s in plan["steps"])
+    plan_wirp = any(s["level"] == "winning_ir_region_pdn" for s in plan["steps"])
+    for _wir_i in range(4):
+        nxt_wir = winning_ir_region_next(mem, budget_left=t_end - time.time())
+        if not nxt_wir or time.time() >= t_end:
+            if _wir_i == 0:
                 step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_winning_ir_region_extract",
-                    parent=host_wir.id,
-                    parent_extract_id=_wir_eid,
+                    "acquire",
+                    fidelity="F4_WINNING_IR_REGION",
+                    pay=False,
+                    why="no winning-IR-region extract or |Δ| PDN",
+                )
+            break
+        kind_wir = nxt_wir.get("kind")
+        steer_wir = nxt_wir.get("steer") or {}
+        why_wir = nxt_wir.get("why")
+        if kind_wir == "extract" and plan_wir:
+            step(
+                "acquire",
+                fidelity="F4_WINNING_IR_REGION",
+                pay=True,
+                why=why_wir,
+                steer=steer_wir,
+                loop=_wir_i,
+            )
+            host_wir = ir_cell_host(mem)
+            if host_wir and (host_wir.artifacts or {}).get("mapped_v"):
+                params = flowlab_params()
+                util_wir = float(params.get("coreUtilization") or 35.0)
+                den_wir = gpl_density(util_wir, params.get("placeDensityAddon") or 0.2)
+                child = evaluate_f4_extract(
+                    host_wir,
+                    mem,
+                    design_id=design_id,
+                    variant=variant,
+                    util=util_wir,
+                    density=den_wir,
+                    kind="winning_ir_region",
                     region=steer_wir.get("region"),
-                    n_r=(child.artifacts or {}).get("n_r"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    residual_mv=(child.attr or {}).get("residual_mv"),
-                    gold=False,
-                    status=child.status,
-                    reason=steer_wir.get("reason"),
+                    x_dbu=steer_wir.get("x_dbu"),
+                    y_dbu=steer_wir.get("y_dbu"),
+                    region_density=0.30,
                 )
-
-    steer_wirp = steer_from_winning_ir_region_residual(mem)
-    _wirp_eid = str((steer_wirp or {}).get("extract_id") or "")
-    n_wirp = sum(
-        1
-        for c in mem.all()
-        if (c.attr or {}).get("via") == "active_f4_winning_ir_region_pdn"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "") == _wirp_eid
-    )
-    pay_wirp, why_wirp = should_pay_winning_ir_region_pdn(
-        mem, budget_left=t_end - time.time(), steer=steer_wirp, n_steer=n_wirp
-    )
-    step("acquire", fidelity="WINNING_IR_REGION_PDN", pay=pay_wirp, why=why_wirp, steer=steer_wirp)
-    if (
-        any(s["level"] == "winning_ir_region_pdn" for s in plan["steps"])
-        and pay_wirp
-        and steer_wirp
-        and time.time() < t_end
-    ):
-        spec_wirp = steer_wirp.get("spec") or {}
-        eid_wirp = str(steer_wirp.get("extract_id") or "")
-        hit_wirp = extract_on_disk(mem, eid_wirp) if eid_wirp else None
-        if spec_wirp and hit_wirp:
-            child = evaluate_f4_pdn(
-                mem,
-                spec_wirp,
-                variant=variant,
-                design_id=design_id,
-                parent_id=hit_wirp["candidate"].id,
-                spice=hit_wirp["spice"],
-                insts=hit_wirp["insts"],
-                extract_id=eid_wirp,
-                sta=hit_wirp.get("sta"),
-            )
-            if child:
-                child.attr = dict(child.attr or {})
-                child.attr["via"] = "active_f4_winning_ir_region_pdn"
-                child.attr["steer"] = {k: steer_wirp[k] for k in steer_wirp if k != "spec"}
-                host_win = winning_host_pdn(mem)
-                if host_win and host_win.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
-                    child.attr["residual_vs_host_win_mv"] = float(child.qor.dynamic_ir_mv) - float(
-                        host_win.qor.dynamic_ir_mv
+                if child:
+                    persist_hotspot_join(child)
+                    mem.touch(child)
+                    step(
+                        "evaluate",
+                        id=child.id,
+                        level="pdn",
+                        fidelity="F4",
+                        via="f4_winning_ir_region_extract",
+                        parent=host_wir.id,
+                        parent_extract_id=steer_wir.get("extract_id"),
+                        region=steer_wir.get("region"),
+                        n_r=(child.artifacts or {}).get("n_r"),
+                        droop_mv=child.qor.dynamic_ir_mv,
+                        residual_mv=(child.attr or {}).get("residual_mv"),
+                        gold=False,
+                        status=child.status,
+                        reason=steer_wir.get("reason"),
                     )
-                    child.attr["residual_vs_host_win"] = host_win.id
-                mem.touch(child)
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="active_f4_winning_ir_region_pdn",
-                    parent=hit_wirp["candidate"].id,
-                    catalog=spec_wirp.get("name"),
+            continue
+        if kind_wir == "pdn" and plan_wirp:
+            step(
+                "acquire",
+                fidelity="WINNING_IR_REGION_PDN",
+                pay=True,
+                why=why_wir,
+                steer=steer_wir,
+                loop=_wir_i,
+            )
+            spec_wirp = steer_wir.get("spec") or {}
+            eid_wirp = str(steer_wir.get("extract_id") or "")
+            hit_wirp = extract_on_disk(mem, eid_wirp) if eid_wirp else None
+            if spec_wirp and hit_wirp:
+                child = evaluate_f4_pdn(
+                    mem,
+                    spec_wirp,
+                    variant=variant,
+                    design_id=design_id,
+                    parent_id=hit_wirp["candidate"].id,
+                    spice=hit_wirp["spice"],
+                    insts=hit_wirp["insts"],
                     extract_id=eid_wirp,
-                    region=steer_wirp.get("region"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
-                    gold=False,
-                    status=child.status,
-                    reason=steer_wirp.get("reason"),
+                    sta=hit_wirp.get("sta"),
                 )
+                if child:
+                    child.attr = dict(child.attr or {})
+                    child.attr["via"] = "active_f4_winning_ir_region_pdn"
+                    child.attr["steer"] = {k: steer_wir[k] for k in steer_wir if k != "spec"}
+                    host_win = winning_host_pdn(mem)
+                    if host_win and host_win.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+                        child.attr["residual_vs_host_win_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                            host_win.qor.dynamic_ir_mv
+                        )
+                        child.attr["residual_vs_host_win"] = host_win.id
+                    mem.touch(child)
+                    step(
+                        "evaluate",
+                        id=child.id,
+                        level="pdn",
+                        fidelity="F4",
+                        via="active_f4_winning_ir_region_pdn",
+                        parent=hit_wirp["candidate"].id,
+                        catalog=spec_wirp.get("name"),
+                        extract_id=eid_wirp,
+                        region=steer_wir.get("region"),
+                        droop_mv=child.qor.dynamic_ir_mv,
+                        residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
+                        gold=False,
+                        status=child.status,
+                        reason=steer_wir.get("reason"),
+                    )
+            continue
+        break
 
     n_amg_c = champ_mf_n(mem, "f4_solver_amg_champ")
     pay_amgc, why_amgc = should_pay_f4_amg_champ(
@@ -3354,8 +3346,9 @@ def run_controller(
             "F4 IR-cell-champ-cone-region: leftover-cone 1× bin ≠ champ extract and seq-heavy — density cap on the leftover-cone netlist; re-paid when the residual hotspot leaves the capped bin, not more combo size-up, not IR-cell-region rXY",
             "F4 IR-cell-champ-cone-region PDN: |Δ| ≥ 1 mV restamps the winning family on that capped leftover mesh — re-paid on a new cone extract, not champ IR-steer",
             "F4 leftover-cone-region loop: inspect → density cap → |Δ| PDN → residual hotspot → next bin, up to 4 shots — not one-pass, not a flattened region vector",
-            "F4 winning-IR-region: winning-IR 1× bin ≠ leftover-cone / IR-cell-region and seq-heavy — density cap on the IR-cell netlist, not leftover-cone rXY, not more combo size-up, not gold rXY",
-            "F4 winning-IR-region PDN: |Δ| ≥ 1 mV restamps the winning family on that capped winning-IR mesh — not leftover-cone-region PDN, not champ IR-steer",
+            "F4 winning-IR-region: winning-IR 1× bin ≠ leftover-cone / IR-cell-region and seq-heavy — density cap on the IR-cell netlist; re-paid when the residual hotspot leaves the capped bin, not leftover-cone rXY, not more combo size-up, not IR-cell-region rXY, not gold rXY",
+            "F4 winning-IR-region PDN: |Δ| ≥ 1 mV restamps the winning family on that capped winning-IR mesh — re-paid on a new region extract, not leftover-cone-region PDN, not champ IR-steer",
+            "F4 winning-IR-region loop: inspect → density cap → |Δ| PDN → residual hotspot → next bin ≠ IR-cell-region, up to 4 shots — not one-pass, not leftover-cone rXY, not a flattened region vector",
             "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — re-paid when the 1× extract moves (strap mesh), not candidate AMG, not gold",
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",
             "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not gold",

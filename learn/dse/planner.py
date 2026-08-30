@@ -518,8 +518,9 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "level": "winning_ir_region",
             "reason": (
                 "winning-IR 1× hotspot bin ≠ leftover-cone / IR-cell-region and seq-heavy — "
-                "density cap on the IR-cell netlist, not leftover-cone rXY, "
-                "not more combo size-up, not gold rXY, not ABC"
+                "density cap on the IR-cell netlist; re-paid when the residual hotspot "
+                "leaves the capped bin, not leftover-cone rXY, not more combo size-up, "
+                "not IR-cell-region rXY, not gold rXY, not ABC"
             ),
             "scope": "region",
         }
@@ -529,8 +530,8 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "level": "winning_ir_region_pdn",
             "reason": (
                 "winning-IR-region |Δ| ≥ 1 mV chooses the winning PDN family on "
-                "the capped winning-IR mesh — not leftover-cone-region PDN, not champ "
-                "IR-steer, not a flattened cell+decap vector"
+                "the capped winning-IR mesh — re-paid on a new region extract, not "
+                "leftover-cone-region PDN, not champ IR-steer, not a flattened cell+decap vector"
             ),
             "scope": "pdn",
         }

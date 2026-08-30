@@ -1603,6 +1603,60 @@ def winning_ir_region_extract_cand(mem: DesignMemory):
     return None
 
 
+def steer_from_winning_ir_region_hotspot(mem: DesignMemory) -> dict | None:
+    """Seq-heavy winning-IR-region hotspot ≠ the bin we just capped. Not IR-cell-region rXY."""
+    reg = winning_ir_region_extract_cand(mem)
+    if reg is None:
+        return None
+    attr = reg.attr or {}
+    kn = reg.knobs or {}
+    region = attr.get("region")
+    cap = kn.get("region")
+    x_dbu, y_dbu = attr.get("x_dbu"), attr.get("y_dbu")
+    if not region and x_dbu is None:
+        return None
+    if region and cap and str(region) == str(cap):
+        return None
+    ice_r = ir_cell_region_extract_cand(mem)
+    ice_bin = (ice_r.knobs or {}).get("region") if ice_r else None
+    if region and ice_bin and str(region) == str(ice_bin):
+        return None
+    combo = float(attr.get("combo_frac") or 0.0)
+    if combo >= 0.5:
+        return None
+    capped = {
+        str((c.knobs or {}).get("region") or "")
+        for c in mem.by_level("pdn")
+        if c.status == "ok"
+        and (c.knobs or {}).get("source")
+        in ("f4_winning_ir_region_extract", "f4_ir_cell_region_extract")
+        and (c.knobs or {}).get("region")
+    }
+    if region and str(region) in capped:
+        return None
+    eid = str(kn.get("extract_id") or reg.id)
+    return {
+        "level": "winning_ir_region",
+        "extract_id": eid,
+        "host_id": reg.id,
+        "host_source": "f4_winning_ir_region_extract",
+        "region": region,
+        "x_dbu": x_dbu,
+        "y_dbu": y_dbu,
+        "combo_frac": combo,
+        "cap_region": cap,
+        "ir_cell_region": ice_bin,
+        "reason": (
+            f"winning-IR-region 1× hotspot {region or 'xy'} combo {combo:.2f} ≠ cap {cap} — "
+            "seq-heavy: density cap on the IR-cell netlist, not leftover-cone rXY, "
+            "not more combo size-up, not IR-cell-region "
+            f"{ice_bin}, not gold rXY, not ABC"
+        ),
+        "via": "active_f4_winning_ir_region",
+        "not": "leftover-cone-region / IR-cell-region / a flattened winning-IR-region vector / more combo size-up",
+    }
+
+
 def steer_from_winning_ir_region_residual(mem: DesignMemory) -> dict | None:
     """Winning PDN family on the winning-IR-region mesh after |Δ| ≥ 1 mV."""
     from .pdn_space import measured_pdn_keys

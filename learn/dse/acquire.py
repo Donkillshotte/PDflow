@@ -1573,15 +1573,19 @@ def should_pay_winning_ir_region(
     if not steer or steer.get("level") != "winning_ir_region":
         return False, "no winning-IR hotspot residual (need a seq-heavy bin ≠ IR-cell-region)"
     src = str(steer.get("host_source") or "")
-    if src in (
-        "f4_ir_cell_champ_cone_extract",
-        "f4_ir_cell_champ_cone_region_extract",
-        "f4_ir_cell_region_extract",
+    if src not in (
+        "f4_em_strap_extract",
+        "f4_static_strap_extract",
+        "f4_ir_cell_extract",
+        "f4_ir_cell_champ_extract",
+        "f4_winning_ir_region_extract",
+        "f4_host_extract",
+        "f4_host_region_extract",
     ):
         return False, "winning-IR region refuses leftover-cone / IR-cell-region flatten"
     from pathlib import Path
 
-    from .active import ir_cell_host
+    from .active import ir_cell_host, ir_cell_region_extract_cand
     from .openroad_f2 import extract_available
 
     if not extract_available():
@@ -1592,12 +1596,20 @@ def should_pay_winning_ir_region(
         return False, "IR-cell netlist missing for a winning-IR region extract"
     eid = str(steer.get("extract_id") or "")
     region = steer.get("region") or "xy"
+    ice_r = ir_cell_region_extract_cand(mem)
+    ice_bin = (ice_r.knobs or {}).get("region") if ice_r else None
+    if region and ice_bin and str(region) == str(ice_bin):
+        return False, "winning-IR region refuses the IR-cell-region bin"
+    hid = host.id
     if any(
         (c.knobs or {}).get("source") == "f4_winning_ir_region_extract"
         and c.status == "ok"
         and (
             str((c.knobs or {}).get("parent_extract_id") or "") == eid
-            or str((c.knobs or {}).get("region") or "") == str(region)
+            or (
+                str((c.knobs or {}).get("region") or "") == str(region)
+                and str((c.knobs or {}).get("parent_id") or c.parent_id or "") == str(hid)
+            )
         )
         for c in mem.by_level("pdn")
     ):
@@ -1640,6 +1652,49 @@ def should_pay_winning_ir_region_pdn(
         steer.get("reason")
         or "winning-IR-region residual steers a PDN restamp on the capped winning-IR mesh"
     )
+
+
+def winning_ir_region_next(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+) -> dict | None:
+    """Next winning-IR-region extract or PDN. Closed-loop inspect, not one-pass."""
+    from .active import (
+        steer_from_winning_ir_hotspot,
+        steer_from_winning_ir_region_hotspot,
+        steer_from_winning_ir_region_residual,
+    )
+
+    steer = steer_from_winning_ir_region_hotspot(mem) or steer_from_winning_ir_hotspot(mem)
+    eid = str((steer or {}).get("extract_id") or "")
+    n_extract = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_winning_ir_region_extract"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("parent_extract_id") or "") == eid
+    )
+    pay, why = should_pay_winning_ir_region(
+        mem, budget_left=budget_left, steer=steer, n_extract=n_extract
+    )
+    if pay:
+        return {"kind": "extract", "steer": steer, "why": why}
+    steer_p = steer_from_winning_ir_region_residual(mem)
+    eid_p = str((steer_p or {}).get("extract_id") or "")
+    n_steer = sum(
+        1
+        for c in mem.all()
+        if (c.attr or {}).get("via") == "active_f4_winning_ir_region_pdn"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == eid_p
+    )
+    pay_p, why_p = should_pay_winning_ir_region_pdn(
+        mem, budget_left=budget_left, steer=steer_p, n_steer=n_steer
+    )
+    if pay_p:
+        return {"kind": "pdn", "steer": steer_p, "why": why_p}
+    return None
 
 
 def should_pay_ir_cell_extract(

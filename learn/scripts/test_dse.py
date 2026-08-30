@@ -714,6 +714,27 @@ def main() -> int:
         "winning-IR-region knobs are not flattened into the IR-cell-region fingerprint",
     )
     check(
+        knobs_fp(
+            "pdn",
+            {
+                "source": "f4_winning_ir_region_extract",
+                "parent_id": "ircell",
+                "region": "r30",
+                "ir_join": 1,
+            },
+        )
+        != knobs_fp(
+            "pdn",
+            {
+                "source": "f4_winning_ir_region_extract",
+                "parent_id": "ircell",
+                "region": "r13",
+                "ir_join": 1,
+            },
+        ),
+        "winning-IR-region r30 knobs are not flattened into a second-bin r13 fingerprint",
+    )
+    check(
         knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "iccext", "c_decap": 200e-15})
         != knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "icreg", "c_decap": 200e-15}),
         "IR-cell-champ PDN restamp is not flattened into the IR-cell-region decap fingerprint",
@@ -1511,6 +1532,7 @@ def main() -> int:
         should_pay_ir_cell_champ_cone_extract,
         should_pay_ir_cell_champ_cone_pdn,
         leftover_cone_region_next,
+        winning_ir_region_next,
         should_pay_ir_cell_champ_cone_region,
         should_pay_ir_cell_champ_cone_region_pdn,
         should_pay_winning_ir_region,
@@ -3787,6 +3809,7 @@ def main() -> int:
     check(not pay_w2, f"winning-IR catalog caps at decap + pkg L ({why_w2})")
     from dse.active import (
         steer_from_winning_ir_hotspot,
+        steer_from_winning_ir_region_hotspot,
         steer_from_winning_ir_region_residual,
         winning_ir_extract_cand,
         winning_ir_region_extract_cand,
@@ -3842,6 +3865,9 @@ def main() -> int:
     pay_wir1, why_wir1 = should_pay_winning_ir_region(mem_hr, budget_left=80, steer=st_wir)
     check(pay_wir1, f"winning-IR region is paid after a seq-heavy bin residual ({why_wir1})")
     check("r30" in why_wir1, f"winning-IR region acquire names r30 ({why_wir1})")
+    nxt_wir = winning_ir_region_next(mem_hr, budget_left=80)
+    check(nxt_wir is not None and nxt_wir.get("kind") == "extract", f"winning-IR-region next is extract, got {nxt_wir}")
+    check((nxt_wir.get("steer") or {}).get("region") == "r30", f"winning-IR-region next names r30, got {nxt_wir}")
     fake_cone_h = dict(st_wir)
     fake_cone_h["host_source"] = "f4_ir_cell_champ_cone_extract"
     pay_wir_ref, why_wir_ref = should_pay_winning_ir_region(mem_hr, budget_left=80, steer=fake_cone_h)
@@ -3910,6 +3936,96 @@ def main() -> int:
     check(not pay_wirp_ref, f"winning-IR-region PDN refuses the unconstrained strap extract ({why_wirp_ref})")
     pay_wirp2, why_wirp2 = should_pay_winning_ir_region_pdn(mem_hr, budget_left=80, steer=st_wirp, n_steer=1)
     check(not pay_wirp2, f"winning-IR-region PDN is a single shot ({why_wirp2})")
+    nxt_wirp = winning_ir_region_next(mem_hr, budget_left=80)
+    check(nxt_wirp is not None and nxt_wirp.get("kind") == "pdn", f"winning-IR-region next is PDN after r30 extract, got {nxt_wirp}")
+    ice_wr = next(c for c in mem_hr.all() if c.id == "wirxt")
+    ice_wr.attr = dict(ice_wr.attr or {})
+    ice_wr.attr.update(
+        {
+            "join": "odb-geom",
+            "combo_frac": 0.185,
+            "seq_frac": 0.815,
+            "region": "r13",
+            "x_dbu": 25520.0,
+            "y_dbu": 80993.0,
+            "modules": ["dpath"],
+            "cells": ["dpath/b_reg/_078_", "dpath/b_reg/_077_", "dpath/b_mux/_43_"],
+        }
+    )
+    mem_hr.touch(ice_wr)
+    st_wir13 = steer_from_winning_ir_region_hotspot(mem_hr)
+    check(st_wir13 is not None and st_wir13.get("region") == "r13", f"seq-heavy winning-IR-region residual steers r13, got {st_wir13}")
+    check(st_wir13.get("cap_region") == "r30", f"r13 winning-IR steer names the capped bin, got {st_wir13}")
+    check(st_wir13.get("host_source") == "f4_winning_ir_region_extract", "r13 winning-IR steer names the region extract")
+    check(st_wir13.get("extract_id") == "wirxt", f"r13 winning-IR steer stays on the capped mesh, got {st_wir13}")
+    check(st_wir13.get("ir_cell_region") == "r00", f"r13 winning-IR steer names IR-cell-region, got {st_wir13}")
+    check("combo size-up" in (st_wir13.get("reason") or ""), f"r13 winning-IR steer refuses more combo size-up ({st_wir13})")
+    pay_wir13, why_wir13 = should_pay_winning_ir_region(mem_hr, budget_left=80, steer=st_wir13)
+    check(pay_wir13, f"winning-IR-region re-pays when the hotspot leaves the capped bin ({why_wir13})")
+    check("r13" in why_wir13 and "r30" in why_wir13, f"r13 winning-IR acquire names both bins ({why_wir13})")
+    nxt_wir13e = winning_ir_region_next(mem_hr, budget_left=80)
+    check(nxt_wir13e is not None and nxt_wir13e.get("kind") == "extract", f"winning-IR-region next is r13 extract, got {nxt_wir13e}")
+    check((nxt_wir13e.get("steer") or {}).get("region") == "r13", f"winning-IR-region next names r13, got {nxt_wir13e}")
+    pay_wir30_again, why_wir30_again = should_pay_winning_ir_region(mem_hr, budget_left=80, steer=st_wir)
+    check(not pay_wir30_again, f"winning-IR-region does not re-cap r30 ({why_wir30_again})")
+    ice_wr.attr["combo_frac"] = 0.78
+    mem_hr.touch(ice_wr)
+    check(steer_from_winning_ir_region_hotspot(mem_hr) is None, "combo-heavy winning-IR-region hotspot does not steal another density cap")
+    ice_wr.attr["combo_frac"] = 0.185
+    ice_wr.attr["region"] = "r30"
+    mem_hr.touch(ice_wr)
+    check(steer_from_winning_ir_region_hotspot(mem_hr) is None, "winning-IR-region skips when the hotspot matches the capped bin")
+    ice_wr.attr["region"] = "r00"
+    mem_hr.touch(ice_wr)
+    check(steer_from_winning_ir_region_hotspot(mem_hr) is None, "winning-IR-region skips when the hotspot matches IR-cell-region")
+    fake_r00 = dict(st_wir13)
+    fake_r00["region"] = "r00"
+    pay_wir_r00, why_wir_r00 = should_pay_winning_ir_region(mem_hr, budget_left=80, steer=fake_r00)
+    check(not pay_wir_r00, f"winning-IR-region pay refuses the IR-cell-region bin ({why_wir_r00})")
+    ice_wr.attr["region"] = "r13"
+    mem_hr.touch(ice_wr)
+    mem_hr.add(
+        Candidate(
+            id="wirxt2",
+            design_id="gcd",
+            parent_id="ircell",
+            level="pdn",
+            knobs={
+                "source": "f4_winning_ir_region_extract",
+                "parent_id": "ircell",
+                "extract_id": "wirxt2",
+                "parent_extract_id": "wirxt",
+                "region": "r13",
+                "ir_join": 1,
+            },
+            knobs_fp="wirxt2",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=8.100, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_winning_ir_region_extract",
+                "residual_mv": -3.806,
+                "residual_via": "winning_ir_region_vs_prior_region",
+                "residual_vs": "wirxt",
+                "region": "r13",
+            },
+        )
+    )
+    check(winning_ir_region_extract_cand(mem_hr).id == "wirxt2", "newest winning-IR-region extract is the r13 cap")
+    check(winning_ir_pdn(mem_hr).id == "wirl", "high winning-IR-region r13 droop does not steal the 1× champion")
+    pay_wir13b, why_wir13b = should_pay_winning_ir_region(mem_hr, budget_left=80, steer=st_wir13, n_extract=0)
+    check(not pay_wir13b, f"winning-IR-region skips once r13 is measured ({why_wir13b})")
+    st_wirp13 = steer_from_winning_ir_region_residual(mem_hr)
+    check(st_wirp13 is not None and st_wirp13.get("extract_id") == "wirxt2", f"r13 winning-IR residual steers PDN on the r13 mesh, got {st_wirp13}")
+    check(st_wirp13.get("extract_id") != "wirxt", "r13 winning-IR PDN does not restamp the r30 mesh")
+    pay_wir13p, why_wir13p = should_pay_winning_ir_region_pdn(mem_hr, budget_left=80, steer=st_wirp13)
+    check(pay_wir13p, f"winning-IR-region PDN re-pays on the r13 mesh ({why_wir13p})")
+    nxt_wir13 = winning_ir_region_next(mem_hr, budget_left=80)
+    check(nxt_wir13 is not None and nxt_wir13.get("kind") == "pdn", f"winning-IR-region next is r13 PDN, got {nxt_wir13}")
+    check((nxt_wir13.get("steer") or {}).get("extract_id") == "wirxt2", f"winning-IR-region next PDN stays on r13, got {nxt_wir13}")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

@@ -819,7 +819,7 @@ def evaluate_f4_extract(
     kind=ir_cell_champ extracts the I-scale-champ dpath-sized netlist and residuals vs IR-cell extract.
     kind=ir_cell_champ_cone extracts leftover-cone size-up and residuals vs the IR-cell-champ extract.
     kind=ir_cell_champ_cone_region density-caps the leftover-cone 1× bin (not IR-cell-region rXY, not gold rXY).
-    kind=winning_ir_region density-caps the winning-IR 1× bin (not leftover-cone rXY, not IR-cell-region rXY, not gold rXY).
+    kind=winning_ir_region density-caps the winning-IR 1× bin (not leftover-cone rXY, not IR-cell-region rXY, not gold rXY); re-pays when the residual hotspot leaves the capped bin.
     """
     from .attribute import attribute_dynamic_ir, ir_report_from_solve, persist_hotspot_join
     from .f4_oracle import solve_f4
@@ -908,7 +908,7 @@ def evaluate_f4_extract(
             str((prior.knobs or {}).get("extract_id") or prior.id) if prior else ""
         )
     elif kind == "winning_ir_region":
-        from .active import winning_ir_extract_cand
+        from .active import winning_ir_extract_cand, winning_ir_region_extract_cand
 
         knobs["source"] = "f4_winning_ir_region_extract"
         knobs["name"] = f"extract_winning_ir_region_{host}"
@@ -919,7 +919,7 @@ def evaluate_f4_extract(
         knobs["x_dbu"] = x_dbu
         knobs["y_dbu"] = y_dbu
         knobs["region_density"] = region_density if region_density is not None else 0.30
-        prior = winning_ir_extract_cand(mem)
+        prior = winning_ir_region_extract_cand(mem) or winning_ir_extract_cand(mem)
         knobs["parent_extract_id"] = (
             str((prior.knobs or {}).get("extract_id") or prior.id) if prior else ""
         )
@@ -1049,16 +1049,20 @@ def evaluate_f4_extract(
                 else "ir_cell_champ_cone_region_vs_ir_cell_champ_cone_extract"
             )
     if kind == "winning_ir_region":
-        from .active import winning_ir_extract_cand
+        from .active import winning_ir_extract_cand, winning_ir_region_extract_cand
 
         attr["via"] = "f4_winning_ir_region_extract"
         attr["host_level"] = parent.level
         attr["host_source"] = parent.knobs.get("source") or parent.level
-        prior = winning_ir_extract_cand(mem)
+        prior = winning_ir_region_extract_cand(mem) or winning_ir_extract_cand(mem)
         if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
             attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
             attr["residual_vs"] = prior.id
-            attr["residual_via"] = "winning_ir_region_vs_winning_ir_extract"
+            attr["residual_via"] = (
+                "winning_ir_region_vs_prior_region"
+                if (prior.knobs or {}).get("source") == "f4_winning_ir_region_extract"
+                else "winning_ir_region_vs_winning_ir_extract"
+            )
     kind_note = {
         "host": "host",
         "host_region": "host-region",
