@@ -3169,13 +3169,41 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             ir = f" · F4 ingest {c.qor.dynamic_ir_mv:.3f} mV (gold teacher, unrestamped)"
     ras = ""
     for c in mem.by_level("pdn"):
-        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_solver_ras" and c.qor.dynamic_ir_mv is not None:
-            ras = f" · RAS residual {c.qor.dynamic_ir_mv:.3f} mV (not gold)"
-            break
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_solver_ras" or c.qor.dynamic_ir_mv is None:
+            continue
+        if (c.attr or {}).get("via") == "f4_solver_ras_champ":
+            continue
+        ras = f" · RAS residual {c.qor.dynamic_ir_mv:.3f} mV (not gold)"
+        break
     kry = ""
     for c in mem.by_level("pdn"):
-        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_solver_krylov" and c.qor.dynamic_ir_mv is not None:
-            kry = f" · Krylov/MOR residual {c.qor.dynamic_ir_mv:.3f} mV m={(c.artifacts or {}).get('m')} (not gold)"
+        if c.status != "ok" or (c.knobs or {}).get("source") != "f4_solver_krylov" or c.qor.dynamic_ir_mv is None:
+            continue
+        if (c.attr or {}).get("via") == "f4_solver_krylov_champ":
+            continue
+        kry = f" · Krylov/MOR residual {c.qor.dynamic_ir_mv:.3f} mV m={(c.artifacts or {}).get('m')} (not gold)"
+        break
+    amgc = ""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.attr or {}).get("via") == "f4_solver_amg_champ" and c.qor.dynamic_ir_mv is not None:
+            res = (c.attr or {}).get("residual_vs_direct_mv")
+            extra = f" Δ={float(res):+.3f}" if res is not None else ""
+            amgc = f" · AMG-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} (not gold)"
+            break
+    rasc = ""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.attr or {}).get("via") == "f4_solver_ras_champ" and c.qor.dynamic_ir_mv is not None:
+            res = (c.attr or {}).get("residual_vs_direct_mv")
+            extra = f" Δ={float(res):+.3f}" if res is not None else ""
+            rasc = f" · RAS-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} (not gold)"
+            break
+    kryc = ""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.attr or {}).get("via") == "f4_solver_krylov_champ" and c.qor.dynamic_ir_mv is not None:
+            res = (c.attr or {}).get("residual_vs_direct_mv")
+            extra = f" Δ={float(res):+.3f}" if res is not None else ""
+            m = (c.artifacts or {}).get("m")
+            kryc = f" · Krylov-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} m={m} (not gold)"
             break
     ctrlc = ""
     for c in mem.by_level("logic"):
@@ -3465,5 +3493,5 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
     mods = ",".join(attr.get("modules") or []) or "unjoined"
     return (
         f"DSE {len(mem)} candidates · F1 {n_f1} (arch {n_arch}) · logic Pareto {len(front_logic)} · "
-        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircchamp}{iccext}{iccpdn}{ircext}{icpdn}{icreg}{icrpdn}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
+        f"best mapped area {best}{ctrlc}{synth}{cell}{ircell}{ircchamp}{iccext}{iccpdn}{ircext}{icpdn}{icreg}{icrpdn}{amgc}{rasc}{kryc}{netb}{netp}{psteer}{wns}{f5}{f5cts}{f5loc}{f5port}{steers}{irst}{hirst}{arrs}{isc} · IR cone {mods}{ir}{ras}{kry}"
     )
