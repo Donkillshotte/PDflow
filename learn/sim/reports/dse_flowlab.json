@@ -33,6 +33,7 @@
     "F4 IR-cell region: seq-heavy 1\u00d7 bin \u2260 host bin \u2014 density cap on the sized netlist, not more combo size-up",
     "F4 IR-cell-region PDN: large spatial residual restamps the winning family on the capped mesh \u2014 not host IR-steer",
     "F4 I-scale-champ: I(t)\u00d7P of the IR-cell host on winning_ir_pdn \u2014 not I-scale-win on the stale host-win mesh, not host arrivals",
+    "F3 IR-cell-champ: I-scale-champ xy \u2192 ODB join on the champion extract \u2192 drive-up \u2014 not the first ctrl IR-cell, not STA path",
     "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
     "IR combo on dpath \u2192 cone extracts then cone-local ABC; ctrl hops \u2192 ctrl-cone ABC, not leftover of dpath",
     "hierarchy chip\u2192block\u2192region\u2192cone\u2192cell\u2192net; IR rXY \u2192 OpenROAD density cap on that bin \u2192 optional extract",
@@ -86,7 +87,7 @@
     },
     "cell": {
       "via": "dse.cell_space.upsize_path_cells + dse.fidelity.evaluate_cell_size",
-      "note": "attributed STA path drive-up (module-scoped) and IR-hotspot ODB-join drive-up; not ABC ops, not a chip restart",
+      "note": "attributed STA path drive-up (module-scoped), I-scale-win IR-hotspot ODB-join, and I-scale-champ ODB-join on winning_ir_pdn; not ABC ops, not a chip restart",
       "ready": true
     },
     "net": {
@@ -120,14 +121,17 @@
     }
   },
   "budget_s": 40.0,
-  "spent_s": 206.74160146713257,
-  "n_candidates": 70,
+  "spent_s": 206.91949105262756,
+  "n_candidates": 71,
   "n_f1": 13,
   "n_f1_synth": 1,
   "n_ctrl_cone": 1,
   "n_dpath_cone": 7,
   "n_cell": 1,
   "n_ir_cell": 1,
+  "n_ir_cell_champ": 1,
+  "ir_cell_champ_wns_ns": -0.3016,
+  "ir_cell_champ_modules": "dpath",
   "n_f4_ir_cell_extract": 1,
   "n_ir_cell_pdn": 1,
   "ir_cell_extract_mv": 14.007544447720788,
@@ -154,7 +158,7 @@
   "n_f2_gpl": 2,
   "n_f2_gpl_catalog": 1,
   "n_f2_region": 1,
-  "n_f3": 16,
+  "n_f3": 17,
   "n_f3_sdf": 1,
   "n_f3_spef": 1,
   "n_f5": 1,
@@ -200,8 +204,8 @@
   },
   "surrogate_f1_to_f2_gnn": {
     "metric": "hpwl",
-    "mean": 1196.0696500259096,
-    "std": 7.966826158129391,
+    "mean": 1196.069650025915,
+    "std": 7.966826158131777,
     "n": 4,
     "uncertainty": "medium",
     "via": "2-layer mean-aggregate GNN + ridge on F2-fast HPWL",
@@ -573,6 +577,11 @@
         "level": "f4_scale_champ",
         "reason": "I-scale-champ: I(t)\u00d7P on winning_ir_pdn (IR-cell-region-PDN mesh) \u2014 not I-scale-win on the stale host-win mesh, not host arrivals",
         "scope": "pdn"
+      },
+      {
+        "level": "ir_cell_champ",
+        "reason": "I-scale-champ IR hotspot \u2192 nearest ODB instances on the champion extract \u2192 module-scoped drive-up \u2014 not the first ctrl IR-cell, not STA-path size-up, not ABC, not VCD",
+        "scope": "cell"
       }
     ]
   },
@@ -667,7 +676,8 @@
     ],
     "cell": [
       "4a64bd3e64ea",
-      "eb36579147a7"
+      "eb36579147a7",
+      "738df077afe4"
     ],
     "net": [
       "21eab2de23be",
@@ -21814,17 +21824,17 @@
       "parent_id": "eb36579147a7",
       "level": "pdn",
       "knobs": {
-        "name": "iscale_champ_cell_size_ir",
-        "pkg_r": 0.05,
-        "pkg_l": 2e-10,
         "c_decap": 2e-13,
-        "i_scale": 4.2142857142857135,
-        "parent_id": "eb36579147a7",
-        "parent_name": "cell_size_ir",
+        "extract_id": "b7cc602e6e93",
         "host_level": "cell",
         "host_source": "cell_size_ir",
+        "i_scale": 4.2142857142857135,
+        "name": "iscale_champ_cell_size_ir",
+        "parent_id": "eb36579147a7",
+        "parent_name": "cell_size_ir",
+        "pkg_l": 2e-10,
+        "pkg_r": 0.05,
         "source": "f4_iscale_champ",
-        "extract_id": "b7cc602e6e93",
         "sta_via": "extract"
       },
       "knobs_fp": "05affe69850062f41555dcc1922dfcc99e5266d8b04038871cc85f8cdc0ac587",
@@ -21847,23 +21857,13 @@
       "cost_s": 5.282594919204712,
       "pred": {},
       "attr": {
-        "status": "READY",
-        "kind": "ir_hotspot",
-        "node": "ITermNode_metal1_25463_19826",
-        "x_dbu": 25463.0,
-        "y_dbu": 19826.0,
-        "region": "r10",
-        "droop_mv": 16.5227364857512,
-        "seq_frac": 0.13926009502373612,
-        "combo_frac": 0.8607399049762638,
-        "path_start": null,
-        "path_end": null,
-        "path_slack_ns": null,
-        "modules": [],
-        "cones": [],
         "cells": [],
-        "nets": [],
-        "scope": "region",
+        "combo_frac": 0.8607399049762638,
+        "cones": [],
+        "dT_mesh_k": 0.30902581392387807,
+        "droop_mv": 16.5227364857512,
+        "em_j_a_m2": 35215731165.07168,
+        "extract_id": "b7cc602e6e93",
         "hierarchy": [
           "chip",
           "block",
@@ -21872,84 +21872,361 @@
           "cell",
           "net"
         ],
-        "em_j_a_m2": 35215731165.07168,
-        "dT_mesh_k": 0.30902581392387807,
-        "note": "IR hotspot + OpenSTA worst path \u2192 (no module join) \u00b7 region r10; hierarchical focus, not a chip-wide restart",
-        "transform": "cell_size_ir",
-        "i_scale": 4.2142857142857135,
-        "inherited_from": "eb36579147a7",
-        "extract_id": "b7cc602e6e93",
         "host_level": "cell",
         "host_source": "cell_size_ir",
-        "sta_via": "extract",
-        "via": "f4_iscale_champ",
-        "residual_vs_host_win_mv": 12.506788964242288,
+        "i_scale": 4.2142857142857135,
+        "inherited_from": "eb36579147a7",
+        "kind": "ir_hotspot",
+        "modules": [],
+        "nets": [],
+        "node": "ITermNode_metal1_25463_19826",
+        "note": "IR hotspot + OpenSTA worst path \u2192 (no module join) \u00b7 region r10; hierarchical focus, not a chip-wide restart",
+        "path_end": null,
+        "path_slack_ns": null,
+        "path_start": null,
+        "region": "r10",
         "residual_vs_host_win": "9a4ec426fb61",
+        "residual_vs_host_win_mv": 12.506788964242288,
+        "residual_vs_iscale_win": "441ad5e00525",
         "residual_vs_iscale_win_mv": -0.40161411604855246,
-        "residual_vs_iscale_win": "441ad5e00525"
+        "scope": "region",
+        "seq_frac": 0.13926009502373612,
+        "sta_via": "extract",
+        "status": "READY",
+        "transform": "cell_size_ir",
+        "via": "f4_iscale_champ",
+        "x_dbu": 25463.0,
+        "y_dbu": 19826.0
       },
       "egraph": {},
       "artifacts": {
-        "status": "ok",
-        "worst_droop_mv": 16.5227364857512,
-        "worst_droop_pct": 1.502066953250109,
+        "backend": "native",
+        "c_decap": 2e-13,
+        "combo_frac": 0.8607399049762638,
+        "cost_s": 5.282594919204712,
+        "delta_vs_gold_mv": -28.775263514248802,
+        "em": {
+          "dT_mesh_absmax_k": 0.30902581392387807,
+          "i_absmax_a": 0.0027415363216496402,
+          "j_absmax_a_m2": 35215731165.07168,
+          "n_with_j": 3359,
+          "status": "READY",
+          "ttf_rel_min": 0.08063555515773926,
+          "via": "pdn_em.em_thermal_snapshot on V_worst \u2014 not foundry TTF, not gold"
+        },
+        "extract": "candidate",
+        "gold": false,
+        "gold_ref_mv": 45.298,
+        "i_scale": 4.2142857142857135,
+        "insts": "/workspace/learn/sim/dse/extracts/b7cc602e6e93/inst_power_map.json",
+        "m": null,
+        "n_events": 499,
+        "n_i": 499,
+        "n_r": 3405,
+        "n_sta_applied": 499,
+        "note": "candidate PDN R-graph after legalized place; do not replace gold 45.298 mV",
+        "pkg_l": 2e-10,
+        "pkg_r": 0.05,
+        "seq_frac": 0.13926009502373612,
+        "solver": "A_direct_be",
+        "solver_kind": "direct",
+        "spice": "/workspace/learn/sim/dse/extracts/b7cc602e6e93/pg_vdd_bumps.sp",
         "static_ir_mv": 25.585183456288352,
         "static_ir_pct": 2.3259257687534864,
         "static_node": "ITermNode_metal1_9765_30970",
-        "worst_time_ns": 0.25999999999999995,
-        "worst_node": "ITermNode_metal1_25463_19826",
-        "x_dbu": 25463.0,
-        "y_dbu": 19826.0,
-        "seq_frac": 0.13926009502373612,
-        "combo_frac": 0.8607399049762638,
-        "pkg_r": 0.05,
-        "pkg_l": 2e-10,
-        "c_decap": 2e-13,
-        "i_scale": 4.2142857142857135,
-        "n_r": 3405,
-        "n_i": 499,
-        "n_events": 499,
-        "n_sta_applied": 499,
+        "status": "ok",
         "t50_via": {
-          "synthetic": 0,
           "sta_arrival": 499,
+          "synthetic": 0,
           "vcd_name_join": 0
         },
-        "solver": "A_direct_be",
-        "solver_kind": "direct",
-        "m": null,
-        "backend": "native",
         "timestep_loop": "native_hist",
-        "gold": false,
-        "gold_ref_mv": 45.298,
-        "delta_vs_gold_mv": -28.775263514248802,
-        "extract": "candidate",
-        "em": {
-          "status": "READY",
-          "j_absmax_a_m2": 35215731165.07168,
-          "ttf_rel_min": 0.08063555515773926,
-          "n_with_j": 3359,
-          "dT_mesh_absmax_k": 0.30902581392387807,
-          "i_absmax_a": 0.0027415363216496402,
-          "via": "pdn_em.em_thermal_snapshot on V_worst \u2014 not foundry TTF, not gold"
-        },
         "via": "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) \u2014 not finish, not gold",
-        "spice": "/workspace/learn/sim/dse/extracts/b7cc602e6e93/pg_vdd_bumps.sp",
-        "insts": "/workspace/learn/sim/dse/extracts/b7cc602e6e93/inst_power_map.json",
-        "cost_s": 5.282594919204712,
-        "note": "candidate PDN R-graph after legalized place; do not replace gold 45.298 mV"
+        "worst_droop_mv": 16.5227364857512,
+        "worst_droop_pct": 1.502066953250109,
+        "worst_node": "ITermNode_metal1_25463_19826",
+        "worst_time_ns": 0.25999999999999995,
+        "x_dbu": 25463.0,
+        "y_dbu": 19826.0
       },
       "status": "ok",
       "failure": null,
       "created_at": 1788047914.703498,
       "note": "F4 I-scale of cell_size_ir \u00d74.214 on b7cc602e6e93 droop=16.5227364857512"
+    },
+    {
+      "id": "738df077afe4",
+      "design_id": "gcd",
+      "parent_id": "eb36579147a7",
+      "level": "cell",
+      "knobs": {
+        "source": "cell_size_ir_champ",
+        "parent_id": "eb36579147a7",
+        "parent_name": "cell_size_ir",
+        "cells": [
+          "dpath/a_reg/_078_",
+          "dpath/b_mux/_45_",
+          "dpath/a_reg/_076_",
+          "dpath/a_reg/_077_",
+          "dpath/b_mux/_46_"
+        ],
+        "step": 1,
+        "ir_join": 1,
+        "champ": 1
+      },
+      "knobs_fp": "fdf221558e119228a8c84eaaa4b6de82abf7a05b54436a8725fb0f1fda24801c",
+      "rtl_fp": "93e77888fcf4f4414afbb61753418e8dbe5d01e506ff4a07e30a94b883098793",
+      "netlist_fp": "7f3546edb4fdb2594effda967a93702cdb90626bc39e6477d764b4f21d0b9791",
+      "fidelity": "F3",
+      "qor": {
+        "area_um2": 568.708,
+        "n_cells": null,
+        "wns_cost": 0.3016,
+        "power_w": 0.00536,
+        "congestion": null,
+        "static_ir_mv": null,
+        "dynamic_ir_mv": null,
+        "em_j_a_m2": null,
+        "ttf_rel_inv": null,
+        "fidelity": "F3",
+        "note": "I-scale-champ cell upsize n=5 WNS=-0.3016 \u2014 ODB join on winning_ir_pdn activity, not first ctrl IR-cell, not STA path"
+      },
+      "cost_s": 0.17788958549499512,
+      "pred": {},
+      "attr": {
+        "status": "READY",
+        "kind": "sta_path",
+        "path_start": "dpath/b_reg/_127_",
+        "path_end": "dpath/a_reg/_122_",
+        "path_slack_ns": -0.3016,
+        "modules": [
+          "dpath",
+          "ctrl"
+        ],
+        "cones": [
+          "dpath",
+          "dpath/b_reg",
+          "dpath/a_lt_b",
+          "ctrl",
+          "dpath/a_mux",
+          "dpath/a_reg"
+        ],
+        "cells": [
+          "dpath/a_reg/_078_",
+          "dpath/b_mux/_45_",
+          "dpath/a_reg/_076_",
+          "dpath/a_reg/_077_",
+          "dpath/b_mux/_46_"
+        ],
+        "nets": [
+          "dpath/b_reg/_127_->dpath/a_lt_b/_142_",
+          "dpath/a_lt_b/_142_->dpath/a_lt_b/netbuf_0",
+          "dpath/a_lt_b/netbuf_0->dpath/a_lt_b/_147_",
+          "dpath/a_lt_b/_147_->dpath/a_lt_b/netbuf_1",
+          "dpath/a_lt_b/netbuf_1->dpath/a_lt_b/_157_",
+          "dpath/a_lt_b/_157_->dpath/a_lt_b/netbuf_2",
+          "dpath/a_lt_b/netbuf_2->dpath/a_lt_b/_176_",
+          "dpath/a_lt_b/_176_->dpath/a_lt_b/netbuf_3",
+          "dpath/a_lt_b/netbuf_3->dpath/a_lt_b/_177_",
+          "dpath/a_lt_b/_177_->dpath/a_lt_b/_194_",
+          "dpath/a_lt_b/_194_->portbuf_0",
+          "portbuf_0->ctrl/_07_",
+          "ctrl/_07_->portbuf_1",
+          "portbuf_1->dpath/a_mux/_38_",
+          "dpath/a_mux/_38_->dpath/a_mux/_39_",
+          "dpath/a_mux/_39_->dpath/a_mux/_56_",
+          "dpath/a_mux/_56_->dpath/a_mux/_58_",
+          "dpath/a_mux/_58_->dpath/a_reg/_077_",
+          "dpath/a_reg/_077_->dpath/a_reg/_078_",
+          "dpath/a_reg/_078_->dpath/a_reg/_122_"
+        ],
+        "scope": "cell",
+        "hierarchy": [
+          "chip",
+          "block",
+          "region",
+          "logic_cone",
+          "cell",
+          "net"
+        ],
+        "restart_chip": false,
+        "inherited_from": "cell_size_ir",
+        "note": "OpenSTA worst path \u2192 cone dpath,ctrl; not Dynamic IR",
+        "cells_changed": [
+          {
+            "hier": "dpath/a_reg/_078_",
+            "module": "RegEn_0x68db79c4ec1d6e5b",
+            "inst": "_078_",
+            "from": "OAI21_X1",
+            "to": "OAI21_X2"
+          },
+          {
+            "hier": "dpath/b_mux/_45_",
+            "module": "Mux_0xdd6473406d1a99a",
+            "inst": "_45_",
+            "from": "NAND2_X1",
+            "to": "NAND2_X2"
+          },
+          {
+            "hier": "dpath/a_reg/_076_",
+            "module": "RegEn_0x68db79c4ec1d6e5b",
+            "inst": "_076_",
+            "from": "INV_X1",
+            "to": "INV_X2"
+          },
+          {
+            "hier": "dpath/a_reg/_077_",
+            "module": "RegEn_0x68db79c4ec1d6e5b",
+            "inst": "_077_",
+            "from": "NAND2_X1",
+            "to": "NAND2_X2"
+          },
+          {
+            "hier": "dpath/b_mux/_46_",
+            "module": "Mux_0xdd6473406d1a99a",
+            "inst": "_46_",
+            "from": "OAI21_X1",
+            "to": "OAI21_X2"
+          }
+        ],
+        "transform": "cell_size_ir_champ",
+        "via": "active_f4_ir_cell_champ"
+      },
+      "egraph": {},
+      "artifacts": {
+        "status": "ok",
+        "reason": null,
+        "wns_ns": -0.3016,
+        "tns_ns": -7.2761,
+        "power_w": 0.00536,
+        "path_start": "dpath/b_reg/_127_",
+        "path_end": "dpath/a_reg/_122_",
+        "path_cells": [
+          "dpath/b_reg/_127_",
+          "dpath/a_lt_b/_142_",
+          "dpath/a_lt_b/netbuf_0",
+          "dpath/a_lt_b/_147_",
+          "dpath/a_lt_b/netbuf_1",
+          "dpath/a_lt_b/_157_",
+          "dpath/a_lt_b/netbuf_2",
+          "dpath/a_lt_b/_176_",
+          "dpath/a_lt_b/netbuf_3",
+          "dpath/a_lt_b/_177_",
+          "dpath/a_lt_b/_194_",
+          "portbuf_0",
+          "ctrl/_07_",
+          "portbuf_1",
+          "dpath/a_mux/_38_",
+          "dpath/a_mux/_39_",
+          "dpath/a_mux/_56_",
+          "dpath/a_mux/_58_",
+          "dpath/a_reg/_077_",
+          "dpath/a_reg/_078_",
+          "dpath/a_reg/_122_"
+        ],
+        "path_nets": [
+          "dpath/b_reg/_127_->dpath/a_lt_b/_142_",
+          "dpath/a_lt_b/_142_->dpath/a_lt_b/netbuf_0",
+          "dpath/a_lt_b/netbuf_0->dpath/a_lt_b/_147_",
+          "dpath/a_lt_b/_147_->dpath/a_lt_b/netbuf_1",
+          "dpath/a_lt_b/netbuf_1->dpath/a_lt_b/_157_",
+          "dpath/a_lt_b/_157_->dpath/a_lt_b/netbuf_2",
+          "dpath/a_lt_b/netbuf_2->dpath/a_lt_b/_176_",
+          "dpath/a_lt_b/_176_->dpath/a_lt_b/netbuf_3",
+          "dpath/a_lt_b/netbuf_3->dpath/a_lt_b/_177_",
+          "dpath/a_lt_b/_177_->dpath/a_lt_b/_194_",
+          "dpath/a_lt_b/_194_->portbuf_0",
+          "portbuf_0->ctrl/_07_",
+          "ctrl/_07_->portbuf_1",
+          "portbuf_1->dpath/a_mux/_38_",
+          "dpath/a_mux/_38_->dpath/a_mux/_39_",
+          "dpath/a_mux/_39_->dpath/a_mux/_56_",
+          "dpath/a_mux/_56_->dpath/a_mux/_58_",
+          "dpath/a_mux/_58_->dpath/a_reg/_077_",
+          "dpath/a_reg/_077_->dpath/a_reg/_078_",
+          "dpath/a_reg/_078_->dpath/a_reg/_122_"
+        ],
+        "path_types": {
+          "dpath/b_reg/_127_": "DFF_X1",
+          "dpath/a_lt_b/_142_": "AND2_X1",
+          "dpath/a_lt_b/netbuf_0": "BUF_X2",
+          "dpath/a_lt_b/_147_": "OAI211_X1",
+          "dpath/a_lt_b/netbuf_1": "BUF_X2",
+          "dpath/a_lt_b/_157_": "NOR2_X1",
+          "dpath/a_lt_b/netbuf_2": "BUF_X2",
+          "dpath/a_lt_b/_176_": "NAND3_X1",
+          "dpath/a_lt_b/netbuf_3": "BUF_X2",
+          "dpath/a_lt_b/_177_": "AOI21_X1",
+          "dpath/a_lt_b/_194_": "NOR2_X1",
+          "portbuf_0": "BUF_X2",
+          "ctrl/_07_": "NOR3_X2",
+          "portbuf_1": "BUF_X2",
+          "dpath/a_mux/_38_": "INV_X1",
+          "dpath/a_mux/_39_": "NOR2_X1",
+          "dpath/a_mux/_56_": "AOI22_X1",
+          "dpath/a_mux/_58_": "NAND2_X1",
+          "dpath/a_reg/_077_": "NAND2_X2",
+          "dpath/a_reg/_078_": "OAI21_X2",
+          "dpath/a_reg/_122_": "DFF_X1"
+        },
+        "interconnect": "ideal",
+        "clock": "ideal",
+        "via": "opensta_f3 \u2014 ideal WNS/power; not IR, not finish",
+        "cost_s": 0.17788958549499512,
+        "text": "/* Generated by Yosys 0.63 (git sha1 d3e297fcd, g++ 13.3.0-6ubuntu2~24.04.1 -fPIC -O3) [the-openroad-project/yosys] */\n\nmodule GcdUnitCtrlRTL_0x4d0fc71ead8d3d9e(a_mux_sel, a_reg_en, b_mux_sel, b_reg_en, clk, is_a_lt_b, is_b_zero, req_rdy, req_val, reset, resp_rdy, resp_val);\n  output [1:0] a_mux_sel;\n  wire [1:0] a_mux_sel;\n  output [0:0] a_reg_en;\n  wire [0:0] a_reg_en;\n  output [0:0] b_mux_sel;\n  wire [0:0] b_mux_sel;\n  output [0:0] b_reg_en;\n  wire [0:0] b_reg_en;\n  input [0:0] clk;\n  wire [0:0] clk;\n  input [0:0] is_a_lt_b;\n  wire [0:0] is_a_lt_b;\n  input [0:0] is_b_zero;\n  wire [0:0] is_b_zero;\n  output [0:0] req_rdy;\n  wire [0:0] req_rdy;\n  input [0:0] req_val;\n  wire [0:0] req_val;\n  input [0:0] reset;\n  wire [0:0] reset;\n  input [0:0] resp_rdy;\n  wire [0:0] resp_rdy;\n  output [0:0] resp_val;\n  wire [0:0] resp_val;\n  wire _00_;\n  wire _01_;\n  wire _02_;\n  wire _03_;\n  wire [1:0] curr_state__0;\n  wire [1:0] current_state__1;\n  wire [1:0] next_state__0;\n  wire [0:0] \\state$clk ;\n  wire [1:0] \\state$in_ ;\n  wire [1:0] \\state$out ;\n  wire [0:0] \\state$reset ;\n  INV_X1 _04_ (\n    .A(\\state$out [1]),\n    .ZN(a_reg_en)\n  );\n  INV_X1 _05_ (\n    .A(\\state$out [0]),\n    .ZN(_00_)\n  );\n  INV_X1 _06_ (\n    .A(is_a_lt_b),\n    .ZN(_01_)\n  );\n  NOR3_X2 _07_ (\n    .A1(\\state$out [1]),\n    .A2(_00_),\n    .A3(is_a_lt_b),\n    .ZN(a_mux_sel[0])\n  );\n  NAND4_X2 _08_ (\n    .A1(a_reg_en),\n    .A2(\\state$out [0]),\n    .A3(is_b_zero),\n    .A4(_01_),\n    .ZN(_02_)\n  );\n  AOI21_X1 _09_ (\n    .A(\\state$out [0]),\n    .B1(req_val),\n    .B2(a_reg_en),\n    .ZN(_03_)\n  );\n  AOI21_X1 _10_ (\n    .A(_03_),\n    .B1(a_mux_sel[0]),\n    .B2(is_b_zero),\n    .ZN(\\state$in_ [0])\n  );\n  NOR2_X2 _11_ (\n    .A1(\\state$out [1]),\n    .A2(\\state$out [0]),\n    .ZN(b_mux_sel)\n  );\n  NOR3_X1 _12_ (\n    .A1(\\state$out [1]),\n    .A2(_00_),\n    .A3(_01_),\n    .ZN(a_mux_sel[1])\n  );\n  NOR2_X1 _13_ (\n    .A1(a_reg_en),\n    .A2(\\state$out [0]),\n    .ZN(resp_val)\n  );\n  AOI21_X2 _14_ (\n    .A(\\state$out [1]),\n    .B1(\\state$out [0]),\n    .B2(_01_),\n    .ZN(b_reg_en)\n  );\n  AOI22_X1 _15_ (\n    .A1(a_reg_en),\n    .A2(_02_),\n    .B1(resp_val),\n    .B2(resp_rdy),\n    .ZN(\\state$in_ [1])\n  );\n  RegRst_0x9f365fdf6c8998a state (\n    .clk(clk),\n    .in_(\\state$in_ ),\n    .out(\\state$out ),\n    .reset(reset)\n  );\n  assign \\state$clk  = clk;\n  assign \\state$reset  = reset;\n  assign next_state__0 = \\state$in_ ;\n  assign current_state__1 = \\state$out ;\n  assign curr_state__0 = \\state$out ;\n  assign req_rdy = b_mux_sel;\nendmodule\n\nmodule GcdUnitDpathRTL_0x4d0fc71ead8d3d9e(a_mux_sel, a_reg_en, b_mux_sel, b_reg_en, clk, is_a_lt_b, is_b_zero, req_msg_a, req_msg_b, reset, resp_msg);\n  input [1:0] a_mux_sel;\n  wire [1:0] a_mux_sel;\n  input [0:0] a_reg_en;\n  wire [0:0] a_reg_en;\n  input [0:0] b_mux_sel;\n  wire [0:0] b_mux_sel;\n  input [0:0] b_reg_en;\n  wire [0:0] b_reg_en;\n  input [0:0] clk;\n  wire [0:0] clk;\n  output [0:0] is_a_lt_b;\n  wire [0:0] is_a_lt_b;\n  output [0:0] is_b_zero;\n  wire [0:0] is_b_zero;\n  input [15:0] req_msg_a;\n  wire [15:0] req_msg_a;\n  input [15:0] req_msg_b;\n  wire [15:0] req_msg_b;\n  input [0:0] reset;\n  wire [0:0] reset;\n  output [15:0] resp_msg;\n  wire [15:0] resp_msg;\n  wire [0:0] \\a_lt_b$clk ;\n  wire [15:0] \\a_lt_b$in0 ;\n  wire [15:0] \\a_lt_b$in1 ;\n  wire [0:0] \\a_lt_b$out ;\n  wire [0:0] \\a_lt_b$reset ;\n  wire [0:0] \\a_mux$clk ;\n  wire [15:0] \\a_mux$in_$000 ;\n  wire [15:0] \\a_mux$in_$001 ;\n  wire [15:0] \\a_mux$in_$002 ;\n  wire [15:0] \\a_mux$out ;\n  wire [0:0] \\a_mux$reset ;\n  wire [1:0] \\a_mux$sel ;\n  wire [0:0] \\a_reg$clk ;\n  wire [0:0] \\a_reg$en ;\n  wire [15:0] \\a_reg$in_ ;\n  wire [15:0] \\a_reg$out ;\n  wire [0:0] \\a_reg$reset ;\n  wire [0:0] \\b_mux$clk ;\n  wire [15:0] \\b_mux$in_$000 ;\n  wire [15:0] \\b_mux$in_$001 ;\n  wire [15:0] \\b_mux$out ;\n  wire [0:0] \\b_mux$reset ;\n  wire [0:0] \\b_mux$sel ;\n  wire [0:0] \\b_reg$clk ;\n  wire [0:0] \\b_reg$en ;\n  wire [15:0] \\b_reg$in_ ;\n  wire [15:0] \\b_reg$out ;\n  wire [0:0] \\b_reg$reset ;\n  wire [15:0] b_reg_out;\n  wire [0:0] \\b_zero$clk ;\n  wire [15:0] \\b_zero$in_ ;\n  wire [0:0] \\b_zero$out ;\n  wire [0:0] \\b_zero$reset ;\n  wire [0:0] \\sub$clk ;\n  wire [15:0] \\sub$in0 ;\n  wire [15:0] \\sub$in1 ;\n  wire [15:0] \\sub$out ;\n  wire [0:0] \\sub$reset ;\n  wire [15:0] sub_out;\n  LtComparator_0x422b1f52edd46a85 a_lt_b (\n    .clk(clk),\n    .in0(\\a_lt_b$in0 ),\n    .in1(\\a_lt_b$in1 ),\n    .out(\\a_lt_b$out ),\n    .reset(reset)\n  );\n  Mux_0x683fa1a418b072c9 a_mux (\n    .clk(clk),\n    .\\in_$000 (req_msg_a),\n    .\\in_$001 (\\a_mux$in_$001 ),\n    .\\in_$002 (\\a_lt_b$in1 ),\n    .out(\\a_mux$out ),\n    .reset(reset),\n    .sel(a_mux_sel)\n  );\n  RegEn_0x68db79c4ec1d6e5b a_reg (\n    .clk(clk),\n    .en(a_reg_en),\n    .in_(\\a_mux$out ),\n    .out(\\a_lt_b$in0 ),\n    .reset(reset)\n  );\n  Mux_0xdd6473406d1a99a b_mux (\n    .clk(clk),\n    .\\in_$000 (\\a_lt_b$in0 ),\n    .\\in_$001 (req_msg_b),\n    .out(\\b_mux$out ),\n    .reset(reset),\n    .sel(b_mux_sel)\n  );\n  RegEn_0x68db79c4ec1d6e5b b_reg (\n    .clk(clk),\n    .en(b_reg_en),\n    .in_(\\b_mux$out ),\n    .out(\\a_lt_b$in1 ),\n    .reset(reset)\n  );\n  ZeroComparator_0x422b1f52edd46a85 b_zero (\n    .clk(clk),\n    .in_(\\a_lt_b$in1 ),\n    .out(\\b_zero$out ),\n    .reset(reset)\n  );\n  Subtractor_0x422b1f52edd46a85 sub (\n    .clk(clk),\n    .in0(\\a_lt_b$in0 ),\n    .in1(\\a_lt_b$in1 ),\n    .out(\\a_mux$in_$001 ),\n    .reset(reset)\n  );\n  assign \\b_reg$out  = \\a_lt_b$in1 ;\n  assign \\b_reg$en  = b_reg_en;\n  assign \\b_reg$clk  = clk;\n  assign \\b_reg$in_  = \\b_mux$out ;\n  assign \\b_reg$reset  = reset;\n  assign \\sub$out  = \\a_mux$in_$001 ;\n  assign \\sub$in1  = \\a_lt_b$in1 ;\n  assign \\sub$in0  = \\a_lt_b$in0 ;\n  assign \\sub$clk  = clk;\n  assign \\sub$reset  = reset;\n  assign \\b_mux$sel  = b_mux_sel;\n  assign \\b_mux$clk  = clk;\n  assign \\b_mux$in_$001  = req_msg_b;\n  assign \\b_mux$in_$000  = \\a_lt_b$in0 ;\n  assign \\b_mux$reset  = reset;\n  assign \\a_mux$sel  = a_mux_sel;\n  assign \\a_mux$clk  = clk;\n  assign \\a_mux$in_$002  = \\a_lt_b$in1 ;\n  assign \\a_mux$in_$000  = req_msg_a;\n  assign \\a_mux$reset  = reset;\n  assign \\b_zero$clk  = clk;\n  assign \\b_zero$in_  = \\a_lt_b$in1 ;\n  assign \\b_zero$reset  = reset;\n  assign \\a_lt_b$clk  = clk;\n  assign \\a_lt_b$reset  = reset;\n  assign \\a_reg$out  = \\a_lt_b$in0 ;\n  assign \\a_reg$en  = a_reg_en;\n  assign \\a_reg$clk  = clk;\n  assign \\a_reg$in_  = \\a_mux$out ;\n  assign \\a_reg$reset  = reset;\n  assign b_reg_out = \\a_lt_b$in1 ;\n  assign sub_out = \\a_mux$in_$001 ;\n  assign resp_msg = \\a_mux$in_$001 ;\n  assign is_b_zero = \\b_zero$out ;\n  assign is_a_lt_b = \\a_lt_b$out ;\nendmodule\n\nmodule LtComparator_0x422b1f52edd46a85(clk, in0, in1, out, reset);\n  input [0:0] clk;\n  wire [0:0] clk;\n  input [15:0] in0;\n  wire [15:0] in0;\n  input [15:0] in1;\n  wire [15:0] in1;\n  output [0:0] out;\n  wire [0:0] out;\n  input [0:0] reset;\n  wire [0:0] reset;\n  wire _000_;\n  wire _001_;\n  wire _002_;\n  wire _003_;\n  wire _004_;\n  wire _005_;\n  wire _006_;\n  wire _007_;\n  wire _008_;\n  wire _009_;\n  wire _010_;\n  wire _011_;\n  wire _012_;\n  wire _013_;\n  wire _014_;\n  wire _015_;\n  wire _016_;\n  wire _017_;\n  wire _018_;\n  wire _019_;\n  wire _020_;\n  wire _021_;\n  wire _022_;\n  wire _023_;\n  wire _024_;\n  wire _025_;\n  wire _026_;\n  wire _027_;\n  wire _028_;\n  wire _029_;\n  wire _030_;\n  wire _031_;\n  wire _032_;\n  wire _033_;\n  wire _034_;\n  wire _035_;\n  wire _036_;\n  wire _037_;\n  wire _038_;\n  wire _039_;\n  wire _040_;\n  wire _041_;\n  wire _042_;\n  wire _043_;\n  wire _044_;\n  wire _045_;\n  wire _046_;\n  wire _047_;\n  wire _048_;\n  wire _049_;\n  wire _050_;\n  wire _051_;\n  wire _052_;\n  wire _053_;\n  wire _054_;\n  wire _055_;\n  wire _056_;\n  wire _057_;\n  wire _058_;\n  wire _059_;\n  wire _060_;\n  wire _061_;\n  wire _062_;\n  wire _063_;\n  wire _064_;\n  wire _065_;\n  wire _066_;\n  wire _067_;\n  wire _068_;\n  wire _069_;\n  wire _070_;\n  wire _071_;\n  wire _072_;\n  wire _073_;\n  wire _074_;\n  wire _075_;\n  wire _076_;\n  wire _077_;\n  wire _078_;\n  wire _079_;\n  wire _080_;\n  wire _081_;\n  wire _082_;\n  wire _083_;\n  wire _084_;\n  wire _085_;\n  wire _086_;\n  wire _087_;\n  wire _088_;\n  wire _089_;\n  wire _090_;\n  wire _091_;\n  wire _092_;\n  wire _093_;\n  wire _094_;\n  wire _095_;\n  wire _096_;\n  INV_X1 _097_ (\n    .A(in0[1]),\n    .ZN(_031_)\n  );\n  NOR2_X1 _098_ (\n    .A1(_031_),\n    .A2(in1[1]),\n    .ZN(_032_)\n  );\n  INV_X1 _099_ (\n    .A(in0[0]),\n    .ZN(_033_)\n  );\n  NAND2_X1 _100_ (\n    .A1(_033_),\n    .A2(in1[0]),\n    .ZN(_034_)\n  );\n  NAND2_X1 _101_ (\n    .A1(_031_),\n    .A2(in1[1]),\n    .ZN(_035_)\n  );\n  AOI21_X1 _102_ (\n    .A(_032_),\n    .B1(_034_),\n    .B2(_035_),\n    .ZN(_036_)\n  );\n  NOR2_X1 _103_ (\n    .A1(in1[3]),\n    .A2(in0[3]),\n    .ZN(_037_)\n  );\n  AND2_X1 _104_ (\n    .A1(in1[3]),\n    .A2(in0[3]),\n    .ZN(_038_)\n  );\n  INV_X1 _105_ (\n    .A(in1[2]),\n    .ZN(_039_)\n  );\n  NAND2_X1 _106_ (\n    .A1(_039_),\n    .A2(in0[2]),\n    .ZN(_040_)\n  );\n  INV_X1 _107_ (\n    .A(in0[2]),\n    .ZN(_041_)\n  );\n  NAND2_X1 _108_ (\n    .A1(_041_),\n    .A2(in1[2]),\n    .ZN(_042_)\n  );\n  OAI211_X1 _109_ (\n    .A(_040_),\n    .B(_042_),\n    .C1(_038_),\n    .C2(_037_),\n    .ZN(_043_)\n  );\n  NOR2_X1 _110_ (\n    .A1(_036_),\n    .A2(_043_),\n    .ZN(_044_)\n  );\n  NOR2_X1 _111_ (\n    .A1(_038_),\n    .A2(_037_),\n    .ZN(_045_)\n  );\n  INV_X1 _112_ (\n    .A(in1[3]),\n    .ZN(_046_)\n  );\n  NAND2_X1 _113_ (\n    .A1(_046_),\n    .A2(in0[3]),\n    .ZN(_047_)\n  );\n  OAI21_X1 _114_ (\n    .A(_047_),\n    .B1(_045_),\n    .B2(_040_),\n    .ZN(_048_)\n  );\n  NOR2_X1 _115_ (\n    .A1(in1[7]),\n    .A2(in0[7]),\n    .ZN(_049_)\n  );\n  AND2_X1 _116_ (\n    .A1(in1[7]),\n    .A2(in0[7]),\n    .ZN(_050_)\n  );\n  INV_X1 _117_ (\n    .A(in1[6]),\n    .ZN(_051_)\n  );\n  NAND2_X1 _118_ (\n    .A1(_051_),\n    .A2(in0[6]),\n    .ZN(_052_)\n  );\n  INV_X1 _119_ (\n    .A(in0[6]),\n    .ZN(_053_)\n  );\n  NAND2_X1 _120_ (\n    .A1(_053_),\n    .A2(in1[6]),\n    .ZN(_054_)\n  );\n  OAI211_X1 _121_ (\n    .A(_052_),\n    .B(_054_),\n    .C1(_050_),\n    .C2(_049_),\n    .ZN(_055_)\n  );\n  INV_X1 _122_ (\n    .A(in1[5]),\n    .ZN(_056_)\n  );\n  NAND2_X1 _123_ (\n    .A1(_056_),\n    .A2(in0[5]),\n    .ZN(_057_)\n  );\n  INV_X1 _124_ (\n    .A(in0[5]),\n    .ZN(_058_)\n  );\n  NAND2_X1 _125_ (\n    .A1(_058_),\n    .A2(in1[5]),\n    .ZN(_059_)\n  );\n  INV_X1 _126_ (\n    .A(in1[4]),\n    .ZN(_060_)\n  );\n  NAND2_X1 _127_ (\n    .A1(_060_),\n    .A2(in0[4]),\n    .ZN(_061_)\n  );\n  INV_X1 _128_ (\n    .A(in0[4]),\n    .ZN(_062_)\n  );\n  NAND2_X1 _129_ (\n    .A1(_062_),\n    .A2(in1[4]),\n    .ZN(_063_)\n  );\n  NAND4_X1 _130_ (\n    .A1(_057_),\n    .A2(_059_),\n    .A3(_061_),\n    .A4(_063_),\n    .ZN(_064_)\n  );\n  NOR2_X1 _131_ (\n    .A1(_064_),\n    .A2(_055_),\n    .ZN(_065_)\n  );\n  OAI21_X1 _132_ (\n    .A(_065_),\n    .B1(_044_),\n    .B2(_048_),\n    .ZN(_066_)\n  );\n  INV_X1 _133_ (\n    .A(_055_),\n    .ZN(_067_)\n  );\n  INV_X1 _134_ (\n    .A(_059_),\n    .ZN(_068_)\n  );\n  OAI21_X1 _135_ (\n    .A(_057_),\n    .B1(_068_),\n    .B2(_061_),\n    .ZN(_069_)\n  );\n  NOR2_X1 _136_ (\n    .A1(_050_),\n    .A2(_049_),\n    .ZN(_070_)\n  );\n  INV_X1 _137_ (\n    .A(in1[7]),\n    .ZN(_071_)\n  );\n  NAND2_X1 _138_ (\n    .A1(_071_),\n    .A2(in0[7]),\n    .ZN(_072_)\n  );\n  OAI21_X1 _139_ (\n    .A(_072_),\n    .B1(_070_),\n    .B2(_052_),\n    .ZN(_073_)\n  );\n  AOI21_X1 _140_ (\n    .A(_073_),\n    .B1(_067_),\n    .B2(_069_),\n    .ZN(_074_)\n  );\n  NOR2_X1 _141_ (\n    .A1(in1[15]),\n    .A2(in0[15]),\n    .ZN(_075_)\n  );\n  AND2_X1 _142_ (\n    .A1(in1[15]),\n    .A2(in0[15]),\n    .ZN(_076_)\n  );\n  INV_X1 _143_ (\n    .A(in1[14]),\n    .ZN(_077_)\n  );\n  NAND2_X1 _144_ (\n    .A1(_077_),\n    .A2(in0[14]),\n    .ZN(_078_)\n  );\n  INV_X1 _145_ (\n    .A(in0[14]),\n    .ZN(_079_)\n  );\n  NAND2_X1 _146_ (\n    .A1(_079_),\n    .A2(in1[14]),\n    .ZN(_080_)\n  );\n  wire netbuf_w0;\n  BUF_X2 netbuf_0 (\n    .A(_076_),\n    .Z(netbuf_w0)\n  );\n  OAI211_X1 _147_ (\n    .A(_078_),\n    .B(_080_),\n    .C1(netbuf_w0),\n    .C2(_075_),\n    .ZN(_081_)\n  );\n  INV_X1 _148_ (\n    .A(in1[13]),\n    .ZN(_082_)\n  );\n  NAND2_X1 _149_ (\n    .A1(_082_),\n    .A2(in0[13]),\n    .ZN(_083_)\n  );\n  INV_X1 _150_ (\n    .A(in0[13]),\n    .ZN(_084_)\n  );\n  NAND2_X1 _151_ (\n    .A1(_084_),\n    .A2(in1[13]),\n    .ZN(_085_)\n  );\n  INV_X1 _152_ (\n    .A(in1[12]),\n    .ZN(_086_)\n  );\n  NAND2_X1 _153_ (\n    .A1(_086_),\n    .A2(in0[12]),\n    .ZN(_087_)\n  );\n  INV_X1 _154_ (\n    .A(in0[12]),\n    .ZN(_088_)\n  );\n  NAND2_X1 _155_ (\n    .A1(_088_),\n    .A2(in1[12]),\n    .ZN(_089_)\n  );\n  NAND4_X1 _156_ (\n    .A1(_083_),\n    .A2(_085_),\n    .A3(_087_),\n    .A4(_089_),\n    .ZN(_090_)\n  );\n  wire netbuf_w1;\n  BUF_X2 netbuf_1 (\n    .A(_081_),\n    .Z(netbuf_w1)\n  );\n  NOR2_X1 _157_ (\n    .A1(_090_),\n    .A2(netbuf_w1),\n    .ZN(_091_)\n  );\n  NOR2_X1 _158_ (\n    .A1(in1[11]),\n    .A2(in0[11]),\n    .ZN(_092_)\n  );\n  AND2_X1 _159_ (\n    .A1(in1[11]),\n    .A2(in0[11]),\n    .ZN(_093_)\n  );\n  INV_X1 _160_ (\n    .A(in1[10]),\n    .ZN(_094_)\n  );\n  NAND2_X1 _161_ (\n    .A1(_094_),\n    .A2(in0[10]),\n    .ZN(_095_)\n  );\n  INV_X1 _162_ (\n    .A(in0[10]),\n    .ZN(_096_)\n  );\n  NAND2_X1 _163_ (\n    .A1(_096_),\n    .A2(in1[10]),\n    .ZN(_000_)\n  );\n  OAI211_X1 _164_ (\n    .A(_095_),\n    .B(_000_),\n    .C1(_093_),\n    .C2(_092_),\n    .ZN(_001_)\n  );\n  INV_X1 _165_ (\n    .A(_001_),\n    .ZN(_002_)\n  );\n  INV_X1 _166_ (\n    .A(in1[9]),\n    .ZN(_003_)\n  );\n  NAND2_X1 _167_ (\n    .A1(_003_),\n    .A2(in0[9]),\n    .ZN(_004_)\n  );\n  INV_X1 _168_ (\n    .A(in0[9]),\n    .ZN(_005_)\n  );\n  NAND2_X1 _169_ (\n    .A1(_005_),\n    .A2(in1[9]),\n    .ZN(_006_)\n  );\n  NAND2_X1 _170_ (\n    .A1(_004_),\n    .A2(_006_),\n    .ZN(_007_)\n  );\n  INV_X1 _171_ (\n    .A(in0[8]),\n    .ZN(_008_)\n  );\n  NOR2_X1 _172_ (\n    .A1(_008_),\n    .A2(in1[8]),\n    .ZN(_009_)\n  );\n  INV_X1 _173_ (\n    .A(in1[8]),\n    .ZN(_010_)\n  );\n  NOR2_X1 _174_ (\n    .A1(_010_),\n    .A2(in0[8]),\n    .ZN(_011_)\n  );\n  NOR3_X1 _175_ (\n    .A1(_007_),\n    .A2(_009_),\n    .A3(_011_),\n    .ZN(_012_)\n  );\n  wire netbuf_w2;\n  BUF_X2 netbuf_2 (\n    .A(_091_),\n    .Z(netbuf_w2)\n  );\n  NAND3_X1 _176_ (\n    .A1(netbuf_w2),\n    .A2(_002_),\n    .A3(_012_),\n    .ZN(_013_)\n  );\n  wire netbuf_w3;\n  BUF_X2 netbuf_3 (\n    .A(_013_),\n    .Z(netbuf_w3)\n  );\n  AOI21_X1 _177_ (\n    .A(netbuf_w3),\n    .B1(_066_),\n    .B2(_074_),\n    .ZN(_014_)\n  );\n  NAND3_X1 _178_ (\n    .A1(_009_),\n    .A2(_004_),\n    .A3(_006_),\n    .ZN(_015_)\n  );\n  AOI21_X1 _179_ (\n    .A(_001_),\n    .B1(_004_),\n    .B2(_015_),\n    .ZN(_016_)\n  );\n  NOR2_X1 _180_ (\n    .A1(_093_),\n    .A2(_092_),\n    .ZN(_017_)\n  );\n  INV_X1 _181_ (\n    .A(in1[11]),\n    .ZN(_018_)\n  );\n  NAND2_X1 _182_ (\n    .A1(_018_),\n    .A2(in0[11]),\n    .ZN(_019_)\n  );\n  OAI21_X1 _183_ (\n    .A(_019_),\n    .B1(_017_),\n    .B2(_095_),\n    .ZN(_020_)\n  );\n  OAI21_X1 _184_ (\n    .A(_091_),\n    .B1(_016_),\n    .B2(_020_),\n    .ZN(_021_)\n  );\n  INV_X1 _185_ (\n    .A(_081_),\n    .ZN(_022_)\n  );\n  INV_X1 _186_ (\n    .A(_085_),\n    .ZN(_023_)\n  );\n  OAI21_X1 _187_ (\n    .A(_083_),\n    .B1(_023_),\n    .B2(_087_),\n    .ZN(_024_)\n  );\n  NOR2_X1 _188_ (\n    .A1(_076_),\n    .A2(_075_),\n    .ZN(_025_)\n  );\n  INV_X1 _189_ (\n    .A(in1[15]),\n    .ZN(_026_)\n  );\n  NAND2_X1 _190_ (\n    .A1(_026_),\n    .A2(in0[15]),\n    .ZN(_027_)\n  );\n  OAI21_X1 _191_ (\n    .A(_027_),\n    .B1(_025_),\n    .B2(_078_),\n    .ZN(_028_)\n  );\n  AOI21_X1 _192_ (\n    .A(_028_),\n    .B1(_022_),\n    .B2(_024_),\n    .ZN(_029_)\n  );\n  NAND2_X1 _193_ (\n    .A1(_021_),\n    .A2(_029_),\n    .ZN(_030_)\n  );\n  NOR2_X1 _194_ (\n    .A1(_014_),\n    .A2(_030_),\n    .ZN(out)\n  );\nendmodule\n\nmodule Mux_0x683fa1a418b072c9(clk, \\in_$000 , \\in_$001 , \\in_$002 , out, reset, sel);\n  input [0:0] clk;\n  wire [0:0] clk;\n  input [15:0] \\in_$000 ;\n  wire [15:0] \\in_$000 ;\n  input [15:0] \\in_$001 ;\n  wire [15:0] \\in_$001 ;\n  input [15:0] \\in_$002 ;\n  wire [15:0] \\in_$002 ;\n  output [15:0] out;\n  wire [15:0] out;\n  input [0:0] reset;\n  wire [0:0] reset;\n  input [1:0] sel;\n  wire [1:0] sel;\n  wire _00_;\n  wire _01_;\n  wire _02_;\n  wire _03_;\n  wire _04_;\n  wire _05_;\n  wire _06_;\n  wire _07_;\n  wire _08_;\n  wire _09_;\n  wire _10_;\n  wire _11_;\n  wire _12_;\n  wire _13_;\n  wire _14_;\n  wire _15_;\n  wire _16_;\n  wire _17_;\n  wire _18_;\n  wire _19_;\n  wire _20_;\n  wire _21_;\n  wire _22_;\n  wire _23_;\n  wire _24_;\n  wire _25_;\n  wire _26_;\n  wire _27_;\n  wire _28_;\n  wire _29_;\n  wire _30_;\n  wire _31_;\n  wire _32_;\n  wire _33_;\n  wire _34_;\n  wire _35_;\n  wire _36_;\n  wire _37_;\n  wire [15:0] \\in_[0] ;\n  wire [15:0] \\in_[1] ;\n  wire [15:0] \\in_[2] ;\n  INV_X1 _38_ (\n    .A(sel[0]),\n    .ZN(_14_)\n  );\n  NOR2_X1 _39_ (\n    .A1(_14_),\n    .A2(sel[1]),\n    .ZN(_15_)\n  );\n  INV_X1 _40_ (\n    .A(sel[1]),\n    .ZN(_16_)\n  );\n  NOR2_X1 _41_ (\n    .A1(_16_),\n    .A2(sel[0]),\n    .ZN(_17_)\n  );\n  AOI22_X1 _42_ (\n    .A1(\\in_$002 [14]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [14]),\n    .ZN(_18_)\n  );\n  NAND2_X1 _43_ (\n    .A1(_16_),\n    .A2(sel[0]),\n    .ZN(_19_)\n  );\n  NAND2_X1 _44_ (\n    .A1(_14_),\n    .A2(sel[1]),\n    .ZN(_20_)\n  );\n  NAND3_X1 _45_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [14]),\n    .ZN(_21_)\n  );\n  NAND2_X1 _46_ (\n    .A1(_18_),\n    .A2(_21_),\n    .ZN(out[14])\n  );\n  AOI22_X1 _47_ (\n    .A1(\\in_$002 [13]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [13]),\n    .ZN(_22_)\n  );\n  NAND3_X1 _48_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [13]),\n    .ZN(_23_)\n  );\n  NAND2_X1 _49_ (\n    .A1(_22_),\n    .A2(_23_),\n    .ZN(out[13])\n  );\n  AOI22_X1 _50_ (\n    .A1(\\in_$002 [12]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [12]),\n    .ZN(_24_)\n  );\n  NAND3_X1 _51_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [12]),\n    .ZN(_25_)\n  );\n  NAND2_X1 _52_ (\n    .A1(_24_),\n    .A2(_25_),\n    .ZN(out[12])\n  );\n  AOI22_X1 _53_ (\n    .A1(\\in_$002 [11]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [11]),\n    .ZN(_26_)\n  );\n  NAND3_X1 _54_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [11]),\n    .ZN(_27_)\n  );\n  NAND2_X1 _55_ (\n    .A1(_26_),\n    .A2(_27_),\n    .ZN(out[11])\n  );\n  AOI22_X1 _56_ (\n    .A1(\\in_$002 [10]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [10]),\n    .ZN(_28_)\n  );\n  NAND3_X1 _57_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [10]),\n    .ZN(_29_)\n  );\n  NAND2_X1 _58_ (\n    .A1(_28_),\n    .A2(_29_),\n    .ZN(out[10])\n  );\n  AOI22_X1 _59_ (\n    .A1(\\in_$002 [9]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [9]),\n    .ZN(_30_)\n  );\n  NAND3_X1 _60_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [9]),\n    .ZN(_31_)\n  );\n  NAND2_X1 _61_ (\n    .A1(_30_),\n    .A2(_31_),\n    .ZN(out[9])\n  );\n  AOI22_X1 _62_ (\n    .A1(\\in_$002 [8]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [8]),\n    .ZN(_32_)\n  );\n  NAND3_X1 _63_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [8]),\n    .ZN(_33_)\n  );\n  NAND2_X1 _64_ (\n    .A1(_32_),\n    .A2(_33_),\n    .ZN(out[8])\n  );\n  AOI22_X1 _65_ (\n    .A1(\\in_$002 [7]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [7]),\n    .ZN(_34_)\n  );\n  NAND3_X1 _66_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [7]),\n    .ZN(_35_)\n  );\n  NAND2_X1 _67_ (\n    .A1(_34_),\n    .A2(_35_),\n    .ZN(out[7])\n  );\n  AOI22_X1 _68_ (\n    .A1(\\in_$002 [6]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [6]),\n    .ZN(_36_)\n  );\n  NAND3_X1 _69_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [6]),\n    .ZN(_37_)\n  );\n  NAND2_X1 _70_ (\n    .A1(_36_),\n    .A2(_37_),\n    .ZN(out[6])\n  );\n  AOI22_X1 _71_ (\n    .A1(\\in_$002 [5]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [5]),\n    .ZN(_00_)\n  );\n  NAND3_X1 _72_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [5]),\n    .ZN(_01_)\n  );\n  NAND2_X1 _73_ (\n    .A1(_00_),\n    .A2(_01_),\n    .ZN(out[5])\n  );\n  AOI22_X1 _74_ (\n    .A1(\\in_$002 [4]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [4]),\n    .ZN(_02_)\n  );\n  NAND3_X1 _75_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [4]),\n    .ZN(_03_)\n  );\n  NAND2_X1 _76_ (\n    .A1(_02_),\n    .A2(_03_),\n    .ZN(out[4])\n  );\n  AOI22_X1 _77_ (\n    .A1(\\in_$002 [3]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [3]),\n    .ZN(_04_)\n  );\n  NAND3_X1 _78_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [3]),\n    .ZN(_05_)\n  );\n  NAND2_X1 _79_ (\n    .A1(_04_),\n    .A2(_05_),\n    .ZN(out[3])\n  );\n  AOI22_X1 _80_ (\n    .A1(\\in_$002 [2]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [2]),\n    .ZN(_06_)\n  );\n  NAND3_X1 _81_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [2]),\n    .ZN(_07_)\n  );\n  NAND2_X1 _82_ (\n    .A1(_06_),\n    .A2(_07_),\n    .ZN(out[2])\n  );\n  AOI22_X1 _83_ (\n    .A1(\\in_$002 [1]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [1]),\n    .ZN(_08_)\n  );\n  NAND3_X1 _84_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [1]),\n    .ZN(_09_)\n  );\n  NAND2_X1 _85_ (\n    .A1(_08_),\n    .A2(_09_),\n    .ZN(out[1])\n  );\n  AOI22_X1 _86_ (\n    .A1(\\in_$002 [0]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [0]),\n    .ZN(_10_)\n  );\n  NAND3_X1 _87_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [0]),\n    .ZN(_11_)\n  );\n  NAND2_X1 _88_ (\n    .A1(_10_),\n    .A2(_11_),\n    .ZN(out[0])\n  );\n  AOI22_X1 _89_ (\n    .A1(\\in_$002 [15]),\n    .A2(_17_),\n    .B1(_15_),\n    .B2(\\in_$001 [15]),\n    .ZN(_12_)\n  );\n  NAND3_X1 _90_ (\n    .A1(_19_),\n    .A2(_20_),\n    .A3(\\in_$000 [15]),\n    .ZN(_13_)\n  );\n  NAND2_X1 _91_ (\n    .A1(_12_),\n    .A2(_13_),\n    .ZN(out[15])\n  );\n  assign \\in_[2]  = \\in_$002 ;\n  assign \\in_[1]  = \\in_$001 ;\n  assign \\in_[0]  = \\in_$000 ;\nendmodule\n\nmodule Mux_0xdd6473406d1a99a(clk, \\in_$000 , \\in_$001 , out, reset, sel);\n  input [0:0] clk;\n  wire [0:0] clk;\n  input [15:0] \\in_$000 ;\n  wire [15:0] \\in_$000 ;\n  input [15:0] \\in_$001 ;\n  wire [15:0] \\in_$001 ;\n  output [15:0] out;\n  wire [15:0] out;\n  input [0:0] reset;\n  wire [0:0] reset;\n  input [0:0] sel;\n  wire [0:0] sel;\n  wire _00_;\n  wire _01_;\n  wire _02_;\n  wire _03_;\n  wire _04_;\n  wire _05_;\n  wire _06_;\n  wire _07_;\n  wire _08_;\n  wire _09_;\n  wire _10_;\n  wire _11_;\n  wire _12_;\n  wire _13_;\n  wire _14_;\n  wire _15_;\n  wire _16_;\n  wire _17_;\n  wire _18_;\n  wire _19_;\n  wire _20_;\n  wire _21_;\n  wire _22_;\n  wire _23_;\n  wire _24_;\n  wire _25_;\n  wire _26_;\n  wire _27_;\n  wire _28_;\n  wire _29_;\n  wire _30_;\n  wire _31_;\n  wire [15:0] \\in_[0] ;\n  wire [15:0] \\in_[1] ;\n  INV_X1 _32_ (\n    .A(\\in_$000 [14]),\n    .ZN(_00_)\n  );\n  NAND2_X1 _33_ (\n    .A1(\\in_$001 [14]),\n    .A2(sel),\n    .ZN(_01_)\n  );\n  OAI21_X1 _34_ (\n    .A(_01_),\n    .B1(_00_),\n    .B2(sel),\n    .ZN(out[14])\n  );\n  INV_X1 _35_ (\n    .A(\\in_$000 [13]),\n    .ZN(_02_)\n  );\n  NAND2_X1 _36_ (\n    .A1(sel),\n    .A2(\\in_$001 [13]),\n    .ZN(_03_)\n  );\n  OAI21_X1 _37_ (\n    .A(_03_),\n    .B1(_02_),\n    .B2(sel),\n    .ZN(out[13])\n  );\n  INV_X1 _38_ (\n    .A(\\in_$000 [12]),\n    .ZN(_04_)\n  );\n  NAND2_X1 _39_ (\n    .A1(sel),\n    .A2(\\in_$001 [12]),\n    .ZN(_05_)\n  );\n  OAI21_X1 _40_ (\n    .A(_05_),\n    .B1(_04_),\n    .B2(sel),\n    .ZN(out[12])\n  );\n  INV_X1 _41_ (\n    .A(\\in_$000 [11]),\n    .ZN(_06_)\n  );\n  NAND2_X1 _42_ (\n    .A1(sel),\n    .A2(\\in_$001 [11]),\n    .ZN(_07_)\n  );\n  OAI21_X1 _43_ (\n    .A(_07_),\n    .B1(_06_),\n    .B2(sel),\n    .ZN(out[11])\n  );\n  INV_X1 _44_ (\n    .A(\\in_$000 [10]),\n    .ZN(_08_)\n  );\n  NAND2_X2 _45_ (\n    .A1(sel),\n    .A2(\\in_$001 [10]),\n    .ZN(_09_)\n  );\n  OAI21_X2 _46_ (\n    .A(_09_),\n    .B1(_08_),\n    .B2(sel),\n    .ZN(out[10])\n  );\n  INV_X1 _47_ (\n    .A(\\in_$000 [9]),\n    .ZN(_10_)\n  );\n  NAND2_X1 _48_ (\n    .A1(sel),\n    .A2(\\in_$001 [9]),\n    .ZN(_11_)\n  );\n  OAI21_X1 _49_ (\n    .A(_11_),\n    .B1(_10_),\n    .B2(sel),\n    .ZN(out[9])\n  );\n  INV_X1 _50_ (\n    .A(\\in_$000 [8]),\n    .ZN(_12_)\n  );\n  NAND2_X1 _51_ (\n    .A1(sel),\n    .A2(\\in_$001 [8]),\n    .ZN(_13_)\n  );\n  OAI21_X1 _52_ (\n    .A(_13_),\n    .B1(_12_),\n    .B2(sel),\n    .ZN(out[8])\n  );\n  INV_X1 _53_ (\n    .A(\\in_$000 [7]),\n    .ZN(_14_)\n  );\n  NAND2_X1 _54_ (\n    .A1(sel),\n    .A2(\\in_$001 [7]),\n    .ZN(_15_)\n  );\n  OAI21_X1 _55_ (\n    .A(_15_),\n    .B1(_14_),\n    .B2(sel),\n    .ZN(out[7])\n  );\n  INV_X1 _56_ (\n    .A(\\in_$000 [6]),\n    .ZN(_16_)\n  );\n  NAND2_X1 _57_ (\n    .A1(sel),\n    .A2(\\in_$001 [6]),\n    .ZN(_17_)\n  );\n  OAI21_X1 _58_ (\n    .A(_17_),\n    .B1(_16_),\n    .B2(sel),\n    .ZN(out[6])\n  );\n  INV_X1 _59_ (\n    .A(\\in_$000 [5]),\n    .ZN(_18_)\n  );\n  NAND2_X1 _60_ (\n    .A1(sel),\n    .A2(\\in_$001 [5]),\n    .ZN(_19_)\n  );\n  OAI21_X1 _61_ (\n    .A(_19_),\n    .B1(_18_),\n    .B2(sel),\n    .ZN(out[5])\n  );\n  INV_X1 _62_ (\n    .A(\\in_$000 [4]),\n    .ZN(_20_)\n  );\n  NAND2_X1 _63_ (\n    .A1(sel),\n    .A2(\\in_$001 [4]),\n    .ZN(_21_)\n  );\n  OAI21_X1 _64_ (\n    .A(_21_),\n    .B1(_20_),\n    .B2(sel),\n    .ZN(out[4])\n  );\n  INV_X1 _65_ (\n    .A(\\in_$000 [3]),\n    .ZN(_22_)\n  );\n  NAND2_X1 _66_ (\n    .A1(sel),\n    .A2(\\in_$001 [3]),\n    .ZN(_23_)\n  );\n  OAI21_X1 _67_ (\n    .A(_23_),\n    .B1(_22_),\n    .B2(sel),\n    .ZN(out[3])\n  );\n  INV_X1 _68_ (\n    .A(\\in_$000 [2]),\n    .ZN(_24_)\n  );\n  NAND2_X1 _69_ (\n    .A1(sel),\n    .A2(\\in_$001 [2]),\n    .ZN(_25_)\n  );\n  OAI21_X1 _70_ (\n    .A(_25_),\n    .B1(_24_),\n    .B2(sel),\n    .ZN(out[2])\n  );\n  INV_X1 _71_ (\n    .A(\\in_$000 [1]),\n    .ZN(_26_)\n  );\n  NAND2_X1 _72_ (\n    .A1(sel),\n    .A2(\\in_$001 [1]),\n    .ZN(_27_)\n  );\n  OAI21_X1 _73_ (\n    .A(_27_),\n    .B1(_26_),\n    .B2(sel),\n    .ZN(out[1])\n  );\n  INV_X1 _74_ (\n    .A(\\in_$000 [0]),\n    .ZN(_28_)\n  );\n  NAND2_X1 _75_ (\n    .A1(sel),\n    .A2(\\in_$001 [0]),\n    .ZN(_29_)\n  );\n  OAI21_X1 _76_ (\n    .A(_29_),\n    .B1(_28_),\n    .B2(sel),\n    .ZN(out[0])\n  );\n  INV_X1 _77_ (\n    .A(\\in_$000 [15]),\n    .ZN(_30_)\n  );\n  NAND2_X1 _78_ (\n    .A1(sel),\n    .A2(\\in_$001 [15]),\n    .ZN(_31_)\n  );\n  OAI21_X1 _79_ (\n    .A(_31_),\n    .B1(_30_),\n    .B2(sel),\n    .ZN(out[15])\n  );\n  assign \\in_[1]  = \\in_$001 ;\n  assign \\in_[0]  = \\in_$000 ;\nendmodule\n\nmodule RegEn_0x68db79c4ec1d6e5b(clk, en, in_, out, reset);\n  input [0:0] clk;\n  wire [0:0] clk;\n  input [0:0] en;\n  wire [0:0] en;\n  input [15:0] in_;\n  wire [15:0] in_;\n  output [15:0] out;\n  wire [15:0] out;\n  input [0:0] reset;\n  wire [0:0] reset;\n  wire _000_;\n  wire _001_;\n  wire _002_;\n  wire _003_;\n  wire _004_;\n  wire _005_;\n  wire _006_;\n  wire _007_;\n  wire _008_;\n  wire _009_;\n  wire _010_;\n  wire _011_;\n  wire _012_;\n  wire _013_;\n  wire _014_;\n  wire _015_;\n  wire _016_;\n  wire _017_;\n  wire _018_;\n  wire _019_;\n  wire _020_;\n  wire _021_;\n  wire _022_;\n  wire _023_;\n  wire _024_;\n  wire _025_;\n  wire _026_;\n  wire _027_;\n  wire _028_;\n  wire _029_;\n  wire _030_;\n  wire _031_;\n  wire _032_;\n  wire _033_;\n  wire _034_;\n  wire _035_;\n  wire _036_;\n  wire _037_;\n  wire _038_;\n  wire _039_;\n  wire _040_;\n  wire _041_;\n  wire _042_;\n  wire _043_;\n  wire _044_;\n  wire _045_;\n  wire _046_;\n  wire _047_;\n  wire _048_;\n  wire _049_;\n  wire _050_;\n  wire _051_;\n  wire _052_;\n  wire _053_;\n  wire _054_;\n  wire _055_;\n  wire _056_;\n  wire _057_;\n  wire _058_;\n  wire _059_;\n  wire _060_;\n  wire _061_;\n  wire _062_;\n  wire _063_;\n  INV_X1 _064_ (\n    .A(out[14]),\n    .ZN(_016_)\n  );\n  NAND2_X1 _065_ (\n    .A1(in_[14]),\n    .A2(en),\n    .ZN(_017_)\n  );\n  OAI21_X1 _066_ (\n    .A(_017_),\n    .B1(_016_),\n    .B2(en),\n    .ZN(_000_)\n  );\n  INV_X1 _067_ (\n    .A(out[13]),\n    .ZN(_018_)\n  );\n  NAND2_X1 _068_ (\n    .A1(en),\n    .A2(in_[13]),\n    .ZN(_019_)\n  );\n  OAI21_X1 _069_ (\n    .A(_019_),\n    .B1(_018_),\n    .B2(en),\n    .ZN(_001_)\n  );\n  INV_X1 _070_ (\n    .A(out[12]),\n    .ZN(_020_)\n  );\n  NAND2_X1 _071_ (\n    .A1(en),\n    .A2(in_[12]),\n    .ZN(_021_)\n  );\n  OAI21_X1 _072_ (\n    .A(_021_),\n    .B1(_020_),\n    .B2(en),\n    .ZN(_002_)\n  );\n  INV_X1 _073_ (\n    .A(out[11]),\n    .ZN(_022_)\n  );\n  NAND2_X1 _074_ (\n    .A1(en),\n    .A2(in_[11]),\n    .ZN(_023_)\n  );\n  OAI21_X1 _075_ (\n    .A(_023_),\n    .B1(_022_),\n    .B2(en),\n    .ZN(_003_)\n  );\n  INV_X2 _076_ (\n    .A(out[10]),\n    .ZN(_024_)\n  );\n  NAND2_X2 _077_ (\n    .A1(en),\n    .A2(in_[10]),\n    .ZN(_025_)\n  );\n  OAI21_X2 _078_ (\n    .A(_025_),\n    .B1(_024_),\n    .B2(en),\n    .ZN(_004_)\n  );\n  INV_X1 _079_ (\n    .A(out[9]),\n    .ZN(_026_)\n  );\n  NAND2_X1 _080_ (\n    .A1(en),\n    .A2(in_[9]),\n    .ZN(_027_)\n  );\n  OAI21_X1 _081_ (\n    .A(_027_),\n    .B1(_026_),\n    .B2(en),\n    .ZN(_005_)\n  );\n  INV_X1 _082_ (\n    .A(out[8]),\n    .ZN(_028_)\n  );\n  NAND2_X1 _083_ (\n    .A1(en),\n    .A2(in_[8]),\n    .ZN(_029_)\n  );\n  OAI21_X1 _084_ (\n    .A(_029_),\n    .B1(_028_),\n    .B2(en),\n    .ZN(_006_)\n  );\n  INV_X1 _085_ (\n    .A(out[7]),\n    .ZN(_030_)\n  );\n  NAND2_X1 _086_ (\n    .A1(en),\n    .A2(in_[7]),\n    .ZN(_031_)\n  );\n  OAI21_X1 _087_ (\n    .A(_031_),\n    .B1(_030_),\n    .B2(en),\n    .ZN(_007_)\n  );\n  INV_X1 _088_ (\n    .A(out[6]),\n    .ZN(_032_)\n  );\n  NAND2_X1 _089_ (\n    .A1(en),\n    .A2(in_[6]),\n    .ZN(_033_)\n  );\n  OAI21_X1 _090_ (\n    .A(_033_),\n    .B1(_032_),\n    .B2(en),\n    .ZN(_008_)\n  );\n  INV_X1 _091_ (\n    .A(out[5]),\n    .ZN(_034_)\n  );\n  NAND2_X1 _092_ (\n    .A1(en),\n    .A2(in_[5]),\n    .ZN(_035_)\n  );\n  OAI21_X1 _093_ (\n    .A(_035_),\n    .B1(_034_),\n    .B2(en),\n    .ZN(_009_)\n  );\n  INV_X1 _094_ (\n    .A(out[4]),\n    .ZN(_036_)\n  );\n  NAND2_X1 _095_ (\n    .A1(en),\n    .A2(in_[4]),\n    .ZN(_037_)\n  );\n  OAI21_X1 _096_ (\n    .A(_037_),\n    .B1(_036_),\n    .B2(en),\n    .ZN(_010_)\n  );\n  INV_X1 _097_ (\n    .A(out[3]),\n    .ZN(_038_)\n  );\n  NAND2_X1 _098_ (\n    .A1(en),\n    .A2(in_[3]),\n    .ZN(_039_)\n  );\n  OAI21_X1 _099_ (\n    .A(_039_),\n    .B1(_038_),\n    .B2(en),\n    .ZN(_011_)\n  );\n  INV_X1 _100_ (\n    .A(out[2]),\n    .ZN(_040_)\n  );\n  NAND2_X1 _101_ (\n    .A1(en),\n    .A2(in_[2]),\n    .ZN(_041_)\n  );\n  OAI21_X1 _102_ (\n    .A(_041_),\n    .B1(_040_),\n    .B2(en),\n    .ZN(_012_)\n  );\n  INV_X1 _103_ (\n    .A(out[1]),\n    .ZN(_042_)\n  );\n  NAND2_X1 _104_ (\n    .A1(en),\n    .A2(in_[1]),\n    .ZN(_043_)\n  );\n  OAI21_X1 _105_ (\n    .A(_043_),\n    .B1(_042_),\n    .B2(en),\n    .ZN(_013_)\n  );\n  INV_X1 _106_ (\n    .A(out[0]),\n    .ZN(_044_)\n  );\n  NAND2_X1 _107_ (\n    .A1(en),\n    .A2(in_[0]),\n    .ZN(_045_)\n  );\n  OAI21_X1 _108_ (\n    .A(_045_),\n    .B1(_044_),\n    .B2(en),\n    .ZN(_014_)\n  );\n  INV_X1 _109_ (\n    .A(out[15]),\n    .ZN(_046_)\n  );\n  NAND2_X1 _110_ (\n    .A1(en),\n    .A2(in_[15]),\n    .ZN(_047_)\n  );\n  OAI21_X1 _111_ (\n    .A(_047_),\n    .B1(_046_),\n    .B2(en),\n    .ZN(_015_)\n  );\n  DFF_X1 _112_ (\n    .CK(clk),\n    .D(_014_),\n    .Q(out[0]),\n    .QN(_049_)\n  );\n  DFF_X1 _113_ (\n    .CK(clk),\n    .D(_013_),\n    .Q(out[1]),\n    .QN(_050_)\n  );\n  DFF_X1 _114_ (\n    .CK(clk),\n    .D(_012_),\n    .Q(out[2]),\n    .QN(_051_)\n  );\n  DFF_X1 _115_ (\n    .CK(clk),\n    .D(_011_),\n    .Q(out[3]),\n    .QN(_052_)\n  );\n  DFF_X1 _116_ (\n    .CK(clk),\n    .D(_010_),\n    .Q(out[4]),\n    .QN(_053_)\n  );\n  DFF_X1 _117_ (\n    .CK(clk),\n    .D(_009_),\n    .Q(out[5]),\n    .QN(_054_)\n  );\n  DFF_X1 _118_ (\n    .CK(clk),\n    .D(_008_),\n    .Q(out[6]),\n    .QN(_055_)\n  );\n  DFF_X1 _119_ (\n    .CK(clk),\n    .D(_007_),\n    .Q(out[7]),\n    .QN(_056_)\n  );\n  DFF_X1 _120_ (\n    .CK(clk),\n    .D(_006_),\n    .Q(out[8]),\n    .QN(_057_)\n  );\n  DFF_X1 _121_ (\n    .CK(clk),\n    .D(_005_),\n    .Q(out[9]),\n    .QN(_058_)\n  );\n  DFF_X1 _122_ (\n    .CK(clk),\n    .D(_004_),\n    .Q(out[10]),\n    .QN(_059_)\n  );\n  DFF_X1 _123_ (\n    .CK(clk),\n    .D(_003_),\n    .Q(out[11]),\n    .QN(_060_)\n  );\n  DFF_X1 _124_ (\n    .CK(clk),\n    .D(_002_),\n    .Q(out[12]),\n    .QN(_061_)\n  );\n  DFF_X1 _125_ (\n    .CK(clk),\n    .D(_001_),\n    .Q(out[13]),\n    .QN(_062_)\n  );\n  DFF_X1 _126_ (\n    .CK(clk),\n    .D(_000_),\n    .Q(out[14]),\n    .QN(_063_)\n  );\n  DFF_X1 _127_ (\n    .CK(clk),\n    .D(_015_),\n    .Q(out[15]),\n    .QN(_048_)\n  );\nendmodule\n\nmodule RegRst_0x9f365fdf6c8998a(clk, in_, out, reset);\n  input [0:0] clk;\n  wire [0:0] clk;\n  input [1:0] in_;\n  wire [1:0] in_;\n  output [1:0] out;\n  wire [1:0] out;\n  input [0:0] reset;\n  wire [0:0] reset;\n  wire _00_;\n  wire _01_;\n  wire _02_;\n  wire _03_;\n  wire _04_;\n  wire _05_;\n  INV_X1 _06_ (\n    .A(in_[0]),\n    .ZN(_02_)\n  );\n  INV_X2 _07_ (\n    .A(in_[1]),\n    .ZN(_03_)\n  );\n  NOR2_X1 _08_ (\n    .A1(_02_),\n    .A2(reset),\n    .ZN(_00_)\n  );\n  NOR2_X1 _09_ (\n    .A1(reset),\n    .A2(_03_),\n    .ZN(_01_)\n  );\n  DFF_X1 _10_ (\n    .CK(clk),\n    .D(_00_),\n    .Q(out[0]),\n    .QN(_05_)\n  );\n  DFF_X1 _11_ (\n    .CK(clk),\n    .D(_01_),\n    .Q(out[1]),\n    .QN(_04_)\n  );\nendmodule\n\nmodule Subtractor_0x422b1f52edd46a85(clk, in0, in1, out, reset);\n  input [0:0] clk;\n  wire [0:0] clk;\n  input [15:0] in0;\n  wire [15:0] in0;\n  input [15:0] in1;\n  wire [15:0] in1;\n  output [15:0] out;\n  wire [15:0] out;\n  input [0:0] reset;\n  wire [0:0] reset;\n  wire _000_;\n  wire _001_;\n  wire _002_;\n  wire _003_;\n  wire _004_;\n  wire _005_;\n  wire _006_;\n  wire _007_;\n  wire _008_;\n  wire _009_;\n  wire _010_;\n  wire _011_;\n  wire _012_;\n  wire _013_;\n  wire _014_;\n  wire _015_;\n  wire _016_;\n  wire _017_;\n  wire _018_;\n  wire _019_;\n  wire _020_;\n  wire _021_;\n  wire _022_;\n  wire _023_;\n  wire _024_;\n  wire _025_;\n  wire _026_;\n  wire _027_;\n  wire _028_;\n  wire _029_;\n  wire _030_;\n  wire _031_;\n  wire _032_;\n  wire _033_;\n  wire _034_;\n  wire _035_;\n  wire _036_;\n  wire _037_;\n  wire _038_;\n  wire _039_;\n  wire _040_;\n  wire _041_;\n  wire _042_;\n  wire _043_;\n  wire _044_;\n  wire _045_;\n  wire _046_;\n  wire _047_;\n  wire _048_;\n  wire _049_;\n  wire _050_;\n  wire _051_;\n  wire _052_;\n  wire _053_;\n  wire _054_;\n  wire _055_;\n  wire _056_;\n  wire _057_;\n  wire _058_;\n  wire _059_;\n  wire _060_;\n  wire _061_;\n  wire _062_;\n  wire _063_;\n  wire _064_;\n  wire _065_;\n  wire _066_;\n  wire _067_;\n  wire _068_;\n  wire _069_;\n  wire _070_;\n  wire _071_;\n  wire _072_;\n  wire _073_;\n  wire _074_;\n  wire _075_;\n  wire _076_;\n  wire _077_;\n  wire _078_;\n  wire _079_;\n  wire _080_;\n  wire _081_;\n  wire _082_;\n  wire _083_;\n  wire _084_;\n  wire _085_;\n  wire _086_;\n  wire _087_;\n  wire _088_;\n  wire _089_;\n  wire _090_;\n  wire _091_;\n  wire _092_;\n  wire _093_;\n  wire _094_;\n  wire _095_;\n  wire _096_;\n  wire _097_;\n  wire _098_;\n  wire _099_;\n  wire _100_;\n  wire _101_;\n  wire _102_;\n  wire _103_;\n  wire _104_;\n  wire _105_;\n  wire _106_;\n  wire _107_;\n  wire _108_;\n  wire _109_;\n  wire _110_;\n  wire _111_;\n  wire _112_;\n  wire _113_;\n  wire _114_;\n  wire _115_;\n  wire _116_;\n  wire _117_;\n  wire _118_;\n  wire _119_;\n  INV_X1 _120_ (\n    .A(in1[1]),\n    .ZN(_069_)\n  );\n  NAND2_X1 _121_ (\n    .A1(_069_),\n    .A2(in0[1]),\n    .ZN(_070_)\n  );\n  NOR2_X1 _122_ (\n    .A1(in1[1]),\n    .A2(in0[1]),\n    .ZN(_071_)\n  );\n  AND2_X1 _123_ (\n    .A1(in1[1]),\n    .A2(in0[1]),\n    .ZN(_072_)\n  );\n  INV_X1 _124_ (\n    .A(in0[0]),\n    .ZN(_073_)\n  );\n  NAND2_X1 _125_ (\n    .A1(_073_),\n    .A2(in1[0]),\n    .ZN(_074_)\n  );\n  OAI21_X1 _126_ (\n    .A(_074_),\n    .B1(_072_),\n    .B2(_071_),\n    .ZN(_075_)\n  );\n  AND2_X1 _127_ (\n    .A1(_075_),\n    .A2(_070_),\n    .ZN(_076_)\n  );\n  NOR2_X1 _128_ (\n    .A1(in1[3]),\n    .A2(in0[3]),\n    .ZN(_077_)\n  );\n  AND2_X1 _129_ (\n    .A1(in1[3]),\n    .A2(in0[3]),\n    .ZN(_078_)\n  );\n  INV_X1 _130_ (\n    .A(in1[2]),\n    .ZN(_079_)\n  );\n  NAND2_X1 _131_ (\n    .A1(_079_),\n    .A2(in0[2]),\n    .ZN(_080_)\n  );\n  INV_X1 _132_ (\n    .A(in0[2]),\n    .ZN(_081_)\n  );\n  NAND2_X1 _133_ (\n    .A1(_081_),\n    .A2(in1[2]),\n    .ZN(_082_)\n  );\n  OAI211_X1 _134_ (\n    .A(_080_),\n    .B(_082_),\n    .C1(_078_),\n    .C2(_077_),\n    .ZN(_083_)\n  );\n  OR2_X1 _135_ (\n    .A1(_078_),\n    .A2(_077_),\n    .ZN(_084_)\n  );\n  INV_X1 _136_ (\n    .A(_080_),\n    .ZN(_085_)\n  );\n  INV_X1 _137_ (\n    .A(in0[3]),\n    .ZN(_086_)\n  );\n  NOR2_X1 _138_ (\n    .A1(_086_),\n    .A2(in1[3]),\n    .ZN(_087_)\n  );\n  AOI21_X1 _139_ (\n    .A(_087_),\n    .B1(_084_),\n    .B2(_085_),\n    .ZN(_088_)\n  );\n  OAI21_X1 _140_ (\n    .A(_088_),\n    .B1(_076_),\n    .B2(_083_),\n    .ZN(_089_)\n  );\n  XNOR2_X1 _141_ (\n    .A(in1[7]),\n    .B(in0[7]),\n    .ZN(_090_)\n  );\n  XNOR2_X1 _142_ (\n    .A(in1[6]),\n    .B(in0[6]),\n    .ZN(_091_)\n  );\n  NAND2_X1 _143_ (\n    .A1(_090_),\n    .A2(_091_),\n    .ZN(_092_)\n  );\n  XNOR2_X1 _144_ (\n    .A(in1[5]),\n    .B(in0[5]),\n    .ZN(_093_)\n  );\n  XNOR2_X1 _145_ (\n    .A(in1[4]),\n    .B(in0[4]),\n    .ZN(_094_)\n  );\n  NAND2_X1 _146_ (\n    .A1(_093_),\n    .A2(_094_),\n    .ZN(_095_)\n  );\n  NOR2_X1 _147_ (\n    .A1(_092_),\n    .A2(_095_),\n    .ZN(_096_)\n  );\n  INV_X1 _148_ (\n    .A(in0[4]),\n    .ZN(_097_)\n  );\n  NOR2_X1 _149_ (\n    .A1(_097_),\n    .A2(in1[4]),\n    .ZN(_098_)\n  );\n  INV_X1 _150_ (\n    .A(in0[5]),\n    .ZN(_099_)\n  );\n  NOR2_X1 _151_ (\n    .A1(_099_),\n    .A2(in1[5]),\n    .ZN(_100_)\n  );\n  AOI21_X1 _152_ (\n    .A(_100_),\n    .B1(_093_),\n    .B2(_098_),\n    .ZN(_101_)\n  );\n  INV_X1 _153_ (\n    .A(in1[7]),\n    .ZN(_102_)\n  );\n  NAND2_X1 _154_ (\n    .A1(_102_),\n    .A2(in0[7]),\n    .ZN(_103_)\n  );\n  NOR2_X1 _155_ (\n    .A1(in1[7]),\n    .A2(in0[7]),\n    .ZN(_104_)\n  );\n  AND2_X1 _156_ (\n    .A1(in1[7]),\n    .A2(in0[7]),\n    .ZN(_105_)\n  );\n  INV_X1 _157_ (\n    .A(in0[6]),\n    .ZN(_106_)\n  );\n  NOR2_X1 _158_ (\n    .A1(_106_),\n    .A2(in1[6]),\n    .ZN(_107_)\n  );\n  OAI21_X1 _159_ (\n    .A(_107_),\n    .B1(_105_),\n    .B2(_104_),\n    .ZN(_108_)\n  );\n  OAI211_X1 _160_ (\n    .A(_103_),\n    .B(_108_),\n    .C1(_101_),\n    .C2(_092_),\n    .ZN(_109_)\n  );\n  AOI21_X1 _161_ (\n    .A(_109_),\n    .B1(_089_),\n    .B2(_096_),\n    .ZN(_110_)\n  );\n  XNOR2_X1 _162_ (\n    .A(in1[11]),\n    .B(in0[11]),\n    .ZN(_111_)\n  );\n  XNOR2_X1 _163_ (\n    .A(in1[10]),\n    .B(in0[10]),\n    .ZN(_112_)\n  );\n  NAND2_X1 _164_ (\n    .A1(_111_),\n    .A2(_112_),\n    .ZN(_113_)\n  );\n  INV_X1 _165_ (\n    .A(_113_),\n    .ZN(_114_)\n  );\n  INV_X1 _166_ (\n    .A(in0[9]),\n    .ZN(_115_)\n  );\n  NOR2_X1 _167_ (\n    .A1(_115_),\n    .A2(in1[9]),\n    .ZN(_116_)\n  );\n  INV_X1 _168_ (\n    .A(_116_),\n    .ZN(_117_)\n  );\n  NAND2_X1 _169_ (\n    .A1(_115_),\n    .A2(in1[9]),\n    .ZN(_118_)\n  );\n  NAND2_X1 _170_ (\n    .A1(_117_),\n    .A2(_118_),\n    .ZN(_119_)\n  );\n  XOR2_X1 _171_ (\n    .A(in1[8]),\n    .B(in0[8]),\n    .Z(_000_)\n  );\n  NOR2_X1 _172_ (\n    .A1(_119_),\n    .A2(_000_),\n    .ZN(_001_)\n  );\n  NAND2_X1 _173_ (\n    .A1(_001_),\n    .A2(_114_),\n    .ZN(_002_)\n  );\n  INV_X1 _174_ (\n    .A(in0[11]),\n    .ZN(_003_)\n  );\n  INV_X1 _175_ (\n    .A(in0[8]),\n    .ZN(_004_)\n  );\n  NOR2_X1 _176_ (\n    .A1(_004_),\n    .A2(in1[8]),\n    .ZN(_005_)\n  );\n  AOI21_X1 _177_ (\n    .A(_116_),\n    .B1(_118_),\n    .B2(_005_),\n    .ZN(_006_)\n  );\n  INV_X1 _178_ (\n    .A(in0[10]),\n    .ZN(_007_)\n  );\n  NOR2_X1 _179_ (\n    .A1(_007_),\n    .A2(in1[10]),\n    .ZN(_008_)\n  );\n  NAND2_X1 _180_ (\n    .A1(_111_),\n    .A2(_008_),\n    .ZN(_009_)\n  );\n  OAI221_X1 _181_ (\n    .A(_009_),\n    .B1(in1[11]),\n    .B2(_003_),\n    .C1(_113_),\n    .C2(_006_),\n    .ZN(_010_)\n  );\n  INV_X1 _182_ (\n    .A(_010_),\n    .ZN(_011_)\n  );\n  OAI21_X1 _183_ (\n    .A(_011_),\n    .B1(_110_),\n    .B2(_002_),\n    .ZN(_012_)\n  );\n  XNOR2_X1 _184_ (\n    .A(in1[12]),\n    .B(in0[12]),\n    .ZN(_013_)\n  );\n  INV_X1 _185_ (\n    .A(_013_),\n    .ZN(_014_)\n  );\n  XNOR2_X1 _186_ (\n    .A(_012_),\n    .B(_014_),\n    .ZN(out[12])\n  );\n  INV_X1 _187_ (\n    .A(_001_),\n    .ZN(_015_)\n  );\n  OAI21_X1 _188_ (\n    .A(_006_),\n    .B1(_110_),\n    .B2(_015_),\n    .ZN(_016_)\n  );\n  NAND2_X1 _189_ (\n    .A1(_016_),\n    .A2(_112_),\n    .ZN(_017_)\n  );\n  OAI211_X1 _190_ (\n    .A(_017_),\n    .B(_111_),\n    .C1(in1[10]),\n    .C2(_007_),\n    .ZN(_018_)\n  );\n  INV_X1 _191_ (\n    .A(_111_),\n    .ZN(_019_)\n  );\n  INV_X1 _192_ (\n    .A(_017_),\n    .ZN(_020_)\n  );\n  OAI21_X1 _193_ (\n    .A(_019_),\n    .B1(_020_),\n    .B2(_008_),\n    .ZN(_021_)\n  );\n  NAND2_X1 _194_ (\n    .A1(_021_),\n    .A2(_018_),\n    .ZN(out[11])\n  );\n  NOR2_X1 _195_ (\n    .A1(_016_),\n    .A2(_112_),\n    .ZN(_022_)\n  );\n  NOR2_X1 _196_ (\n    .A1(_020_),\n    .A2(_022_),\n    .ZN(out[10])\n  );\n  INV_X1 _197_ (\n    .A(_005_),\n    .ZN(_023_)\n  );\n  OAI21_X1 _198_ (\n    .A(_023_),\n    .B1(_110_),\n    .B2(_000_),\n    .ZN(_024_)\n  );\n  XNOR2_X1 _199_ (\n    .A(_024_),\n    .B(_119_),\n    .ZN(out[9])\n  );\n  XOR2_X1 _200_ (\n    .A(_110_),\n    .B(_000_),\n    .Z(out[8])\n  );\n  INV_X1 _201_ (\n    .A(_091_),\n    .ZN(_025_)\n  );\n  INV_X1 _202_ (\n    .A(_095_),\n    .ZN(_026_)\n  );\n  INV_X1 _203_ (\n    .A(_101_),\n    .ZN(_027_)\n  );\n  AOI21_X1 _204_ (\n    .A(_027_),\n    .B1(_089_),\n    .B2(_026_),\n    .ZN(_028_)\n  );\n  NOR2_X1 _205_ (\n    .A1(_028_),\n    .A2(_025_),\n    .ZN(_029_)\n  );\n  NOR2_X1 _206_ (\n    .A1(_029_),\n    .A2(_107_),\n    .ZN(_030_)\n  );\n  XNOR2_X1 _207_ (\n    .A(_030_),\n    .B(_090_),\n    .ZN(out[7])\n  );\n  XNOR2_X1 _208_ (\n    .A(_028_),\n    .B(_091_),\n    .ZN(out[6])\n  );\n  AOI21_X1 _209_ (\n    .A(_098_),\n    .B1(_089_),\n    .B2(_094_),\n    .ZN(_031_)\n  );\n  XNOR2_X1 _210_ (\n    .A(_031_),\n    .B(_093_),\n    .ZN(out[5])\n  );\n  XOR2_X1 _211_ (\n    .A(_089_),\n    .B(_094_),\n    .Z(out[4])\n  );\n  NOR2_X1 _212_ (\n    .A1(_078_),\n    .A2(_077_),\n    .ZN(_032_)\n  );\n  AND2_X1 _213_ (\n    .A1(_080_),\n    .A2(_082_),\n    .ZN(_033_)\n  );\n  INV_X1 _214_ (\n    .A(_033_),\n    .ZN(_034_)\n  );\n  OAI21_X1 _215_ (\n    .A(_080_),\n    .B1(_076_),\n    .B2(_034_),\n    .ZN(_035_)\n  );\n  XNOR2_X1 _216_ (\n    .A(_035_),\n    .B(_032_),\n    .ZN(out[3])\n  );\n  XNOR2_X1 _217_ (\n    .A(_076_),\n    .B(_033_),\n    .ZN(out[2])\n  );\n  NOR2_X1 _218_ (\n    .A1(_072_),\n    .A2(_071_),\n    .ZN(_036_)\n  );\n  XNOR2_X1 _219_ (\n    .A(_036_),\n    .B(_074_),\n    .ZN(out[1])\n  );\n  XOR2_X1 _220_ (\n    .A(in1[0]),\n    .B(in0[0]),\n    .Z(out[0])\n  );\n  INV_X1 _221_ (\n    .A(in0[12]),\n    .ZN(_037_)\n  );\n  NOR2_X1 _222_ (\n    .A1(_037_),\n    .A2(in1[12]),\n    .ZN(_038_)\n  );\n  AOI21_X1 _223_ (\n    .A(_038_),\n    .B1(_012_),\n    .B2(_013_),\n    .ZN(_039_)\n  );\n  INV_X1 _224_ (\n    .A(in0[13]),\n    .ZN(_040_)\n  );\n  NOR2_X1 _225_ (\n    .A1(_040_),\n    .A2(in1[13]),\n    .ZN(_041_)\n  );\n  INV_X1 _226_ (\n    .A(_041_),\n    .ZN(_042_)\n  );\n  NAND2_X1 _227_ (\n    .A1(_040_),\n    .A2(in1[13]),\n    .ZN(_043_)\n  );\n  NAND2_X1 _228_ (\n    .A1(_042_),\n    .A2(_043_),\n    .ZN(_044_)\n  );\n  INV_X1 _229_ (\n    .A(_044_),\n    .ZN(_045_)\n  );\n  XNOR2_X1 _230_ (\n    .A(_039_),\n    .B(_045_),\n    .ZN(out[13])\n  );\n  NOR2_X1 _231_ (\n    .A1(_044_),\n    .A2(_014_),\n    .ZN(_046_)\n  );\n  AOI21_X1 _232_ (\n    .A(_041_),\n    .B1(_038_),\n    .B2(_043_),\n    .ZN(_047_)\n  );\n  INV_X1 _233_ (\n    .A(_047_),\n    .ZN(_048_)\n  );\n  AOI21_X1 _234_ (\n    .A(_048_),\n    .B1(_012_),\n    .B2(_046_),\n    .ZN(_049_)\n  );\n  XNOR2_X1 _235_ (\n    .A(in1[14]),\n    .B(in0[14]),\n    .ZN(_050_)\n  );\n  XNOR2_X1 _236_ (\n    .A(_049_),\n    .B(_050_),\n    .ZN(out[14])\n  );\n  INV_X1 _237_ (\n    .A(in0[14]),\n    .ZN(_051_)\n  );\n  NOR2_X1 _238_ (\n    .A1(_051_),\n    .A2(in1[14]),\n    .ZN(_052_)\n  );\n  AOI21_X1 _239_ (\n    .A(_083_),\n    .B1(_070_),\n    .B2(_075_),\n    .ZN(_053_)\n  );\n  INV_X1 _240_ (\n    .A(_087_),\n    .ZN(_054_)\n  );\n  OAI21_X1 _241_ (\n    .A(_054_),\n    .B1(_032_),\n    .B2(_080_),\n    .ZN(_055_)\n  );\n  OAI21_X1 _242_ (\n    .A(_096_),\n    .B1(_053_),\n    .B2(_055_),\n    .ZN(_056_)\n  );\n  INV_X1 _243_ (\n    .A(_092_),\n    .ZN(_057_)\n  );\n  NAND2_X1 _244_ (\n    .A1(_108_),\n    .A2(_103_),\n    .ZN(_058_)\n  );\n  AOI21_X1 _245_ (\n    .A(_058_),\n    .B1(_027_),\n    .B2(_057_),\n    .ZN(_059_)\n  );\n  AOI21_X1 _246_ (\n    .A(_002_),\n    .B1(_056_),\n    .B2(_059_),\n    .ZN(_060_)\n  );\n  OAI21_X1 _247_ (\n    .A(_046_),\n    .B1(_060_),\n    .B2(_010_),\n    .ZN(_061_)\n  );\n  INV_X1 _248_ (\n    .A(_050_),\n    .ZN(_062_)\n  );\n  AOI21_X1 _249_ (\n    .A(_062_),\n    .B1(_061_),\n    .B2(_047_),\n    .ZN(_063_)\n  );\n  XNOR2_X1 _250_ (\n    .A(in1[15]),\n    .B(in0[15]),\n    .ZN(_064_)\n  );\n  INV_X1 _251_ (\n    .A(_064_),\n    .ZN(_065_)\n  );\n  OAI21_X1 _252_ (\n    .A(_065_),\n    .B1(_063_),\n    .B2(_052_),\n    .ZN(_066_)\n  );\n  INV_X1 _253_ (\n    .A(_052_),\n    .ZN(_067_)\n  );\n  OAI211_X1 _254_ (\n    .A(_067_),\n    .B(_064_),\n    .C1(_049_),\n    .C2(_062_),\n    .ZN(_068_)\n  );\n  NAND2_X1 _255_ (\n    .A1(_066_),\n    .A2(_068_),\n    .ZN(out[15])\n  );\nendmodule\n\nmodule ZeroComparator_0x422b1f52edd46a85(clk, in_, out, reset);\n  input [0:0] clk;\n  wire [0:0] clk;\n  input [15:0] in_;\n  wire [15:0] in_;\n  output [0:0] out;\n  wire [0:0] out;\n  input [0:0] reset;\n  wire [0:0] reset;\n  wire _00_;\n  wire _01_;\n  wire _02_;\n  wire _03_;\n  wire _04_;\n  wire _05_;\n  wire _06_;\n  wire _07_;\n  wire _08_;\n  wire _09_;\n  NOR2_X1 _10_ (\n    .A1(in_[5]),\n    .A2(in_[4]),\n    .ZN(_00_)\n  );\n  NOR2_X1 _11_ (\n    .A1(in_[7]),\n    .A2(in_[6]),\n    .ZN(_01_)\n  );\n  NOR2_X1 _12_ (\n    .A1(in_[1]),\n    .A2(in_[0]),\n    .ZN(_02_)\n  );\n  NOR2_X1 _13_ (\n    .A1(in_[3]),\n    .A2(in_[2]),\n    .ZN(_03_)\n  );\n  NAND4_X1 _14_ (\n    .A1(_00_),\n    .A2(_01_),\n    .A3(_02_),\n    .A4(_03_),\n    .ZN(_04_)\n  );\n  NOR2_X1 _15_ (\n    .A1(in_[13]),\n    .A2(in_[12]),\n    .ZN(_05_)\n  );\n  NOR2_X1 _16_ (\n    .A1(in_[15]),\n    .A2(in_[14]),\n    .ZN(_06_)\n  );\n  NOR2_X1 _17_ (\n    .A1(in_[9]),\n    .A2(in_[8]),\n    .ZN(_07_)\n  );\n  NOR2_X1 _18_ (\n    .A1(in_[11]),\n    .A2(in_[10]),\n    .ZN(_08_)\n  );\n  NAND4_X1 _19_ (\n    .A1(_05_),\n    .A2(_06_),\n    .A3(_07_),\n    .A4(_08_),\n    .ZN(_09_)\n  );\n  NOR2_X1 _20_ (\n    .A1(_04_),\n    .A2(_09_),\n    .ZN(out)\n  );\nendmodule\n\nmodule gcd(clk, req_msg, req_rdy, req_val, reset, resp_msg, resp_rdy, resp_val);\n  input clk;\n  wire clk;\n  input [31:0] req_msg;\n  wire [31:0] req_msg;\n  output req_rdy;\n  wire req_rdy;\n  input req_val;\n  wire req_val;\n  input reset;\n  wire reset;\n  output [15:0] resp_msg;\n  wire [15:0] resp_msg;\n  input resp_rdy;\n  wire resp_rdy;\n  output resp_val;\n  wire resp_val;\n  wire [1:0] \\ctrl$a_mux_sel ;\n  wire [0:0] \\ctrl$a_reg_en ;\n  wire [0:0] \\ctrl$b_mux_sel ;\n  wire [0:0] \\ctrl$b_reg_en ;\n  wire [0:0] \\ctrl$clk ;\n  wire [0:0] \\ctrl$is_a_lt_b ;\n  wire [0:0] \\ctrl$is_b_zero ;\n  wire [0:0] \\ctrl$req_rdy ;\n  wire [0:0] \\ctrl$req_val ;\n  wire [0:0] \\ctrl$reset ;\n  wire [0:0] \\ctrl$resp_rdy ;\n  wire [0:0] \\ctrl$resp_val ;\n  wire [1:0] \\dpath$a_mux_sel ;\n  wire [0:0] \\dpath$a_reg_en ;\n  wire [0:0] \\dpath$b_mux_sel ;\n  wire [0:0] \\dpath$b_reg_en ;\n  wire [0:0] \\dpath$clk ;\n  wire [0:0] \\dpath$is_a_lt_b ;\n  wire [0:0] \\dpath$is_b_zero ;\n  wire [15:0] \\dpath$req_msg_a ;\n  wire [15:0] \\dpath$req_msg_b ;\n  wire [0:0] \\dpath$reset ;\n  wire [15:0] \\dpath$resp_msg ;\n  wire portbuf_w0;\n  BUF_X2 portbuf_0 (\n    .A(\\ctrl$is_a_lt_b ),\n    .Z(portbuf_w0)\n  );\n  GcdUnitCtrlRTL_0x4d0fc71ead8d3d9e ctrl (\n    .a_mux_sel(\\ctrl$a_mux_sel ),\n    .a_reg_en(\\ctrl$a_reg_en ),\n    .b_mux_sel(\\ctrl$b_mux_sel ),\n    .b_reg_en(\\ctrl$b_reg_en ),\n    .clk(clk),\n    .is_a_lt_b(portbuf_w0),\n    .is_b_zero(\\ctrl$is_b_zero ),\n    .req_rdy(\\ctrl$req_rdy ),\n    .req_val(req_val),\n    .reset(reset),\n    .resp_rdy(resp_rdy),\n    .resp_val(\\ctrl$resp_val )\n  );\n  wire portbuf_w1;\n  wire [1:0] portbuf_b1;\n  BUF_X2 portbuf_1 (\n    .A(\\ctrl$a_mux_sel [0]),\n    .Z(portbuf_w1)\n  );\n  assign portbuf_b1[1] = \\ctrl$a_mux_sel [1];\n  assign portbuf_b1[0] = portbuf_w1;\n  GcdUnitDpathRTL_0x4d0fc71ead8d3d9e dpath (\n    .a_mux_sel(portbuf_b1),\n    .a_reg_en(\\ctrl$a_reg_en ),\n    .b_mux_sel(\\ctrl$b_mux_sel ),\n    .b_reg_en(\\ctrl$b_reg_en ),\n    .clk(clk),\n    .is_a_lt_b(\\ctrl$is_a_lt_b ),\n    .is_b_zero(\\ctrl$is_b_zero ),\n    .req_msg_a(req_msg[31:16]),\n    .req_msg_b(req_msg[15:0]),\n    .reset(reset),\n    .resp_msg(\\dpath$resp_msg )\n  );\n  assign \\dpath$is_a_lt_b  = \\ctrl$is_a_lt_b ;\n  assign \\dpath$is_b_zero  = \\ctrl$is_b_zero ;\n  assign \\dpath$a_reg_en  = \\ctrl$a_reg_en ;\n  assign \\dpath$b_reg_en  = \\ctrl$b_reg_en ;\n  assign \\dpath$reset  = reset;\n  assign \\dpath$b_mux_sel  = \\ctrl$b_mux_sel ;\n  assign \\dpath$req_msg_a  = req_msg[31:16];\n  assign \\dpath$req_msg_b  = req_msg[15:0];\n  assign \\dpath$clk  = clk;\n  assign \\dpath$a_mux_sel  = \\ctrl$a_mux_sel ;\n  assign \\ctrl$reset  = reset;\n  assign \\ctrl$req_val  = req_val;\n  assign \\ctrl$clk  = clk;\n  assign \\ctrl$resp_rdy  = resp_rdy;\n  assign resp_val = \\ctrl$resp_val ;\n  assign resp_msg = \\dpath$resp_msg ;\n  assign req_rdy = \\ctrl$req_rdy ;\nendmodule\n",
+        "changed": [
+          {
+            "hier": "dpath/a_reg/_078_",
+            "module": "RegEn_0x68db79c4ec1d6e5b",
+            "inst": "_078_",
+            "from": "OAI21_X1",
+            "to": "OAI21_X2"
+          },
+          {
+            "hier": "dpath/b_mux/_45_",
+            "module": "Mux_0xdd6473406d1a99a",
+            "inst": "_45_",
+            "from": "NAND2_X1",
+            "to": "NAND2_X2"
+          },
+          {
+            "hier": "dpath/a_reg/_076_",
+            "module": "RegEn_0x68db79c4ec1d6e5b",
+            "inst": "_076_",
+            "from": "INV_X1",
+            "to": "INV_X2"
+          },
+          {
+            "hier": "dpath/a_reg/_077_",
+            "module": "RegEn_0x68db79c4ec1d6e5b",
+            "inst": "_077_",
+            "from": "NAND2_X1",
+            "to": "NAND2_X2"
+          },
+          {
+            "hier": "dpath/b_mux/_46_",
+            "module": "Mux_0xdd6473406d1a99a",
+            "inst": "_46_",
+            "from": "OAI21_X1",
+            "to": "OAI21_X2"
+          }
+        ],
+        "n_changed": 5,
+        "src": "/workspace/learn/sim/dse/netlists/eb36579147a7.v",
+        "dest": "/workspace/learn/sim/dse/netlists/738df077afe4.v",
+        "mapped_v": "/workspace/learn/sim/dse/netlists/738df077afe4.v"
+      },
+      "status": "ok",
+      "failure": null,
+      "created_at": 1788048341.689214,
+      "note": "cell size-up 5 inst WNS=-0.3016 vs parent None"
     }
   ],
   "log": [
     {
-      "t": 1788047909.1627152,
+      "t": 1788048341.3243213,
       "kind": "inspect",
-      "n": 69,
+      "n": 70,
       "levels": [
         "architecture",
         "cell",
@@ -21962,182 +22239,182 @@
       ]
     },
     {
-      "t": 1788047909.1636,
+      "t": 1788048341.325296,
       "kind": "ingest",
       "level": "physical",
       "id": "5b128c74747e",
       "fidelity": "F4"
     },
     {
-      "t": 1788047909.163738,
+      "t": 1788048341.3254669,
       "kind": "ingest",
       "level": "physical",
       "id": "dae774044e37",
       "fidelity": "F2"
     },
     {
-      "t": 1788047909.164248,
+      "t": 1788048341.3259993,
       "kind": "ingest",
       "level": "pdn",
       "id": "4a73dc1359e1",
       "fidelity": "F4"
     },
     {
-      "t": 1788047909.1967711,
+      "t": 1788048341.3669453,
       "kind": "plan",
       "focus": "dpath",
       "combo_frac": 0.983563683518776,
       "f2_cong": 0.0
     },
     {
-      "t": 1788047909.1967726,
+      "t": 1788048341.366948,
       "kind": "plan_step",
       "level": "logic",
       "reason": "BOiLS EHVI(area, WNS) + DRiLLS UCB \u2014 F3 steers ABC, not area-only; cone-local ABC on dpath (chip flatten-first teacher already measured)",
       "scope": "logic_cone"
     },
     {
-      "t": 1788047909.1967733,
+      "t": 1788048341.3669486,
       "kind": "plan_step",
       "level": "f2_fast",
       "reason": "anchored barycenter HPWL/RUDY on the best F1 netlist (not make finish)",
       "scope": "chip"
     },
     {
-      "t": 1788047909.196774,
+      "t": 1788048341.366949,
       "kind": "plan_step",
       "level": "f2_gpl",
       "reason": "budgeted OpenROAD GPL -skip_io on the F1 winner \u2014 not route/F5/IR",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967742,
+      "t": 1788048341.3669493,
       "kind": "plan_step",
       "level": "f3_sta",
       "reason": "OpenSTA ideal WNS/power interleaved after each F1 \u2014 not SPEF, not IR",
       "scope": "block"
     },
     {
-      "t": 1788047909.1967745,
+      "t": 1788048341.3669498,
       "kind": "plan_step",
       "level": "routing",
       "reason": "budgeted OpenROAD GRT after place_pins \u2014 not detailed route/F5",
       "scope": "chip"
     },
     {
-      "t": 1788047909.196775,
+      "t": 1788048341.36695,
       "kind": "plan_step",
       "level": "f3_sdf",
       "reason": "OpenSTA + GRT SDF after estimate_parasitics \u2014 not SPEF/OpenRCX, not F5",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967752,
+      "t": 1788048341.3669508,
       "kind": "plan_step",
       "level": "f5_drt",
       "reason": "budgeted detailed_route + OpenRCX SPEF \u2014 F5-lite, not make finish",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967754,
+      "t": 1788048341.366951,
       "kind": "plan_step",
       "level": "f3_spef",
       "reason": "OpenSTA + OpenRCX SPEF on the F5 netlist \u2014 not GRT SDF, not finish launch",
       "scope": "chip"
     },
     {
-      "t": 1788047909.196776,
+      "t": 1788048341.3669515,
       "kind": "plan_step",
       "level": "f5_cts",
       "reason": "budgeted CTS + DRT + OpenRCX SPEF \u2014 propagated clock, not make finish",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967762,
+      "t": 1788048341.3669517,
       "kind": "plan_step",
       "level": "f5_local",
       "reason": "OpenRCX SPEF on the cell/net netlist \u2014 F3\u2192F5 residual vs F1 F5-lite, not a reused SPEF, not make finish",
       "scope": "net"
     },
     {
-      "t": 1788047909.1967764,
+      "t": 1788048341.366952,
       "kind": "plan_step",
       "level": "residual_steer",
       "reason": "F3\u2192F5 residual + uncertainty pick the next local level (other host SPEF, or SPEF-path cell/net) \u2014 not a mixed knob vector",
       "scope": "net"
     },
     {
-      "t": 1788047909.1967766,
+      "t": 1788048341.3669522,
       "kind": "plan_step",
       "level": "f5_port",
       "reason": "OpenRCX SPEF on the port-net BUF netlist \u2014 F3\u2192F5 residual, not the intra-module net host, not make finish",
       "scope": "port"
     },
     {
-      "t": 1788047909.196777,
+      "t": 1788048341.3669527,
       "kind": "plan_step",
       "level": "port_steer",
       "reason": "F5-port SPEF residual picks intra-module BUF on SPEF hops \u2014 not another port BUF, not a mixed vector",
       "scope": "net"
     },
     {
-      "t": 1788047909.1967776,
+      "t": 1788048341.366953,
       "kind": "plan_step",
       "level": "synthesis",
       "reason": "ORFS abc_speed.script (ABC_AREA=0) \u2014 measured synthesis F1, not logic -fast",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967778,
+      "t": 1788048341.3669531,
       "kind": "plan_step",
       "level": "cell",
       "reason": "upsize 2 attributed worst-path cells \u2014 not more ABC, not a chip restart",
       "scope": "cell"
     },
     {
-      "t": 1788047909.196778,
+      "t": 1788048341.3669536,
       "kind": "plan_step",
       "level": "net",
       "reason": "insert BUF on OpenSTA worst-path hops after F3 \u2014 net-local, not ABC",
       "scope": "net"
     },
     {
-      "t": 1788047909.1967783,
+      "t": 1788048341.366954,
       "kind": "plan_step",
       "level": "net_port",
       "reason": "insert BUF on attributed ctrl\u2194dpath port nets at the parent \u2014 not intra-module hops, not ABC",
       "scope": "port"
     },
     {
-      "t": 1788047909.1967785,
+      "t": 1788048341.3669543,
       "kind": "plan_step",
       "level": "f4_amg",
       "reason": "SA-AMG restamp on the named extract \u2014 MF solver residual vs DirectLU, not gold",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967788,
+      "t": 1788048341.3669546,
       "kind": "plan_step",
       "level": "f4_ras",
       "reason": "RAS restamp after AMG \u2014 domain-decomp MF residual vs DirectLU, not gold",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967793,
+      "t": 1788048341.366955,
       "kind": "plan_step",
       "level": "f4_krylov",
       "reason": "rational Krylov/MOR restamp after RAS \u2014 reduced-order residual vs DirectLU, not gold",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967795,
+      "t": 1788048341.3669553,
       "kind": "plan_step",
       "level": "physical_catalog",
       "reason": "measure one AutoDMP util/density point with GPL (not F0-only RUDY)",
       "scope": "region"
     },
     {
-      "t": 1788047909.19678,
+      "t": 1788048341.3669558,
       "kind": "plan_step",
       "level": "f2_region",
       "reason": "IR hotspot region r31 \u2014 OpenROAD density cap on that bin, not more ABC, not a chip restart",
@@ -22145,7 +22422,7 @@
       "region": "r31"
     },
     {
-      "t": 1788047909.1967804,
+      "t": 1788048341.3669562,
       "kind": "plan_step",
       "level": "f4_region_extract",
       "reason": "write_pg_spice under the r31 density cap \u2014 new R-graph, not the unconstrained extract, not gold",
@@ -22153,147 +22430,154 @@
       "region": "r31"
     },
     {
-      "t": 1788047909.1967812,
+      "t": 1788048341.3669567,
       "kind": "plan_step",
       "level": "f4_extract",
       "reason": "write_pg_spice after place_pins+GPL+DP+pdngen on the F1 incumbent \u2014 new R-graph, not the finish mesh, not gold",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967814,
+      "t": 1788048341.3669574,
       "kind": "plan_step",
       "level": "pdn",
       "reason": "Solver A restamp on the named extract (c_decap/pkg L) \u2014 not gold, not finish",
       "scope": "chip"
     },
     {
-      "t": 1788047909.1967816,
+      "t": 1788048341.3669577,
       "kind": "plan_step",
       "level": "f4_activity",
       "reason": "OpenSTA report_arrival on the attributed host \u2014 t50 for I(t), not the synth extract STA, not a VCD remap",
       "scope": "net"
     },
     {
-      "t": 1788047909.196782,
+      "t": 1788048341.366958,
       "kind": "plan_step",
       "level": "f4_host_extract",
       "reason": "write_pg_spice on the attributed host netlist \u2014 host R-graph, not the synth F1 extract, not gold",
       "scope": "net"
     },
     {
-      "t": 1788047909.1967824,
+      "t": 1788048341.3669581,
       "kind": "plan_step",
       "level": "f4_host_region",
       "reason": "host IR bin \u2260 gold/candidate bin \u2014 write_pg_spice under a density cap on the host netlist, not gold rXY on synth F1, not more ABC",
       "scope": "region"
     },
     {
-      "t": 1788047909.1967826,
+      "t": 1788048341.3669589,
       "kind": "plan_step",
       "level": "f4_scale",
       "reason": "I(t)\u00d7P_F3/P_base of the attributed host (port-steer/port-net/net/cell, else F1) on the host extract mesh (else candidate) \u2014 not synth-only, not a VCD remap; IR feedback to the cone, no chip restart",
       "scope": "logic_cone"
     },
     {
-      "t": 1788047909.1967828,
+      "t": 1788048341.366959,
       "kind": "plan_step",
       "level": "ir_steer",
       "reason": "F4 IR residual loop: winning decap on the region mesh, then unused pkg L on the candidate \u2014 inspect after each shot, not a mixed vector",
       "scope": "region"
     },
     {
-      "t": 1788047909.1967833,
+      "t": 1788048341.3669593,
       "kind": "plan_step",
       "level": "host_ir_steer",
       "reason": "F4 host-region residual loop: winning family on the host-region mesh, then unused pkg L on the unconstrained host \u2014 not candidate IR-steer, not gold rXY, not ABC",
       "scope": "region"
     },
     {
-      "t": 1788047909.1967835,
+      "t": 1788048341.3669596,
       "kind": "plan_step",
       "level": "f4_scale_win",
       "reason": "I(t)\u00d7P_F3/P_base of the attributed host on the winning host PDN point after host IR-steer \u2014 not the unconstrained first I-scale, not a VCD remap",
       "scope": "region"
     },
     {
-      "t": 1788047909.1967838,
+      "t": 1788048341.36696,
       "kind": "plan_step",
       "level": "ir_cell",
       "reason": "I-scale-win IR hotspot \u2192 nearest ODB instances (geometric join) \u2192 module-scoped drive-up \u2014 not STA-path cell size-up, not ABC, not a VCD remap",
       "scope": "cell"
     },
     {
-      "t": 1788047909.196784,
+      "t": 1788048341.3669603,
       "kind": "plan_step",
       "level": "ir_cell_extract",
       "reason": "write_pg_spice on the IR-cell-sized netlist \u2014 residual vs the unconstrained host extract, not STA-only, not gold, not ABC",
       "scope": "cell"
     },
     {
-      "t": 1788047909.1967845,
+      "t": 1788048341.3669605,
       "kind": "plan_step",
       "level": "ir_cell_pdn",
       "reason": "IR-cell 1\u00d7 residual chooses the winning PDN family on the sized mesh \u2014 not host IR-steer, not a flattened cell+decap vector, not ABC",
       "scope": "pdn"
     },
     {
-      "t": 1788047909.1967847,
+      "t": 1788048341.366961,
       "kind": "plan_step",
       "level": "ir_cell_region",
       "reason": "IR-cell 1\u00d7 hotspot bin \u2260 host bin and seq-heavy \u2014 density cap on the sized netlist, not more combo size-up, not gold rXY, not ABC",
       "scope": "region"
     },
     {
-      "t": 1788047909.1967852,
+      "t": 1788048341.3669615,
       "kind": "plan_step",
       "level": "ir_cell_region_pdn",
       "reason": "IR-cell-region |\u0394| \u2265 1 mV chooses the winning PDN family on the capped sized mesh \u2014 not host IR-steer, not a flattened cell+decap vector",
       "scope": "pdn"
     },
     {
-      "t": 1788047909.1967854,
+      "t": 1788048341.3669617,
       "kind": "plan_step",
       "level": "f4_scale_champ",
       "reason": "I-scale-champ: I(t)\u00d7P on winning_ir_pdn (IR-cell-region-PDN mesh) \u2014 not I-scale-win on the stale host-win mesh, not host arrivals",
       "scope": "pdn"
     },
     {
-      "t": 1788047909.19704,
+      "t": 1788048341.366962,
+      "kind": "plan_step",
+      "level": "ir_cell_champ",
+      "reason": "I-scale-champ IR hotspot \u2192 nearest ODB instances on the champion extract \u2192 module-scoped drive-up \u2014 not the first ctrl IR-cell, not STA-path size-up, not ABC, not VCD",
+      "scope": "cell"
+    },
+    {
+      "t": 1788048341.3672233,
       "kind": "acquire",
       "fidelity": "F1_CTRL_CONE",
       "pay": false,
       "why": "ctrl-cone ABC shot already spent"
     },
     {
-      "t": 1788047909.1970434,
+      "t": 1788048341.367227,
       "kind": "acquire",
       "fidelity": "F1_SYNTH",
       "pay": false,
       "why": "synthesis F1 already measured"
     },
     {
-      "t": 1788047909.1970484,
+      "t": 1788048341.367232,
       "kind": "acquire",
       "fidelity": "CELL_SIZE",
       "pay": false,
       "why": "cell-local size shot already spent"
     },
     {
-      "t": 1788047909.1970527,
+      "t": 1788048341.3672366,
       "kind": "acquire",
       "fidelity": "NET_BUF",
       "pay": false,
       "why": "net-local buffer shot already spent"
     },
     {
-      "t": 1788047909.197057,
+      "t": 1788048341.3672416,
       "kind": "acquire",
       "fidelity": "NET_PORT",
       "pay": false,
       "why": "port-net buffer shot already spent"
     },
     {
-      "t": 1788047909.2166443,
+      "t": 1788048341.3883762,
       "kind": "evaluate",
       "id": "f459158674ff",
       "level": "physical",
@@ -22304,7 +22588,7 @@
       "congestion": 0.6254339471248483
     },
     {
-      "t": 1788047909.2399192,
+      "t": 1788048341.4094927,
       "kind": "evaluate",
       "id": "f6c4c1196268",
       "level": "physical",
@@ -22315,7 +22599,7 @@
       "congestion": 0.6843306125415817
     },
     {
-      "t": 1788047909.2685754,
+      "t": 1788048341.428672,
       "kind": "evaluate",
       "id": "dab9249760f4",
       "level": "physical",
@@ -22326,7 +22610,7 @@
       "congestion": 0.627166124373926
     },
     {
-      "t": 1788047909.286981,
+      "t": 1788048341.446692,
       "kind": "evaluate",
       "id": "a12e7be8d598",
       "level": "physical",
@@ -22337,56 +22621,56 @@
       "congestion": 0.5826939215921353
     },
     {
-      "t": 1788047909.2869923,
+      "t": 1788048341.4467037,
       "kind": "acquire",
       "fidelity": "F2_GPL",
       "pay": false,
       "why": "GPL shot already spent this run"
     },
     {
-      "t": 1788047909.2870078,
+      "t": 1788048341.4467196,
       "kind": "acquire",
       "fidelity": "F3",
       "pay": false,
       "why": "F3 STA budget exhausted"
     },
     {
-      "t": 1788047909.2870128,
+      "t": 1788048341.446725,
       "kind": "acquire",
       "fidelity": "F2_GRT",
       "pay": false,
       "why": "GRT shot already spent this run"
     },
     {
-      "t": 1788047909.2870228,
+      "t": 1788048341.4467344,
       "kind": "acquire",
       "fidelity": "F3_SDF",
       "pay": false,
       "why": "F3 SDF-GRT shot already spent"
     },
     {
-      "t": 1788047909.2870321,
+      "t": 1788048341.4467432,
       "kind": "acquire",
       "fidelity": "F5",
       "pay": false,
       "why": "F5 DRT/RCX shot already spent"
     },
     {
-      "t": 1788047909.28704,
+      "t": 1788048341.4467525,
       "kind": "acquire",
       "fidelity": "F3_SPEF",
       "pay": false,
       "why": "F3 SPEF shot already spent"
     },
     {
-      "t": 1788047909.2870457,
+      "t": 1788048341.446758,
       "kind": "acquire",
       "fidelity": "F5_CTS",
       "pay": false,
       "why": "F5 CTS shot already spent"
     },
     {
-      "t": 1788047909.287156,
+      "t": 1788048341.4468732,
       "kind": "acquire",
       "fidelity": "F5_LOCAL",
       "pay": false,
@@ -22398,7 +22682,7 @@
       "n": 1
     },
     {
-      "t": 1788047909.287266,
+      "t": 1788048341.4469802,
       "kind": "acquire",
       "fidelity": "RESIDUAL_STEER",
       "pay": false,
@@ -22433,14 +22717,14 @@
       }
     },
     {
-      "t": 1788047909.2872732,
+      "t": 1788048341.446988,
       "kind": "acquire",
       "fidelity": "F5_PORT",
       "pay": false,
       "why": "F5 port-net SPEF shot already spent"
     },
     {
-      "t": 1788047909.2885458,
+      "t": 1788048341.4483185,
       "kind": "acquire",
       "fidelity": "PORT_STEER",
       "pay": false,
@@ -22467,91 +22751,91 @@
       }
     },
     {
-      "t": 1788047909.2885962,
+      "t": 1788048341.4483683,
       "kind": "acquire",
       "fidelity": "F2_GPL_CATALOG",
       "pay": false,
       "why": "physical catalog GPL shot already spent"
     },
     {
-      "t": 1788047909.288602,
+      "t": 1788048341.4483743,
       "kind": "acquire",
       "fidelity": "F2_REGION",
       "pay": false,
       "why": "region GPL shot already spent"
     },
     {
-      "t": 1788047909.2886102,
+      "t": 1788048341.4483826,
       "kind": "acquire",
       "fidelity": "F4_EXTRACT",
       "pay": false,
       "why": "candidate PDN extract already spent this run"
     },
     {
-      "t": 1788047909.2886157,
+      "t": 1788048341.448388,
       "kind": "acquire",
       "fidelity": "F4_REGION_EXTRACT",
       "pay": false,
       "why": "region PDN extract already spent"
     },
     {
-      "t": 1788047909.2887237,
+      "t": 1788048341.4485047,
       "kind": "acquire",
       "fidelity": "F4_PDN",
       "pay": false,
       "why": "PDN catalog F4 shot already spent"
     },
     {
-      "t": 1788047909.2887287,
+      "t": 1788048341.44851,
       "kind": "acquire",
       "fidelity": "F4_AMG",
       "pay": false,
       "why": "AMG F4 scout already spent"
     },
     {
-      "t": 1788047909.2887344,
+      "t": 1788048341.4485161,
       "kind": "acquire",
       "fidelity": "F4_RAS",
       "pay": false,
       "why": "RAS F4 scout already spent"
     },
     {
-      "t": 1788047909.2887397,
+      "t": 1788048341.4485211,
       "kind": "acquire",
       "fidelity": "F4_KRYLOV",
       "pay": false,
       "why": "Krylov F4 scout already spent"
     },
     {
-      "t": 1788047909.2887444,
+      "t": 1788048341.4485269,
       "kind": "acquire",
       "fidelity": "F3_HOST_ARRIVALS",
       "pay": false,
       "why": "host arrivals shot already spent"
     },
     {
-      "t": 1788047909.28875,
+      "t": 1788048341.4485323,
       "kind": "acquire",
       "fidelity": "F4_HOST_EXTRACT",
       "pay": false,
       "why": "host PDN extract already spent"
     },
     {
-      "t": 1788047909.288755,
+      "t": 1788048341.4485366,
       "kind": "acquire",
       "fidelity": "F4_HOST_REGION",
       "pay": false,
       "why": "host-region PDN extract already spent"
     },
     {
-      "t": 1788047909.28876,
+      "t": 1788048341.4485414,
       "kind": "acquire",
       "fidelity": "F4_ISCALE",
       "pay": false,
       "why": "I(t)-scale F4 shot already spent"
     },
     {
-      "t": 1788047909.2888403,
+      "t": 1788048341.44862,
       "kind": "acquire",
       "fidelity": "IR_STEER",
       "pay": false,
@@ -22559,7 +22843,7 @@
       "steer": null
     },
     {
-      "t": 1788047909.288898,
+      "t": 1788048341.448677,
       "kind": "acquire",
       "fidelity": "HOST_IR_STEER",
       "pay": false,
@@ -22583,28 +22867,28 @@
       }
     },
     {
-      "t": 1788047909.2889037,
+      "t": 1788048341.448682,
       "kind": "acquire",
       "fidelity": "F4_ISCALE_WIN",
       "pay": false,
       "why": "winning-host I-scale shot already spent"
     },
     {
-      "t": 1788047909.2889087,
+      "t": 1788048341.4486868,
       "kind": "acquire",
       "fidelity": "IR_CELL",
       "pay": false,
       "why": "IR-hotspot cell size shot already spent"
     },
     {
-      "t": 1788047909.288914,
+      "t": 1788048341.4486923,
       "kind": "acquire",
       "fidelity": "F4_IR_CELL_EXTRACT",
       "pay": false,
       "why": "IR-cell PDN extract already spent"
     },
     {
-      "t": 1788047909.2889435,
+      "t": 1788048341.4487216,
       "kind": "acquire",
       "fidelity": "IR_CELL_PDN",
       "pay": false,
@@ -22612,7 +22896,7 @@
       "steer": null
     },
     {
-      "t": 1788047909.2889605,
+      "t": 1788048341.4487383,
       "kind": "acquire",
       "fidelity": "F4_IR_CELL_REGION",
       "pay": false,
@@ -22633,7 +22917,7 @@
       }
     },
     {
-      "t": 1788047909.2889864,
+      "t": 1788048341.4487655,
       "kind": "acquire",
       "fidelity": "IR_CELL_REGION_PDN",
       "pay": false,
@@ -22641,35 +22925,64 @@
       "steer": null
     },
     {
-      "t": 1788047909.2895095,
+      "t": 1788048341.448771,
       "kind": "acquire",
       "fidelity": "F4_ISCALE_CHAMP",
-      "pay": true,
-      "why": "I(t)\u00d7P_F3/P_base of the IR-cell host on champion decap_200f 3.921 mV \u2014 not I-scale-win, not host arrivals, not VCD"
+      "pay": false,
+      "why": "champion I-scale shot already spent"
     },
     {
-      "t": 1788047914.7267606,
+      "t": 1788048341.449836,
+      "kind": "acquire",
+      "fidelity": "IR_CELL_CHAMP",
+      "pay": true,
+      "why": "I-scale-champ hotspot r10 combo 0.86 joins dpath \u2014 not the first ctrl IR-cell, not STA-path size-up, not ABC, not VCD",
+      "steer": {
+        "level": "ir_cell_champ",
+        "cells": [
+          "dpath/a_reg/_078_",
+          "dpath/b_mux/_45_",
+          "dpath/a_reg/_076_",
+          "dpath/a_reg/_077_",
+          "dpath/b_mux/_46_"
+        ],
+        "modules": [
+          "dpath"
+        ],
+        "cones": [
+          "dpath",
+          "dpath/a_reg",
+          "dpath/b_mux"
+        ],
+        "region": "r10",
+        "combo_frac": 0.8607399049762638,
+        "extract_id": "b7cc602e6e93",
+        "reason": "I-scale-champ hotspot r10 combo 0.86 joins dpath \u2014 not the first ctrl IR-cell, not STA-path size-up, not ABC, not VCD",
+        "via": "active_f4_ir_cell_champ",
+        "not": "a flattened cell+I-scale vector / host-win join"
+      }
+    },
+    {
+      "t": 1788048341.701201,
       "kind": "evaluate",
-      "id": "687b998e46ca",
-      "level": "pdn",
-      "fidelity": "F4",
-      "via": "f4_iscale_champ",
+      "id": "738df077afe4",
+      "level": "cell",
+      "fidelity": "F3",
+      "via": "active_f4_ir_cell_champ",
       "parent": "eb36579147a7",
-      "host_level": "cell",
-      "host_source": "cell_size_ir",
-      "champ_source": "decap_200f",
-      "i_scale": 4.2142857142857135,
-      "extract_id": "b7cc602e6e93",
-      "c_decap": 2e-13,
-      "sta_via": "extract",
-      "droop_mv": 16.5227364857512,
-      "residual_vs_iscale_win_mv": -0.40161411604855246,
+      "modules": [
+        "dpath"
+      ],
+      "region": "r10",
+      "n_changed": 5,
+      "wns_ns": -0.3016,
+      "area_um2": 568.708,
       "gold": false,
       "status": "ok",
-      "reason": "I(t)\u00d7P_F3/P_base of the IR-cell host on champion decap_200f 3.921 mV \u2014 not I-scale-win, not host arrivals, not VCD"
+      "reason": "I-scale-champ hotspot r10 combo 0.86 joins dpath \u2014 not the first ctrl IR-cell, not STA-path size-up, not ABC, not VCD"
     }
   ],
-  "summary": "DSE 70 candidates \u00b7 F1 13 (arch 3) \u00b7 logic Pareto 10 \u00b7 best mapped area architecture/sub_twos_complement 407.512 \u00b5m\u00b2 \u00b7 ctrl-cone boils_rewrite_balance 474.012 \u00b5m\u00b2 \u00b7 synth abc_speed 618.982 \u00b5m\u00b2 \u00b7 cell size-up n=5 WNS=-0.119 ns \u00b7 IR-cell size-up n=5 ctrl WNS=-0.297 ns \u00b7 IR-cell extract 14.008 mV \u0394=+3.938 n_r=3424 (not gold) \u00b7 IR-cell-PDN decap_200f on 2930904f0d3c 5.172 mV \u00b7 IR-cell-region 9.356 mV \u0394=-4.652 bin=r00 (not gold) \u00b7 IR-cell-region-PDN decap_200f on b7cc602e6e93 3.921 mV vs host-win -0.095 \u00b7 net BUF n=4 WNS=-0.207 ns \u00b7 port-net BUF n=2 WNS=-0.228 ns \u00b7 port-steer BUF n=4 WNS=-0.309 ns \u00b7 best ideal WNS -0.114 ns (orfs_abc_speed) \u00b7 F5 SPEF WNS -0.641 ns \u00b7 F5-CTS SPEF WNS -0.648 ns (propagated, n_clkbuf=6) \u00b7 F5-local SPEF WNS -0.232 ns (net vs ideal -0.207) \u00b7 F5-port SPEF WNS -0.332 ns vs ideal -0.228 \u00b7 residual-steer routing \u00b7 IR-steer decap_200f on 38390e4d52d4 7.507 mV; pkg_l_100p on a8aa3cbc8318 16.346 mV \u00b7 host-IR-steer decap_200f on b4d1c9b000fd 4.016 mV; pkg_l_100p on 14c4b674baac 9.936 mV \u00b7 host arrivals net_buffer_spef n_inst=499 \u00b7 I-scale net_buffer_spef \u00d74.214 42.436 mV sta=f4_host_arrivals \u00b7 I-scale-win net_buffer_spef \u00d74.214 16.924 mV on b4d1c9b000fd \u00b7 I-scale-champ cell_size_ir \u00d74.214 16.523 mV on b7cc602e6e93 vs I\u00d7w -0.402 \u00b7 IR cone dpath \u00b7 F4 host-region extract 8.511 mV bin=r02 n_r=3395 (not gold) \u00b7 RAS residual 16.616 mV (not gold) \u00b7 Krylov/MOR residual 16.632 mV m=92 (not gold)",
+  "summary": "DSE 71 candidates \u00b7 F1 13 (arch 3) \u00b7 logic Pareto 10 \u00b7 best mapped area architecture/sub_twos_complement 407.512 \u00b5m\u00b2 \u00b7 ctrl-cone boils_rewrite_balance 474.012 \u00b5m\u00b2 \u00b7 synth abc_speed 618.982 \u00b5m\u00b2 \u00b7 cell size-up n=5 WNS=-0.119 ns \u00b7 IR-cell size-up n=5 ctrl WNS=-0.297 ns \u00b7 IR-cell-champ size-up n=5 dpath WNS=-0.302 ns \u00b7 IR-cell extract 14.008 mV \u0394=+3.938 n_r=3424 (not gold) \u00b7 IR-cell-PDN decap_200f on 2930904f0d3c 5.172 mV \u00b7 IR-cell-region 9.356 mV \u0394=-4.652 bin=r00 (not gold) \u00b7 IR-cell-region-PDN decap_200f on b7cc602e6e93 3.921 mV vs host-win -0.095 \u00b7 net BUF n=4 WNS=-0.207 ns \u00b7 port-net BUF n=2 WNS=-0.228 ns \u00b7 port-steer BUF n=4 WNS=-0.309 ns \u00b7 best ideal WNS -0.114 ns (orfs_abc_speed) \u00b7 F5 SPEF WNS -0.641 ns \u00b7 F5-CTS SPEF WNS -0.648 ns (propagated, n_clkbuf=6) \u00b7 F5-local SPEF WNS -0.232 ns (net vs ideal -0.207) \u00b7 F5-port SPEF WNS -0.332 ns vs ideal -0.228 \u00b7 residual-steer routing \u00b7 IR-steer decap_200f on 38390e4d52d4 7.507 mV; pkg_l_100p on a8aa3cbc8318 16.346 mV \u00b7 host-IR-steer decap_200f on b4d1c9b000fd 4.016 mV; pkg_l_100p on 14c4b674baac 9.936 mV \u00b7 host arrivals net_buffer_spef n_inst=499 \u00b7 I-scale net_buffer_spef \u00d74.214 42.436 mV sta=f4_host_arrivals \u00b7 I-scale-win net_buffer_spef \u00d74.214 16.924 mV on b4d1c9b000fd \u00b7 I-scale-champ cell_size_ir \u00d74.214 16.523 mV on b7cc602e6e93 vs I\u00d7w -0.402 \u00b7 IR cone dpath \u00b7 F4 host-region extract 8.511 mV bin=r02 n_r=3395 (not gold) \u00b7 RAS residual 16.616 mV (not gold) \u00b7 Krylov/MOR residual 16.632 mV m=92 (not gold)",
   "catalog": [
     "liberty_default",
     "liberty_fast",
