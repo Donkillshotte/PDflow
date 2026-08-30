@@ -47,6 +47,8 @@ def main() -> int:
           "aes has no dpath/ctrl cones")
     check(aes.top == "aes_cipher_top", f"aes top is aes_cipher_top, got {aes.top}")
     check(aes.rtl.is_file() and len(aes.rtl_files) == 4, f"aes cipher-top closure is 4 files, got {aes.rtl_files}")
+    check(aes.clk_period_ns == 0.82 and gcd.clk_period_ns == 0.46,
+          f"clock periods stay design-local, aes={aes.clk_period_ns} gcd={gcd.clk_period_ns}")
     check(aes.constraint.is_file() and "aes" in str(aes.constraint) and "gcd" not in str(aes.constraint),
           f"aes SDC is the 0.82 ns ORFS constraint, got {aes.constraint}")
     check(gcd.constraint.is_file() and "gcd" in str(gcd.constraint),
