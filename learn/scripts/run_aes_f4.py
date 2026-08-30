@@ -83,14 +83,15 @@ def main() -> int:
             density=0.55,
             timeout_s=240.0,
         )
+    n_r = int(ext.get("n_r") or 0)
+    spice_ok = bool(ext.get("spice") and Path(str(ext.get("spice"))).is_file() and n_r)
     print(
-        f"extract status={ext.get('status')} n_r={ext.get('n_r')} n_i={ext.get('n_i')} "
+        f"extract spice_ok={spice_ok} n_r={n_r} n_i={ext.get('n_i')} "
         f"sdc={ext.get('sdc')} cost={ext.get('cost_s')} fail={ext.get('reason')}"
     )
-    n_r = int(ext.get("n_r") or 0)
     dyn: dict = {}
     solver = "direct" if n_r and n_r <= MAX_R_DIRECT else "amg"
-    if ext.get("status") == "ok" and n_r:
+    if spice_ok:
         if n_r > MAX_R_DIRECT:
             print(f"n_r={n_r} > {MAX_R_DIRECT} — paying AMG, not DirectLU, period={spec.clk_period_ns} ns")
         dyn = solve_f4(
@@ -155,6 +156,8 @@ def main() -> int:
             "f4_dynamic_ir_mv": c.qor.dynamic_ir_mv,
             "f4_n_r": n_r,
             "f4_sdc": ext.get("sdc"),
+            "f4_solver": solver,
+            "f4_clk_period_ns": spec.clk_period_ns,
             "f4_status": c.status,
             "f4_failure": c.failure,
             "not": [
