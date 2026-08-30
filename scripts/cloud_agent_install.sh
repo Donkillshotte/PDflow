@@ -27,7 +27,8 @@ sudo apt-get install -y -qq \
   build-essential cmake g++-13 git curl ca-certificates pkg-config \
   libeigen3-dev libomp-dev \
   tcl8.6-dev swig bison flex libreadline-dev tcl-tclreadline \
-  automake autotools-dev zlib1g-dev libffi-dev python3-dev tcl-dev \
+  automake autotools-dev libtool libtool-bin m4 \
+  zlib1g-dev libffi-dev python3-dev tcl-dev \
   python3-numpy python3-scipy \
   iverilog ngspice \
   xvfb
