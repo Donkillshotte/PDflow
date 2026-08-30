@@ -296,10 +296,13 @@ def evaluate_f4_static_mesh(
         "i_scale": 1.0,
         "parent_extract_id": parent_extract_id,
         "parent_id": parent_id,
+        "script": "write_pg_spice_bumps",
     }
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
-        return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
+        hit = next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
+        if hit.status == "ok":
+            return hit
     cid = DesignMemory.new_id()
     out_dir = REPO / "learn" / "sim" / "dse" / "extracts" / cid
     ext = extract_pdn_bumps(

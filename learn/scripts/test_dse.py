@@ -2920,6 +2920,23 @@ def main() -> int:
     check(not pay_sm2, f"static mesh is a single shot ({why_sm2})")
     spec_sm = next_static_mesh_spec(mem_hr)
     check(spec_sm is not None and spec_sm["name"] == "bumps_80", f"next_static_mesh_spec proposes bumps_80, got {spec_sm}")
+    mem_hr.add(
+        Candidate(
+            id="smfail",
+            design_id="gcd",
+            parent_id="icreg",
+            level="pdn",
+            knobs={"source": "f4_static_mesh_extract", "name": "bumps_80", "bump_dx": 80.0, "bump_dy": 80.0},
+            knobs_fp="smfail",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(fidelity="F4"),
+            cost_s=0.2,
+            status="fail",
+        )
+    )
+    check(next_static_mesh_spec(mem_hr) is not None, "a failed bump extract does not consume the static-mesh catalog")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

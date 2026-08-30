@@ -87,7 +87,7 @@ def measured_static_mesh_keys(mem: DesignMemory) -> set[tuple[float, float]]:
     keys: set[tuple[float, float]] = set()
     for c in mem.by_level("pdn"):
         k = c.knobs or {}
-        if k.get("source") != "f4_static_mesh_extract":
+        if c.status != "ok" or k.get("source") != "f4_static_mesh_extract":
             continue
         if k.get("bump_dx") is None or k.get("bump_dy") is None:
             continue
