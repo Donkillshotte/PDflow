@@ -29,10 +29,25 @@ class DesignSpec:
     f1_equiv: bool = True
     f1_timeout_s: float = 60.0
     f1_ready: bool = True
+    f3_timeout_s: float = 20.0
 
     @property
     def orfs_design(self) -> str:
         return self.orfs_name or self.id
+
+    @property
+    def constraint(self) -> Path:
+        """ORFS SDC for this design — never silently reuse gcd 0.46 ns."""
+        return (
+            REPO
+            / "tools"
+            / "OpenROAD-flow-scripts"
+            / "flow"
+            / "designs"
+            / self.platform
+            / self.orfs_design
+            / "constraint.sdc"
+        )
 
     def has_cone(self, name: str) -> bool:
         return name in self.cones
@@ -66,6 +81,7 @@ DESIGNS: dict[str, DesignSpec] = {
         include_dirs=(ORFS_SRC / "aes",),
         f1_equiv=False,
         f1_timeout_s=240.0,
+        f3_timeout_s=60.0,
     ),
     "ibex": DesignSpec(
         id="ibex",

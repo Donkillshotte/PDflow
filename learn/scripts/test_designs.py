@@ -47,6 +47,10 @@ def main() -> int:
           "aes has no dpath/ctrl cones")
     check(aes.top == "aes_cipher_top", f"aes top is aes_cipher_top, got {aes.top}")
     check(aes.rtl.is_file() and len(aes.rtl_files) == 4, f"aes cipher-top closure is 4 files, got {aes.rtl_files}")
+    check(aes.constraint.is_file() and "aes" in str(aes.constraint) and "gcd" not in str(aes.constraint),
+          f"aes SDC is the 0.82 ns ORFS constraint, got {aes.constraint}")
+    check(gcd.constraint.is_file() and "gcd" in str(gcd.constraint),
+          f"GCD SDC stays the 0.46 ns ORFS constraint, got {gcd.constraint}")
     check(all(p.name != "aes_inv_cipher_top.v" for p in aes.rtl_files), "aes F1 does not pull the inverse-cipher top")
     ibex = resolve("ibex")
     check(ibex.top == "ibex_core" and ibex.hdl == "systemverilog" and not ibex.f1_ready,

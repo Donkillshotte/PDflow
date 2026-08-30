@@ -18,15 +18,17 @@ different top and is not mixed into `aes`.
 
 F1 for aes reads **four** Verilog files (cipher + key_expand + sbox + rcon)
 with `-I` so `` `include "timescale.v" `` resolves. Equiv is skipped
-(`f1_equiv=False`); timeout 240s. ibex stays GAP until a slang frontend
-exists — not a fake Verilog remap.
+(`f1_equiv=False`); timeout 240s. F3 / arrivals use `DesignSpec.constraint`
+(aes 0.82 ns, gcd 0.46 ns) — never a silent GCD SDC borrow. ibex stays GAP
+until a slang frontend exists — not a fake Verilog remap.
 
 ```python
 from dse.designs import resolve
 resolve("aes").rtl  # ORFS nangate45 aes_cipher_top
 ```
 
-Live aes F1 + F2-fast (separate memory, never FlowLab GCD / gold 45.298):
+Live aes F1 + F2-fast + F3 (aes 0.82 ns SDC) + budgeted GPL
+(separate memory, never FlowLab GCD / gold 45.298):
 
 ```bash
 python3 learn/scripts/run_aes_slice.py

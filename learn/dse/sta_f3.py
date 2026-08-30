@@ -45,11 +45,13 @@ def available() -> bool:
 def evaluate_sta(
     verilog: Path,
     *,
-    top: str = "gcd",
+    top: str | None = None,
+    sdc: Path | None = None,
+    design_id: str = "gcd",
     spef: Path | None = None,
     sdf: Path | None = None,
     propagated_clock: bool = False,
-    timeout_s: float = 20.0,
+    timeout_s: float | None = None,
 ) -> dict:
     """WNS / TNS / power on the candidate. Ideal nets unless SPEF/SDF is given.
 
@@ -62,9 +64,23 @@ def evaluate_sta(
     """
     if not available():
         return {"status": "GAP", "reason": "opensta or liberty/sdc missing", "via": "opensta_f3"}
+    from .designs import resolve
+
+    spec = resolve(design_id)
+    top = top or spec.top
+    sdc_path = Path(sdc) if sdc else spec.constraint
+    timeout_s = float(timeout_s) if timeout_s is not None else float(spec.f3_timeout_s)
     verilog = Path(verilog)
     if not verilog.is_file():
         return {"status": "fail", "reason": f"missing {verilog}", "via": "opensta_f3"}
+    if not sdc_path.is_file():
+        return {
+            "status": "GAP",
+            "reason": f"{design_id} SDC missing — not borrowing gcd 0.46 ns",
+            "via": "opensta_f3",
+            "design_id": design_id,
+            "top": top,
+        }
     anno = ""
     interconnect = "ideal"
     if spef and Path(spef).is_file():
@@ -79,7 +95,7 @@ def evaluate_sta(
 read_liberty {LIB}
 read_verilog {verilog}
 link_design {top}
-read_sdc {SDC}
+read_sdc {sdc_path}
 {anno}
 {prop}
 report_wns -digits 4
@@ -119,6 +135,9 @@ puts DSE_STA_OK
     return {
         "status": "ok" if ok else "fail",
         "reason": None if ok else "sta_failed",
+        "design_id": design_id,
+        "top": top,
+        "sdc": str(sdc_path),
         "wns_ns": float(wns.group(1)) if wns else None,
         "tns_ns": float(tns.group(1)) if tns else None,
         "power_w": float(pwr.group(1)) if pwr else None,
@@ -168,6 +187,8 @@ def export_arrivals(
     verilog: Path,
     dest: Path,
     *,
+    design_id: str = "gcd",
+    sdc: Path | None = None,
     spef: Path | None = None,
     timeout_s: float = 60.0,
 ) -> dict:
@@ -180,9 +201,19 @@ def export_arrivals(
         return {"status": "fail", "reason": f"missing {verilog}", "via": "opensta_arrivals"}
     dest.parent.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
+    from .designs import resolve
+
+    spec = resolve(design_id)
+    sdc_path = Path(sdc) if sdc else spec.constraint
+    if not sdc_path.is_file():
+        return {
+            "status": "GAP",
+            "reason": f"{design_id} SDC missing — not borrowing gcd 0.46 ns",
+            "via": "opensta_arrivals",
+        }
     env["STA_LIB"] = str(LIB)
     env["STA_V"] = str(verilog)
-    env["STA_SDC"] = str(SDC)
+    env["STA_SDC"] = str(sdc_path)
     env["STA_OUT"] = str(dest)
     if spef and Path(spef).is_file():
         env["STA_SPEF"] = str(spef)

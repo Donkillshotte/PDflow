@@ -756,7 +756,7 @@ def evaluate_host_arrivals(
         return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
     cid = DesignMemory.new_id()
     dest = REPO / "learn" / "sim" / "dse" / "arrivals" / cid / "sta_arrivals.json"
-    arr = export_arrivals(Path(mapped), dest)
+    arr = export_arrivals(Path(mapped), dest, design_id=design_id)
     n_inst = int(arr.get("n_inst") or 0)
     # Hierarchical hosts used to report only top-level portbufs (n=2).
     # Leaf coverage is required — two port pins are not a t50 teacher.
@@ -990,7 +990,7 @@ def evaluate_f4_extract(
         arr_dest = out_dir / "sta_arrivals.json"
         sta_p = Path(sta) if sta and Path(sta).is_file() else None
         if sta_p is None:
-            arr = export_arrivals(Path(mapped), arr_dest)
+            arr = export_arrivals(Path(mapped), arr_dest, design_id=design_id)
             sta_p = arr_dest if arr.get("status") == "ok" and arr_dest.is_file() else None
             if sta_p:
                 ext["n_sta_inst"] = arr.get("n_inst")
@@ -1454,6 +1454,8 @@ def evaluate_f1_abc(
             artifacts["mapped_hier_v"] = str(hdest)
             artifacts["hierarchy"] = True
             artifacts["cone"] = knobs.get("cone") or knobs.get("scope")
+    if n_cells is None:
+        n_cells = artifacts.get("n_cells")
     q = QoR(
         area_um2=area,
         n_cells=n_cells,
@@ -1710,8 +1712,10 @@ def evaluate_f2_gpl(
     fp = knobs_fp("physical", knobs)
     if fp in mem.seen_knobs("physical"):
         return next(c for c in mem.by_level("physical") if c.knobs_fp == fp)
+    spec = resolve(design_id)
     gpl = evaluate_gpl(
         Path(mapped),
+        top=spec.top,
         util=util,
         density=density,
         timeout_s=timeout_s,
@@ -1777,7 +1781,7 @@ def evaluate_f3_sta(
     fp = knobs_fp(parent.level, knobs)
     if fp in mem.seen_knobs(parent.level):
         return next(c for c in mem.by_level(parent.level) if c.knobs_fp == fp)
-    sta = evaluate_sta(sta_v)
+    sta = evaluate_sta(sta_v, design_id=design_id)
     from .attribute import attribute_sta
 
     attr = attribute_sta(sta, inherit=parent.attr or {})
@@ -1843,6 +1847,9 @@ def evaluate_cell_size(
     source=cell_size_ir_winning_region_leftover2 is leftover leftover leftover cells on the
     leftover leftover PDN join (not leftover leftover flatten, not leftover-combo).
     """
+    spec = resolve(design_id)
+    if top == "gcd":
+        top = spec.top
     from .attribute import attribute_sta
     from .cell_space import upsize_file
     from .sta_f3 import evaluate_sta
@@ -1923,7 +1930,7 @@ def evaluate_cell_size(
                 note="cell-local upsize found no X1/X2/X4 instance on the path",
             )
         )
-    sta = evaluate_sta(dest)
+    sta = evaluate_sta(dest, design_id=design_id)
     area = n_cells = None
     if dest.is_file() and NANGATE_LIB.is_file():
         try:
@@ -2020,6 +2027,9 @@ def evaluate_net_buffer(
     source: str = "net_buffer",
 ) -> Candidate | None:
     """Insert BUF on attributed worst-path hops. Not ABC, not a cell drive-up."""
+    spec = resolve(design_id)
+    if top == "gcd":
+        top = spec.top
     from .attribute import attribute_sta
     from .net_space import BUF_TYPE, buffer_file
     from .sta_f3 import evaluate_sta
@@ -2082,7 +2092,7 @@ def evaluate_net_buffer(
                 note="net-local buffer found no intra-module combo hop",
             )
         )
-    sta = evaluate_sta(dest)
+    sta = evaluate_sta(dest, design_id=design_id)
     area = n_cells = None
     if dest.is_file() and NANGATE_LIB.is_file():
         try:
@@ -2148,6 +2158,9 @@ def evaluate_net_port_buffer(
     top: str = "gcd",
 ) -> Candidate | None:
     """Insert BUF on attributed cross-module port nets. Not intra-module hops."""
+    spec = resolve(design_id)
+    if top == "gcd":
+        top = spec.top
     from .attribute import attribute_sta
     from .net_space import BUF_TYPE, buffer_port_file, hop_is_block_port, hop_is_cross_module
     from .sta_f3 import evaluate_sta
@@ -2212,7 +2225,7 @@ def evaluate_net_port_buffer(
                 note="port-net buffer found no ctrl↔dpath (or cross-submodule) hop",
             )
         )
-    sta = evaluate_sta(dest)
+    sta = evaluate_sta(dest, design_id=design_id)
     area = n_cells = None
     if dest.is_file() and NANGATE_LIB.is_file():
         try:
@@ -2362,7 +2375,7 @@ def evaluate_f3_sdf(
     fp = knobs_fp(parent.level, knobs)
     if fp in mem.seen_knobs(parent.level):
         return next(c for c in mem.by_level(parent.level) if c.knobs_fp == fp)
-    sta = evaluate_sta(Path(mapped), sdf=sdf_p)
+    sta = evaluate_sta(Path(mapped), sdf=sdf_p, design_id=design_id)
     from .attribute import attribute_sta
 
     attr = attribute_sta(sta, inherit=parent.attr or {})
@@ -2435,7 +2448,7 @@ def evaluate_f5_drt(
     )
     sta = {}
     if raw.get("status") == "ok" and raw.get("spef"):
-        sta = evaluate_sta(Path(mapped), spef=Path(raw["spef"]))
+        sta = evaluate_sta(Path(mapped), spef=Path(raw["spef"]), design_id=design_id)
         raw = dict(raw)
         raw["sta"] = sta
         raw["wns_ns"] = sta.get("wns_ns")
@@ -2523,7 +2536,7 @@ def evaluate_f5_local(
     )
     sta = {}
     if raw.get("status") == "ok" and raw.get("spef"):
-        sta = evaluate_sta(Path(mapped), spef=Path(raw["spef"]))
+        sta = evaluate_sta(Path(mapped), spef=Path(raw["spef"]), design_id=design_id)
         raw = dict(raw)
         raw["sta"] = sta
         raw["wns_ns"] = sta.get("wns_ns")
@@ -2621,7 +2634,7 @@ def evaluate_f5_cts(
     sta = {}
     sta_v = Path(raw["cts_v"]) if raw.get("cts_v") else Path(mapped)
     if raw.get("status") == "ok" and raw.get("spef"):
-        sta = evaluate_sta(sta_v, spef=Path(raw["spef"]), propagated_clock=True)
+        sta = evaluate_sta(sta_v, spef=Path(raw["spef"]), propagated_clock=True, design_id=design_id)
         raw = dict(raw)
         raw["sta"] = sta
         raw["wns_ns"] = sta.get("wns_ns")
@@ -2693,7 +2706,7 @@ def evaluate_f3_spef(
     fp = knobs_fp(parent.level, knobs)
     if fp in mem.seen_knobs(parent.level):
         return next(c for c in mem.by_level(parent.level) if c.knobs_fp == fp)
-    sta = evaluate_sta(Path(mapped), spef=spef_p)
+    sta = evaluate_sta(Path(mapped), spef=spef_p, design_id=design_id)
     from .attribute import attribute_sta
 
     attr = attribute_sta(sta, inherit=parent.attr or {})
