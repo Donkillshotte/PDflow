@@ -886,7 +886,7 @@ def evaluate_f4_extract(
         knobs["champ_cone"] = 1
         knobs["parent_extract_id"] = str((parent.knobs or {}).get("extract_id") or "")
     elif kind == "ir_cell_champ_cone_region":
-        from .active import ir_cell_champ_cone_extract_cand
+        from .active import ir_cell_champ_cone_extract_cand, ir_cell_champ_cone_region_extract_cand
 
         knobs["source"] = "f4_ir_cell_champ_cone_region_extract"
         knobs["name"] = f"extract_ir_cell_champ_cone_region_{host}"
@@ -899,9 +899,9 @@ def evaluate_f4_extract(
         knobs["x_dbu"] = x_dbu
         knobs["y_dbu"] = y_dbu
         knobs["region_density"] = region_density if region_density is not None else 0.30
-        ice_pe = ir_cell_champ_cone_extract_cand(mem)
+        prior = ir_cell_champ_cone_region_extract_cand(mem) or ir_cell_champ_cone_extract_cand(mem)
         knobs["parent_extract_id"] = (
-            str((ice_pe.knobs or {}).get("extract_id") or ice_pe.id) if ice_pe else ""
+            str((prior.knobs or {}).get("extract_id") or prior.id) if prior else ""
         )
     elif region or x_dbu is not None:
         knobs["source"] = "f4_region_extract"
@@ -1014,16 +1014,20 @@ def evaluate_f4_extract(
             attr["residual_vs"] = ice.id
             attr["residual_via"] = "ir_cell_champ_cone_vs_ir_cell_champ_extract"
     if kind == "ir_cell_champ_cone_region":
-        from .active import ir_cell_champ_cone_extract_cand
+        from .active import ir_cell_champ_cone_extract_cand, ir_cell_champ_cone_region_extract_cand
 
         attr["via"] = "f4_ir_cell_champ_cone_region_extract"
         attr["host_level"] = parent.level
         attr["host_source"] = parent.knobs.get("source") or parent.level
-        ice = ir_cell_champ_cone_extract_cand(mem)
-        if ice and ice.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
-            attr["residual_vs"] = ice.id
-            attr["residual_via"] = "ir_cell_champ_cone_region_vs_ir_cell_champ_cone_extract"
+        prior = ir_cell_champ_cone_region_extract_cand(mem) or ir_cell_champ_cone_extract_cand(mem)
+        if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
+            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
+            attr["residual_vs"] = prior.id
+            attr["residual_via"] = (
+                "ir_cell_champ_cone_region_vs_prior_region"
+                if (prior.knobs or {}).get("source") == "f4_ir_cell_champ_cone_region_extract"
+                else "ir_cell_champ_cone_region_vs_ir_cell_champ_cone_extract"
+            )
     kind_note = {
         "host": "host",
         "host_region": "host-region",

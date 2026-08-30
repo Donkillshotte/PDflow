@@ -1439,7 +1439,8 @@ def should_pay_ir_cell_champ_cone_region(
         return False, "wall budget would not cover leftover-cone-region write_pg_spice"
     if not steer or steer.get("level") != "ir_cell_champ_cone_region":
         return False, "no leftover-cone hotspot residual (need a seq-heavy bin ≠ champ extract)"
-    if str(steer.get("host_source") or "") != "f4_ir_cell_champ_cone_extract":
+    src = str(steer.get("host_source") or "")
+    if src not in ("f4_ir_cell_champ_cone_extract", "f4_ir_cell_champ_cone_region_extract"):
         return False, "leftover-cone region refuses a champ/host/IR-cell extract"
     from pathlib import Path
 
@@ -1453,14 +1454,21 @@ def should_pay_ir_cell_champ_cone_region(
     if not host or not mapped or not Path(mapped).is_file():
         return False, "leftover-cone netlist missing for a region extract"
     cone_eid = str(steer.get("extract_id") or "")
+    region = steer.get("region") or "xy"
+    hid = host.id
     if any(
         (c.knobs or {}).get("source") == "f4_ir_cell_champ_cone_region_extract"
         and c.status == "ok"
-        and str((c.knobs or {}).get("parent_extract_id") or "") == cone_eid
+        and (
+            str((c.knobs or {}).get("parent_extract_id") or "") == cone_eid
+            or (
+                str((c.knobs or {}).get("region") or "") == str(region)
+                and str((c.knobs or {}).get("parent_id") or c.parent_id or "") == str(hid)
+            )
+        )
         for c in mem.by_level("pdn")
     ):
         return False, "already have a leftover-cone-region write_pg_spice mesh on this extract"
-    region = steer.get("region") or "xy"
     return True, str(
         steer.get("reason")
         or (

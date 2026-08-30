@@ -119,6 +119,7 @@ from .active import (
     steer_from_ir_cell_champ_extract_hotspot,
     steer_from_ir_cell_champ_cone_residual,
     steer_from_ir_cell_champ_cone_hotspot,
+    steer_from_ir_cell_champ_cone_region_hotspot,
     steer_from_ir_cell_champ_cone_region_residual,
     order_local_hosts,
     steer_from_ir_residual,
@@ -2603,7 +2604,7 @@ def run_controller(
                     reason=steer_icccp.get("reason"),
                 )
 
-    steer_icccr = steer_from_ir_cell_champ_cone_hotspot(mem)
+    steer_icccr = steer_from_ir_cell_champ_cone_region_hotspot(mem) or steer_from_ir_cell_champ_cone_hotspot(mem)
     _icccr_eid = str((steer_icccr or {}).get("extract_id") or "")
     n_icccr = sum(
         1
@@ -3205,7 +3206,7 @@ def run_controller(
             "F3 IR-cell-champ-cone: leftover cells on the champ-extract join (minus champ size-up) → drive-up on the champ-sized netlist — not first ctrl, not STA path",
             "F4 IR-cell-champ-cone extract: write_pg_spice on the leftover-cone netlist — residual vs IR-cell-champ extract; re-paid per champ extract, not host",
             "F4 IR-cell-champ-cone PDN: 1× residual restamps the winning family on that leftover-cone mesh — re-paid on a new cone extract, not champ IR-steer",
-            "F4 IR-cell-champ-cone-region: leftover-cone 1× bin ≠ champ extract and seq-heavy — density cap on the leftover-cone netlist, not more combo size-up, not IR-cell-region rXY",
+            "F4 IR-cell-champ-cone-region: leftover-cone 1× bin ≠ champ extract and seq-heavy — density cap on the leftover-cone netlist; re-paid when the residual hotspot leaves the capped bin, not more combo size-up, not IR-cell-region rXY",
             "F4 IR-cell-champ-cone-region PDN: |Δ| ≥ 1 mV restamps the winning family on that capped leftover mesh — re-paid on a new cone extract, not champ IR-steer",
             "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — re-paid when the 1× extract moves (strap mesh), not candidate AMG, not gold",
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",

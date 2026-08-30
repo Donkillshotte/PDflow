@@ -3129,6 +3129,7 @@ def main() -> int:
         ir_cell_champ_cone_extract_cand,
         ir_cell_champ_cone_region_extract_cand,
         steer_from_ir_cell_champ_cone_hotspot,
+        steer_from_ir_cell_champ_cone_region_hotspot,
         steer_from_ir_cell_champ_cone_region_residual,
     )
 
@@ -3224,6 +3225,82 @@ def main() -> int:
     check(not pay_icccrp_ref, f"leftover-cone-region PDN refuses the unconstrained cone extract ({why_icccrp_ref})")
     pay_icccrp2, why_icccrp2 = should_pay_ir_cell_champ_cone_region_pdn(mem_hr, budget_left=80, steer=st_icccrp, n_steer=1)
     check(not pay_icccrp2, f"leftover-cone-region PDN is a single shot ({why_icccrp2})")
+    ice_cr = next(c for c in mem_hr.all() if c.id == "icccrxt")
+    ice_cr.attr = dict(ice_cr.attr or {})
+    ice_cr.attr.update(
+        {
+            "join": "odb-geom",
+            "combo_frac": 0.16,
+            "seq_frac": 0.84,
+            "region": "r13",
+            "x_dbu": 25520.0,
+            "y_dbu": 80993.0,
+            "modules": ["dpath"],
+            "cells": ["dpath/b_reg/_078_", "dpath/b_reg/_077_", "dpath/b_mux/_43_"],
+        }
+    )
+    mem_hr.touch(ice_cr)
+    st_icccr13 = steer_from_ir_cell_champ_cone_region_hotspot(mem_hr)
+    check(st_icccr13 is not None and st_icccr13.get("region") == "r13", f"seq-heavy leftover-cone-region residual steers r13, got {st_icccr13}")
+    check(st_icccr13.get("cap_region") == "r03", f"r13 steer names the capped bin, got {st_icccr13}")
+    check(st_icccr13.get("host_source") == "f4_ir_cell_champ_cone_region_extract", "r13 steer names the leftover-cone-region extract")
+    check(st_icccr13.get("extract_id") == "icccrxt", f"r13 steer stays on the capped mesh, got {st_icccr13}")
+    check("combo size-up" in (st_icccr13.get("reason") or ""), f"r13 steer refuses more combo size-up ({st_icccr13})")
+    pay_r13, why_r13 = should_pay_ir_cell_champ_cone_region(mem_hr, budget_left=80, steer=st_icccr13)
+    check(pay_r13, f"leftover-cone-region re-pays when the hotspot leaves the capped bin ({why_r13})")
+    check("r13" in why_r13 and "r03" in why_r13, f"r13 acquire names both bins ({why_r13})")
+    pay_r03_again, why_r03_again = should_pay_ir_cell_champ_cone_region(mem_hr, budget_left=80, steer=st_icccr)
+    check(not pay_r03_again, f"leftover-cone-region does not re-cap r03 ({why_r03_again})")
+    ice_cr.attr["combo_frac"] = 0.78
+    mem_hr.touch(ice_cr)
+    check(steer_from_ir_cell_champ_cone_region_hotspot(mem_hr) is None, "combo-heavy leftover-cone-region hotspot does not steal another density cap")
+    ice_cr.attr["combo_frac"] = 0.16
+    ice_cr.attr["region"] = "r03"
+    mem_hr.touch(ice_cr)
+    check(steer_from_ir_cell_champ_cone_region_hotspot(mem_hr) is None, "leftover-cone-region skips when the hotspot matches the capped bin")
+    ice_cr.attr["region"] = "r13"
+    mem_hr.touch(ice_cr)
+    mem_hr.add(
+        Candidate(
+            id="icccrxt2",
+            design_id="gcd",
+            parent_id="iccone",
+            level="pdn",
+            knobs={
+                "source": "f4_ir_cell_champ_cone_region_extract",
+                "parent_id": "iccone",
+                "extract_id": "icccrxt2",
+                "parent_extract_id": "icccrxt",
+                "region": "r13",
+                "ir_join": 1,
+                "champ": 1,
+                "champ_cone": 1,
+            },
+            knobs_fp="icccrxt2",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=10.00, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_ir_cell_champ_cone_region_extract",
+                "residual_mv": -4.10,
+                "residual_via": "ir_cell_champ_cone_region_vs_prior_region",
+                "residual_vs": "icccrxt",
+                "region": "r13",
+            },
+        )
+    )
+    check(ir_cell_champ_cone_region_extract_cand(mem_hr).id == "icccrxt2", "newest leftover-cone-region extract is the r13 cap")
+    check(winning_ir_pdn(mem_hr).id == "icrp", "high leftover-cone-region r13 droop does not steal the 1× champion")
+    pay_r13b, why_r13b = should_pay_ir_cell_champ_cone_region(mem_hr, budget_left=80, steer=st_icccr13, n_extract=0)
+    check(not pay_r13b, f"leftover-cone-region skips once r13 is measured ({why_r13b})")
+    st_icccrp13 = steer_from_ir_cell_champ_cone_region_residual(mem_hr)
+    check(st_icccrp13 is not None and st_icccrp13.get("extract_id") == "icccrxt2", f"r13 residual steers PDN on the r13 mesh, got {st_icccrp13}")
+    check(st_icccrp13.get("extract_id") != "icccrxt", "r13 PDN does not restamp the r03 mesh")
+    pay_r13p, why_r13p = should_pay_ir_cell_champ_cone_region_pdn(mem_hr, budget_left=80, steer=st_icccrp13)
+    check(pay_r13p, f"leftover-cone-region PDN re-pays on the r13 mesh ({why_r13p})")
     pay_amgc1, why_amgc1 = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
     check(pay_amgc1, f"champion AMG is paid on winning_ir_pdn ({why_amgc1})")
     check("3.921" in why_amgc1, f"champion AMG names the 3.921 point ({why_amgc1})")
