@@ -830,7 +830,9 @@ read_lef {SC_LEF}
 read_liberty {LIB}
 read_db {odb}
 read_sdc {SDC}
+set_power_activity -global -activity 0.2 -duty 0.5
 set_pdnsim_source_settings -bump_dx {int(bump_dx)} -bump_dy {int(bump_dy)} -bump_size {int(bump_size)} -bump_interval {int(bump_interval)} -external_resistance {float(pkg_r)}
+analyze_power_grid -net VDD -source_type BUMPS
 write_pg_spice -net VDD -source_type BUMPS {spice}
 write_db {out_odb}
 puts DSE_PDN_BUMPS_OK
