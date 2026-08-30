@@ -22,6 +22,7 @@ IR-cell 1× hotspot bin ≠ host bin:
   seq-heavy → density-cap extract on the sized netlist (region, not more combo size-up)
 F4 I-scale-champ hotspot (activity on winning_ir_pdn):
   combo-heavy + cells ≠ first IR-cell join → cell_size_ir_champ on the sized netlist
+  then write_pg_spice on that netlist — residual vs the IR-cell extract, not host
 """
 
 from __future__ import annotations
@@ -540,8 +541,16 @@ def winning_ir_pdn(mem: DesignMemory):
     """
     best = winning_host_pdn(mem)
     best_mv = float(best.qor.dynamic_ir_mv) if best and best.qor.dynamic_ir_mv is not None else None
-    extra_src = ("f4_ir_cell_extract", "f4_ir_cell_region_extract")
-    extra_via = ("active_f4_ir_cell_pdn", "active_f4_ir_cell_region_pdn")
+    extra_src = (
+        "f4_ir_cell_extract",
+        "f4_ir_cell_region_extract",
+        "f4_ir_cell_champ_extract",
+    )
+    extra_via = (
+        "active_f4_ir_cell_pdn",
+        "active_f4_ir_cell_region_pdn",
+        "active_f4_ir_cell_champ_pdn",
+    )
     for c in mem.by_level("pdn"):
         if c.status != "ok" or c.qor.dynamic_ir_mv is None:
             continue
@@ -590,6 +599,14 @@ def ir_cell_host(mem: DesignMemory):
     """Newest IR-hotspot cell size-up. That netlist is the next F4 extract parent."""
     for c in reversed(list(mem.by_level("cell"))):
         if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir":
+            return c
+    return None
+
+
+def ir_cell_champ_host(mem: DesignMemory):
+    """Newest I-scale-champ dpath size-up. Next extract parent — not first ctrl IR-cell."""
+    for c in reversed(list(mem.by_level("cell"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "cell_size_ir_champ":
             return c
     return None
 
@@ -790,4 +807,48 @@ def steer_from_iscale_champ_hotspot(mem: DesignMemory) -> dict | None:
         ),
         "via": "active_f4_ir_cell_champ",
         "not": "a flattened cell+I-scale vector / host-win join",
+    }
+
+
+def ir_cell_champ_extract_cand(mem: DesignMemory):
+    """Newest IR-cell-champ write_pg_spice. Residual vs the first IR-cell extract."""
+    for c in reversed(list(mem.by_level("pdn"))):
+        if c.status == "ok" and (c.knobs or {}).get("source") == "f4_ir_cell_champ_extract":
+            return c
+    return None
+
+
+def steer_from_ir_cell_champ_residual(mem: DesignMemory) -> dict | None:
+    """Winning PDN family on the IR-cell-champ mesh after the 1× residual."""
+    from .pdn_space import measured_pdn_keys
+
+    ice = ir_cell_champ_extract_cand(mem)
+    if ice is None or ice.qor.dynamic_ir_mv is None:
+        return None
+    res = (ice.attr or {}).get("residual_mv")
+    if res is None:
+        return None
+    spec_win, knob_r = _winning_pdn_family(mem)
+    if spec_win is None:
+        return None
+    eid = str((ice.knobs or {}).get("extract_id") or ice.id)
+    have = measured_pdn_keys(mem, extract_id=eid)
+    key = (float(spec_win["pkg_r"]), float(spec_win["pkg_l"]), float(spec_win["c_decap"]))
+    if key in have:
+        return None
+    sign = "raised" if float(res) > 0 else "lowered"
+    return {
+        "level": "pdn",
+        "spec": spec_win,
+        "extract_id": eid,
+        "host_id": ice.id,
+        "host_source": "f4_ir_cell_champ_extract",
+        "reason": (
+            f"IR-cell-champ 1× residual {float(res):+.3f} mV ({sign} droop vs IR-cell extract) — "
+            f"restamp {spec_win['name']} on the dpath-sized mesh, not host IR-steer, not ABC"
+        ),
+        "ir_cell_champ_residual_mv": float(res),
+        "knob_residual_mv": knob_r,
+        "via": "active_f4_ir_cell_champ_pdn",
+        "not": "a flattened cell+PDN vector / gold / first IR-cell extract",
     }

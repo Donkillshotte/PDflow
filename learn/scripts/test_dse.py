@@ -362,6 +362,8 @@ def main() -> int:
     check(any(s["level"] == "ir_cell_region_pdn" for s in planned["steps"]), "planner schedules IR-cell-region PDN restamp")
     check(any(s["level"] == "f4_scale_champ" for s in planned["steps"]), "planner schedules champion I-scale")
     check(any(s["level"] == "ir_cell_champ" for s in planned["steps"]), "planner schedules I-scale-champ cell size-up")
+    check(any(s["level"] == "ir_cell_champ_extract" for s in planned["steps"]), "planner schedules IR-cell-champ write_pg_spice")
+    check(any(s["level"] == "ir_cell_champ_pdn" for s in planned["steps"]), "planner schedules IR-cell-champ PDN restamp")
     check(any(s["level"] == "f4_amg" for s in planned["steps"]), "planner schedules AMG residual")
     check(any(s["level"] == "f4_ras" for s in planned["steps"]), "planner schedules RAS residual")
     check(any(s["level"] == "f4_krylov" for s in planned["steps"]), "planner schedules Krylov/MOR residual")
@@ -458,6 +460,8 @@ def main() -> int:
     check(next_fidelity(level="ir_cell_region_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-region PDN restamp measures at F4")
     check(next_fidelity(level="f4_scale_champ", pred=None, budget_left=20, cost_hint={}) == "F4", "champion I-scale measures at F4")
     check(next_fidelity(level="ir_cell_champ", pred=None, budget_left=20, cost_hint={}) == "F3", "I-scale-champ cell size measures at F3")
+    check(next_fidelity(level="ir_cell_champ_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-champ extract measures at F4")
+    check(next_fidelity(level="ir_cell_champ_pdn", pred=None, budget_left=20, cost_hint={}) == "F4", "IR-cell-champ PDN restamp measures at F4")
     check(next_fidelity(level="f4_scale", pred=None, budget_left=20, cost_hint={}) == "F4", "attributed I-scale measures at F4")
     check(next_fidelity(level="f4_activity", pred=None, budget_left=20, cost_hint={}) == "F3", "host arrivals measure at F3")
     check(next_fidelity(level="f4_host_extract", pred=None, budget_left=20, cost_hint={}) == "F4", "host extract measures at F4")
@@ -562,6 +566,16 @@ def main() -> int:
         knobs_fp("cell", {"source": "cell_size_ir_champ", "cells": ["dpath/a_reg/_078_"], "ir_join": 1, "champ": 1})
         != knobs_fp("cell", {"source": "cell_size_ir", "cells": ["ctrl/_11_"], "ir_join": 1}),
         "I-scale-champ cell knobs are not flattened into the first IR-cell fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_ir_cell_champ_extract", "parent_id": "icchamp", "ir_join": 1, "champ": 1})
+        != knobs_fp("pdn", {"source": "f4_ir_cell_extract", "parent_id": "ircell", "ir_join": 1}),
+        "IR-cell-champ extract knobs are not flattened into the IR-cell extract fingerprint",
+    )
+    check(
+        knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "iccext", "c_decap": 200e-15})
+        != knobs_fp("pdn", {"source": "f4_solver_a", "extract_id": "icreg", "c_decap": 200e-15}),
+        "IR-cell-champ PDN restamp is not flattened into the IR-cell-region decap fingerprint",
     )
     check(
         knobs_fp("pdn", {"source": "f4_host_arrivals", "parent_id": "psteer", "host_source": "net_buffer_spef"})
@@ -1306,6 +1320,8 @@ def main() -> int:
         should_pay_f4_scale_win,
         should_pay_f4_scale_champ,
         should_pay_ir_cell_champ,
+        should_pay_ir_cell_champ_extract,
+        should_pay_ir_cell_champ_pdn,
         iscale_champ_sta,
         should_pay_ir_cell,
         should_pay_ir_cell_extract,
@@ -2576,6 +2592,83 @@ def main() -> int:
     check(steer_from_iscale_champ_hotspot(mem_hr) is None, "seq-heavy I-scale-champ hotspot does not steal another combo size-up")
     ice_c2.attr["combo_frac"] = 0.86
     mem_hr.touch(ice_c2)
+    from dse.active import ir_cell_champ_host, ir_cell_host, steer_from_ir_cell_champ_residual
+
+    pay_icce0, why_icce0 = should_pay_ir_cell_champ_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_icce0, f"IR-cell-champ extract waits for a dpath-sized netlist ({why_icce0})")
+    mem_hr.add(
+        Candidate(
+            id="icchamp",
+            design_id="gcd",
+            parent_id="ircell",
+            level="cell",
+            knobs={
+                "source": "cell_size_ir_champ",
+                "cells": ["dpath/a_reg/_078_", "dpath/b_mux/_45_"],
+                "ir_join": 1,
+                "champ": 1,
+                "parent_id": "ircell",
+            },
+            knobs_fp="icchamp",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(area_um2=568.708, wns_cost=0.302, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": str(dummy_host), "n_changed": 2},
+            attr={"via": "active_f4_ir_cell_champ"},
+        )
+    )
+    check(ir_cell_champ_host(mem_hr) is not None and ir_cell_champ_host(mem_hr).id == "icchamp", "ir_cell_champ_host is the dpath size-up")
+    check(ir_cell_host(mem_hr).id == "ircell", "ir_cell_host stays the first ctrl IR-cell")
+    pay_icce1, why_icce1 = should_pay_ir_cell_champ_extract(mem_hr, budget_left=80, n_extract=0)
+    check(pay_icce1, f"IR-cell-champ extract is paid after dpath size-up ({why_icce1})")
+    check("dpath" in why_icce1, f"IR-cell-champ extract acquire names dpath ({why_icce1})")
+    check("IR-cell extract" in why_icce1, f"IR-cell-champ extract residuals vs IR-cell extract ({why_icce1})")
+    check("host extract" in why_icce1, f"IR-cell-champ extract refuses host flatten ({why_icce1})")
+    pay_icce2, why_icce2 = should_pay_ir_cell_champ_extract(mem_hr, budget_left=80, n_extract=1)
+    check(not pay_icce2, f"IR-cell-champ extract is a single shot ({why_icce2})")
+    mem_hr.add(
+        Candidate(
+            id="iccext",
+            design_id="gcd",
+            parent_id="icchamp",
+            level="pdn",
+            knobs={"source": "f4_ir_cell_champ_extract", "parent_id": "icchamp", "extract_id": "iccext", "ir_join": 1, "champ": 1},
+            knobs_fp="iccext",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=12.40, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_ir_cell_champ_extract",
+                "residual_mv": -1.68,
+                "residual_via": "ir_cell_champ_vs_ir_cell_extract",
+            },
+        )
+    )
+    win_host2 = winning_host_pdn(mem_hr)
+    check(win_host2 is not None and win_host2.id != "iccext", "winning_host_pdn does not steal the IR-cell-champ extract")
+    pay_icce3, why_icce3 = should_pay_ir_cell_champ_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_icce3, f"IR-cell-champ extract skips once measured ({why_icce3})")
+    st_iccp = steer_from_ir_cell_champ_residual(mem_hr)
+    check(st_iccp is not None and (st_iccp.get("spec") or {}).get("name") == "decap_200f", f"IR-cell-champ residual steers winning decap, got {st_iccp}")
+    check(st_iccp.get("extract_id") == "iccext", f"IR-cell-champ PDN stays on the dpath-sized mesh, got {st_iccp}")
+    check(st_iccp.get("host_source") == "f4_ir_cell_champ_extract", "IR-cell-champ PDN names the champ extract")
+    check(st_iccp.get("extract_id") != "icext", "IR-cell-champ PDN does not restamp the first IR-cell extract")
+    pay_iccp0, why_iccp0 = should_pay_ir_cell_champ_pdn(mem_hr, budget_left=80, steer=None)
+    check(not pay_iccp0, f"IR-cell-champ PDN waits for a residual steer ({why_iccp0})")
+    pay_iccp1, why_iccp1 = should_pay_ir_cell_champ_pdn(mem_hr, budget_left=80, steer=st_iccp)
+    check(pay_iccp1, f"IR-cell-champ PDN is paid after the 1× residual ({why_iccp1})")
+    fake_ice = dict(st_iccp)
+    fake_ice["host_source"] = "f4_ir_cell_extract"
+    pay_iccp_ref, why_iccp_ref = should_pay_ir_cell_champ_pdn(mem_hr, budget_left=80, steer=fake_ice)
+    check(not pay_iccp_ref, f"IR-cell-champ PDN refuses the first IR-cell extract ({why_iccp_ref})")
+    pay_iccp2, why_iccp2 = should_pay_ir_cell_champ_pdn(mem_hr, budget_left=80, steer=st_iccp, n_steer=1)
+    check(not pay_iccp2, f"IR-cell-champ PDN is a single shot ({why_iccp2})")
     st_ir = steer_from_ir_residual(mem_ir)
     check(st_ir is not None and (st_ir.get("spec") or {}).get("name") == "decap_200f", f"large knob residual steers decap, got {st_ir}")
     check(st_ir.get("extract_id") == "regext", f"large knob residual restamps the region mesh, got {st_ir}")

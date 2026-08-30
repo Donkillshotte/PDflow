@@ -53,7 +53,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "cell": {
         "via": "dse.cell_space.upsize_path_cells + dse.fidelity.evaluate_cell_size",
-        "note": "attributed STA path drive-up (module-scoped), I-scale-win IR-hotspot ODB-join, and I-scale-champ ODB-join on winning_ir_pdn; not ABC ops, not a chip restart",
+        "note": "attributed STA path drive-up (module-scoped), I-scale-win IR-hotspot ODB-join, and I-scale-champ ODB-join + write_pg_spice residual vs IR-cell extract; not ABC ops, not a chip restart",
     },
     "net": {
         "via": "dse.net_space.buffer_path_nets + buffer_port_nets + dse.fidelity.evaluate_net_buffer",

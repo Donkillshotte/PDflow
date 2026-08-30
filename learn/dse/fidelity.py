@@ -514,6 +514,7 @@ def evaluate_f4_extract(
     kind=host_region density-caps the host IR bin (not gold rXY on synth F1).
     kind=ir_cell extracts the IR-hotspot sized netlist and residuals vs host extract.
     kind=ir_cell_region density-caps the IR-cell 1× bin (not host rXY, not gold rXY).
+    kind=ir_cell_champ extracts the I-scale-champ dpath-sized netlist and residuals vs IR-cell extract.
     """
     from .attribute import attribute_dynamic_ir
     from .f4_oracle import solve_f4
@@ -566,6 +567,13 @@ def evaluate_f4_extract(
         knobs["x_dbu"] = x_dbu
         knobs["y_dbu"] = y_dbu
         knobs["region_density"] = region_density if region_density is not None else 0.30
+    elif kind == "ir_cell_champ":
+        knobs["source"] = "f4_ir_cell_champ_extract"
+        knobs["name"] = f"extract_ir_cell_champ_{host}"
+        knobs["host_level"] = parent.level
+        knobs["host_source"] = parent.knobs.get("source") or parent.level
+        knobs["ir_join"] = 1
+        knobs["champ"] = 1
     elif region or x_dbu is not None:
         knobs["source"] = "f4_region_extract"
         knobs["region"] = region
@@ -668,11 +676,23 @@ def evaluate_f4_extract(
             attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
             attr["residual_vs"] = ice.id
             attr["residual_via"] = "ir_cell_region_vs_ir_cell_extract"
+    if kind == "ir_cell_champ":
+        from .active import ir_cell_extract_cand
+
+        attr["via"] = "f4_ir_cell_champ_extract"
+        attr["host_level"] = parent.level
+        attr["host_source"] = parent.knobs.get("source") or parent.level
+        ice = ir_cell_extract_cand(mem)
+        if ice and ice.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
+            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
+            attr["residual_vs"] = ice.id
+            attr["residual_via"] = "ir_cell_champ_vs_ir_cell_extract"
     kind_note = {
         "host": "host",
         "host_region": "host-region",
         "ir_cell": "IR-cell",
         "ir_cell_region": "IR-cell-region",
+        "ir_cell_champ": "IR-cell-champ",
     }.get(kind, "candidate")
     q = QoR(
         area_um2=parent.qor.area_um2,
@@ -692,7 +712,7 @@ def evaluate_f4_extract(
         ),
     )
     ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
-    if ok and ext.get("worst_droop_mv") is not None and kind in ("candidate", "host", "ir_cell"):
+    if ok and ext.get("worst_droop_mv") is not None and kind in ("candidate", "host", "ir_cell", "ir_cell_champ"):
         parent.qor.dynamic_ir_mv = float(ext["worst_droop_mv"])
         if ext.get("static_ir_mv") is not None or dyn.get("static_ir_mv") is not None:
             parent.qor.static_ir_mv = float(ext.get("static_ir_mv") or dyn["static_ir_mv"])

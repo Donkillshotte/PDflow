@@ -491,6 +491,8 @@ def should_pay_f4_scale_champ(
         "f4_ir_cell_region_extract",
         "active_f4_ir_cell_pdn",
         "active_f4_ir_cell_region_pdn",
+        "f4_ir_cell_champ_extract",
+        "active_f4_ir_cell_champ_pdn",
     ):
         return False, "champion I-scale refuses a host-only 1× point"
     if ir_cell_host(mem) is None:
@@ -1182,6 +1184,84 @@ def should_pay_ir_cell_champ(
     )
 
 
+def should_pay_ir_cell_champ_extract(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    n_extract: int = 0,
+    extract_max: int = 1,
+    min_s: float = 12.0,
+) -> tuple[bool, str]:
+    """Pay write_pg_spice on the IR-cell-champ netlist. Residual vs IR-cell extract."""
+    if n_extract >= extract_max:
+        return False, "IR-cell-champ PDN extract already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-cell-champ write_pg_spice"
+    from pathlib import Path
+
+    from .active import ir_cell_champ_host, ir_cell_extract_cand
+    from .openroad_f2 import extract_available
+
+    if not extract_available():
+        return False, "openroad/PDN tcl missing — not launching finish"
+    host = ir_cell_champ_host(mem)
+    if host is None:
+        return False, "no IR-cell-champ size-up to extract a PDN from"
+    mapped = (host.artifacts or {}).get("mapped_v")
+    if not mapped or not Path(mapped).is_file():
+        return False, "IR-cell-champ netlist missing for write_pg_spice"
+    ice = ir_cell_extract_cand(mem)
+    if ice is None:
+        return False, "no IR-cell extract to residual the champ mesh against"
+    if str((ice.knobs or {}).get("parent_id") or "") == host.id:
+        return False, "IR-cell-champ is already the IR-cell-extract parent"
+    if any(
+        (c.knobs or {}).get("source") == "f4_ir_cell_champ_extract" and c.status == "ok"
+        for c in mem.by_level("pdn")
+    ):
+        return False, "already have an IR-cell-champ write_pg_spice mesh"
+    nch = (host.artifacts or {}).get("n_changed") or len((host.knobs or {}).get("cells") or [])
+    mods = ",".join(
+        dict.fromkeys(
+            str(x).split("/")[0]
+            for x in (host.knobs or {}).get("cells") or []
+            if "/" in str(x)
+        )
+    ) or "unjoined"
+    return True, (
+        f"write_pg_spice on IR-cell-champ {mods} n={nch} — dpath-sized netlist IR residual "
+        "vs IR-cell extract, not host extract, not gold, not ABC"
+    )
+
+
+def should_pay_ir_cell_champ_pdn(
+    mem: DesignMemory,
+    *,
+    budget_left: float,
+    steer: dict | None,
+    n_steer: int = 0,
+    steer_max: int = 1,
+    min_s: float = 8.0,
+) -> tuple[bool, str]:
+    """Pay the winning PDN family on the IR-cell-champ extract. Not host IR-steer."""
+    if n_steer >= steer_max:
+        return False, "IR-cell-champ PDN restamp already spent"
+    if budget_left < min_s:
+        return False, "wall budget would not cover IR-cell-champ PDN restamp"
+    if not steer or not steer.get("spec") or not steer.get("extract_id"):
+        return False, "no IR-cell-champ residual-steered PDN action (need a 1× residual)"
+    if str(steer.get("host_source") or "") != "f4_ir_cell_champ_extract":
+        return False, "IR-cell-champ PDN restamp refuses a host/IR-cell/region extract"
+    spec = steer["spec"]
+    from .pdn_space import measured_pdn_keys
+
+    have = measured_pdn_keys(mem, extract_id=str(steer["extract_id"]))
+    key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
+    if key in have:
+        return False, "that PDN point is already measured on the IR-cell-champ extract"
+    return True, str(steer.get("reason") or "IR-cell-champ residual steers a PDN restamp on the dpath-sized mesh")
+
+
 def should_pay_ir_cell_extract(
     mem: DesignMemory,
     *,
@@ -1561,6 +1641,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
         "f4_host_region_extract",
         "f4_ir_cell_extract",
         "f4_ir_cell_region_extract",
+        "f4_ir_cell_champ_extract",
     ):
         hit = _latest_extract(mem, source=src)
         if hit and str(hit["extract_id"]) == want:
@@ -1580,6 +1661,7 @@ def extract_on_disk(mem: DesignMemory, extract_id: str) -> dict | None:
             "f4_host_region_extract",
             "f4_ir_cell_extract",
             "f4_ir_cell_region_extract",
+            "f4_ir_cell_champ_extract",
         ):
             continue
         art = c.artifacts or {}
@@ -1654,6 +1736,9 @@ def next_fidelity(*, level: str, pred: dict | None, budget_left: float, cost_hin
         "ir_cell_region",
         "f4_ir_cell_region_extract",
         "ir_cell_region_pdn",
+        "ir_cell_champ_extract",
+        "f4_ir_cell_champ_extract",
+        "ir_cell_champ_pdn",
     ):
         return "F4"
     if level in ("synthesis", "f1_synth"):

@@ -425,6 +425,26 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "scope": "cell",
         }
     )
+    steps.append(
+        {
+            "level": "ir_cell_champ_extract",
+            "reason": (
+                "write_pg_spice on the I-scale-champ dpath-sized netlist — residual "
+                "vs the IR-cell extract, not host extract, not gold, not ABC"
+            ),
+            "scope": "cell",
+        }
+    )
+    steps.append(
+        {
+            "level": "ir_cell_champ_pdn",
+            "reason": (
+                "IR-cell-champ 1× residual chooses the winning PDN family on the "
+                "dpath-sized mesh — not host IR-steer, not a flattened cell+decap vector"
+            ),
+            "scope": "pdn",
+        }
+    )
     return {
         "focus": focus,
         "combo_frac": combo,
@@ -490,6 +510,7 @@ def _ir_rose(mem: DesignMemory) -> bool:
             "f4_host_region_extract",
             "f4_ir_cell_extract",
             "f4_ir_cell_region_extract",
+            "f4_ir_cell_champ_extract",
             "f4_region_extract",
         ):
             v = float(c.qor.dynamic_ir_mv)
