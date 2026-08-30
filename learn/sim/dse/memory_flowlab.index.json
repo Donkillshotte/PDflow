@@ -1,5 +1,5 @@
 {
-  "n": 84,
+  "n": 86,
   "path": "/workspace/learn/sim/dse/memory_flowlab.jsonl",
   "levels": [
     "architecture",
@@ -95,6 +95,8 @@
     "f0670cebc9e6",
     "549442c9cb1d",
     "cd7dd00c1263",
-    "277ebc53a241"
+    "277ebc53a241",
+    "5ed161fc755b",
+    "9cdf547704cc"
   ]
 }
