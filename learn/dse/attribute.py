@@ -66,8 +66,40 @@ def _region(x_dbu: float | None, y_dbu: float | None, *, bins: int = 4, die_dbu:
     return f"r{nx}{ny}"
 
 
+def ir_report_from_solve(dyn: dict | None, *, insts: Path | str | None = None) -> dict:
+    """F4 worker payload → attribution report. Inst map is the ODB-geom fallback."""
+    dyn = dyn or {}
+    em = dyn.get("em") if isinstance(dyn.get("em"), dict) else {}
+    report: dict = {
+        "hotspot": {
+            "node": dyn.get("worst_node"),
+            "droop_mv": dyn.get("worst_droop_mv"),
+            "x_dbu": dyn.get("x_dbu"),
+            "y_dbu": dyn.get("y_dbu"),
+            "contributors": {
+                "seq_frac": dyn.get("seq_frac"),
+                "combo_frac": dyn.get("combo_frac"),
+            },
+        },
+        "em": em,
+    }
+    am = dyn.get("activity_model")
+    if isinstance(am, dict) and am:
+        report["activity_model"] = am
+    src = insts if insts is not None else dyn.get("insts")
+    if src:
+        report["insts"] = str(src)
+    return report
+
+
 def attribute_dynamic_ir(report: dict) -> dict:
-    """Trace Dynamic IR hotspot toward a logic cone. GAP if names do not join."""
+    """Trace Dynamic IR hotspot toward a logic cone.
+
+    Join order (do not flatten):
+      1. OpenSTA worst-path start/end names.
+      2. ODB inst_power_map geometric join at the hotspot (x_dbu, y_dbu)
+         when STA has no module names (combo-heavy F4 shots often have none).
+    """
     hs = report.get("hotspot") or {}
     path = ((report.get("activity_model") or {}).get("sta") or {}).get("worst_path") or {}
     em = report.get("em") or {}
@@ -76,6 +108,7 @@ def attribute_dynamic_ir(report: dict) -> dict:
     modules: list[str] = []
     cones: list[str] = []
     cells: list[str] = []
+    join = "none"
     for n in (start, end):
         m = _module_of(n)
         if m and m not in modules:
@@ -86,6 +119,19 @@ def attribute_dynamic_ir(report: dict) -> dict:
         c = _cell_of(n)
         if c and c not in cells:
             cells.append(c)
+    if modules:
+        join = "sta-path"
+    if not modules:
+        j = join_hotspot_insts(
+            report.get("insts"),
+            hs.get("x_dbu"),
+            hs.get("y_dbu"),
+        )
+        if int(j.get("n") or 0) >= 1:
+            modules = list(j.get("modules") or [])
+            cones = list(j.get("cones") or [])
+            cells = list(j.get("cells") or [])
+            join = "odb-geom"
     timing = hs.get("timing") or {}
     contrib = hs.get("contributors") or {}
     region = _region(hs.get("x_dbu"), hs.get("y_dbu"))
@@ -98,6 +144,10 @@ def attribute_dynamic_ir(report: dict) -> dict:
     else:
         scope = "chip"
     status = "READY" if (hs.get("node") or modules) else "GAP"
+    via_note = {
+        "sta-path": "OpenSTA worst path → ",
+        "odb-geom": "ODB inst join → ",
+    }.get(join, "OpenSTA worst path → ")
     return {
         "status": status,
         "kind": "ir_hotspot",
@@ -116,11 +166,13 @@ def attribute_dynamic_ir(report: dict) -> dict:
         "cells": cells,
         "nets": list(hs.get("nets") or []),
         "scope": scope,
+        "join": join,
         "hierarchy": list(HIERARCHY),
         "em_j_a_m2": em.get("j_absmax_a_m2"),
         "dT_mesh_k": em.get("dT_mesh_absmax_k"),
         "note": (
-            "IR hotspot + OpenSTA worst path → "
+            "IR hotspot + "
+            + via_note
             + (f"cone {','.join(modules)}" if modules else "(no module join)")
             + (f" · region {region}" if region else "")
             + "; hierarchical focus, not a chip-wide restart"

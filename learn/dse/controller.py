@@ -2283,12 +2283,15 @@ def run_controller(
                     reason=why_sch,
                 )
 
+    steer_icc = steer_from_iscale_champ_hotspot(mem)
+    _icc_eid = str((steer_icc or {}).get("extract_id") or "")
     n_icc = sum(
         1
         for c in mem.by_level("cell")
-        if (c.knobs or {}).get("source") == "cell_size_ir_champ" and c.status == "ok"
+        if (c.knobs or {}).get("source") == "cell_size_ir_champ"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == _icc_eid
     )
-    steer_icc = steer_from_iscale_champ_hotspot(mem)
     pay_icc, why_icc = should_pay_ir_cell_champ(
         mem, budget_left=t_end - time.time(), steer=steer_icc, n_cell=n_icc
     )
@@ -2306,6 +2309,7 @@ def run_controller(
                 design_id=design_id,
                 cells=cells_icc,
                 source="cell_size_ir_champ",
+                extract_id=_icc_eid or None,
             )
             if child:
                 step(
@@ -2316,6 +2320,7 @@ def run_controller(
                     via="active_f4_ir_cell_champ",
                     parent=host_icc.id,
                     modules=steer_icc.get("modules"),
+                    extract_id=_icc_eid,
                     region=steer_icc.get("region"),
                     n_changed=(child.artifacts or {}).get("n_changed"),
                     wns_ns=(child.artifacts or {}).get("wns_ns"),
@@ -2325,10 +2330,14 @@ def run_controller(
                     reason=why_icc,
                 )
 
+    host_icce_pre = ir_cell_champ_host(mem)
+    _icce_eid = str((host_icce_pre.knobs or {}).get("extract_id") or "") if host_icce_pre else ""
     n_icce = sum(
         1
         for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_ir_cell_champ_extract" and c.status == "ok"
+        if (c.knobs or {}).get("source") == "f4_ir_cell_champ_extract"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("parent_extract_id") or "") == _icce_eid
     )
     pay_icce, why_icce = should_pay_ir_cell_champ_extract(
         mem, budget_left=t_end - time.time(), n_extract=n_icce
@@ -2357,6 +2366,7 @@ def run_controller(
                     fidelity="F4",
                     via="f4_ir_cell_champ_extract",
                     parent=host_icce.id,
+                    parent_extract_id=_icce_eid,
                     host_source=(host_icce.knobs or {}).get("source") or host_icce.level,
                     n_r=(child.artifacts or {}).get("n_r"),
                     n_sta=(child.artifacts or {}).get("n_sta_inst"),
@@ -2367,12 +2377,15 @@ def run_controller(
                     reason=why_icce,
                 )
 
+    steer_iccp = steer_from_ir_cell_champ_residual(mem)
+    _iccp_eid = str((steer_iccp or {}).get("extract_id") or "")
     n_iccp = sum(
         1
         for c in mem.all()
-        if (c.attr or {}).get("via") == "active_f4_ir_cell_champ_pdn" and c.status == "ok"
+        if (c.attr or {}).get("via") == "active_f4_ir_cell_champ_pdn"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == _iccp_eid
     )
-    steer_iccp = steer_from_ir_cell_champ_residual(mem)
     pay_iccp, why_iccp = should_pay_ir_cell_champ_pdn(
         mem, budget_left=t_end - time.time(), steer=steer_iccp, n_steer=n_iccp
     )
@@ -2904,9 +2917,9 @@ def run_controller(
             "F4 IR-cell-region PDN: large spatial residual restamps the winning family on the capped mesh — not host IR-steer",
             "F4 winning-IR catalog: unused Dynamic IR (decap then pkg L, inherit host pkg_r) on a strap/EM R-graph — not pitch, not width, not host/candidate IR-steer, not gold",
             "F4 I-scale-champ: I(t)×P of the IR-cell host on winning_ir_pdn — not I-scale-win on the stale host-win mesh, not host arrivals",
-            "F3 IR-cell-champ: I-scale-champ xy → ODB join on the champion extract → drive-up — not the first ctrl IR-cell, not STA path",
-            "F4 IR-cell-champ extract: write_pg_spice on the dpath-sized netlist — residual vs IR-cell extract, not host",
-            "F4 IR-cell-champ PDN: 1× residual restamps the winning family on the dpath-sized mesh — not host IR-steer",
+            "F3 IR-cell-champ: I-scale-champ xy → ODB join on the champion extract → drive-up — re-paid when winning_ir extract moves, not the first ctrl IR-cell, not STA path",
+            "F4 IR-cell-champ extract: write_pg_spice on the champ-sized netlist — residual vs IR-cell extract; re-paid per champ extract, not host",
+            "F4 IR-cell-champ PDN: 1× residual restamps the winning family on that sized mesh — re-paid on a new champ extract, not host IR-steer",
             "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — re-paid when the 1× extract moves (strap mesh), not candidate AMG, not gold",
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",
             "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not gold",

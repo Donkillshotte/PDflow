@@ -430,8 +430,8 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
             "level": "ir_cell_champ",
             "reason": (
                 "I-scale-champ IR hotspot → nearest ODB instances on the champion "
-                "extract → module-scoped drive-up — not the first ctrl IR-cell, "
-                "not STA-path size-up, not ABC, not VCD"
+                "extract → module-scoped drive-up — re-paid when winning_ir extract "
+                "moves, not the first ctrl IR-cell, not STA-path size-up, not ABC, not VCD"
             ),
             "scope": "cell",
         }
@@ -440,8 +440,9 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         {
             "level": "ir_cell_champ_extract",
             "reason": (
-                "write_pg_spice on the I-scale-champ dpath-sized netlist — residual "
-                "vs the IR-cell extract, not host extract, not gold, not ABC"
+                "write_pg_spice on the I-scale-champ sized netlist — residual "
+                "vs the IR-cell extract; re-paid when the champ size-up extract moves, "
+                "not host extract, not gold, not ABC"
             ),
             "scope": "cell",
         }
@@ -450,8 +451,9 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None) -> dict
         {
             "level": "ir_cell_champ_pdn",
             "reason": (
-                "IR-cell-champ 1× residual chooses the winning PDN family on the "
-                "dpath-sized mesh — not host IR-steer, not a flattened cell+decap vector"
+                "IR-cell-champ 1× residual chooses the winning PDN family on that "
+                "sized mesh — re-paid on a new champ extract, not host IR-steer, "
+                "not a flattened cell+decap vector"
             ),
             "scope": "pdn",
         }

@@ -45,7 +45,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "active": {
         "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + steer_from_host_ir_residual + steer_from_winning_ir_catalog + iscale_host + order_local_hosts",
-        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; unused Dynamic IR catalog on a strap/EM winning_ir extract (inherit pkg_r; C then L); I-scale-champ measures activity on winning_ir_pdn (not host-win); AMG/RAS/Krylov-champ restamp that same 1× mesh; static IR is a separate 1× ranking that pays unused pkg_r then, on a null on-die residual, denser bumps then metal4 straps on the champ ODB (decap does not move DC); EM width residual is same-mesh vs strap J; not a mixed knob vector",
+        "note": "F3→F5 residual picks cell|net|f5_local; F5-port residual steers SPEF hops; F4 I-scale picks the attributed host; F4 IR residual loops region-decap then unused pkg L; F4 host-region residual loops host-region-decap then unused host pkg L; unused Dynamic IR catalog on a strap/EM winning_ir extract (inherit pkg_r; C then L); I-scale-champ measures activity on winning_ir_pdn (not host-win); combo-heavy champ hotspot ODB-joins cells and re-pays size-up/extract/PDN when that extract moves; AMG/RAS/Krylov-champ restamp that same 1× mesh; static IR is a separate 1× ranking that pays unused pkg_r then, on a null on-die residual, denser bumps then metal4 straps on the champ ODB (decap does not move DC); EM width residual is same-mesh vs strap J; not a mixed knob vector",
     },
     "synthesis": {
         "via": "dse.synthesis + dse.fidelity.evaluate_f1_synth",
@@ -53,7 +53,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "cell": {
         "via": "dse.cell_space.upsize_path_cells + dse.fidelity.evaluate_cell_size",
-        "note": "attributed STA path drive-up (module-scoped), I-scale-win IR-hotspot ODB-join, and I-scale-champ ODB-join + write_pg_spice residual vs IR-cell extract; not ABC ops, not a chip restart",
+        "note": "attributed STA path drive-up (module-scoped), I-scale-win IR-hotspot ODB-join, and I-scale-champ ODB-join + write_pg_spice residual vs IR-cell extract (re-paid per winning_ir extract); not ABC ops, not a chip restart",
     },
     "net": {
         "via": "dse.net_space.buffer_path_nets + buffer_port_nets + dse.fidelity.evaluate_net_buffer",

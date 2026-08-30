@@ -192,7 +192,7 @@ def evaluate_f4_pdn(
     sta: Path | str | None = None,
 ) -> Candidate | None:
     """PDN-level restamp. Different c_decap/pkg L / solver; named extract. Not gold."""
-    from .attribute import attribute_dynamic_ir
+    from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
 
     knobs = {
@@ -221,21 +221,7 @@ def evaluate_f4_pdn(
         sta=sta,
     )
     em = dyn.get("em") or {}
-    attr = attribute_dynamic_ir(
-        {
-            "hotspot": {
-                "node": dyn.get("worst_node"),
-                "droop_mv": dyn.get("worst_droop_mv"),
-                "x_dbu": dyn.get("x_dbu"),
-                "y_dbu": dyn.get("y_dbu"),
-                "contributors": {
-                    "seq_frac": dyn.get("seq_frac"),
-                    "combo_frac": dyn.get("combo_frac"),
-                },
-            },
-            "em": em,
-        }
-    )
+    attr = attribute_dynamic_ir(ir_report_from_solve(dyn, insts=insts))
     q = QoR(
         static_ir_mv=dyn.get("static_ir_mv"),
         dynamic_ir_mv=dyn.get("worst_droop_mv"),
@@ -279,7 +265,7 @@ def evaluate_f4_static_mesh(
     parent_extract_id: str = "",
 ) -> Candidate | None:
     """Denser bump write_pg_spice on an existing ODB. Not a new GPL, not gold."""
-    from .attribute import attribute_dynamic_ir
+    from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn_bumps
 
@@ -337,21 +323,7 @@ def evaluate_f4_static_mesh(
         ext["cost_s"] = extract_cost + float(dyn.get("cost_s") or 0.0)
     knobs["extract_id"] = cid
     em = (dyn.get("em") or ext.get("em") or {}) if isinstance(dyn, dict) else {}
-    attr = attribute_dynamic_ir(
-        {
-            "hotspot": {
-                "node": ext.get("worst_node"),
-                "droop_mv": ext.get("worst_droop_mv"),
-                "x_dbu": ext.get("x_dbu"),
-                "y_dbu": ext.get("y_dbu"),
-                "contributors": {
-                    "seq_frac": ext.get("seq_frac"),
-                    "combo_frac": ext.get("combo_frac"),
-                },
-            },
-            "em": em,
-        }
-    )
+    attr = attribute_dynamic_ir(ir_report_from_solve({**ext, **(dyn or {})}, insts=insts))
     attr["via"] = "active_f4_static_mesh"
     attr["extract_id"] = cid
     attr["parent_extract_id"] = parent_extract_id
@@ -402,7 +374,7 @@ def evaluate_f4_static_straps(
     parent_extract_id: str = "",
 ) -> Candidate | None:
     """Denser metal4 pdngen on an existing ODB. Not a new GPL, not bumps, not gold."""
-    from .attribute import attribute_dynamic_ir
+    from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn_straps
 
@@ -460,21 +432,7 @@ def evaluate_f4_static_straps(
         ext["cost_s"] = extract_cost + float(dyn.get("cost_s") or 0.0)
     knobs["extract_id"] = cid
     em = (dyn.get("em") or ext.get("em") or {}) if isinstance(dyn, dict) else {}
-    attr = attribute_dynamic_ir(
-        {
-            "hotspot": {
-                "node": ext.get("worst_node"),
-                "droop_mv": ext.get("worst_droop_mv"),
-                "x_dbu": ext.get("x_dbu"),
-                "y_dbu": ext.get("y_dbu"),
-                "contributors": {
-                    "seq_frac": ext.get("seq_frac"),
-                    "combo_frac": ext.get("combo_frac"),
-                },
-            },
-            "em": em,
-        }
-    )
+    attr = attribute_dynamic_ir(ir_report_from_solve({**ext, **(dyn or {})}, insts=insts))
     attr["via"] = "active_f4_static_straps"
     attr["extract_id"] = cid
     attr["parent_extract_id"] = parent_extract_id
@@ -525,7 +483,7 @@ def evaluate_f4_em_straps(
     parent_extract_id: str = "",
 ) -> Candidate | None:
     """Wider metal4 pdngen on the strap-pitch geometry. Not a new GPL, not pitch, not gold."""
-    from .attribute import attribute_dynamic_ir
+    from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn_straps
 
@@ -583,21 +541,7 @@ def evaluate_f4_em_straps(
         ext["cost_s"] = extract_cost + float(dyn.get("cost_s") or 0.0)
     knobs["extract_id"] = cid
     em = (dyn.get("em") or ext.get("em") or {}) if isinstance(dyn, dict) else {}
-    attr = attribute_dynamic_ir(
-        {
-            "hotspot": {
-                "node": ext.get("worst_node"),
-                "droop_mv": ext.get("worst_droop_mv"),
-                "x_dbu": ext.get("x_dbu"),
-                "y_dbu": ext.get("y_dbu"),
-                "contributors": {
-                    "seq_frac": ext.get("seq_frac"),
-                    "combo_frac": ext.get("combo_frac"),
-                },
-            },
-            "em": em,
-        }
-    )
+    attr = attribute_dynamic_ir(ir_report_from_solve({**ext, **(dyn or {})}, insts=insts))
     attr["via"] = "active_f4_em_straps"
     attr["extract_id"] = cid
     attr["parent_extract_id"] = parent_extract_id
@@ -658,7 +602,7 @@ def evaluate_f4_scale(
     source=f4_iscale_win restamps the winning host PDN point after host IR-steer.
     source=f4_iscale_champ restamps winning_ir_pdn (IR-cell family) — not host-win.
     """
-    from .attribute import attribute_dynamic_ir
+    from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
     from .mo import timing_of
 
@@ -700,21 +644,7 @@ def evaluate_f4_scale(
         sta=sta,
     )
     em = dyn.get("em") or {}
-    attr = attribute_dynamic_ir(
-        {
-            "hotspot": {
-                "node": dyn.get("worst_node"),
-                "droop_mv": dyn.get("worst_droop_mv"),
-                "x_dbu": dyn.get("x_dbu"),
-                "y_dbu": dyn.get("y_dbu"),
-                "contributors": {
-                    "seq_frac": dyn.get("seq_frac"),
-                    "combo_frac": dyn.get("combo_frac"),
-                },
-            },
-            "em": em,
-        }
-    )
+    attr = attribute_dynamic_ir(ir_report_from_solve(dyn, insts=insts))
     attr["transform"] = host
     attr["i_scale"] = scale
     attr["inherited_from"] = parent.id
@@ -885,7 +815,7 @@ def evaluate_f4_extract(
     kind=ir_cell_region density-caps the IR-cell 1× bin (not host rXY, not gold rXY).
     kind=ir_cell_champ extracts the I-scale-champ dpath-sized netlist and residuals vs IR-cell extract.
     """
-    from .attribute import attribute_dynamic_ir
+    from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn
 
@@ -943,6 +873,7 @@ def evaluate_f4_extract(
         knobs["host_source"] = parent.knobs.get("source") or parent.level
         knobs["ir_join"] = 1
         knobs["champ"] = 1
+        knobs["parent_extract_id"] = str((parent.knobs or {}).get("extract_id") or "")
     elif region or x_dbu is not None:
         knobs["source"] = "f4_region_extract"
         knobs["region"] = region
@@ -997,21 +928,7 @@ def evaluate_f4_extract(
         ext["cost_s"] = extract_cost + float(dyn.get("cost_s") or 0.0)
     knobs["extract_id"] = cid
     em = (dyn.get("em") or ext.get("em") or {}) if isinstance(dyn, dict) else {}
-    attr = attribute_dynamic_ir(
-        {
-            "hotspot": {
-                "node": ext.get("worst_node"),
-                "droop_mv": ext.get("worst_droop_mv"),
-                "x_dbu": ext.get("x_dbu"),
-                "y_dbu": ext.get("y_dbu"),
-                "contributors": {
-                    "seq_frac": ext.get("seq_frac"),
-                    "combo_frac": ext.get("combo_frac"),
-                },
-            },
-            "em": em,
-        }
-    )
+    attr = attribute_dynamic_ir(ir_report_from_solve({**ext, **(dyn or {})}, insts=insts))
     attr["transform"] = host
     attr["inherited_from"] = parent.id
     attr["extract_id"] = cid
@@ -1710,11 +1627,14 @@ def evaluate_cell_size(
     cells: list[str] | None = None,
     top: str = "gcd",
     source: str = "cell_size_up",
+    extract_id: str | None = None,
 ) -> Candidate | None:
     """Upsize attributed cells.
 
     source=cell_size_ir is the I-scale-win IR-hotspot ODB join.
     source=cell_size_ir_champ is the I-scale-champ join (not the first ctrl set).
+    extract_id stamps the I-scale-champ winning_ir extract so a later
+    R-graph can re-pay size-up — not a session-global one-shot.
     """
     from .attribute import attribute_sta
     from .cell_space import upsize_file
@@ -1756,6 +1676,8 @@ def evaluate_cell_size(
     if source == "cell_size_ir_champ":
         knobs["ir_join"] = 1
         knobs["champ"] = 1
+        if extract_id:
+            knobs["extract_id"] = str(extract_id)
     fp = knobs_fp("cell", knobs)
     if fp in mem.seen_knobs("cell"):
         return next(c for c in mem.by_level("cell") if c.knobs_fp == fp)

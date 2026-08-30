@@ -244,6 +244,7 @@ def main() -> int:
     )
     check(attr["status"] == "READY", "IR attribution READY")
     check(attr["modules"] == ["dpath"], f"path start/end map to dpath, got {attr['modules']}")
+    check(attr.get("join") == "sta-path", f"STA names win over empty insts, got {attr.get('join')}")
     check(attr.get("region") == "r31", f"hotspot bins to a region, got {attr.get('region')}")
     check(attr["scope"] == "logic_cone", "attributed scope is logic_cone, not chip restart")
     check(local_scope(attr)["restart_chip"] is False, "local scope refuses a chip restart")
@@ -2366,6 +2367,44 @@ def main() -> int:
     check(joined.get("cells") == ["ctrl/_11_", "ctrl/_14_"], f"IR join prefers nearby ctrl combo, got {joined}")
     check(joined.get("modules") == ["ctrl"], f"IR join names ctrl, got {joined}")
     check("VCD" in str(joined.get("via") or joined.get("not")), f"IR join refuses a VCD remap ({joined})")
+    attr_odb = attribute_dynamic_ir(
+        {
+            "hotspot": {
+                "node": "ITermNode_metal1_38755_14170",
+                "droop_mv": 7.187,
+                "x_dbu": 38755.0,
+                "y_dbu": 14170.0,
+                "contributors": {"seq_frac": 0.04, "combo_frac": 0.96},
+            },
+            "insts": str(inst_json),
+        }
+    )
+    check(attr_odb.get("join") == "odb-geom", f"combo-heavy F4 attr falls back to ODB join, got {attr_odb}")
+    check(attr_odb.get("modules") == ["ctrl"], f"ODB-geom attr names ctrl, got {attr_odb}")
+    check(attr_odb.get("cells") == ["ctrl/_11_", "ctrl/_14_"], f"ODB-geom attr keeps nearby combo, got {attr_odb}")
+    check(attr_odb.get("scope") == "logic_cone", f"ODB-geom attr is a cone, not a chip restart, got {attr_odb}")
+    check("ODB" in str(attr_odb.get("note") or ""), f"ODB-geom note names the join ({attr_odb.get('note')})")
+    attr_sta_wins = attribute_dynamic_ir(
+        {
+            "hotspot": {
+                "node": "ITermNode_metal1_38755_14170",
+                "droop_mv": 7.187,
+                "x_dbu": 38755.0,
+                "y_dbu": 14170.0,
+            },
+            "activity_model": {
+                "sta": {
+                    "worst_path": {
+                        "startpoint": "dpath.a_reg.out[5]$_DFFE_PP_",
+                        "endpoint": "dpath.a_reg.out[7]$_DFFE_PP_",
+                    }
+                }
+            },
+            "insts": str(inst_json),
+        }
+    )
+    check(attr_sta_wins.get("join") == "sta-path", f"STA names beat ODB fallback, got {attr_sta_wins}")
+    check(attr_sta_wins.get("modules") == ["dpath"], f"STA-path attr stays dpath, got {attr_sta_wins}")
     pay_ic0, why_ic0 = should_pay_ir_cell(mem_hr, budget_left=80, n_cell=0)
     check(not pay_ic0, f"IR-cell waits for an I-scale-win inst map ({why_ic0})")
     dummy_host = inst_dir / "host.v"
@@ -2692,6 +2731,7 @@ def main() -> int:
                 "ir_join": 1,
                 "champ": 1,
                 "parent_id": "ircell",
+                "extract_id": "icreg",
             },
             knobs_fp="icchamp",
             rtl_fp="x",
@@ -2719,7 +2759,14 @@ def main() -> int:
             design_id="gcd",
             parent_id="icchamp",
             level="pdn",
-            knobs={"source": "f4_ir_cell_champ_extract", "parent_id": "icchamp", "extract_id": "iccext", "ir_join": 1, "champ": 1},
+            knobs={
+                "source": "f4_ir_cell_champ_extract",
+                "parent_id": "icchamp",
+                "extract_id": "iccext",
+                "parent_extract_id": "icreg",
+                "ir_join": 1,
+                "champ": 1,
+            },
             knobs_fp="iccext",
             rtl_fp="x",
             netlist_fp="y",
@@ -2753,6 +2800,126 @@ def main() -> int:
     check(not pay_iccp_ref, f"IR-cell-champ PDN refuses the first IR-cell extract ({why_iccp_ref})")
     pay_iccp2, why_iccp2 = should_pay_ir_cell_champ_pdn(mem_hr, budget_left=80, steer=st_iccp, n_steer=1)
     check(not pay_iccp2, f"IR-cell-champ PDN is a single shot ({why_iccp2})")
+    pay_icc_same, why_icc_same = should_pay_ir_cell_champ(mem_hr, budget_left=80, steer=st_icc)
+    check(not pay_icc_same, f"I-scale-champ cell refuses a second shot on the same extract ({why_icc_same})")
+    check("this extract" in why_icc_same, f"I-scale-champ cell names the extract cap ({why_icc_same})")
+    strap_inst = inst_dir / "strap_inst_power_map.json"
+    strap_inst.write_text(
+        json.dumps(
+            {
+                "insts": [
+                    {"name": "ctrl/_04_", "cell": "NOR2_X1", "x": 38965, "y": 14055, "seq": False, "filler": False},
+                    {"name": "ctrl/_07_", "cell": "AOI21_X1", "x": 39100, "y": 14100, "seq": False, "filler": False},
+                    {"name": "ctrl/_08_", "cell": "INV_X1", "x": 38800, "y": 13900, "seq": False, "filler": False},
+                    {"name": "dpath/a_reg/_078_", "cell": "OAI21_X1", "x": 25400, "y": 19800, "seq": False, "filler": False},
+                    {"name": "FILLCELL_X1", "cell": "FILLCELL_X1", "x": 38965, "y": 14055, "seq": False, "filler": True},
+                ]
+            }
+        )
+        + "\n"
+    )
+    mem_hr.add(
+        Candidate(
+            id="iscstrap",
+            design_id="gcd",
+            parent_id="ircell",
+            level="pdn",
+            knobs={"source": "f4_iscale_champ", "parent_id": "ircell", "extract_id": "strap9", "i_scale": 4.21},
+            knobs_fp="iscstrap",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=7.187, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_iscale_champ",
+                "x_dbu": 38965.0,
+                "y_dbu": 14055.0,
+                "region": "r10",
+                "combo_frac": 0.96,
+                "join": "odb-geom",
+                "modules": ["ctrl"],
+                "cells": ["ctrl/_04_", "ctrl/_07_", "ctrl/_08_"],
+            },
+            artifacts={"insts": str(strap_inst), "x_dbu": 38965.0, "y_dbu": 14055.0},
+        )
+    )
+    st_icc2 = steer_from_iscale_champ_hotspot(mem_hr)
+    check(st_icc2 is not None and st_icc2.get("extract_id") == "strap9", f"new winning_ir extract steers a new champ join, got {st_icc2}")
+    check("ctrl/_04_" in (st_icc2.get("cells") or []), f"strap champ join names ctrl/_04_, got {st_icc2}")
+    check("ctrl/_11_" not in (st_icc2.get("cells") or []), f"strap champ join is not the first ctrl set, got {st_icc2}")
+    pay_icc_new, why_icc_new = should_pay_ir_cell_champ(mem_hr, budget_left=80, steer=st_icc2)
+    check(pay_icc_new, f"I-scale-champ cell re-pays when the extract moves ({why_icc_new})")
+    check("ctrl" in why_icc_new, f"moved-extract champ cell names ctrl ({why_icc_new})")
+    fake_first = dict(st_icc2)
+    fake_first["cells"] = ["ctrl/_11_", "ctrl/_14_"]
+    pay_icc_first, why_icc_first = should_pay_ir_cell_champ(mem_hr, budget_left=80, steer=fake_first)
+    check(not pay_icc_first, f"moved-extract champ still refuses the first IR-cell set ({why_icc_first})")
+    mem_hr.add(
+        Candidate(
+            id="icchamp2",
+            design_id="gcd",
+            parent_id="ircell",
+            level="cell",
+            knobs={
+                "source": "cell_size_ir_champ",
+                "cells": ["ctrl/_04_", "ctrl/_07_", "ctrl/_08_"],
+                "ir_join": 1,
+                "champ": 1,
+                "parent_id": "ircell",
+                "extract_id": "strap9",
+            },
+            knobs_fp="icchamp2",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F3",
+            qor=QoR(area_um2=570.0, wns_cost=0.31, fidelity="F3"),
+            cost_s=0.2,
+            status="ok",
+            artifacts={"mapped_v": str(dummy_host), "n_changed": 3},
+            attr={"via": "active_f4_ir_cell_champ"},
+        )
+    )
+    pay_icc_spent, why_icc_spent = should_pay_ir_cell_champ(mem_hr, budget_left=80, steer=st_icc2)
+    check(not pay_icc_spent, f"moved-extract champ cell skips once sized on that extract ({why_icc_spent})")
+    pay_icce_new, why_icce_new = should_pay_ir_cell_champ_extract(mem_hr, budget_left=80, n_extract=0)
+    check(pay_icce_new, f"IR-cell-champ extract re-pays on the new size-up ({why_icce_new})")
+    check("ctrl" in why_icce_new, f"moved-extract champ extract names ctrl ({why_icce_new})")
+    mem_hr.add(
+        Candidate(
+            id="iccext2",
+            design_id="gcd",
+            parent_id="icchamp2",
+            level="pdn",
+            knobs={
+                "source": "f4_ir_cell_champ_extract",
+                "parent_id": "icchamp2",
+                "extract_id": "iccext2",
+                "parent_extract_id": "strap9",
+                "ir_join": 1,
+                "champ": 1,
+            },
+            knobs_fp="iccext2",
+            rtl_fp="x",
+            netlist_fp="y",
+            fidelity="F4",
+            qor=QoR(dynamic_ir_mv=8.10, fidelity="F4"),
+            cost_s=1.0,
+            status="ok",
+            attr={
+                "via": "f4_ir_cell_champ_extract",
+                "residual_mv": -1.10,
+                "residual_via": "ir_cell_champ_vs_ir_cell_extract",
+            },
+        )
+    )
+    pay_icce_spent, why_icce_spent = should_pay_ir_cell_champ_extract(mem_hr, budget_left=80, n_extract=0)
+    check(not pay_icce_spent, f"IR-cell-champ extract skips once measured on that extract ({why_icce_spent})")
+    st_iccp2 = steer_from_ir_cell_champ_residual(mem_hr)
+    check(st_iccp2 is not None and st_iccp2.get("extract_id") == "iccext2", f"new champ extract steers its own PDN, got {st_iccp2}")
+    pay_iccp_new, why_iccp_new = should_pay_ir_cell_champ_pdn(mem_hr, budget_left=80, steer=st_iccp2, n_steer=0)
+    check(pay_iccp_new, f"IR-cell-champ PDN re-pays on the new champ extract ({why_iccp_new})")
     pay_amgc1, why_amgc1 = should_pay_f4_amg_champ(mem_hr, budget_left=80, n_amg=0)
     check(pay_amgc1, f"champion AMG is paid on winning_ir_pdn ({why_amgc1})")
     check("3.921" in why_amgc1, f"champion AMG names the 3.921 point ({why_amgc1})")

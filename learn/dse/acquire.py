@@ -1158,10 +1158,16 @@ def should_pay_ir_cell_champ(
         return False, "I-scale-champ cell size shot already spent"
     if budget_left < min_s:
         return False, "wall budget would not cover I-scale-champ cell STA"
-    if any((c.knobs or {}).get("source") == "cell_size_ir_champ" and c.status == "ok" for c in mem.by_level("cell")):
-        return False, "already have an I-scale-champ cell-local size child"
     if not steer or steer.get("level") != "ir_cell_champ":
         return False, "no I-scale-champ hotspot residual (need combo-heavy join ≠ first IR-cell)"
+    champ_eid = str(steer.get("extract_id") or "")
+    if any(
+        (c.knobs or {}).get("source") == "cell_size_ir_champ"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "") == champ_eid
+        for c in mem.by_level("cell")
+    ):
+        return False, "already have an I-scale-champ cell-local size child on this extract"
     cells = [str(x) for x in steer.get("cells") or []]
     if len(cells) < 1:
         return False, "I-scale-champ join has no cells"
@@ -1222,11 +1228,14 @@ def should_pay_ir_cell_champ_extract(
         return False, "no IR-cell extract to residual the champ mesh against"
     if str((ice.knobs or {}).get("parent_id") or "") == host.id:
         return False, "IR-cell-champ is already the IR-cell-extract parent"
+    host_eid = str((host.knobs or {}).get("extract_id") or "")
     if any(
-        (c.knobs or {}).get("source") == "f4_ir_cell_champ_extract" and c.status == "ok"
+        (c.knobs or {}).get("source") == "f4_ir_cell_champ_extract"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("parent_extract_id") or "") == host_eid
         for c in mem.by_level("pdn")
     ):
-        return False, "already have an IR-cell-champ write_pg_spice mesh"
+        return False, "already have an IR-cell-champ write_pg_spice mesh on this extract"
     nch = (host.artifacts or {}).get("n_changed") or len((host.knobs or {}).get("cells") or [])
     mods = ",".join(
         dict.fromkeys(
@@ -1236,7 +1245,7 @@ def should_pay_ir_cell_champ_extract(
         )
     ) or "unjoined"
     return True, (
-        f"write_pg_spice on IR-cell-champ {mods} n={nch} — dpath-sized netlist IR residual "
+        f"write_pg_spice on IR-cell-champ {mods} n={nch} — champ-sized netlist IR residual "
         "vs IR-cell extract, not host extract, not gold, not ABC"
     )
 
