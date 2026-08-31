@@ -351,6 +351,30 @@ def main() -> int:
         and [s.level for s in STAGES_IR_CHAMP] == ["ir_champ_family"],
         "C4 winning_ir + champ family is one Stage",
     )
+    from dse.ir_inspect import run_inspect_loop, run_ir_inspect_loops
+    from dse.stages import STAGE_IR_INSPECT, STAGES_IR_INSPECT
+    import inspect as _ins
+    check(
+        STAGE_IR_INSPECT.level == "ir_inspect"
+        and STAGE_IR_INSPECT.run is run_ir_inspect_loops
+        and [s.level for s in STAGES_IR_INSPECT] == ["ir_inspect"],
+        "C5 inspect loops are not a one-shot Stage pay",
+    )
+    check(
+        run_inspect_loop.__doc__ is not None
+        and "denied acquire" in run_inspect_loop.__doc__,
+        "C5 run_inspect_loop keeps the first denied acquire",
+    )
+    src_txt = _ins.getsource(run_ir_inspect_loops)
+    check(
+        "no leftover-cone-region extract or |Δ| PDN" in src_txt
+        and "no winning-IR-region extract or |Δ| PDN" in src_txt,
+        "C5 denied-acquire why strings stay pinned",
+    )
+    check(
+        "leftover_cone_region_next" in src_txt and "winning_ir_region_next" in src_txt,
+        "C5 uses both inspectors",
+    )
 
     from dse.metrics import dominates, dominates_with_fidelity, pareto_front, pareto_front_gated
 
