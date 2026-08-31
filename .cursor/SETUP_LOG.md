@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:44Z — PLAN Fase 2 C7: champ solvers + static/EM
+
+`STAGES_IR_SOLVERS` after `run_next_refine`. AMG/RAS/Krylov-champ + static
+IR/mesh/straps + EM. `admit_paid_f4` wrappers on ctx. `controller.py`
+3551 → 3115. `test_dse.py` ALL PASSED (~259 s); DirectLU 6.075 + `sta_t50`.
+Gold unrestamped. F1 teacher and refine while stay inlined.
+
 ## 2026-08-31T20:38Z — PLAN Fase 2 C6: winning_ir_region_cell depth 0
 
 Size / extract / PDN family Stage. `run_next_refine` stays immediately after.
