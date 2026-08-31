@@ -19,7 +19,7 @@ Nangate45 (NLDM). `build_worker_cmd` / worker take `--scenario` JSON;
 | CCS | GAP, no tables invented |
 | `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
-| `test_dse.py` | re-run after this commit |
+| `test_dse.py` | ALL PASSED (~265 s); DirectLU 6.075 with `sta_t50`; ≠ gold 45.298 |
 
 ## 2026-08-31T17:50Z — PLAN passo 5: Pareto gated by fidelity
 
