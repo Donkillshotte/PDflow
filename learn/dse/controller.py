@@ -22,7 +22,6 @@ Acquisition ≈ expected improvement + information − compute − extrapolation
 from __future__ import annotations
 
 import json
-import re
 import tempfile
 import time
 from pathlib import Path
@@ -33,66 +32,15 @@ from .acquire import (
     latest_ok_host_extract,
     latest_host_arrivals,
     latest_host_extract_cand,
-    should_pay_ir_cell,
-    should_pay_ir_cell_champ,
-    should_pay_ir_cell_champ_extract,
-    should_pay_ir_cell_champ_pdn,
-    should_pay_ir_cell_champ_cone,
-    should_pay_ir_cell_champ_cone_extract,
-    should_pay_ir_cell_champ_cone_pdn,
-    leftover_cone_region_next,
-    winning_ir_region_next,
-    should_pay_winning_ir_region_cell,
-    should_pay_winning_ir_region_cell_extract,
-    should_pay_winning_ir_region_cell_pdn,
-    should_pay_ir_cell_extract,
-    should_pay_ir_cell_pdn,
-    should_pay_ir_cell_region,
-    should_pay_ir_cell_region_pdn,
     should_pay_ctrl_cone,
-    should_pay_f4_amg_champ,
-    champ_mf_n,
-    should_pay_f4_krylov_champ,
-    should_pay_f4_ras_champ,
     extract_on_disk,
-    should_pay_f4_scale_champ,
-    should_pay_static_ir_steer,
-    should_pay_static_mesh,
-    should_pay_static_straps,
-    should_pay_em_straps,
-    should_pay_winning_ir_catalog,
-    iscale_champ_sta,
 )
 from .active import (
     iscale_host,
-    iscale_parent,
     winning_host_pdn,
     winning_ir_pdn,
     winning_static_pdn,
-    steer_from_static_ir_residual,
-    steer_from_static_mesh_residual,
-    steer_from_static_strap_residual,
-    steer_from_em_width_residual,
-    steer_from_winning_ir_catalog,
     winning_em_pdn,
-    strap_extract_host,
-    ir_hotspot_cells,
-    ir_cell_host,
-    steer_from_ir_cell_residual,
-    steer_from_ir_cell_hotspot,
-    steer_from_ir_cell_region_residual,
-    steer_from_iscale_champ_hotspot,
-    ir_cell_champ_host,
-    ir_cell_champ_cone_host,
-    steer_from_ir_cell_champ_residual,
-    steer_from_ir_cell_champ_extract_hotspot,
-    steer_from_ir_cell_champ_cone_residual,
-    steer_from_ir_cell_champ_cone_hotspot,
-    steer_from_ir_cell_champ_cone_region_hotspot,
-    steer_from_ir_cell_champ_cone_region_residual,
-    winning_ir_region_cell_host,
-    steer_from_winning_ir_region_pdn_hotspot,
-    steer_from_winning_ir_region_cell_residual,
 )
 from .arch_space import emit_gcd_variant, stamp_cone_knobs
 from .designs import resolve
@@ -101,7 +49,6 @@ from .dispatch import run_next_refine
 from .boils import propose_logic_boils, should_pay_f1
 from .fidelity import (
     evaluate_cell_size,
-    evaluate_net_buffer,
     evaluate_f1_abc,
     evaluate_f3_sta,
     evaluate_f4_extract,
@@ -128,7 +75,7 @@ from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front, qor_delta
 from .mo import baseline_wns, timing_of
 from .resources import admit_solve
-from .solve_result import residual_vs_reference_mv, stamp_f4_candidate
+from .solve_result import stamp_f4_candidate
 from .stages import (
     STAGES_F4_HEAD,
     STAGES_IR_CELL,
