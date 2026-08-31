@@ -269,6 +269,9 @@ def main() -> int:
     check(pay_p is False and why_p == "no F1 to score", f"generic no-parent, got {why_p}")
     check(planned({"steps": [{"level": "f2_fast"}]}, "f2_fast"), "planned sees f2_fast")
     check(STAGE_F2_FAST.level == "f2_fast" and STAGE_F3_STA.level == "f3_sta", "3a stage names")
+    from dse.stages import STAGE_F3_SPEF, STAGE_F5_DRT, STAGE_F5_PORT, STAGE_ROUTING
+    check(STAGE_ROUTING.level == "routing" and STAGE_F5_DRT.level == "f5_drt", "3b routing/DRT names")
+    check(STAGE_F3_SPEF.level == "f3_spef" and STAGE_F5_PORT.level == "f5_port", "3b SPEF/port names")
 
     from dse.costs import estimated_cost_s, p75
     from dse.fidelity import COST_HINT

@@ -3,6 +3,18 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T18:20Z — PLAN passo 3b: routing / F5 stages
+
+Strangler: GRT, F5-DRT, F3-SPEF, F5-CTS, F5-local, F5-port moved to `learn/dse/stages.py`. Order unchanged: STA → GRT → SDF → DRT → SPEF → CTS → LOCAL → residual_steer (inlined) → PORT. `why`/`step` strings unchanged including F5_LOCAL host_why kwargs. `controller.py` 5800 → 5661 (−139). No AES Krylov. Gold unrestamped.
+
+| Item | Result |
+|---|---|
+| Stages | `STAGE_ROUTING`, `STAGE_F5_DRT`, `STAGE_F3_SPEF`, `STAGE_F5_CTS`, `STAGE_F5_LOCAL`, `STAGE_F5_PORT` |
+| Order | GRT still between STA and SDF |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including 3b names |
+| `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
+| `test_dse.py` | re-run after this commit |
+
 ## 2026-08-31T18:00Z — PLAN passo 4: empirical p75 cost model
 
 `learn/dse/costs.py`: `estimated_cost_s` is p75 of ok `cost_s` for that fidelity+design; < 3 samples → `COST_HINT`. Stages GPL/STA/SDF pass empirical `min_s` into `should_pay_*`. `_pay_and_maybe_eval` skips evaluate when wall+est exceeds `t_end` without changing acquire why. Controller F1/F3 interleave uses the estimate instead of static `COST_HINT`. Budget 45 s unchanged. No AES Krylov. Gold unrestamped.

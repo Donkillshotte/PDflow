@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -124,8 +124,9 @@ committa, si passa al lotto dopo.
   `run_stage` generico; helper `should_pay_generic(budget_left, n_have, max_shots,
   min_s, parents_ok)` che copre il caso comune delle 66 funzioni.
   Migrare **4 stage semplici**: `f2_fast`, `f2_gpl`, `f3_sta`, `f3_sdf`.
-- **3b** — Migrare il ramo routing/F5: `routing (GRT)`, `f5_drt`, `f3_spef`,
-  `f5_cts`, `f5_local`, `f5_port`.
+- **3b** ✅ — Migrare il ramo routing/F5: `routing (GRT)`, `f5_drt`, `f3_spef`,
+  `f5_cts`, `f5_local`, `f5_port`. GRT resta fra STA e SDF; residual_steer resta
+  inlined fra local e port.
 - **3c** — Migrare cell/net/synthesis/physical-catalog.
 - **3d** — Migrare la coda PDN/F4 (candidate/host/region/champ/catalog/static/EM).
   Qui ogni stage F4 dichiara `needs_admit=True` e `run_stage` chiama
@@ -145,7 +146,7 @@ committa, si passa al lotto dopo.
 
 ---
 
-## Passo 4 — Cost model dai dati (dopo 3a, indipendente da 3b–3e) ✅
+## Passo 4 — Cost model dai dati (dopo 3a, indipendente da 3b–3e) ✅ (commit `aed3a6d`)
 
 **Problema.** `COST_HINT` in `fidelity.py` è statico
 (`{"F0": 0.05, "F1": 2.0, "F2": 30.0, ...}`) mentre ogni candidato registra

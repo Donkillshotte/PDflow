@@ -180,7 +180,19 @@ from .metrics import QoR, pareto_front, qor_delta
 from .mo import baseline_wns, timing_of
 from .resources import admit_solve
 from .solve_result import residual_vs_reference_mv, stamp_f4_candidate
-from .stages import STAGE_F2_FAST, STAGE_F2_GPL, STAGE_F3_SDF, STAGE_F3_STA, run_stage
+from .stages import (
+    STAGE_F2_FAST,
+    STAGE_F2_GPL,
+    STAGE_F3_SDF,
+    STAGE_F3_SPEF,
+    STAGE_F3_STA,
+    STAGE_F5_CTS,
+    STAGE_F5_DRT,
+    STAGE_F5_LOCAL,
+    STAGE_F5_PORT,
+    STAGE_ROUTING,
+    run_stage,
+)
 from .pdn_space import GOLD_KNOBS, next_pdn_spec
 from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
 from .planner import plan_search, rank_extracts
@@ -1116,164 +1128,13 @@ def run_controller(
     run_stage(STAGE_F2_FAST, _stage_ctx)
     run_stage(STAGE_F2_GPL, _stage_ctx)
     run_stage(STAGE_F3_STA, _stage_ctx)
-
-    n_grt = sum(
-        1
-        for c in mem.by_level("routing")
-        if (c.knobs or {}).get("source") == "f2_openroad_grt" and c.status == "ok"
-    )
-    pay_grt, why_grt = should_pay_f2_grt(mem, budget_left=t_end - time.time(), n_grt=n_grt)
-    step("acquire", fidelity="F2_GRT", pay=pay_grt, why=why_grt)
-    if any(s["level"] == "routing" for s in plan["steps"]) and pay_grt and time.time() < t_end:
-        pick = _mapped_pick(
-            [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
-            rtl=rtl,
-            liberty=lib,
-            top=top,
-        )
-        if pick:
-            mem.touch(pick)
-            child = evaluate_f2_grt(pick, mem, design_id=design_id)
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="routing",
-                    fidelity="F2",
-                    via="f2_openroad_grt",
-                    parent=pick.id,
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    overflow=child.qor.congestion,
-                    status=child.status,
-                )
-
+    # GRT sits BETWEEN F3 STA and F3 SDF. Do not fold these four into one loop.
+    run_stage(STAGE_ROUTING, _stage_ctx)
     run_stage(STAGE_F3_SDF, _stage_ctx)
-
-    n_f5 = sum(
-        1
-        for c in mem.by_level("routing")
-        if (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
-    )
-    pay_f5, why_f5 = should_pay_f5_drt(mem, budget_left=t_end - time.time(), n_f5=n_f5)
-    step("acquire", fidelity="F5", pay=pay_f5, why=why_f5)
-    if any(s["level"] == "f5_drt" for s in plan["steps"]) and pay_f5 and time.time() < t_end:
-        pick = _mapped_pick(
-            [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
-            rtl=rtl,
-            liberty=lib,
-            top=top,
-        )
-        if pick:
-            mem.touch(pick)
-            child = evaluate_f5_drt(pick, mem, design_id=design_id)
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="routing",
-                    fidelity="F5",
-                    via="f5_openroad_drt_rcx",
-                    parent=pick.id,
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    n_rc=(child.artifacts or {}).get("n_rc_segments"),
-                    status=child.status,
-                )
-
-    n_spef = sum(
-        1 for c in mem.all() if (c.knobs or {}).get("source") == "f3_opensta_spef" and c.status == "ok"
-    )
-    pay_spef, why_spef = should_pay_f3_spef(mem, budget_left=t_end - time.time(), n_spef=n_spef)
-    step("acquire", fidelity="F3_SPEF", pay=pay_spef, why=why_spef)
-    if any(s["level"] == "f3_spef" for s in plan["steps"]) and pay_spef and time.time() < t_end:
-        host = next(
-            (
-                c
-                for c in mem.all()
-                if (c.artifacts or {}).get("spef")
-                and (c.artifacts or {}).get("mapped_v")
-                and Path(c.artifacts["spef"]).is_file()
-                and Path(c.artifacts["mapped_v"]).is_file()
-            ),
-            None,
-        )
-        if host:
-            spc = evaluate_f3_spef(host, mem, design_id=design_id)
-            if spc:
-                step(
-                    "evaluate",
-                    id=spc.id,
-                    level=host.level,
-                    fidelity="F3",
-                    via="f3_opensta_spef",
-                    parent=host.id,
-                    wns_ns=(spc.artifacts or {}).get("wns_ns"),
-                    interconnect="spef",
-                    status=spc.status,
-                )
-
-    n_f5_cts = sum(
-        1
-        for c in mem.by_level("routing")
-        if (c.knobs or {}).get("source") == "f5_openroad_cts_rcx" and c.status == "ok"
-    )
-    pay_cts, why_cts = should_pay_f5_cts(mem, budget_left=t_end - time.time(), n_f5_cts=n_f5_cts)
-    step("acquire", fidelity="F5_CTS", pay=pay_cts, why=why_cts)
-    if any(s["level"] == "f5_cts" for s in plan["steps"]) and pay_cts and time.time() < t_end:
-        pick = _mapped_pick(
-            [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
-            rtl=rtl,
-            liberty=lib,
-            top=top,
-        )
-        if pick:
-            mem.touch(pick)
-            child = evaluate_f5_cts(pick, mem, design_id=design_id)
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="routing",
-                    fidelity="F5",
-                    via="f5_openroad_cts_rcx",
-                    parent=pick.id,
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    n_clkbuf=(child.artifacts or {}).get("n_clkbuf"),
-                    clock="propagated",
-                    status=child.status,
-                )
-
-    n_f5_local = sum(
-        1
-        for c in mem.by_level("routing")
-        if (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
-    )
-    pay_loc, why_loc = should_pay_f5_local(
-        mem, budget_left=t_end - time.time(), n_f5_local=n_f5_local
-    )
-    hosts_ord, host_why = order_local_hosts(mem)
-    step("acquire", fidelity="F5_LOCAL", pay=pay_loc, why=why_loc, **host_why)
-    if any(s["level"] == "f5_local" for s in plan["steps"]) and pay_loc and time.time() < t_end:
-        child = None
-        host = None
-        for cand in hosts_ord or local_hosts(mem):
-            mem.touch(cand)
-            child = evaluate_f5_local(cand, mem, design_id=design_id)
-            host = cand
-            if child and child.status == "ok":
-                break
-        if child:
-            step(
-                "evaluate",
-                id=child.id,
-                level="routing",
-                fidelity="F5",
-                via="f5_openroad_local",
-                parent=host.id if host else None,
-                host_level=host.level if host else None,
-                wns_ns=(child.artifacts or {}).get("wns_ns"),
-                ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
-                status=child.status,
-            )
+    run_stage(STAGE_F5_DRT, _stage_ctx)
+    run_stage(STAGE_F3_SPEF, _stage_ctx)
+    run_stage(STAGE_F5_CTS, _stage_ctx)
+    run_stage(STAGE_F5_LOCAL, _stage_ctx)
 
     steer = steer_from_residual(mem)
     n_steer = sum(1 for c in mem.all() if (c.attr or {}).get("via") == "active_residual" and c.status == "ok")
@@ -1312,35 +1173,7 @@ def run_controller(
                 reason=steer.get("reason"),
             )
 
-    n_f5_port = sum(
-        1
-        for c in mem.by_level("routing")
-        if (c.knobs or {}).get("source") == "f5_openroad_local"
-        and (c.knobs or {}).get("host_level") == "port"
-        and c.status == "ok"
-    )
-    pay_fp, why_fp = should_pay_f5_port(
-        mem, budget_left=t_end - time.time(), n_f5_port=n_f5_port
-    )
-    step("acquire", fidelity="F5_PORT", pay=pay_fp, why=why_fp)
-    if any(s["level"] == "f5_port" for s in plan["steps"]) and pay_fp and time.time() < t_end:
-        host = latest_port_host(mem)
-        if host:
-            mem.touch(host)
-            child = evaluate_f5_local(host, mem, design_id=design_id)
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="routing",
-                    fidelity="F5",
-                    via="f5_openroad_local",
-                    parent=host.id,
-                    host_level="port",
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
-                    status=child.status,
-                )
+    run_stage(STAGE_F5_PORT, _stage_ctx)
 
     steer_port = steer_from_port_residual(mem)
     n_psteer = sum(

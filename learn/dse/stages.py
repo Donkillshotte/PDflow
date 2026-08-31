@@ -65,13 +65,15 @@ def _pay_and_maybe_eval(
     evaluate: Callable[[], bool],
     cost_key: str | None = None,
     fidelity: str | None = None,
+    acquire_extra: dict | None = None,
 ) -> bool:
     step = ctx["step"]
     plan = ctx["plan"]
     t_end = ctx["t_end"]
     mem = ctx["mem"]
     if acquire_fidelity:
-        step("acquire", fidelity=acquire_fidelity, pay=pay, why=why)
+        extra = dict(acquire_extra or {})
+        step("acquire", fidelity=acquire_fidelity, pay=pay, why=why, **extra)
     if not planned(plan, level) or not pay or time.time() >= t_end:
         return False
     if cost_key:
@@ -283,7 +285,307 @@ def run_f3_sdf(ctx: dict) -> bool:
     )
 
 
+def run_routing(ctx: dict) -> bool:
+    from .acquire import should_pay_f2_grt
+    from .costs import estimated_cost_s
+    from .fidelity import evaluate_f2_grt
+
+    mem = ctx["mem"]
+    n_grt = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f2_openroad_grt" and c.status == "ok"
+    )
+    min_s = estimated_cost_s(mem, "F2", ctx["design_id"], cost_key="F2_GRT")
+    pay, why = should_pay_f2_grt(
+        mem, budget_left=ctx["t_end"] - time.time(), n_grt=n_grt, min_s=min_s
+    )
+
+    def _eval() -> bool:
+        pick = ctx["mapped_pick"](
+            [ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            top=ctx["top"],
+        )
+        if not pick:
+            return False
+        mem.touch(pick)
+        child = evaluate_f2_grt(pick, mem, design_id=ctx["design_id"])
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="routing",
+            fidelity="F2",
+            via="f2_openroad_grt",
+            parent=pick.id,
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            overflow=child.qor.congestion,
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="routing", acquire_fidelity="F2_GRT", pay=pay, why=why, evaluate=_eval,
+        cost_key="F2_GRT", fidelity="F2",
+    )
+
+
+def run_f5_drt(ctx: dict) -> bool:
+    from .acquire import should_pay_f5_drt
+    from .costs import estimated_cost_s
+    from .fidelity import evaluate_f5_drt
+
+    mem = ctx["mem"]
+    n_f5 = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+    )
+    min_s = estimated_cost_s(mem, "F5", ctx["design_id"], cost_key="F5")
+    pay, why = should_pay_f5_drt(
+        mem, budget_left=ctx["t_end"] - time.time(), n_f5=n_f5, min_s=min_s
+    )
+
+    def _eval() -> bool:
+        pick = ctx["mapped_pick"](
+            [ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            top=ctx["top"],
+        )
+        if not pick:
+            return False
+        mem.touch(pick)
+        child = evaluate_f5_drt(pick, mem, design_id=ctx["design_id"])
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="routing",
+            fidelity="F5",
+            via="f5_openroad_drt_rcx",
+            parent=pick.id,
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            n_rc=(child.artifacts or {}).get("n_rc_segments"),
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f5_drt", acquire_fidelity="F5", pay=pay, why=why, evaluate=_eval,
+        cost_key="F5", fidelity="F5",
+    )
+
+
+def run_f3_spef(ctx: dict) -> bool:
+    from pathlib import Path
+
+    from .acquire import should_pay_f3_spef
+    from .costs import estimated_cost_s
+    from .fidelity import evaluate_f3_spef
+
+    mem = ctx["mem"]
+    n_spef = sum(
+        1 for c in mem.all() if (c.knobs or {}).get("source") == "f3_opensta_spef" and c.status == "ok"
+    )
+    min_s = estimated_cost_s(mem, "F3", ctx["design_id"], cost_key="F3")
+    pay, why = should_pay_f3_spef(
+        mem, budget_left=ctx["t_end"] - time.time(), n_spef=n_spef, min_s=min_s
+    )
+
+    def _eval() -> bool:
+        host = next(
+            (
+                c
+                for c in mem.all()
+                if (c.artifacts or {}).get("spef")
+                and (c.artifacts or {}).get("mapped_v")
+                and Path(c.artifacts["spef"]).is_file()
+                and Path(c.artifacts["mapped_v"]).is_file()
+            ),
+            None,
+        )
+        if not host:
+            return False
+        spc = evaluate_f3_spef(host, mem, design_id=ctx["design_id"])
+        if not spc:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=spc.id,
+            level=host.level,
+            fidelity="F3",
+            via="f3_opensta_spef",
+            parent=host.id,
+            wns_ns=(spc.artifacts or {}).get("wns_ns"),
+            interconnect="spef",
+            status=spc.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f3_spef", acquire_fidelity="F3_SPEF", pay=pay, why=why, evaluate=_eval,
+        cost_key="F3", fidelity="F3",
+    )
+
+
+def run_f5_cts(ctx: dict) -> bool:
+    from .acquire import should_pay_f5_cts
+    from .costs import estimated_cost_s
+    from .fidelity import evaluate_f5_cts
+
+    mem = ctx["mem"]
+    n_f5_cts = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_cts_rcx" and c.status == "ok"
+    )
+    min_s = estimated_cost_s(mem, "F5", ctx["design_id"], cost_key="F5_CTS")
+    pay, why = should_pay_f5_cts(
+        mem, budget_left=ctx["t_end"] - time.time(), n_f5_cts=n_f5_cts, min_s=min_s
+    )
+
+    def _eval() -> bool:
+        pick = ctx["mapped_pick"](
+            [ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            top=ctx["top"],
+        )
+        if not pick:
+            return False
+        mem.touch(pick)
+        child = evaluate_f5_cts(pick, mem, design_id=ctx["design_id"])
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="routing",
+            fidelity="F5",
+            via="f5_openroad_cts_rcx",
+            parent=pick.id,
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            n_clkbuf=(child.artifacts or {}).get("n_clkbuf"),
+            clock="propagated",
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f5_cts", acquire_fidelity="F5_CTS", pay=pay, why=why, evaluate=_eval,
+        cost_key="F5_CTS", fidelity="F5",
+    )
+
+
+def run_f5_local(ctx: dict) -> bool:
+    from .acquire import should_pay_f5_local
+    from .active import order_local_hosts
+    from .costs import estimated_cost_s
+    from .fidelity import evaluate_f5_local
+
+    mem = ctx["mem"]
+    n_f5_local = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
+    )
+    min_s = estimated_cost_s(mem, "F5", ctx["design_id"], cost_key="F5")
+    pay, why = should_pay_f5_local(
+        mem, budget_left=ctx["t_end"] - time.time(), n_f5_local=n_f5_local, min_s=min_s
+    )
+    hosts_ord, host_why = order_local_hosts(mem)
+
+    def _eval() -> bool:
+        from .acquire import local_hosts
+
+        child = None
+        host = None
+        for cand in hosts_ord or local_hosts(mem):
+            mem.touch(cand)
+            child = evaluate_f5_local(cand, mem, design_id=ctx["design_id"])
+            host = cand
+            if child and child.status == "ok":
+                break
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="routing",
+            fidelity="F5",
+            via="f5_openroad_local",
+            parent=host.id if host else None,
+            host_level=host.level if host else None,
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f5_local", acquire_fidelity="F5_LOCAL", pay=pay, why=why, evaluate=_eval,
+        cost_key="F5", fidelity="F5", acquire_extra=host_why,
+    )
+
+
+def run_f5_port(ctx: dict) -> bool:
+    from .acquire import latest_port_host, should_pay_f5_port
+    from .costs import estimated_cost_s
+    from .fidelity import evaluate_f5_local
+
+    mem = ctx["mem"]
+    n_f5_port = sum(
+        1
+        for c in mem.by_level("routing")
+        if (c.knobs or {}).get("source") == "f5_openroad_local"
+        and (c.knobs or {}).get("host_level") == "port"
+        and c.status == "ok"
+    )
+    min_s = estimated_cost_s(mem, "F5", ctx["design_id"], cost_key="F5")
+    pay, why = should_pay_f5_port(
+        mem, budget_left=ctx["t_end"] - time.time(), n_f5_port=n_f5_port, min_s=min_s
+    )
+
+    def _eval() -> bool:
+        host = latest_port_host(mem)
+        if not host:
+            return False
+        mem.touch(host)
+        child = evaluate_f5_local(host, mem, design_id=ctx["design_id"])
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="routing",
+            fidelity="F5",
+            via="f5_openroad_local",
+            parent=host.id,
+            host_level="port",
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            ideal_wns_ns=(child.artifacts or {}).get("ideal_wns_ns"),
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f5_port", acquire_fidelity="F5_PORT", pay=pay, why=why, evaluate=_eval,
+        cost_key="F5", fidelity="F5",
+    )
+
+
 STAGE_F2_FAST = Stage(level="f2_fast", run=run_f2_fast, cost_key="F2_FAST", max_shots=4)
 STAGE_F2_GPL = Stage(level="f2_gpl", run=run_f2_gpl, acquire_fidelity="F2_GPL", cost_key="F2_GPL", max_shots=1, min_s=8.0)
 STAGE_F3_STA = Stage(level="f3_sta", run=run_f3_sta, acquire_fidelity="F3", cost_key="F3", max_shots=8, min_s=1.0)
 STAGE_F3_SDF = Stage(level="f3_sdf", run=run_f3_sdf, acquire_fidelity="F3_SDF", cost_key="F3_SDF", max_shots=1, min_s=1.0)
+STAGE_ROUTING = Stage(level="routing", run=run_routing, acquire_fidelity="F2_GRT", cost_key="F2_GRT", max_shots=1, min_s=8.0)
+STAGE_F5_DRT = Stage(level="f5_drt", run=run_f5_drt, acquire_fidelity="F5", cost_key="F5", max_shots=1, min_s=12.0)
+STAGE_F3_SPEF = Stage(level="f3_spef", run=run_f3_spef, acquire_fidelity="F3_SPEF", cost_key="F3", max_shots=1, min_s=1.0)
+STAGE_F5_CTS = Stage(level="f5_cts", run=run_f5_cts, acquire_fidelity="F5_CTS", cost_key="F5_CTS", max_shots=1, min_s=25.0)
+STAGE_F5_LOCAL = Stage(level="f5_local", run=run_f5_local, acquire_fidelity="F5_LOCAL", cost_key="F5", max_shots=1, min_s=12.0)
+STAGE_F5_PORT = Stage(level="f5_port", run=run_f5_port, acquire_fidelity="F5_PORT", cost_key="F5", max_shots=1, min_s=12.0)
