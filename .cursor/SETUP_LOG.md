@@ -3,6 +3,19 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T21:36Z — PLAN Fase 2 D.2–D.5 + cleanup
+
+`test_dse` runner: metrics → memory → planner → steer → live F4 (ultimo).
+D.2 `test_dse_memory.py` · D.3 `test_dse_planner.py` · D.4 `test_dse_steer.py`
+(558 `ok` smoke) · D.5 `test_dse_live_f4.py`. Stesso entrypoint.
+`test_dse.py` ALL PASSED (~262 s); **994** `ok`; DirectLU 6.075 + `sta_t50`;
+AMG/RAS 6.075; Krylov 6.092. Gold file assente su disco (check unrestamp
+skipped); `GOLD_MV` 45.298 non ristampato. AES `febe6804241c` n_r=73139
+static 6.954 intatto (sha `9e89f6e88b61…`). Suite veloce verde.
+`controller.py` 3115 → 3062: drop import unused post C4–C7; 66 `should_pay_*`
+restano in `acquire.py`. `PLAN.md` Diagnosi aggiornata (buchi 1–5 chiusi).
+Nessun `DesignState`.
+
 ## 2026-08-31T20:50Z — PLAN Fase 2 D.1 + chiusura
 
 `test_dse_metrics.py` (dominates / gated / HV / EHVI, 15 `ok`).
