@@ -15,6 +15,7 @@ from typing import Any, Callable
 from .ir_champ import run_ir_champ_family
 from .ir_inspect import run_ir_inspect_loops
 from .ir_region_cell import run_winning_ir_region_cell
+from .ir_solvers import run_ir_solvers
 
 
 def should_pay_generic(
@@ -2228,9 +2229,10 @@ STAGE_IR_CELL_REGION_PDN = Stage(level="ir_cell_region_pdn", run=run_ir_cell_reg
 STAGE_IR_CHAMP_FAMILY = Stage(level="ir_champ_family", run=run_ir_champ_family)
 STAGE_IR_INSPECT = Stage(level="ir_inspect", run=run_ir_inspect_loops)
 STAGE_WINNING_IR_REGION_CELL = Stage(level="winning_ir_region_cell_family", run=run_winning_ir_region_cell)
+STAGE_IR_SOLVERS = Stage(level="ir_solvers", run=run_ir_solvers)
 
 # Consecutive declarative slices. GRT order is data: STA → ROUTING → SDF.
-# residual/port/f2_region live in STAGES_STEER_GAP (C1). C7 solvers/static/EM still inlined.
+# residual/port/f2_region live in STAGES_STEER_GAP (C1). C7 solvers sit after refine.
 STAGES_LOGIC_TRANSFORM = (STAGE_SYNTHESIS, STAGE_CELL, STAGE_NET, STAGE_NET_PORT)
 STAGES_PLACE_ROUTE = (
     STAGE_F2_FAST, STAGE_F2_GPL, STAGE_F3_STA, STAGE_ROUTING, STAGE_F3_SDF,
@@ -2258,3 +2260,5 @@ STAGES_IR_CHAMP = (STAGE_IR_CHAMP_FAMILY,)
 STAGES_IR_INSPECT = (STAGE_IR_INSPECT,)
 # depth 0 only. Depth ≥ 1 stays run_next_refine in the controller.
 STAGES_IR_REGION_CELL = (STAGE_WINNING_IR_REGION_CELL,)
+# champ AMG/RAS/Krylov + static IR/mesh/straps + EM. After refine while.
+STAGES_IR_SOLVERS = (STAGE_IR_SOLVERS,)

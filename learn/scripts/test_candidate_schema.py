@@ -381,6 +381,19 @@ def main() -> int:
         and [s.level for s in STAGES_IR_REGION_CELL] == ["winning_ir_region_cell_family"],
         "C6 depth-0 region-cell is one family Stage",
     )
+    from dse.stages import STAGE_IR_SOLVERS, STAGES_IR_SOLVERS
+    import inspect as _ins7
+    check(
+        STAGE_IR_SOLVERS.level == "ir_solvers"
+        and [s.level for s in STAGES_IR_SOLVERS] == ["ir_solvers"],
+        "C7 champ solvers + static/EM is one family Stage",
+    )
+    src7 = _ins7.getsource(STAGE_IR_SOLVERS.run)
+    check("F4_AMG_CHAMP" in src7 and "F4_EM_STRAPS" in src7, "C7 keeps AMG-champ and EM acquire")
+    from dse.acquire import should_pay_static_straps
+    why7 = _ins7.getsource(should_pay_static_straps)
+    check('"not bumps"' in why7 or "not bumps" in why7, "C7 static-straps why still says not bumps")
+    check("not gold" in why7, "C7 static-straps why still says not gold")
 
     from dse.metrics import dominates, dominates_with_fidelity, pareto_front, pareto_front_gated
 
