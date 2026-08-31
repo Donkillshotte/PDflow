@@ -7,6 +7,7 @@ architecture, ABC, util, and PDN into one acquisition over a mixed vector.
 from __future__ import annotations
 
 from .memory import DesignMemory
+from .stages import should_pay_generic
 
 
 def should_pay_f2_gpl(
@@ -36,22 +37,35 @@ def should_pay_f2_gpl(
         for c in mem.by_level("physical")
         if (c.knobs or {}).get("source") == "f2_openroad_gpl" and c.status == "ok"
     }
-    if all(w.id in have for w in winners):
-        return False, "every F1 winner already has a GPL child"
-    return True, "promote F1 winner to OpenROAD GPL (skip_io, not finish/F5)"
+    parents_ok = not all(w.id in have for w in winners)
+    return should_pay_generic(
+        budget_left=budget_left,
+        n_have=n_gpl,
+        max_shots=gpl_max,
+        min_s=min_s,
+        parents_ok=parents_ok,
+        exhausted_why="GPL shot already spent this run",
+        budget_why="wall budget would not cover OpenROAD GPL",
+        no_parent_why="every F1 winner already has a GPL child",
+        ok_why="promote F1 winner to OpenROAD GPL (skip_io, not finish/F5)",
+    )
 
 
 def should_pay_f2_fast(mem: DesignMemory, *, n_f2: int, f2_max: int = 4) -> tuple[bool, str]:
-    if n_f2 >= f2_max:
-        return False, "F2-fast budget exhausted"
     winners = [
         c
         for c in mem.all()
         if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
     ]
-    if not winners:
-        return False, "no F1 to score"
-    return True, "barycenter HPWL/RUDY on the candidate netlist"
+    return should_pay_generic(
+        n_have=n_f2,
+        max_shots=f2_max,
+        parents_ok=bool(winners),
+        exhausted_why="F2-fast budget exhausted",
+        budget_why="",
+        no_parent_why="no F1 to score",
+        ok_why="barycenter HPWL/RUDY on the candidate netlist",
+    )
 
 
 def should_pay_f3_sta(
@@ -78,9 +92,17 @@ def should_pay_f3_sta(
         for c in mem.all()
         if (c.knobs or {}).get("source") == "f3_opensta_ideal" and c.status == "ok"
     }
-    if all(w.id in have for w in winners):
-        return False, "every F1 already has an ideal STA child"
-    return True, "OpenSTA ideal WNS/power on the candidate (not SPEF, not IR)"
+    return should_pay_generic(
+        budget_left=budget_left,
+        n_have=n_sta,
+        max_shots=sta_max,
+        min_s=min_s,
+        parents_ok=not all(w.id in have for w in winners),
+        exhausted_why="F3 STA budget exhausted",
+        budget_why="wall budget would not cover OpenSTA",
+        no_parent_why="every F1 already has an ideal STA child",
+        ok_why="OpenSTA ideal WNS/power on the candidate (not SPEF, not IR)",
+    )
 
 
 def should_pay_f3_sdf(
@@ -102,12 +124,24 @@ def should_pay_f3_sdf(
         (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok" for c in mem.all()
     ):
         return False, "already have an OpenSTA+SDF child"
+    parents_ok = False
     for c in mem.all():
         art = c.artifacts or {}
         sdf, mapped = art.get("sdf"), art.get("mapped_v")
         if sdf and mapped and Path(sdf).is_file() and Path(mapped).is_file():
-            return True, "OpenSTA + GRT SDF (not SPEF/OpenRCX, not finish/F5)"
-    return False, "no GRT SDF on disk (write_spef after GRT needs OpenRCX / F5)"
+            parents_ok = True
+            break
+    return should_pay_generic(
+        budget_left=budget_left,
+        n_have=n_sdf,
+        max_shots=sdf_max,
+        min_s=min_s,
+        parents_ok=parents_ok,
+        exhausted_why="F3 SDF-GRT shot already spent",
+        budget_why="wall budget would not cover OpenSTA+SDF",
+        no_parent_why="no GRT SDF on disk (write_spef after GRT needs OpenRCX / F5)",
+        ok_why="OpenSTA + GRT SDF (not SPEF/OpenRCX, not finish/F5)",
+    )
 
 
 def should_pay_f2_grt(

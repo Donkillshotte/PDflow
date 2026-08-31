@@ -180,6 +180,7 @@ from .metrics import QoR, pareto_front, qor_delta
 from .mo import baseline_wns, timing_of
 from .resources import admit_solve
 from .solve_result import residual_vs_reference_mv, stamp_f4_candidate
+from .stages import STAGE_F2_FAST, STAGE_F2_GPL, STAGE_F3_SDF, STAGE_F3_STA, run_stage
 from .pdn_space import GOLD_KNOBS, next_pdn_spec
 from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
 from .planner import plan_search, rank_extracts
@@ -1095,95 +1096,26 @@ def run_controller(
                 )
 
     # F2-fast on the best F1 netlists (logic + architecture winners).
-    n_f2 = 0
-    pay_fast, why_fast = should_pay_f2_fast(mem, n_f2=n_f2)
-    if any(s["level"] == "f2_fast" for s in plan["steps"]) and pay_fast and time.time() < t_end:
-        winners = list(f1_pareto_parents(mem))
-        seen = {c.id for c in winners}
-        extra = [c for c in f1_ok(mem) if c.id not in seen]
-        extra.sort(key=lambda c: float(c.qor.area_um2))
-        winners.extend(extra)
-        for w in winners:
-            if n_f2 >= 4 or time.time() >= t_end:
-                break
-            w = ensure_mapped_netlist(w, rtl=rtl, liberty=lib, top=top)
-            mem.touch(w)
-            child = evaluate_f2_fast(w, mem, design_id=design_id)
-            if child:
-                n_f2 += 1
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="physical",
-                    fidelity="F2",
-                    via="f2_fast_netgraph",
-                    parent=w.id,
-                    hpwl=(child.artifacts or {}).get("hpwl"),
-                    congestion=child.qor.congestion,
-                )
-
-    n_gpl = sum(
-        1
-        for c in mem.by_level("physical")
-        if (c.knobs or {}).get("source") == "f2_openroad_gpl" and c.status == "ok"
-    )
-    pay_gpl, why_gpl = should_pay_f2_gpl(mem, budget_left=t_end - time.time(), n_gpl=n_gpl)
-    step("acquire", fidelity="F2_GPL", pay=pay_gpl, why=why_gpl)
-    if any(s["level"] == "f2_gpl" for s in plan["steps"]) and pay_gpl and time.time() < t_end:
-        pick = _mapped_pick(
-            [f1_area_winner(mem)] + [c for c in f1_ok(mem)],
-            rtl=rtl,
-            liberty=lib,
-            top=top,
-        )
-        if pick:
-            w = pick
-            mem.touch(w)
-            params = flowlab_params()
-            util0 = float(params.get("coreUtilization") or 35.0)
-            den0 = gpl_density(util0, params.get("placeDensityAddon") or 0.2)
-            child = evaluate_f2_gpl(w, mem, design_id=design_id, util=util0, density=den0)
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="physical",
-                    fidelity="F2",
-                    via="f2_openroad_gpl",
-                    parent=w.id,
-                    hpwl_um=(child.artifacts or {}).get("hpwl_um"),
-                    overflow=child.qor.congestion,
-                    status=child.status,
-                )
-
-    n_sta = sum(1 for c in mem.all() if (c.knobs or {}).get("source") == "f3_opensta_ideal" and c.status == "ok")
-    pay_sta, why_sta = should_pay_f3_sta(mem, budget_left=t_end - time.time(), n_sta=n_sta)
-    step("acquire", fidelity="F3", pay=pay_sta, why=why_sta)
-    if any(s["level"] == "f3_sta" for s in plan["steps"]) and pay_sta and time.time() < t_end:
-        ranked = [
-            c
-            for c in mem.all()
-            if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
-        ]
-        ranked.sort(key=lambda c: float(c.qor.area_um2))
-        for w in ranked[:4]:
-            if time.time() >= t_end:
-                break
-            w = ensure_mapped_netlist(w, rtl=rtl, liberty=lib, top=top)
-            mem.touch(w)
-            child = evaluate_f3_sta(w, mem, design_id=design_id)
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level=w.level,
-                    fidelity="F3",
-                    via="f3_opensta_ideal",
-                    parent=w.id,
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    power_w=child.qor.power_w,
-                    status=child.status,
-                )
+    _stage_ctx = {
+        "mem": mem,
+        "plan": plan,
+        "t_end": t_end,
+        "step": step,
+        "design_id": design_id,
+        "rtl": rtl,
+        "liberty": lib,
+        "top": top,
+        "ensure_mapped_netlist": ensure_mapped_netlist,
+        "mapped_pick": _mapped_pick,
+        "f1_ok": f1_ok,
+        "f1_pareto_parents": f1_pareto_parents,
+        "f1_area_winner": f1_area_winner,
+        "flowlab_params": flowlab_params,
+        "gpl_density": gpl_density,
+    }
+    run_stage(STAGE_F2_FAST, _stage_ctx)
+    run_stage(STAGE_F2_GPL, _stage_ctx)
+    run_stage(STAGE_F3_STA, _stage_ctx)
 
     n_grt = sum(
         1
@@ -1215,39 +1147,7 @@ def run_controller(
                     status=child.status,
                 )
 
-    n_sdf = sum(
-        1
-        for c in mem.all()
-        if (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok"
-    )
-    pay_sdf, why_sdf = should_pay_f3_sdf(mem, budget_left=t_end - time.time(), n_sdf=n_sdf)
-    step("acquire", fidelity="F3_SDF", pay=pay_sdf, why=why_sdf)
-    if any(s["level"] == "f3_sdf" for s in plan["steps"]) and pay_sdf and time.time() < t_end:
-        host = next(
-            (
-                c
-                for c in mem.all()
-                if (c.artifacts or {}).get("sdf")
-                and (c.artifacts or {}).get("mapped_v")
-                and Path(c.artifacts["sdf"]).is_file()
-                and Path(c.artifacts["mapped_v"]).is_file()
-            ),
-            None,
-        )
-        if host:
-            sdfc = evaluate_f3_sdf(host, mem, design_id=design_id)
-            if sdfc:
-                step(
-                    "evaluate",
-                    id=sdfc.id,
-                    level=host.level,
-                    fidelity="F3",
-                    via="f3_opensta_sdf_grt",
-                    parent=host.id,
-                    wns_ns=(sdfc.artifacts or {}).get("wns_ns"),
-                    interconnect="sdf_grt",
-                    status=sdfc.status,
-                )
+    run_stage(STAGE_F3_SDF, _stage_ctx)
 
     n_f5 = sum(
         1

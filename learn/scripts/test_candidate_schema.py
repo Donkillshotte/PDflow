@@ -245,6 +245,31 @@ def main() -> int:
         nr = n_r_from_spice(gcd_sp)
         check(nr is not None and 5000 < nr < 7000, f"GCD finish spice n_r ~5816, got {nr}")
 
+    from dse.stages import STAGE_F2_FAST, STAGE_F3_STA, planned, should_pay_generic
+
+    pay_g, why_g = should_pay_generic(
+        n_have=4,
+        max_shots=4,
+        parents_ok=True,
+        exhausted_why="F2-fast budget exhausted",
+        budget_why="",
+        no_parent_why="no F1 to score",
+        ok_why="barycenter HPWL/RUDY on the candidate netlist",
+    )
+    check(pay_g is False and why_g == "F2-fast budget exhausted", f"generic exhausted, got {why_g}")
+    pay_p, why_p = should_pay_generic(
+        n_have=0,
+        max_shots=4,
+        parents_ok=False,
+        exhausted_why="F2-fast budget exhausted",
+        budget_why="",
+        no_parent_why="no F1 to score",
+        ok_why="barycenter HPWL/RUDY on the candidate netlist",
+    )
+    check(pay_p is False and why_p == "no F1 to score", f"generic no-parent, got {why_p}")
+    check(planned({"steps": [{"level": "f2_fast"}]}, "f2_fast"), "planned sees f2_fast")
+    check(STAGE_F2_FAST.level == "f2_fast" and STAGE_F3_STA.level == "f3_sta", "3a stage names")
+
     aes_launch = solve_f4(solver="krylov", n_r=AES_F4_N_R, n_nodes=AES_F4_N_NODES)
     check(aes_launch.get("status") != "ok" and aes_launch.get("gold") is False,
           f"solve_f4 AES Krylov does not launch, got {aes_launch.get('status')} {aes_launch.get('reason')}")
