@@ -11,7 +11,8 @@ JOBS="$(nproc)"
 
 echo "==> Installo le dipendenze di build..."
 sudo apt-get install -y -qq build-essential cmake tcl8.6-dev swig bison flex \
-  libeigen3-dev zlib1g-dev libreadline-dev tcl-tclreadline automake autotools-dev
+  libeigen3-dev zlib1g-dev libreadline-dev tcl-tclreadline automake autotools-dev \
+  libtool libtool-bin m4
 
 mkdir -p "${SRC}"
 
@@ -22,6 +23,10 @@ fi
 echo "==> Compilo CUDD..."
 (
   cd "${SRC}/cudd"
+  # Il clone fresco ha timestamp che spingono i target autotools a rigenerarsi
+  # con una versione pinnata di aclocal (aclocal-1.14) non presente qui.
+  # Rigeneriamo i file autotools con la toolchain locale per renderlo robusto.
+  autoreconf -fi
   ./configure --prefix="${CUDD_PREFIX}"
   make -j"${JOBS}"
   make install
