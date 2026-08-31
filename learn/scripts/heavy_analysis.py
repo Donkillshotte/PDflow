@@ -155,6 +155,8 @@ def pick_bounded_solver(
         return None, "no mesh"
     last = "no bounded solver"
     order = ("direct", "amg", "krylov")
+    if os.environ.get("PDN_DISABLE_KRYLOV") == "1":
+        order = ("direct", "amg")
     if n_r <= max_r_direct:
         order = ("direct",)
     for kind in order:

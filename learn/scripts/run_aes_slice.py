@@ -10,6 +10,7 @@ learn/sim/reports/dse_aes.json.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -112,22 +113,27 @@ def main() -> int:
         f"hpwl_um={(f2g.artifacts or {}).get('hpwl_um')} cost={f2g.cost_s:.1f}s "
         f"fail={f2g.failure}"
     )
-    f4 = evaluate_f4_extract(f1, mem, design_id="aes", variant="aes", timeout_s=300.0)
-    if f4 is None:
-        print("F4 extract skipped")
-        return 1
-    print(
-        f"F4 {f4.id} status={f4.status} droop={f4.qor.dynamic_ir_mv} "
-        f"n_r={(f4.artifacts or {}).get('n_r')} sdc={(f4.artifacts or {}).get('sdc')} "
-        f"cost={f4.cost_s:.1f}s fail={f4.failure}"
-    )
+    skip_f4 = os.environ.get("AES_SLICE_SKIP_F4") == "1"
+    f4 = None
+    if skip_f4:
+        print("AES_SLICE_SKIP_F4=1 — F4 left to run_aes_f4_cloud.sh")
+    else:
+        f4 = evaluate_f4_extract(f1, mem, design_id="aes", variant="aes", timeout_s=300.0)
+        if f4 is None:
+            print("F4 extract skipped")
+            return 1
+        print(
+            f"F4 {f4.id} status={f4.status} droop={f4.qor.dynamic_ir_mv} "
+            f"n_r={(f4.artifacts or {}).get('n_r')} sdc={(f4.artifacts or {}).get('sdc')} "
+            f"cost={f4.cost_s:.1f}s fail={f4.failure}"
+        )
     report = {
         "ok": (
             f1.status == "ok"
             and f2.status == "ok"
             and f3.status == "ok"
             and f2g.status == "ok"
-            and f4.status == "ok"
+            and (skip_f4 or (f4 is not None and f4.status == "ok"))
         ),
         "kind": "dse",
         "engine": "aes-slice",
@@ -148,10 +154,6 @@ def main() -> int:
         "f2_gpl_id": f2g.id,
         "f2_gpl_overflow": f2g.qor.congestion,
         "f2_gpl_hpwl_um": (f2g.artifacts or {}).get("hpwl_um"),
-        "f4_id": f4.id,
-        "f4_dynamic_ir_mv": f4.qor.dynamic_ir_mv,
-        "f4_n_r": (f4.artifacts or {}).get("n_r"),
-        "f4_sdc": (f4.artifacts or {}).get("sdc"),
         "not": [
             "gcd dpath/ctrl",
             "gcd 0.46 ns SDC",
@@ -160,8 +162,20 @@ def main() -> int:
         ],
         "memory": str(mem_path),
     }
+    if f4 is not None:
+        report.update(
+            {
+                "f4_id": f4.id,
+                "f4_dynamic_ir_mv": f4.qor.dynamic_ir_mv,
+                "f4_n_r": (f4.artifacts or {}).get("n_r"),
+                "f4_sdc": (f4.artifacts or {}).get("sdc"),
+            }
+        )
     dest = REPO / "learn" / "sim" / "reports" / "dse_aes.json"
-    dest.write_text(json.dumps(report, indent=2) + "\n")
+    prior = json.loads(dest.read_text()) if dest.is_file() else {}
+    merged = dict(prior)
+    merged.update(report)
+    dest.write_text(json.dumps(merged, indent=2) + "\n")
     print(f"wrote {dest}")
     return 0 if report["ok"] else 1
 

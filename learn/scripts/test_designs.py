@@ -209,20 +209,23 @@ def main() -> int:
         check(bool(gpls), "live aes OpenROAD GPL is on disk")
         f4s = [c for c in am.by_level("pdn") if c.status == "ok" and c.qor.static_ir_mv is not None]
         check(bool(f4s), "live aes F4 static IR is on disk")
-        if f4s:
-            ir = float(f4s[-1].qor.static_ir_mv)
+        legacy = [c for c in f4s if int((c.artifacts or {}).get("n_r") or 0) == 73139]
+        check(bool(legacy), "73k-R AES static extract still recorded")
+        if legacy:
+            ir = float(legacy[-1].qor.static_ir_mv)
             check(abs(ir - 6.954) < 0.05, f"aes on-die static IR is 6.954 mV, got {ir}")
-            check((f4s[-1].artifacts or {}).get("n_r") == 73139, "aes mesh is the 73k-R candidate extract")
-            check("aes" in str((f4s[-1].artifacts or {}).get("sdc") or ""), "aes F4 used the 0.82 ns SDC")
-            dyn_mv = f4s[-1].qor.dynamic_ir_mv
+            check((legacy[-1].artifacts or {}).get("n_r") == 73139, "aes mesh is the 73k-R candidate extract")
+            check("aes" in str((legacy[-1].artifacts or {}).get("sdc") or ""), "aes F4 used the 0.82 ns SDC")
+            dyn_mv = legacy[-1].qor.dynamic_ir_mv
             if dyn_mv is None:
-                check(True, "aes dynamic IR still GAP — not a gold restamp")
+                check(True, "aes 73k-R dynamic IR still GAP — not a gold restamp")
             else:
                 check(abs(float(dyn_mv) - 45.298) > 1.0, f"aes dynamic IR is not gold 45.298, got {dyn_mv}")
                 check(float(dyn_mv) > 0.0, f"aes dynamic IR is a paid droop, got {dyn_mv}")
-            insts = (f4s[-1].artifacts or {}).get("insts")
+            insts = (legacy[-1].artifacts or {}).get("insts")
+            host = legacy[-1]
             if insts and Path(insts).is_file():
-                attr = inspect_f4(f4s[-1], design_id="aes")
+                attr = inspect_f4(host, design_id="aes")
                 check(attr.get("join") == "odb-geom", f"aes F4 inspect is an ODB join, got {attr.get('join')}")
                 check(attr.get("modules") == ["aes_cipher_top"], f"aes inspect block is the cipher top, got {attr.get('modules')}")
                 check("dpath" not in (attr.get("modules") or []) and "ctrl" not in (attr.get("cones") or []),
@@ -238,6 +241,16 @@ def main() -> int:
                 if steer:
                     check(steer.get("modules") == ["aes_cipher_top"], f"aes size-up steer stays on the cipher top, got {steer.get('modules')}")
                     check(steer.get("host_source") == "f4_candidate_extract", f"aes join host is the candidate extract, got {steer.get('host_source')}")
+        cloud = [
+            c
+            for c in f4s
+            if int((c.artifacts or {}).get("n_r") or 0) == 66295 and c.qor.dynamic_ir_mv is not None
+        ]
+        if cloud:
+            check(abs(float(cloud[-1].qor.static_ir_mv) - 12.953) < 0.05, f"cloud AES static ~12.953 mV, got {cloud[-1].qor.static_ir_mv}")
+            check(abs(float(cloud[-1].qor.dynamic_ir_mv) - 17.745) < 0.05, f"cloud AES DirectLU droop ~17.745 mV, got {cloud[-1].qor.dynamic_ir_mv}")
+            check(abs(float(cloud[-1].qor.dynamic_ir_mv) - 45.298) > 1.0, "cloud AES droop is not gold 45.298")
+
 
     missing = attach_activity_flags(["worker"], variant="aes", design_id="aes")
     check(missing == ["worker"], "missing aes waveform does not invent --saif/--vcd")

@@ -13,13 +13,13 @@ from pathlib import Path
 p = Path("${ROOT}/.cursor/environment.json")
 d = json.loads(p.read_text())
 install = d.get("install") or ""
-assert "PD_FLOW_PROFILE=core" in install, install
+assert "PD_FLOW_PROFILE=analysis" in install, install
 assert "EDA_JOBS=2" in install, install
 assert "cloud_agent_install.sh" in install
 assert d.get("terminals")
-print("environment.json core install ok")
+print("environment.json analysis install ok")
 PY
-ok "environment.json core + EDA_JOBS=2"
+ok "environment.json analysis + EDA_JOBS=2"
 
 echo "== install script syntax / profile =="
 bash -n "${ROOT}/scripts/cloud_agent_install.sh" && ok "install syntax" || bad "install syntax"
@@ -75,7 +75,21 @@ rg -q 'check_rss_budget' "${ROOT}/learn/scripts/dse_f4_worker.py" && ok "f4 work
 rg -q 'check_large_mesh' "${ROOT}/learn/scripts/dse_f4_worker.py" && ok "f4 worker mesh guard" || bad "f4 worker unguarded"
 bash -n "${ROOT}/scripts/run_aes_f4_cloud.sh" && ok "aes F4 cloud wrapper syntax" || bad "aes F4 cloud wrapper syntax"
 rg -q 'prlimit' "${ROOT}/scripts/run_aes_f4_cloud.sh" && ok "aes F4 cloud caps RSS" || bad "aes F4 cloud no prlimit"
+rg -q 'PDN_DISABLE_KRYLOV=1' "${ROOT}/scripts/run_aes_f4_cloud.sh" && ok "aes F4 cloud disables Krylov" || bad "aes F4 cloud Krylov not disabled"
+rg -q 'AES_F4_ALLOW_KRYLOV' "${ROOT}/scripts/run_aes_f4_cloud.sh" && ok "aes F4 cloud refuses Krylov override" || bad "aes F4 cloud missing Krylov override refuse"
 rg -q 'run_aes_f4_cloud' "${ROOT}/scripts/cloud_agent_install.sh" && bad "install invokes aes F4 cloud" || ok "install does not run aes F4 cloud"
+
+bash -n "${ROOT}/scripts/run_dse_gcd_cloud.sh" && ok "GCD DSE cloud wrapper syntax" || bad "GCD DSE cloud wrapper syntax"
+rg -q 'prlimit --as=' "${ROOT}/scripts/run_dse_gcd_cloud.sh" \
+  && rg -q -- '--cpu=' "${ROOT}/scripts/run_dse_gcd_cloud.sh" \
+  && ok "GCD DSE cloud caps RSS and CPU" || bad "GCD DSE cloud no prlimit"
+rg -q 'DSE_FRESH=1' "${ROOT}/scripts/run_dse_gcd_cloud.sh" && ok "GCD DSE refuses DSE_FRESH" || bad "GCD DSE missing DSE_FRESH refuse"
+rg -q 'run_dse_gcd_cloud' "${ROOT}/scripts/cloud_agent_install.sh" && bad "install invokes GCD DSE cloud" || ok "install does not run GCD DSE cloud"
+
+[ -x "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" ] || chmod +x "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py"
+rg -q 'cloud_agent_directlu' "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" && ok "ingest tags DirectLU candidate" || bad "ingest missing DirectLU tag"
+rg -q 'n_r == 73139' "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" && ok "ingest refuses 73k-R overwrite" || bad "ingest missing 73k-R refuse"
+rg -q 'AES_SLICE_SKIP_F4' "${ROOT}/learn/scripts/run_aes_slice.py" && ok "AES slice can skip F4" || bad "AES slice cannot skip F4"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "CLOUD_BOOTSTRAP_TEST_FAIL"

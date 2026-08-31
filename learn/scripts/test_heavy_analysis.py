@@ -74,6 +74,11 @@ def main() -> int:
         check_rss_budget(n_r=AES_F4_N_R, n_nodes=AES_F4_N_NODES, solver="krylov") is None,
         "ALLOW_OOM_ANALYSIS bypasses RSS budget",
     )
+    os.environ.pop("ALLOW_OOM_ANALYSIS", None)
+    os.environ["PDN_DISABLE_KRYLOV"] = "1"
+    kind_off, why_off = pick_bounded_solver(AES_F4_N_R, n_nodes=AES_F4_N_NODES)
+    check(kind_off == "direct", f"PDN_DISABLE_KRYLOV still DirectLU (got {kind_off} {why_off})")
+    os.environ.pop("PDN_DISABLE_KRYLOV", None)
     print("HEAVY_GUARD_OK")
     return 0
 

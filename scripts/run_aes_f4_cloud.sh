@@ -13,6 +13,12 @@ export PYTHONPATH="${ROOT}/learn:${ROOT}/learn/scripts:/usr/lib/python3/dist-pac
 AS_BYTES="${PDN_AS_BYTES:-8589934592}" # 8 GiB
 CPU_S="${PDN_CPU_S:-120}"
 
-echo "AES F4 cloud: PDN_SOLVE_TIMEOUT_S=${PDN_SOLVE_TIMEOUT_S} as=${AS_BYTES} cpu=${CPU_S}s"
+if [[ "${AES_F4_ALLOW_KRYLOV:-0}" == "1" ]]; then
+  echo "REFUSED: AES Krylov/MOR is not runnable on a 15 GiB Cloud Agent." >&2
+  exit 2
+fi
+# DirectLU only. pick_bounded_solver skips Krylov when this is set.
+export PDN_DISABLE_KRYLOV=1
+echo "AES F4 cloud: PDN_SOLVE_TIMEOUT_S=${PDN_SOLVE_TIMEOUT_S} as=${AS_BYTES} cpu=${CPU_S}s krylov=off"
 exec prlimit --as="${AS_BYTES}" --cpu="${CPU_S}" \
   python3 -u "${ROOT}/learn/scripts/run_aes_f4.py" "$@"
