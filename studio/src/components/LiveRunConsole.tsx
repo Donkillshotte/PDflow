@@ -34,7 +34,7 @@ const POST_FINISH_CHIPS = [
   { id: "vectorless", label: "Vectorless / dynamic", hint: "Najm + Kouroussis IR" },
   { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
   { id: "vyges_em_ir", label: "vyges-em-ir", hint: "CG + backward Euler" },
-  { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "A gold · B SA-AMG · heatmap" },
+  { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "A DirectLU current_run · B SA-AMG" },
   { id: "dse", label: "DSE fisico-aware", hint: "e-graph · BOiLS · oracolo IR" },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
   { id: "power_chain", label: "Catena SPICE", hint: "activity→IR→system" },

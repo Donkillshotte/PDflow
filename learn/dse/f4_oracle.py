@@ -96,11 +96,47 @@ def extract_ready(spice: Path | str | None, insts: Path | str | None) -> bool:
     return bool(spice and insts and Path(spice).is_file() and Path(insts).is_file() and WORKER.is_file())
 
 
+def ir_run_labels(payload: dict | None = None) -> dict:
+    """Name the two IR numbers. current_run is this solve; reference_run is historical gold.
+
+    Never restamps ``dynamic_ir_flowlab.json``. Missing gold file falls back to
+    the documented ``GOLD_MV`` already used as ``gold_ref_mv``.
+    """
+    current = None
+    if payload is not None and payload.get("worst_droop_mv") is not None:
+        try:
+            current = float(payload["worst_droop_mv"])
+        except (TypeError, ValueError):
+            current = None
+    gold_p = REPO / "learn" / "sim" / "reports" / "dynamic_ir_flowlab.json"
+    ref = None
+    if gold_p.is_file():
+        try:
+            data = json.loads(gold_p.read_text())
+            raw = data.get("worst_droop_mv")
+            if raw is None:
+                dyn = data.get("dynamic") or {}
+                raw = dyn.get("worst_droop_mv")
+                if raw is None and dyn.get("worst_droop") is not None:
+                    raw = float(dyn["worst_droop"]) * 1e3
+            if raw is not None:
+                ref = float(raw)
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            ref = None
+    if ref is None:
+        ref = float(GOLD_MV)
+    return {"current_run_mv": current, "reference_run_mv": ref}
+
+
 def _stamp_solve(payload: dict, *, backend_requested: str = "cpu", fallback_reason: str | None = None) -> dict:
     payload.setdefault("gold", False)
     payload["backend_requested"] = backend_requested
     if fallback_reason and not payload.get("fallback_reason"):
         payload["fallback_reason"] = fallback_reason
+    labels = ir_run_labels(payload)
+    if labels["current_run_mv"] is not None:
+        payload.setdefault("current_run_mv", labels["current_run_mv"])
+    payload.setdefault("reference_run_mv", labels["reference_run_mv"])
     payload["solve"] = normalize_solve(
         payload,
         backend_requested=backend_requested,

@@ -292,8 +292,9 @@ export function DynamicIrHeatmap({
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
-          Piattaforma ibrida: OpenROAD frontend · Solver A golden · Solver B
-          SA-AMG · C = Krylov MOR · D = RAS Schwarz · vyges = bootstrap ·{" "}
+          Piattaforma ibrida: OpenROAD frontend · A = DirectLU current_run ·
+          B = SA-AMG · C = Krylov MOR · D = RAS · reference_run 45.298 mV
+          unrestamped · vyges = bootstrap ·{" "}
           <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>
           {" · "}
           <a href="/materiali/reference/dynamic-ir-landscape.md">landscape</a>
@@ -586,12 +587,12 @@ export function DynamicIrHeatmap({
           </dl>
           {solvers && (
             <ChipList
-              label="Solver (A gold · B workhorse · C Krylov MOR · D RAS)"
+              label="Solver (A DirectLU current_run · B workhorse · C Krylov · D RAS)"
               items={[
                 {
                   key: "A",
                   status: solvers.A_direct_be?.status,
-                  text: "A BE golden",
+                  text: "A DirectLU current_run",
                 },
                 {
                   key: "B",

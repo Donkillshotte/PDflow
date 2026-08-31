@@ -235,7 +235,7 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "dynamic_ir") ||
         signoffReportPass("learn", "dynamic_ir"),
-      detail: "Solver A gold + B SA-AMG · scenari shared A",
+      detail: "A DirectLU current_run + B SA-AMG · not reference_run 45.298",
       action: "dynamic_ir",
       href: "/strumenti?tab=run&action=dynamic_ir",
     },

@@ -133,7 +133,7 @@ from .fidelity import (
 )
 from .costs import estimated_cost_s
 from .fingerprint import knobs_fp
-from .f4_oracle import n_r_from_spice, spice_paths
+from .f4_oracle import ir_run_labels, n_r_from_spice, spice_paths
 from .layers import adapter_status
 from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
@@ -4179,6 +4179,11 @@ def run_controller(
             **front_gated,
             "note": "timing/power gated by fidelity; pred is tie-break only",
         },
+        **ir_run_labels(
+            {"worst_droop_mv": win_ir.qor.dynamic_ir_mv}
+            if (win_ir := winning_ir_pdn(mem)) is not None and win_ir.qor.dynamic_ir_mv is not None
+            else None
+        ),
         "candidates": [c.to_dict() for c in mem.all()],
         "log": log,
         "summary": _summary(
