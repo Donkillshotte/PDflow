@@ -1884,6 +1884,304 @@ def run_f4_scale_win(ctx: dict) -> bool:
     )
 
 
+def run_ir_cell(ctx: dict) -> bool:
+    from .acquire import should_pay_ir_cell
+    from .active import ir_hotspot_cells, iscale_parent
+    from .fidelity import evaluate_cell_size
+
+    mem = ctx["mem"]
+    n_irc = sum(
+        1
+        for c in mem.by_level("cell")
+        if (c.knobs or {}).get("source") == "cell_size_ir" and c.status == "ok"
+    )
+    pay, why = should_pay_ir_cell(mem, budget_left=ctx["t_end"] - time.time(), n_cell=n_irc)
+
+    def _eval() -> bool:
+        host_ic = iscale_parent(mem)
+        spec_ic = ir_hotspot_cells(mem)
+        if not (host_ic and spec_ic and spec_ic.get("cells")):
+            return False
+        if not (host_ic.artifacts or {}).get("mapped_v"):
+            host_ic = ctx["ensure_mapped_netlist"](
+                host_ic, rtl=ctx["rtl"], liberty=ctx["liberty"], top=ctx["top"]
+            )
+            mem.touch(host_ic)
+        child = evaluate_cell_size(
+            host_ic,
+            mem,
+            design_id=ctx["design_id"],
+            cells=list(spec_ic["cells"]),
+            source="cell_size_ir",
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="cell",
+            fidelity="F3",
+            via="active_f4_ir_cell",
+            parent=host_ic.id,
+            modules=spec_ic.get("modules"),
+            region=spec_ic.get("region"),
+            n_changed=(child.artifacts or {}).get("n_changed"),
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            area_um2=child.qor.area_um2,
+            gold=False,
+            status=child.status,
+            reason=why,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="ir_cell", acquire_fidelity="IR_CELL", pay=pay, why=why, evaluate=_eval,
+    )
+
+
+def run_ir_cell_extract(ctx: dict) -> bool:
+    from .acquire import should_pay_ir_cell_extract
+    from .active import ir_cell_host
+
+    mem = ctx["mem"]
+    n_irce = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_ir_cell_extract" and c.status == "ok"
+    )
+    pay, why = should_pay_ir_cell_extract(
+        mem, budget_left=ctx["t_end"] - time.time(), n_extract=n_irce
+    )
+
+    def _eval() -> bool:
+        host_ice = ir_cell_host(mem)
+        if not (host_ice and (host_ice.artifacts or {}).get("mapped_v")):
+            return False
+        params = ctx["flowlab_params"]()
+        util_ice = float(params.get("coreUtilization") or 35.0)
+        den_ice = ctx["gpl_density"](util_ice, params.get("placeDensityAddon") or 0.2)
+        child = ctx["evaluate_f4_extract"](
+            host_ice,
+            mem,
+            design_id=ctx["design_id"],
+            variant=ctx["variant"],
+            util=util_ice,
+            density=den_ice,
+            kind="ir_cell",
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="f4_ir_cell_extract",
+            parent=host_ice.id,
+            host_source=(host_ice.knobs or {}).get("source") or host_ice.level,
+            n_r=(child.artifacts or {}).get("n_r"),
+            n_sta=(child.artifacts or {}).get("n_sta_inst"),
+            droop_mv=child.qor.dynamic_ir_mv,
+            residual_mv=(child.attr or {}).get("residual_mv"),
+            gold=False,
+            status=child.status,
+            reason=why,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="ir_cell_extract", acquire_fidelity="F4_IR_CELL_EXTRACT", pay=pay, why=why,
+        evaluate=_eval,
+    )
+
+
+def run_ir_cell_pdn(ctx: dict) -> bool:
+    from .acquire import extract_on_disk, should_pay_ir_cell_pdn
+    from .active import steer_from_ir_cell_residual
+
+    mem = ctx["mem"]
+    n_icp = sum(
+        1
+        for c in mem.all()
+        if (c.attr or {}).get("via") == "active_f4_ir_cell_pdn" and c.status == "ok"
+    )
+    steer_icp = steer_from_ir_cell_residual(mem)
+    pay, why = should_pay_ir_cell_pdn(
+        mem, budget_left=ctx["t_end"] - time.time(), steer=steer_icp, n_steer=n_icp
+    )
+
+    def _eval() -> bool:
+        spec_icp = (steer_icp or {}).get("spec") or {}
+        eid_icp = str((steer_icp or {}).get("extract_id") or "")
+        hit_icp = extract_on_disk(mem, eid_icp) if eid_icp else None
+        if not spec_icp or not hit_icp:
+            return False
+        child = ctx["evaluate_f4_pdn"](
+            mem,
+            spec_icp,
+            variant=ctx["variant"],
+            design_id=ctx["design_id"],
+            parent_id=hit_icp["candidate"].id,
+            spice=hit_icp["spice"],
+            insts=hit_icp["insts"],
+            extract_id=eid_icp,
+            sta=hit_icp.get("sta"),
+        )
+        if not child:
+            return False
+        child.attr = dict(child.attr or {})
+        child.attr["via"] = "active_f4_ir_cell_pdn"
+        child.attr["steer"] = {k: steer_icp[k] for k in steer_icp if k != "spec"}
+        mem.touch(child)
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="active_f4_ir_cell_pdn",
+            parent=hit_icp["candidate"].id,
+            catalog=spec_icp.get("name"),
+            extract_id=eid_icp,
+            droop_mv=child.qor.dynamic_ir_mv,
+            gold=False,
+            status=child.status,
+            reason=steer_icp.get("reason"),
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="ir_cell_pdn", acquire_fidelity="IR_CELL_PDN", pay=pay, why=why,
+        evaluate=_eval, acquire_extra={"steer": steer_icp},
+    )
+
+
+def run_ir_cell_region(ctx: dict) -> bool:
+    from .acquire import should_pay_ir_cell_region
+    from .active import ir_cell_host, steer_from_ir_cell_hotspot
+
+    mem = ctx["mem"]
+    n_icr = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_ir_cell_region_extract" and c.status == "ok"
+    )
+    steer_icr = steer_from_ir_cell_hotspot(mem)
+    pay, why = should_pay_ir_cell_region(
+        mem, budget_left=ctx["t_end"] - time.time(), steer=steer_icr, n_extract=n_icr
+    )
+
+    def _eval() -> bool:
+        host_icr = ir_cell_host(mem)
+        if not (host_icr and (host_icr.artifacts or {}).get("mapped_v") and steer_icr):
+            return False
+        params = ctx["flowlab_params"]()
+        util_icr = float(params.get("coreUtilization") or 35.0)
+        den_icr = ctx["gpl_density"](util_icr, params.get("placeDensityAddon") or 0.2)
+        child = ctx["evaluate_f4_extract"](
+            host_icr,
+            mem,
+            design_id=ctx["design_id"],
+            variant=ctx["variant"],
+            util=util_icr,
+            density=den_icr,
+            kind="ir_cell_region",
+            region=steer_icr.get("region"),
+            x_dbu=steer_icr.get("x_dbu"),
+            y_dbu=steer_icr.get("y_dbu"),
+            region_density=0.30,
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="f4_ir_cell_region_extract",
+            parent=host_icr.id,
+            region=steer_icr.get("region"),
+            n_r=(child.artifacts or {}).get("n_r"),
+            droop_mv=child.qor.dynamic_ir_mv,
+            residual_mv=(child.attr or {}).get("residual_mv"),
+            gold=False,
+            status=child.status,
+            reason=steer_icr.get("reason"),
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="ir_cell_region", acquire_fidelity="F4_IR_CELL_REGION", pay=pay, why=why,
+        evaluate=_eval, acquire_extra={"steer": steer_icr},
+    )
+
+
+def run_ir_cell_region_pdn(ctx: dict) -> bool:
+    from .acquire import extract_on_disk, should_pay_ir_cell_region_pdn
+    from .active import steer_from_ir_cell_region_residual, winning_host_pdn
+
+    mem = ctx["mem"]
+    n_icrp = sum(
+        1
+        for c in mem.all()
+        if (c.attr or {}).get("via") == "active_f4_ir_cell_region_pdn" and c.status == "ok"
+    )
+    steer_icrp = steer_from_ir_cell_region_residual(mem)
+    pay, why = should_pay_ir_cell_region_pdn(
+        mem, budget_left=ctx["t_end"] - time.time(), steer=steer_icrp, n_steer=n_icrp
+    )
+
+    def _eval() -> bool:
+        spec_icrp = (steer_icrp or {}).get("spec") or {}
+        eid_icrp = str((steer_icrp or {}).get("extract_id") or "")
+        hit_icrp = extract_on_disk(mem, eid_icrp) if eid_icrp else None
+        if not spec_icrp or not hit_icrp:
+            return False
+        child = ctx["evaluate_f4_pdn"](
+            mem,
+            spec_icrp,
+            variant=ctx["variant"],
+            design_id=ctx["design_id"],
+            parent_id=hit_icrp["candidate"].id,
+            spice=hit_icrp["spice"],
+            insts=hit_icrp["insts"],
+            extract_id=eid_icrp,
+            sta=hit_icrp.get("sta"),
+        )
+        if not child:
+            return False
+        child.attr = dict(child.attr or {})
+        child.attr["via"] = "active_f4_ir_cell_region_pdn"
+        child.attr["steer"] = {k: steer_icrp[k] for k in steer_icrp if k != "spec"}
+        champ = winning_host_pdn(mem)
+        if champ and champ.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
+            child.attr["residual_vs_host_win_mv"] = float(child.qor.dynamic_ir_mv) - float(
+                champ.qor.dynamic_ir_mv
+            )
+            child.attr["residual_vs_host_win"] = champ.id
+        mem.touch(child)
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="active_f4_ir_cell_region_pdn",
+            parent=hit_icrp["candidate"].id,
+            catalog=spec_icrp.get("name"),
+            extract_id=eid_icrp,
+            droop_mv=child.qor.dynamic_ir_mv,
+            residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
+            gold=False,
+            status=child.status,
+            reason=steer_icrp.get("reason"),
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="ir_cell_region_pdn", acquire_fidelity="IR_CELL_REGION_PDN", pay=pay, why=why,
+        evaluate=_eval, acquire_extra={"steer": steer_icrp},
+    )
+
+
 STAGE_F2_FAST = Stage(level="f2_fast", run=run_f2_fast, cost_key="F2_FAST", max_shots=4)
 STAGE_F2_GPL = Stage(level="f2_gpl", run=run_f2_gpl, acquire_fidelity="F2_GPL", cost_key="F2_GPL", max_shots=1, min_s=8.0)
 STAGE_F3_STA = Stage(level="f3_sta", run=run_f3_sta, acquire_fidelity="F3", cost_key="F3", max_shots=8, min_s=1.0)
@@ -1918,6 +2216,11 @@ STAGE_F4_SCALE = Stage(level="f4_scale", run=run_f4_scale, acquire_fidelity="F4_
 STAGE_IR_STEER = Stage(level="ir_steer", run=run_ir_steer, acquire_fidelity="IR_STEER")
 STAGE_HOST_IR_STEER = Stage(level="host_ir_steer", run=run_host_ir_steer, acquire_fidelity="HOST_IR_STEER")
 STAGE_F4_SCALE_WIN = Stage(level="f4_scale_win", run=run_f4_scale_win, acquire_fidelity="F4_ISCALE_WIN")
+STAGE_IR_CELL = Stage(level="ir_cell", run=run_ir_cell, acquire_fidelity="IR_CELL")
+STAGE_IR_CELL_EXTRACT = Stage(level="ir_cell_extract", run=run_ir_cell_extract, acquire_fidelity="F4_IR_CELL_EXTRACT")
+STAGE_IR_CELL_PDN = Stage(level="ir_cell_pdn", run=run_ir_cell_pdn, acquire_fidelity="IR_CELL_PDN")
+STAGE_IR_CELL_REGION = Stage(level="ir_cell_region", run=run_ir_cell_region, acquire_fidelity="F4_IR_CELL_REGION")
+STAGE_IR_CELL_REGION_PDN = Stage(level="ir_cell_region_pdn", run=run_ir_cell_region_pdn, acquire_fidelity="IR_CELL_REGION_PDN")
 
 # Consecutive declarative slices. GRT order is data: STA → ROUTING → SDF.
 # residual/port/f2_region live in STAGES_STEER_GAP (C1). IR leftover stays inlined.
@@ -1938,3 +2241,7 @@ STAGES_STEER_GAP = (
     STAGE_PHYSICAL_CATALOG, STAGE_F2_REGION,
 )
 STAGES_IR_STEER = (STAGE_IR_STEER, STAGE_HOST_IR_STEER, STAGE_F4_SCALE_WIN)
+STAGES_IR_CELL = (
+    STAGE_IR_CELL, STAGE_IR_CELL_EXTRACT, STAGE_IR_CELL_PDN,
+    STAGE_IR_CELL_REGION, STAGE_IR_CELL_REGION_PDN,
+)
