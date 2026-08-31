@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:10Z — PLAN Fase 2 C1: STAGES_STEER_GAP
+
+residual_steer / F5_PORT / port_steer / physical_catalog / f2_region moved
+to `STAGES_STEER_GAP`. Order unchanged. `controller.py` 4920 → 4789.
+`test_dse.py` ALL PASSED (~265 s); DirectLU 6.075 + `sta_t50`. Gold unrestamped.
+
 ## 2026-08-31T20:00Z — PLAN Fase 2 passo A: scenario guida I(t)
 
 `i_t_inputs` + worker: `source` decide STA/VCD/SAIF. Triangle → `--no-sta`,

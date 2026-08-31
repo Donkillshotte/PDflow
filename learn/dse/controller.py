@@ -54,10 +54,7 @@ from .acquire import (
     champ_mf_n,
     should_pay_f4_krylov_champ,
     should_pay_f4_ras_champ,
-    should_pay_ir_steer,
-    should_pay_host_ir_steer,
     extract_on_disk,
-    should_pay_f4_scale_win,
     should_pay_f4_scale_champ,
     should_pay_static_ir_steer,
     should_pay_static_mesh,
@@ -96,8 +93,6 @@ from .active import (
     winning_ir_region_cell_host,
     steer_from_winning_ir_region_pdn_hotspot,
     steer_from_winning_ir_region_cell_residual,
-    steer_from_ir_residual,
-    steer_from_host_ir_residual,
 )
 from .arch_space import emit_gcd_variant, stamp_cone_knobs
 from .designs import resolve
@@ -136,6 +131,7 @@ from .resources import admit_solve
 from .solve_result import residual_vs_reference_mv, stamp_f4_candidate
 from .stages import (
     STAGES_F4_HEAD,
+    STAGES_IR_STEER,
     STAGES_LOGIC_TRANSFORM,
     STAGES_PLACE_ROUTE,
     STAGES_STEER_GAP,
@@ -935,165 +931,8 @@ def run_controller(
     for _stage in STAGES_F4_HEAD:
         run_stage(_stage, _stage_ctx)
 
-    planned_ir = any(s["level"] == "ir_steer" for s in plan["steps"])
-    while planned_ir and time.time() < t_end:
-        steer_ir = steer_from_ir_residual(mem)
-        n_ir_st = sum(
-            1 for c in mem.all() if (c.attr or {}).get("via") == "active_f4_ir" and c.status == "ok"
-        )
-        pay_ir, why_ir = should_pay_ir_steer(
-            mem, budget_left=t_end - time.time(), steer=steer_ir, n_steer=n_ir_st
-        )
-        step("acquire", fidelity="IR_STEER", pay=pay_ir, why=why_ir, steer=steer_ir)
-        if not pay_ir or not steer_ir:
-            break
-        spec = steer_ir.get("spec") or {}
-        eid = str(steer_ir.get("extract_id") or "")
-        hit = extract_on_disk(mem, eid) if eid else None
-        if not spec or not hit:
-            break
-        child = evaluate_f4_pdn(
-            mem,
-            spec,
-            variant=variant,
-            design_id=design_id,
-            parent_id=hit["candidate"].id,
-            spice=hit["spice"],
-            insts=hit["insts"],
-            extract_id=eid,
-            sta=hit.get("sta"),
-        )
-        if not child:
-            break
-        child.attr = dict(child.attr or {})
-        child.attr["via"] = "active_f4_ir"
-        child.attr["steer"] = {k: steer_ir[k] for k in steer_ir if k != "spec"}
-        mem.touch(child)
-        step(
-            "evaluate",
-            id=child.id,
-            level="pdn",
-            fidelity="F4",
-            via="active_f4_ir",
-            parent=hit["candidate"].id,
-            catalog=spec.get("name"),
-            extract_id=eid,
-            droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
-            status=child.status,
-            reason=steer_ir.get("reason"),
-        )
-
-    planned_hir = any(s["level"] == "host_ir_steer" for s in plan["steps"])
-    while planned_hir and time.time() < t_end:
-        steer_hir = steer_from_host_ir_residual(mem)
-        n_hir_st = sum(
-            1
-            for c in mem.all()
-            if (c.attr or {}).get("via") == "active_f4_host_ir" and c.status == "ok"
-        )
-        pay_hir, why_hir = should_pay_host_ir_steer(
-            mem, budget_left=t_end - time.time(), steer=steer_hir, n_steer=n_hir_st
-        )
-        step("acquire", fidelity="HOST_IR_STEER", pay=pay_hir, why=why_hir, steer=steer_hir)
-        if not pay_hir or not steer_hir:
-            break
-        spec = steer_hir.get("spec") or {}
-        eid = str(steer_hir.get("extract_id") or "")
-        hit = extract_on_disk(mem, eid) if eid else None
-        if not spec or not hit:
-            break
-        child = evaluate_f4_pdn(
-            mem,
-            spec,
-            variant=variant,
-            design_id=design_id,
-            parent_id=hit["candidate"].id,
-            spice=hit["spice"],
-            insts=hit["insts"],
-            extract_id=eid,
-            sta=hit.get("sta"),
-        )
-        if not child:
-            break
-        child.attr = dict(child.attr or {})
-        child.attr["via"] = "active_f4_host_ir"
-        child.attr["steer"] = {k: steer_hir[k] for k in steer_hir if k != "spec"}
-        mem.touch(child)
-        step(
-            "evaluate",
-            id=child.id,
-            level="pdn",
-            fidelity="F4",
-            via="active_f4_host_ir",
-            parent=hit["candidate"].id,
-            catalog=spec.get("name"),
-            extract_id=eid,
-            host_source=steer_hir.get("host_source"),
-            droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
-            status=child.status,
-            reason=steer_hir.get("reason"),
-        )
-
-    n_sw = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_iscale_win" and c.status == "ok"
-    )
-    pay_sw, why_sw = should_pay_f4_scale_win(
-        mem, budget_left=t_end - time.time(), n_scale=n_sw, variant=variant
-    )
-    step("acquire", fidelity="F4_ISCALE_WIN", pay=pay_sw, why=why_sw)
-    if any(s["level"] == "f4_scale_win" for s in plan["steps"]) and pay_sw and time.time() < t_end:
-        base_p_w = None
-        for c in mem.by_level("logic"):
-            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
-                _w, p = timing_of(mem, c)
-                if p:
-                    base_p_w = p
-                    break
-        pick_w = iscale_parent(mem)
-        win = winning_host_pdn(mem)
-        eid_w = str((win.knobs or {}).get("extract_id") or win.id) if win else ""
-        hit_w = extract_on_disk(mem, eid_w) if eid_w else None
-        if pick_w and base_p_w and win and hit_w:
-            arr_w = latest_host_arrivals(mem)
-            child = evaluate_f4_scale(
-                pick_w,
-                mem,
-                variant=variant,
-                design_id=design_id,
-                baseline_power_w=base_p_w,
-                pkg_r=float((win.knobs or {}).get("pkg_r") or 0.05),
-                pkg_l=float((win.knobs or {}).get("pkg_l") or 2e-10),
-                c_decap=float((win.knobs or {}).get("c_decap") or 50e-15),
-                spice=hit_w["spice"],
-                insts=hit_w["insts"],
-                extract_id=eid_w,
-                sta=arr_w["sta"] if arr_w else hit_w.get("sta"),
-                sta_via="f4_host_arrivals" if arr_w else "f4_iscale_win",
-                source="f4_iscale_win",
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_iscale_win",
-                    parent=pick_w.id,
-                    host_level=pick_w.level,
-                    host_source=(pick_w.knobs or {}).get("source") or pick_w.level,
-                    win_source=(win.knobs or {}).get("name") or (win.attr or {}).get("via"),
-                    i_scale=(child.knobs or {}).get("i_scale"),
-                    extract_id=eid_w,
-                    c_decap=(child.knobs or {}).get("c_decap"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    gold=False,
-                    status=child.status,
-                    reason=why_sw,
-                )
+    for _stage in STAGES_IR_STEER:
+        run_stage(_stage, _stage_ctx)
 
     n_irc = sum(
         1
