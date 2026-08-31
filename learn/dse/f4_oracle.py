@@ -27,7 +27,7 @@ _DIST = "/usr/lib/python3/dist-packages"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 from heavy_analysis import resolve_solve_timeout_s  # noqa: E402
-from .current_scenario import CCS_GAP, CurrentScenario, infer_scenario
+from .current_scenario import CCS_GAP, CurrentScenario, i_t_inputs, infer_scenario
 from .resources import admit_solve
 from .solve_result import normalize_solve
 
@@ -174,10 +174,6 @@ def build_worker_cmd(
     ]
     if spice:
         cmd.extend(["--spice", str(spice), "--no-spef"])
-        if sta:
-            cmd.extend(["--sta", str(sta)])
-        else:
-            cmd.append("--no-sta")
     if insts:
         cmd.extend(["--insts", str(insts)])
     wave = _waveform_on_disk(variant=variant, design_id=design_id)
@@ -196,9 +192,30 @@ def build_worker_cmd(
             waveform=wave,
         )
     cmd.extend(["--scenario", scen.to_json()])
-    if scen.source in ("vcd", "saif") and scen.activity_status == "ABSENT":
-        return cmd
-    return attach_activity_flags(cmd, variant=variant, design_id=design_id)
+    want = i_t_inputs(scen.source, scen.activity_status)
+    if want == "sta":
+        sta_path = sta or sta_for_scen
+        if sta_path and Path(sta_path).is_file():
+            cmd.extend(["--sta", str(sta_path)])
+        else:
+            cmd.append("--no-sta")
+    elif want == "vcd" or want == "saif":
+        cmd.append("--no-sta")
+        if scen.activity_status == "ABSENT":
+            return cmd
+        return attach_activity_flags(cmd, variant=variant, design_id=design_id)
+    elif want == "none":
+        cmd.append("--no-sta")
+    else:
+        # No named source: same argv as before (candidate spice without STA → --no-sta).
+        if spice:
+            if sta:
+                cmd.extend(["--sta", str(sta)])
+            else:
+                cmd.append("--no-sta")
+        if wave is not None:
+            return attach_activity_flags(cmd, variant=variant, design_id=design_id)
+    return cmd
 
 
 def solve_f4(

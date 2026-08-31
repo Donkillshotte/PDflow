@@ -149,10 +149,13 @@ def main() -> int:
     check(activity_status_of({"sta_arrival": 10, "synthetic": 2}) == ACTIVITY_PARTIAL, "mix is PARTIAL")
     check(activity_status_of({"sta_arrival": 10}, n_saif_idle=3) == ACTIVITY_PARTIAL, "SAIF idle-zero is PARTIAL")
 
-    from dse.current_scenario import CCS_GAP, CurrentScenario, infer_scenario
+    from dse.current_scenario import CCS_GAP, CurrentScenario, i_t_inputs, infer_scenario
     from dse.f4_oracle import build_worker_cmd, spice_paths
 
     tri = CurrentScenario()
+    check(i_t_inputs("ideal_triangle", ACTIVITY_SYNTHETIC) == "none", "triangle loads no STA/VCD/SAIF")
+    check(i_t_inputs("sta_t50", ACTIVITY_REAL) == "sta", "sta_t50 REAL loads only STA")
+    check(i_t_inputs("vcd", ACTIVITY_ABSENT) == "none", "ABSENT vcd loads no waveform")
     check(tri.source == "ideal_triangle" and tri.activity_status == ACTIVITY_SYNTHETIC, "triangle is the default")
     check(tri.fingerprint and len(tri.fingerprint) == 64, "scenario has a fingerprint")
     sta_p = spice_paths("flowlab", "gcd")["sta"]
@@ -166,9 +169,15 @@ def main() -> int:
     check(ccs_run.get("status") == "GAP" and ccs_run.get("gold") is False, "solve_f4 CCS does not invent tables")
     gcd_cmd = build_worker_cmd(design_id="gcd", period_ns=0.46, scenario=gcd_scen)
     check("--scenario" in gcd_cmd and "sta_t50" in gcd_cmd[gcd_cmd.index("--scenario") + 1], "worker cmd carries explicit sta_t50")
+    check("--sta" in gcd_cmd, "sta_t50 REAL puts --sta on the argv")
     check("--vcd" not in gcd_cmd and "--saif" not in gcd_cmd, "missing waveform is not invented on the argv")
+    tri_cmd = build_worker_cmd(design_id="gcd", period_ns=0.46, scenario=CurrentScenario())
+    check("--no-sta" in tri_cmd, "explicit triangle forces --no-sta")
+    check("--sta" not in tri_cmd, "explicit triangle does not pass --sta even if STA is on disk")
+    check("ideal_triangle" in tri_cmd[tri_cmd.index("--scenario") + 1], "triangle scenario is on the argv")
     abs_cmd = build_worker_cmd(design_id="gcd", scenario={"source": "vcd", "activity_status": "ABSENT"})
     check("--vcd" not in abs_cmd, "ABSENT vcd scenario does not add --vcd")
+    check("--no-sta" in abs_cmd, "ABSENT vcd does not promote leftover STA")
     sr = normalize_solve({
         "status": "ok",
         "solver": "A_direct_be",

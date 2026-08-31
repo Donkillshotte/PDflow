@@ -164,6 +164,22 @@ def infer_scenario(
     )
 
 
+def i_t_inputs(source: str | None, activity_status: str | None) -> str:
+    """Which I(t) files the worker may load. ``source`` wins over leftover flags.
+
+    ``none`` — synthetic triangle (or ABSENT / CCS). ``sta`` / ``vcd`` / ``saif``
+    — that named source only. ``argv`` — no scenario; honor ``--sta/--vcd/--saif``.
+    """
+    src = source or ""
+    if src == "ideal_triangle" or src == "liberty_ccs":
+        return "none"
+    if src == "sta_t50":
+        return "none" if activity_status == ACTIVITY_ABSENT else "sta"
+    if src in ("vcd", "saif"):
+        return "none" if activity_status == ACTIVITY_ABSENT else src
+    return "argv"
+
+
 def parse_scenario_json(blob: str | None) -> CurrentScenario | None:
     if not blob:
         return None

@@ -162,9 +162,28 @@ def main() -> int:
         return 2
     order, idx, G = build_system(ext["resistors"], ext["currents"], ext["voltages"])
     insts = load_insts(insts_p)
-    sta = load_sta_arrivals(sta_p) if sta_p is not None and sta_p.is_file() else {}
-    vcd = parse_vcd(args.vcd) if args.vcd is not None and Path(args.vcd).is_file() else None
-    saif = parse_saif(args.saif) if args.saif is not None and Path(args.saif).is_file() else None
+    # source wins over leftover --sta/--vcd/--saif. Do not import dse here (SciPy 1.x).
+    src = (scen or {}).get("source")
+    status = (scen or {}).get("activity_status")
+    if src == "ideal_triangle" or src == "liberty_ccs" or (
+        src in ("sta_t50", "vcd", "saif") and status == "ABSENT"
+    ):
+        sta, vcd, saif = {}, None, None
+    elif src == "sta_t50":
+        sta = load_sta_arrivals(sta_p) if sta_p is not None and sta_p.is_file() else {}
+        vcd, saif = None, None
+    elif src == "vcd":
+        sta = {}
+        vcd = parse_vcd(args.vcd) if args.vcd is not None and Path(args.vcd).is_file() else None
+        saif = None
+    elif src == "saif":
+        sta = {}
+        vcd = None
+        saif = parse_saif(args.saif) if args.saif is not None and Path(args.saif).is_file() else None
+    else:
+        sta = load_sta_arrivals(sta_p) if sta_p is not None and sta_p.is_file() else {}
+        vcd = parse_vcd(args.vcd) if args.vcd is not None and Path(args.vcd).is_file() else None
+        saif = parse_saif(args.saif) if args.saif is not None and Path(args.saif).is_file() else None
     events = plan_events(
         ext["currents"],
         idx,
