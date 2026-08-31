@@ -2455,11 +2455,13 @@ def evaluate_f5_drt(
         "clock": "ideal",
         "top": spec.top,
         "sdc": str(spec.constraint),
-        "special_pg": 1,
+        "special_pg": 2,
     }
     fp = knobs_fp("routing", knobs)
     if fp in mem.seen_knobs("routing"):
-        return next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
+        prev = next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
+        if prev.status == "ok":
+            return prev
     cid = DesignMemory.new_id()
     spef_dest = REPO / "learn" / "sim" / "dse" / "spef" / f"{cid}.spef"
     raw = run_f5_drt(
