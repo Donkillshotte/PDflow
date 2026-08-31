@@ -3,6 +3,23 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T17:45Z — PLAN passo 3e: flatten controller stage slices
+
+`run_controller` consecutive `run_stage` calls collapsed into
+`STAGES_LOGIC_TRANSFORM` / `STAGES_PLACE_ROUTE` / `STAGES_F4_HEAD`.
+F4 head is **not** nested under f2_region. GRT order is data in the
+place-route tuple. residual_steer / port / f2_region / IR leftover stay
+inlined. Domain `should_pay_*` remain (stages still call them); redundant
+n_have/wall early-returns dropped on the 3a generic wrappers.
+`controller.py` 4979 → 4903 (−76). No AES Krylov. Gold unrestamped.
+
+| Item | Result |
+|---|---|
+| Slices | synth/cell/net/net_port; STA→GRT→SDF…→local; F4 extract…scale |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including 3e slice order |
+| `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
+| `test_dse.py` | re-run after this commit |
+
 ## 2026-08-31T18:55Z — PLAN passo 3d: F4 stages + needs_admit
 
 Strangler: F4 extract / region extract / PDN catalog / AMG / RAS / Krylov / host arrivals / host extract / host region / I-scale moved to `stages.py`. `Stage.needs_admit=True` → `_pay_and_maybe_eval` calls `admit_paid_f4` before evaluate. Evaluate still uses controller wrappers (stamp SolveResult, no JSONL restamp of live memory). Champ/static/EM stay inlined (steer-special). `controller.py` 5432 → 4979 (−453). No AES Krylov. Gold unrestamped.
@@ -23,7 +40,7 @@ Strangler: `synthesis`, `cell`, `net`, `net_port`, `physical_catalog` moved to `
 | Stages | `STAGE_SYNTHESIS`, `STAGE_CELL`, `STAGE_NET`, `STAGE_NET_PORT`, `STAGE_PHYSICAL_CATALOG` |
 | `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including 3c names |
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
-| `test_dse.py` | re-run after this commit |
+| `test_dse.py` | ALL PASSED (~263 s); DirectLU 6.075 ≠ 45.298 |
 
 ## 2026-08-31T18:20Z — PLAN passo 3b: routing / F5 stages
 

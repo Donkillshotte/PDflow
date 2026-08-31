@@ -278,6 +278,21 @@ def main() -> int:
     from dse.stages import STAGE_F4_EXTRACT, STAGE_F4_KRYLOV, STAGE_F4_PDN, STAGE_F4_SCALE
     check(STAGE_F4_EXTRACT.needs_admit and STAGE_F4_KRYLOV.needs_admit, "3d F4 stages need admit")
     check(STAGE_F4_PDN.level == "pdn" and STAGE_F4_SCALE.level == "f4_scale", "3d pdn/scale names")
+    from dse.stages import STAGES_F4_HEAD, STAGES_LOGIC_TRANSFORM, STAGES_PLACE_ROUTE
+    check(
+        [s.level for s in STAGES_LOGIC_TRANSFORM] == ["synthesis", "cell", "net", "net_port"],
+        "3e logic-transform slice order",
+    )
+    pr_lv = [s.level for s in STAGES_PLACE_ROUTE]
+    check(
+        pr_lv.index("f3_sta") < pr_lv.index("routing") < pr_lv.index("f3_sdf"),
+        "3e GRT still sits between STA and SDF",
+    )
+    check(pr_lv[-1] == "f5_local", "3e place-route ends at local (residual_steer stays inlined)")
+    check(
+        all(s.needs_admit for s in STAGES_F4_HEAD if s.level != "f4_activity"),
+        "3e F4 head admits except host-arrivals",
+    )
 
     from dse.costs import estimated_cost_s, p75
     from dse.fidelity import COST_HINT

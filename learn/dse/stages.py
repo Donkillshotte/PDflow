@@ -1543,3 +1543,17 @@ STAGE_F4_ACTIVITY = Stage(level="f4_activity", run=run_f4_activity, acquire_fide
 STAGE_F4_HOST_EXTRACT = Stage(level="f4_host_extract", run=run_f4_host_extract, acquire_fidelity="F4_HOST_EXTRACT", cost_key="F4_EXTRACT", needs_admit=True)
 STAGE_F4_HOST_REGION = Stage(level="f4_host_region", run=run_f4_host_region, acquire_fidelity="F4_HOST_REGION", cost_key="F4_EXTRACT", needs_admit=True)
 STAGE_F4_SCALE = Stage(level="f4_scale", run=run_f4_scale, acquire_fidelity="F4_ISCALE", cost_key="F4", needs_admit=True)
+
+# Consecutive declarative slices. Neighbors that stay inlined (residual_steer,
+# port_steer, f2_region, IR leftover, champ/static) split them. GRT order is
+# data: STA → ROUTING → SDF inside STAGES_PLACE_ROUTE.
+STAGES_LOGIC_TRANSFORM = (STAGE_SYNTHESIS, STAGE_CELL, STAGE_NET, STAGE_NET_PORT)
+STAGES_PLACE_ROUTE = (
+    STAGE_F2_FAST, STAGE_F2_GPL, STAGE_F3_STA, STAGE_ROUTING, STAGE_F3_SDF,
+    STAGE_F5_DRT, STAGE_F3_SPEF, STAGE_F5_CTS, STAGE_F5_LOCAL,
+)
+STAGES_F4_HEAD = (
+    STAGE_F4_EXTRACT, STAGE_F4_REGION_EXTRACT, STAGE_F4_PDN,
+    STAGE_F4_AMG, STAGE_F4_RAS, STAGE_F4_KRYLOV, STAGE_F4_ACTIVITY,
+    STAGE_F4_HOST_EXTRACT, STAGE_F4_HOST_REGION, STAGE_F4_SCALE,
+)

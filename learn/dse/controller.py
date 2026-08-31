@@ -32,18 +32,8 @@ from .acquire import (
     latest_ok_extract,
     latest_ok_host_extract,
     latest_host_arrivals,
-    should_pay_host_arrivals,
-    should_pay_f4_host_extract,
-    should_pay_f4_host_region,
     latest_host_extract_cand,
-    should_pay_f2_fast,
-    should_pay_f2_gpl,
     should_pay_f2_region,
-    should_pay_f2_grt,
-    should_pay_f3_sdf,
-    should_pay_f3_spef,
-    should_pay_f3_sta,
-    should_pay_cell_size,
     should_pay_ir_cell,
     should_pay_ir_cell_champ,
     should_pay_ir_cell_champ_extract,
@@ -51,8 +41,6 @@ from .acquire import (
     should_pay_ir_cell_champ_cone,
     should_pay_ir_cell_champ_cone_extract,
     should_pay_ir_cell_champ_cone_pdn,
-    should_pay_ir_cell_champ_cone_region,
-    should_pay_ir_cell_champ_cone_region_pdn,
     leftover_cone_region_next,
     winning_ir_region_next,
     should_pay_winning_ir_region_cell,
@@ -63,32 +51,15 @@ from .acquire import (
     should_pay_ir_cell_region,
     should_pay_ir_cell_region_pdn,
     should_pay_ctrl_cone,
-    should_pay_net_buffer,
-    should_pay_net_port,
-    _attributed_cross_module_nets,
-    should_pay_f1_synth,
-    should_pay_f4_amg,
     should_pay_f4_amg_champ,
     champ_mf_n,
-    should_pay_f4_extract,
-    should_pay_f4_krylov,
     should_pay_f4_krylov_champ,
-    should_pay_f4_ras,
     should_pay_f4_ras_champ,
-    should_pay_f4_region_extract,
-    should_pay_f5_cts,
-    should_pay_f5_drt,
-    should_pay_f5_local,
-    should_pay_f5_port,
     should_pay_port_steer,
-    latest_port_host,
     should_pay_residual_steer,
     should_pay_ir_steer,
     should_pay_host_ir_steer,
     extract_on_disk,
-    local_hosts,
-    should_pay_f4_pdn,
-    should_pay_f4_scale,
     should_pay_f4_scale_win,
     should_pay_f4_scale_champ,
     should_pay_static_ir_steer,
@@ -97,7 +68,6 @@ from .acquire import (
     should_pay_em_straps,
     should_pay_winning_ir_catalog,
     iscale_champ_sta,
-    should_pay_physical_catalog,
 )
 from .active import (
     iscale_host,
@@ -129,7 +99,6 @@ from .active import (
     winning_ir_region_cell_host,
     steer_from_winning_ir_region_pdn_hotspot,
     steer_from_winning_ir_region_cell_residual,
-    order_local_hosts,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
     steer_from_port_residual,
@@ -143,17 +112,9 @@ from .boils import propose_logic_boils, should_pay_f1
 from .fidelity import (
     evaluate_cell_size,
     evaluate_net_buffer,
-    evaluate_net_port_buffer,
     evaluate_f1_abc,
-    evaluate_f1_synth,
-    evaluate_f2_fast,
     evaluate_f2_gpl,
-    evaluate_f2_grt,
-    evaluate_f3_sdf,
-    evaluate_f3_spef,
     evaluate_f3_sta,
-    evaluate_f5_cts,
-    evaluate_f5_drt,
     evaluate_f5_local,
     evaluate_f4_extract,
     evaluate_f4_pdn,
@@ -181,35 +142,15 @@ from .mo import baseline_wns, timing_of
 from .resources import admit_solve
 from .solve_result import residual_vs_reference_mv, stamp_f4_candidate
 from .stages import (
-    STAGE_CELL,
-    STAGE_F2_FAST,
-    STAGE_F2_GPL,
-    STAGE_F3_SDF,
-    STAGE_F3_SPEF,
-    STAGE_F3_STA,
-    STAGE_F4_ACTIVITY,
-    STAGE_F4_AMG,
-    STAGE_F4_EXTRACT,
-    STAGE_F4_HOST_EXTRACT,
-    STAGE_F4_HOST_REGION,
-    STAGE_F4_KRYLOV,
-    STAGE_F4_PDN,
-    STAGE_F4_RAS,
-    STAGE_F4_REGION_EXTRACT,
-    STAGE_F4_SCALE,
-    STAGE_F5_CTS,
-    STAGE_F5_DRT,
-    STAGE_F5_LOCAL,
     STAGE_F5_PORT,
-    STAGE_NET,
-    STAGE_NET_PORT,
     STAGE_PHYSICAL_CATALOG,
-    STAGE_ROUTING,
-    STAGE_SYNTHESIS,
+    STAGES_F4_HEAD,
+    STAGES_LOGIC_TRANSFORM,
+    STAGES_PLACE_ROUTE,
     run_stage,
 )
 from .pdn_space import GOLD_KNOBS, next_pdn_spec
-from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
+from .physical_space import gpl_density, propose_synthesis_f0
 from .planner import plan_search, rank_extracts
 from .proposer import propose as propose_from_attr
 from .surrogate import (
@@ -987,22 +928,13 @@ def run_controller(
         "timing_of": timing_of,
         "next_pdn_spec": next_pdn_spec,
     }
-    run_stage(STAGE_SYNTHESIS, _stage_ctx)
-    run_stage(STAGE_CELL, _stage_ctx)
-    run_stage(STAGE_NET, _stage_ctx)
-    run_stage(STAGE_NET_PORT, _stage_ctx)
+    for _stage in STAGES_LOGIC_TRANSFORM:
+        run_stage(_stage, _stage_ctx)
 
     # F2-fast on the best F1 netlists (logic + architecture winners).
-    run_stage(STAGE_F2_FAST, _stage_ctx)
-    run_stage(STAGE_F2_GPL, _stage_ctx)
-    run_stage(STAGE_F3_STA, _stage_ctx)
-    # GRT sits BETWEEN F3 STA and F3 SDF. Do not fold these four into one loop.
-    run_stage(STAGE_ROUTING, _stage_ctx)
-    run_stage(STAGE_F3_SDF, _stage_ctx)
-    run_stage(STAGE_F5_DRT, _stage_ctx)
-    run_stage(STAGE_F3_SPEF, _stage_ctx)
-    run_stage(STAGE_F5_CTS, _stage_ctx)
-    run_stage(STAGE_F5_LOCAL, _stage_ctx)
+    # GRT sits BETWEEN F3 STA and F3 SDF — order is data in STAGES_PLACE_ROUTE.
+    for _stage in STAGES_PLACE_ROUTE:
+        run_stage(_stage, _stage_ctx)
 
     steer = steer_from_residual(mem)
     n_steer = sum(1 for c in mem.all() if (c.attr or {}).get("via") == "active_residual" and c.status == "ok")
@@ -1136,16 +1068,8 @@ def run_controller(
                     status=child.status,
                 )
 
-    run_stage(STAGE_F4_EXTRACT, _stage_ctx)
-    run_stage(STAGE_F4_REGION_EXTRACT, _stage_ctx)
-    run_stage(STAGE_F4_PDN, _stage_ctx)
-    run_stage(STAGE_F4_AMG, _stage_ctx)
-    run_stage(STAGE_F4_RAS, _stage_ctx)
-    run_stage(STAGE_F4_KRYLOV, _stage_ctx)
-    run_stage(STAGE_F4_ACTIVITY, _stage_ctx)
-    run_stage(STAGE_F4_HOST_EXTRACT, _stage_ctx)
-    run_stage(STAGE_F4_HOST_REGION, _stage_ctx)
-    run_stage(STAGE_F4_SCALE, _stage_ctx)
+    for _stage in STAGES_F4_HEAD:
+        run_stage(_stage, _stage_ctx)
 
     planned_ir = any(s["level"] == "ir_steer" for s in plan["steps"])
     while planned_ir and time.time() < t_end:

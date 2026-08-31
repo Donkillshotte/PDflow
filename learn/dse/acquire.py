@@ -18,10 +18,6 @@ def should_pay_f2_gpl(
     gpl_max: int = 1,
     min_s: float = 8.0,
 ) -> tuple[bool, str]:
-    if n_gpl >= gpl_max:
-        return False, "GPL shot already spent this run"
-    if budget_left < min_s:
-        return False, "wall budget would not cover OpenROAD GPL"
     winners = [
         c
         for c in mem.all()
@@ -76,10 +72,6 @@ def should_pay_f3_sta(
     sta_max: int = 8,
     min_s: float = 1.0,
 ) -> tuple[bool, str]:
-    if n_sta >= sta_max:
-        return False, "F3 STA budget exhausted"
-    if budget_left < min_s:
-        return False, "wall budget would not cover OpenSTA"
     winners = [
         c
         for c in mem.all()
@@ -116,10 +108,6 @@ def should_pay_f3_sdf(
     """Pay one OpenSTA + GRT SDF shot. Not OpenRCX SPEF, not finish/F5."""
     from pathlib import Path
 
-    if n_sdf >= sdf_max:
-        return False, "F3 SDF-GRT shot already spent"
-    if budget_left < min_s:
-        return False, "wall budget would not cover OpenSTA+SDF"
     if any(
         (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok" for c in mem.all()
     ):

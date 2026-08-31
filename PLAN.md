@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 3d ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 3d ✅, passo 3e ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -134,10 +134,14 @@ committa, si passa al lotto dopo.
   Ogni stage F4 dichiara `needs_admit=True` e `_pay_and_maybe_eval` chiama
   `admit_paid_f4` prima di evaluate (cerchio col passo 2). Champ/static/EM restano
   inlined: predicati steer con residuali unici (stesso criterio di residual_steer in 3b).
-- **3e** — Pulizia: le `should_pay_*` rimpiazzate da `should_pay_generic`
-  vengono eliminate da `acquire.py`; restano solo i predicati genuinamente
-  speciali. `run_controller` diventa: setup → plan → loop stage table →
-  refine chain (`dispatch`) → summary.
+- **3e** ✅ — Pulizia: `run_controller` è setup → plan → slice dichiarative
+  (`STAGES_LOGIC_TRANSFORM`, `STAGES_PLACE_ROUTE`, `STAGES_F4_HEAD`) →
+  refine chain (`dispatch`) → summary. GRT resta fra STA e SDF (ordine nel
+  tuple). residual_steer / port_steer / f2_region / IR leftover / champ /
+  static / EM restano inlined. Le `should_pay_*` migrate tengono i check
+  di dominio e delegano n_have/wall a `should_pay_generic` (f2_gpl / f3_sta /
+  f3_sdf); i predicati steer-special non si toccano. `controller.py`
+  4979 → 4903 (−76).
 
 **Accettazione per ogni lotto.**
 - `test_dse.py` verde **senza cambiare i valori attesi** (i `why` possono
