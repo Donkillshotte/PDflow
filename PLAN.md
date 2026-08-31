@@ -1,6 +1,6 @@
 # PLAN — Fase 2: scenario guida I(t), fronte gated onesto, coda IR dichiarativa
 
-Stato: passo A ✅, E ✅, B ✅, C1 ✅, C2 ✅, C3 ✅, C4 ✅, C5 ✅, C6 ✅, C7 ✅, D.1 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo A ✅, E ✅, B ✅, C1 ✅, C2 ✅, C3 ✅, C4 ✅, C5 ✅, C6 ✅, C7 ✅, D.1 ✅, D.2 ✅, D.3 ✅, D.4 ✅, D.5 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -10,20 +10,26 @@ Riferimenti: `learn/dse/README.md`, `.cursor/SETUP_LOG.md`, PR #2.
 
 ---
 
-## Diagnosi (stato dopo Fase 1, 2026-08-31)
+## Diagnosi (stato dopo Fase 2 D.5 + cleanup, 2026-08-31)
 
-Misurato sul tree `ca47126`, non a memoria.
+Misurato sul tree corrente, non a memoria. La foto Fase 1 (`ca47126`:
+controller 4920, coda IR inlined, `test_dse` 4925) è archivio.
 
 | File | Righe | Ruolo |
 |---|---:|---|
-| `learn/dse/controller.py` | 4920 | Teacher F1 + 3 slice `run_stage` + **coda IR inlined** (~939–2782) |
-| `learn/dse/acquire.py` | 3146 | **66** `should_pay_*`. Le stage migrate le chiamano ancora |
-| `learn/dse/stages.py` | 1559 | Slice: logic / place-route / F4 head. `should_pay_generic` solo su 3a |
-| `learn/scripts/test_dse.py` | 4925 | Un solo `main()`: metriche → planner → IR leftover → F4 live |
-| `learn/dse/current_scenario.py` | 188 | Dataclass + `infer_scenario`. Non guida `plan_events` |
-| `learn/scripts/dse_f4_worker.py` | 349 | `--scenario` stampato; I(t) da `--sta/--vcd/--saif` |
-| `learn/dse/planner.py` | 790 | `next_candidate_ids` → `plan["next"]` e report. **Non sceglie parent** |
-| `studio/.../DsePanel.tsx` | — | Legge `report.pareto` (ungated). Ignora `pareto_gated` / scenario |
+| `learn/dse/controller.py` | 3062 | Ingest/F1 teacher inlined → `STAGES_*` C1–C6 → `run_next_refine` → `STAGES_IR_SOLVERS` → report. Import solo nomi usati |
+| `learn/dse/acquire.py` | 3146 | **66** `should_pay_*` restano (stage + test). Non cancellati |
+| `learn/dse/stages.py` | 2264 | Slice C1–C7: steer-gap / IR_STEER / IR_CELL / IR_CHAMP / inspect / region-cell / IR_SOLVERS |
+| `learn/scripts/test_dse.py` | 51 | Runner: D.1 metrics → D.2 memory → D.3 planner → D.4 steer → D.5 live F4 |
+| `learn/scripts/test_dse_metrics.py` | 43 | D.1 dominates / gated / HV / EHVI |
+| `learn/scripts/test_dse_memory.py` | 172 | D.2 JSONL / BOiLS / e-graph / cataloghi |
+| `learn/scripts/test_dse_planner.py` | 1320 | D.3 attribution / `plan_search` / F1 |
+| `learn/scripts/test_dse_steer.py` | 3279 | D.4 residual / F5 / IR leftover / champ / static |
+| `learn/scripts/test_dse_live_f4.py` | 166 | D.5 live F4, importato per ultimo; un processo, un job |
+| `learn/dse/current_scenario.py` | 204 | `source` guida I(t) (passo A) |
+| `learn/scripts/dse_f4_worker.py` | 368 | `plan_events` rispetta `source`; triangolo non ruba STA |
+| `learn/dse/planner.py` | 812 | `prefer_gated` + `pareto_gated` (passo B). Parent F1 resta F1-only |
+| `studio/.../DsePanel.tsx` | — | Legge `pareto_gated`. Heatmap/suite dicono `current_run`, non “A gold” |
 
 **Cosa è già vero (non rifare).**
 
@@ -34,34 +40,16 @@ Misurato sul tree `ca47126`, non a memoria.
 - Refine depth ≥ 1 è già generico: `dispatch.run_next_refine` + `actions.py`
   + `frame.py`. Non è un blocco controller da “tabellizzare”.
 - `f1_pareto_parents` = area-best + WNS-best **solo F1**. È corretto per
-  F1→F2. Non è il buco del passo 5.
+  F1→F2.
 - GCD finish live: DirectLU **6.075 mV**, `current_scenario.source=sta_t50`,
   `n_r` worker **5816**. Gold **45.298** intatto. AES `febe6804241c` intatto.
 - `leftover_cone_region_next` / `winning_ir_region_next` sono già inspector
   closed-loop (`kind ∈ {extract, pdn}`), non one-shot.
-
-**Cosa è ancora falso (i buchi da chiudere).**
-
-1. **Scenario è un francobollo.** `build_worker_cmd` passa `--scenario` JSON
-   e, se c’è spice+STA, passa anche `--sta`. Il worker fa
-   `plan_events(..., sta_arrivals=sta, vcd=vcd, saif=saif)` **ignorando**
-   `source`. `ideal_triangle` + STA su disco ⇒ STA vince. CCS è già GAP.
-2. **Pareto gated è contratto, non picker.** `plan["next"]` e
-   `report["pareto_gated"]` esistono. Cell / net / extract / catalog
-   pickano `f1_wns_winner` + `f1_area_winner` + `f1_ok`. Studio badge-a
-   `report.pareto`. Un WNS F1 migliore può ancora *sembrare* il vincitore
-   in UI anche se il fronte gated tiene F1 e F5.
-3. **La coda IR è fotocopia.** Dopo `STAGES_F4_HEAD` il controller ripete
-   `n_*` / `should_pay_*` / `step("acquire")` / `evaluate_*` / `step("evaluate")`
-   per IR_STEER … EM_STRAPS. `via` / `why` / `fidelity` sono stringhe
-   asserite in `test_dse.py`. Residual/port/f2_region stanno **fra** le
-   slice, non in coda.
-4. **Due numeri IR.** Report/UI dicono ancora “A gold” accanto al finish
-   corrente. I test distinguono 6.075 vs 45.298; Studio
-   (`DynamicIrHeatmap.tsx`, `suite.ts`) no.
-5. **`test_dse.py` è un monolite.** Lo split “durante il passo 3” non è
-   successo. Si spacchetta **dopo** i lotti C, un modulo per commit,
-   tenendo un solo entrypoint.
+- Buco 1 (scenario francobollo) chiuso in A: `source` decide STA/VCD/SAIF.
+- Buco 2 (Pareto gated) chiuso in B: Studio legge `pareto_gated`.
+- Buco 3 (coda IR fotocopia) chiuso in C1–C7: coda in `STAGES_*`.
+- Buco 4 (due numeri IR) chiuso in E: `current_run` vs `reference_run`.
+- Buco 5 (`test_dse` monolite) chiuso in D.1–D.5: runner + cinque moduli.
 
 **Cosa resta fuori (non è una mancanza di Fase 2).**
 
@@ -417,6 +405,10 @@ ALL PASSED ~5 min. Nessun valore atteso nuovo.
 9  C6 winning_ir_region_cell depth 0
 10 C7 champ solvers + static/EM
 11 (opt) test_dse_metrics.py estratto          (passo D.1)
+12 (opt) test_dse_memory.py estratto           (passo D.2)
+13 (opt) test_dse_planner.py estratto          (passo D.3)
+14 (opt) test_dse_steer.py estratto            (passo D.4)
+15 (opt) test_dse_live_f4.py estratto          (passo D.5)
 ```
 
 Ogni commit: test verdi del lotto, riga in `.cursor/SETUP_LOG.md`,
