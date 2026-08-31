@@ -3,6 +3,21 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T13:35Z — remaining jobs under 15 GiB
+
+Executed the four remaining safe items. No Krylov. No overwrite of 73k-R / 6.954 mV.
+
+| Item | Result |
+|---|---|
+| GCD FlowLab DSE `./scripts/run_dse_gcd_cloud.sh` budget 45 s, `prlimit --as=8GiB` | **OK** resume, 113 candidates, 2.41 s, RSS 56 MiB, exit 0. Did not wipe memory (`DSE_FRESH` refused). |
+| AES F1–F3 `AES_SLICE_SKIP_F4=1` under 8 GiB | **OK** reuse F1 `c6c1a7e0ad2c` / F3 WNS −1.3258 ns / GPL `bd74975200c1`, 0.20 s. F4 left to the cloud wrapper. |
+| AES F4 cloud wrapper | Without flag: **REFUSED** exit 2. With flag: **reuse** `8c589d0cc392` droop 17.745 mV in 0.42 s (no re-solve, `PDN_DISABLE_KRYLOV=1`). |
+| Ingest new PDN candidate | **OK** id `8c589d0cc392`, `n_r=66295`, static 12.953 mV, droop **17.745 mV**, knobs `via=cloud_agent_directlu`. 73k-R row `febe6804241c` still 6.954 mV, dynamic GAP. Idempotent second ingest. `test_designs.py` PASSED including the new cloud asserts. |
+| Install profile | `environment.json` now `PD_FLOW_PROFILE=analysis EDA_JOBS=2`. |
+| Draft Build analysis | in corso [`bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914`](https://cursor.com/dashboard/cloud-agents/builds/bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914) — log shows `Profilo analysis EDA_JOBS=2`, compiling yosys. Draft only; does not become the default boot snapshot. |
+
+Not run: AES F5, full AES DSE controller, gold 45.298, `run_dynamic_ir.sh` AMG+Krylov+RAS, uncapped `solve_f4`.
+
 ## 2026-08-31T08:41Z — timeout vs RAM
 
 Tried raising timeout and RAM so AES F4 could run on this Cloud Agent.

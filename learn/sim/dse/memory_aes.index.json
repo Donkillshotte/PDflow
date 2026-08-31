@@ -1,5 +1,5 @@
 {
-  "n": 8,
+  "n": 9,
   "path": "/workspace/learn/sim/dse/memory_aes.jsonl",
   "levels": [
     "logic",
@@ -14,6 +14,7 @@
     "c01cc450e1c3",
     "a0d56e527cea",
     "3403708bd038",
-    "febe6804241c"
+    "febe6804241c",
+    "8c589d0cc392"
   ]
 }
