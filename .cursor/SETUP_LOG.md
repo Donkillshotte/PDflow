@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:32Z — PLAN Fase 2 C5: inspect loops
+
+`run_inspect_loop` + leftover-cone-region / winning_ir_region (cap 4).
+Denied acquire `"no leftover-cone-region extract or |Δ| PDN"` pinned.
+`controller.py` 3941 → 3712. `test_dse.py` ALL PASSED (~258 s);
+DirectLU 6.075 + `sta_t50`. Gold unrestamped.
+
 ## 2026-08-31T20:26Z — PLAN Fase 2 C4: winning_ir + champ family
 
 `STAGES_IR_CHAMP`: winning_ir_pdn → iscale_champ → ir_cell_champ/cone.
