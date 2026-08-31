@@ -3,6 +3,18 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T22:25Z — E2E no-skip (extract + gold + F5 GCD)
+
+I skip della run 994 non erano OpenROAD assente: `extract_available`
+True, ma i fixture gitignore `4628a15dbc9a.v` / `ab9f115d5a67.v` e
+`dynamic_ir_flowlab.json` mancavano. Piantati da F1 liberty-default
+(409.108 µm², 248 celle) + sentinel gold **45.298** (non restamp 6.075).
+`check_live_f4` 49 `ok`: DirectLU 6.075 + `sta_t50`; extract `n_r=1939`
+droop 18.760; region r32; gold unrestampato. GPL/GRT/F5-lite/F5-CTS GCD
+ok. Soglia CTS vs lite: ΔWNS ≠ 0 (su GCD 3–7 ps). `test_dse` ALL PASSED
+**1069** `ok` (~289 s). AES `febe6804241c` sha `9e89f6e88b61…` intatto.
+Mai Krylov AES. Un job, `prlimit --as=8GiB`.
+
 ## 2026-08-31T21:36Z — PLAN Fase 2 D.2–D.5 + cleanup
 
 `test_dse` runner: metrics → memory → planner → steer → live F4 (ultimo).
