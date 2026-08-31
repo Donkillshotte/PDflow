@@ -83,6 +83,10 @@ Replaceable adapters in `dse.layers.ADAPTERS`:
 - `QoR.static_ir_mv` is on-die ideal-bump; package-inclusive is
   `static_ir_pkg_mv` only.
 - Do not flatten architecture + ABC + util + PDN into one vector.
+- ``Candidate`` roles stay split: ``knobs`` action, ``artifacts`` observation,
+  ``attr`` interpretation, ``pred`` prediction, ``delta`` vs parent.
+  ``SolveResult`` (``dse.solve_result``) is the F4 observation contract;
+  DirectLU is the numerical reference. ``admit_solve`` is the resource gate.
 
 ## Run
 
@@ -93,6 +97,7 @@ python3 learn/scripts/test_frame.py
 python3 learn/scripts/test_actions.py
 python3 learn/scripts/test_dispatch.py
 python3 learn/scripts/test_designs.py
+python3 learn/scripts/test_candidate_schema.py
 python3 learn/scripts/test_krylov_rlc.py
 python3 learn/scripts/test_activity_it.py
 python3 learn/scripts/run_aes_slice.py

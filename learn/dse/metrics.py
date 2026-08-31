@@ -50,6 +50,24 @@ def wns_cost_from_slack_ns(slack_ns: float | None) -> float | None:
     return -float(slack_ns)
 
 
+def qor_delta(child: QoR, parent: QoR | None) -> dict[str, float]:
+    """Signed child − parent on axes both observed. Missing ≠ 0.
+
+    Lower-is-better axes: a negative ``dynamic_ir_mv`` is an IR improvement.
+    Axes where either side is None are omitted so a later reader cannot
+    confuse “not measured” with “no change”.
+    """
+    if parent is None:
+        return {}
+    out: dict[str, float] = {}
+    for name in MINIMIZE:
+        vc, vp = getattr(child, name), getattr(parent, name)
+        if vc is None or vp is None:
+            continue
+        out[name] = float(vc) - float(vp)
+    return out
+
+
 def dominates(a: QoR, b: QoR) -> bool:
     """a dominates b iff a is ≤ on all comparable axes and < on at least one.
 

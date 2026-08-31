@@ -8,11 +8,22 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from .metrics import QoR
+from .metrics import QoR, qor_delta
 
 
 @dataclass
 class Candidate:
+    """One experiment node. Not a DesignState parallel type.
+
+    Roles (do not flatten into one bag):
+    * ``knobs`` — action taken at ``level``
+    * ``artifacts`` — raw observation (tool JSON, SolveResult, paths)
+    * ``attr`` — interpretation / attribution (hotspot, module, residual)
+    * ``pred`` — surrogate prediction + uncertainty
+    * ``qor`` — comparable metrics at ``fidelity``
+    * ``delta`` — ``qor_delta`` vs parent; missing axes omitted
+    """
+
     id: str
     design_id: str
     parent_id: str | None
@@ -28,6 +39,7 @@ class Candidate:
     attr: dict = field(default_factory=dict)
     egraph: dict = field(default_factory=dict)
     artifacts: dict = field(default_factory=dict)
+    delta: dict = field(default_factory=dict)
     status: str = "ok"
     failure: str | None = None
     created_at: float = 0.0
@@ -57,6 +69,7 @@ class Candidate:
             attr=dict(d.get("attr") or {}),
             egraph=dict(d.get("egraph") or {}),
             artifacts=dict(d.get("artifacts") or {}),
+            delta=dict(d.get("delta") or {}),
             status=str(d.get("status") or "ok"),
             failure=d.get("failure"),
             created_at=float(d.get("created_at") or 0.0),
@@ -97,6 +110,10 @@ class DesignMemory:
             c.id = uuid.uuid4().hex[:12]
         if not c.created_at:
             c.created_at = time.time()
+        if c.parent_id and not c.delta:
+            parent = self._rows.get(c.parent_id)
+            if parent is not None:
+                c.delta = qor_delta(c.qor, parent.qor)
         self._rows[c.id] = c
         self._rewrite()
         return c

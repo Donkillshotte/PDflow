@@ -3,6 +3,22 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T16:40Z — Candidate schema + SolveResult (no DesignState type)
+
+Harden existing `Candidate` + F4 contract. No parallel DesignState. No AES Krylov. 73k-R / 6.954 untouched.
+
+| Item | Result |
+|---|---|
+| `Candidate.delta` | child−parent on shared QoR axes; missing omitted |
+| Roles | knobs=action, artifacts=observation, attr=interpretation, pred=prediction |
+| `SolveResult` | A=reference, B/C/D=accelerator, \|A−C\|, activity_status, backend_requested/actual |
+| `admit_solve` | single gate; AES Krylov 15 GiB **REFUSED** (~14484 MiB est.) |
+| GCD A/B/D/C via `solve_f4` | 6.075 / 6.075 / 6.075 / 6.092 mV; not 45.298 |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
+| `test_heavy_analysis.py` | HEAVY_GUARD_OK |
+| `test_designs.py` | ALL PASSED, 73k pin, SHA of jsonl unchanged on read |
+| `test_dse.py` | ALL PASSED; current finish ≠ reference_run 45.298 |
+
 ## 2026-08-31T15:33Z — GCD finish + per-solver IR + AES F5-lite OK
 
 Safe subset under `prlimit --as=8GiB`. No AES Krylov. 73k-R / 6.954 mV untouched.

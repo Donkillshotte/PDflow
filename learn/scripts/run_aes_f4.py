@@ -16,7 +16,6 @@ sys.path.insert(0, str(REPO / "learn"))
 sys.path.insert(0, str(REPO / "learn" / "scripts"))
 
 from heavy_analysis import (  # noqa: E402
-    pick_bounded_solver,
     require_heavy,
     resolve_solve_timeout_s,
 )
@@ -28,6 +27,7 @@ from dse.inspect import inspect_and_choose  # noqa: E402
 from dse.memory import Candidate, DesignMemory  # noqa: E402
 from dse.metrics import QoR  # noqa: E402
 from dse.openroad_f2 import extract_pdn  # noqa: E402
+from dse.resources import admit_solve  # noqa: E402
 
 
 MAX_R_DIRECT = 40000
@@ -100,9 +100,9 @@ def main() -> int:
         f"sdc={ext.get('sdc')} cost={ext.get('cost_s')} fail={ext.get('reason')}"
     )
     dyn: dict = {}
-    solver, solver_refuse = pick_bounded_solver(
-        n_r, n_nodes=int(n_nodes) if n_nodes else None, max_r_direct=MAX_R_DIRECT
-    )
+    gate = admit_solve(n_r, n_nodes=int(n_nodes) if n_nodes else None)
+    solver = gate.get("solver") if gate.get("admitted") else None
+    solver_refuse = None if gate.get("admitted") else gate.get("reason")
     if spice_ok and solver:
         if solver == "direct" and n_r > MAX_R_DIRECT:
             print(

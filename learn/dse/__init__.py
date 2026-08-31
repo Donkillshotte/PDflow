@@ -7,6 +7,20 @@ the BOiLS standard alphabet. Architecture uses a datapath e-graph.
 
 from .layers import ADAPTERS
 from .memory import DesignMemory, Candidate
-from .metrics import QoR, pareto_front, dominates
+from .metrics import QoR, pareto_front, dominates, qor_delta
+from .resources import admit_solve
+from .solve_result import SolveResult, normalize_solve, activity_status_of
 
-__all__ = ["QoR", "pareto_front", "dominates", "DesignMemory", "Candidate", "ADAPTERS"]
+__all__ = [
+    "QoR",
+    "pareto_front",
+    "dominates",
+    "qor_delta",
+    "DesignMemory",
+    "Candidate",
+    "ADAPTERS",
+    "SolveResult",
+    "normalize_solve",
+    "activity_status_of",
+    "admit_solve",
+]
