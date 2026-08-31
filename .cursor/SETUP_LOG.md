@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:38Z — PLAN Fase 2 C6: winning_ir_region_cell depth 0
+
+Size / extract / PDN family Stage. `run_next_refine` stays immediately after.
+`controller.py` 3712 → 3551. `test_dse.py` ALL PASSED (~259 s);
+DirectLU 6.075 + `sta_t50`. Gold unrestamped.
+
 ## 2026-08-31T20:32Z — PLAN Fase 2 C5: inspect loops
 
 `run_inspect_loop` + leftover-cone-region / winning_ir_region (cap 4).
