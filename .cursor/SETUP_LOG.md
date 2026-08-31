@@ -3,6 +3,21 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:00Z — PLAN Fase 2 passo A: scenario guida I(t)
+
+`i_t_inputs` + worker: `source` decide STA/VCD/SAIF. Triangle → `--no-sta`,
+nessuno STA leftover. `sta_t50` REAL → `--sta` only. Worker non importa `dse`
+(SciPy 1.x). GCD live DirectLU **6.075** + `sta_t50`. Gold unrestamped.
+Nessun AES Krylov.
+
+| Item | Result |
+|---|---|
+| triangle argv | `--no-sta`, no `--sta` |
+| sta_t50 argv | `--sta` + scenario |
+| ABSENT vcd | no `--vcd`, no leftover STA |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
+| `test_dse.py` | ALL PASSED (~261 s); 6.075 / sta_t50; AMG/RAS match; C 6.092 |
+
 ## 2026-08-31T19:30Z — PLAN Fase 2 scritto (non eseguito)
 
 `PLAN.md` sostituito: Fase 1 (0–6) archiviata su `ca47126`. Fase 2 è il

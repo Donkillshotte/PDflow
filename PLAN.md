@@ -1,6 +1,6 @@
 # PLAN — Fase 2: scenario guida I(t), fronte gated onesto, coda IR dichiarativa
 
-Stato: passo A in corso. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo A ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
