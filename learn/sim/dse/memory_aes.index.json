@@ -1,10 +1,11 @@
 {
-  "n": 9,
+  "n": 13,
   "path": "/workspace/learn/sim/dse/memory_aes.jsonl",
   "levels": [
     "logic",
     "pdn",
-    "physical"
+    "physical",
+    "routing"
   ],
   "ids": [
     "c6c1a7e0ad2c",
@@ -15,6 +16,10 @@
     "a0d56e527cea",
     "3403708bd038",
     "febe6804241c",
-    "8c589d0cc392"
+    "8c589d0cc392",
+    "6577ab1351c0",
+    "f7245cbceb6b",
+    "dee54ba47255",
+    "25176b74aba8"
   ]
 }

@@ -6,7 +6,7 @@
   "top": "aes_cipher_top",
   "sdc": "/workspace/tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/constraint.sdc",
   "clk_period_ns": 0.82,
-  "n_candidates": 8,
+  "n_candidates": 13,
   "f1_id": "c6c1a7e0ad2c",
   "f1_area_um2": 13615.742,
   "f1_n_cells": 9964,
@@ -85,5 +85,11 @@
     "should_pay": true,
     "why": "refine[0] PDN hotspot r01 combo 1.00 joins unsized aes_cipher_top cells \u2014 sized lineage subtracted, not a flatten of the previous depth, not champ ctrl, not first IR-cell, not STA-path size-up, not ABC, not VCD"
   },
-  "cloud_agent_f4_id": "8c589d0cc392"
+  "cloud_agent_f4_id": "8c589d0cc392",
+  "f5_lite_id": "25176b74aba8",
+  "f5_lite_status": "ok",
+  "f5_lite_wns_ns": -2.0546,
+  "f5_lite_sdc": "/workspace/tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/constraint.sdc",
+  "f5_lite_top": "aes_cipher_top",
+  "f5_lite_clock": "ideal"
 }

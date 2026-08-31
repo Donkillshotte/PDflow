@@ -3,6 +3,25 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T15:33Z — GCD finish + per-solver IR + AES F5-lite OK
+
+Safe subset under `prlimit --as=8GiB`. No AES Krylov. 73k-R / 6.954 mV untouched.
+
+| Item | Result |
+|---|---|
+| GCD FlowLab `make finish` 0.46 ns | **OK** ~52 s, RSS ~913 MiB, `6_final.odb/gds/spef` |
+| Dynamic IR A DirectLU | **OK** `n_r=5816`, droop **6.075 mV**, `A_direct_be` |
+| Dynamic IR B SA-AMG | **OK** 6.075 mV, \|A−B\| ≈ 0 |
+| Dynamic IR D RAS | **OK** 6.075 mV, \|A−D\| ≈ 0 |
+| Dynamic IR C Krylov m=96 | **OK** 6.092 mV, \|A−C\| = 0.017 mV, RSS ~677 MiB |
+| AES F5-lite 2 DRT, no CTS | **OK** id `25176b74aba8`, WNS **−2.0546 ns** (OpenSTA SPEF), SDC AES 0.82 ns, `top=aes_cipher_top`, `clock=ideal`, 53381 rc segs, 1106 s, DRT peak ~1074 MiB. Prior fails: DRT-0305 / TCL SIGNAL / 540 s timeout. |
+| 73k-R pin | `febe6804241c` still `n_r=73139`, static **6.954 mV**, dynamic GAP |
+| `test_designs.py` | **ALL PASSED** including live F5 SDC/top/clock and cloud 17.745 mV |
+
+This FlowLab Dynamic IR is **6.075 mV**, not gold 45.298. Re-run F5: `ALLOW_HEAVY_ANALYSIS=1 ./scripts/run_aes_f5_lite_cloud.sh` (default timeout 1200 s). Do not set `AES_F5_ALLOW_CTS=1`.
+
+Still out of scope: AES Krylov, F5-CTS, full AES DSE controller, gold restamp, combined A+B+C+D+VSS+electrothermal, uncapped `solve_f4`.
+
 ## 2026-08-31T13:50Z — analysis draft Build SUCCEEDED
 
 [`bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914`](https://cursor.com/dashboard/cloud-agents/builds/bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914) **SUCCEEDED** (~19 min). Draft; warming skipped; does not become the default boot snapshot until activated.
