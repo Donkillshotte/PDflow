@@ -9,10 +9,11 @@ if [[ "${AES_F5_ALLOW_CTS:-0}" == "1" ]]; then
   exit 2
 fi
 export ALLOW_HEAVY_ANALYSIS=1
-export AES_F5_TIMEOUT_S="${AES_F5_TIMEOUT_S:-300}"
+export AES_F5_TIMEOUT_S="${AES_F5_TIMEOUT_S:-1200}"
+export OPENROAD_F5_LOG="${OPENROAD_F5_LOG:-/tmp/aes_f5_openroad.log}"
 export PYTHONPATH="${ROOT}/learn:${ROOT}/learn/scripts:/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
 AS_BYTES="${PDN_AS_BYTES:-8589934592}"
-CPU_S="${PDN_CPU_S:-600}"
-echo "AES F5-lite cloud: timeout=${AES_F5_TIMEOUT_S}s as=${AS_BYTES} cpu=${CPU_S}s cts=off"
+CPU_S="${PDN_CPU_S:-1500}"
+echo "AES F5-lite cloud: timeout=${AES_F5_TIMEOUT_S}s as=${AS_BYTES} cpu=${CPU_S}s cts=off log=${OPENROAD_F5_LOG}"
 exec prlimit --as="${AS_BYTES}" --cpu="${CPU_S}" \
   python3 -u "${ROOT}/learn/scripts/run_aes_f5_lite.py" "$@"

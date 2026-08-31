@@ -12,6 +12,7 @@ PDN extract: `place_pins` + tapcell + pdngen + GPL + `detailed_placement`
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -436,24 +437,46 @@ puts DSE_F5_OK
 exit
 """
     t0 = time.time()
+    live_log = os.environ.get("OPENROAD_F5_LOG")
     with tempfile.TemporaryDirectory(prefix="dse-f5-") as tmp:
         script = Path(tmp) / "f5.tcl"
         script.write_text(tcl)
+        if live_log:
+            Path(live_log).parent.mkdir(parents=True, exist_ok=True)
+            Path(str(live_log) + ".tcl").write_text(tcl)
         try:
-            proc = subprocess.run(
-                ["openroad", "-exit", "-no_init", str(script)],
-                capture_output=True,
-                text=True,
-                timeout=timeout_s,
-            )
+            if live_log:
+                with open(live_log, "w") as lf:
+                    proc = subprocess.run(
+                        ["openroad", "-exit", "-no_init", str(script)],
+                        stdout=lf,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        timeout=timeout_s,
+                    )
+                log = Path(live_log).read_text(errors="replace")
+            else:
+                proc = subprocess.run(
+                    ["openroad", "-exit", "-no_init", str(script)],
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_s,
+                )
+                log = (proc.stdout or "") + "\n" + (proc.stderr or "")
         except subprocess.TimeoutExpired:
+            tail = ""
+            if live_log and Path(live_log).is_file():
+                txt = Path(live_log).read_text(errors="replace")
+                tail = " | ".join(ln.strip() for ln in txt.splitlines()[-12:] if ln.strip())
             return {
                 "status": "fail",
-                "reason": f"F5 DRT/RCX timeout {timeout_s}s",
+                "reason": (
+                    f"F5 DRT/RCX timeout {timeout_s}s"
+                    + (f" last={tail[:500]}" if tail else "")
+                ),
                 "via": "openroad_f5_drt",
                 "cost_s": time.time() - t0,
             }
-        log = (proc.stdout or "") + "\n" + (proc.stderr or "")
     wns = _WNS.search(log)
     tns = _TNS.search(log)
     pwr = _PWR.search(log)
