@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from .ir_champ import run_ir_champ_family
+
 
 def should_pay_generic(
     *,
@@ -2221,9 +2223,10 @@ STAGE_IR_CELL_EXTRACT = Stage(level="ir_cell_extract", run=run_ir_cell_extract, 
 STAGE_IR_CELL_PDN = Stage(level="ir_cell_pdn", run=run_ir_cell_pdn, acquire_fidelity="IR_CELL_PDN")
 STAGE_IR_CELL_REGION = Stage(level="ir_cell_region", run=run_ir_cell_region, acquire_fidelity="F4_IR_CELL_REGION")
 STAGE_IR_CELL_REGION_PDN = Stage(level="ir_cell_region_pdn", run=run_ir_cell_region_pdn, acquire_fidelity="IR_CELL_REGION_PDN")
+STAGE_IR_CHAMP_FAMILY = Stage(level="ir_champ_family", run=run_ir_champ_family)
 
 # Consecutive declarative slices. GRT order is data: STA → ROUTING → SDF.
-# residual/port/f2_region live in STAGES_STEER_GAP (C1). IR leftover stays inlined.
+# residual/port/f2_region live in STAGES_STEER_GAP (C1). C5+ leftover still inlined.
 STAGES_LOGIC_TRANSFORM = (STAGE_SYNTHESIS, STAGE_CELL, STAGE_NET, STAGE_NET_PORT)
 STAGES_PLACE_ROUTE = (
     STAGE_F2_FAST, STAGE_F2_GPL, STAGE_F3_STA, STAGE_ROUTING, STAGE_F3_SDF,
@@ -2245,3 +2248,5 @@ STAGES_IR_CELL = (
     STAGE_IR_CELL, STAGE_IR_CELL_EXTRACT, STAGE_IR_CELL_PDN,
     STAGE_IR_CELL_REGION, STAGE_IR_CELL_REGION_PDN,
 )
+# winning_ir catalog + I-scale champ + ir_cell_champ/cone. Inner planned/why stay.
+STAGES_IR_CHAMP = (STAGE_IR_CHAMP_FAMILY,)

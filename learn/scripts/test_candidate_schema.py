@@ -340,6 +340,17 @@ def main() -> int:
         all(s.needs_admit for s in STAGES_F4_HEAD if s.level != "f4_activity"),
         "3e F4 head admits except host-arrivals",
     )
+    from dse.stages import STAGES_IR_CELL, STAGES_IR_CHAMP, STAGE_IR_CHAMP_FAMILY
+    check(
+        [s.level for s in STAGES_IR_CELL]
+        == ["ir_cell", "ir_cell_extract", "ir_cell_pdn", "ir_cell_region", "ir_cell_region_pdn"],
+        "C3 IR-cell family order",
+    )
+    check(
+        STAGE_IR_CHAMP_FAMILY.level == "ir_champ_family"
+        and [s.level for s in STAGES_IR_CHAMP] == ["ir_champ_family"],
+        "C4 winning_ir + champ family is one Stage",
+    )
 
     from dse.metrics import dominates, dominates_with_fidelity, pareto_front, pareto_front_gated
 
