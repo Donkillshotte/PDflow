@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:20Z — PLAN Fase 2 C2: IR steer slice
+
+ir_steer / host_ir_steer / f4_scale_win → `STAGES_IR_STEER`. While-loop
+acquire strings identical. `controller.py` 4789 → 4633. `test_dse.py` ALL
+PASSED (~259 s); DirectLU 6.075 + `sta_t50`. Gold unrestamped.
+
 ## 2026-08-31T20:10Z — PLAN Fase 2 C1: STAGES_STEER_GAP
 
 residual_steer / F5_PORT / port_steer / physical_catalog / f2_region moved
