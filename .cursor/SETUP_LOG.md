@@ -3,6 +3,23 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T08:41Z — timeout vs RAM
+
+Tried raising timeout and RAM so AES F4 could run on this Cloud Agent.
+
+| Item | Result |
+|---|---|
+| VM RAM | **cannot raise** — 15 GiB / 4 CPU / swap 0. `environment.json` has no memory/cpu fields; Cursor schema `unevaluatedProperties: false`. `swapon` fails. Docs: Enterprise support only. |
+| F4 timeout | **can raise** — `PDN_SOLVE_TIMEOUT_S` (600 / 1800). Session timeout cannot. |
+| RSS budget | AES Krylov 73k-R ~14.5 GiB **REFUSED** even with `ALLOW_HEAVY_ANALYSIS=1`. DirectLU estimated 828 MiB, allowed. |
+| GCD F4 DirectLU `timeout=600` | **OK** `n_r=4656`, droop 16.642 mV, static 12.887 mV, 16 s, RSS 395 MiB |
+| DirectLU 54 289-node 2D grid | **OK** factor 0.36 s, 130 solves 0.56 s, RSS 125–164 MiB |
+| AES F1 remap | **OK** ~8 s |
+| AES write_pg_spice | **OK** `n_r=66295` `n_i=9964` in 5.5 s |
+| AES F4 DirectLU on that mesh | **FAIL** — pod recycled during `solve_f4` (no `aes_f4_direct_timeout.json`). Do not retry Krylov. Retry LU only with `prlimit` RSS cap. |
+
+Knob: `PDN_SOLVE_TIMEOUT_S`. Picker prefers DirectLU when RSS fits; Krylov stays blocked on 15 GiB.
+
 ## 2026-08-31T07:45Z — goal complete
 
 | Gate | Result | Evidence |
