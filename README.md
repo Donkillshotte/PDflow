@@ -16,7 +16,19 @@ Testato su **Ubuntu 24.04** (funziona anche su 22.04).
 
 ## Installazione
 
-Gli script vanno eseguiti in ordine (richiedono `sudo` per i pacchetti apt):
+Cloud Agent (default **core**, senza OpenSTA standalone né DSE/AES/Krylov):
+
+```bash
+PD_FLOW_PROFILE=core EDA_JOBS=2 bash scripts/cloud_agent_install.sh
+./scripts/cloud_agent_smoke.sh          # versioni only
+./scripts/test_cloud_bootstrap.sh       # check statici
+```
+
+Profili: `core` (RTL→GDS + Studio) · `analysis` (+ `libdpn` / `dpn_test` sintetico) · `full` (+ OpenSTA da sorgenti).
+AES, mesh PDN con più di 20k R e Krylov richiedono `ALLOW_HEAVY_ANALYSIS=1`.
+Log crash-resiliente: [`.cursor/SETUP_LOG.md`](.cursor/SETUP_LOG.md).
+
+In locale gli script vanno eseguiti in ordine (richiedono `sudo` per i pacchetti apt):
 
 ```bash
 ./scripts/01_install_openroad.sh   # OpenROAD dai binari precompilati
