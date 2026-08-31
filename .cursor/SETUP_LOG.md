@@ -18,7 +18,7 @@ n_have/wall early-returns dropped on the 3a generic wrappers.
 | Slices | synth/cell/net/net_port; STA→GRT→SDF…→local; F4 extract…scale |
 | `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including 3e slice order |
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
-| `test_dse.py` | re-run after this commit |
+| `test_dse.py` | ALL PASSED (~263 s); DirectLU 6.075 ≠ 45.298 |
 
 ## 2026-08-31T18:55Z — PLAN passo 3d: F4 stages + needs_admit
 
@@ -29,7 +29,7 @@ Strangler: F4 extract / region extract / PDN catalog / AMG / RAS / Krylov / host
 | `needs_admit` | F4 extract/PDN/solvers/host/scale |
 | `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including 3d names |
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
-| `test_dse.py` | re-run after this commit |
+| `test_dse.py` | ALL PASSED (~263 s); DirectLU 6.075 ≠ 45.298 |
 
 ## 2026-08-31T18:40Z — PLAN passo 3c: cell / net / synthesis / physical-catalog
 

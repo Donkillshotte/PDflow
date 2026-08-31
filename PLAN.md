@@ -235,7 +235,7 @@ un'astrazione (il solver non sa da dove viene la corrente).
 5  costs.py p75 (passo 4)
 6  lotto 3c (cell/net/synthesis/catalog)
 7  lotto 3d (PDN/F4 con needs_admit)
-8  lotto 3e (pulizia acquire.py)
+8  lotto 3e (flatten stage slices + generic acquire wrappers)
 9  pareto_front_gated (passo 5)
 10 current_scenario.py (passo 6)
 ```
