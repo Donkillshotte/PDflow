@@ -32,6 +32,28 @@ def next_candidate_ids(
     )
 
 
+def prefer_gated(mem: DesignMemory, level: str, cands, *, pred: dict[str, float] | None = None) -> list:
+    """Keep ``cands`` that sit on the gated front. Empty front → ``cands`` unchanged.
+
+    Does not invent hosts. Does not replace F1-only pickers (F2-fast / first
+    cell size-up still use ``f1_pareto_parents`` / ``mapped_pick``).
+    """
+    xs = [c for c in (cands or []) if c is not None]
+    if not xs:
+        return []
+    by_id = {c.id: c for c in mem.by_level(level) if c.status == "ok"}
+    for c in xs:
+        if getattr(c, "status", "ok") == "ok":
+            by_id.setdefault(c.id, c)
+    front = set(
+        pareto_front_gated(((c.id, c.qor) for c in by_id.values()), pred=pred)
+    )
+    if not front:
+        return xs
+    kept = [c for c in xs if c.id in front]
+    return kept if kept else xs
+
+
 def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_id: str = "gcd") -> dict:
     from .designs import resolve
 

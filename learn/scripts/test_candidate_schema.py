@@ -150,7 +150,7 @@ def main() -> int:
     check(activity_status_of({"sta_arrival": 10}, n_saif_idle=3) == ACTIVITY_PARTIAL, "SAIF idle-zero is PARTIAL")
 
     from dse.current_scenario import CCS_GAP, CurrentScenario, i_t_inputs, infer_scenario
-    from dse.f4_oracle import build_worker_cmd, spice_paths
+    from dse.f4_oracle import build_worker_cmd, ir_run_labels, spice_paths
 
     tri = CurrentScenario()
     check(i_t_inputs("ideal_triangle", ACTIVITY_SYNTHETIC) == "none", "triangle loads no STA/VCD/SAIF")
@@ -186,6 +186,10 @@ def main() -> int:
         "current_scenario": gcd_scen.to_dict(),
     })
     check((sr.activity_via or {}).get("scenario", {}).get("source") == "sta_t50", "activity_via points at the scenario")
+    labs = ir_run_labels({"worst_droop_mv": 6.075})
+    check(abs((labs["current_run_mv"] or 0) - 6.075) < 1e-9, "current_run_mv is the finish droop")
+    check(labs["reference_run_mv"] == 45.298, "reference_run_mv is historical gold")
+    check(abs(labs["current_run_mv"] - labs["reference_run_mv"]) > 1.0, "current_run is not reference_run")
 
     # --- SolveResult from synthetic A / C ---
     a = normalize_solve({
@@ -356,6 +360,16 @@ def main() -> int:
     check(tied[0] == "b", f"pred is tie-break only (lower first), got {tied}")
     hist = pareto_front([("f1", f1_wns), ("f5", f5_wns)])
     check(hist == ["f1"], f"historical pareto_front unchanged, got {hist}")
+    from dse.planner import prefer_gated
+
+    pg_tmp = Path(tempfile.mkdtemp(prefix="dse-gated-")) / "g.jsonl"
+    pg_mem = DesignMemory(pg_tmp)
+    f1_c = pg_mem.add(_cand(id="f1", level="logic", fidelity="F1", qor=f1_wns, knobs={"name": "liberty_default"}))
+    f5_c = pg_mem.add(_cand(id="f5", level="logic", fidelity="F5", qor=f5_wns, knobs={"name": "spef"}, parent_id="f1"))
+    wns_only = min((f1_c, f5_c), key=lambda c: float(c.qor.wns_cost))
+    check(wns_only.id == "f1", "a WNS-only picker would keep F1 and drop F5")
+    pref = prefer_gated(pg_mem, "logic", [f1_c, f5_c])
+    check({c.id for c in pref} == {"f1", "f5"}, f"prefer_gated keeps F1 and F5, got {[c.id for c in pref]}")
 
     from dse.costs import estimated_cost_s, p75
     from dse.fidelity import COST_HINT

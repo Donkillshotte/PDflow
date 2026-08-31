@@ -148,6 +148,7 @@ type DseReport = {
   n_f4_solve?: number;
   surrogate_f1_to_f2_gnn?: { n?: number; uncertainty?: string; via?: string };
   pareto?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
+  pareto_gated?: { logic?: string[]; architecture?: string[]; physical?: string[]; note?: string };
   attribution?: Attr;
   focus?: { focus?: string; scope?: string };
   plan?: { steps?: { level?: string; reason?: string }[] };
@@ -188,8 +189,9 @@ export function DsePanel() {
   }, [load]);
 
   const cands = report?.candidates ?? [];
-  const frontLogic = new Set(report?.pareto?.logic ?? []);
-  const frontArch = new Set(report?.pareto?.architecture ?? []);
+  const front = report?.pareto_gated ?? report?.pareto;
+  const frontLogic = new Set(front?.logic ?? []);
+  const frontArch = new Set(front?.architecture ?? []);
 
   return (
     <section className="fl-dynir" aria-label="DSE fisico-aware">
@@ -627,7 +629,7 @@ export function DsePanel() {
             </div>
             <div>
               <dt>Pareto logic</dt>
-              <dd>{report.pareto?.logic?.length ?? 0}</dd>
+              <dd>{front?.logic?.length ?? 0}</dd>
             </div>
             <div>
               <dt>GNN</dt>
