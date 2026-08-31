@@ -1,6 +1,6 @@
 {
   "name": "pd-flow — OpenROAD physical design",
-  "install": "bash scripts/cloud_agent_install.sh",
+  "install": "PD_FLOW_PROFILE=core EDA_JOBS=2 bash scripts/cloud_agent_install.sh",
   "terminals": [
     {
       "name": "studio",

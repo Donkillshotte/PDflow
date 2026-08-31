@@ -4,10 +4,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/jobs.sh
+source "${ROOT}/scripts/lib/jobs.sh"
 SRC="${ROOT}/tools/src"
 CUDD_PREFIX="${ROOT}/tools/cudd"
 STA_PREFIX="${ROOT}/tools/opensta"
-JOBS="$(nproc)"
+JOBS="${EDA_JOBS}"
 
 echo "==> Installo le dipendenze di build..."
 sudo apt-get install -y -qq build-essential cmake tcl8.6-dev swig bison flex \

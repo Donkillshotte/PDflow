@@ -6,9 +6,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/jobs.sh
+source "${ROOT}/scripts/lib/jobs.sh"
 ORFS="${ROOT}/tools/OpenROAD-flow-scripts"
 YOSYS_PREFIX="${ROOT}/tools/yosys"
-JOBS="$(nproc)"
+JOBS="${EDA_JOBS}"
 OPENROAD_RELEASE="$(openroad -version | awk '{print $1}')"
 ORFS_TAG="${ORFS_TAG:-${OPENROAD_RELEASE%%-*}}"
 
