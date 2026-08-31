@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 3d ✅, passo 3e ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 3d ✅, passo 3e ✅, passo 4 ✅, passo 5 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -173,7 +173,21 @@ committa, si passa al lotto dopo.
 
 ---
 
-## Passo 5 — Selezione con incertezza (dopo 3e)
+## Passo 5 — Selezione con incertezza (dopo 3e) ✅
+
+**Problema.** Il fronte Pareto per livello esiste (`pareto_front`), ma un WNS
+F1 e un WNS F5-SPEF competono alla pari.
+
+**Modifiche.**
+- `metrics.py`: `FIDELITY_RANK = {"F0": 0, "F1": 1, ..., "F5": 5}` e
+  `dominates_with_fidelity(a, b)`: su un asse *timing/power* un punto a
+  fedeltà più bassa non può dominare un punto a fedeltà più alta; può solo
+  co-esistere (stato `uncertain`). Area resta confrontabile come `dominates`.
+  A parità di assi osservati, F5 domina F1.
+- `pareto_front` invariato (report storici). `pareto_front_gated` +
+  `planner.next_candidate_ids` per la scelta del prossimo candidato;
+  `plan["next"]` e `report["pareto_gated"]` usano il fronte gated.
+- `pred` (surrogato) partecipa solo come tie-break, mai come dominanza.
 
 **Problema.** Il fronte Pareto per livello esiste (`pareto_front`), ma un WNS
 F1 e un WNS F5-SPEF competono alla pari.

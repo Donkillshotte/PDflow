@@ -3,6 +3,23 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T17:50Z — PLAN passo 5: Pareto gated by fidelity
+
+`dominates_with_fidelity` / `pareto_front_gated`: a lower-fidelity timing/power
+point cannot dominate a higher-fidelity point (they co-exist). Area stays
+comparable. At equal axes F5 dominates F1. `pred` is tie-break only.
+`pareto_front` unchanged for historical reports. Planner `next_candidate_ids`
+feeds `plan["next"]` and controller `pareto_gated`. No AES Krylov. Gold unrestamped.
+
+| Item | Result |
+|---|---|
+| F1 better WNS vs F5 | does not dominate; gated front keeps both |
+| F5 at equal axes | dominates F1 |
+| area F1 vs F5 | still comparable |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
+| `test_designs/frame/dispatch` | ALL PASSED |
+| `test_dse.py` | re-run after this commit |
+
 ## 2026-08-31T17:45Z — PLAN passo 3e: flatten controller stage slices
 
 `run_controller` consecutive `run_stage` calls collapsed into

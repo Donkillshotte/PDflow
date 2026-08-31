@@ -151,7 +151,7 @@ from .stages import (
 )
 from .pdn_space import GOLD_KNOBS, next_pdn_spec
 from .physical_space import gpl_density, propose_synthesis_f0
-from .planner import plan_search, rank_extracts
+from .planner import plan_search, rank_extracts, next_candidate_ids
 from .proposer import propose as propose_from_attr
 from .surrogate import (
     predict_f1_area,
@@ -2806,6 +2806,19 @@ def run_controller(
         for lv in LEVELS
     }
     pred = predict_f1_area(mem.by_level("logic"))
+    pred_by_id: dict[str, float] = {}
+    for c in mem.all():
+        p = c.pred if isinstance(c.pred, dict) else None
+        if not p:
+            continue
+        for k in ("area_um2", "wns_cost", "dynamic_ir_mv"):
+            if p.get(k) is not None:
+                pred_by_id[c.id] = float(p[k])
+                break
+    front_gated = {
+        lv: next_candidate_ids(mem, lv, pred=pred_by_id or None)
+        for lv in LEVELS
+    }
     f4s = predict_f4_from_f1(mem.all())
     win_static = winning_static_pdn(mem)
     win_em = winning_em_pdn(mem)
@@ -4161,6 +4174,10 @@ def run_controller(
         "pareto": {
             **front,
             "note": "frontiers are per level; do not rank ABC area against IR droop",
+        },
+        "pareto_gated": {
+            **front_gated,
+            "note": "timing/power gated by fidelity; pred is tie-break only",
         },
         "candidates": [c.to_dict() for c in mem.all()],
         "log": log,

@@ -29,7 +29,7 @@ from dse.boils import ei_min, gp_predict, propose_logic_boils, should_pay_f1
 from dse.egraph import gcd_dpath_egraph
 from dse.fingerprint import knobs_fp
 from dse.memory import Candidate, DesignMemory
-from dse.metrics import QoR, dominates, pareto_front, wns_cost_from_slack_ns
+from dse.metrics import QoR, dominates, pareto_front, wns_cost_from_slack_ns, dominates_with_fidelity, pareto_front_gated
 from dse.mo import ehvi_2d, hypervolume_2d
 from dse.physical_space import PHYSICAL_CATALOG, gpl_density, next_catalog_spec, rudy_congestion
 from dse.pdn_space import (
@@ -70,6 +70,12 @@ def main() -> int:
     check(wns_cost_from_slack_ns(0.04) == -0.04, "positive slack is a lower wns_cost")
     front = pareto_front([("a", a), ("b", b), ("c", c)])
     check(set(front) == {"a", "c"}, f"Pareto is a and c, got {front}")
+    f1_wns = QoR(area_um2=10, wns_cost=0.1, fidelity="F1")
+    f5_wns = QoR(area_um2=10, wns_cost=1.0, fidelity="F5")
+    check(not dominates_with_fidelity(f1_wns, f5_wns), "F1 better WNS does not dominate F5")
+    check(dominates_with_fidelity(QoR(area_um2=10, wns_cost=1.0, fidelity="F5"), QoR(area_um2=10, wns_cost=1.0, fidelity="F1")), "F5 dominates F1 at equal axes")
+    check(dominates_with_fidelity(QoR(area_um2=8, fidelity="F1"), QoR(area_um2=12, fidelity="F5")), "area stays comparable across fidelity")
+    check(set(pareto_front_gated([("f1", f1_wns), ("f5", f5_wns)])) == {"f1", "f5"}, "gated front keeps F1 and F5")
 
     tmp = Path(tempfile.mkdtemp(prefix="dse-mem-")) / "m.jsonl"
     mem = DesignMemory(tmp)

@@ -82,6 +82,74 @@ def baseline_delta_of(attr: dict | None) -> dict:
     return dict(payload) if isinstance(payload, dict) else {}
 
 
+FIDELITY_RANK = {"F0": 0, "F1": 1, "F2": 2, "F3": 3, "F4": 4, "F5": 5}
+# Timing/power: a lower-fidelity point cannot dominate a higher-fidelity point.
+# Area / congestion / IR stay comparable as in ``dominates``.
+TIMING_POWER = ("wns_cost", "power_w")
+
+
+def _rank(q: QoR) -> int:
+    return int(FIDELITY_RANK.get(str(q.fidelity or "F0"), 0))
+
+
+def dominates_with_fidelity(a: QoR, b: QoR) -> bool:
+    """Like ``dominates``, but timing/power from a cheaper model is untrusted.
+
+    A lower-fidelity point cannot dominate a higher-fidelity point on
+    ``wns_cost`` / ``power_w`` — those axes co-exist as ``uncertain``.
+    Area and other non-timing axes stay comparable. At equal observed
+    axes, the higher-fidelity point dominates (F5 at parity beats F1).
+    ``pred`` is never consulted here.
+    """
+    ra, rb = _rank(a), _rank(b)
+    better = False
+    compared = 0
+    equal = True
+    for name in MINIMIZE:
+        va, vb = getattr(a, name), getattr(b, name)
+        if va is None and vb is None:
+            continue
+        if va is None or vb is None:
+            return False
+        compared += 1
+        if float(va) > float(vb) + 1e-15:
+            return False
+        if float(va) < float(vb) - 1e-15:
+            if name in TIMING_POWER and ra < rb:
+                # Untrusted improvement — co-exist, do not count as better.
+                equal = False
+                continue
+            better = True
+            equal = False
+        elif abs(float(va) - float(vb)) > 1e-15:
+            equal = False
+    if better and compared > 0:
+        return True
+    if compared > 0 and equal and ra > rb:
+        return True
+    return False
+
+
+def pareto_front_gated(
+    items: Iterable[tuple[str, QoR]],
+    pred: dict[str, float] | None = None,
+) -> list[str]:
+    """Non-dominated ids under ``dominates_with_fidelity``.
+
+    ``pred`` (surrogate) is a tie-break only: lower predicted cost first
+    among points that already co-exist. It never changes membership.
+    """
+    rows = [(i, q) for i, q in items if q is not None]
+    keep: list[str] = []
+    for i, qi in rows:
+        if any(dominates_with_fidelity(qj, qi) for j, qj in rows if j != i):
+            continue
+        keep.append(i)
+    if pred:
+        keep.sort(key=lambda i: (pred.get(i) is None, float(pred[i]) if pred.get(i) is not None else 0.0))
+    return keep
+
+
 def dominates(a: QoR, b: QoR) -> bool:
     """a dominates b iff a is ≤ on all comparable axes and < on at least one.
 

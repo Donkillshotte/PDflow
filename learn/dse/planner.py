@@ -13,7 +13,23 @@ from __future__ import annotations
 
 from .arch_space import plan_dpath_extracts
 from .memory import DesignMemory
+from .metrics import pareto_front_gated
 from .mo import baseline_wns, extract_wns, timing_bound
+
+
+LEVELS = ("architecture", "logic", "synthesis", "cell", "net", "physical", "routing", "pdn")
+
+
+def next_candidate_ids(
+    mem: DesignMemory,
+    level: str,
+    pred: dict[str, float] | None = None,
+) -> list[str]:
+    """Gated Pareto ids for the next parent on ``level``. Historical reports use ``pareto_front``."""
+    return pareto_front_gated(
+        ((c.id, c.qor) for c in mem.by_level(level) if c.status == "ok"),
+        pred=pred,
+    )
 
 
 def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_id: str = "gcd") -> dict:
@@ -701,6 +717,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
         "restart_chip": False,
         "hierarchy": ["chip", "block", "region", "logic_cone", "cell", "net"],
         "steps": steps,
+        "next": {lv: next_candidate_ids(mem, lv) for lv in LEVELS},
     }
 
 

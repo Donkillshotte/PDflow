@@ -294,6 +294,31 @@ def main() -> int:
         "3e F4 head admits except host-arrivals",
     )
 
+    from dse.metrics import dominates, dominates_with_fidelity, pareto_front, pareto_front_gated
+
+    f1_wns = QoR(area_um2=10.0, wns_cost=0.1, fidelity="F1")
+    f5_wns = QoR(area_um2=10.0, wns_cost=1.0, fidelity="F5")
+    check(dominates(f1_wns, f5_wns), "ungated: F1 better WNS still dominates F5")
+    check(not dominates_with_fidelity(f1_wns, f5_wns), "F1 better WNS does not dominate F5")
+    check(not dominates_with_fidelity(f5_wns, f1_wns), "F5 worse WNS does not dominate F1")
+    gated = pareto_front_gated([("f1", f1_wns), ("f5", f5_wns)])
+    check(set(gated) == {"f1", "f5"}, f"F1 and F5 co-exist on gated front, got {gated}")
+    f5_eq = QoR(area_um2=10.0, wns_cost=1.0, fidelity="F5")
+    f1_eq = QoR(area_um2=10.0, wns_cost=1.0, fidelity="F1")
+    check(dominates_with_fidelity(f5_eq, f1_eq), "F5 dominates F1 at equal axes")
+    check(not dominates_with_fidelity(f1_eq, f5_eq), "F1 at parity does not dominate F5")
+    f1_area = QoR(area_um2=8.0, fidelity="F1")
+    f5_area = QoR(area_um2=12.0, fidelity="F5")
+    check(dominates_with_fidelity(f1_area, f5_area), "area F1 still comparable vs F5")
+    check(not dominates_with_fidelity(f5_area, f1_area), "worse F5 area does not dominate")
+    tied = pareto_front_gated(
+        [("a", f1_wns), ("b", QoR(area_um2=10.0, wns_cost=0.1, fidelity="F1"))],
+        pred={"b": 1.0, "a": 9.0},
+    )
+    check(tied[0] == "b", f"pred is tie-break only (lower first), got {tied}")
+    hist = pareto_front([("f1", f1_wns), ("f5", f5_wns)])
+    check(hist == ["f1"], f"historical pareto_front unchanged, got {hist}")
+
     from dse.costs import estimated_cost_s, p75
     from dse.fidelity import COST_HINT
 
