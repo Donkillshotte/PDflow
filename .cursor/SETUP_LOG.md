@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:26Z — PLAN Fase 2 C4: winning_ir + champ family
+
+`STAGES_IR_CHAMP`: winning_ir_pdn → iscale_champ → ir_cell_champ/cone.
+Faithful extract (`ir_champ.py`). `controller.py` 4399 → 3941.
+`test_dse.py` ALL PASSED (~261 s); DirectLU 6.075 + `sta_t50`. Gold unrestamped.
+
 ## 2026-08-31T20:18Z — PLAN Fase 2 C3: IR-cell family
 
 `STAGES_IR_CELL`: size → extract → PDN → region → region PDN. Hosts stay
