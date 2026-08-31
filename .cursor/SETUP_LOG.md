@@ -3,6 +3,20 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T13:50Z — analysis draft Build SUCCEEDED
+
+[`bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914`](https://cursor.com/dashboard/cloud-agents/builds/bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914) **SUCCEEDED** (~19 min). Draft; warming skipped; does not become the default boot snapshot until activated.
+
+| Check | Result |
+|---|---|
+| Profile | `Profilo analysis EDA_JOBS=2` |
+| OpenSTA standalone | skipped |
+| `libdpn.so` | OK, `ALL dpn_test PASSED` (synthetic only) |
+| Studio npm | 453 packages |
+| Smoke | `CLOUD_SMOKE_OK` (openroad 26Q2, yosys 0.63, klayout, sta 3.1.0) |
+| Install | exit 0, snapshot ready |
+| Heavy work during install | none (no AES / DSE / Krylov) |
+
 ## 2026-08-31T13:35Z — remaining jobs under 15 GiB
 
 Executed the four remaining safe items. No Krylov. No overwrite of 73k-R / 6.954 mV.
@@ -14,7 +28,7 @@ Executed the four remaining safe items. No Krylov. No overwrite of 73k-R / 6.954
 | AES F4 cloud wrapper | Without flag: **REFUSED** exit 2. With flag: **reuse** `8c589d0cc392` droop 17.745 mV in 0.42 s (no re-solve, `PDN_DISABLE_KRYLOV=1`). |
 | Ingest new PDN candidate | **OK** id `8c589d0cc392`, `n_r=66295`, static 12.953 mV, droop **17.745 mV**, knobs `via=cloud_agent_directlu`. 73k-R row `febe6804241c` still 6.954 mV, dynamic GAP. Idempotent second ingest. `test_designs.py` PASSED including the new cloud asserts. |
 | Install profile | `environment.json` now `PD_FLOW_PROFILE=analysis EDA_JOBS=2`. |
-| Draft Build analysis | in corso [`bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914`](https://cursor.com/dashboard/cloud-agents/builds/bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914) — log shows `Profilo analysis EDA_JOBS=2`, compiling yosys. Draft only; does not become the default boot snapshot. |
+| Draft Build analysis | **SUCCEEDED** [`bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914`](https://cursor.com/dashboard/cloud-agents/builds/bld-20260831-b83be3d2-8545-44ca-af90-90bd2e812914) — `CLOUD_SMOKE_OK`, `libdpn` + `dpn_test`, OpenSTA skipped. Draft only. |
 
 Not run: AES F5, full AES DSE controller, gold 45.298, `run_dynamic_ir.sh` AMG+Krylov+RAS, uncapped `solve_f4`.
 
