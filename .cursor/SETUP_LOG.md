@@ -20,7 +20,7 @@ Tried raising timeout and RAM so AES F4 could run on this Cloud Agent.
 | AES F4 DirectLU dynamic | **OK** with `prlimit --as=8GiB` and `PDN_SOLVE_TIMEOUT_S=90`. Droop **17.745 mV**, static 12.953 mV, `A_direct_be`, 48 s, not gold. First uncapped attempt recycled the pod. |
 | AES Krylov | still **REFUSED** on 15 GiB RSS budget |
 
-Timeout yes (`PDN_SOLVE_TIMEOUT_S`). RAM no. AES F4 is testable here with DirectLU + RSS cap, not with Krylov.
+Timeout yes (`PDN_SOLVE_TIMEOUT_S`). RAM no. AES F4 is testable here with DirectLU + RSS cap, not with Krylov. Re-run: `ALLOW_HEAVY_ANALYSIS=1 ./scripts/run_aes_f4_cloud.sh` (8 GiB `prlimit`, 90 s timeout). Do not overwrite the 6.954 mV / 73k-R row in `memory_aes.jsonl` — `test_designs.py` pins that mesh.
 
 ## 2026-08-31T07:45Z — goal complete
 

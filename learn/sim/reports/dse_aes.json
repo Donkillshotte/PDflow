@@ -38,6 +38,22 @@
   "f4_static_ir_pkg_mv": 6.994393869011795,
   "f4_n_nodes": 54241,
   "f4_dynamic": "AMG transient timeout 180s \u2014 not a fake droop",
+  "cloud_agent_f4": {
+    "via": "DirectLU on a new write_pg_spice after GPL+DP; PDN_SOLVE_TIMEOUT_S=90; prlimit --as=8GiB",
+    "n_r": 66295,
+    "n_i": 9964,
+    "n_nodes": 49282,
+    "static_ir_mv": 12.952840310758829,
+    "dynamic_ir_mv": 17.74548074404958,
+    "solver": "A_direct_be",
+    "cost_s": 48.44869303703308,
+    "gold": false,
+    "not": [
+      "the 73139-R extract that recorded 6.954 mV static",
+      "gold 45.298 restamp",
+      "Krylov/MOR on 15 GiB"
+    ]
+  },
   "inspect": {
     "candidate_id": "febe6804241c",
     "region": "r01",

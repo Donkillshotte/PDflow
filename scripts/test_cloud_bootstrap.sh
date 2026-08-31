@@ -73,6 +73,9 @@ rg -q 'require_heavy' "${ROOT}/learn/scripts/run_aes_slice.py" && ok "aes slice 
 rg -q 'check_large_mesh' "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic mesh guard" || bad "pdn_dynamic unguarded"
 rg -q 'check_rss_budget' "${ROOT}/learn/scripts/dse_f4_worker.py" && ok "f4 worker RSS budget" || bad "f4 worker no RSS budget"
 rg -q 'check_large_mesh' "${ROOT}/learn/scripts/dse_f4_worker.py" && ok "f4 worker mesh guard" || bad "f4 worker unguarded"
+bash -n "${ROOT}/scripts/run_aes_f4_cloud.sh" && ok "aes F4 cloud wrapper syntax" || bad "aes F4 cloud wrapper syntax"
+rg -q 'prlimit' "${ROOT}/scripts/run_aes_f4_cloud.sh" && ok "aes F4 cloud caps RSS" || bad "aes F4 cloud no prlimit"
+rg -q 'run_aes_f4_cloud' "${ROOT}/scripts/cloud_agent_install.sh" && bad "install invokes aes F4 cloud" || ok "install does not run aes F4 cloud"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "CLOUD_BOOTSTRAP_TEST_FAIL"
