@@ -209,6 +209,47 @@ def main() -> int:
           f"AES Krylov reason names RSS/refuse, got {aes_k.get('reason')}")
     no_n = admit_solve(n_r=None, solver="krylov")
     check(no_n["admitted"] is False, "Krylov without n_r is refused")
+
+    from dse.controller import admit_paid_f4
+    from dse.f4_oracle import n_r_from_spice
+    from dse.solve_result import residual_vs_reference_mv, stamp_f4_candidate
+
+    logs: list[dict] = []
+
+    def _step(kind: str, **kw):
+        logs.append({"kind": kind, **kw})
+
+    tmpa = Path(tempfile.mkdtemp(prefix="dse-admit-")) / "m.jsonl"
+    mema = DesignMemory(tmpa)
+    g_ok = admit_paid_f4(mema, solver="direct", n_r=5816, n_nodes=4453, step=_step)
+    check(g_ok["admitted"] is True, f"controller admits GCD DirectLU, got {g_ok}")
+    check(any(x.get("kind") == "admit" and x.get("pay") for x in logs), "admit step logs pay=True")
+    logs.clear()
+    g_ref = admit_paid_f4(mema, solver="krylov", n_r=AES_F4_N_R, n_nodes=AES_F4_N_NODES, step=_step)
+    check(g_ref["admitted"] is False, f"controller refuses AES Krylov, got {g_ref}")
+    check(any("REFUSED" in str(x.get("why") or "") for x in logs), f"admit why names REFUSED, got {logs}")
+
+    err = residual_vs_reference_mv(
+        {"solve": {"abs_err_vs_reference_mv": 0.017}},
+        fallback_child_mv=6.092,
+        fallback_ref_mv=6.075,
+    )
+    check(abs((err or 0) - 0.017) < 1e-12, f"solver-compare uses abs_err with sign, got {err}")
+    err_old = residual_vs_reference_mv({}, fallback_child_mv=8.0, fallback_ref_mv=10.0)
+    check(abs((err_old or 0) - (-2.0)) < 1e-12, "historical residual falls back to signed QoR")
+    fc = _cand(artifacts={"solve": {"activity_status": "REAL", "role": "reference"}}, attr={})
+    stamp_f4_candidate(fc)
+    check(fc.attr.get("activity_status") == "REAL", f"activity_status propagated to attr, got {fc.attr}")
+    gcd_sp = _ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp"
+    if gcd_sp.is_file():
+        nr = n_r_from_spice(gcd_sp)
+        check(nr is not None and 5000 < nr < 7000, f"GCD finish spice n_r ~5816, got {nr}")
+
+    aes_launch = solve_f4(solver="krylov", n_r=AES_F4_N_R, n_nodes=AES_F4_N_NODES)
+    check(aes_launch.get("status") != "ok" and aes_launch.get("gold") is False,
+          f"solve_f4 AES Krylov does not launch, got {aes_launch.get('status')} {aes_launch.get('reason')}")
+    check((aes_launch.get("admit") or {}).get("admitted") is False, "solve_f4 stamps admit refused")
+
     os.environ["ALLOW_HEAVY_ANALYSIS"] = "1"
     aes_a = admit_solve(AES_F4_N_R, n_nodes=AES_F4_N_NODES, solver="direct")
     check(aes_a["admitted"] is True and aes_a["solver"] == "direct",

@@ -3,6 +3,20 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T17:20Z — PLAN passo 2: controller consumes admit_solve / SolveResult
+
+Every paid F4 goes through `admit_paid_f4` (logs `step("admit", why=…)`) and `solve_f4` re-admits with mesh size. Champ solver residuals read `artifacts.solve.abs_err_vs_reference_mv` when present. `activity_status` is copied onto `attr`. No AES Krylov. 73k-R / 6.954 untouched. Gold 45.298 unrestamped.
+
+| Item | Result |
+|---|---|
+| `admit_paid_f4` | GCD DirectLU/Krylov admitted; AES Krylov REFUSED (~14484 MiB) and logged |
+| `solve_f4` | AES Krylov `n_r=73139` does **not** launch (status REFUSED) |
+| Champ residual | `residual_vs_reference_mv` prefers SolveResult, signed QoR fallback |
+| `attr.activity_status` | stamped from `artifacts.solve` on F4 evaluate paths |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
+| `test_dse.py` | ALL PASSED (~264 s); DirectLU 6.075 reference, Krylov 6.092 accelerator; current finish ≠ 45.298 |
+| `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
+
 ## 2026-08-31T17:00Z — PLAN passo 1: delta_vs_baseline
 
 Reconcile `Candidate.delta` (vs parent) vs attr baseline-delta (vs liberty_default). No AES Krylov. 73k-R / 6.954 untouched. Gold 45.298 unrestamped.

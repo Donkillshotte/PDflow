@@ -211,6 +211,46 @@ def normalize_solve(
     )
 
 
+def residual_vs_reference_mv(
+    artifacts: dict | None,
+    *,
+    fallback_child_mv: float | None = None,
+    fallback_ref_mv: float | None = None,
+) -> float | None:
+    """Solver-vs-A error from SolveResult; signed QoR fallback for pre-solve rows.
+
+    ``abs_err_vs_reference_mv`` is unsigned. When both droops are present the
+    sign of child−reference is kept so steering still sees improvement vs A.
+    """
+    sol = (artifacts or {}).get("solve") if isinstance(artifacts, dict) else None
+    if isinstance(sol, dict) and sol.get("abs_err_vs_reference_mv") is not None:
+        err = abs(float(sol["abs_err_vs_reference_mv"]))
+        if fallback_child_mv is not None and fallback_ref_mv is not None:
+            sign = -1.0 if float(fallback_child_mv) < float(fallback_ref_mv) else 1.0
+            return sign * err
+        return err
+    if fallback_child_mv is not None and fallback_ref_mv is not None:
+        return float(fallback_child_mv) - float(fallback_ref_mv)
+    return None
+
+
+def stamp_activity_on_attr(attr: dict, artifacts: dict | None) -> dict:
+    """Copy SolveResult.activity_status onto Candidate.attr. Does not invent activity."""
+    sol = (artifacts or {}).get("solve") if isinstance(artifacts, dict) else None
+    if not isinstance(sol, dict):
+        return attr
+    if sol.get("activity_status"):
+        attr["activity_status"] = sol["activity_status"]
+    if sol.get("role"):
+        attr.setdefault("solve_role", sol["role"])
+    return attr
+
+
+def stamp_f4_candidate(cand) -> None:
+    """Propagate activity_status from artifacts.solve onto attr. In-memory only."""
+    cand.attr = stamp_activity_on_attr(dict(cand.attr or {}), cand.artifacts)
+
+
 def from_dynamic_ir_report(report: dict) -> list[SolveResult]:
     """Normalize Solver A plus any B/C/D blocks. Does not launch a solve."""
     dyn = report.get("dynamic") if isinstance(report.get("dynamic"), dict) else {}

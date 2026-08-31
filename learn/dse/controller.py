@@ -172,11 +172,14 @@ from .fidelity import (
     reports_dir,
 )
 from .fingerprint import knobs_fp
+from .f4_oracle import n_r_from_spice, spice_paths
 from .layers import adapter_status
 from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front, qor_delta
 from .mo import baseline_wns, timing_of
+from .resources import admit_solve
+from .solve_result import residual_vs_reference_mv, stamp_f4_candidate
 from .pdn_space import GOLD_KNOBS, next_pdn_spec
 from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
 from .planner import plan_search, rank_extracts
@@ -325,6 +328,88 @@ def _refine_report(mem: DesignMemory) -> list[dict]:
     return out
 
 
+def n_r_of_extract(
+    mem: DesignMemory,
+    *,
+    extract_id: str | None = None,
+    extract_hit: dict | None = None,
+    spice: Path | str | None = None,
+    variant: str = "flowlab",
+    design_id: str = "gcd",
+) -> int | None:
+    """Mesh size from a recorded extract, then the spice file. Missing stays missing."""
+    if extract_hit:
+        if extract_hit.get("n_r") is not None:
+            return int(extract_hit["n_r"])
+        cand = extract_hit.get("candidate")
+        if cand is not None and (cand.artifacts or {}).get("n_r") is not None:
+            return int(cand.artifacts["n_r"])
+        if extract_hit.get("spice"):
+            nr = n_r_from_spice(extract_hit["spice"])
+            if nr:
+                return nr
+    if extract_id:
+        hit = extract_on_disk(mem, str(extract_id))
+        if hit and hit.get("n_r") is not None:
+            return int(hit["n_r"])
+        for c in mem.by_level("pdn"):
+            art = c.artifacts or {}
+            if art.get("n_r") is None:
+                continue
+            if c.id == extract_id or str((c.knobs or {}).get("extract_id") or "") == str(extract_id):
+                return int(art["n_r"])
+    if spice:
+        nr = n_r_from_spice(spice)
+        if nr:
+            return nr
+    return n_r_from_spice(spice_paths(variant, design_id).get("spice"))
+
+
+def admit_paid_f4(
+    mem: DesignMemory,
+    *,
+    solver: str,
+    extract_id: str | None = None,
+    extract_hit: dict | None = None,
+    spice: Path | str | None = None,
+    n_r: int | None = None,
+    n_nodes: int | None = None,
+    step=None,
+    fidelity: str = "F4",
+    variant: str = "flowlab",
+    design_id: str = "gcd",
+) -> dict:
+    """Controller-side F4 gate. Logs step("admit", why=gate.reason). Does not launch."""
+    if n_r is None:
+        n_r = n_r_of_extract(
+            mem,
+            extract_id=extract_id,
+            extract_hit=extract_hit,
+            spice=spice,
+            variant=variant,
+            design_id=design_id,
+        )
+    if n_nodes is None and isinstance(extract_hit, dict):
+        cand = extract_hit.get("candidate")
+        art = (cand.artifacts if cand is not None else {}) or {}
+        if art.get("n_nodes") is not None:
+            n_nodes = int(art["n_nodes"])
+        elif extract_hit.get("n_nodes") is not None:
+            n_nodes = int(extract_hit["n_nodes"])
+    gate = admit_solve(n_r, n_nodes=n_nodes, solver=solver)
+    why = gate.get("reason") or f"admit {gate.get('solver')} n_r={n_r}"
+    if step is not None:
+        step(
+            "admit",
+            fidelity=fidelity,
+            pay=bool(gate.get("admitted")),
+            why=why,
+            solver=gate.get("solver"),
+            n_r=n_r,
+        )
+    return gate
+
+
 def run_controller(
     *,
     variant: str = "flowlab",
@@ -353,6 +438,117 @@ def run_controller(
 
     def step(kind: str, **kw):
         log.append({"t": time.time(), "kind": kind, **kw})
+
+    _raw_f4_pdn = evaluate_f4_pdn
+    _raw_f4_extract = evaluate_f4_extract
+    _raw_f4_scale = evaluate_f4_scale
+    _raw_f4_static_mesh = evaluate_f4_static_mesh
+    _raw_f4_static_straps = evaluate_f4_static_straps
+    _raw_f4_em_straps = evaluate_f4_em_straps
+
+    def evaluate_f4_pdn(*args, **kwargs):
+        solver = kwargs.get("solver") or "direct"
+        gate = admit_paid_f4(
+            mem,
+            solver=solver,
+            extract_id=kwargs.get("extract_id"),
+            spice=kwargs.get("spice"),
+            step=step,
+            fidelity="F4",
+            variant=variant,
+            design_id=design_id,
+        )
+        if not gate.get("admitted"):
+            return None
+        child = _raw_f4_pdn(*args, **kwargs)
+        if child:
+            stamp_f4_candidate(child)
+        return child
+
+    def evaluate_f4_extract(*args, **kwargs):
+        gate = admit_paid_f4(
+            mem,
+            solver="direct",
+            step=step,
+            fidelity="F4_EXTRACT",
+            variant=variant,
+            design_id=design_id,
+        )
+        if not gate.get("admitted"):
+            return None
+        child = _raw_f4_extract(*args, **kwargs)
+        if child:
+            stamp_f4_candidate(child)
+        return child
+
+    def evaluate_f4_scale(*args, **kwargs):
+        gate = admit_paid_f4(
+            mem,
+            solver="direct",
+            extract_id=kwargs.get("extract_id"),
+            spice=kwargs.get("spice"),
+            step=step,
+            fidelity="F4_SCALE",
+            variant=variant,
+            design_id=design_id,
+        )
+        if not gate.get("admitted"):
+            return None
+        child = _raw_f4_scale(*args, **kwargs)
+        if child:
+            stamp_f4_candidate(child)
+        return child
+
+    def evaluate_f4_static_mesh(*args, **kwargs):
+        gate = admit_paid_f4(
+            mem,
+            solver="direct",
+            extract_id=kwargs.get("parent_extract_id"),
+            step=step,
+            fidelity="F4_STATIC_MESH",
+            variant=variant,
+            design_id=design_id,
+        )
+        if not gate.get("admitted"):
+            return None
+        child = _raw_f4_static_mesh(*args, **kwargs)
+        if child:
+            stamp_f4_candidate(child)
+        return child
+
+    def evaluate_f4_static_straps(*args, **kwargs):
+        gate = admit_paid_f4(
+            mem,
+            solver="direct",
+            extract_id=kwargs.get("parent_extract_id"),
+            step=step,
+            fidelity="F4_STATIC_STRAPS",
+            variant=variant,
+            design_id=design_id,
+        )
+        if not gate.get("admitted"):
+            return None
+        child = _raw_f4_static_straps(*args, **kwargs)
+        if child:
+            stamp_f4_candidate(child)
+        return child
+
+    def evaluate_f4_em_straps(*args, **kwargs):
+        gate = admit_paid_f4(
+            mem,
+            solver="direct",
+            extract_id=kwargs.get("parent_extract_id"),
+            step=step,
+            fidelity="F4_EM_STRAPS",
+            variant=variant,
+            design_id=design_id,
+        )
+        if not gate.get("admitted"):
+            return None
+        child = _raw_f4_em_straps(*args, **kwargs)
+        if child:
+            stamp_f4_candidate(child)
+        return child
 
     def time_candidate(cand, *, reason: str):
         """Interleave F3 so WNS can steer the next extract / ABC sequence."""
@@ -3186,12 +3382,16 @@ def run_controller(
             if child:
                 child.attr = dict(child.attr or {})
                 child.attr["via"] = "f4_solver_amg_champ"
-                if champ_s.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
-                    child.attr["residual_vs_direct_mv"] = float(child.qor.dynamic_ir_mv) - float(
-                        champ_s.qor.dynamic_ir_mv
-                    )
+                res = residual_vs_reference_mv(
+                    child.artifacts,
+                    fallback_child_mv=child.qor.dynamic_ir_mv,
+                    fallback_ref_mv=champ_s.qor.dynamic_ir_mv,
+                )
+                if res is not None:
+                    child.attr["residual_vs_direct_mv"] = res
                     child.attr["residual_vs_direct"] = champ_s.id
                     child.attr["residual_via"] = "amg_champ_vs_direct"
+                stamp_f4_candidate(child)
                 mem.touch(child)
                 step(
                     "evaluate",
@@ -3240,12 +3440,16 @@ def run_controller(
             if child:
                 child.attr = dict(child.attr or {})
                 child.attr["via"] = "f4_solver_ras_champ"
-                if champ_s.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
-                    child.attr["residual_vs_direct_mv"] = float(child.qor.dynamic_ir_mv) - float(
-                        champ_s.qor.dynamic_ir_mv
-                    )
+                res = residual_vs_reference_mv(
+                    child.artifacts,
+                    fallback_child_mv=child.qor.dynamic_ir_mv,
+                    fallback_ref_mv=champ_s.qor.dynamic_ir_mv,
+                )
+                if res is not None:
+                    child.attr["residual_vs_direct_mv"] = res
                     child.attr["residual_vs_direct"] = champ_s.id
                     child.attr["residual_via"] = "ras_champ_vs_direct"
+                stamp_f4_candidate(child)
                 mem.touch(child)
                 step(
                     "evaluate",
@@ -3294,12 +3498,16 @@ def run_controller(
             if child:
                 child.attr = dict(child.attr or {})
                 child.attr["via"] = "f4_solver_krylov_champ"
-                if champ_s.qor.dynamic_ir_mv is not None and child.qor.dynamic_ir_mv is not None:
-                    child.attr["residual_vs_direct_mv"] = float(child.qor.dynamic_ir_mv) - float(
-                        champ_s.qor.dynamic_ir_mv
-                    )
+                res = residual_vs_reference_mv(
+                    child.artifacts,
+                    fallback_child_mv=child.qor.dynamic_ir_mv,
+                    fallback_ref_mv=champ_s.qor.dynamic_ir_mv,
+                )
+                if res is not None:
+                    child.attr["residual_vs_direct_mv"] = res
                     child.attr["residual_vs_direct"] = champ_s.id
                     child.attr["residual_via"] = "krylov_champ_vs_direct"
+                stamp_f4_candidate(child)
                 mem.touch(child)
                 step(
                     "evaluate",

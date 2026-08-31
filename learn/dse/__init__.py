@@ -9,7 +9,13 @@ from .layers import ADAPTERS
 from .memory import DesignMemory, Candidate
 from .metrics import QoR, pareto_front, dominates, qor_delta, baseline_delta_of
 from .resources import admit_solve
-from .solve_result import SolveResult, normalize_solve, activity_status_of
+from .solve_result import (
+    SolveResult,
+    normalize_solve,
+    activity_status_of,
+    residual_vs_reference_mv,
+    stamp_f4_candidate,
+)
 
 __all__ = [
     "QoR",
@@ -23,5 +29,7 @@ __all__ = [
     "SolveResult",
     "normalize_solve",
     "activity_status_of",
+    "residual_vs_reference_mv",
+    "stamp_f4_candidate",
     "admit_solve",
 ]

@@ -60,6 +60,26 @@ def _refine_prior_extract(mem: DesignMemory, depth: int):
         if c.status == "ok" and (c.knobs or {}).get("source") == src:
             return c
     return None
+
+
+def _residual_mv(ext: dict, prior) -> float | None:
+    """Prefer SolveResult.abs_err_vs_reference_mv; else signed child−prior droop."""
+    from .solve_result import residual_vs_reference_mv
+
+    prior_mv = None if prior is None or prior.qor.dynamic_ir_mv is None else float(prior.qor.dynamic_ir_mv)
+    return residual_vs_reference_mv(
+        ext,
+        fallback_child_mv=ext.get("worst_droop_mv"),
+        fallback_ref_mv=prior_mv,
+    )
+
+
+def _stamp_f4_attr(attr: dict, payload: dict | None) -> dict:
+    from .solve_result import stamp_activity_on_attr
+
+    return stamp_activity_on_attr(attr, payload)
+
+
 COST_HINT = {
     "F0": 0.05,
     "F1": 2.0,
@@ -243,9 +263,20 @@ def evaluate_f4_pdn(
     )
     if timeout_s is not None:
         dyn_kw["timeout_s"] = float(timeout_s)
+    n_r = None
+    from .acquire import extract_on_disk
+    from .f4_oracle import n_r_from_spice
+
+    hit = extract_on_disk(mem, str(extract_id)) if extract_id else None
+    if hit and hit.get("n_r") is not None:
+        n_r = int(hit["n_r"])
+    if n_r is None:
+        n_r = n_r_from_spice(spice)
+    dyn_kw["n_r"] = n_r
     dyn = solve_f4(**dyn_kw)
     em = dyn.get("em") or {}
     attr = attribute_dynamic_ir(ir_report_from_solve(dyn, insts=insts))
+    attr = _stamp_f4_attr(attr, dyn)
     q = QoR(
         static_ir_mv=dyn.get("static_ir_mv"),
         dynamic_ir_mv=dyn.get("worst_droop_mv"),
@@ -351,6 +382,7 @@ def evaluate_f4_static_mesh(
     attr["via"] = "active_f4_static_mesh"
     attr["extract_id"] = cid
     attr["parent_extract_id"] = parent_extract_id
+    attr = _stamp_f4_attr(attr, ext if ext else dyn)
     q = QoR(
         static_ir_mv=ext.get("static_ir_mv") or dyn.get("static_ir_mv"),
         dynamic_ir_mv=ext.get("worst_droop_mv") or dyn.get("worst_droop_mv"),
@@ -460,6 +492,7 @@ def evaluate_f4_static_straps(
     attr["via"] = "active_f4_static_straps"
     attr["extract_id"] = cid
     attr["parent_extract_id"] = parent_extract_id
+    attr = _stamp_f4_attr(attr, ext if ext else dyn)
     q = QoR(
         static_ir_mv=ext.get("static_ir_mv") or dyn.get("static_ir_mv"),
         dynamic_ir_mv=ext.get("worst_droop_mv") or dyn.get("worst_droop_mv"),
@@ -569,6 +602,7 @@ def evaluate_f4_em_straps(
     attr["via"] = "active_f4_em_straps"
     attr["extract_id"] = cid
     attr["parent_extract_id"] = parent_extract_id
+    attr = _stamp_f4_attr(attr, ext if ext else dyn)
     q = QoR(
         static_ir_mv=ext.get("static_ir_mv") or dyn.get("static_ir_mv"),
         dynamic_ir_mv=ext.get("worst_droop_mv") or dyn.get("worst_droop_mv"),
@@ -656,6 +690,15 @@ def evaluate_f4_scale(
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
         return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
+    from .acquire import extract_on_disk
+    from .f4_oracle import n_r_from_spice
+
+    n_r = None
+    hit = extract_on_disk(mem, str(extract_id)) if extract_id else None
+    if hit and hit.get("n_r") is not None:
+        n_r = int(hit["n_r"])
+    if n_r is None:
+        n_r = n_r_from_spice(spice)
     dyn = solve_f4(
         variant=variant,
         pkg_r=pkg_r,
@@ -666,6 +709,7 @@ def evaluate_f4_scale(
         insts=insts,
         extract_kind="candidate" if spice else "finish",
         sta=sta,
+        n_r=n_r,
     )
     em = dyn.get("em") or {}
     attr = attribute_dynamic_ir(ir_report_from_solve(dyn, insts=insts))
@@ -692,6 +736,7 @@ def evaluate_f4_scale(
         attr["via"] = "f4_iscale_win"
     if source == "f4_iscale_champ":
         attr["via"] = "f4_iscale_champ"
+    attr = _stamp_f4_attr(attr, dyn)
     if dyn.get("status") == "ok" and dyn.get("worst_droop_mv") is not None and source == "f4_iscale":
         parent.qor.dynamic_ir_mv = float(dyn["worst_droop_mv"])
         if dyn.get("static_ir_mv") is not None:
@@ -1004,6 +1049,9 @@ def evaluate_f4_extract(
         if sta_p:
             ext["sta_arrivals"] = str(sta_p)
             ext["sta_via"] = "f4_host_arrivals" if sta else "extract"
+        from .f4_oracle import n_r_from_spice
+
+        n_r_ext = ext.get("n_r")
         dyn = solve_f4(
             variant=variant,
             pkg_r=pkg_r,
@@ -1015,6 +1063,7 @@ def evaluate_f4_extract(
             extract_kind="candidate",
             sta=sta_p,
             timeout_s=max(float(timeout_s), 90.0),
+            n_r=int(n_r_ext) if n_r_ext is not None else n_r_from_spice(spice),
         )
         ext = {**ext, **{k: v for k, v in dyn.items() if k != "cost_s"}}
         ext["extract_cost_s"] = extract_cost
@@ -1042,7 +1091,7 @@ def evaluate_f4_extract(
         attr["host_source"] = parent.knobs.get("source") or parent.level
         hx = latest_host_extract_cand(mem)
         if hx and hx.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(hx.qor.dynamic_ir_mv)
+            attr["residual_mv"] = _residual_mv(ext, hx)
             attr["residual_vs"] = hx.id
             attr["residual_via"] = "ir_cell_vs_host_extract"
     if kind == "ir_cell_region":
@@ -1053,7 +1102,7 @@ def evaluate_f4_extract(
         attr["host_source"] = parent.knobs.get("source") or parent.level
         ice = ir_cell_extract_cand(mem)
         if ice and ice.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
+            attr["residual_mv"] = _residual_mv(ext, ice)
             attr["residual_vs"] = ice.id
             attr["residual_via"] = "ir_cell_region_vs_ir_cell_extract"
     if kind == "ir_cell_champ":
@@ -1064,7 +1113,7 @@ def evaluate_f4_extract(
         attr["host_source"] = parent.knobs.get("source") or parent.level
         ice = ir_cell_extract_cand(mem)
         if ice and ice.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
+            attr["residual_mv"] = _residual_mv(ext, ice)
             attr["residual_vs"] = ice.id
             attr["residual_via"] = "ir_cell_champ_vs_ir_cell_extract"
     if kind == "ir_cell_champ_cone":
@@ -1075,7 +1124,7 @@ def evaluate_f4_extract(
         attr["host_source"] = parent.knobs.get("source") or parent.level
         ice = ir_cell_champ_extract_cand(mem)
         if ice and ice.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(ice.qor.dynamic_ir_mv)
+            attr["residual_mv"] = _residual_mv(ext, ice)
             attr["residual_vs"] = ice.id
             attr["residual_via"] = "ir_cell_champ_cone_vs_ir_cell_champ_extract"
     if kind == "ir_cell_champ_cone_region":
@@ -1086,7 +1135,7 @@ def evaluate_f4_extract(
         attr["host_source"] = parent.knobs.get("source") or parent.level
         prior = ir_cell_champ_cone_region_extract_cand(mem) or ir_cell_champ_cone_extract_cand(mem)
         if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
+            attr["residual_mv"] = _residual_mv(ext, prior)
             attr["residual_vs"] = prior.id
             attr["residual_via"] = (
                 "ir_cell_champ_cone_region_vs_prior_region"
@@ -1101,7 +1150,7 @@ def evaluate_f4_extract(
         attr["host_source"] = parent.knobs.get("source") or parent.level
         prior = winning_ir_region_extract_cand(mem) or winning_ir_extract_cand(mem)
         if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
+            attr["residual_mv"] = _residual_mv(ext, prior)
             attr["residual_vs"] = prior.id
             attr["residual_via"] = (
                 "winning_ir_region_vs_prior_region"
@@ -1115,7 +1164,7 @@ def evaluate_f4_extract(
         attr["host_source"] = parent.knobs.get("source") or parent.level
         prior = _refine_prior_extract(mem, _rd)
         if prior and prior.qor.dynamic_ir_mv is not None and ext.get("worst_droop_mv") is not None:
-            attr["residual_mv"] = float(ext["worst_droop_mv"]) - float(prior.qor.dynamic_ir_mv)
+            attr["residual_mv"] = _residual_mv(ext, prior)
             attr["residual_vs"] = prior.id
             prev = (
                 f"winning_ir_region_cell{_refine_suffix(_rd - 1)}_extract"
@@ -1123,6 +1172,7 @@ def evaluate_f4_extract(
                 else "winning_ir_region_extract"
             )
             attr["residual_via"] = f"{kind}_vs_{prev}"
+    attr = _stamp_f4_attr(attr, ext if ext else dyn)
     kind_note = {
         "host": "host",
         "host_region": "host-region",

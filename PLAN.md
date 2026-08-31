@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -72,7 +72,7 @@ semantica diversa.
 
 ---
 
-## Passo 2 — Il controller consuma il contratto (piccolo, alto valore)
+## Passo 2 — Il controller consuma il contratto (piccolo, alto valore) ✅
 
 **Problema.** Zero occorrenze di `admit_solve` / `SolveResult` / `.delta` in
 `controller.py`. Il gate esiste ma le decisioni non lo leggono.

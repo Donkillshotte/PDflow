@@ -4819,6 +4819,33 @@ def main() -> int:
             f"    F4 Krylov {kry['worst_droop_mv']:.3f} mV m={kry.get('m')} "
             f"vs DirectLU {base['worst_droop_mv']:.3f} mV ({kry.get('cost_s', 0):.2f}s)"
         )
+        from dse.controller import admit_paid_f4
+        from heavy_analysis import AES_F4_N_NODES, AES_F4_N_R
+
+        _alog: list[dict] = []
+
+        def _admit_step(kind: str, **kw):
+            _alog.append({"kind": kind, **kw})
+
+        mem_gate = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-gate-")) / "m.jsonl")
+        g_a = admit_paid_f4(mem_gate, solver="direct", n_r=int(base["n_r"]), step=_admit_step)
+        check(
+            g_a["admitted"] is True and (base.get("solve") or {}).get("role") == "reference",
+            f"controller-paid DirectLU is reference, gate={g_a} solve={base.get('solve')}",
+        )
+        g_c = admit_paid_f4(mem_gate, solver="krylov", n_r=int(base["n_r"]), step=_admit_step)
+        check(
+            g_c["admitted"] is True and (kry.get("solve") or {}).get("role") == "accelerator",
+            f"controller-paid Krylov is accelerator, gate={g_c} solve={kry.get('solve')}",
+        )
+        g_aes = admit_paid_f4(
+            mem_gate, solver="krylov", n_r=AES_F4_N_R, n_nodes=AES_F4_N_NODES, step=_admit_step
+        )
+        check(g_aes["admitted"] is False, f"controller gate still refuses AES Krylov, got {g_aes}")
+        check(
+            any(x.get("kind") == "admit" and x.get("pay") is False for x in _alog),
+            "refused admit is logged on the controller step",
+        )
         check(base.get("static_ir_mv") is not None, "F4 restamp reports static IR")
         check(float(base["static_ir_mv"]) > 1.0, f"static IR is a real mV drop, got {base.get('static_ir_mv')}")
         check(

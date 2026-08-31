@@ -55,6 +55,22 @@ def solver_devices() -> dict:
     }
 
 
+def n_r_from_spice(spice: Path | str | None) -> int | None:
+    """Count R-branches in a write_pg_spice netlist. Missing file → None."""
+    if not spice:
+        return None
+    p = Path(spice)
+    if not p.is_file():
+        return None
+    n = 0
+    with p.open(errors="replace") as fh:
+        for line in fh:
+            s = line.lstrip()
+            if s[:1] in "Rr":
+                n += 1
+    return n or None
+
+
 def spice_paths(variant: str = "flowlab", design_id: str = "gcd") -> dict[str, Path]:
     from .designs import resolve
 
@@ -174,6 +190,8 @@ def solve_f4(
     sta: Path | str | None = None,
     device: str = "cpu",
     design_id: str = "gcd",
+    n_r: int | None = None,
+    n_nodes: int | None = None,
 ) -> dict:
     """Named extract + named solver (direct/amg/bicg/ras/krylov). Not gold.
 
@@ -193,10 +211,30 @@ def solve_f4(
                     "via": "f4_oracle",
                     "device": gate.get("backend_actual") or "cpu",
                     "backend_actual": gate.get("backend_actual") or "cpu",
+                    "admit": gate,
                 },
                 backend_requested="cuda",
                 fallback_reason=gate.get("fallback_reason"),
             )
+    if n_r is None:
+        n_r = n_r_from_spice(spice)
+    if n_r is None and not spice:
+        n_r = n_r_from_spice(spice_paths(variant, design_id).get("spice"))
+    gate = admit_solve(n_r, n_nodes=n_nodes, solver=solver, device=requested)
+    if not gate.get("admitted"):
+        return _stamp_solve(
+            {
+                "status": gate.get("status") or "REFUSED",
+                "reason": gate.get("reason") or "admit_solve refused",
+                "gold": False,
+                "via": "f4_oracle",
+                "admit": gate,
+                "n_r": n_r,
+                "solver": solver,
+            },
+            backend_requested=requested,
+            fallback_reason=gate.get("fallback_reason") or gate.get("reason"),
+        )
     from .designs import resolve as _resolve_design
 
     period_ns = float(_resolve_design(design_id).clk_period_ns)
@@ -283,4 +321,7 @@ def solve_f4(
         )
     payload.setdefault("gold", False)
     payload.setdefault("extract", kind)
+    payload["admit"] = gate
+    if n_r is not None:
+        payload.setdefault("n_r", n_r)
     return _stamp_solve(payload, backend_requested=requested)
