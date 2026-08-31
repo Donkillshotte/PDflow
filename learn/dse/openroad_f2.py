@@ -358,6 +358,7 @@ def evaluate_f5_drt(
     verilog: Path,
     *,
     top: str = "gcd",
+    sdc: Path | None = None,
     util: float = 35.0,
     density: float = 0.55,
     timeout_s: float = 45.0,
@@ -368,12 +369,26 @@ def evaluate_f5_drt(
 
     Clock stays ideal (no CTS). `droute_end_iter` is a budget cap, not signoff
     convergence. Timing truth is OpenSTA `read_spef`, not OpenROAD report_wns.
+    aes must pass the 0.82 ns SDC — never silently reuse gcd 0.46 ns.
     """
     if not f5_available():
         return {"status": "GAP", "reason": "openroad/LEF/RCX rules missing", "via": "openroad_f5_drt"}
     verilog = Path(verilog)
     if not verilog.is_file():
         return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_f5_drt"}
+    sdc_path = Path(sdc) if sdc else SDC
+    if not sdc_path.is_file():
+        return {
+            "status": "GAP",
+            "reason": f"{top} SDC missing — not borrowing gcd 0.46 ns",
+            "via": "openroad_f5_drt",
+        }
+    if top != "gcd" and "/gcd/" in str(sdc_path).replace("\\", "/"):
+        return {
+            "status": "fail",
+            "reason": f"{top} F5 would have used {sdc_path} — refusing gcd SDC",
+            "via": "openroad_f5_drt",
+        }
     rc = f"source {SETRC}" if SETRC.is_file() else ""
     spef_tmp = Path(spef_out) if spef_out is not None else None
     if spef_tmp is not None:
@@ -387,7 +402,7 @@ read_lef {SC_LEF}
 read_liberty {LIB}
 read_verilog {verilog}
 link_design {top}
-read_sdc {SDC}
+read_sdc {sdc_path}
 initialize_floorplan -utilization {float(util)} -aspect_ratio 1.0 -core_space 2.0 -site {SITE}
 source {TRACKS}
 {rc}
@@ -459,6 +474,8 @@ exit
         "density": float(density),
         "droute_end_iter": int(droute_end_iter),
         "clock": "ideal",
+        "top": top,
+        "sdc": str(sdc_path),
         "interconnect": "spef_openrcx" if ok else "none",
         "via": (
             "openroad detailed_route+OpenRCX write_spef — F5-lite, not make finish, "

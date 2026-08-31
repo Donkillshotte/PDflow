@@ -2444,6 +2444,7 @@ def evaluate_f5_drt(
     mapped = (parent.artifacts or {}).get("mapped_v")
     if not mapped or not Path(mapped).is_file():
         return None
+    spec = resolve(design_id)
     knobs = {
         "source": "f5_openroad_drt_rcx",
         "parent_id": parent.id,
@@ -2452,6 +2453,8 @@ def evaluate_f5_drt(
         "density": density,
         "droute_end_iter": 2,
         "clock": "ideal",
+        "top": spec.top,
+        "sdc": str(spec.constraint),
     }
     fp = knobs_fp("routing", knobs)
     if fp in mem.seen_knobs("routing"):
@@ -2459,7 +2462,13 @@ def evaluate_f5_drt(
     cid = DesignMemory.new_id()
     spef_dest = REPO / "learn" / "sim" / "dse" / "spef" / f"{cid}.spef"
     raw = run_f5_drt(
-        Path(mapped), util=util, density=density, timeout_s=timeout_s, spef_out=spef_dest
+        Path(mapped),
+        top=spec.top,
+        sdc=spec.constraint,
+        util=util,
+        density=density,
+        timeout_s=timeout_s,
+        spef_out=spef_dest,
     )
     sta = {}
     if raw.get("status") == "ok" and raw.get("spef"):
@@ -2544,10 +2553,17 @@ def evaluate_f5_local(
     fp = knobs_fp("routing", knobs)
     if fp in mem.seen_knobs("routing"):
         return next(c for c in mem.by_level("routing") if c.knobs_fp == fp)
+    spec = resolve(design_id)
     cid = DesignMemory.new_id()
     spef_dest = REPO / "learn" / "sim" / "dse" / "spef" / f"{cid}_local.spef"
     raw = run_f5_drt(
-        Path(mapped), util=util, density=density, timeout_s=timeout_s, spef_out=spef_dest
+        Path(mapped),
+        top=spec.top,
+        sdc=spec.constraint,
+        util=util,
+        density=density,
+        timeout_s=timeout_s,
+        spef_out=spef_dest,
     )
     sta = {}
     if raw.get("status") == "ok" and raw.get("spef"):

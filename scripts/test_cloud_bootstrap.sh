@@ -91,6 +91,22 @@ rg -q 'cloud_agent_directlu' "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" && o
 rg -q 'n_r == 73139' "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" && ok "ingest refuses 73k-R overwrite" || bad "ingest missing 73k-R refuse"
 rg -q 'AES_SLICE_SKIP_F4' "${ROOT}/learn/scripts/run_aes_slice.py" && ok "AES slice can skip F4" || bad "AES slice cannot skip F4"
 
+bash -n "${ROOT}/scripts/run_gcd_finish_cloud.sh" && ok "GCD finish cloud syntax" || bad "GCD finish cloud syntax"
+rg -q 'prlimit --as=' "${ROOT}/scripts/run_gcd_finish_cloud.sh" && ok "GCD finish caps RSS" || bad "GCD finish no prlimit"
+rg -q 'run_gcd_finish_cloud' "${ROOT}/scripts/cloud_agent_install.sh" && bad "install invokes GCD finish" || ok "install does not run GCD finish"
+
+bash -n "${ROOT}/scripts/run_dynamic_ir_cloud.sh" && ok "dynamic IR cloud syntax" || bad "dynamic IR cloud syntax"
+rg -q 'SOLVER' "${ROOT}/scripts/run_dynamic_ir_cloud.sh" && ok "dynamic IR cloud is per-solver" || bad "dynamic IR cloud not per-solver"
+rg -q -- '--no-mor' "${ROOT}/scripts/run_dynamic_ir_cloud.sh" && ok "dynamic IR can skip Krylov" || bad "dynamic IR cannot skip Krylov"
+rg -q 'AES-sized' "${ROOT}/scripts/run_dynamic_ir_cloud.sh" && ok "dynamic IR refuses AES-sized spice" || bad "dynamic IR missing AES refuse"
+rg -q 'run_dynamic_ir_cloud' "${ROOT}/scripts/cloud_agent_install.sh" && bad "install invokes dynamic IR" || ok "install does not run dynamic IR"
+
+bash -n "${ROOT}/scripts/run_aes_f5_lite_cloud.sh" && ok "AES F5-lite cloud syntax" || bad "AES F5-lite cloud syntax"
+rg -q 'AES_F5_ALLOW_CTS' "${ROOT}/scripts/run_aes_f5_lite_cloud.sh" && ok "AES F5-lite refuses CTS" || bad "AES F5-lite missing CTS refuse"
+rg -q 'prlimit --as=' "${ROOT}/scripts/run_aes_f5_lite_cloud.sh" && ok "AES F5-lite caps RSS" || bad "AES F5-lite no prlimit"
+rg -q 'run_aes_f5_lite' "${ROOT}/scripts/cloud_agent_install.sh" && bad "install invokes AES F5" || ok "install does not run AES F5"
+rg -q 'spec.constraint' "${ROOT}/learn/dse/fidelity.py" && ok "F5-lite passes design SDC" || bad "F5-lite still hardcodes SDC"
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "CLOUD_BOOTSTRAP_TEST_FAIL"
   exit 1

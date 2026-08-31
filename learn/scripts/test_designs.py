@@ -250,6 +250,25 @@ def main() -> int:
             check(abs(float(cloud[-1].qor.static_ir_mv) - 12.953) < 0.05, f"cloud AES static ~12.953 mV, got {cloud[-1].qor.static_ir_mv}")
             check(abs(float(cloud[-1].qor.dynamic_ir_mv) - 17.745) < 0.05, f"cloud AES DirectLU droop ~17.745 mV, got {cloud[-1].qor.dynamic_ir_mv}")
             check(abs(float(cloud[-1].qor.dynamic_ir_mv) - 45.298) > 1.0, "cloud AES droop is not gold 45.298")
+        f5s = [
+            c
+            for c in am.by_level("routing")
+            if (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
+        ]
+        if f5s:
+            sdc = str((f5s[-1].knobs or {}).get("sdc") or (f5s[-1].artifacts or {}).get("sdc") or "")
+            check("aes" in sdc and "gcd" not in sdc, f"live aes F5-lite used the 0.82 ns SDC, got {sdc}")
+            check((f5s[-1].knobs or {}).get("clock") == "ideal", "live aes F5-lite clock stays ideal (no CTS)")
+            check((f5s[-1].knobs or {}).get("top") == "aes_cipher_top", "live aes F5-lite top is the cipher")
+    from dse.designs import resolve as resolve_design
+    from dse.openroad_f2 import evaluate_f5_drt as raw_f5
+    aes_spec = resolve_design("aes")
+    gcd_spec = resolve_design("gcd")
+    refuse = raw_f5(aes_spec.rtl, top=aes_spec.top, sdc=gcd_spec.constraint, timeout_s=1)
+    check(
+        refuse.get("status") == "fail" and "refusing gcd SDC" in str(refuse.get("reason")),
+        f"aes F5 refuses the GCD SDC, got {refuse}",
+    )
 
 
     missing = attach_activity_flags(["worker"], variant="aes", design_id="aes")
