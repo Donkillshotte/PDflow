@@ -61,10 +61,13 @@ def main() -> int:
     direct = check_rss_budget(n_r=1000, n_nodes=800, solver="direct")
     check(direct is None, "GCD DirectLU fits")
     kind, why = pick_bounded_solver(AES_F4_N_R, n_nodes=AES_F4_N_NODES)
-    check(kind == "amg", f"AES on 15 GiB picks AMG not Krylov (got {kind} {why})")
+    check(kind == "direct", f"AES on 15 GiB picks DirectLU not Krylov (got {kind} {why})")
     os.environ["PDN_FAKE_RAM_BYTES"] = str(64 * (1 << 30))
     kind64, why64 = pick_bounded_solver(AES_F4_N_R, n_nodes=AES_F4_N_NODES)
-    check(kind64 == "krylov", f"AES on 64 GiB picks Krylov (got {kind64} {why64})")
+    check(kind64 == "direct", f"AES on 64 GiB still prefers DirectLU (got {kind64} {why64})")
+    os.environ["PDN_FAKE_RAM_BYTES"] = str(400 * (1 << 20))
+    kind_tiny, why_tiny = pick_bounded_solver(AES_F4_N_R, n_nodes=AES_F4_N_NODES)
+    check(kind_tiny is None, f"AES on 400 MiB has no bounded solver (got {kind_tiny} {why_tiny})")
     os.environ["PDN_FAKE_RAM_BYTES"] = str(15 * (1 << 30))
     os.environ["ALLOW_OOM_ANALYSIS"] = "1"
     check(

@@ -144,17 +144,25 @@ def pick_bounded_solver(
     n_nodes: int | None = None,
     max_r_direct: int = 40_000,
 ) -> tuple[str | None, str | None]:
-    """Choose a solver that fits DirectLU / RSS. None means static-only."""
+    """Choose a solver that fits this VM's RSS. None means static-only.
+
+    DirectLU is preferred even above ``max_r_direct`` when the RSS budget
+    fits. A 54k-node 2D grid factored in 0.36s / 164 MiB on this Cloud Agent;
+    the previous crash was Krylov MOR, not LU. ``max_r_direct`` only skips
+    straight to AMG/Krylov when DirectLU itself is predicted to OOM.
+    """
     if not n_r:
         return None, "no mesh"
-    if n_r <= max_r_direct:
-        msg = check_rss_budget(n_r=n_r, n_nodes=n_nodes, solver="direct")
-        if msg is None:
-            return "direct", None
-        return None, msg
     last = "no bounded solver"
-    for kind in ("krylov", "amg"):
-        mesh_msg = check_krylov(n_r, kind) if kind == "krylov" else check_large_mesh(n_r, kind=kind)
+    order = ("direct", "amg", "krylov")
+    if n_r <= max_r_direct:
+        order = ("direct",)
+    for kind in order:
+        mesh_msg = None
+        if kind == "krylov":
+            mesh_msg = check_krylov(n_r, kind)
+        elif n_r > HEAVY_MESH_R:
+            mesh_msg = check_large_mesh(n_r, kind=kind)
         rss_msg = check_rss_budget(n_r=n_r, n_nodes=n_nodes, solver=kind)
         if mesh_msg is None and rss_msg is None:
             return kind, None

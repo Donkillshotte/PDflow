@@ -104,14 +104,19 @@ def main() -> int:
         n_r, n_nodes=int(n_nodes) if n_nodes else None, max_r_direct=MAX_R_DIRECT
     )
     if spice_ok and solver:
-        if solver == "krylov":
+        if solver == "direct" and n_r > MAX_R_DIRECT:
+            print(
+                f"n_r={n_r} > {MAX_R_DIRECT} — DirectLU RSS fits this VM, skipping Krylov, "
+                f"period={spec.clk_period_ns} ns timeout={resolve_solve_timeout_s(1800.0)}s"
+            )
+        elif solver == "krylov":
             print(
                 f"n_r={n_r} > {MAX_R_DIRECT} — paying Krylov/MOR, not DirectLU, "
                 f"period={spec.clk_period_ns} ns dt=40ps"
             )
         elif solver == "amg":
             print(
-                f"n_r={n_r} > {MAX_R_DIRECT} — Krylov RSS does not fit this VM; "
+                f"n_r={n_r} > {MAX_R_DIRECT} — DirectLU/Krylov RSS do not fit; "
                 f"paying AMG with timeout={resolve_solve_timeout_s(1800.0)}s"
             )
         dyn = solve_f4(
@@ -122,7 +127,7 @@ def main() -> int:
             design_id="aes",
             solver=solver,
             dt_ps=40.0 if solver == "krylov" else 10.0,
-            timeout_s=resolve_solve_timeout_s(1800.0 if solver in ("krylov", "amg") else 300.0),
+            timeout_s=resolve_solve_timeout_s(1800.0 if n_r > MAX_R_DIRECT else 300.0),
         )
         print(
             f"solve {solver} status={dyn.get('status')} droop={dyn.get('worst_droop_mv')} "
