@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -127,7 +127,9 @@ committa, si passa al lotto dopo.
 - **3b** ✅ — Migrare il ramo routing/F5: `routing (GRT)`, `f5_drt`, `f3_spef`,
   `f5_cts`, `f5_local`, `f5_port`. GRT resta fra STA e SDF; residual_steer resta
   inlined fra local e port.
-- **3c** — Migrare cell/net/synthesis/physical-catalog.
+- **3c** ✅ — Migrare cell/net/synthesis/physical-catalog. Catalogo GPL senza
+  check `planned()` (comportamento originale). Ordine invariato: synth/cell/net
+  prima di F2; catalogo dopo port_steer.
 - **3d** — Migrare la coda PDN/F4 (candidate/host/region/champ/catalog/static/EM).
   Qui ogni stage F4 dichiara `needs_admit=True` e `run_stage` chiama
   `admit_solve` (chiude il cerchio col passo 2).

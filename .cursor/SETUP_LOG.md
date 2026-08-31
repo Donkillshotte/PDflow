@@ -3,6 +3,17 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T18:40Z — PLAN passo 3c: cell / net / synthesis / physical-catalog
+
+Strangler: `synthesis`, `cell`, `net`, `net_port`, `physical_catalog` moved to `learn/dse/stages.py`. Order unchanged: synth/cell/net/net_port still run before F2; physical F0 propose + catalog GPL still after port_steer. Catalog keeps `require_plan=False`. `controller.py` 5661 → 5432 (−229). No AES Krylov. Gold unrestamped.
+
+| Item | Result |
+|---|---|
+| Stages | `STAGE_SYNTHESIS`, `STAGE_CELL`, `STAGE_NET`, `STAGE_NET_PORT`, `STAGE_PHYSICAL_CATALOG` |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including 3c names |
+| `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
+| `test_dse.py` | re-run after this commit |
+
 ## 2026-08-31T18:20Z — PLAN passo 3b: routing / F5 stages
 
 Strangler: GRT, F5-DRT, F3-SPEF, F5-CTS, F5-local, F5-port moved to `learn/dse/stages.py`. Order unchanged: STA → GRT → SDF → DRT → SPEF → CTS → LOCAL → residual_steer (inlined) → PORT. `why`/`step` strings unchanged including F5_LOCAL host_why kwargs. `controller.py` 5800 → 5661 (−139). No AES Krylov. Gold unrestamped.

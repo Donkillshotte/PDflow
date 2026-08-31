@@ -272,6 +272,9 @@ def main() -> int:
     from dse.stages import STAGE_F3_SPEF, STAGE_F5_DRT, STAGE_F5_PORT, STAGE_ROUTING
     check(STAGE_ROUTING.level == "routing" and STAGE_F5_DRT.level == "f5_drt", "3b routing/DRT names")
     check(STAGE_F3_SPEF.level == "f3_spef" and STAGE_F5_PORT.level == "f5_port", "3b SPEF/port names")
+    from dse.stages import STAGE_CELL, STAGE_NET, STAGE_PHYSICAL_CATALOG, STAGE_SYNTHESIS
+    check(STAGE_SYNTHESIS.level == "synthesis" and STAGE_CELL.level == "cell", "3c synth/cell names")
+    check(STAGE_NET.level == "net" and STAGE_PHYSICAL_CATALOG.level == "physical_catalog", "3c net/catalog names")
 
     from dse.costs import estimated_cost_s, p75
     from dse.fidelity import COST_HINT

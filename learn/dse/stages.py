@@ -66,6 +66,7 @@ def _pay_and_maybe_eval(
     cost_key: str | None = None,
     fidelity: str | None = None,
     acquire_extra: dict | None = None,
+    require_plan: bool = True,
 ) -> bool:
     step = ctx["step"]
     plan = ctx["plan"]
@@ -74,7 +75,8 @@ def _pay_and_maybe_eval(
     if acquire_fidelity:
         extra = dict(acquire_extra or {})
         step("acquire", fidelity=acquire_fidelity, pay=pay, why=why, **extra)
-    if not planned(plan, level) or not pay or time.time() >= t_end:
+    plan_ok = planned(plan, level) if require_plan else True
+    if not plan_ok or not pay or time.time() >= t_end:
         return False
     if cost_key:
         from .costs import estimated_cost_s
@@ -579,6 +581,312 @@ def run_f5_port(ctx: dict) -> bool:
     )
 
 
+def run_synthesis(ctx: dict) -> bool:
+    from .acquire import should_pay_f1_synth
+    from .fidelity import evaluate_f1_synth
+
+    mem = ctx["mem"]
+    n_f1 = sum(1 for c in mem.all() if c.fidelity == "F1")
+    pay, why = should_pay_f1_synth(
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        n_f1=n_f1,
+        f1_max=ctx["f1_max"],
+    )
+
+    def _eval() -> bool:
+        ctx["step"](
+            "propose",
+            level="synthesis",
+            knobs={"name": "orfs_abc_speed", "abcArea": 0, "source": "orfs_abc_script"},
+            fidelity="F1",
+            why=why,
+        )
+        phys = ctx.get("phys")
+        cand = evaluate_f1_synth(
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            mem=mem,
+            design_id=ctx["design_id"],
+            parent_id=phys.id if phys else None,
+            top=ctx["top"],
+        )
+        attr = ctx.get("attr") or {}
+        if attr.get("status") == "READY":
+            cand.attr = {
+                "inherited_from": "physical_ir",
+                "scope": "chip",
+                "transform": "orfs_abc_speed",
+                "note": "synthesis F1 is ORFS abc_speed.script; not flattened into BOiLS abc_ops",
+            }
+        mem.touch(cand)
+        ctx["step"](
+            "evaluate",
+            id=cand.id,
+            level="synthesis",
+            fidelity="F1",
+            status=cand.status,
+            area_um2=cand.qor.area_um2,
+            cost_s=cand.cost_s,
+            via="orfs_abc_speed",
+        )
+        ctx["time_candidate"](cand, reason="F3 after ORFS abc_speed so WNS can compare to liberty_default")
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="synthesis", acquire_fidelity="F1_SYNTH", pay=pay, why=why, evaluate=_eval,
+        cost_key="F1", fidelity="F1",
+    )
+
+
+def run_cell(ctx: dict) -> bool:
+    from .acquire import should_pay_cell_size
+    from .fidelity import evaluate_cell_size
+
+    mem = ctx["mem"]
+    n_cell = sum(
+        1 for c in mem.by_level("cell") if (c.knobs or {}).get("source") == "cell_size_up" and c.status == "ok"
+    )
+    pay, why = should_pay_cell_size(
+        mem, budget_left=ctx["t_end"] - time.time(), n_cell=n_cell
+    )
+
+    def _eval() -> bool:
+        pick = ctx["mapped_pick"](
+            [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            top=ctx["top"],
+        )
+        if not pick:
+            return False
+        mem.touch(pick)
+        child = evaluate_cell_size(pick, mem, design_id=ctx["design_id"])
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="cell",
+            fidelity="F3",
+            via="cell_size_up",
+            parent=pick.id,
+            n_changed=(child.artifacts or {}).get("n_changed"),
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            area_um2=child.qor.area_um2,
+            status=child.status,
+            reason="attributed-path-drive-up",
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="cell", acquire_fidelity="CELL_SIZE", pay=pay, why=why, evaluate=_eval,
+        cost_key="F3", fidelity="F3",
+    )
+
+
+def run_net(ctx: dict) -> bool:
+    from .acquire import should_pay_net_buffer
+    from .fidelity import evaluate_net_buffer
+
+    mem = ctx["mem"]
+    n_net = sum(
+        1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"
+    )
+    pay, why = should_pay_net_buffer(
+        mem, budget_left=ctx["t_end"] - time.time(), n_net=n_net
+    )
+
+    def _eval() -> bool:
+        pick = next(
+            (
+                c
+                for c in reversed(list(mem.by_level("cell")))
+                if c.status == "ok" and (c.artifacts or {}).get("mapped_v")
+            ),
+            None,
+        )
+        if pick is None:
+            pick = ctx["mapped_pick"](
+                [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+                rtl=ctx["rtl"],
+                liberty=ctx["liberty"],
+            )
+        if not pick:
+            return False
+        mem.touch(pick)
+        child = evaluate_net_buffer(pick, mem, design_id=ctx["design_id"])
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="net",
+            fidelity="F3",
+            via="net_buffer",
+            parent=pick.id,
+            n_changed=(child.artifacts or {}).get("n_changed"),
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            area_um2=child.qor.area_um2,
+            status=child.status,
+            reason="attributed-path-net-buffer",
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="net", acquire_fidelity="NET_BUF", pay=pay, why=why, evaluate=_eval,
+        cost_key="F3", fidelity="F3",
+    )
+
+
+def run_net_port(ctx: dict) -> bool:
+    import re
+    from pathlib import Path
+
+    from .acquire import _attributed_cross_module_nets, should_pay_net_port
+    from .fidelity import evaluate_net_port_buffer
+
+    mem = ctx["mem"]
+    n_net = sum(
+        1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"
+    )
+    n_port = sum(
+        1
+        for c in mem.by_level("net")
+        if (c.knobs or {}).get("source") == "net_buffer_port" and c.status == "ok"
+    )
+    pay, why = should_pay_net_port(
+        mem, budget_left=ctx["t_end"] - time.time(), n_net=n_net, n_port=n_port
+    )
+
+    def _eval() -> bool:
+        pick = None
+        for cand in list(mem.by_level("net"))[::-1] + list(mem.by_level("cell"))[::-1] + [
+            c for c in ctx["f1_ok"](mem)
+        ]:
+            if cand is None or cand.status != "ok":
+                continue
+            hier = (cand.artifacts or {}).get("mapped_hier_v")
+            mapped = (cand.artifacts or {}).get("mapped_v")
+            if hier and Path(hier).is_file():
+                pick = cand
+                break
+            if mapped and Path(mapped).is_file():
+                try:
+                    body = Path(mapped).read_text()
+                except OSError:
+                    body = ""
+                if len(re.findall(r"(?m)^module\s", body)) >= 3:
+                    pick = cand
+                    break
+        if pick is None:
+            pick = ctx["mapped_pick"](
+                [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+                rtl=ctx["rtl"],
+                liberty=ctx["liberty"],
+            )
+        if not pick:
+            return False
+        mem.touch(pick)
+        child = evaluate_net_port_buffer(
+            pick,
+            mem,
+            design_id=ctx["design_id"],
+            hops=_attributed_cross_module_nets(mem),
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="net",
+            fidelity="F3",
+            via="net_buffer_port",
+            parent=pick.id,
+            n_changed=(child.artifacts or {}).get("n_changed"),
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            area_um2=child.qor.area_um2,
+            status=child.status,
+            reason="attributed-path-port-net-buffer",
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="net_port", acquire_fidelity="NET_PORT", pay=pay, why=why, evaluate=_eval,
+        cost_key="F3", fidelity="F3",
+    )
+
+
+def run_physical_catalog(ctx: dict) -> bool:
+    from .acquire import should_pay_physical_catalog
+    from .fidelity import evaluate_f2_gpl
+    from .physical_space import next_catalog_spec, propose_physical_f0
+
+    mem = ctx["mem"]
+    phys_f0 = propose_physical_f0(mem, ctx["design_id"])
+    for c in phys_f0:
+        ctx["step"]("propose", level="physical", knobs=c.knobs, fidelity="F0")
+    n_cat = sum(1 for c in mem.by_level("physical") if (c.knobs or {}).get("catalog"))
+    pay, why = should_pay_physical_catalog(
+        mem, budget_left=ctx["t_end"] - time.time(), n_catalog=n_cat
+    )
+    spec = next_catalog_spec(mem) if pay else None
+
+    def _eval() -> bool:
+        if not spec:
+            return False
+        pick = ctx["mapped_pick"](
+            [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            top=ctx["top"],
+        )
+        if not pick:
+            return False
+        mem.touch(pick)
+        util_c = float(spec["coreUtilization"])
+        den_c = ctx["gpl_density"](util_c, spec["placeDensityAddon"])
+        child = evaluate_f2_gpl(
+            pick,
+            mem,
+            design_id=ctx["design_id"],
+            util=util_c,
+            density=den_c,
+            extra_knobs={
+                "catalog": spec["name"],
+                "coreUtilization": spec["coreUtilization"],
+                "placeDensityAddon": spec["placeDensityAddon"],
+            },
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="physical",
+            fidelity="F2",
+            via="f2_openroad_gpl_catalog",
+            parent=pick.id,
+            catalog=spec["name"],
+            hpwl_um=(child.artifacts or {}).get("hpwl_um"),
+            overflow=child.qor.congestion,
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx,
+        level="physical_catalog",
+        acquire_fidelity="F2_GPL_CATALOG",
+        pay=pay,
+        why=why,
+        evaluate=_eval,
+        cost_key="F2_GPL",
+        fidelity="F2",
+        require_plan=False,
+    )
+
+
 STAGE_F2_FAST = Stage(level="f2_fast", run=run_f2_fast, cost_key="F2_FAST", max_shots=4)
 STAGE_F2_GPL = Stage(level="f2_gpl", run=run_f2_gpl, acquire_fidelity="F2_GPL", cost_key="F2_GPL", max_shots=1, min_s=8.0)
 STAGE_F3_STA = Stage(level="f3_sta", run=run_f3_sta, acquire_fidelity="F3", cost_key="F3", max_shots=8, min_s=1.0)
@@ -589,3 +897,11 @@ STAGE_F3_SPEF = Stage(level="f3_spef", run=run_f3_spef, acquire_fidelity="F3_SPE
 STAGE_F5_CTS = Stage(level="f5_cts", run=run_f5_cts, acquire_fidelity="F5_CTS", cost_key="F5_CTS", max_shots=1, min_s=25.0)
 STAGE_F5_LOCAL = Stage(level="f5_local", run=run_f5_local, acquire_fidelity="F5_LOCAL", cost_key="F5", max_shots=1, min_s=12.0)
 STAGE_F5_PORT = Stage(level="f5_port", run=run_f5_port, acquire_fidelity="F5_PORT", cost_key="F5", max_shots=1, min_s=12.0)
+STAGE_SYNTHESIS = Stage(level="synthesis", run=run_synthesis, acquire_fidelity="F1_SYNTH", cost_key="F1", max_shots=1, min_s=8.0)
+STAGE_CELL = Stage(level="cell", run=run_cell, acquire_fidelity="CELL_SIZE", cost_key="F3", max_shots=1, min_s=3.0)
+STAGE_NET = Stage(level="net", run=run_net, acquire_fidelity="NET_BUF", cost_key="F3", max_shots=1, min_s=3.0)
+STAGE_NET_PORT = Stage(level="net_port", run=run_net_port, acquire_fidelity="NET_PORT", cost_key="F3", max_shots=1, min_s=3.0)
+STAGE_PHYSICAL_CATALOG = Stage(
+    level="physical_catalog", run=run_physical_catalog, acquire_fidelity="F2_GPL_CATALOG",
+    cost_key="F2_GPL", max_shots=1, min_s=8.0,
+)
