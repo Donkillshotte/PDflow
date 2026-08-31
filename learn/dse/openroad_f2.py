@@ -407,9 +407,12 @@ read_sdc {sdc_path}
 set _blk [ord::get_db_block]
 if {{$_blk != "NULL"}} {{
   foreach _net [$_blk getNets] {{
-    set _sig [[$_net getSigType] getString]
+    set _sig [$_net getSigType]
+    if {{[catch {{set _sig [$_sig getString]}}]}} {{
+      # already a string (SIGNAL/POWER/GROUND)
+    }}
     if {{$_sig eq "POWER" || $_sig eq "GROUND"}} {{
-      $_net setSpecial
+      catch {{$_net setSpecial}}
     }}
   }}
 }}
