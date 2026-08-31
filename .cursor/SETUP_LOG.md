@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:18Z — PLAN Fase 2 C3: IR-cell family
+
+`STAGES_IR_CELL`: size → extract → PDN → region → region PDN. Hosts stay
+attribution. `controller.py` 4633 → 4399. `test_dse.py` ALL PASSED (~258 s);
+DirectLU 6.075 + `sta_t50`. Gold unrestamped.
+
 ## 2026-08-31T20:20Z — PLAN Fase 2 C2: IR steer slice
 
 ir_steer / host_ir_steer / f4_scale_win → `STAGES_IR_STEER`. While-loop
