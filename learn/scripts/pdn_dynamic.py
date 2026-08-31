@@ -86,6 +86,7 @@ from pdn_extract import (  # noqa: E402
     estimate_rail_overlap_c,
     merge_c_triplets,
 )
+from heavy_analysis import check_large_mesh  # noqa: E402
 from pdn_solvers import (  # noqa: E402
     DirectLU,
     RASDD,
@@ -1675,6 +1676,11 @@ def main() -> int:
 
     ext = extract_pdn(args.spice, lef=args.lef, spef=args.spef)
     extract_report = summarize_extract(ext)
+    n_r = int(ext.get("n_r") or len(ext.get("resistors") or []))
+    heavy_msg = check_large_mesh(n_r, kind="dynamic IR mesh")
+    if heavy_msg:
+        print(heavy_msg, file=sys.stderr)
+        return 2
     resistors, currents, voltages = ext["resistors"], ext["currents"], ext["voltages"]
     order, idx, G = build_system(resistors, currents, voltages)
     vdd = args.vdd or next(iter(voltages.values()))

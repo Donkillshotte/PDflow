@@ -13,8 +13,11 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 if str(_ROOT / "learn") not in sys.path:
     sys.path.insert(0, str(_ROOT / "learn"))
+if str(_ROOT / "learn" / "scripts") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "learn" / "scripts"))
 
 from dse.controller import run_controller  # noqa: E402
+from heavy_analysis import require_heavy  # noqa: E402
 
 
 def main() -> int:
@@ -29,6 +32,9 @@ def main() -> int:
         help="wipe the JSONL design memory before this run (default is resume)",
     )
     args = ap.parse_args()
+    rtl_name = str(args.rtl or os.environ.get("DESIGN_ID") or "").lower()
+    if "aes" in rtl_name:
+        require_heavy("DSE on AES (not GCD FlowLab)")
     report = run_controller(
         variant=args.variant,
         budget_s=args.budget_s,

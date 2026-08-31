@@ -15,7 +15,9 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "learn"))
+sys.path.insert(0, str(REPO / "learn" / "scripts"))
 
+from heavy_analysis import require_heavy  # noqa: E402
 from dse.designs import resolve  # noqa: E402
 from dse.fidelity import (  # noqa: E402
     ensure_mapped_netlist,
@@ -40,6 +42,7 @@ def _reuse(mem: DesignMemory, level: str, **want) -> object | None:
 
 
 def main() -> int:
+    require_heavy("AES F1–F3/GPL slice")
     spec = resolve("aes")
     mem_path = REPO / "learn" / "sim" / "dse" / "memory_aes.jsonl"
     mem = DesignMemory(mem_path)

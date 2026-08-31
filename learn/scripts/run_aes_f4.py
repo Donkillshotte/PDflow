@@ -13,7 +13,9 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "learn"))
+sys.path.insert(0, str(REPO / "learn" / "scripts"))
 
+from heavy_analysis import require_heavy  # noqa: E402
 from dse.attribute import inspect_f4  # noqa: E402
 from dse.designs import resolve  # noqa: E402
 from dse.f4_oracle import solve_f4  # noqa: E402
@@ -35,6 +37,7 @@ def _f1(mem: DesignMemory):
 
 
 def main() -> int:
+    require_heavy("AES F4 extract / Krylov on a large spice mesh")
     spec = resolve("aes")
     mem_path = REPO / "learn" / "sim" / "dse" / "memory_aes.jsonl"
     mem = DesignMemory(mem_path)

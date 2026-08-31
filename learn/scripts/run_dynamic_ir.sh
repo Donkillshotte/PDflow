@@ -24,6 +24,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${ROOT}/learn/lib/power_vcd.sh"
+source "${ROOT}/scripts/lib/heavy_analysis.sh"
 export PYTHONPATH="/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
 
 VARIANT="${FLOW_VARIANT:-flowlab}"
@@ -57,6 +58,14 @@ STAMP="${RES}/.dynamic_ir.ok"
 [[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB} — esegui finish (variant=${VARIANT})"; exit 1; }
 mkdir -p "${OUT_DIR}" "${RES}/pdn"
 : > "${LOG}"
+
+if [[ -f "${SPICE}" ]]; then
+  n_r="$(grep -cE '^[Rr]' "${SPICE}" || true)"
+  n_r="${n_r:-0}"
+  if [[ "${n_r}" -gt 20000 ]]; then
+    require_heavy_analysis "dynamic IR spice n_r=${n_r} > 20000" | tee -a "${LOG}" || exit 2
+  fi
+fi
 
 if [[ ! -f "${ROOT}/engine/build/libdpn.so" ]]; then
   echo "=== build libdpn ===" | tee -a "${LOG}"
