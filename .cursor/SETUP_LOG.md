@@ -3,6 +3,18 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T19:30Z — PLAN Fase 2 scritto (non eseguito)
+
+`PLAN.md` sostituito: Fase 1 (0–6) archiviata su `ca47126`. Fase 2 è il
+piano eseguibile per i buchi rimasti, misurati sul tree (controller 4920,
+66 `should_pay_*`, `test_dse` 4925, scenario stamp-only, gated non-picker).
+
+Ordine: A scenario→I(t) · E etichette 6.075 vs 45.298 · B `prefer_gated` +
+Studio · C1–C7 strangler coda IR · D split test (dopo C). Fuori: DesignState,
+AES full/CTS/Krylov, CCS, gold restamp, flatten F1 teacher, gated su F1→F2.
+
+Nessun codice runtime toccato. Nessun `test_dse` in questo passo.
+
 ## 2026-08-31T17:56Z — PLAN passo 6: CurrentScenario
 
 `learn/dse/current_scenario.py`: named I(t) source. Triangle remains default.
