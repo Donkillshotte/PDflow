@@ -175,7 +175,7 @@ from .fingerprint import knobs_fp
 from .layers import adapter_status
 from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
-from .metrics import QoR, pareto_front
+from .metrics import QoR, pareto_front, qor_delta
 from .mo import baseline_wns, timing_of
 from .pdn_space import GOLD_KNOBS, next_pdn_spec
 from .physical_space import gpl_density, next_catalog_spec, propose_physical_f0, propose_synthesis_f0
@@ -4979,6 +4979,7 @@ def _best_area(mem: DesignMemory, level: str) -> float | None:
 
 
 def _attach_delta(cand, mem: DesignMemory) -> None:
+    """Stamp attr.delta_vs_baseline (vs liberty_default). Does not touch Candidate.delta (vs parent)."""
     base = next(
         (
             c
@@ -4989,9 +4990,9 @@ def _attach_delta(cand, mem: DesignMemory) -> None:
     )
     if base and cand.qor.area_um2 is not None:
         cand.attr = dict(cand.attr or {})
-        cand.attr["delta"] = {
+        cand.attr["delta_vs_baseline"] = {
+            **qor_delta(cand.qor, base.qor),
             "vs": base.id,
-            "area_um2": float(cand.qor.area_um2) - float(base.qor.area_um2),
             "note": "transform+context → Δarea vs liberty_default (same chip, different RTL extract)",
         }
 

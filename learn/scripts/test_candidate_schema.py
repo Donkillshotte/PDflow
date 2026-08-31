@@ -20,7 +20,7 @@ if str(_ROOT / "learn" / "scripts") not in sys.path:
 from dse.f4_oracle import solve_f4, solver_devices
 from dse.fingerprint import knobs_fp
 from dse.memory import Candidate, DesignMemory
-from dse.metrics import QoR, qor_delta
+from dse.metrics import QoR, baseline_delta_of, qor_delta
 from dse.resources import admit_solve
 from dse.solve_result import (
     ACTIVITY_ABSENT,
@@ -94,6 +94,52 @@ def main() -> int:
     })
     legacy = Candidate.from_dict(json.loads(raw))
     check(legacy.delta == {}, "pre-delta JSONL loads with empty delta")
+
+    # --- baseline-delta vs parent-delta: qor_delta payload, Candidate.delta untouched ---
+    from dse.controller import _attach_delta
+
+    check(baseline_delta_of({"delta": {"vs": "old", "area_um2": 1.5}}).get("area_um2") == 1.5,
+          "dual-read historical attr.delta")
+    check(baseline_delta_of({"delta_vs_baseline": {"area_um2": -2.0}, "delta": {"area_um2": 9.0}}).get("area_um2") == -2.0,
+          "prefers delta_vs_baseline over historical delta")
+    check(baseline_delta_of({}) == {}, "empty attr has no baseline delta")
+
+    tmpb = Path(tempfile.mkdtemp(prefix="dse-schema-base-")) / "m.jsonl"
+    memb = DesignMemory(tmpb)
+    base = memb.add(_cand(
+        id="libdef",
+        level="logic",
+        knobs={"name": "liberty_default"},
+        knobs_fp=knobs_fp("logic", {"name": "liberty_default"}),
+        fidelity="F1",
+        qor=QoR(area_um2=100.0, n_cells=10.0, fidelity="F1"),
+        parent_id=None,
+    ))
+    parent = memb.add(_cand(
+        id="parent_arch",
+        level="architecture",
+        fidelity="F1",
+        qor=QoR(area_um2=90.0, fidelity="F1"),
+        parent_id=base.id,
+    ))
+    child = memb.add(_cand(
+        id="extract1",
+        level="architecture",
+        parent_id=parent.id,
+        fidelity="F1",
+        qor=QoR(area_um2=95.0, n_cells=12.0, fidelity="F1"),
+        attr={"transform": "lt"},
+    ))
+    parent_delta_before = dict(child.delta)
+    _attach_delta(child, memb)
+    vs_base = qor_delta(child.qor, base.qor)
+    bd = (child.attr or {}).get("delta_vs_baseline") or {}
+    check(bd.get("vs") == base.id, f"baseline vs liberty_default id, got {bd.get('vs')}")
+    check(abs(float(bd.get("area_um2")) - vs_base["area_um2"]) < 1e-12, "baseline area uses qor_delta")
+    check(abs(float(bd.get("n_cells")) - 2.0) < 1e-12, "baseline n_cells from qor_delta, not area-only")
+    check("delta" not in (child.attr or {}), "new rows do not write attr.delta")
+    check(child.delta == parent_delta_before, "Candidate.delta (vs parent) is not overwritten")
+    check(baseline_delta_of(child.attr).get("area_um2") == bd.get("area_um2"), "helper reads new key")
 
     # --- activity_status ---
     check(activity_status_of(None) == ACTIVITY_ABSENT, "no t50 is ABSENT")

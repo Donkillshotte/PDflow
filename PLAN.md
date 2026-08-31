@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 completato. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -51,7 +51,7 @@ PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_actions.py
 
 ---
 
-## Passo 1 — Riconciliare i due «delta» (piccolo)
+## Passo 1 — Riconciliare i due «delta» (piccolo) ✅
 
 **Problema.** `Candidate.delta` è vs **parent**; `controller._attach_delta`
 scrive `attr["delta"]` vs **liberty_default** (baseline). Stesso nome,

@@ -68,6 +68,20 @@ def qor_delta(child: QoR, parent: QoR | None) -> dict[str, float]:
     return out
 
 
+def baseline_delta_of(attr: dict | None) -> dict:
+    """QoR vs liberty_default stored on ``Candidate.attr``.
+
+    New rows use ``delta_vs_baseline``. Historical JSONL used ``delta``
+    for the same payload. ``Candidate.delta`` is a different field (vs parent)
+    and is never read here.
+    """
+    a = attr or {}
+    payload = a.get("delta_vs_baseline")
+    if payload is None:
+        payload = a.get("delta")
+    return dict(payload) if isinstance(payload, dict) else {}
+
+
 def dominates(a: QoR, b: QoR) -> bool:
     """a dominates b iff a is ≤ on all comparable axes and < on at least one.
 

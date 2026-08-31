@@ -3,6 +3,22 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T17:00Z — PLAN passo 1: delta_vs_baseline
+
+Reconcile `Candidate.delta` (vs parent) vs attr baseline-delta (vs liberty_default). No AES Krylov. 73k-R / 6.954 untouched. Gold 45.298 unrestamped.
+
+| Item | Result |
+|---|---|
+| Writer | `controller._attach_delta` writes `attr.delta_vs_baseline` via `qor_delta` |
+| Dual-read | `metrics.baseline_delta_of` prefers new key, falls back to historical `attr.delta` |
+| `Candidate.delta` | unchanged (vs parent); schema test asserts it is not overwritten |
+| Studio | no `attr.delta` readers |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
+| `test_heavy_analysis.py` | HEAVY_GUARD_OK |
+| `test_designs.py` | ALL PASSED |
+| `test_frame.py` / `test_dispatch.py` / `test_actions.py` | ALL PASSED |
+| `test_dse.py` | ALL PASSED (~260 s); DirectLU 6.075, Krylov 6.092; current finish ≠ 45.298 |
+
 ## 2026-08-31T16:40Z — Candidate schema + SolveResult (no DesignState type)
 
 Harden existing `Candidate` + F4 contract. No parallel DesignState. No AES Krylov. 73k-R / 6.954 untouched.
