@@ -3,6 +3,15 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T20:50Z — PLAN Fase 2 D.1 + chiusura
+
+`test_dse_metrics.py` (dominates / gated / HV / EHVI, 15 `ok`).
+`test_dse.py` resta l’entrypoint. Stesso conteggio 994 `ok`.
+`test_dse.py` ALL PASSED (~261 s); DirectLU 6.075 + `sta_t50`. Gold unrestamped.
+AES `febe6804241c` n_r=73139 static 6.954 intatto. `controller.py` 3115:
+ingest/F1 teacher → slice → C1–C6 → `run_next_refine` → C7 → report.
+Nessun `DesignState`. Fase 2 chiusa.
+
 ## 2026-08-31T20:44Z — PLAN Fase 2 C7: champ solvers + static/EM
 
 `STAGES_IR_SOLVERS` after `run_next_refine`. AMG/RAS/Krylov-champ + static
