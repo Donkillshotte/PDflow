@@ -187,6 +187,16 @@ from .stages import (
     STAGE_F3_SDF,
     STAGE_F3_SPEF,
     STAGE_F3_STA,
+    STAGE_F4_ACTIVITY,
+    STAGE_F4_AMG,
+    STAGE_F4_EXTRACT,
+    STAGE_F4_HOST_EXTRACT,
+    STAGE_F4_HOST_REGION,
+    STAGE_F4_KRYLOV,
+    STAGE_F4_PDN,
+    STAGE_F4_RAS,
+    STAGE_F4_REGION_EXTRACT,
+    STAGE_F4_SCALE,
     STAGE_F5_CTS,
     STAGE_F5_DRT,
     STAGE_F5_LOCAL,
@@ -962,6 +972,20 @@ def run_controller(
         "attr": attr,
         "time_candidate": time_candidate,
         "f1_max": f1_max,
+        "variant": variant,
+        "admit_paid_f4": admit_paid_f4,
+        "evaluate_f4_extract": evaluate_f4_extract,
+        "evaluate_f4_pdn": evaluate_f4_pdn,
+        "evaluate_f4_scale": evaluate_f4_scale,
+        "evaluate_host_arrivals": evaluate_host_arrivals,
+        "GOLD_KNOBS": GOLD_KNOBS,
+        "latest_ok_extract": latest_ok_extract,
+        "latest_ok_host_extract": latest_ok_host_extract,
+        "latest_host_arrivals": latest_host_arrivals,
+        "latest_host_extract_cand": latest_host_extract_cand,
+        "iscale_host": iscale_host,
+        "timing_of": timing_of,
+        "next_pdn_spec": next_pdn_spec,
     }
     run_stage(STAGE_SYNTHESIS, _stage_ctx)
     run_stage(STAGE_CELL, _stage_ctx)
@@ -1112,493 +1136,16 @@ def run_controller(
                     status=child.status,
                 )
 
-    n_ext = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_candidate_extract" and c.status == "ok"
-    )
-    pay_ext, why_ext = should_pay_f4_extract(
-        mem, budget_left=t_end - time.time(), n_extract=n_ext
-    )
-    step("acquire", fidelity="F4_EXTRACT", pay=pay_ext, why=why_ext)
-    if any(s["level"] == "f4_extract" for s in plan["steps"]) and pay_ext and time.time() < t_end:
-        prefer = []
-        base_p_ext = None
-        for c in mem.by_level("logic"):
-            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
-                _w, p = timing_of(mem, c)
-                if p:
-                    base_p_ext = p
-                    break
-        if base_p_ext:
-            for cand in (f1_wns_winner(mem), f1_area_winner(mem), *f1_ok(mem)):
-                if cand is None:
-                    continue
-                _w, p = timing_of(mem, cand)
-                if p is None or abs(float(p) / float(base_p_ext) - 1.0) < 0.03:
-                    continue
-                prefer.append(cand)
-                break
-        pick = _mapped_pick(
-            prefer + [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
-            rtl=rtl,
-            liberty=lib,
-            top=top,
-        )
-        if pick:
-            mem.touch(pick)
-            params = flowlab_params()
-            util_e = float(params.get("coreUtilization") or 35.0)
-            den_e = gpl_density(util_e, params.get("placeDensityAddon") or 0.2)
-            child = evaluate_f4_extract(
-                pick,
-                mem,
-                design_id=design_id,
-                variant=variant,
-                util=util_e,
-                density=den_e,
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_candidate_extract",
-                    parent=pick.id,
-                    n_r=(child.artifacts or {}).get("n_r"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    em_j=(child.qor.em_j_a_m2),
-                    gold=False,
-                    status=child.status,
-                )
-
-    n_reg_ext = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_region_extract" and c.status == "ok"
-    )
-    pay_rext, why_rext = should_pay_f4_region_extract(
-        mem,
-        budget_left=t_end - time.time(),
-        n_extract=n_reg_ext,
-        region=attr.get("region"),
-        x_dbu=attr.get("x_dbu"),
-        y_dbu=attr.get("y_dbu"),
-    )
-    step("acquire", fidelity="F4_REGION_EXTRACT", pay=pay_rext, why=why_rext)
-    if any(s["level"] == "f4_region_extract" for s in plan["steps"]) and pay_rext and time.time() < t_end:
-        pick = _mapped_pick(
-            [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
-            rtl=rtl,
-            liberty=lib,
-            top=top,
-        )
-        if pick:
-            mem.touch(pick)
-            params = flowlab_params()
-            util_e = float(params.get("coreUtilization") or 35.0)
-            den_e = gpl_density(util_e, params.get("placeDensityAddon") or 0.2)
-            child = evaluate_f4_extract(
-                pick,
-                mem,
-                design_id=design_id,
-                variant=variant,
-                util=util_e,
-                density=den_e,
-                region=attr.get("region"),
-                x_dbu=attr.get("x_dbu"),
-                y_dbu=attr.get("y_dbu"),
-                region_density=0.30,
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_region_extract",
-                    parent=pick.id,
-                    region=attr.get("region"),
-                    region_bin=(child.artifacts or {}).get("region_bin"),
-                    n_r=(child.artifacts or {}).get("n_r"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    gold=False,
-                    status=child.status,
-                )
-
-    ext_hit = latest_ok_extract(mem)
-    extract_id = str(ext_hit["extract_id"]) if ext_hit else "finish"
-    n_pdn_f4 = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_solver_a"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
-    )
-    pay_pdn, why_pdn = should_pay_f4_pdn(
-        mem,
-        budget_left=t_end - time.time(),
-        n_pdn=n_pdn_f4,
-        variant=variant,
-        extract_id=extract_id,
-    )
-    step("acquire", fidelity="F4_PDN", pay=pay_pdn, why=why_pdn)
-    spec_pdn = next_pdn_spec(mem, extract_id=extract_id) if pay_pdn else None
-    if spec_pdn and time.time() < t_end:
-        ingest = next(
-            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
-            None,
-        )
-        child = evaluate_f4_pdn(
-            mem,
-            spec_pdn,
-            variant=variant,
-            design_id=design_id,
-            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
-            spice=ext_hit["spice"] if ext_hit else None,
-            insts=ext_hit["insts"] if ext_hit else None,
-            extract_id=extract_id,
-            sta=ext_hit.get("sta") if ext_hit else None,
-        )
-        if child:
-            step(
-                "evaluate",
-                id=child.id,
-                level="pdn",
-                fidelity="F4",
-                via="f4_solver_a",
-                catalog=spec_pdn.get("name"),
-                extract_id=extract_id,
-                droop_mv=child.qor.dynamic_ir_mv,
-                em_j=child.qor.em_j_a_m2,
-                gold=False,
-                status=child.status,
-            )
-
-    n_amg = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_solver_amg"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
-    )
-    pay_amg, why_amg = should_pay_f4_amg(
-        mem,
-        budget_left=t_end - time.time(),
-        n_amg=n_amg,
-        variant=variant,
-        extract_id=extract_id,
-    )
-    step("acquire", fidelity="F4_AMG", pay=pay_amg, why=why_amg)
-    if any(s["level"] == "f4_amg" for s in plan["steps"]) and pay_amg and time.time() < t_end:
-        ingest = next(
-            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
-            None,
-        )
-        child = evaluate_f4_pdn(
-            mem,
-            {"name": "amg_residual", **GOLD_KNOBS},
-            variant=variant,
-            design_id=design_id,
-            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
-            spice=ext_hit["spice"] if ext_hit else None,
-            insts=ext_hit["insts"] if ext_hit else None,
-            extract_id=extract_id,
-            solver="amg",
-            sta=ext_hit.get("sta") if ext_hit else None,
-        )
-        if child:
-            step(
-                "evaluate",
-                id=child.id,
-                level="pdn",
-                fidelity="F4",
-                via="f4_solver_amg",
-                extract_id=extract_id,
-                droop_mv=child.qor.dynamic_ir_mv,
-                em_j=child.qor.em_j_a_m2,
-                gold=False,
-                status=child.status,
-                reason="mf-amg-residual-vs-direct",
-            )
-
-    n_ras = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_solver_ras"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
-    )
-    pay_ras, why_ras = should_pay_f4_ras(
-        mem,
-        budget_left=t_end - time.time(),
-        n_ras=n_ras,
-        variant=variant,
-        extract_id=extract_id,
-    )
-    step("acquire", fidelity="F4_RAS", pay=pay_ras, why=why_ras)
-    if any(s["level"] == "f4_ras" for s in plan["steps"]) and pay_ras and time.time() < t_end:
-        ingest = next(
-            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
-            None,
-        )
-        child = evaluate_f4_pdn(
-            mem,
-            {"name": "ras_residual", **GOLD_KNOBS},
-            variant=variant,
-            design_id=design_id,
-            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
-            spice=ext_hit["spice"] if ext_hit else None,
-            insts=ext_hit["insts"] if ext_hit else None,
-            extract_id=extract_id,
-            solver="ras",
-            sta=ext_hit.get("sta") if ext_hit else None,
-        )
-        if child:
-            step(
-                "evaluate",
-                id=child.id,
-                level="pdn",
-                fidelity="F4",
-                via="f4_solver_ras",
-                extract_id=extract_id,
-                droop_mv=child.qor.dynamic_ir_mv,
-                em_j=child.qor.em_j_a_m2,
-                gold=False,
-                status=child.status,
-                reason="mf-ras-residual-vs-direct",
-            )
-
-    n_krylov = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_solver_krylov"
-        and c.status == "ok"
-        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
-    )
-    pay_kry, why_kry = should_pay_f4_krylov(
-        mem,
-        budget_left=t_end - time.time(),
-        n_krylov=n_krylov,
-        variant=variant,
-        extract_id=extract_id,
-    )
-    step("acquire", fidelity="F4_KRYLOV", pay=pay_kry, why=why_kry)
-    if any(s["level"] == "f4_krylov" for s in plan["steps"]) and pay_kry and time.time() < t_end:
-        ingest = next(
-            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
-            None,
-        )
-        child = evaluate_f4_pdn(
-            mem,
-            {"name": "krylov_residual", **GOLD_KNOBS},
-            variant=variant,
-            design_id=design_id,
-            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
-            spice=ext_hit["spice"] if ext_hit else None,
-            insts=ext_hit["insts"] if ext_hit else None,
-            extract_id=extract_id,
-            solver="krylov",
-            sta=ext_hit.get("sta") if ext_hit else None,
-        )
-        if child:
-            step(
-                "evaluate",
-                id=child.id,
-                level="pdn",
-                fidelity="F4",
-                via="f4_solver_krylov",
-                extract_id=extract_id,
-                droop_mv=child.qor.dynamic_ir_mv,
-                em_j=child.qor.em_j_a_m2,
-                gold=False,
-                status=child.status,
-                m=(child.artifacts or {}).get("m"),
-                reason="mf-krylov-mor-residual-vs-direct",
-            )
-
-    n_arr = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_host_arrivals" and c.status == "ok"
-    )
-    pay_arr, why_arr = should_pay_host_arrivals(
-        mem, budget_left=t_end - time.time(), n_arr=n_arr
-    )
-    step("acquire", fidelity="F3_HOST_ARRIVALS", pay=pay_arr, why=why_arr)
-    if any(s["level"] == "f4_activity" for s in plan["steps"]) and pay_arr and time.time() < t_end:
-        host_arr = iscale_host(mem)
-        if host_arr:
-            child = evaluate_host_arrivals(host_arr, mem, design_id=design_id)
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F3",
-                    via="f4_host_arrivals",
-                    parent=host_arr.id,
-                    host_source=(host_arr.knobs or {}).get("source") or host_arr.level,
-                    n_inst=(child.artifacts or {}).get("n_inst"),
-                    status=child.status,
-                    reason=why_arr,
-                )
-
-    n_host_ext = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_host_extract" and c.status == "ok"
-    )
-    pay_he, why_he = should_pay_f4_host_extract(
-        mem, budget_left=t_end - time.time(), n_extract=n_host_ext
-    )
-    step("acquire", fidelity="F4_HOST_EXTRACT", pay=pay_he, why=why_he)
-    if any(s["level"] == "f4_host_extract" for s in plan["steps"]) and pay_he and time.time() < t_end:
-        host_ex = iscale_host(mem)
-        if host_ex and (host_ex.artifacts or {}).get("mapped_v"):
-            params = flowlab_params()
-            util_h = float(params.get("coreUtilization") or 35.0)
-            den_h = gpl_density(util_h, params.get("placeDensityAddon") or 0.2)
-            arr_hit = latest_host_arrivals(mem)
-            child = evaluate_f4_extract(
-                host_ex,
-                mem,
-                design_id=design_id,
-                variant=variant,
-                util=util_h,
-                density=den_h,
-                kind="host",
-                sta=arr_hit["sta"] if arr_hit else None,
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_host_extract",
-                    parent=host_ex.id,
-                    host_source=(host_ex.knobs or {}).get("source") or host_ex.level,
-                    n_r=(child.artifacts or {}).get("n_r"),
-                    n_sta=(child.artifacts or {}).get("n_sta_inst"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    gold=False,
-                    status=child.status,
-                    reason=why_he,
-                )
-
-    n_hre = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_host_region_extract" and c.status == "ok"
-    )
-    pay_hre, why_hre = should_pay_f4_host_region(
-        mem, budget_left=t_end - time.time(), n_extract=n_hre
-    )
-    step("acquire", fidelity="F4_HOST_REGION", pay=pay_hre, why=why_hre)
-    if any(s["level"] == "f4_host_region" for s in plan["steps"]) and pay_hre and time.time() < t_end:
-        host_rg = iscale_host(mem)
-        host_ext_c = latest_host_extract_cand(mem)
-        hattr = (host_ext_c.attr or {}) if host_ext_c else {}
-        if host_rg and (host_rg.artifacts or {}).get("mapped_v") and (
-            hattr.get("region") or hattr.get("x_dbu") is not None
-        ):
-            params = flowlab_params()
-            util_hr = float(params.get("coreUtilization") or 35.0)
-            den_hr = gpl_density(util_hr, params.get("placeDensityAddon") or 0.2)
-            arr_hr = latest_host_arrivals(mem)
-            child = evaluate_f4_extract(
-                host_rg,
-                mem,
-                design_id=design_id,
-                variant=variant,
-                util=util_hr,
-                density=den_hr,
-                kind="host_region",
-                region=hattr.get("region"),
-                x_dbu=hattr.get("x_dbu"),
-                y_dbu=hattr.get("y_dbu"),
-                region_density=0.30,
-                sta=arr_hr["sta"] if arr_hr else None,
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_host_region_extract",
-                    parent=host_rg.id,
-                    host_source=(host_rg.knobs or {}).get("source") or host_rg.level,
-                    region=hattr.get("region"),
-                    region_bin=(child.artifacts or {}).get("region_bin"),
-                    n_r=(child.artifacts or {}).get("n_r"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    gold=False,
-                    status=child.status,
-                    reason=why_hre,
-                )
-
-    n_scale = sum(
-        1
-        for c in mem.by_level("pdn")
-        if (c.knobs or {}).get("source") == "f4_iscale" and c.status == "ok"
-    )
-    pay_sc, why_sc = should_pay_f4_scale(
-        mem, budget_left=t_end - time.time(), n_scale=n_scale, variant=variant
-    )
-    step("acquire", fidelity="F4_ISCALE", pay=pay_sc, why=why_sc)
-    if pay_sc and time.time() < t_end:
-        base_p = None
-        for c in mem.by_level("logic"):
-            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
-                _w, p = timing_of(mem, c)
-                if p:
-                    base_p = p
-                    break
-        pick = iscale_host(mem)
-        if pick and base_p:
-            host_hit = latest_ok_host_extract(mem)
-            mesh = host_hit or ext_hit
-            use_ext = bool(mesh)
-            arr_hit = latest_host_arrivals(mem)
-            sta = arr_hit["sta"] if arr_hit else (mesh.get("sta") if mesh else None)
-            sta_via = (
-                "f4_host_arrivals"
-                if arr_hit
-                else ("f4_host_extract" if host_hit else ("extract" if ext_hit else None))
-            )
-            child = evaluate_f4_scale(
-                pick,
-                mem,
-                variant=variant,
-                design_id=design_id,
-                baseline_power_w=base_p,
-                spice=mesh["spice"] if use_ext else None,
-                insts=mesh["insts"] if use_ext else None,
-                extract_id=str(mesh["extract_id"]) if use_ext else "finish",
-                sta=sta,
-                sta_via=sta_via,
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="pdn",
-                    fidelity="F4",
-                    via="f4_iscale",
-                    parent=pick.id,
-                    host_level=pick.level,
-                    host_source=(pick.knobs or {}).get("source") or pick.level,
-                    i_scale=(child.knobs or {}).get("i_scale"),
-                    extract_id=(child.knobs or {}).get("extract_id"),
-                    sta_via=(child.knobs or {}).get("sta_via"),
-                    droop_mv=child.qor.dynamic_ir_mv,
-                    em_j=child.qor.em_j_a_m2,
-                    gold=False,
-                    status=child.status,
-                )
+    run_stage(STAGE_F4_EXTRACT, _stage_ctx)
+    run_stage(STAGE_F4_REGION_EXTRACT, _stage_ctx)
+    run_stage(STAGE_F4_PDN, _stage_ctx)
+    run_stage(STAGE_F4_AMG, _stage_ctx)
+    run_stage(STAGE_F4_RAS, _stage_ctx)
+    run_stage(STAGE_F4_KRYLOV, _stage_ctx)
+    run_stage(STAGE_F4_ACTIVITY, _stage_ctx)
+    run_stage(STAGE_F4_HOST_EXTRACT, _stage_ctx)
+    run_stage(STAGE_F4_HOST_REGION, _stage_ctx)
+    run_stage(STAGE_F4_SCALE, _stage_ctx)
 
     planned_ir = any(s["level"] == "ir_steer" for s in plan["steps"])
     while planned_ir and time.time() < t_end:

@@ -3,6 +3,17 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T18:55Z — PLAN passo 3d: F4 stages + needs_admit
+
+Strangler: F4 extract / region extract / PDN catalog / AMG / RAS / Krylov / host arrivals / host extract / host region / I-scale moved to `stages.py`. `Stage.needs_admit=True` → `_pay_and_maybe_eval` calls `admit_paid_f4` before evaluate. Evaluate still uses controller wrappers (stamp SolveResult, no JSONL restamp of live memory). Champ/static/EM stay inlined (steer-special). `controller.py` 5432 → 4979 (−453). No AES Krylov. Gold unrestamped.
+
+| Item | Result |
+|---|---|
+| `needs_admit` | F4 extract/PDN/solvers/host/scale |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including 3d names |
+| `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
+| `test_dse.py` | re-run after this commit |
+
 ## 2026-08-31T18:40Z — PLAN passo 3c: cell / net / synthesis / physical-catalog
 
 Strangler: `synthesis`, `cell`, `net`, `net_port`, `physical_catalog` moved to `learn/dse/stages.py`. Order unchanged: synth/cell/net/net_port still run before F2; physical F0 propose + catalog GPL still after port_steer. Catalog keeps `require_plan=False`. `controller.py` 5661 → 5432 (−229). No AES Krylov. Gold unrestamped.
@@ -24,7 +35,7 @@ Strangler: GRT, F5-DRT, F3-SPEF, F5-CTS, F5-local, F5-port moved to `learn/dse/s
 | Order | GRT still between STA and SDF |
 | `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including 3b names |
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
-| `test_dse.py` | re-run after this commit |
+| `test_dse.py` | ALL PASSED (~266 s); DirectLU 6.075 ≠ 45.298 |
 
 ## 2026-08-31T18:00Z — PLAN passo 4: empirical p75 cost model
 
@@ -37,7 +48,7 @@ Strangler: GRT, F5-DRT, F3-SPEF, F5-CTS, F5-local, F5-port moved to `learn/dse/s
 | `COST_HINT` | kept as declared fallback, not deleted |
 | `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
-| `test_dse.py` | re-run after this commit |
+| `test_dse.py` | ALL PASSED (~273 s); DirectLU 6.075 ≠ 45.298 |
 
 ## 2026-08-31T17:40Z — PLAN passo 3a: stages.py + f2_fast / f2_gpl / f3_sta / f3_sdf
 

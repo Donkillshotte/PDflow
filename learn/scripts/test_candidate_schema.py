@@ -275,6 +275,9 @@ def main() -> int:
     from dse.stages import STAGE_CELL, STAGE_NET, STAGE_PHYSICAL_CATALOG, STAGE_SYNTHESIS
     check(STAGE_SYNTHESIS.level == "synthesis" and STAGE_CELL.level == "cell", "3c synth/cell names")
     check(STAGE_NET.level == "net" and STAGE_PHYSICAL_CATALOG.level == "physical_catalog", "3c net/catalog names")
+    from dse.stages import STAGE_F4_EXTRACT, STAGE_F4_KRYLOV, STAGE_F4_PDN, STAGE_F4_SCALE
+    check(STAGE_F4_EXTRACT.needs_admit and STAGE_F4_KRYLOV.needs_admit, "3d F4 stages need admit")
+    check(STAGE_F4_PDN.level == "pdn" and STAGE_F4_SCALE.level == "f4_scale", "3d pdn/scale names")
 
     from dse.costs import estimated_cost_s, p75
     from dse.fidelity import COST_HINT

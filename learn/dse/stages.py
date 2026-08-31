@@ -51,8 +51,14 @@ class Stage:
 
 
 def run_stage(stage: Stage, ctx: dict[str, Any]) -> bool:
-    """Pay at most this stage. ``stage.run`` owns should_pay + evaluate."""
-    return bool(stage.run(ctx))
+    """Pay at most this stage. ``stage.run`` owns should_pay + evaluate.
+
+    F4 stages set ``needs_admit=True``; ``_pay_and_maybe_eval`` then calls
+    ``ctx["admit_paid_f4"]`` before evaluate (passo 3d / passo 2).
+    """
+    bound = dict(ctx)
+    bound["_stage"] = stage
+    return bool(stage.run(bound))
 
 
 def _pay_and_maybe_eval(
@@ -89,6 +95,24 @@ def _pay_and_maybe_eval(
         )
         if time.time() + est > t_end:
             return False
+    stage = ctx.get("_stage")
+    if stage is not None and getattr(stage, "needs_admit", False):
+        admit = ctx.get("admit_paid_f4")
+        if callable(admit):
+            gate = admit(
+                mem,
+                solver=ctx.get("admit_solver") or "direct",
+                n_r=ctx.get("admit_n_r"),
+                n_nodes=ctx.get("admit_n_nodes"),
+                extract_id=ctx.get("admit_extract_id"),
+                extract_hit=ctx.get("admit_extract_hit"),
+                spice=ctx.get("admit_spice"),
+                step=step,
+                variant=ctx.get("variant") or "flowlab",
+                design_id=ctx["design_id"],
+            )
+            if not gate.get("admitted"):
+                return False
     return evaluate()
 
 
@@ -887,6 +911,610 @@ def run_physical_catalog(ctx: dict) -> bool:
     )
 
 
+def _latest_extract(ctx: dict):
+    mem = ctx["mem"]
+    hit = ctx["latest_ok_extract"](mem)
+    extract_id = str(hit["extract_id"]) if hit else "finish"
+    return hit, extract_id
+
+
+def _set_admit(ctx: dict, *, solver: str, extract_id: str | None = None, extract_hit=None, spice=None, n_r=None):
+    ctx["admit_solver"] = solver
+    ctx["admit_extract_id"] = extract_id
+    ctx["admit_extract_hit"] = extract_hit
+    ctx["admit_spice"] = spice
+    ctx["admit_n_r"] = n_r
+    if extract_hit and n_r is None:
+        cand = extract_hit.get("candidate") if isinstance(extract_hit, dict) else None
+        art = (cand.artifacts if cand is not None else {}) or {}
+        if art.get("n_r") is not None:
+            ctx["admit_n_r"] = int(art["n_r"])
+        elif extract_hit.get("n_r") is not None:
+            ctx["admit_n_r"] = int(extract_hit["n_r"])
+
+
+def run_f4_extract(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_extract
+
+    mem = ctx["mem"]
+    n_ext = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_candidate_extract" and c.status == "ok"
+    )
+    pay, why = should_pay_f4_extract(
+        mem, budget_left=ctx["t_end"] - time.time(), n_extract=n_ext
+    )
+    _set_admit(ctx, solver="direct")
+
+    def _eval() -> bool:
+        prefer = []
+        base_p_ext = None
+        for c in mem.by_level("logic"):
+            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
+                _w, p = ctx["timing_of"](mem, c)
+                if p:
+                    base_p_ext = p
+                    break
+        if base_p_ext:
+            for cand in (ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem), *ctx["f1_ok"](mem)):
+                if cand is None:
+                    continue
+                _w, p = ctx["timing_of"](mem, cand)
+                if p is None or abs(float(p) / float(base_p_ext) - 1.0) < 0.03:
+                    continue
+                prefer.append(cand)
+                break
+        pick = ctx["mapped_pick"](
+            prefer + [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            top=ctx["top"],
+        )
+        if not pick:
+            return False
+        mem.touch(pick)
+        params = ctx["flowlab_params"]()
+        util_e = float(params.get("coreUtilization") or 35.0)
+        den_e = ctx["gpl_density"](util_e, params.get("placeDensityAddon") or 0.2)
+        child = ctx["evaluate_f4_extract"](
+            pick,
+            mem,
+            design_id=ctx["design_id"],
+            variant=ctx["variant"],
+            util=util_e,
+            density=den_e,
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="f4_candidate_extract",
+            parent=pick.id,
+            n_r=(child.artifacts or {}).get("n_r"),
+            droop_mv=child.qor.dynamic_ir_mv,
+            em_j=(child.qor.em_j_a_m2),
+            gold=False,
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f4_extract", acquire_fidelity="F4_EXTRACT", pay=pay, why=why, evaluate=_eval,
+        cost_key="F4_EXTRACT", fidelity="F4",
+    )
+
+
+def run_f4_region_extract(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_region_extract
+
+    mem = ctx["mem"]
+    attr = ctx.get("attr") or {}
+    n_reg_ext = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_region_extract" and c.status == "ok"
+    )
+    pay, why = should_pay_f4_region_extract(
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        n_extract=n_reg_ext,
+        region=attr.get("region"),
+        x_dbu=attr.get("x_dbu"),
+        y_dbu=attr.get("y_dbu"),
+    )
+    _set_admit(ctx, solver="direct")
+
+    def _eval() -> bool:
+        pick = ctx["mapped_pick"](
+            [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            top=ctx["top"],
+        )
+        if not pick:
+            return False
+        mem.touch(pick)
+        params = ctx["flowlab_params"]()
+        util_e = float(params.get("coreUtilization") or 35.0)
+        den_e = ctx["gpl_density"](util_e, params.get("placeDensityAddon") or 0.2)
+        child = ctx["evaluate_f4_extract"](
+            pick,
+            mem,
+            design_id=ctx["design_id"],
+            variant=ctx["variant"],
+            util=util_e,
+            density=den_e,
+            region=attr.get("region"),
+            x_dbu=attr.get("x_dbu"),
+            y_dbu=attr.get("y_dbu"),
+            region_density=0.30,
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="f4_region_extract",
+            parent=pick.id,
+            region=attr.get("region"),
+            region_bin=(child.artifacts or {}).get("region_bin"),
+            n_r=(child.artifacts or {}).get("n_r"),
+            droop_mv=child.qor.dynamic_ir_mv,
+            gold=False,
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f4_region_extract", acquire_fidelity="F4_REGION_EXTRACT", pay=pay, why=why,
+        evaluate=_eval, cost_key="F4_EXTRACT", fidelity="F4",
+    )
+
+
+def run_f4_pdn(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_pdn
+
+    mem = ctx["mem"]
+    variant = ctx["variant"]
+    ext_hit, extract_id = _latest_extract(ctx)
+    n_pdn_f4 = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_solver_a"
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+    )
+    pay, why = should_pay_f4_pdn(
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        n_pdn=n_pdn_f4,
+        variant=variant,
+        extract_id=extract_id,
+    )
+    spec_pdn = ctx["next_pdn_spec"](mem, extract_id=extract_id) if pay else None
+    _set_admit(ctx, solver="direct", extract_id=extract_id, extract_hit=ext_hit,
+               spice=ext_hit["spice"] if ext_hit else None)
+
+    def _eval() -> bool:
+        if not spec_pdn:
+            return False
+        ingest = next(
+            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
+            None,
+        )
+        child = ctx["evaluate_f4_pdn"](
+            mem,
+            spec_pdn,
+            variant=variant,
+            design_id=ctx["design_id"],
+            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
+            spice=ext_hit["spice"] if ext_hit else None,
+            insts=ext_hit["insts"] if ext_hit else None,
+            extract_id=extract_id,
+            sta=ext_hit.get("sta") if ext_hit else None,
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="f4_solver_a",
+            catalog=spec_pdn.get("name"),
+            extract_id=extract_id,
+            droop_mv=child.qor.dynamic_ir_mv,
+            em_j=child.qor.em_j_a_m2,
+            gold=False,
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="pdn", acquire_fidelity="F4_PDN", pay=pay, why=why, evaluate=_eval,
+        cost_key="F4", fidelity="F4", require_plan=False,
+    )
+
+
+def _run_f4_solver_residual(
+    ctx: dict,
+    *,
+    source: str,
+    n_key: str,
+    should_pay,
+    level: str,
+    acquire_fidelity: str,
+    solver: str,
+    via: str,
+    spec_name: str,
+    reason: str,
+) -> bool:
+    mem = ctx["mem"]
+    variant = ctx["variant"]
+    ext_hit, extract_id = _latest_extract(ctx)
+    n_have = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == source
+        and c.status == "ok"
+        and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+    )
+    pay, why = should_pay(
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        **{n_key: n_have},
+        variant=variant,
+        extract_id=extract_id,
+    )
+    _set_admit(ctx, solver=solver, extract_id=extract_id, extract_hit=ext_hit,
+               spice=ext_hit["spice"] if ext_hit else None)
+
+    def _eval() -> bool:
+        ingest = next(
+            (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
+            None,
+        )
+        child = ctx["evaluate_f4_pdn"](
+            mem,
+            {"name": spec_name, **ctx["GOLD_KNOBS"]},
+            variant=variant,
+            design_id=ctx["design_id"],
+            parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
+            spice=ext_hit["spice"] if ext_hit else None,
+            insts=ext_hit["insts"] if ext_hit else None,
+            extract_id=extract_id,
+            solver=solver,
+            sta=ext_hit.get("sta") if ext_hit else None,
+        )
+        if not child:
+            return False
+        extra = {}
+        if solver == "krylov":
+            extra["m"] = (child.artifacts or {}).get("m")
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via=via,
+            extract_id=extract_id,
+            droop_mv=child.qor.dynamic_ir_mv,
+            em_j=child.qor.em_j_a_m2,
+            gold=False,
+            status=child.status,
+            reason=reason,
+            **extra,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level=level, acquire_fidelity=acquire_fidelity, pay=pay, why=why, evaluate=_eval,
+        cost_key="F4", fidelity="F4",
+    )
+
+
+def run_f4_amg(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_amg
+
+    return _run_f4_solver_residual(
+        ctx,
+        source="f4_solver_amg",
+        n_key="n_amg",
+        should_pay=should_pay_f4_amg,
+        level="f4_amg",
+        acquire_fidelity="F4_AMG",
+        solver="amg",
+        via="f4_solver_amg",
+        spec_name="amg_residual",
+        reason="mf-amg-residual-vs-direct",
+    )
+
+
+def run_f4_ras(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_ras
+
+    return _run_f4_solver_residual(
+        ctx,
+        source="f4_solver_ras",
+        n_key="n_ras",
+        should_pay=should_pay_f4_ras,
+        level="f4_ras",
+        acquire_fidelity="F4_RAS",
+        solver="ras",
+        via="f4_solver_ras",
+        spec_name="ras_residual",
+        reason="mf-ras-residual-vs-direct",
+    )
+
+
+def run_f4_krylov(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_krylov
+
+    return _run_f4_solver_residual(
+        ctx,
+        source="f4_solver_krylov",
+        n_key="n_krylov",
+        should_pay=should_pay_f4_krylov,
+        level="f4_krylov",
+        acquire_fidelity="F4_KRYLOV",
+        solver="krylov",
+        via="f4_solver_krylov",
+        spec_name="krylov_residual",
+        reason="mf-krylov-mor-residual-vs-direct",
+    )
+
+
+def run_f4_activity(ctx: dict) -> bool:
+    from .acquire import should_pay_host_arrivals
+
+    mem = ctx["mem"]
+    n_arr = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_host_arrivals" and c.status == "ok"
+    )
+    pay, why = should_pay_host_arrivals(
+        mem, budget_left=ctx["t_end"] - time.time(), n_arr=n_arr
+    )
+
+    def _eval() -> bool:
+        host_arr = ctx["iscale_host"](mem)
+        if not host_arr:
+            return False
+        child = ctx["evaluate_host_arrivals"](host_arr, mem, design_id=ctx["design_id"])
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F3",
+            via="f4_host_arrivals",
+            parent=host_arr.id,
+            host_source=(host_arr.knobs or {}).get("source") or host_arr.level,
+            n_inst=(child.artifacts or {}).get("n_inst"),
+            status=child.status,
+            reason=why,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f4_activity", acquire_fidelity="F3_HOST_ARRIVALS", pay=pay, why=why,
+        evaluate=_eval, cost_key="F3", fidelity="F3",
+    )
+
+
+def run_f4_host_extract(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_host_extract
+
+    mem = ctx["mem"]
+    n_host_ext = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_host_extract" and c.status == "ok"
+    )
+    pay, why = should_pay_f4_host_extract(
+        mem, budget_left=ctx["t_end"] - time.time(), n_extract=n_host_ext
+    )
+    _set_admit(ctx, solver="direct")
+
+    def _eval() -> bool:
+        host_ex = ctx["iscale_host"](mem)
+        if not host_ex or not (host_ex.artifacts or {}).get("mapped_v"):
+            return False
+        params = ctx["flowlab_params"]()
+        util_h = float(params.get("coreUtilization") or 35.0)
+        den_h = ctx["gpl_density"](util_h, params.get("placeDensityAddon") or 0.2)
+        arr_hit = ctx["latest_host_arrivals"](mem)
+        child = ctx["evaluate_f4_extract"](
+            host_ex,
+            mem,
+            design_id=ctx["design_id"],
+            variant=ctx["variant"],
+            util=util_h,
+            density=den_h,
+            kind="host",
+            sta=arr_hit["sta"] if arr_hit else None,
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="f4_host_extract",
+            parent=host_ex.id,
+            host_source=(host_ex.knobs or {}).get("source") or host_ex.level,
+            n_r=(child.artifacts or {}).get("n_r"),
+            n_sta=(child.artifacts or {}).get("n_sta_inst"),
+            droop_mv=child.qor.dynamic_ir_mv,
+            gold=False,
+            status=child.status,
+            reason=why,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f4_host_extract", acquire_fidelity="F4_HOST_EXTRACT", pay=pay, why=why,
+        evaluate=_eval, cost_key="F4_EXTRACT", fidelity="F4",
+    )
+
+
+def run_f4_host_region(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_host_region
+
+    mem = ctx["mem"]
+    n_hre = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_host_region_extract" and c.status == "ok"
+    )
+    pay, why = should_pay_f4_host_region(
+        mem, budget_left=ctx["t_end"] - time.time(), n_extract=n_hre
+    )
+    _set_admit(ctx, solver="direct")
+
+    def _eval() -> bool:
+        host_rg = ctx["iscale_host"](mem)
+        host_ext_c = ctx["latest_host_extract_cand"](mem)
+        hattr = (host_ext_c.attr or {}) if host_ext_c else {}
+        if not host_rg or not (host_rg.artifacts or {}).get("mapped_v"):
+            return False
+        if not (hattr.get("region") or hattr.get("x_dbu") is not None):
+            return False
+        params = ctx["flowlab_params"]()
+        util_hr = float(params.get("coreUtilization") or 35.0)
+        den_hr = ctx["gpl_density"](util_hr, params.get("placeDensityAddon") or 0.2)
+        arr_hr = ctx["latest_host_arrivals"](mem)
+        child = ctx["evaluate_f4_extract"](
+            host_rg,
+            mem,
+            design_id=ctx["design_id"],
+            variant=ctx["variant"],
+            util=util_hr,
+            density=den_hr,
+            kind="host_region",
+            region=hattr.get("region"),
+            x_dbu=hattr.get("x_dbu"),
+            y_dbu=hattr.get("y_dbu"),
+            region_density=0.30,
+            sta=arr_hr["sta"] if arr_hr else None,
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="f4_host_region_extract",
+            parent=host_rg.id,
+            host_source=(host_rg.knobs or {}).get("source") or host_rg.level,
+            region=hattr.get("region"),
+            region_bin=(child.artifacts or {}).get("region_bin"),
+            n_r=(child.artifacts or {}).get("n_r"),
+            droop_mv=child.qor.dynamic_ir_mv,
+            gold=False,
+            status=child.status,
+            reason=why,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f4_host_region", acquire_fidelity="F4_HOST_REGION", pay=pay, why=why,
+        evaluate=_eval, cost_key="F4_EXTRACT", fidelity="F4",
+    )
+
+
+def run_f4_scale(ctx: dict) -> bool:
+    from .acquire import should_pay_f4_scale
+
+    mem = ctx["mem"]
+    variant = ctx["variant"]
+    n_scale = sum(
+        1
+        for c in mem.by_level("pdn")
+        if (c.knobs or {}).get("source") == "f4_iscale" and c.status == "ok"
+    )
+    pay, why = should_pay_f4_scale(
+        mem, budget_left=ctx["t_end"] - time.time(), n_scale=n_scale, variant=variant
+    )
+    ext_hit, extract_id = _latest_extract(ctx)
+    host_hit = ctx["latest_ok_host_extract"](mem)
+    mesh = host_hit or ext_hit
+    _set_admit(
+        ctx,
+        solver="direct",
+        extract_id=str(mesh["extract_id"]) if mesh else extract_id,
+        extract_hit=mesh,
+        spice=mesh["spice"] if mesh else None,
+    )
+
+    def _eval() -> bool:
+        base_p = None
+        for c in mem.by_level("logic"):
+            if c.status == "ok" and c.knobs.get("name") == "liberty_default":
+                _w, p = ctx["timing_of"](mem, c)
+                if p:
+                    base_p = p
+                    break
+        pick = ctx["iscale_host"](mem)
+        if not pick or not base_p:
+            return False
+        use_ext = bool(mesh)
+        arr_hit = ctx["latest_host_arrivals"](mem)
+        sta = arr_hit["sta"] if arr_hit else (mesh.get("sta") if mesh else None)
+        sta_via = (
+            "f4_host_arrivals"
+            if arr_hit
+            else ("f4_host_extract" if host_hit else ("extract" if ext_hit else None))
+        )
+        child = ctx["evaluate_f4_scale"](
+            pick,
+            mem,
+            variant=variant,
+            design_id=ctx["design_id"],
+            baseline_power_w=base_p,
+            spice=mesh["spice"] if use_ext else None,
+            insts=mesh["insts"] if use_ext else None,
+            extract_id=str(mesh["extract_id"]) if use_ext else "finish",
+            sta=sta,
+            sta_via=sta_via,
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="pdn",
+            fidelity="F4",
+            via="f4_iscale",
+            parent=pick.id,
+            host_level=pick.level,
+            host_source=(pick.knobs or {}).get("source") or pick.level,
+            i_scale=(child.knobs or {}).get("i_scale"),
+            extract_id=(child.knobs or {}).get("extract_id"),
+            sta_via=(child.knobs or {}).get("sta_via"),
+            droop_mv=child.qor.dynamic_ir_mv,
+            em_j=child.qor.em_j_a_m2,
+            gold=False,
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f4_scale", acquire_fidelity="F4_ISCALE", pay=pay, why=why, evaluate=_eval,
+        cost_key="F4", fidelity="F4", require_plan=False,
+    )
+
+
 STAGE_F2_FAST = Stage(level="f2_fast", run=run_f2_fast, cost_key="F2_FAST", max_shots=4)
 STAGE_F2_GPL = Stage(level="f2_gpl", run=run_f2_gpl, acquire_fidelity="F2_GPL", cost_key="F2_GPL", max_shots=1, min_s=8.0)
 STAGE_F3_STA = Stage(level="f3_sta", run=run_f3_sta, acquire_fidelity="F3", cost_key="F3", max_shots=8, min_s=1.0)
@@ -905,3 +1533,13 @@ STAGE_PHYSICAL_CATALOG = Stage(
     level="physical_catalog", run=run_physical_catalog, acquire_fidelity="F2_GPL_CATALOG",
     cost_key="F2_GPL", max_shots=1, min_s=8.0,
 )
+STAGE_F4_EXTRACT = Stage(level="f4_extract", run=run_f4_extract, acquire_fidelity="F4_EXTRACT", cost_key="F4_EXTRACT", needs_admit=True)
+STAGE_F4_REGION_EXTRACT = Stage(level="f4_region_extract", run=run_f4_region_extract, acquire_fidelity="F4_REGION_EXTRACT", cost_key="F4_EXTRACT", needs_admit=True)
+STAGE_F4_PDN = Stage(level="pdn", run=run_f4_pdn, acquire_fidelity="F4_PDN", cost_key="F4", needs_admit=True)
+STAGE_F4_AMG = Stage(level="f4_amg", run=run_f4_amg, acquire_fidelity="F4_AMG", cost_key="F4", needs_admit=True)
+STAGE_F4_RAS = Stage(level="f4_ras", run=run_f4_ras, acquire_fidelity="F4_RAS", cost_key="F4", needs_admit=True)
+STAGE_F4_KRYLOV = Stage(level="f4_krylov", run=run_f4_krylov, acquire_fidelity="F4_KRYLOV", cost_key="F4", needs_admit=True)
+STAGE_F4_ACTIVITY = Stage(level="f4_activity", run=run_f4_activity, acquire_fidelity="F3_HOST_ARRIVALS", cost_key="F3")
+STAGE_F4_HOST_EXTRACT = Stage(level="f4_host_extract", run=run_f4_host_extract, acquire_fidelity="F4_HOST_EXTRACT", cost_key="F4_EXTRACT", needs_admit=True)
+STAGE_F4_HOST_REGION = Stage(level="f4_host_region", run=run_f4_host_region, acquire_fidelity="F4_HOST_REGION", cost_key="F4_EXTRACT", needs_admit=True)
+STAGE_F4_SCALE = Stage(level="f4_scale", run=run_f4_scale, acquire_fidelity="F4_ISCALE", cost_key="F4", needs_admit=True)

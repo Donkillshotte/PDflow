@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 3d ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -130,9 +130,10 @@ committa, si passa al lotto dopo.
 - **3c** ✅ — Migrare cell/net/synthesis/physical-catalog. Catalogo GPL senza
   check `planned()` (comportamento originale). Ordine invariato: synth/cell/net
   prima di F2; catalogo dopo port_steer.
-- **3d** — Migrare la coda PDN/F4 (candidate/host/region/champ/catalog/static/EM).
-  Qui ogni stage F4 dichiara `needs_admit=True` e `run_stage` chiama
-  `admit_solve` (chiude il cerchio col passo 2).
+- **3d** ✅ — Migrare la coda PDN/F4 candidate/host/region/catalog/AMG/RAS/Krylov/I-scale.
+  Ogni stage F4 dichiara `needs_admit=True` e `_pay_and_maybe_eval` chiama
+  `admit_paid_f4` prima di evaluate (cerchio col passo 2). Champ/static/EM restano
+  inlined: predicati steer con residuali unici (stesso criterio di residual_steer in 3b).
 - **3e** — Pulizia: le `should_pay_*` rimpiazzate da `should_pay_generic`
   vengono eliminate da `acquire.py`; restano solo i predicati genuinamente
   speciali. `run_controller` diventa: setup → plan → loop stage table →
