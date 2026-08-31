@@ -16,9 +16,11 @@ Tried raising timeout and RAM so AES F4 could run on this Cloud Agent.
 | DirectLU 54 289-node 2D grid | **OK** factor 0.36 s, 130 solves 0.56 s, RSS 125–164 MiB |
 | AES F1 remap | **OK** ~8 s |
 | AES write_pg_spice | **OK** `n_r=66295` `n_i=9964` in 5.5 s |
-| AES F4 DirectLU on that mesh | **FAIL** — pod recycled during `solve_f4` (no `aes_f4_direct_timeout.json`). Do not retry Krylov. Retry LU only with `prlimit` RSS cap. |
+| AES static IR (parse+LU) | **OK** 12.953 mV, 49 282 nodes, RSS 201 MiB |
+| AES F4 DirectLU dynamic | **OK** with `prlimit --as=8GiB` and `PDN_SOLVE_TIMEOUT_S=90`. Droop **17.745 mV**, static 12.953 mV, `A_direct_be`, 48 s, not gold. First uncapped attempt recycled the pod. |
+| AES Krylov | still **REFUSED** on 15 GiB RSS budget |
 
-Knob: `PDN_SOLVE_TIMEOUT_S`. Picker prefers DirectLU when RSS fits; Krylov stays blocked on 15 GiB.
+Timeout yes (`PDN_SOLVE_TIMEOUT_S`). RAM no. AES F4 is testable here with DirectLU + RSS cap, not with Krylov.
 
 ## 2026-08-31T07:45Z — goal complete
 
