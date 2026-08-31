@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 4 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -145,7 +145,7 @@ committa, si passa al lotto dopo.
 
 ---
 
-## Passo 4 — Cost model dai dati (dopo 3a, indipendente da 3b–3e)
+## Passo 4 — Cost model dai dati (dopo 3a, indipendente da 3b–3e) ✅
 
 **Problema.** `COST_HINT` in `fidelity.py` è statico
 (`{"F0": 0.05, "F1": 2.0, "F2": 30.0, ...}`) mentre ogni candidato registra

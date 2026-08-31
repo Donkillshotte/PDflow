@@ -3,6 +3,19 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T18:00Z — PLAN passo 4: empirical p75 cost model
+
+`learn/dse/costs.py`: `estimated_cost_s` is p75 of ok `cost_s` for that fidelity+design; < 3 samples → `COST_HINT`. Stages GPL/STA/SDF pass empirical `min_s` into `should_pay_*`. `_pay_and_maybe_eval` skips evaluate when wall+est exceeds `t_end` without changing acquire why. Controller F1/F3 interleave uses the estimate instead of static `COST_HINT`. Budget 45 s unchanged. No AES Krylov. Gold unrestamped.
+
+| Item | Result |
+|---|---|
+| `p75([1,2,3,4])` | 3.25 (linear interp) |
+| < 3 samples | `COST_HINT` fallback |
+| `COST_HINT` | kept as declared fallback, not deleted |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
+| `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
+| `test_dse.py` | re-run after this commit |
+
 ## 2026-08-31T17:40Z — PLAN passo 3a: stages.py + f2_fast / f2_gpl / f3_sta / f3_sdf
 
 Strangler: four simple stages moved to `learn/dse/stages.py`. GRT stays between STA and SDF (order unchanged). `why` strings unchanged. `controller.py` 5900 → 5801 lines (−99). No AES Krylov. Gold unrestamped.

@@ -141,7 +141,6 @@ from .attribute import attribute_from_path, local_scope, persist_hotspot_join
 from .dispatch import run_next_refine
 from .boils import propose_logic_boils, should_pay_f1
 from .fidelity import (
-    COST_HINT,
     evaluate_cell_size,
     evaluate_net_buffer,
     evaluate_net_port_buffer,
@@ -171,6 +170,7 @@ from .fidelity import (
     liberty_path,
     reports_dir,
 )
+from .costs import estimated_cost_s
 from .fingerprint import knobs_fp
 from .f4_oracle import n_r_from_spice, spice_paths
 from .layers import adapter_status
@@ -555,7 +555,7 @@ def run_controller(
         """Interleave F3 so WNS can steer the next extract / ABC sequence."""
         if cand is None or cand.status != "ok":
             return None
-        if time.time() + COST_HINT["F3"] > t_end:
+        if time.time() + estimated_cost_s(mem, "F3", design_id, cost_key="F3") > t_end:
             return None
         n_have = sum(
             1
@@ -733,7 +733,7 @@ def run_controller(
             if knobs_fp("architecture", knobs) in mem.seen_knobs("architecture"):
                 arch_skip.add(name)
                 continue
-            if time.time() + COST_HINT["F1"] > t_end and n_f1:
+            if time.time() + estimated_cost_s(mem, "F1", design_id, cost_key="F1") > t_end and n_f1:
                 step("stop", reason="budget would not cover architecture F1")
                 break
             with tempfile.TemporaryDirectory(prefix="dse-arch-") as tmp:
@@ -836,7 +836,7 @@ def run_controller(
                 )
             )
             continue
-        if time.time() + COST_HINT["F1"] > t_end and n_f1:
+        if time.time() + estimated_cost_s(mem, "F1", design_id, cost_key="F1") > t_end and n_f1:
             step("stop", reason="budget would not cover another F1")
             break
         cand = evaluate_f1_abc(

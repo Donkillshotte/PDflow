@@ -63,14 +63,28 @@ def _pay_and_maybe_eval(
     pay: bool,
     why: str,
     evaluate: Callable[[], bool],
+    cost_key: str | None = None,
+    fidelity: str | None = None,
 ) -> bool:
     step = ctx["step"]
     plan = ctx["plan"]
     t_end = ctx["t_end"]
+    mem = ctx["mem"]
     if acquire_fidelity:
         step("acquire", fidelity=acquire_fidelity, pay=pay, why=why)
     if not planned(plan, level) or not pay or time.time() >= t_end:
         return False
+    if cost_key:
+        from .costs import estimated_cost_s
+
+        est = estimated_cost_s(
+            mem,
+            fidelity or acquire_fidelity or "F1",
+            ctx["design_id"],
+            cost_key=cost_key,
+        )
+        if time.time() + est > t_end:
+            return False
     return evaluate()
 
 
@@ -112,12 +126,14 @@ def run_f2_fast(ctx: dict) -> bool:
         return paid
 
     return _pay_and_maybe_eval(
-        ctx, level="f2_fast", acquire_fidelity=None, pay=pay, why=why, evaluate=_eval
+        ctx, level="f2_fast", acquire_fidelity=None, pay=pay, why=why, evaluate=_eval,
+        cost_key="F2_FAST", fidelity="F2",
     )
 
 
 def run_f2_gpl(ctx: dict) -> bool:
     from .acquire import should_pay_f2_gpl
+    from .costs import estimated_cost_s
     from .fidelity import evaluate_f2_gpl
 
     mem = ctx["mem"]
@@ -126,7 +142,10 @@ def run_f2_gpl(ctx: dict) -> bool:
         for c in mem.by_level("physical")
         if (c.knobs or {}).get("source") == "f2_openroad_gpl" and c.status == "ok"
     )
-    pay, why = should_pay_f2_gpl(mem, budget_left=ctx["t_end"] - time.time(), n_gpl=n_gpl)
+    min_s = estimated_cost_s(mem, "F2", ctx["design_id"], cost_key="F2_GPL")
+    pay, why = should_pay_f2_gpl(
+        mem, budget_left=ctx["t_end"] - time.time(), n_gpl=n_gpl, min_s=min_s
+    )
 
     def _eval() -> bool:
         pick = ctx["mapped_pick"](
@@ -158,19 +177,24 @@ def run_f2_gpl(ctx: dict) -> bool:
         return True
 
     return _pay_and_maybe_eval(
-        ctx, level="f2_gpl", acquire_fidelity="F2_GPL", pay=pay, why=why, evaluate=_eval
+        ctx, level="f2_gpl", acquire_fidelity="F2_GPL", pay=pay, why=why, evaluate=_eval,
+        cost_key="F2_GPL", fidelity="F2",
     )
 
 
 def run_f3_sta(ctx: dict) -> bool:
     from .acquire import should_pay_f3_sta
+    from .costs import estimated_cost_s
     from .fidelity import evaluate_f3_sta
 
     mem = ctx["mem"]
     n_sta = sum(
         1 for c in mem.all() if (c.knobs or {}).get("source") == "f3_opensta_ideal" and c.status == "ok"
     )
-    pay, why = should_pay_f3_sta(mem, budget_left=ctx["t_end"] - time.time(), n_sta=n_sta)
+    min_s = estimated_cost_s(mem, "F3", ctx["design_id"], cost_key="F3")
+    pay, why = should_pay_f3_sta(
+        mem, budget_left=ctx["t_end"] - time.time(), n_sta=n_sta, min_s=min_s
+    )
 
     def _eval() -> bool:
         ranked = [
@@ -202,12 +226,14 @@ def run_f3_sta(ctx: dict) -> bool:
         return paid
 
     return _pay_and_maybe_eval(
-        ctx, level="f3_sta", acquire_fidelity="F3", pay=pay, why=why, evaluate=_eval
+        ctx, level="f3_sta", acquire_fidelity="F3", pay=pay, why=why, evaluate=_eval,
+        cost_key="F3", fidelity="F3",
     )
 
 
 def run_f3_sdf(ctx: dict) -> bool:
     from .acquire import should_pay_f3_sdf
+    from .costs import estimated_cost_s
     from .fidelity import evaluate_f3_sdf
 
     mem = ctx["mem"]
@@ -216,7 +242,10 @@ def run_f3_sdf(ctx: dict) -> bool:
         for c in mem.all()
         if (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok"
     )
-    pay, why = should_pay_f3_sdf(mem, budget_left=ctx["t_end"] - time.time(), n_sdf=n_sdf)
+    min_s = estimated_cost_s(mem, "F3", ctx["design_id"], cost_key="F3_SDF")
+    pay, why = should_pay_f3_sdf(
+        mem, budget_left=ctx["t_end"] - time.time(), n_sdf=n_sdf, min_s=min_s
+    )
 
     def _eval() -> bool:
         host = next(
@@ -249,7 +278,8 @@ def run_f3_sdf(ctx: dict) -> bool:
         return True
 
     return _pay_and_maybe_eval(
-        ctx, level="f3_sdf", acquire_fidelity="F3_SDF", pay=pay, why=why, evaluate=_eval
+        ctx, level="f3_sdf", acquire_fidelity="F3_SDF", pay=pay, why=why, evaluate=_eval,
+        cost_key="F3_SDF", fidelity="F3",
     )
 
 

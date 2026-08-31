@@ -270,6 +270,30 @@ def main() -> int:
     check(planned({"steps": [{"level": "f2_fast"}]}, "f2_fast"), "planned sees f2_fast")
     check(STAGE_F2_FAST.level == "f2_fast" and STAGE_F3_STA.level == "f3_sta", "3a stage names")
 
+    from dse.costs import estimated_cost_s, p75
+    from dse.fidelity import COST_HINT
+
+    check(abs(p75([1.0, 2.0, 3.0, 4.0]) - 3.25) < 1e-12, f"p75 of 1..4 is 3.25, got {p75([1,2,3,4])}")
+    tmpc = Path(tempfile.mkdtemp(prefix="dse-cost-")) / "m.jsonl"
+    memc = DesignMemory(tmpc)
+    check(
+        abs(estimated_cost_s(memc, "F1", "gcd") - COST_HINT["F1"]) < 1e-12,
+        "fewer than 3 samples falls back to COST_HINT",
+    )
+    for i, cs in enumerate((1.0, 2.0, 3.0, 4.0)):
+        memc.add(_cand(
+            id=f"c{i}",
+            design_id="gcd",
+            fidelity="F1",
+            cost_s=cs,
+            qor=QoR(area_um2=1.0, fidelity="F1"),
+            knobs={"i": i},
+            knobs_fp=knobs_fp("logic", {"i": i}),
+        ))
+    est = estimated_cost_s(memc, "F1", "gcd")
+    check(abs(est - 3.25) < 1e-12, f"p75 of recorded F1 cost_s is 3.25, got {est}")
+    check(abs(estimated_cost_s(memc, "F4", "gcd") - COST_HINT["F4"]) < 1e-12, "other fidelity still COST_HINT")
+
     aes_launch = solve_f4(solver="krylov", n_r=AES_F4_N_R, n_nodes=AES_F4_N_NODES)
     check(aes_launch.get("status") != "ok" and aes_launch.get("gold") is False,
           f"solve_f4 AES Krylov does not launch, got {aes_launch.get('status')} {aes_launch.get('reason')}")
