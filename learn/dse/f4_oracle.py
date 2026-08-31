@@ -27,6 +27,7 @@ _DIST = "/usr/lib/python3/dist-packages"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 from heavy_analysis import resolve_solve_timeout_s  # noqa: E402
+from .current_scenario import CCS_GAP, CurrentScenario, infer_scenario
 from .resources import admit_solve
 from .solve_result import normalize_solve
 
@@ -124,6 +125,13 @@ def attach_activity_flags(cmd: list[str], *, variant: str, design_id: str) -> li
     return cmd
 
 
+def _waveform_on_disk(*, variant: str, design_id: str) -> Path | None:
+    from .activity import activity_path
+
+    wave = activity_path(variant=variant, design_id=design_id)
+    return wave if wave.is_file() else None
+
+
 def build_worker_cmd(
     *,
     variant: str = "flowlab",
@@ -139,6 +147,7 @@ def build_worker_cmd(
     insts: Path | str | None = None,
     sta: Path | str | None = None,
     design_id: str = "gcd",
+    scenario: object | None = None,
 ) -> list[str]:
     """F4 worker argv. Activity flags only when a waveform file exists."""
     cmd = [
@@ -171,6 +180,24 @@ def build_worker_cmd(
             cmd.append("--no-sta")
     if insts:
         cmd.extend(["--insts", str(insts)])
+    wave = _waveform_on_disk(variant=variant, design_id=design_id)
+    sta_for_scen = sta
+    if sta_for_scen is None and kind == "finish" and not spice and design_id == "gcd":
+        sta_for_scen = spice_paths(variant, design_id).get("sta")
+    if isinstance(scenario, CurrentScenario):
+        scen = scenario
+    elif isinstance(scenario, dict):
+        scen = CurrentScenario.from_dict(scenario)
+    else:
+        scen = infer_scenario(
+            period_ns=period_ns,
+            scale=i_scale,
+            sta=sta_for_scen,
+            waveform=wave,
+        )
+    cmd.extend(["--scenario", scen.to_json()])
+    if scen.source in ("vcd", "saif") and scen.activity_status == "ABSENT":
+        return cmd
     return attach_activity_flags(cmd, variant=variant, design_id=design_id)
 
 
@@ -192,6 +219,7 @@ def solve_f4(
     design_id: str = "gcd",
     n_r: int | None = None,
     n_nodes: int | None = None,
+    scenario: object | None = None,
 ) -> dict:
     """Named extract + named solver (direct/amg/bicg/ras/krylov). Not gold.
 
@@ -199,6 +227,20 @@ def solve_f4(
     wall-clock; it does not add Cloud Agent VM RAM.
     """
     timeout_s = resolve_solve_timeout_s(timeout_s)
+    if isinstance(scenario, dict):
+        scenario = CurrentScenario.from_dict(scenario)
+    if isinstance(scenario, CurrentScenario) and scenario.source == "liberty_ccs":
+        return _stamp_solve(
+            {
+                "status": "GAP",
+                "reason": scenario.gap or CCS_GAP,
+                "gold": False,
+                "via": "f4_oracle",
+                "current_scenario": scenario.to_dict(),
+            },
+            backend_requested=str(device or "cpu"),
+            fallback_reason=scenario.gap or CCS_GAP,
+        )
     requested = str(device or "cpu")
     if requested == "cuda":
         gate = admit_solve(n_r=None, device="cuda")
@@ -278,6 +320,7 @@ def solve_f4(
         insts=insts,
         sta=sta,
         design_id=design_id,
+        scenario=scenario,
     )
     try:
         proc = subprocess.run(

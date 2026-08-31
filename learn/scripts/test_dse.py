@@ -4789,6 +4789,12 @@ def main() -> int:
             isinstance(base.get("solve"), dict) and base["solve"].get("role") == "reference",
             f"SolveResult stamps DirectLU as numerical reference, got {base.get('solve')}",
         )
+        scen = base.get("current_scenario") or {}
+        check(scen.get("source") == "sta_t50", f"GCD 6.075 uses sta_t50 scenario, got {scen}")
+        check(
+            ((base.get("solve") or {}).get("activity_via") or {}).get("scenario", {}).get("source") == "sta_t50",
+            "SolveResult.activity_via points at the sta_t50 scenario",
+        )
         amg = solve_f4(variant="flowlab", solver="amg")
         check(amg.get("status") == "ok", f"F4 AMG residual ({amg.get('reason')})")
         check(amg.get("gold") is False, "AMG residual is not marked gold")

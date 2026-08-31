@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 3d ✅, passo 3e ✅, passo 4 ✅, passo 5 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅, passo 3b ✅, passo 3c ✅, passo 3d ✅, passo 3e ✅, passo 4 ✅, passo 5 ✅, passo 6 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -208,7 +208,18 @@ F1 e un WNS F5-SPEF competono alla pari.
 
 ---
 
-## Passo 6 — CurrentScenario (dopo il passo 3; prerequisito CCS)
+## Passo 6 — CurrentScenario (dopo il passo 3; prerequisito CCS) ✅
+
+**Problema.** Il TRAN parla di «triangolo»; la sorgente I(t) deve diventare
+un'astrazione (il solver non sa da dove viene la corrente).
+
+**Modifiche.**
+- `learn/dse/current_scenario.py`: dataclass con
+  `source ∈ {ideal_triangle, sta_t50, vcd, saif, liberty_ccs}`,
+  `activity_status`, `scale`, `period_ns`, fingerprint.
+- `build_worker_cmd` / `dse_f4_worker.py` accettano lo scenario serializzato;
+  il triangolo resta il default e il comportamento attuale non cambia.
+- `SolveResult.activity_via` punta allo scenario.
 
 **Problema.** Il TRAN parla di «triangolo»; la sorgente I(t) deve diventare
 un'astrazione (il solver non sa da dove viene la corrente).

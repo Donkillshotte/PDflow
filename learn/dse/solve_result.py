@@ -76,6 +76,17 @@ def _f(v: Any) -> float | None:
         return None
 
 
+def _activity_via_with_scenario(t50: dict | None, payload: dict, act: dict) -> dict:
+    """t50 counts plus the named CurrentScenario when the worker stamped one."""
+    from .current_scenario import attach_scenario_via
+
+    via = dict(t50 or {})
+    scen = payload.get("current_scenario")
+    if scen is None:
+        scen = act.get("current_scenario")
+    return attach_scenario_via(via, scen)
+
+
 def _droop_mv(payload: dict) -> float | None:
     if payload.get("worst_droop_mv") is not None:
         return _f(payload.get("worst_droop_mv"))
@@ -200,7 +211,7 @@ def normalize_solve(
             n_vcd_join=int(p.get("n_vcd_join") or 0),
             n_sta=int(p.get("n_sta_applied") or 0),
         ),
-        activity_via=dict(t50 or {}),
+        activity_via=_activity_via_with_scenario(t50, p, act),
         convergence_status=None if conv is None else str(conv),
         gold=bool(p.get("gold") or False),
         gold_ref_mv=_f(p.get("gold_ref_mv")) if p.get("gold_ref_mv") is not None else 45.298,

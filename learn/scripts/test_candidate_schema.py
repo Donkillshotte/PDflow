@@ -149,6 +149,35 @@ def main() -> int:
     check(activity_status_of({"sta_arrival": 10, "synthetic": 2}) == ACTIVITY_PARTIAL, "mix is PARTIAL")
     check(activity_status_of({"sta_arrival": 10}, n_saif_idle=3) == ACTIVITY_PARTIAL, "SAIF idle-zero is PARTIAL")
 
+    from dse.current_scenario import CCS_GAP, CurrentScenario, infer_scenario
+    from dse.f4_oracle import build_worker_cmd, spice_paths
+
+    tri = CurrentScenario()
+    check(tri.source == "ideal_triangle" and tri.activity_status == ACTIVITY_SYNTHETIC, "triangle is the default")
+    check(tri.fingerprint and len(tri.fingerprint) == 64, "scenario has a fingerprint")
+    sta_p = spice_paths("flowlab", "gcd")["sta"]
+    gcd_scen = infer_scenario(source="sta_t50", sta=sta_p, period_ns=0.46, scale=1.0)
+    check(gcd_scen.source == "sta_t50" and gcd_scen.activity_status == ACTIVITY_REAL, "explicit sta_t50 is REAL when STA exists")
+    missing_vcd = infer_scenario(source="vcd", waveform="/no/such/wave.vcd", period_ns=0.46)
+    check(missing_vcd.activity_status == ACTIVITY_ABSENT, "missing waveform is ABSENT, never invented")
+    ccs = infer_scenario(source="liberty_ccs")
+    check(ccs.activity_status == ACTIVITY_ABSENT and CCS_GAP in (ccs.gap or ""), "CCS on Nangate45 is GAP")
+    ccs_run = solve_f4(scenario=ccs)
+    check(ccs_run.get("status") == "GAP" and ccs_run.get("gold") is False, "solve_f4 CCS does not invent tables")
+    gcd_cmd = build_worker_cmd(design_id="gcd", period_ns=0.46, scenario=gcd_scen)
+    check("--scenario" in gcd_cmd and "sta_t50" in gcd_cmd[gcd_cmd.index("--scenario") + 1], "worker cmd carries explicit sta_t50")
+    check("--vcd" not in gcd_cmd and "--saif" not in gcd_cmd, "missing waveform is not invented on the argv")
+    abs_cmd = build_worker_cmd(design_id="gcd", scenario={"source": "vcd", "activity_status": "ABSENT"})
+    check("--vcd" not in abs_cmd, "ABSENT vcd scenario does not add --vcd")
+    sr = normalize_solve({
+        "status": "ok",
+        "solver": "A_direct_be",
+        "worst_droop_mv": 6.075,
+        "t50_via": {"sta_arrival": 622, "synthetic": 0},
+        "current_scenario": gcd_scen.to_dict(),
+    })
+    check((sr.activity_via or {}).get("scenario", {}).get("source") == "sta_t50", "activity_via points at the scenario")
+
     # --- SolveResult from synthetic A / C ---
     a = normalize_solve({
         "status": "ok",

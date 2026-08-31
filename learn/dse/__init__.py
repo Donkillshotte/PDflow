@@ -5,6 +5,7 @@ F4 Dynamic IR is an oracle, never a neural voltage map. Logic ops follow
 the BOiLS standard alphabet. Architecture uses a datapath e-graph.
 """
 
+from .current_scenario import CurrentScenario, infer_scenario
 from .layers import ADAPTERS
 from .memory import DesignMemory, Candidate
 from .metrics import QoR, pareto_front, dominates, qor_delta, baseline_delta_of, pareto_front_gated, dominates_with_fidelity
@@ -34,4 +35,6 @@ __all__ = [
     "residual_vs_reference_mv",
     "stamp_f4_candidate",
     "admit_solve",
+    "CurrentScenario",
+    "infer_scenario",
 ]

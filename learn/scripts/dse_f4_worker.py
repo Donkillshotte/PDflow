@@ -89,6 +89,11 @@ def main() -> int:
     ap.add_argument("--vcd", type=Path, default=None, help="VCD name-join t50. Missing stays missing.")
     ap.add_argument("--saif", type=Path, default=None, help="SAIF TC idle-zero. Never invents t50.")
     ap.add_argument(
+        "--scenario",
+        default=None,
+        help="JSON CurrentScenario (source/activity_status/scale/period). Missing waveforms stay ABSENT.",
+    )
+    ap.add_argument(
         "--extract-kind",
         default="finish",
         choices=("finish", "candidate"),
@@ -102,6 +107,22 @@ def main() -> int:
     )
     args = ap.parse_args()
     t0 = time.time()
+    scen = None
+    if args.scenario:
+        try:
+            loaded = json.loads(args.scenario)
+        except json.JSONDecodeError:
+            loaded = None
+        if isinstance(loaded, dict):
+            scen = loaded
+    if (scen or {}).get("source") == "liberty_ccs":
+        print(json.dumps({
+            "status": "GAP",
+            "reason": (scen or {}).get("gap") or "CCS on Nangate45 is GAP (NLDM) — not inventing current tables",
+            "gold": False,
+            "current_scenario": scen,
+        }))
+        return 0
     defaults = _paths(args.variant)
     spice = Path(args.spice) if args.spice else defaults["spice"]
     insts_p = Path(args.insts) if args.insts else defaults["insts"]
@@ -302,6 +323,7 @@ def main() -> int:
                 "n_saif_idle": sum(1 for e in events if e.get("saif_idle")),
                 "n_saif_toggled": sum(1 for e in events if e.get("saif_idle") is False),
                 "t50_via": t50_via_counts(events),
+                "current_scenario": scen,
                 "solver": dyn.get("solver") or solver_kind,
                 "solver_kind": solver_kind,
                 "m": mor_m,
