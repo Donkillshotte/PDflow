@@ -18,7 +18,7 @@ feeds `plan["next"]` and controller `pareto_gated`. No AES Krylov. Gold unrestam
 | area F1 vs F5 | still comparable |
 | `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
 | `test_designs/frame/dispatch` | ALL PASSED |
-| `test_dse.py` | re-run after this commit |
+| `test_dse.py` | ALL PASSED (~263 s); DirectLU 6.075 ≠ 45.298; gated F1/F5 co-exist |
 
 ## 2026-08-31T17:45Z — PLAN passo 3e: flatten controller stage slices
 
