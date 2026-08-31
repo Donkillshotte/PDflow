@@ -1,6 +1,6 @@
 # PLAN — consolidamento DSE (schema → controller dichiarativo)
 
-Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
+Stato: passo 0 ✅, passo 1 ✅, passo 2 ✅, passo 3a ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
 
@@ -120,7 +120,7 @@ for stage in STAGES:
 si tengono identici i messaggi `why`/`step` (i test li asseriscono), si
 committa, si passa al lotto dopo.
 
-- **3a** — Infrastruttura: `learn/dse/stages.py` con `Stage` (dataclass) e
+- **3a** ✅ — Infrastruttura: `learn/dse/stages.py` con `Stage` (dataclass) e
   `run_stage` generico; helper `should_pay_generic(budget_left, n_have, max_shots,
   min_s, parents_ok)` che copre il caso comune delle 66 funzioni.
   Migrare **4 stage semplici**: `f2_fast`, `f2_gpl`, `f3_sta`, `f3_sdf`.

@@ -3,6 +3,18 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T17:40Z — PLAN passo 3a: stages.py + f2_fast / f2_gpl / f3_sta / f3_sdf
+
+Strangler: four simple stages moved to `learn/dse/stages.py`. GRT stays between STA and SDF (order unchanged). `why` strings unchanged. `controller.py` 5900 → 5801 lines (−99). No AES Krylov. Gold unrestamped.
+
+| Item | Result |
+|---|---|
+| `should_pay_generic` | n_have / wall / parent; domain checks stay in acquire |
+| Stages | `STAGE_F2_FAST`, `STAGE_F2_GPL`, `STAGE_F3_STA`, `STAGE_F3_SDF` |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK including generic why strings |
+| `test_dse.py` | ALL PASSED (~260 s); DirectLU 6.075 ≠ 45.298 |
+| `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
+
 ## 2026-08-31T17:20Z — PLAN passo 2: controller consumes admit_solve / SolveResult
 
 Every paid F4 goes through `admit_paid_f4` (logs `step("admit", why=…)`) and `solve_f4` re-admits with mesh size. Champ solver residuals read `artifacts.solve.abs_err_vs_reference_mv` when present. `activity_status` is copied onto `attr`. No AES Krylov. 73k-R / 6.954 untouched. Gold 45.298 unrestamped.
