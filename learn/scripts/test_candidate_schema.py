@@ -320,7 +320,7 @@ def main() -> int:
     from dse.stages import STAGE_F4_EXTRACT, STAGE_F4_KRYLOV, STAGE_F4_PDN, STAGE_F4_SCALE
     check(STAGE_F4_EXTRACT.needs_admit and STAGE_F4_KRYLOV.needs_admit, "3d F4 stages need admit")
     check(STAGE_F4_PDN.level == "pdn" and STAGE_F4_SCALE.level == "f4_scale", "3d pdn/scale names")
-    from dse.stages import STAGES_F4_HEAD, STAGES_LOGIC_TRANSFORM, STAGES_PLACE_ROUTE
+    from dse.stages import STAGES_F4_HEAD, STAGES_LOGIC_TRANSFORM, STAGES_PLACE_ROUTE, STAGES_STEER_GAP
     check(
         [s.level for s in STAGES_LOGIC_TRANSFORM] == ["synthesis", "cell", "net", "net_port"],
         "3e logic-transform slice order",
@@ -330,7 +330,12 @@ def main() -> int:
         pr_lv.index("f3_sta") < pr_lv.index("routing") < pr_lv.index("f3_sdf"),
         "3e GRT still sits between STA and SDF",
     )
-    check(pr_lv[-1] == "f5_local", "3e place-route ends at local (residual_steer stays inlined)")
+    check(pr_lv[-1] == "f5_local", "3e place-route ends at local")
+    check(
+        [s.level for s in STAGES_STEER_GAP]
+        == ["residual_steer", "f5_port", "port_steer", "physical_catalog", "f2_region"],
+        "C1 steer-gap order: residual → port → catalog → region",
+    )
     check(
         all(s.needs_admit for s in STAGES_F4_HEAD if s.level != "f4_activity"),
         "3e F4 head admits except host-arrivals",

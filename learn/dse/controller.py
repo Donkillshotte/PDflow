@@ -33,7 +33,6 @@ from .acquire import (
     latest_ok_host_extract,
     latest_host_arrivals,
     latest_host_extract_cand,
-    should_pay_f2_region,
     should_pay_ir_cell,
     should_pay_ir_cell_champ,
     should_pay_ir_cell_champ_extract,
@@ -55,8 +54,6 @@ from .acquire import (
     champ_mf_n,
     should_pay_f4_krylov_champ,
     should_pay_f4_ras_champ,
-    should_pay_port_steer,
-    should_pay_residual_steer,
     should_pay_ir_steer,
     should_pay_host_ir_steer,
     extract_on_disk,
@@ -101,8 +98,6 @@ from .active import (
     steer_from_winning_ir_region_cell_residual,
     steer_from_ir_residual,
     steer_from_host_ir_residual,
-    steer_from_port_residual,
-    steer_from_residual,
 )
 from .arch_space import emit_gcd_variant, stamp_cone_knobs
 from .designs import resolve
@@ -113,9 +108,7 @@ from .fidelity import (
     evaluate_cell_size,
     evaluate_net_buffer,
     evaluate_f1_abc,
-    evaluate_f2_gpl,
     evaluate_f3_sta,
-    evaluate_f5_local,
     evaluate_f4_extract,
     evaluate_f4_pdn,
     evaluate_f4_static_mesh,
@@ -142,11 +135,10 @@ from .mo import baseline_wns, timing_of
 from .resources import admit_solve
 from .solve_result import residual_vs_reference_mv, stamp_f4_candidate
 from .stages import (
-    STAGE_F5_PORT,
-    STAGE_PHYSICAL_CATALOG,
     STAGES_F4_HEAD,
     STAGES_LOGIC_TRANSFORM,
     STAGES_PLACE_ROUTE,
+    STAGES_STEER_GAP,
     run_stage,
 )
 from .pdn_space import GOLD_KNOBS, next_pdn_spec
@@ -936,137 +928,9 @@ def run_controller(
     for _stage in STAGES_PLACE_ROUTE:
         run_stage(_stage, _stage_ctx)
 
-    steer = steer_from_residual(mem)
-    n_steer = sum(1 for c in mem.all() if (c.attr or {}).get("via") == "active_residual" and c.status == "ok")
-    pay_st, why_st = should_pay_residual_steer(
-        mem, budget_left=t_end - time.time(), steer=steer, n_steer=n_steer
-    )
-    step("acquire", fidelity="RESIDUAL_STEER", pay=pay_st, why=why_st, steer=steer)
-    if any(s["level"] == "residual_steer" for s in plan["steps"]) and pay_st and steer and time.time() < t_end:
-        host = mem.get(str(steer.get("host_id") or "")) if steer.get("host_id") else None
-        child = None
-        if steer["level"] == "f5_local" and host is not None:
-            mem.touch(host)
-            child = evaluate_f5_local(host, mem, design_id=design_id)
-        elif steer["level"] == "cell" and host is not None:
-            mem.touch(host)
-            child = evaluate_cell_size(host, mem, design_id=design_id, cells=list(steer.get("cells") or []))
-        elif steer["level"] == "net" and host is not None:
-            mem.touch(host)
-            child = evaluate_net_buffer(host, mem, design_id=design_id, hops=list(steer.get("hops") or []))
-        if child:
-            child.attr = dict(child.attr or {})
-            child.attr["via"] = "active_residual"
-            child.attr["steer"] = {k: steer[k] for k in steer if k != "cells" and k != "hops"}
-            mem.touch(child)
-            step(
-                "evaluate",
-                id=child.id,
-                level=child.level,
-                fidelity=child.fidelity,
-                via="active_residual",
-                parent=host.id if host else None,
-                host_level=steer.get("host_level") or (host.level if host else None),
-                residual_ns=steer.get("residual_ns"),
-                wns_ns=(child.artifacts or {}).get("wns_ns"),
-                status=child.status,
-                reason=steer.get("reason"),
-            )
-
-    run_stage(STAGE_F5_PORT, _stage_ctx)
-
-    steer_port = steer_from_port_residual(mem)
-    n_psteer = sum(
-        1 for c in mem.all() if (c.attr or {}).get("via") == "active_f5_port" and c.status == "ok"
-    )
-    pay_ps, why_ps = should_pay_port_steer(
-        mem, budget_left=t_end - time.time(), steer=steer_port, n_steer=n_psteer
-    )
-    step("acquire", fidelity="PORT_STEER", pay=pay_ps, why=why_ps, steer=steer_port)
-    if any(s["level"] == "port_steer" for s in plan["steps"]) and pay_ps and steer_port and time.time() < t_end:
-        host = mem.get(str(steer_port.get("host_id") or "")) if steer_port.get("host_id") else None
-        if host is not None and steer_port.get("level") == "net":
-            mem.touch(host)
-            child = evaluate_net_buffer(
-                host,
-                mem,
-                design_id=design_id,
-                hops=list(steer_port.get("hops") or []),
-                source="net_buffer_spef",
-            )
-            if child:
-                child.attr = dict(child.attr or {})
-                child.attr["via"] = "active_f5_port"
-                child.attr["steer"] = {k: steer_port[k] for k in steer_port if k != "hops"}
-                mem.touch(child)
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="net",
-                    fidelity="F3",
-                    via="active_f5_port",
-                    parent=host.id,
-                    n_changed=(child.artifacts or {}).get("n_changed"),
-                    wns_ns=(child.artifacts or {}).get("wns_ns"),
-                    status=child.status,
-                    reason=steer_port.get("reason"),
-                )
-
-    run_stage(STAGE_PHYSICAL_CATALOG, _stage_ctx)
-
-    n_reg = sum(
-        1
-        for c in mem.by_level("physical")
-        if (c.knobs or {}).get("source") == "f2_openroad_gpl_region" and c.status == "ok"
-    )
-    pay_reg, why_reg = should_pay_f2_region(
-        mem,
-        budget_left=t_end - time.time(),
-        n_region=n_reg,
-        region=attr.get("region"),
-        x_dbu=attr.get("x_dbu"),
-        y_dbu=attr.get("y_dbu"),
-    )
-    step("acquire", fidelity="F2_REGION", pay=pay_reg, why=why_reg)
-    if any(s["level"] == "f2_region" for s in plan["steps"]) and pay_reg and time.time() < t_end:
-        pick = _mapped_pick(
-            [f1_wns_winner(mem), f1_area_winner(mem)] + [c for c in f1_ok(mem)],
-            rtl=rtl,
-            liberty=lib,
-            top=top,
-        )
-        if pick:
-            mem.touch(pick)
-            params = flowlab_params()
-            util_r = float(params.get("coreUtilization") or 35.0)
-            den_r = gpl_density(util_r, params.get("placeDensityAddon") or 0.2)
-            child = evaluate_f2_gpl(
-                pick,
-                mem,
-                design_id=design_id,
-                util=util_r,
-                density=den_r,
-                extra_knobs={
-                    "region": attr.get("region"),
-                    "x_dbu": attr.get("x_dbu"),
-                    "y_dbu": attr.get("y_dbu"),
-                    "region_density": 0.30,
-                },
-            )
-            if child:
-                step(
-                    "evaluate",
-                    id=child.id,
-                    level="physical",
-                    fidelity="F2",
-                    via="f2_openroad_gpl_region",
-                    parent=pick.id,
-                    region=attr.get("region"),
-                    hpwl_um=(child.artifacts or {}).get("hpwl_um"),
-                    region_bin=(child.artifacts or {}).get("region_bin"),
-                    overflow=child.qor.congestion,
-                    status=child.status,
-                )
+    # residual / F5-port / port_steer / catalog / f2_region — order is data.
+    for _stage in STAGES_STEER_GAP:
+        run_stage(_stage, _stage_ctx)
 
     for _stage in STAGES_F4_HEAD:
         run_stage(_stage, _stage_ctx)

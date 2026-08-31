@@ -1515,6 +1515,180 @@ def run_f4_scale(ctx: dict) -> bool:
     )
 
 
+def run_residual_steer(ctx: dict) -> bool:
+    from .acquire import should_pay_residual_steer
+    from .active import steer_from_residual
+    from .fidelity import evaluate_cell_size, evaluate_f5_local, evaluate_net_buffer
+
+    mem = ctx["mem"]
+    steer = steer_from_residual(mem)
+    n_steer = sum(1 for c in mem.all() if (c.attr or {}).get("via") == "active_residual" and c.status == "ok")
+    pay, why = should_pay_residual_steer(
+        mem, budget_left=ctx["t_end"] - time.time(), steer=steer, n_steer=n_steer
+    )
+
+    def _eval() -> bool:
+        host = mem.get(str(steer.get("host_id") or "")) if steer and steer.get("host_id") else None
+        child = None
+        if not steer or host is None:
+            return False
+        if steer["level"] == "f5_local":
+            mem.touch(host)
+            child = evaluate_f5_local(host, mem, design_id=ctx["design_id"])
+        elif steer["level"] == "cell":
+            mem.touch(host)
+            child = evaluate_cell_size(host, mem, design_id=ctx["design_id"], cells=list(steer.get("cells") or []))
+        elif steer["level"] == "net":
+            mem.touch(host)
+            child = evaluate_net_buffer(host, mem, design_id=ctx["design_id"], hops=list(steer.get("hops") or []))
+        if not child:
+            return False
+        child.attr = dict(child.attr or {})
+        child.attr["via"] = "active_residual"
+        child.attr["steer"] = {k: steer[k] for k in steer if k != "cells" and k != "hops"}
+        mem.touch(child)
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level=child.level,
+            fidelity=child.fidelity,
+            via="active_residual",
+            parent=host.id,
+            host_level=steer.get("host_level") or host.level,
+            residual_ns=steer.get("residual_ns"),
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            status=child.status,
+            reason=steer.get("reason"),
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="residual_steer", acquire_fidelity="RESIDUAL_STEER", pay=pay, why=why,
+        evaluate=_eval, acquire_extra={"steer": steer},
+    )
+
+
+def run_port_steer(ctx: dict) -> bool:
+    from .acquire import should_pay_port_steer
+    from .active import steer_from_port_residual
+    from .fidelity import evaluate_net_buffer
+
+    mem = ctx["mem"]
+    steer_port = steer_from_port_residual(mem)
+    n_psteer = sum(
+        1 for c in mem.all() if (c.attr or {}).get("via") == "active_f5_port" and c.status == "ok"
+    )
+    pay, why = should_pay_port_steer(
+        mem, budget_left=ctx["t_end"] - time.time(), steer=steer_port, n_steer=n_psteer
+    )
+
+    def _eval() -> bool:
+        host = mem.get(str(steer_port.get("host_id") or "")) if steer_port and steer_port.get("host_id") else None
+        if host is None or not steer_port or steer_port.get("level") != "net":
+            return False
+        mem.touch(host)
+        child = evaluate_net_buffer(
+            host,
+            mem,
+            design_id=ctx["design_id"],
+            hops=list(steer_port.get("hops") or []),
+            source="net_buffer_spef",
+        )
+        if not child:
+            return False
+        child.attr = dict(child.attr or {})
+        child.attr["via"] = "active_f5_port"
+        child.attr["steer"] = {k: steer_port[k] for k in steer_port if k != "hops"}
+        mem.touch(child)
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="net",
+            fidelity="F3",
+            via="active_f5_port",
+            parent=host.id,
+            n_changed=(child.artifacts or {}).get("n_changed"),
+            wns_ns=(child.artifacts or {}).get("wns_ns"),
+            status=child.status,
+            reason=steer_port.get("reason"),
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="port_steer", acquire_fidelity="PORT_STEER", pay=pay, why=why,
+        evaluate=_eval, acquire_extra={"steer": steer_port},
+    )
+
+
+def run_f2_region(ctx: dict) -> bool:
+    from .acquire import should_pay_f2_region
+    from .fidelity import evaluate_f2_gpl
+    from .physical_space import gpl_density
+
+    mem = ctx["mem"]
+    attr = ctx["attr"]
+    n_reg = sum(
+        1
+        for c in mem.by_level("physical")
+        if (c.knobs or {}).get("source") == "f2_openroad_gpl_region" and c.status == "ok"
+    )
+    pay, why = should_pay_f2_region(
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        n_region=n_reg,
+        region=attr.get("region"),
+        x_dbu=attr.get("x_dbu"),
+        y_dbu=attr.get("y_dbu"),
+    )
+
+    def _eval() -> bool:
+        pick = ctx["mapped_pick"](
+            [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
+            rtl=ctx["rtl"],
+            liberty=ctx["liberty"],
+            top=ctx["top"],
+        )
+        if not pick:
+            return False
+        mem.touch(pick)
+        params = ctx["flowlab_params"]()
+        util_r = float(params.get("coreUtilization") or 35.0)
+        den_r = gpl_density(util_r, params.get("placeDensityAddon") or 0.2)
+        child = evaluate_f2_gpl(
+            pick,
+            mem,
+            design_id=ctx["design_id"],
+            util=util_r,
+            density=den_r,
+            extra_knobs={
+                "region": attr.get("region"),
+                "x_dbu": attr.get("x_dbu"),
+                "y_dbu": attr.get("y_dbu"),
+                "region_density": 0.30,
+            },
+        )
+        if not child:
+            return False
+        ctx["step"](
+            "evaluate",
+            id=child.id,
+            level="physical",
+            fidelity="F2",
+            via="f2_openroad_gpl_region",
+            parent=pick.id,
+            region=attr.get("region"),
+            hpwl_um=(child.artifacts or {}).get("hpwl_um"),
+            region_bin=(child.artifacts or {}).get("region_bin"),
+            overflow=child.qor.congestion,
+            status=child.status,
+        )
+        return True
+
+    return _pay_and_maybe_eval(
+        ctx, level="f2_region", acquire_fidelity="F2_REGION", pay=pay, why=why, evaluate=_eval,
+    )
+
+
 STAGE_F2_FAST = Stage(level="f2_fast", run=run_f2_fast, cost_key="F2_FAST", max_shots=4)
 STAGE_F2_GPL = Stage(level="f2_gpl", run=run_f2_gpl, acquire_fidelity="F2_GPL", cost_key="F2_GPL", max_shots=1, min_s=8.0)
 STAGE_F3_STA = Stage(level="f3_sta", run=run_f3_sta, acquire_fidelity="F3", cost_key="F3", max_shots=8, min_s=1.0)
@@ -1533,6 +1707,9 @@ STAGE_PHYSICAL_CATALOG = Stage(
     level="physical_catalog", run=run_physical_catalog, acquire_fidelity="F2_GPL_CATALOG",
     cost_key="F2_GPL", max_shots=1, min_s=8.0,
 )
+STAGE_RESIDUAL_STEER = Stage(level="residual_steer", run=run_residual_steer, acquire_fidelity="RESIDUAL_STEER")
+STAGE_PORT_STEER = Stage(level="port_steer", run=run_port_steer, acquire_fidelity="PORT_STEER")
+STAGE_F2_REGION = Stage(level="f2_region", run=run_f2_region, acquire_fidelity="F2_REGION")
 STAGE_F4_EXTRACT = Stage(level="f4_extract", run=run_f4_extract, acquire_fidelity="F4_EXTRACT", cost_key="F4_EXTRACT", needs_admit=True)
 STAGE_F4_REGION_EXTRACT = Stage(level="f4_region_extract", run=run_f4_region_extract, acquire_fidelity="F4_REGION_EXTRACT", cost_key="F4_EXTRACT", needs_admit=True)
 STAGE_F4_PDN = Stage(level="pdn", run=run_f4_pdn, acquire_fidelity="F4_PDN", cost_key="F4", needs_admit=True)
@@ -1544,9 +1721,8 @@ STAGE_F4_HOST_EXTRACT = Stage(level="f4_host_extract", run=run_f4_host_extract, 
 STAGE_F4_HOST_REGION = Stage(level="f4_host_region", run=run_f4_host_region, acquire_fidelity="F4_HOST_REGION", cost_key="F4_EXTRACT", needs_admit=True)
 STAGE_F4_SCALE = Stage(level="f4_scale", run=run_f4_scale, acquire_fidelity="F4_ISCALE", cost_key="F4", needs_admit=True)
 
-# Consecutive declarative slices. Neighbors that stay inlined (residual_steer,
-# port_steer, f2_region, IR leftover, champ/static) split them. GRT order is
-# data: STA → ROUTING → SDF inside STAGES_PLACE_ROUTE.
+# Consecutive declarative slices. GRT order is data: STA → ROUTING → SDF.
+# residual/port/f2_region live in STAGES_STEER_GAP (C1). IR leftover stays inlined.
 STAGES_LOGIC_TRANSFORM = (STAGE_SYNTHESIS, STAGE_CELL, STAGE_NET, STAGE_NET_PORT)
 STAGES_PLACE_ROUTE = (
     STAGE_F2_FAST, STAGE_F2_GPL, STAGE_F3_STA, STAGE_ROUTING, STAGE_F3_SDF,
@@ -1556,4 +1732,10 @@ STAGES_F4_HEAD = (
     STAGE_F4_EXTRACT, STAGE_F4_REGION_EXTRACT, STAGE_F4_PDN,
     STAGE_F4_AMG, STAGE_F4_RAS, STAGE_F4_KRYLOV, STAGE_F4_ACTIVITY,
     STAGE_F4_HOST_EXTRACT, STAGE_F4_HOST_REGION, STAGE_F4_SCALE,
+)
+# residual / port / f2_region sit BETWEEN place-route and F4 head.
+# F5_PORT and PHYSICAL_CATALOG stay in this gap so runtime order is unchanged.
+STAGES_STEER_GAP = (
+    STAGE_RESIDUAL_STEER, STAGE_F5_PORT, STAGE_PORT_STEER,
+    STAGE_PHYSICAL_CATALOG, STAGE_F2_REGION,
 )
