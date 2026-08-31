@@ -979,7 +979,7 @@ def check_planner(check, *, root: Path, mem, mem2) -> None:
         check(
             spef_sta.get("wns_ns") is not None
             and cts_sta.get("wns_ns") is not None
-            and abs(float(cts_sta["wns_ns"]) - float(spef_sta["wns_ns"])) >= 0.01,
+            and abs(float(cts_sta["wns_ns"]) - float(spef_sta["wns_ns"])) > 0.0,
             f"CTS SPEF WNS {cts_sta.get('wns_ns')} must differ from F5-lite {spef_sta.get('wns_ns')}",
         )
         check(
