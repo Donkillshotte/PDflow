@@ -3,6 +3,24 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-08-31T17:56Z — PLAN passo 6: CurrentScenario
+
+`learn/dse/current_scenario.py`: named I(t) source. Triangle remains default.
+GCD finish infers `sta_t50` when STA arrivals exist (same 6.075 mV path).
+Missing VCD/SAIF → `ABSENT`, never invented. `liberty_ccs` is GAP on
+Nangate45 (NLDM). `build_worker_cmd` / worker take `--scenario` JSON;
+`SolveResult.activity_via` points at it. No AES Krylov. Gold unrestamped.
+
+| Item | Result |
+|---|---|
+| default | `ideal_triangle` / SYNTHETIC |
+| GCD finish | `sta_t50` / REAL |
+| missing waveform | ABSENT, no `--vcd`/`--saif` |
+| CCS | GAP, no tables invented |
+| `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
+| `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
+| `test_dse.py` | re-run after this commit |
+
 ## 2026-08-31T17:50Z — PLAN passo 5: Pareto gated by fidelity
 
 `dominates_with_fidelity` / `pareto_front_gated`: a lower-fidelity timing/power
