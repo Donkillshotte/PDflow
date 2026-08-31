@@ -210,6 +210,7 @@ def evaluate_f4_pdn(
     extract_id: str = "finish",
     solver: str = "direct",
     sta: Path | str | None = None,
+    timeout_s: float | None = None,
 ) -> Candidate | None:
     """PDN-level restamp. Different c_decap/pkg L / solver; named extract. Not gold."""
     from .attribute import attribute_dynamic_ir, ir_report_from_solve
@@ -228,7 +229,7 @@ def evaluate_f4_pdn(
     fp = knobs_fp("pdn", knobs)
     if fp in mem.seen_knobs("pdn"):
         return next(c for c in mem.by_level("pdn") if c.knobs_fp == fp)
-    dyn = solve_f4(
+    dyn_kw: dict = dict(
         variant=variant,
         pkg_r=float(spec["pkg_r"]),
         pkg_l=float(spec["pkg_l"]),
@@ -240,6 +241,9 @@ def evaluate_f4_pdn(
         solver=solver,
         sta=sta,
     )
+    if timeout_s is not None:
+        dyn_kw["timeout_s"] = float(timeout_s)
+    dyn = solve_f4(**dyn_kw)
     em = dyn.get("em") or {}
     attr = attribute_dynamic_ir(ir_report_from_solve(dyn, insts=insts))
     q = QoR(
@@ -1010,6 +1014,7 @@ def evaluate_f4_extract(
             insts=insts,
             extract_kind="candidate",
             sta=sta_p,
+            timeout_s=max(float(timeout_s), 90.0),
         )
         ext = {**ext, **{k: v for k, v in dyn.items() if k != "cost_s"}}
         ext["extract_cost_s"] = extract_cost

@@ -15,7 +15,11 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "learn"))
 sys.path.insert(0, str(REPO / "learn" / "scripts"))
 
-from heavy_analysis import require_heavy  # noqa: E402
+from heavy_analysis import (  # noqa: E402
+    pick_bounded_solver,
+    require_heavy,
+    resolve_solve_timeout_s,
+)
 from dse.attribute import inspect_f4  # noqa: E402
 from dse.designs import resolve  # noqa: E402
 from dse.f4_oracle import solve_f4  # noqa: E402
@@ -86,21 +90,29 @@ def main() -> int:
             sdc=spec.constraint,
             util=35.0,
             density=0.55,
-            timeout_s=240.0,
+            timeout_s=resolve_solve_timeout_s(240.0),
         )
     n_r = int(ext.get("n_r") or 0)
+    n_nodes = ext.get("n_nodes")
     spice_ok = bool(ext.get("spice") and Path(str(ext.get("spice"))).is_file() and n_r)
     print(
         f"extract spice_ok={spice_ok} n_r={n_r} n_i={ext.get('n_i')} "
         f"sdc={ext.get('sdc')} cost={ext.get('cost_s')} fail={ext.get('reason')}"
     )
     dyn: dict = {}
-    solver = "direct" if n_r and n_r <= MAX_R_DIRECT else "krylov"
-    if spice_ok:
-        if n_r > MAX_R_DIRECT:
+    solver, solver_refuse = pick_bounded_solver(
+        n_r, n_nodes=int(n_nodes) if n_nodes else None, max_r_direct=MAX_R_DIRECT
+    )
+    if spice_ok and solver:
+        if solver == "krylov":
             print(
                 f"n_r={n_r} > {MAX_R_DIRECT} — paying Krylov/MOR, not DirectLU, "
                 f"period={spec.clk_period_ns} ns dt=40ps"
+            )
+        elif solver == "amg":
+            print(
+                f"n_r={n_r} > {MAX_R_DIRECT} — Krylov RSS does not fit this VM; "
+                f"paying AMG with timeout={resolve_solve_timeout_s(1800.0)}s"
             )
         dyn = solve_f4(
             variant="aes",
@@ -110,12 +122,15 @@ def main() -> int:
             design_id="aes",
             solver=solver,
             dt_ps=40.0 if solver == "krylov" else 10.0,
-            timeout_s=600.0 if solver == "krylov" else 180.0,
+            timeout_s=resolve_solve_timeout_s(1800.0 if solver in ("krylov", "amg") else 300.0),
         )
         print(
             f"solve {solver} status={dyn.get('status')} droop={dyn.get('worst_droop_mv')} "
             f"gold={dyn.get('gold')} period_ns={spec.clk_period_ns} cost={dyn.get('cost_s')}"
         )
+    elif spice_ok and solver_refuse:
+        print(solver_refuse)
+        dyn = {"status": "REFUSED", "reason": solver_refuse}
     art = {**ext, **{k: v for k, v in dyn.items() if k != "cost_s"}}
     droop = dyn.get("worst_droop_mv")
     static_mv = dyn.get("static_ir_mv")
@@ -142,10 +157,10 @@ def main() -> int:
                 "density": 0.55,
                 "extract_id": extract_id,
                 "name": "extract_liberty_default",
-                "solver": solver,
+                "solver": solver or "static_only",
                 "clk_period_ns": spec.clk_period_ns,
             },
-            knobs_fp=f"aes_extract_{extract_id}_{solver}",
+            knobs_fp=f"aes_extract_{extract_id}_{solver or 'static_only'}",
             rtl_fp=f1.rtl_fp,
             netlist_fp=f1.netlist_fp,
             fidelity="F4",
@@ -161,7 +176,7 @@ def main() -> int:
             artifacts=art,
             status="ok" if paid or static_mv is not None else "fail",
             failure=None if paid else (dyn.get("reason") or ext.get("reason")),
-            note=f"aes F4 {solver} n_r={n_r} period={spec.clk_period_ns} ns droop={droop}",
+            note=f"aes F4 {solver or 'static_only'} n_r={n_r} period={spec.clk_period_ns} ns droop={droop}",
         )
         if c.status == "ok":
             inspect_f4(c, design_id="aes")

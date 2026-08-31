@@ -24,6 +24,9 @@ ORFS = REPO / "tools/OpenROAD-flow-scripts/flow"
 WORKER = SCRIPTS / "dse_f4_worker.py"
 GOLD_MV = 45.298
 _DIST = "/usr/lib/python3/dist-packages"
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+from heavy_analysis import resolve_solve_timeout_s  # noqa: E402
 
 
 def solver_devices() -> dict:
@@ -157,7 +160,12 @@ def solve_f4(
     device: str = "cpu",
     design_id: str = "gcd",
 ) -> dict:
-    """Named extract + named solver (direct/amg/bicg/ras/krylov). Not gold."""
+    """Named extract + named solver (direct/amg/bicg/ras/krylov). Not gold.
+
+    PDN_SOLVE_TIMEOUT_S overrides timeout_s when set. That raises the worker
+    wall-clock; it does not add Cloud Agent VM RAM.
+    """
+    timeout_s = resolve_solve_timeout_s(timeout_s)
     if str(device or "cpu") == "cuda" and not solver_devices().get("cuda"):
         return {
             "status": "GAP",

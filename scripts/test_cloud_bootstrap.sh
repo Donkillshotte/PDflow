@@ -42,11 +42,36 @@ else
 fi
 rg -q 'Nessun flow OpenROAD' "${ROOT}/scripts/cloud_agent_install.sh" && ok "install documents no-flow" || bad "missing no-flow note"
 
-echo "== heavy guards =="
+echo "== environment.json has no RAM knobs =="
+python3 - <<PY || { bad "environment.json RAM fields"; exit 1; }
+import json
+from pathlib import Path
+p = Path("${ROOT}/.cursor/environment.json")
+d = json.loads(p.read_text())
+for k in ("memory", "ram", "cpus", "cpu", "resources", "vmSize"):
+    assert k not in d, k
+print("environment.json has no memory/cpu fields (schema would reject them)")
+PY
+ok "environment.json cannot raise VM RAM"
+
+echo "== timeout / RSS guards =="
 python3 "${ROOT}/learn/scripts/test_heavy_analysis.py" && ok "test_heavy_analysis" || bad "test_heavy_analysis"
+python3 - <<PY || { bad "timeout helper"; exit 1; }
+import os, sys
+from pathlib import Path
+sys.path.insert(0, str(Path("${ROOT}") / "learn" / "scripts"))
+from heavy_analysis import resolve_solve_timeout_s
+os.environ["PDN_SOLVE_TIMEOUT_S"] = "1800"
+assert resolve_solve_timeout_s(90) == 1800.0
+print("PDN_SOLVE_TIMEOUT_S=1800 overrides 90")
+PY
+ok "PDN_SOLVE_TIMEOUT_S override"
+
+echo "== heavy guards =="
 rg -q 'require_heavy' "${ROOT}/learn/scripts/run_aes_f4.py" && ok "aes F4 guarded" || bad "aes F4 unguarded"
 rg -q 'require_heavy' "${ROOT}/learn/scripts/run_aes_slice.py" && ok "aes slice guarded" || bad "aes slice unguarded"
 rg -q 'check_large_mesh' "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic mesh guard" || bad "pdn_dynamic unguarded"
+rg -q 'check_rss_budget' "${ROOT}/learn/scripts/dse_f4_worker.py" && ok "f4 worker RSS budget" || bad "f4 worker no RSS budget"
 rg -q 'check_large_mesh' "${ROOT}/learn/scripts/dse_f4_worker.py" && ok "f4 worker mesh guard" || bad "f4 worker unguarded"
 
 if [[ "${FAIL}" -ne 0 ]]; then

@@ -36,7 +36,7 @@ from pdn_em import em_thermal_snapshot  # noqa: E402
 from pdn_extract import extract_pdn  # noqa: E402
 from pdn_solvers import RationalKrylov, make_solver, mor_starts  # noqa: E402
 from pdn_transient import build_system, solve_static  # noqa: E402
-from heavy_analysis import check_krylov, check_large_mesh  # noqa: E402
+from heavy_analysis import check_krylov, check_large_mesh, check_rss_budget  # noqa: E402
 
 ORFS = _REPO / "tools/OpenROAD-flow-scripts/flow"
 GOLD_MV = 45.298
@@ -122,8 +122,13 @@ def main() -> int:
         spef=spef_p if spef_p is not None and spef_p.is_file() else None,
     )
     n_r = int(ext.get("n_r") or len(ext.get("resistors") or []))
+    n_nodes = int(ext.get("n_nodes") or 0) or None
     solver_kind_pre = "krylov" if args.solver in ("krylov", "mor") else args.solver
-    heavy_msg = check_large_mesh(n_r, kind="F4 extract") or check_krylov(n_r, solver_kind_pre)
+    heavy_msg = (
+        check_large_mesh(n_r, kind="F4 extract")
+        or check_krylov(n_r, solver_kind_pre)
+        or check_rss_budget(n_r=n_r, n_nodes=n_nodes, solver=solver_kind_pre)
+    )
     if heavy_msg:
         print(json.dumps({
             "status": "REFUSED",
