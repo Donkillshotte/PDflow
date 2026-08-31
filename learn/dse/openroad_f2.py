@@ -403,6 +403,16 @@ read_liberty {LIB}
 read_verilog {verilog}
 link_design {top}
 read_sdc {sdc_path}
+# TritonRoute DRT-0305: POWER/GROUND signal nets (e.g. AES zero_) must be special.
+set _blk [ord::get_db_block]
+if {{$_blk != "NULL"}} {{
+  foreach _net [$_blk getNets] {{
+    set _sig [[$_net getSigType] getString]
+    if {{$_sig eq "POWER" || $_sig eq "GROUND"}} {{
+      $_net setSpecial
+    }}
+  }}
+}}
 initialize_floorplan -utilization {float(util)} -aspect_ratio 1.0 -core_space 2.0 -site {SITE}
 source {TRACKS}
 {rc}

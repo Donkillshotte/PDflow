@@ -2455,6 +2455,7 @@ def evaluate_f5_drt(
         "clock": "ideal",
         "top": spec.top,
         "sdc": str(spec.constraint),
+        "special_pg": 1,
     }
     fp = knobs_fp("routing", knobs)
     if fp in mem.seen_knobs("routing"):
