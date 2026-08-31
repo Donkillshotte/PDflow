@@ -375,6 +375,12 @@ def main() -> int:
         "leftover_cone_region_next" in src_txt and "winning_ir_region_next" in src_txt,
         "C5 uses both inspectors",
     )
+    from dse.stages import STAGE_WINNING_IR_REGION_CELL, STAGES_IR_REGION_CELL
+    check(
+        STAGE_WINNING_IR_REGION_CELL.level == "winning_ir_region_cell_family"
+        and [s.level for s in STAGES_IR_REGION_CELL] == ["winning_ir_region_cell_family"],
+        "C6 depth-0 region-cell is one family Stage",
+    )
 
     from dse.metrics import dominates, dominates_with_fidelity, pareto_front, pareto_front_gated
 
