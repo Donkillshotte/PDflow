@@ -1,15 +1,18 @@
 {
   "plan": "/workspace/learn/dse/next_iteration_plan.md",
   "plan_sha": "cf02fb91ed5b757ba057354b2f53cb18a75586e7cf7ccf895369767436f76c98",
-  "n_experiments": 53,
-  "n_done": 44,
+  "n_experiments": 58,
+  "n_done": 49,
   "win_criteria_frozen": {
     "wns_eps_ps": 5.0,
     "area_frac": 0.1
   },
   "I1_physical_knobs": {
     "wins": [
-      "camp_gcd_q1_d25u35"
+      "camp_gcd_q1_d25u35",
+      "camp_ibex_q1_d15u50",
+      "camp_ibex_q1_d25u50",
+      "camp_ibex_q1_d20u60"
     ],
     "ranges": {
       "gcd": {
@@ -18,15 +21,15 @@
         "n_wns": 9
       },
       "ibex": {
-        "n_q1": 0,
-        "range_ps": null,
-        "n_wns": 1
+        "n_q1": 4,
+        "range_ps": 26.2391,
+        "n_wns": 5
       }
     },
     "gcd_bar_ps": 25.0,
     "ibex_bar_ps": 50.0,
     "supported": true,
-    "verdict": "I1 supported (wins ['camp_gcd_q1_d25u35']) gcd_range=8.4ps"
+    "verdict": "I1 supported (wins ['camp_gcd_q1_d25u35', 'camp_ibex_q1_d15u50', 'camp_ibex_q1_d25u50', 'camp_ibex_q1_d20u60']) gcd_range=8.4ps ibex_range=26.2ps"
   },
   "I2_per_design_residual": {
     "calibration": {
@@ -41,14 +44,14 @@
         "std_ns": 0.0
       },
       "gcd": {
-        "n": 24,
-        "mean_ns": -0.051128205,
-        "std_ns": 0.019116444842741158
+        "n": 25,
+        "mean_ns": -0.0515376128,
+        "std_ns": 0.018825573814637207
       },
       "ibex": {
-        "n": 8,
-        "mean_ns": -0.15308242500000002,
-        "std_ns": 0.1260051596869946
+        "n": 12,
+        "mean_ns": -0.17557045000000002,
+        "std_ns": 0.10630476012937778
       },
       "spi": {
         "n": 2,
@@ -56,8 +59,8 @@
         "std_ns": 0.00931047498788322
       }
     },
-    "n_holdout": 8,
-    "n_inside": 8,
+    "n_holdout": 13,
+    "n_inside": 13,
     "coverage": 1.0,
     "bar": 0.8,
     "holdout": [
@@ -132,47 +135,159 @@
         "err_ns": -0.0021241499999999983,
         "band_ns": 0.047135033246270074,
         "inside": true
+      },
+      {
+        "variant": "camp_ibex_q1_d15u50",
+        "design": "ibex",
+        "pred_ns": 0.07775857499999997,
+        "actual_ns": 0.0362255,
+        "err_ns": -0.04153307499999997,
+        "band_ns": 0.2520103193739892,
+        "inside": true
+      },
+      {
+        "variant": "camp_ibex_q1_d25u50",
+        "design": "ibex",
+        "pred_ns": 0.106705575,
+        "actual_ns": 0.039892,
+        "err_ns": -0.066813575,
+        "band_ns": 0.2520103193739892,
+        "inside": true
+      },
+      {
+        "variant": "camp_ibex_q1_d20u40",
+        "design": "ibex",
+        "pred_ns": 0.09817357499999996,
+        "actual_ns": 0.0161107,
+        "err_ns": -0.08206287499999995,
+        "band_ns": 0.2520103193739892,
+        "inside": true
+      },
+      {
+        "variant": "camp_ibex_q1_d20u60",
+        "design": "ibex",
+        "pred_ns": 0.12179657499999996,
+        "actual_ns": 0.0423498,
+        "err_ns": -0.07944677499999997,
+        "band_ns": 0.2520103193739892,
+        "inside": true
+      },
+      {
+        "variant": "camp_gcd_q4_d25u35_c055",
+        "design": "gcd",
+        "pred_ns": 0.023823449999999996,
+        "actual_ns": 0.0130203,
+        "err_ns": -0.010803149999999996,
+        "band_ns": 0.047135033246270074,
+        "inside": true
       }
     ],
     "supported": true,
-    "verdict": "I2 supported (8/8 holdout inside per-design \u00b12\u03c3)"
+    "verdict": "I2 supported (13/13 holdout inside per-design \u00b12\u03c3)"
   },
   "I3_stop_precision": {
-    "n_verified": 0,
-    "n_lose": 0,
-    "precision": null,
+    "n_verified": 11,
+    "n_lose": 11,
+    "precision": 1.0,
     "bar": 0.8,
-    "rows": [],
-    "supported": null,
-    "verdict": "I3 incomplete (no verified Q2 control_negative finishes)"
+    "rows": [
+      {
+        "variant": "camp_gcd_dse_small",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_dse_fast",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_dse_fixedb",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_clk040_b",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_clk040_c",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_clk055_b",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_clk055_c",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_clk070_b",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_clk070_c",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_clk090_b",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      },
+      {
+        "variant": "camp_gcd_clk090_c",
+        "loses": true,
+        "via": "replay",
+        "policy": "STOP"
+      }
+    ],
+    "supported": true,
+    "verdict": "I3 supported (STOP precision 100% on 11 verified rejects)"
   },
   "I4_area_regime": {
-    "n_candidates": 8,
+    "n_candidates": 13,
     "hits": [],
     "area_frac": 0.1,
     "supported": false,
     "verdict": "I4 not supported (no closed candidate \u226510% smaller than a closed base)"
   },
   "I5_proxy_correlation": {
-    "n_place_pairs": 36,
+    "n_place_pairs": 41,
     "n_f1_pairs": 3,
-    "place_spearman": 0.9673101673101673,
+    "place_spearman": 0.9679442508710799,
     "f1_spearman": 0.8660254037844387,
     "bar": 0.6,
     "min_n": 8,
     "supported": true,
-    "verdict": "I5 supported (place Spearman 0.967 \u2265 0.6; F1 Spearman 0.866)"
+    "verdict": "I5 supported (place Spearman 0.968 \u2265 0.6; F1 Spearman 0.866)"
   },
   "gate_diagnostics": {
-    "n_challengers": 24,
-    "n_promoted": 15,
-    "n_real_wins": 1,
-    "tp": 1,
-    "fp": 14,
+    "n_challengers": 29,
+    "n_promoted": 20,
+    "n_real_wins": 4,
+    "tp": 4,
+    "fp": 16,
     "fn": 0,
     "tn": 9,
-    "precision": 0.06666666666666667,
+    "precision": 0.2,
     "recall": 1.0,
-    "verdict": "gate FP=14 FN=0 precision=0.067 (1 product-wins among 24 challengers)"
+    "verdict": "gate FP=16 FN=0 precision=0.200 (4 product-wins among 29 challengers)"
   }
 }

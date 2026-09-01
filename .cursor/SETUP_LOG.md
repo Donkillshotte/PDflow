@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T20:30Z — Q0–Q4 done: physical knobs win, I4 false
+
+First §5 product wins of the campaign: gcd `d25u35` (−10.5% area, ±1.2 ps)
+and ibex `d20u60` (+42 vs +22 ps). I1/I2/I3/I5 supported. I4 not supported
+(Q4 at 0.55 ns closes with the same area as `camp_gcd_clk055_a`). STOP
+policy 100% on 11 already-paid losers. Gold 45.298 unrestamped.
+
 ## 2026-09-01T19:50Z — Q1 gcd knob grid DONE: first §5 win
 
 8/8 gcd finishes. `camp_gcd_q1_d25u35` (LB=0.25, util=35) WNS −38.4 ps

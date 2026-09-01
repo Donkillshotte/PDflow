@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "f8908e89a659",
+  "phase": "Q1",
+  "design": "ibex",
+  "variant": "camp_ibex_q1_d20u60",
+  "role": "knob",
+  "status": "done",
+  "clock_ns": 2.2,
+  "sha256_6_report": "c330d00c69454179a27f68e5167d84fa989f2c7683acf85bc9fe7941bff8dc3e",
+  "finish_wns_ns": 0.0423498,
+  "finish_tns_ns": 0.0,
+  "place_wns_ns": 0.274879,
+  "stdcell_um2": 30686.0,
+  "stdcell_count": 23281,
+  "repair_buffer": 746,
+  "die_um2": 52573.9,
+  "place_promoted": true,
+  "notes": "Q1 knob sweep. LB=0.20 UTIL=60. Base yosys netlist."
+}

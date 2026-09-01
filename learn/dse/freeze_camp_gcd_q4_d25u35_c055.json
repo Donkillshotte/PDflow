@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "bb6d807bf78f",
+  "phase": "Q4",
+  "design": "gcd",
+  "variant": "camp_gcd_q4_d25u35_c055",
+  "role": "knob",
+  "status": "done",
+  "clock_ns": 0.55,
+  "sha256_6_report": "feb1d7dbd6c31f5c18d003ed84f2fc669258a60eaad6c51f4fea31ce78cb7ae4",
+  "finish_wns_ns": 0.0130203,
+  "finish_tns_ns": 0.0,
+  "place_wns_ns": 0.0743837,
+  "stdcell_um2": 697.718,
+  "stdcell_count": 610,
+  "repair_buffer": 62,
+  "die_um2": 1970.03,
+  "place_promoted": true,
+  "notes": "Q4 area-regime: Q1 winner knobs at 0.55 ns where camp_gcd_clk055_a closes."
+}
