@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T17:00Z — P0 ibex ainj H6 PASS
+
+Sha identico (`dc42f9418f2d…`), WNS +22.4143 ps identico. H6 su 4 design
+(gcd, spi, dynamic_node, ibex). Prossima: `camp_aes_base` (FLOORPLAN_DEF
+fisso, niente Krylov).
+
 ## 2026-09-01T16:52Z — P0 ibex base DONE (barely closed)
 
 `camp_ibex_base` Verilog overlay, 453s, peak 1.6 GiB. WNS **+22.4 ps**,

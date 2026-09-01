@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "3f6c39eca883",
+  "phase": "P0",
+  "design": "aes",
+  "variant": "camp_aes_base",
+  "role": "base",
+  "status": "done",
+  "clock_ns": 0.82,
+  "sha256_6_report": "4e2c65002b05830490eacd444b44f45e3d9744292344876cfe858ab7be7f4927",
+  "finish_wns_ns": -0.00892109,
+  "finish_tns_ns": -0.0237924,
+  "place_wns_ns": 0.00312994,
+  "stdcell_um2": 19921.3,
+  "stdcell_count": 15960,
+  "repair_buffer": 2661,
+  "die_um2": 62612.4,
+  "place_promoted": true,
+  "notes": "P0 aes base. Official ORFS FLOORPLAN_DEF + ABC speed (no ABC_AREA). No Krylov."
+}
