@@ -11,9 +11,13 @@ SUMMARY="$LOGDIR/p2_abc_speed.txt"
 
 record_skip() {
   local design="$1" variant="$2" clk="$3" why="$4"
+  if PYTHONPATH=learn python3 -c "from dse.experiments import ExperimentLog; import sys; sys.exit(0 if ExperimentLog().has('$variant','P2') else 1)"; then
+    echo "skip already recorded $variant" | tee -a "$SUMMARY"
+    return 0
+  fi
   PYTHONPATH=learn:learn/scripts python3 "$ROOT/learn/scripts/record_experiment.py" \
     --phase P2 --design "$design" --variant "$variant" --role abc_speed --clock "$clk" \
-    --status frozen --notes "$why" | tee -a "$SUMMARY"
+    --status frozen --notes "$why" | tee -a "$SUMMARY" || true
 }
 
 run_speed() {
