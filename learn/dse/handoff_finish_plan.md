@@ -128,10 +128,12 @@ il handoff nel controller.
 
 ## Ordine di lavoro (quando si implementa)
 
-1. Script/variant isolata + test secco: “questo `.v` entra in floorplan”.
-2. Finish B.
-3. Finish C.
-4. Tabella e verdetto nel write-up accanto a `flow_vs_orfs_gcd.md`.
-5. Fase 2 IR solo se B/C sono nati.
+1. Script/variant isolata + test secco: “questo `.v` entra in floorplan”. **fatto**
+2. Finish B. **fatto** (`flowlab_dse_small`, WNS −338 ps)
+3. Finish C. **fatto** (`flowlab_dse_fast`, WNS −187 ps)
+4. Tabella e verdetto nel write-up accanto a `flow_vs_orfs_gcd.md`. **fatto**
+   (`handoff_finish_bakeoff.md`: A resta)
+5. Fase 2 IR solo se B/C sono nati. **saltata** (die diversi; PSM ≠ DirectLU)
 
-Niente codice nel controller finché 2–4 non hanno un verdetto.
+Niente codice nel controller: il verdetto GCD non giustifica il loop.
+

@@ -122,3 +122,4 @@ GCD vs ORFS `make finish` (honest, not a slide):
 [`flow_vs_orfs_gcd.md`](flow_vs_orfs_gcd.md).
 Piano per cucinare i winner DSE con lo stesso finish:
 [`handoff_finish_plan.md`](handoff_finish_plan.md).
+Esito (A resta): [`handoff_finish_bakeoff.md`](handoff_finish_bakeoff.md).

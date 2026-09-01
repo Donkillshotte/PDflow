@@ -1,0 +1,27 @@
+{
+  "kind": "orfs_finish_handoff",
+  "cook": "B",
+  "variant": "flowlab_dse_small",
+  "netlist": "/workspace/learn/sim/dse/netlists/54142494d890.v",
+  "dse_id": "54142494d890",
+  "dse_name": "sub_twos_complement",
+  "sha256_6_report": "617d0c9a4b28e639168782d3438bb343080e063ae1d376e54374c152e8640829",
+  "baseline_flowlab_untouched": true,
+  "finish": {
+    "wns_setup_ns": -0.338301,
+    "tns_setup_ns": -13.0896,
+    "stdcell_um2": 609.938,
+    "stdcell_count": 439,
+    "repair_buffer": 126,
+    "clock_buffer": 7,
+    "power_w": 0.00242781,
+    "leakage_w": 1.45257e-05,
+    "util": 0.536751,
+    "psm_vdd_drop_v": 0.00332845,
+    "fmax_hz": 1252660000.0,
+    "die_um2": 1304.65,
+    "core_um2": 1136.35,
+    "setup_violation_count": 46,
+    "errors": 0
+  }
+}

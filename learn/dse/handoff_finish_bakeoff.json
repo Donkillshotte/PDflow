@@ -1,0 +1,58 @@
+{
+  "kind": "orfs_finish_handoff_bakeoff",
+  "exam": "same ORFS make finish, same SDC 0.46 ns, same CORE_UTILIZATION=35, only the gate netlist changes",
+  "baseline_untouched": {
+    "sha256_6_report": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543",
+    "sha256_6_final_odb": "f691539f60f2f66f025108163819b827df43670a660f24362368d0ce56e62594",
+    "matches_freeze": true
+  },
+  "gold_45_298_unrestamped": true,
+  "phase2_directlu": "skipped — dies differ (A 1970, B 1305, C 1941); PSM IR is not the same extract; not blocking",
+  "verdict": "A stays. B is smaller but much later. C is later and not smaller.",
+  "cooks": {
+    "A": {
+      "variant": "flowlab",
+      "netlist": "ORFS Yosys+ABC (tutorial)",
+      "wns_setup_ns": -0.037167,
+      "tns_setup_ns": -0.595003,
+      "stdcell_um2": 940.31,
+      "stdcell_count": 680,
+      "repair_buffer": 132,
+      "clock_buffer": 7,
+      "power_w": 0.00393245,
+      "util": 0.549084,
+      "die_um2": 1970.03,
+      "place_wns_ns": 0.0123135
+    },
+    "B": {
+      "variant": "flowlab_dse_small",
+      "dse_id": "54142494d890",
+      "dse_name": "sub_twos_complement",
+      "wns_setup_ns": -0.338301,
+      "tns_setup_ns": -13.0896,
+      "stdcell_um2": 609.938,
+      "stdcell_count": 439,
+      "repair_buffer": 126,
+      "clock_buffer": 7,
+      "power_w": 0.00242781,
+      "util": 0.536751,
+      "die_um2": 1304.65,
+      "place_wns_ns": -0.313564
+    },
+    "C": {
+      "variant": "flowlab_dse_fast",
+      "dse_id": "52e0ecacb19b",
+      "dse_name": "orfs_abc_speed",
+      "wns_setup_ns": -0.186887,
+      "tns_setup_ns": -5.98079,
+      "stdcell_um2": 963.452,
+      "stdcell_count": 660,
+      "repair_buffer": 198,
+      "clock_buffer": 7,
+      "power_w": 0.00552729,
+      "util": 0.567712,
+      "die_um2": 1940.84,
+      "place_wns_ns": -0.116708
+    }
+  }
+}

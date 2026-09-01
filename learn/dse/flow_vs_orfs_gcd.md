@@ -16,6 +16,14 @@ ORFS vince il **chip chiuso** (timing dopo repair). La DSE vince la **ricerca
 che ORFS non fa**: architettura, ABC per-cono, PDN sullo stesso extract, e
 attributi (IR combo su `dpath` → ABC locale, non più ABC sul chip).
 
+## Bake-off finish (eseguito 2026-09-01)
+
+Stesso `make finish`, solo il netlist DSE. Dettaglio:
+[`handoff_finish_bakeoff.md`](handoff_finish_bakeoff.md).
+
+**A resta.** B più piccolo ma WNS −338 ps. C “veloce” WNS −187 ps e 198
+repair buffer. Place A era +12 ps; B e C già in ritardo a DP.
+
 ## Cosa non è confrontabile
 
 | Coppia | Perché no |

@@ -3,6 +3,17 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T12:52Z — Handoff finish B+C eseguito; A resta
+
+Stesso forno: SDC 0.46, CORE_UTILIZATION=35, SYNTH_NETLIST_FILES, variant
+isolate. Wrapper rifiuta `flowlab`. Floorplan B 257 inst die 1305.
+Finish B `flowlab_dse_small` WNS **−338 ps**, area 610, repair 126.
+Finish C `flowlab_dse_fast` WNS **−187 ps**, area 963, repair 198.
+A: WNS **−37 ps**, area 940, repair 132. Place A +12 ps; B −314; C −117.
+Sha flowlab 6_report `5cba9a7a…` e 6_final.odb `f691539f…` invariati.
+Oro 45.298 unrestamp. Fase 2 DirectLU saltata (die diversi). Verdetto:
+`learn/dse/handoff_finish_bakeoff.md`. Nessun finish nel controller.
+
 ## 2026-09-01T12:45Z — Piano handoff DSE → make finish
 
 Piano (non eseguito): `learn/dse/handoff_finish_plan.md`. Tre cotture,
