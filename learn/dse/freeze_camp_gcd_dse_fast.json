@@ -1,0 +1,22 @@
+{
+  "kind": "campaign_freeze",
+  "id": "gcdp0fast000",
+  "phase": "P0",
+  "design": "gcd",
+  "variant": "camp_gcd_dse_fast",
+  "orfs_variant": "flowlab_dse_fast",
+  "role": "dse_fast",
+  "status": "done",
+  "clock_ns": 0.46,
+  "sha256_6_report": "f0235b2043d28c8588339965d55f053f9da16afd054e4fb1bc0fa70416b62f76",
+  "finish_wns_ns": -0.186887,
+  "finish_tns_ns": -5.98079,
+  "place_wns_ns": -0.116708,
+  "stdcell_um2": 963.452,
+  "stdcell_count": 660,
+  "repair_buffer": 198,
+  "die_um2": 1940.84,
+  "place_promoted": false,
+  "proxy_wns_ns": -0.1142,
+  "notes": "DSE orfs_abc_speed. Already finished in bake-off."
+}

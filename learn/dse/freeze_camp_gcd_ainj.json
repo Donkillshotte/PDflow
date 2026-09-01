@@ -1,0 +1,22 @@
+{
+  "kind": "campaign_freeze",
+  "id": "gcdp0ainj000",
+  "phase": "P0",
+  "design": "gcd",
+  "variant": "camp_gcd_ainj",
+  "orfs_variant": "flowlab_dse_ainj",
+  "role": "ainj",
+  "status": "done",
+  "clock_ns": 0.46,
+  "sha256_6_report": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543",
+  "finish_wns_ns": -0.037167,
+  "finish_tns_ns": -0.595003,
+  "place_wns_ns": 0.0123135,
+  "stdcell_um2": 940.31,
+  "stdcell_count": 680,
+  "repair_buffer": 132,
+  "die_um2": 1970.03,
+  "place_promoted": true,
+  "proxy_wns_ns": null,
+  "notes": "A-injected: A's 1_2_yosys.v recooked. Bit-identical to A."
+}

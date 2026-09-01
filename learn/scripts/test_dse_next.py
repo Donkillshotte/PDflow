@@ -364,6 +364,94 @@ def check_next_level(check, root: Path) -> None:
     check(vs["delta_vs_A"]["Bfix"]["same_die_as_A"], "eval: Bfix die matches A")
     check(abs(vs["delta_vs_A"]["Ainj"]["d_wns_ps"]) < 1e-6, "eval: Ainj ΔWNS is 0")
 
+    # --- campaign infra: wrapper refusal, registry, eval parse ---
+    import os
+    import subprocess
+    from dse.experiments import Experiment, ExperimentLog, refuse_locked_variant
+    from eval_campaign import evaluate as eval_campaign
+
+    wrapper = root / "scripts" / "run_design_finish.sh"
+    check(wrapper.is_file(), "run_design_finish.sh exists")
+    env = {**os.environ, "DESIGN": "gcd", "FLOW_VARIANT": "flowlab"}
+    r = subprocess.run(["bash", str(wrapper)], cwd=root, env=env, capture_output=True, text=True)
+    check(r.returncode == 2 and "locked" in (r.stderr + r.stdout).lower(), f"wrapper refuses flowlab ({r.returncode} {r.stderr})")
+    env["FLOW_VARIANT"] = "learn"
+    r = subprocess.run(["bash", str(wrapper)], cwd=root, env=env, capture_output=True, text=True)
+    check(r.returncode == 2, "wrapper refuses learn")
+    env["FLOW_VARIANT"] = "base"
+    r = subprocess.run(["bash", str(wrapper)], cwd=root, env=env, capture_output=True, text=True)
+    check(r.returncode == 2, "wrapper refuses base")
+    env["FLOW_VARIANT"] = "camp_gcd_krylov"
+    r = subprocess.run(["bash", str(wrapper)], cwd=root, env=env, capture_output=True, text=True)
+    check(r.returncode == 2, "wrapper refuses krylov variant")
+
+    raised = False
+    try:
+        refuse_locked_variant("flowlab")
+    except ValueError:
+        raised = True
+    check(raised, "experiments.refuse_locked_variant(flowlab)")
+
+    tmp = Path(tempfile.mkdtemp(prefix="dse-camp-")) / "e.jsonl"
+    log = ExperimentLog(tmp)
+    log.append(
+        Experiment(
+            id="synbase000001",
+            phase="P0",
+            design="toy",
+            clock_ns=1.0,
+            variant="camp_toy_base",
+            role="base",
+            status="done",
+            finish_wns_ns=-0.04,
+            place_wns_ns=0.01,
+            stdcell_um2=100.0,
+            stdcell_count=10,
+            sha256_6_report="aaa",
+        )
+    )
+    log.append(
+        Experiment(
+            id="synainj000001",
+            phase="P0",
+            design="toy",
+            clock_ns=1.0,
+            variant="camp_toy_ainj",
+            role="ainj",
+            status="done",
+            finish_wns_ns=-0.04,
+            place_wns_ns=0.01,
+            stdcell_um2=100.0,
+            stdcell_count=10,
+            sha256_6_report="aaa",
+        )
+    )
+    log.append(
+        Experiment(
+            id="syndse0000001",
+            phase="P0",
+            design="toy",
+            clock_ns=1.0,
+            variant="camp_toy_fast",
+            role="dse_fast",
+            status="done",
+            finish_wns_ns=-0.20,
+            place_wns_ns=-0.15,
+            stdcell_um2=90.0,
+            stdcell_count=8,
+            proxy_wns_ns=-0.05,
+            sha256_6_report="bbb",
+        )
+    )
+    check(len(log) == 3, f"registry append 3 rows, got {len(log)}")
+    reload = ExperimentLog(tmp)
+    check(len(reload) == 3 and reload.all()[0].variant == "camp_toy_base", "registry JSONL reloads")
+    camp = eval_campaign(reload)
+    check(camp["n_done"] == 3, "eval_campaign parses synthetic JSONL")
+    check("H6 supported" in camp["H6_oven_deterministic"]["verdict"], f"synthetic H6 match {camp['H6_oven_deterministic']}")
+    check(camp["H1_proxy_inversion"]["designs"]["toy"]["inverted"] is True, "synthetic H1: proxy winner ≠ finish winner")
+    check("incomplete" in camp["H2_place_dp_gate"]["verdict"], "synthetic H2 incomplete (n<15)")
+
 
 if __name__ == "__main__":
     def _check(ok: bool, msg: str) -> None:

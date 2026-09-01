@@ -3,6 +3,27 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T16:25Z — Campagna: esecuzione partita (infra P0)
+
+`/goal` sul piano `experiment_campaign_plan.md`. Infra: `scripts/run_design_finish.sh`
+(rifiuta flowlab/learn/base/krylov; DESIGN gcd/spi/aes/ibex/dynamic_node; SDC generato
+in `learn/sim/dse/sdc/`), `learn/dse/experiments.py` JSONL append-only,
+`learn/scripts/eval_campaign.py` H1–H6 criteri §5 frozen, `record_experiment.py`.
+Ibex: slang assente → overlay Verilog `learn/designs/nangate45/ibex-verilog`
+(chameleon/ibex). dynamic_node P0: ricetta ORFS (SWAP_ARITH=1). GCD A/Ainj/B/C/Bfix
+registrati come `camp_gcd_*` (orfs_variant=flowlab*), **non** rilanciati.
+Prossima cottura: `DESIGN=spi FLOW_VARIANT=camp_spi_base`. Un job, prlimit 8 GiB.
+
+## 2026-09-01T16:20Z — Piano campagna multi-design (solo piano)
+
+`learn/dse/experiment_campaign_plan.md`. Ipotesi pre-registrate H1–H6
+(proxy invertono?, gate P2 predice?, B vince a clock rilassato?, DSE
+scala con la taglia?, residual trasferibile?, forno deterministico?).
+Design v1: gcd, riscv32i/spi, dynamic_node, ibex, aes (no F4 Krylov).
+~40–45 finish, ~10–18 h wall in fasi P0–P7, ogni esperimento freezato
+e committato. Criteri decisionali scritti PRIMA di cuocere. Nessun
+esperimento lanciato da questo commit.
+
 ## 2026-09-01T15:45Z — Eval esaustiva vs flow base A
 
 `eval_vs_base_flow.py` su 5 cotture. A resta. Ainj bit-identical (ΔWNS 0,

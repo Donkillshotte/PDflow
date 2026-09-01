@@ -1,0 +1,22 @@
+{
+  "kind": "campaign_freeze",
+  "id": "gcdp0small00",
+  "phase": "P0",
+  "design": "gcd",
+  "variant": "camp_gcd_dse_small",
+  "orfs_variant": "flowlab_dse_small",
+  "role": "dse_small",
+  "status": "done",
+  "clock_ns": 0.46,
+  "sha256_6_report": "617d0c9a4b28e639168782d3438bb343080e063ae1d376e54374c152e8640829",
+  "finish_wns_ns": -0.338301,
+  "finish_tns_ns": -13.0896,
+  "place_wns_ns": -0.313564,
+  "stdcell_um2": 609.938,
+  "stdcell_count": 439,
+  "repair_buffer": 126,
+  "die_um2": 1304.65,
+  "place_promoted": false,
+  "proxy_wns_ns": -0.5215,
+  "notes": "DSE sub_twos_complement. Already finished in bake-off."
+}

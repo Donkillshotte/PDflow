@@ -1,0 +1,22 @@
+{
+  "kind": "campaign_freeze",
+  "id": "gcdp0fixedb0",
+  "phase": "P0",
+  "design": "gcd",
+  "variant": "camp_gcd_dse_fixedb",
+  "orfs_variant": "flowlab_dse_fixedb",
+  "role": "dse_other",
+  "status": "done",
+  "clock_ns": 0.46,
+  "sha256_6_report": "cfd445f85314069cda36efc01111e5c0efa80d2ca45ddd9f85253f3bac181906",
+  "finish_wns_ns": -0.349488,
+  "finish_tns_ns": -13.025,
+  "place_wns_ns": -0.317536,
+  "stdcell_um2": 635.474,
+  "stdcell_count": 452,
+  "repair_buffer": 129,
+  "die_um2": 1970.03,
+  "place_promoted": false,
+  "proxy_wns_ns": -0.5215,
+  "notes": "Same B netlist on A's die. Control, not a product challenger."
+}
