@@ -1,7 +1,7 @@
 # Campaign eval vs frozen H1–H6
 
 Plan sha: `a9446c2103c5eca2126a50daa9272fe481e5f6bb6a390af6a21e0a5bbae7fbc3`
-Experiments: 11 (11 done)
+Experiments: 13 (13 done)
 
 Win criteria are **frozen**. This script does not retune them.
 
@@ -73,6 +73,19 @@ Win criteria are **frozen**. This script does not retune them.
       "finish_wns_ps": {
         "camp_ibex_base": 22.4143
       }
+    },
+    "aes": {
+      "n": 1,
+      "finish_rank": [
+        "camp_aes_base"
+      ],
+      "proxy_rank": null,
+      "finish_best": "camp_aes_base",
+      "proxy_best": null,
+      "inverted": null,
+      "finish_wns_ps": {
+        "camp_aes_base": -8.92109
+      }
     }
   },
   "supported": true,
@@ -85,12 +98,12 @@ Win criteria are **frozen**. This script does not retune them.
 
 ## H2_place_dp_gate
 
-**Verdict:** H2 incomplete (n=7 < 15)
+**Verdict:** H2 incomplete (n=8 < 15)
 
 ```json
 {
-  "n": 7,
-  "n_promoted": 4,
+  "n": 8,
+  "n_promoted": 5,
   "n_real_wins": 0,
   "precision": 1.0,
   "recall": null,
@@ -103,7 +116,7 @@ Win criteria are **frozen**. This script does not retune them.
   },
   "enough_n": false,
   "pass": false,
-  "verdict": "H2 incomplete (n=7 < 15)"
+  "verdict": "H2 incomplete (n=8 < 15)"
 }
 ```
 
@@ -153,7 +166,7 @@ Win criteria are **frozen**. This script does not retune them.
 
 ```json
 {
-  "n": 7,
+  "n": 8,
   "residuals": [
     {
       "variant": "camp_gcd_base",
@@ -189,6 +202,11 @@ Win criteria are **frozen**. This script does not retune them.
       "variant": "camp_ibex_base",
       "design": "ibex",
       "residual_ns": -0.2388377
+    },
+    {
+      "variant": "camp_aes_base",
+      "design": "aes",
+      "residual_ns": -0.012051029999999999
     }
   ],
   "gcd_mean_residual_ns": -0.044087125000000005,
@@ -196,9 +214,10 @@ Win criteria are **frozen**. This script does not retune them.
   "other_means_ns": {
     "spi": 0.030112999999999945,
     "dynamic_node": -0.24974000000000007,
-    "ibex": -0.2388377
+    "ibex": -0.2388377,
+    "aes": -0.012051029999999999
   },
-  "outlier_frac": 0.42857142857142855,
+  "outlier_frac": 0.375,
   "transfer_ok": false,
   "verdict": "H5 not supported (>30% residuals outside gcd \u00b12\u03c3)"
 }
@@ -250,6 +269,16 @@ Win criteria are **frozen**. This script does not retune them.
       "match": true,
       "base_report_sha": "dc42f9418f2dd0a1f0d6d481e25bac26a48c546a1cb0cc370f427fff41462bfc",
       "ainj_report_sha": "dc42f9418f2dd0a1f0d6d481e25bac26a48c546a1cb0cc370f427fff41462bfc"
+    },
+    {
+      "design": "aes",
+      "base_variant": "camp_aes_base",
+      "ainj_variant": "camp_aes_ainj",
+      "report_sha_match": true,
+      "wns_match": true,
+      "match": true,
+      "base_report_sha": "4e2c65002b05830490eacd444b44f45e3d9744292344876cfe858ab7be7f4927",
+      "ainj_report_sha": "4e2c65002b05830490eacd444b44f45e3d9744292344876cfe858ab7be7f4927"
     }
   ],
   "all_match": true,

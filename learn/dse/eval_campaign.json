@@ -1,8 +1,8 @@
 {
   "plan": "/workspace/learn/dse/experiment_campaign_plan.md",
   "plan_sha": "a9446c2103c5eca2126a50daa9272fe481e5f6bb6a390af6a21e0a5bbae7fbc3",
-  "n_experiments": 11,
-  "n_done": 11,
+  "n_experiments": 13,
+  "n_done": 13,
   "win_criteria_frozen": {
     "wns_eps_ps": 5.0,
     "area_frac": 0.1,
@@ -71,6 +71,19 @@
         "finish_wns_ps": {
           "camp_ibex_base": 22.4143
         }
+      },
+      "aes": {
+        "n": 1,
+        "finish_rank": [
+          "camp_aes_base"
+        ],
+        "proxy_rank": null,
+        "finish_best": "camp_aes_base",
+        "proxy_best": null,
+        "inverted": null,
+        "finish_wns_ps": {
+          "camp_aes_base": -8.92109
+        }
       }
     },
     "supported": true,
@@ -80,8 +93,8 @@
     "verdict": "H1 supported on gcd"
   },
   "H2_place_dp_gate": {
-    "n": 7,
-    "n_promoted": 4,
+    "n": 8,
+    "n_promoted": 5,
     "n_real_wins": 0,
     "precision": 1.0,
     "recall": null,
@@ -94,7 +107,7 @@
     },
     "enough_n": false,
     "pass": false,
-    "verdict": "H2 incomplete (n=7 < 15)"
+    "verdict": "H2 incomplete (n=8 < 15)"
   },
   "H3_small_when_clock_relaxes": {
     "points": [
@@ -123,7 +136,7 @@
     "verdict": "H4 incomplete (need \u22653 designs with base+DSE finish)"
   },
   "H5_place_finish_residual": {
-    "n": 7,
+    "n": 8,
     "residuals": [
       {
         "variant": "camp_gcd_base",
@@ -159,6 +172,11 @@
         "variant": "camp_ibex_base",
         "design": "ibex",
         "residual_ns": -0.2388377
+      },
+      {
+        "variant": "camp_aes_base",
+        "design": "aes",
+        "residual_ns": -0.012051029999999999
       }
     ],
     "gcd_mean_residual_ns": -0.044087125000000005,
@@ -166,9 +184,10 @@
     "other_means_ns": {
       "spi": 0.030112999999999945,
       "dynamic_node": -0.24974000000000007,
-      "ibex": -0.2388377
+      "ibex": -0.2388377,
+      "aes": -0.012051029999999999
     },
-    "outlier_frac": 0.42857142857142855,
+    "outlier_frac": 0.375,
     "transfer_ok": false,
     "verdict": "H5 not supported (>30% residuals outside gcd \u00b12\u03c3)"
   },
@@ -213,6 +232,16 @@
         "match": true,
         "base_report_sha": "dc42f9418f2dd0a1f0d6d481e25bac26a48c546a1cb0cc370f427fff41462bfc",
         "ainj_report_sha": "dc42f9418f2dd0a1f0d6d481e25bac26a48c546a1cb0cc370f427fff41462bfc"
+      },
+      {
+        "design": "aes",
+        "base_variant": "camp_aes_base",
+        "ainj_variant": "camp_aes_ainj",
+        "report_sha_match": true,
+        "wns_match": true,
+        "match": true,
+        "base_report_sha": "4e2c65002b05830490eacd444b44f45e3d9744292344876cfe858ab7be7f4927",
+        "ainj_report_sha": "4e2c65002b05830490eacd444b44f45e3d9744292344876cfe858ab7be7f4927"
       }
     ],
     "all_match": true,

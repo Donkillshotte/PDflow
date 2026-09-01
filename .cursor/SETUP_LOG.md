@@ -3,6 +3,20 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T17:16Z — P0 COMPLETO (5/5 design, H6 5/5)
+
+AES ainj bit-identical (sha `4e2c65002b05…`, WNS −8.921 ps). P0: gcd
+(registrato) + spi + dynamic_node + ibex + aes, ciascuno base+ainj.
+H6 **pass su tutti**. H5 fail frozen. Prossima fase **P1** clock sweep
+GCD {0.40,0.55,0.70,0.90}×{A,B,C}, util 35, variant `camp_gcd_clk*`.
+Mai `flowlab`.
+
+## 2026-09-01T17:08Z — P0 aes base DONE (barely open)
+
+`camp_aes_base` 408s, peak 1.4 GiB. WNS **−8.9 ps**, place +3.1 ps,
+15960 inst, area 19921, die 62612 (FLOORPLAN_DEF), repair 2661.
+Place-promoted. Niente Krylov. Prossima: ainj.
+
 ## 2026-09-01T17:00Z — P0 ibex ainj H6 PASS
 
 Sha identico (`dc42f9418f2d…`), WNS +22.4143 ps identico. H6 su 4 design
