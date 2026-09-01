@@ -84,6 +84,16 @@ def parse_place_dp(path: Path | str) -> dict[str, Any]:
     }
 
 
+def parse_grt(path: Path | str) -> dict[str, Any]:
+    """Last-key-wins GRT JSON. Wirelength is the routing-size proxy (no overflow key)."""
+    d = json.loads(Path(path).read_text())
+    return {
+        "grt_wl": d.get("globalroute__global_route__wirelength"),
+        "grt_wl_est": d.get("globalroute__route__wirelength__estimated"),
+        "path": str(path),
+    }
+
+
 def parse_floorplan(path: Path | str) -> dict[str, Any]:
     d = json.loads(Path(path).read_text())
     die = d.get("floorplan__design__die__area")

@@ -9,7 +9,7 @@ from dse.arch_plugins import classify, plugin
 from dse.campaign import f6_hv_points, gated_hv_f6, run_campaign, suggest_ref
 from dse.contracts import ConstraintContract, GeometryContract, SemanticContract, stamp_evidence
 from dse.exporter import mark_export
-from dse.f6_finish import ingest_finish, parse_6_report, qor_from_finish, refuse_locked_variant
+    from dse.f6_finish import ingest_finish, parse_6_report, parse_grt, qor_from_finish, refuse_locked_variant
 from dse.feasibility import constraint_dominates, feasibility_of, feasible_pareto, ir_comparable
 from dse.fingerprint import knobs_fp
 from dse.funnel import promote_or_reject
@@ -152,6 +152,12 @@ def check_next_level(check, root: Path) -> None:
     check(float(pb["wns_setup_ns"]) < -0.3, "parse B WNS still ~−338 ps")
     qa = qor_from_finish(pa)
     check(qa.fidelity == "F6" and qa.area_um2 and qa.area_um2 > 900, "F6 QoR from finish area")
+    check(pa.get("psm_vdd_drop_v") is not None, "parse A IR VDD from 6_report")
+    check(abs(float(pa["psm_vdd_drop_v"]) - 0.00666716) < 1e-8, f"parse A IR {pa.get('psm_vdd_drop_v')}")
+    a_grt = root / "tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/5_1_grt.json"
+    check(a_grt.is_file(), "A 5_1_grt.json on disk")
+    ga = parse_grt(a_grt)
+    check(ga.get("grt_wl") is not None and int(ga["grt_wl"]) == 7589, f"parse A GRT WL {ga.get('grt_wl')}")
 
     tmp = Path(tempfile.mkdtemp(prefix="dse-nl-")) / "m.jsonl"
     mem_f = DesignMemory(tmp)
@@ -476,7 +482,7 @@ def check_next_level(check, root: Path) -> None:
         "H6 pairs are P0 base+ainj only",
     )
 
-    from eval_policy import evaluate as eval_policy, spearman
+    from eval_policy import evaluate as eval_policy, render_qor_md, spearman
 
     check(abs((spearman([1.0, 2.0, 3.0], [10.0, 20.0, 30.0]) or 0) - 1.0) < 1e-9, "spearman perfect +1")
     check(abs((spearman([1.0, 2.0, 3.0], [30.0, 20.0, 10.0]) or 0) + 1.0) < 1e-9, "spearman perfect -1")
@@ -499,8 +505,32 @@ def check_next_level(check, root: Path) -> None:
         blob = parse_6_report(q1_rep)
         check(blob.get("power_w") is not None and float(blob["power_w"]) > 0, f"6_report has finish power {blob.get('power_w')}")
         check(blob.get("leakage_w") is not None and float(blob["leakage_w"]) > 0, f"6_report has leakage {blob.get('leakage_w')}")
+        check(blob.get("psm_vdd_drop_v") is not None, f"6_report has IR VDD {blob.get('psm_vdd_drop_v')}")
     n_enr = enrich_power_from_logs(log)
     check(True, f"enrich_power_from_logs ran ({n_enr} rows touched on synthetic log)")
+
+    # QoR sheet must show the reference-flow numbers, not only Δ.
+    for e in log.all():
+        if e.variant == "camp_toy_base":
+            e.ir_drop_v = 0.006667
+            e.grt_wl = 7589.0
+            e.power_w = 0.003932
+            e.leakage_w = 2.56e-5
+            e.fmax_hz = 2.01e9
+            e.setup_violation_count = 38
+        elif e.variant == "camp_toy_fast":
+            e.ir_drop_v = 0.008257
+            e.grt_wl = 9000.0
+            e.power_w = 0.005527
+            e.leakage_w = 2.50e-5
+            e.fmax_hz = 1.55e9
+            e.setup_violation_count = 46
+    qor_md = render_qor_md(eval_policy(log))
+    check("Reference flow" in qor_md, "QoR sheet has a Reference flow table")
+    check("`camp_toy_base`" in qor_md, "QoR sheet names the reference variant")
+    check("IR mV" in qor_md and "GRT WL" in qor_md, "QoR sheet includes IR and GRT WL")
+    check("6.67" in qor_md and "7589" in qor_md, f"QoR sheet shows reference IR/WL absolutes")
+    check("Side-by-side sheets" in qor_md, "QoR sheet has side-by-side reference columns")
 
 
 if __name__ == "__main__":

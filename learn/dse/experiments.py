@@ -104,6 +104,11 @@ class Experiment:
     internal_power_w: float | None = None
     switching_power_w: float | None = None
     util: float | None = None
+    ir_drop_v: float | None = None
+    fmax_hz: float | None = None
+    setup_violation_count: int | None = None
+    grt_wl: float | None = None
+    core_um2: float | None = None
     repair_buffer: int | None = None
     die_um2: float | None = None
     errors: int | None = None
@@ -198,7 +203,7 @@ def fill_from_logs(exp: Experiment, root: Path | None = None) -> Experiment:
     design = exp.orfs_design or DESIGN_CATALOG.get(exp.design, {}).get("orfs_design") or exp.design
     variant = exp.orfs_variant or exp.variant
     logs = root / "tools/OpenROAD-flow-scripts/flow/logs" / "nangate45" / design / variant
-    from dse.f6_finish import parse_6_report, parse_place_dp
+    from dse.f6_finish import parse_6_report, parse_place_dp, parse_grt
 
     report = logs / "6_report.json"
     place = logs / "3_5_place_dp.json"
@@ -215,6 +220,11 @@ def fill_from_logs(exp: Experiment, root: Path | None = None) -> Experiment:
         exp.internal_power_w = _f(blob.get("internal_power_w"))
         exp.switching_power_w = _f(blob.get("switching_power_w"))
         exp.util = _f(blob.get("util"))
+        exp.ir_drop_v = _f(blob.get("psm_vdd_drop_v"))
+        exp.fmax_hz = _f(blob.get("fmax_hz"))
+        svc = blob.get("setup_violation_count")
+        exp.setup_violation_count = int(svc) if svc is not None else None
+        exp.core_um2 = _f(blob.get("core_um2"))
         rb = blob.get("repair_buffer")
         exp.repair_buffer = int(rb) if rb is not None else None
         exp.die_um2 = _f(blob.get("die_um2"))
@@ -222,6 +232,12 @@ def fill_from_logs(exp: Experiment, root: Path | None = None) -> Experiment:
         exp.errors = int(err) if err is not None else None
         exp.extra = dict(exp.extra or {})
         exp.extra["finish_path"] = str(report)
+    grt = logs / "5_1_grt.json"
+    if grt.is_file():
+        gblob = parse_grt(grt)
+        exp.grt_wl = _f(gblob.get("grt_wl"))
+        exp.extra = dict(exp.extra or {})
+        exp.extra["grt_path"] = str(grt)
     if place.is_file():
         pblob = parse_place_dp(place)
         exp.place_wns_ns = _f(pblob.get("place_wns_ns"))
@@ -241,17 +257,18 @@ def _f(v: Any) -> float | None:
 
 
 def enrich_power_from_logs(log: ExperimentLog, *, root: Path | None = None) -> int:
-    """Fill power/leakage on existing rows from on-disk 6_report. No make."""
+    """Fill power/IR/GRT/fmax on existing rows from on-disk logs. No make."""
     n = 0
     for exp in log.all():
         if exp.status != "done":
             continue
-        before = exp.power_w
+        before = (exp.power_w, exp.ir_drop_v, exp.grt_wl, exp.fmax_hz)
         fill_from_logs(exp, root=root)
-        if exp.power_w is not None and before != exp.power_w:
+        after = (exp.power_w, exp.ir_drop_v, exp.grt_wl, exp.fmax_hz)
+        if after != before:
             n += 1
-        elif exp.power_w is not None and before is None:
-            n += 1
+    if n:
+        log.rewrite()
     return n
 
 

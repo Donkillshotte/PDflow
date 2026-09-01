@@ -89,4 +89,9 @@ letti da `finish__power__*` — prima il registro non li copiava.
 
 Su gcd il win area è anche un win power/leakage (stesso netlist, die
 invariato, meno buffering). Su ibex il win è quasi solo slack: potenza
-totale ~108 mW, invariata. Tabella completa: `eval_policy.md` § QoR_vs_base.
+totale ~108 mW, invariata.
+
+IR (worst VDD drop) e GRT wirelength sono assi extra letti da
+`6_report` / `5_1_grt.json`. Non c'è overflow fraction in questi JSON
+ORFS (`congestion_*_s` sono runtime). Tabella con **valori assoluti del
+reference flow** + challenger + Δ: `learn/dse/qor_compare.md`.

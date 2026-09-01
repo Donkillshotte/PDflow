@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T21:00Z — QoR table includes IR, GRT WL, and reference flow
+
+`eval_policy` now emits `learn/dse/qor_compare.md`: reference-flow
+absolutes (WNS/TNS/area/power/leak/IR/GRT WL/fmax/setup viol) plus
+side-by-side sheets and Δ vs the same-clock base. IR = worst VDD drop;
+WL = GRT wirelength (no overflow key in these ORFS JSONs). §5 unchanged.
+
 ## 2026-09-01T20:45Z — Finish QoR now includes power/leakage
 
 `6_report` already had `finish__power__*`. Registry and eval now copy
