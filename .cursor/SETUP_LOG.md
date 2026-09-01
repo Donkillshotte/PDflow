@@ -3,6 +3,14 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T19:50Z — Q0 eval_policy: I5 supported, I1–I4 incomplete
+
+Zero-cost query on 45 registry rows. Place→finish Spearman **0.978**
+(n=28, bar 0.6) → I5 supported; Q2 may use place-DP. F1 Spearman 0.866
+on the few proxy-labeled DSE rows (A has no F1). Gate: 0 product-wins,
+FP=7 FN=0. I1/I2/I3/I4 wait for Q1/Q2. Wrapper now passes
+`PLACE_DENSITY_LB_ADDON`. Next: Q1 gcd 8-knob grid.
+
 ## 2026-09-01T19:35Z — Pre-registered next iteration plan (no cooking)
 
 `learn/dse/next_iteration_plan.md`: generatore prima (Q1 knob fisici
