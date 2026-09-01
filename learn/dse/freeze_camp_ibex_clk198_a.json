@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "0125e166403d",
+  "phase": "P5",
+  "design": "ibex",
+  "variant": "camp_ibex_clk198_a",
+  "role": "base",
+  "status": "done",
+  "clock_ns": 1.98,
+  "sha256_6_report": "cca15869a7672e9a84ae77f7b2116dac9bc01c24bd5b6e738c94d6541aa1c935",
+  "finish_wns_ns": -0.0231011,
+  "finish_tns_ns": -0.0328344,
+  "place_wns_ns": 0.163366,
+  "stdcell_um2": 30879.4,
+  "stdcell_count": 23485,
+  "repair_buffer": 832,
+  "die_um2": 62991.0,
+  "place_promoted": true,
+  "notes": "P5 ibex clock sweep. Netlist a."
+}
