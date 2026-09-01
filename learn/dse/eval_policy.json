@@ -295,7 +295,7 @@
     "n_references": 12,
     "n_with_ir": 39,
     "n_with_grt_wl": 39,
-    "n_section5_wins": 4,
+    "n_section5_wins": 8,
     "references": [
       {
         "design": "aes",
@@ -1433,7 +1433,7 @@
         "clock_ns": 2.2,
         "phase": "P2",
         "base_variant": "camp_ibex_base",
-        "section5": "tie",
+        "section5": "win",
         "base": {
           "variant": "camp_ibex_base",
           "title": "ORFS default \u2014 sintesi area, util 50, place +0.20",
@@ -1835,7 +1835,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "tie",
+        "section5": "lose",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -1902,7 +1902,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "tie",
+        "section5": "win",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -1969,7 +1969,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "tie",
+        "section5": "win",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -2036,7 +2036,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "tie",
+        "section5": "win",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -2974,7 +2974,7 @@
         "clock_ns": 1.0,
         "phase": "J2",
         "base_variant": "camp_spi_base",
-        "section5": "tie",
+        "section5": "lose",
         "base": {
           "variant": "camp_spi_base",
           "title": "ORFS default @ 1 ns",
@@ -3041,7 +3041,7 @@
         "clock_ns": 1.0,
         "phase": "J2",
         "base_variant": "camp_spi_base",
-        "section5": "tie",
+        "section5": "lose",
         "base": {
           "variant": "camp_spi_base",
           "title": "ORFS default @ 1 ns",
@@ -3108,7 +3108,7 @@
         "clock_ns": 1.0,
         "phase": "J2",
         "base_variant": "camp_spi_base",
-        "section5": "tie",
+        "section5": "lose",
         "base": {
           "variant": "camp_spi_base",
           "title": "ORFS default @ 1 ns",
@@ -3237,7 +3237,7 @@
         "d_density_pct": 0.0
       }
     ],
-    "verdict": "QoR vs base: 12 reference slots, 39 challengers, 39 with IR, 39 with GRT WL, 4 \u00a75 wins"
+    "verdict": "QoR vs base: 12 reference slots, 39 challengers, 39 with IR, 39 with GRT WL, 8 product wins"
   },
   "synth_method": {
     "abc": "area",

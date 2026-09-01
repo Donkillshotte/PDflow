@@ -2,13 +2,13 @@
 
 Plan sha: `cf02fb91ed5b757ba057354b2f53cb18a75586e7cf7ccf895369767436f76c98`
 Experiments: 68 (59 done)
-**Verdict:** QoR vs base: 12 reference slots, 39 challengers, 39 with IR, 39 with GRT WL, 4 §5 wins
+**Verdict:** QoR vs base: 12 reference slots, 39 challengers, 39 with IR, 39 with GRT WL, 8 product wins
 
 I nomi in tabella dicono **cosa fa** la ricetta e (nella § Ricette) qual è il vantaggio o lo svantaggio. L'id `camp_*` resta solo il path ORFS.
 
 IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg; la chiave ORFS `drop__average` su VDD è in realtà una tensione). **Density** = utilizzazione stdcell sul core. **Congestion** = GRT WL / area core (i JSON non hanno overflow fraction; `congestion_*_s` sono runtime).
 
-§5 win resta WNS / WNS+area / first-to-close. IR/density/congestion sono assi extra.
+Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorare nessuno del 10%. Oppure timing +5 ps senza peggiorare area/potenza/IR. Vedi `product.md`.
 
 ### Ricette (cosa fanno, che vantaggio hanno)
 
@@ -85,7 +85,7 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 
 ### All flows (reference + challengers, absolute values)
 
-| Design | Clock ns | Ricetta | Role | §5 | WNS ps | TNS ns | Area µm² | Power mW | Leak µW | IR worst | IR mean | Density % | Cong. | GRT WL | fmax | setup |
+| Design | Clock ns | Ricetta | Role | Prodotto | WNS ps | TNS ns | Area µm² | Power mW | Leak µW | IR worst | IR mean | Density % | Cong. | GRT WL | fmax | setup |
 |---|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | aes | 0.820 | ORFS default @ 0.82 ns (`camp_aes_base`) | reference | — | -8.9 | -0.024 | 19921.3 | 315.081 | 493.36 | 81.28 | 38.89 | 37.7 | 6.68 | 352701 | 1206.4 | 5 |
 | dynamic_node | 6.000 | ORFS default @ 6 ns (`camp_dynamic_node_base`) | reference | — | 3353.8 | 0.000 | 22540.0 | 8.765 | 429.78 | 1.78 | 1.03 | 43.6 | 5.01 | 259047 | 377.9 | 0 |
@@ -93,16 +93,16 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | gcd | 0.400 | Netlist DSE / rewrite @ 0.4 ns (`camp_gcd_clk040_b`) | challenger | lose | -389.7 | -15.483 | 631.5 | 2.903 | 15.34 | 5.51 | 2.06 | 55.6 | 4.00 | 4545 | 1266.4 | 47 |
 | gcd | 0.400 | Netlist DSE / rewrite @ 0.4 ns (`camp_gcd_clk040_c`) | challenger | lose | -234.8 | -7.769 | 919.3 | 6.101 | 23.89 | 10.62 | 3.92 | 54.2 | 4.77 | 8088 | 1575.3 | 48 |
 | gcd | 0.460 | ORFS default — sintesi area, util 35, place +0.20 (`camp_gcd_base`) | reference | — | -37.2 | -0.595 | 940.3 | 3.932 | 25.64 | 6.67 | 2.64 | 54.9 | 4.43 | 7589 | 2011.4 | 38 |
+| gcd | 0.460 | Util 25 (`camp_gcd_q1_d20u25`) | challenger | win | -36.3 | -0.886 | 952.8 | 3.860 | 25.89 | 4.11 | 2.28 | 38.9 | 3.24 | 7928 | 2015.0 | 45 |
+| gcd | 0.460 | Util 45 (`camp_gcd_q1_d20u45`) | challenger | win | -37.7 | -1.040 | 956.5 | 4.016 | 26.05 | 5.72 | 2.33 | 70.6 | 5.44 | 7378 | 2009.3 | 45 |
+| gcd | 0.460 | Place più denso, util 25 (`camp_gcd_q1_d25u25`) | challenger | win | -41.8 | -0.326 | 861.0 | 3.542 | 22.56 | 4.93 | 2.23 | 35.2 | 2.95 | 7216 | 1992.9 | 12 |
 | gcd | 0.460 | Place più denso, stesso die — meno buffer di repair (`camp_gcd_q1_d25u35`) | challenger | win | -38.4 | -0.354 | 841.6 | 3.434 | 22.03 | 6.15 | 2.23 | 49.1 | 4.07 | 6971 | 2006.4 | 11 |
 | gcd | 0.460 | Sintesi ABC delay sulla stessa ricetta fisica (`camp_gcd_dse_fast`) | challenger | lose | -186.9 | -5.981 | 963.5 | 5.527 | 25.02 | 8.26 | 3.14 | 56.8 | 4.60 | 7814 | 1545.9 | 46 |
 | gcd | 0.460 | Netlist DSE rewrite sul die del default (controllo geometria) (`camp_gcd_dse_fixedb`) | challenger | lose | -349.5 | -13.025 | 635.5 | 2.539 | 15.15 | 4.70 | 1.63 | 37.1 | 2.94 | 5038 | 1235.3 | 46 |
 | gcd | 0.460 | Netlist DSE rewrite (sub_twos_complement) — place/route uguale al default (`camp_gcd_dse_small`) | challenger | lose | -338.3 | -13.090 | 609.9 | 2.428 | 14.53 | 3.33 | 1.37 | 53.7 | 3.93 | 4465 | 1252.7 | 46 |
 | gcd | 0.460 | Place più sparso, util 25 (`camp_gcd_q1_d15u25`) | challenger | lose | -44.4 | -0.344 | 874.3 | 3.631 | 22.98 | 4.95 | 2.24 | 35.7 | 3.07 | 7506 | 1982.5 | 12 |
 | gcd | 0.460 | Place più sparso, util 35 (`camp_gcd_q1_d15u35`) | challenger | lose | -43.7 | -0.744 | 981.3 | 3.995 | 27.29 | 6.76 | 2.64 | 57.3 | 4.47 | 7660 | 1985.3 | 43 |
-| gcd | 0.460 | Place più sparso, util 45 (`camp_gcd_q1_d15u45`) | challenger | tie | -36.0 | -0.308 | 861.8 | 3.481 | 22.99 | 10.05 | 2.55 | 63.6 | 4.89 | 6631 | 2016.2 | 11 |
-| gcd | 0.460 | Util 25 (`camp_gcd_q1_d20u25`) | challenger | tie | -36.3 | -0.886 | 952.8 | 3.860 | 25.89 | 4.11 | 2.28 | 38.9 | 3.24 | 7928 | 2015.0 | 45 |
-| gcd | 0.460 | Util 45 (`camp_gcd_q1_d20u45`) | challenger | tie | -37.7 | -1.040 | 956.5 | 4.016 | 26.05 | 5.72 | 2.33 | 70.6 | 5.44 | 7378 | 2009.3 | 45 |
-| gcd | 0.460 | Place più denso, util 25 (`camp_gcd_q1_d25u25`) | challenger | tie | -41.8 | -0.326 | 861.0 | 3.542 | 22.56 | 4.93 | 2.23 | 35.2 | 2.95 | 7216 | 1992.9 | 12 |
+| gcd | 0.460 | Place più sparso, util 45 (`camp_gcd_q1_d15u45`) | challenger | lose | -36.0 | -0.308 | 861.8 | 3.481 | 22.99 | 10.05 | 2.55 | 63.6 | 4.89 | 6631 | 2016.2 | 11 |
 | gcd | 0.460 | Place più denso, util 45 (`camp_gcd_q1_d25u45`) | challenger | tie | -38.1 | -0.584 | 860.8 | 3.545 | 22.79 | 6.87 | 2.47 | 63.5 | 5.08 | 6882 | 2007.6 | 42 |
 | gcd | 0.550 | ORFS default @ 0.55 ns (`camp_gcd_clk055_a`) | reference | — | 13.4 | 0.000 | 696.7 | 2.210 | 16.52 | 3.44 | 1.40 | 40.7 | 3.72 | 6369 | 1863.4 | 0 |
 | gcd | 0.550 | Netlist DSE / rewrite @ 0.55 ns (`camp_gcd_clk055_b`) | challenger | lose | -251.2 | -9.079 | 611.0 | 2.033 | 14.35 | 5.05 | 1.46 | 53.8 | 4.04 | 4594 | 1248.2 | 43 |
@@ -117,10 +117,10 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | ibex | 1.980 | ORFS default @ 1.98 ns (`camp_ibex_clk198_a`) | reference | — | -23.1 | -0.033 | 30879.4 | 120.508 | 694.93 | 95.41 | 14.45 | 50.1 | 7.16 | 441009 | 499.2 | 4 |
 | ibex | 1.980 | Sintesi ABC delay @ 1.98 ns (`camp_ibex_clk198_s`) | challenger | lose | -61.1 | -7.110 | 33052.1 | 117.855 | 727.21 | 65.97 | 11.31 | 56.0 | 7.34 | 432835 | 489.9 | 301 |
 | ibex | 2.200 | ORFS default — sintesi area, util 50, place +0.20 (`camp_ibex_base`) | reference | — | 22.4 | 0.000 | 30735.2 | 107.868 | 688.21 | 123.77 | 13.11 | 49.9 | 7.12 | 438851 | 459.2 | 0 |
+| ibex | 2.200 | Sintesi ABC delay @ 2.2 ns (`camp_ibex_abcspeed`) | challenger | win | 20.4 | 0.000 | 30575.4 | 90.815 | 640.35 | 49.13 | 8.77 | 51.8 | 7.16 | 422381 | 458.8 | 0 |
 | ibex | 2.200 | Place più sparso, stesso die (`camp_ibex_q1_d15u50`) | challenger | win | 36.2 | 0.000 | 30748.3 | 107.922 | 688.40 | 125.04 | 12.76 | 49.9 | 7.22 | 445041 | 462.2 | 0 |
 | ibex | 2.200 | Core più stretto — die più piccolo, fili più corti (`camp_ibex_q1_d20u60`) | challenger | win | 42.3 | 0.000 | 30686.0 | 107.499 | 688.06 | 86.24 | 12.65 | 59.6 | 8.17 | 420930 | 463.5 | 0 |
 | ibex | 2.200 | Place più denso, stesso die (`camp_ibex_q1_d25u50`) | challenger | win | 39.9 | 0.000 | 30711.0 | 107.344 | 687.50 | 116.96 | 13.41 | 49.8 | 7.02 | 432786 | 462.9 | 0 |
-| ibex | 2.200 | Sintesi ABC delay @ 2.2 ns (`camp_ibex_abcspeed`) | challenger | tie | 20.4 | 0.000 | 30575.4 | 90.815 | 640.35 | 49.13 | 8.77 | 51.8 | 7.16 | 422381 | 458.8 | 0 |
 | ibex | 2.200 | Core più largo — die più grande, fili più lunghi (`camp_ibex_q1_d20u40`) | challenger | lose | 16.1 | 0.000 | 30776.7 | 108.105 | 688.77 | 71.23 | 8.81 | 39.9 | 5.97 | 460215 | 457.9 | 0 |
 | ibex | 2.750 | ORFS default @ 2.75 ns (`camp_ibex_clk275_a`) | reference | — | 285.0 | 0.000 | 30707.3 | 86.457 | 685.80 | 76.31 | 10.48 | 49.8 | 7.14 | 440282 | 405.7 | 0 |
 | ibex | 2.750 | Sintesi ABC delay @ 2.75 ns (`camp_ibex_clk275_s`) | challenger | lose | 166.3 | 0.000 | 30065.2 | 70.620 | 621.71 | 26.41 | 6.77 | 51.0 | 7.08 | 417747 | 387.0 | 0 |
@@ -128,10 +128,10 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | ibex | 3.520 | Sintesi ABC delay @ 3.52 ns (`camp_ibex_clk352_s`) | challenger | lose | 597.2 | 0.000 | 30033.5 | 55.188 | 620.45 | 30.35 | 5.33 | 50.9 | 7.11 | 419434 | 342.1 | 0 |
 | spi | 1.000 | ORFS default @ 1 ns (`camp_spi_base`) | reference | — | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
 | spi | 1.000 | Sintesi ABC delay @ 1 ns (`camp_spi_abcspeed`) | challenger | lose | 600.8 | 0.000 | 265.7 | 0.313 | 5.80 | 1.06 | 0.62 | 9.2 | 0.65 | 1889 | 2505.0 | 0 |
-| spi | 1.000 | Floorplan più largo che alto (`camp_spi_aspect_wide`) | challenger | tie | 611.7 | 0.000 | 275.6 | 0.304 | 5.32 | 1.77 | 0.61 | 9.9 | 0.81 | 2268 | 2575.6 | 0 |
+| spi | 1.000 | Floorplan più largo che alto (`camp_spi_aspect_wide`) | challenger | lose | 611.7 | 0.000 | 275.6 | 0.304 | 5.32 | 1.77 | 0.61 | 9.9 | 0.81 | 2268 | 2575.6 | 0 |
 | spi | 1.000 | Padding celle +1 site (`camp_spi_cell_pad_plus`) | challenger | tie | 612.5 | 0.000 | 267.6 | 0.302 | 5.32 | 0.93 | 0.52 | 9.4 | 0.83 | 2368 | 2580.3 | 0 |
-| spi | 1.000 | Core più largo (`camp_spi_core_looser`) | challenger | tie | 611.7 | 0.000 | 272.9 | 0.300 | 5.32 | 1.15 | 0.54 | 6.0 | 0.51 | 2308 | 2575.4 | 0 |
-| spi | 1.000 | Core più stretto (`camp_spi_core_tighter`) | challenger | tie | 615.5 | 0.000 | 260.7 | 0.298 | 5.32 | 2.09 | 1.10 | 21.0 | 1.49 | 1855 | 2600.5 | 0 |
+| spi | 1.000 | Core più largo (`camp_spi_core_looser`) | challenger | lose | 611.7 | 0.000 | 272.9 | 0.300 | 5.32 | 1.15 | 0.54 | 6.0 | 0.51 | 2308 | 2575.4 | 0 |
+| spi | 1.000 | Core più stretto (`camp_spi_core_tighter`) | challenger | lose | 615.5 | 0.000 | 260.7 | 0.298 | 5.32 | 2.09 | 1.10 | 21.0 | 1.49 | 1855 | 2600.5 | 0 |
 | spi | 1.000 | Buffer di clock più fitti (`camp_spi_cts_closer_bufs`) | challenger | tie | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
 | spi | 1.000 | Place più denso (`camp_spi_place_denser`) | challenger | tie | 610.7 | 0.000 | 268.1 | 0.307 | 5.35 | 1.07 | 0.56 | 9.4 | 0.78 | 2205 | 2569.0 | 0 |
 | spi | 1.000 | Place più sparso (`camp_spi_place_sparser`) | challenger | tie | 613.3 | 0.000 | 267.6 | 0.303 | 5.32 | 1.04 | 0.50 | 9.4 | 0.82 | 2317 | 2586.1 | 0 |
@@ -143,7 +143,7 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 
 ΔWNS = cand − reference (ps; + better). Percent columns = 100·(cand−reference)/reference (− better for area/power/leak/IR/WL).
 
-| Design | Clock | Ricetta | §5 | ΔWNS | Δarea % | Δpower % | Δleak % | ΔIR worst % | ΔIR mean % | ΔWL % | Δcong % | Δdens % |
+| Design | Clock | Ricetta | Prodotto | ΔWNS | Δarea % | Δpower % | Δleak % | ΔIR worst % | ΔIR mean % | ΔWL % | Δcong % | Δdens % |
 |---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | gcd | 0.460 | Netlist DSE rewrite (sub_twos_complement) — place/route uguale al default (`camp_gcd_dse_small`) | lose | -301.13 | -35.13 | -38.26 | -43.36 | -50.08 | -48.11 | -41.16 | -11.33 | -2.25 |
 | gcd | 0.460 | Sintesi ABC delay sulla stessa ricetta fisica (`camp_gcd_dse_fast`) | lose | -149.72 | 2.46 | 40.56 | -2.42 | 23.84 | 18.95 | 2.96 | 3.90 | 3.39 |
@@ -157,16 +157,16 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | gcd | 0.900 | Netlist DSE / rewrite @ 0.9 ns (`camp_gcd_clk090_b`) | lose | -284.37 | -24.07 | -22.18 | -27.24 | -21.62 | -32.26 | -37.88 | -6.39 | 14.44 |
 | gcd | 0.900 | Netlist DSE / rewrite @ 0.9 ns (`camp_gcd_clk090_c`) | lose | -167.44 | -0.93 | 36.36 | -5.05 | -12.06 | 17.91 | 6.38 | 7.34 | -0.03 |
 | spi | 1.000 | Sintesi ABC delay @ 1 ns (`camp_spi_abcspeed`) | lose | -11.43 | -0.70 | 3.93 | 9.05 | 8.38 | 17.44 | -16.30 | -18.05 | -2.77 |
-| ibex | 2.200 | Sintesi ABC delay @ 2.2 ns (`camp_ibex_abcspeed`) | tie | -2.02 | -0.52 | -15.81 | -6.95 | -60.31 | -33.12 | -3.75 | 0.55 | 3.92 |
+| ibex | 2.200 | Sintesi ABC delay @ 2.2 ns (`camp_ibex_abcspeed`) | win | -2.02 | -0.52 | -15.81 | -6.95 | -60.31 | -33.12 | -3.75 | 0.55 | 3.92 |
 | ibex | 1.980 | Sintesi ABC delay @ 1.98 ns (`camp_ibex_clk198_s`) | lose | -37.97 | 7.04 | -2.20 | 4.65 | -30.86 | -21.73 | -1.85 | 2.53 | 11.82 |
 | ibex | 2.750 | Sintesi ABC delay @ 2.75 ns (`camp_ibex_clk275_s`) | lose | -118.73 | -2.09 | -18.32 | -9.35 | -65.39 | -35.41 | -5.12 | -0.88 | 2.28 |
 | ibex | 3.520 | Sintesi ABC delay @ 3.52 ns (`camp_ibex_clk352_s`) | lose | -209.54 | -2.12 | -18.41 | -9.39 | -51.20 | -34.88 | -4.83 | -0.57 | 2.26 |
 | gcd | 0.460 | Place più sparso, util 25 (`camp_gcd_q1_d15u25`) | lose | -7.24 | -7.02 | -7.67 | -10.40 | -25.74 | -15.03 | -1.09 | -30.82 | -34.97 |
 | gcd | 0.460 | Place più sparso, util 35 (`camp_gcd_q1_d15u35`) | lose | -6.53 | 4.36 | 1.60 | 6.40 | 1.47 | 0.29 | 0.94 | 0.94 | 4.36 |
-| gcd | 0.460 | Place più sparso, util 45 (`camp_gcd_q1_d15u45`) | tie | 1.19 | -8.35 | -11.48 | -10.36 | 50.74 | -3.30 | -12.62 | 10.39 | 15.79 |
-| gcd | 0.460 | Util 25 (`camp_gcd_q1_d20u25`) | tie | 0.89 | 1.33 | -1.84 | 0.96 | -38.32 | -13.47 | 4.47 | -26.94 | -29.13 |
-| gcd | 0.460 | Util 45 (`camp_gcd_q1_d20u45`) | tie | -0.51 | 1.73 | 2.11 | 1.60 | -14.27 | -11.82 | -2.78 | 22.82 | 28.51 |
-| gcd | 0.460 | Place più denso, util 25 (`camp_gcd_q1_d25u25`) | tie | -4.62 | -8.43 | -9.94 | -12.03 | -26.09 | -15.53 | -4.92 | -33.50 | -35.96 |
+| gcd | 0.460 | Place più sparso, util 45 (`camp_gcd_q1_d15u45`) | lose | 1.19 | -8.35 | -11.48 | -10.36 | 50.74 | -3.30 | -12.62 | 10.39 | 15.79 |
+| gcd | 0.460 | Util 25 (`camp_gcd_q1_d20u25`) | win | 0.89 | 1.33 | -1.84 | 0.96 | -38.32 | -13.47 | 4.47 | -26.94 | -29.13 |
+| gcd | 0.460 | Util 45 (`camp_gcd_q1_d20u45`) | win | -0.51 | 1.73 | 2.11 | 1.60 | -14.27 | -11.82 | -2.78 | 22.82 | 28.51 |
+| gcd | 0.460 | Place più denso, util 25 (`camp_gcd_q1_d25u25`) | win | -4.62 | -8.43 | -9.94 | -12.03 | -26.09 | -15.53 | -4.92 | -33.50 | -35.96 |
 | gcd | 0.460 | Place più denso, stesso die — meno buffer di repair (`camp_gcd_q1_d25u35`) | win | -1.23 | -10.50 | -12.67 | -14.11 | -7.69 | -15.28 | -8.14 | -8.14 | -10.50 |
 | gcd | 0.460 | Place più denso, util 45 (`camp_gcd_q1_d25u45`) | tie | -0.94 | -8.46 | -9.86 | -11.14 | 3.11 | -6.16 | -9.32 | 14.56 | 15.65 |
 | ibex | 2.200 | Place più sparso, stesso die (`camp_ibex_q1_d15u50`) | win | 13.81 | 0.04 | 0.05 | 0.03 | 1.02 | -2.67 | 1.41 | 1.41 | 0.04 |
@@ -180,9 +180,9 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | spi | 1.000 | Padding celle +1 site (`camp_spi_cell_pad_plus`) | tie | 0.22 | 0.00 | 0.30 | 0.00 | -5.22 | -2.07 | 4.92 | 4.92 | 0.00 |
 | spi | 1.000 | Margine di setup sul repair (`camp_spi_repair_setup_margin`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | spi | 1.000 | Buffer di clock più fitti (`camp_spi_cts_closer_bufs`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| spi | 1.000 | Floorplan più largo che alto (`camp_spi_aspect_wide`) | tie | -0.50 | 2.98 | 1.02 | 0.00 | 80.90 | 15.14 | 0.49 | 2.25 | 4.79 |
-| spi | 1.000 | Core più stretto (`camp_spi_core_tighter`) | tie | 3.22 | -2.58 | -1.06 | 0.00 | 113.72 | 108.34 | -17.81 | 87.72 | 122.50 |
-| spi | 1.000 | Core più largo (`camp_spi_core_looser`) | tie | -0.53 | 1.99 | -0.12 | 0.00 | 17.74 | 2.49 | 2.26 | -36.10 | -36.27 |
+| spi | 1.000 | Floorplan più largo che alto (`camp_spi_aspect_wide`) | lose | -0.50 | 2.98 | 1.02 | 0.00 | 80.90 | 15.14 | 0.49 | 2.25 | 4.79 |
+| spi | 1.000 | Core più stretto (`camp_spi_core_tighter`) | lose | 3.22 | -2.58 | -1.06 | 0.00 | 113.72 | 108.34 | -17.81 | 87.72 | 122.50 |
+| spi | 1.000 | Core più largo (`camp_spi_core_looser`) | lose | -0.53 | 1.99 | -0.12 | 0.00 | 17.74 | 2.49 | 2.26 | -36.10 | -36.27 |
 | spi | 1.000 | Sintesi gerarchica (`camp_spi_synth_hier`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 
 ### Side-by-side sheets (reference column + each challenger)
@@ -206,54 +206,54 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 
 #### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (1/3)
 
-| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Place più denso, stesso die — meno buffer di repair` | `Sintesi ABC delay sulla stessa ricetta fisica` | `Netlist DSE rewrite sul die del default (controllo geometria)` | `Netlist DSE rewrite (sub_twos_complement) — place/route uguale al default` |
+| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Util 25` | `Util 45` | `Place più denso, util 25` | `Place più denso, stesso die — meno buffer di repair` |
 |---|---|---|---|---|---|
-| WNS (ps) | -37.2 | -38.4 | -186.9 | -349.5 | -338.3 |
-| TNS (ns) | -0.595 | -0.354 | -5.981 | -13.025 | -13.090 |
-| stdcell area (µm²) | 940.3 | 841.6 | 963.5 | 635.5 | 609.9 |
-| total power (mW) | 3.932 | 3.434 | 5.527 | 2.539 | 2.428 |
-| leakage (µW) | 25.64 | 22.03 | 25.02 | 15.15 | 14.53 |
-| IR worst VDD (mV) | 6.67 | 6.15 | 8.26 | 4.70 | 3.33 |
-| IR mean VDD (mV) | 2.64 | 2.23 | 3.14 | 1.63 | 1.37 |
-| cell density (%) | 54.9 | 49.1 | 56.8 | 37.1 | 53.7 |
-| congestion WL/core | 4.43 | 4.07 | 4.60 | 2.94 | 3.93 |
-| GRT wirelength | 7589 | 6971 | 7814 | 5038 | 4465 |
-| fmax (MHz) | 2011.4 | 2006.4 | 1545.9 | 1235.3 | 1252.7 |
-| setup violations | 38 | 11 | 46 | 46 | 46 |
+| WNS (ps) | -37.2 | -36.3 | -37.7 | -41.8 | -38.4 |
+| TNS (ns) | -0.595 | -0.886 | -1.040 | -0.326 | -0.354 |
+| stdcell area (µm²) | 940.3 | 952.8 | 956.5 | 861.0 | 841.6 |
+| total power (mW) | 3.932 | 3.860 | 4.016 | 3.542 | 3.434 |
+| leakage (µW) | 25.64 | 25.89 | 26.05 | 22.56 | 22.03 |
+| IR worst VDD (mV) | 6.67 | 4.11 | 5.72 | 4.93 | 6.15 |
+| IR mean VDD (mV) | 2.64 | 2.28 | 2.33 | 2.23 | 2.23 |
+| cell density (%) | 54.9 | 38.9 | 70.6 | 35.2 | 49.1 |
+| congestion WL/core | 4.43 | 3.24 | 5.44 | 2.95 | 4.07 |
+| GRT wirelength | 7589 | 7928 | 7378 | 7216 | 6971 |
+| fmax (MHz) | 2011.4 | 2015.0 | 2009.3 | 1992.9 | 2006.4 |
+| setup violations | 38 | 45 | 45 | 12 | 11 |
 
 #### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (2/3)
 
-| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Place più sparso, util 25` | `Place più sparso, util 35` | `Place più sparso, util 45` | `Util 25` |
+| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Sintesi ABC delay sulla stessa ricetta fisica` | `Netlist DSE rewrite sul die del default (controllo geometria)` | `Netlist DSE rewrite (sub_twos_complement) — place/route uguale al default` | `Place più sparso, util 25` |
 |---|---|---|---|---|---|
-| WNS (ps) | -37.2 | -44.4 | -43.7 | -36.0 | -36.3 |
-| TNS (ns) | -0.595 | -0.344 | -0.744 | -0.308 | -0.886 |
-| stdcell area (µm²) | 940.3 | 874.3 | 981.3 | 861.8 | 952.8 |
-| total power (mW) | 3.932 | 3.631 | 3.995 | 3.481 | 3.860 |
-| leakage (µW) | 25.64 | 22.98 | 27.29 | 22.99 | 25.89 |
-| IR worst VDD (mV) | 6.67 | 4.95 | 6.76 | 10.05 | 4.11 |
-| IR mean VDD (mV) | 2.64 | 2.24 | 2.64 | 2.55 | 2.28 |
-| cell density (%) | 54.9 | 35.7 | 57.3 | 63.6 | 38.9 |
-| congestion WL/core | 4.43 | 3.07 | 4.47 | 4.89 | 3.24 |
-| GRT wirelength | 7589 | 7506 | 7660 | 6631 | 7928 |
-| fmax (MHz) | 2011.4 | 1982.5 | 1985.3 | 2016.2 | 2015.0 |
-| setup violations | 38 | 12 | 43 | 11 | 45 |
+| WNS (ps) | -37.2 | -186.9 | -349.5 | -338.3 | -44.4 |
+| TNS (ns) | -0.595 | -5.981 | -13.025 | -13.090 | -0.344 |
+| stdcell area (µm²) | 940.3 | 963.5 | 635.5 | 609.9 | 874.3 |
+| total power (mW) | 3.932 | 5.527 | 2.539 | 2.428 | 3.631 |
+| leakage (µW) | 25.64 | 25.02 | 15.15 | 14.53 | 22.98 |
+| IR worst VDD (mV) | 6.67 | 8.26 | 4.70 | 3.33 | 4.95 |
+| IR mean VDD (mV) | 2.64 | 3.14 | 1.63 | 1.37 | 2.24 |
+| cell density (%) | 54.9 | 56.8 | 37.1 | 53.7 | 35.7 |
+| congestion WL/core | 4.43 | 4.60 | 2.94 | 3.93 | 3.07 |
+| GRT wirelength | 7589 | 7814 | 5038 | 4465 | 7506 |
+| fmax (MHz) | 2011.4 | 1545.9 | 1235.3 | 1252.7 | 1982.5 |
+| setup violations | 38 | 46 | 46 | 46 | 12 |
 
 #### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (3/3)
 
-| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Util 45` | `Place più denso, util 25` | `Place più denso, util 45` |
+| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Place più sparso, util 35` | `Place più sparso, util 45` | `Place più denso, util 45` |
 |---|---|---|---|---|
-| WNS (ps) | -37.2 | -37.7 | -41.8 | -38.1 |
-| TNS (ns) | -0.595 | -1.040 | -0.326 | -0.584 |
-| stdcell area (µm²) | 940.3 | 956.5 | 861.0 | 860.8 |
-| total power (mW) | 3.932 | 4.016 | 3.542 | 3.545 |
-| leakage (µW) | 25.64 | 26.05 | 22.56 | 22.79 |
-| IR worst VDD (mV) | 6.67 | 5.72 | 4.93 | 6.87 |
-| IR mean VDD (mV) | 2.64 | 2.33 | 2.23 | 2.47 |
-| cell density (%) | 54.9 | 70.6 | 35.2 | 63.5 |
-| congestion WL/core | 4.43 | 5.44 | 2.95 | 5.08 |
-| GRT wirelength | 7589 | 7378 | 7216 | 6882 |
-| fmax (MHz) | 2011.4 | 2009.3 | 1992.9 | 2007.6 |
-| setup violations | 38 | 45 | 12 | 42 |
+| WNS (ps) | -37.2 | -43.7 | -36.0 | -38.1 |
+| TNS (ns) | -0.595 | -0.744 | -0.308 | -0.584 |
+| stdcell area (µm²) | 940.3 | 981.3 | 861.8 | 860.8 |
+| total power (mW) | 3.932 | 3.995 | 3.481 | 3.545 |
+| leakage (µW) | 25.64 | 27.29 | 22.99 | 22.79 |
+| IR worst VDD (mV) | 6.67 | 6.76 | 10.05 | 6.87 |
+| IR mean VDD (mV) | 2.64 | 2.64 | 2.55 | 2.47 |
+| cell density (%) | 54.9 | 57.3 | 63.6 | 63.5 |
+| congestion WL/core | 4.43 | 4.47 | 4.89 | 5.08 |
+| GRT wirelength | 7589 | 7660 | 6631 | 6882 |
+| fmax (MHz) | 2011.4 | 1985.3 | 2016.2 | 2007.6 |
+| setup violations | 38 | 43 | 11 | 42 |
 
 #### gcd @ 0.550 ns — reference: ORFS default @ 0.55 ns
 
@@ -325,19 +325,19 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 
 #### ibex @ 2.200 ns — reference: ORFS default — sintesi area, util 50, place +0.20 (1/2)
 
-| Metric | `ORFS default — sintesi area, util 50, place +0.20` | `Place più sparso, stesso die` | `Core più stretto — die più piccolo, fili più corti` | `Place più denso, stesso die` | `Sintesi ABC delay @ 2.2 ns` |
+| Metric | `ORFS default — sintesi area, util 50, place +0.20` | `Sintesi ABC delay @ 2.2 ns` | `Place più sparso, stesso die` | `Core più stretto — die più piccolo, fili più corti` | `Place più denso, stesso die` |
 |---|---|---|---|---|---|
-| WNS (ps) | 22.4 | 36.2 | 42.3 | 39.9 | 20.4 |
+| WNS (ps) | 22.4 | 20.4 | 36.2 | 42.3 | 39.9 |
 | TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
-| stdcell area (µm²) | 30735.2 | 30748.3 | 30686.0 | 30711.0 | 30575.4 |
-| total power (mW) | 107.868 | 107.922 | 107.499 | 107.344 | 90.815 |
-| leakage (µW) | 688.21 | 688.40 | 688.06 | 687.50 | 640.35 |
-| IR worst VDD (mV) | 123.77 | 125.04 | 86.24 | 116.96 | 49.13 |
-| IR mean VDD (mV) | 13.11 | 12.76 | 12.65 | 13.41 | 8.77 |
-| cell density (%) | 49.9 | 49.9 | 59.6 | 49.8 | 51.8 |
-| congestion WL/core | 7.12 | 7.22 | 8.17 | 7.02 | 7.16 |
-| GRT wirelength | 438851 | 445041 | 420930 | 432786 | 422381 |
-| fmax (MHz) | 459.2 | 462.2 | 463.5 | 462.9 | 458.8 |
+| stdcell area (µm²) | 30735.2 | 30575.4 | 30748.3 | 30686.0 | 30711.0 |
+| total power (mW) | 107.868 | 90.815 | 107.922 | 107.499 | 107.344 |
+| leakage (µW) | 688.21 | 640.35 | 688.40 | 688.06 | 687.50 |
+| IR worst VDD (mV) | 123.77 | 49.13 | 125.04 | 86.24 | 116.96 |
+| IR mean VDD (mV) | 13.11 | 8.77 | 12.76 | 12.65 | 13.41 |
+| cell density (%) | 49.9 | 51.8 | 49.9 | 59.6 | 49.8 |
+| congestion WL/core | 7.12 | 7.16 | 7.22 | 8.17 | 7.02 |
+| GRT wirelength | 438851 | 422381 | 445041 | 420930 | 432786 |
+| fmax (MHz) | 459.2 | 458.8 | 462.2 | 463.5 | 462.9 |
 | setup violations | 0 | 0 | 0 | 0 | 0 |
 
 #### ibex @ 2.200 ns — reference: ORFS default — sintesi area, util 50, place +0.20 (2/2)

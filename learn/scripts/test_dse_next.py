@@ -578,6 +578,33 @@ def check_next_level(check, root: Path) -> None:
     remaining = {"place_sparser", "cell_pad_plus", "aspect_wide", "core_tighter", "core_looser", "repair_setup_margin", "cts_closer_bufs", "synth_hier"}
     check(remaining <= {r["id"] for r in RECIPES}, f"remaining catalog ids exist {remaining}")
 
+    from dse.win_rule import verdict as prod_verdict
+    from dse.recipe_select import floorplan_locked, select_recipes
+
+    def _E(**kw):
+        return type("E", (), kw)()
+
+    base = _E(finish_wns_ns=-0.037, stdcell_um2=940.0, power_w=0.0039, ir_drop_v=0.00667)
+    gcd_win = _E(finish_wns_ns=-0.0384, stdcell_um2=842.0, power_w=0.00343, ir_drop_v=0.00615)
+    check(prod_verdict(gcd_win, base) == "win", f"gcd-like area/power win {prod_verdict(gcd_win, base)}")
+    ir_worse = _E(finish_wns_ns=0.615, stdcell_um2=261.0, power_w=0.00030, ir_drop_v=0.00209)
+    spi_base = _E(finish_wns_ns=0.612, stdcell_um2=268.0, power_w=0.00030, ir_drop_v=0.00098)
+    check(prod_verdict(ir_worse, spi_base) == "lose", f"IR +100% is a product lose {prod_verdict(ir_worse, spi_base)}")
+    slack_win = _E(finish_wns_ns=0.042, stdcell_um2=30700.0, power_w=0.108, ir_drop_v=0.086)
+    ibex_base = _E(finish_wns_ns=0.022, stdcell_um2=30735.0, power_w=0.108, ir_drop_v=0.124)
+    check(prod_verdict(slack_win, ibex_base) == "win", f"slack+IR win {prod_verdict(slack_win, ibex_base)}")
+
+    spi_state = {"wns_ns": 0.612, "tns_ns": 0.0, "setup_viol": 0, "density": 0.094, "repair_buffer": 22, "ir_worst_v": 0.001, "cells": 238}
+    check(select_recipes(spi_state) == [], f"closed sparse state picks nothing {select_recipes(spi_state)}")
+    aes_state = {"wns_ns": -0.009, "tns_ns": -0.024, "setup_viol": 5, "density": 0.377, "repair_buffer": 0, "ir_worst_v": 0.081, "cells": 15960}
+    aes_pick = select_recipes(aes_state, locked_floorplan=True)
+    check("place_denser" in aes_pick, f"late unlocked-place picks place_denser {aes_pick}")
+    check("core_tighter" not in aes_pick, f"locked floorplan skips core_tighter {aes_pick}")
+    check("if design" not in (root / "learn/dse/recipe_select.py").read_text(), "selector has no design name branch")
+    check(floorplan_locked(root / "tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/config.mk"), "aes config locks floorplan")
+    check((root / "learn/scripts/run_recipe_loop.py").is_file(), "run_recipe_loop.py exists")
+    check("Prodotto" in qor_md or "product" in qor_md.lower() or "IR" in qor_md, "QoR sheet still renders")
+
 
 if __name__ == "__main__":
     def _check(ok: bool, msg: str) -> None:

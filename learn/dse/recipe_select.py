@@ -1,0 +1,153 @@
+"""Pick catalog recipes from circuit state. No design name in the rules."""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from .knob_catalog import RECIPES, by_id, resolve
+
+# Already the default, or never a product win in campaign.
+_NEVER = frozenset({"synth_area", "synth_delay"})
+
+# Closed by a wide margin: cooking will not take a product win.
+VERY_CLOSED_NS = 0.100
+SPARSE = 0.15
+HIGH_IR_V = 0.020
+DENSE = 0.55
+MANY_BUFFERS = 30
+MAX_PICK = 2
+
+
+def floorplan_locked(config_mk: Path | str | None) -> bool:
+    """True when the config pins the die (FLOORPLAN_DEF / DIE_AREA)."""
+    if not config_mk:
+        return False
+    p = Path(config_mk)
+    if not p.is_file():
+        return False
+    text = p.read_text()
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("#"):
+            continue
+        if "FLOORPLAN_DEF" in s or (s.startswith("export DIE_AREA") and "=" in s):
+            return True
+    return False
+
+
+def state_from_exp(exp: Any) -> dict[str, Any]:
+    return {
+        "wns_ns": exp.finish_wns_ns,
+        "tns_ns": exp.finish_tns_ns,
+        "setup_viol": exp.setup_violation_count,
+        "density": exp.util,
+        "repair_buffer": exp.repair_buffer,
+        "ir_worst_v": exp.ir_drop_v,
+        "power_w": exp.power_w,
+        "cells": exp.stdcell_count,
+        "area_um2": exp.stdcell_um2,
+    }
+
+
+def _f(v: Any) -> float | None:
+    if v is None:
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def select_recipes(
+    state: dict[str, Any],
+    *,
+    locked_floorplan: bool = False,
+    already: set[str] | None = None,
+    max_pick: int = MAX_PICK,
+) -> list[str]:
+    """Return catalog ids that can fire on this state. Order = priority."""
+    already = already or set()
+    wns = _f(state.get("wns_ns"))
+    tns = _f(state.get("tns_ns"))
+    dens = _f(state.get("density"))
+    ir = _f(state.get("ir_worst_v"))
+    buf = state.get("repair_buffer")
+    viol = state.get("setup_viol")
+    cells = state.get("cells")
+
+    closed = wns is not None and wns >= 0.0 and (tns is None or tns >= -1e-12) and not viol
+    very_closed = closed and wns is not None and wns >= VERY_CLOSED_NS
+    late = wns is not None and wns < 0.0
+    sparse = dens is not None and dens < SPARSE
+    dense = dens is not None and dens >= DENSE
+    high_ir = ir is not None and ir >= HIGH_IR_V
+    many_buf = buf is not None and int(buf) >= MANY_BUFFERS
+
+    if very_closed:
+        return []
+
+    ranked: list[str] = []
+
+    def add(rid: str) -> None:
+        if rid in _NEVER or rid in already or rid in ranked:
+            return
+        ranked.append(rid)
+
+    if (late or (high_ir and dens is not None and SPARSE <= dens <= 0.75)) and not locked_floorplan:
+        add("core_tighter")
+    if (late or many_buf) and not sparse:
+        add("place_denser")
+    if late and not closed:
+        add("repair_setup_margin")
+    if late and dense:
+        add("place_sparser")
+        add("cell_pad_plus")
+    if late and not locked_floorplan:
+        add("aspect_wide")
+    if late and cells is not None and int(cells) >= 2000:
+        add("synth_hier")
+
+    return ranked[: max(0, int(max_pick))]
+
+
+def already_tried(exps: list[Any], recipe_id: str, defaults: dict[str, float]) -> bool:
+    """True if this recipe (or the same knobs) already finished on these rows."""
+    try:
+        want = resolve(recipe_id, defaults)
+    except KeyError:
+        want = {}
+    for e in exps:
+        if getattr(e, "status", None) not in ("done", "stopped_by_policy"):
+            continue
+        extra = getattr(e, "extra", None) or {}
+        rids = extra.get("recipe_ids") or ([extra["recipe_id"]] if extra.get("recipe_id") else [])
+        if recipe_id in rids:
+            return True
+        variant = str(getattr(e, "variant", "") or "")
+        if variant.endswith("_" + recipe_id):
+            return True
+        knobs = extra.get("knobs") or {}
+        lb = knobs.get("PLACE_DENSITY_LB_ADDON", extra.get("place_density_lb_addon"))
+        util = knobs.get("CORE_UTILIZATION", extra.get("core_utilization"))
+        if recipe_id == "place_denser" and lb is not None:
+            if abs(float(lb) - float(want.get("PLACE_DENSITY_LB_ADDON", 0.25))) < 0.011:
+                return True
+        if recipe_id == "core_tighter" and util is not None and "CORE_UTILIZATION" in want:
+            if abs(float(util) - float(want["CORE_UTILIZATION"])) < 1.0:
+                return True
+        if recipe_id == "place_sparser" and lb is not None and "PLACE_DENSITY_LB_ADDON" in want:
+            if abs(float(lb) - float(want["PLACE_DENSITY_LB_ADDON"])) < 0.011:
+                return True
+        if recipe_id == "core_looser" and util is not None and "CORE_UTILIZATION" in want:
+            if abs(float(util) - float(want["CORE_UTILIZATION"])) < 1.0:
+                return True
+    return False
+
+
+def catalog_ids() -> list[str]:
+    return [r["id"] for r in RECIPES]
+
+
+# Touch by_id so a typo in _NEVER fails import-time if we add checks later.
+for _rid in _NEVER:
+    by_id(_rid)

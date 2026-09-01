@@ -25,6 +25,7 @@ if str(_LEARN) not in sys.path:
 
 from dse.experiments import Experiment, ExperimentLog, DEFAULT_LOG  # noqa: E402
 from dse.recipe_labels import label_for, synth_method_from_exploration  # noqa: E402
+from dse.win_rule import verdict as product_verdict  # noqa: E402
 from eval_campaign import WIN_AREA_FRAC, WIN_WNS_EPS_PS, _beats_base, winner_variant  # noqa: E402
 
 NEXT_PLAN = _LEARN / "dse" / "next_iteration_plan.md"
@@ -498,7 +499,7 @@ def _qor_vs_base(exps: list[Experiment]) -> dict[str, Any]:
             continue
         if e.power_w is None and e.stdcell_um2 is None:
             continue
-        win = winner_variant(e, base)
+        win = product_verdict(e, base)
         bm, cm = _abs_metrics(base), _abs_metrics(e)
         rows.append({
             "variant": e.variant,
@@ -506,7 +507,7 @@ def _qor_vs_base(exps: list[Experiment]) -> dict[str, Any]:
             "clock_ns": e.clock_ns,
             "phase": e.phase,
             "base_variant": base.variant,
-            "section5": "win" if win == e.variant else ("tie" if win == "tie" else "lose"),
+            "section5": win,
             "base": bm,
             "cand": cm,
             "d_wns_ps": None if bm["wns_ps"] is None or cm["wns_ps"] is None else cm["wns_ps"] - bm["wns_ps"],
@@ -532,7 +533,7 @@ def _qor_vs_base(exps: list[Experiment]) -> dict[str, Any]:
         "rows": rows,
         "verdict": (
             f"QoR vs base: {len(refs)} reference slots, {len(rows)} challengers, "
-            f"{n_ir} with IR, {n_wl} with GRT WL, {len(wins)} §5 wins"
+            f"{n_ir} with IR, {n_wl} with GRT WL, {len(wins)} product wins"
         ),
     }
 
@@ -615,7 +616,7 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "**Density** = utilizzazione stdcell sul core. **Congestion** = GRT WL / area core "
         "(i JSON non hanno overflow fraction; `congestion_*_s` sono runtime).",
         "",
-        "§5 win resta WNS / WNS+area / first-to-close. IR/density/congestion sono assi extra.",
+        "Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorare nessuno del 10%. Oppure timing +5 ps senza peggiorare area/potenza/IR. Vedi `product.md`.",
         "",
         "### Ricette (cosa fanno, che vantaggio hanno)",
         "",
@@ -649,7 +650,7 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "",
         "### All flows (reference + challengers, absolute values)",
         "",
-        "| Design | Clock ns | Ricetta | Role | §5 | WNS ps | TNS ns | Area µm² | "
+        "| Design | Clock ns | Ricetta | Role | Prodotto | WNS ps | TNS ns | Area µm² | "
         "Power mW | Leak µW | IR worst | IR mean | Density % | Cong. | GRT WL | fmax | setup |",
         "|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
@@ -676,7 +677,7 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "ΔWNS = cand − reference (ps; + better). Percent columns = "
         "100·(cand−reference)/reference (− better for area/power/leak/IR/WL).",
         "",
-        "| Design | Clock | Ricetta | §5 | ΔWNS | Δarea % | Δpower % | Δleak % | "
+        "| Design | Clock | Ricetta | Prodotto | ΔWNS | Δarea % | Δpower % | Δleak % | "
         "ΔIR worst % | ΔIR mean % | ΔWL % | Δcong % | Δdens % |",
         "|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
@@ -760,8 +761,7 @@ def render_md(payload: dict[str, Any]) -> str:
         f"Plan sha: `{payload['plan_sha']}`",
         f"Experiments: {payload['n_experiments']} ({payload['n_done']} done)",
         "",
-        "Win criteria and I1–I5 bars are **frozen**. This script does not retune them.",
-        "§5 win stays WNS / area-tie / first-to-close. Power, leakage, IR and GRT WL are extra axes.",
+        "I1–I5 bars stay frozen (historical). Product win is `dse.win_rule` (slack + area/power/IR).",
         "Readable reference+challenger sheets: `learn/dse/qor_compare.md`.",
         "",
     ]

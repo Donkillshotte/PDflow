@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T21:55Z — Product loop + new win rule
+
+Product = physical knobs. Old DSE = lab. Win includes power/IR (10%).
+`recipe_select` has no design name. Loop cooks only what it picks.
+H1–H6 / I1–I5 historical bars unchanged.
+
 ## 2026-09-01T21:35Z — All remaining catalog recipes cooked on spi
 
 8/8 done. No product win. Closest: Core più stretto (area −2.6%,
