@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T16:43Z — P0 dynamic_node ainj H6 PASS
+
+Sha `6_report` identico (`fe663d2db2de…`), WNS +3.35383 ns identico.
+H6 su gcd+spi+dynamic_node. H5 **non supportata**: residual dyn −250 ps
+esce da gcd ±2σ (criterio frozen, non ritoccare). Prossima: ibex Verilog.
+
 ## 2026-09-01T16:38Z — P0 dynamic_node base DONE (closed)
 
 `camp_dynamic_node_base` 242s, peak ~1.3 GiB. WNS **+3.354 ns**, place +3.604,
