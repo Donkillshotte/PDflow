@@ -3,6 +3,19 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T21:25Z — J1 transfer on spi: no §5 win
+
+`place_denser` (LB 0.20→0.25): WNS −1.5 ps (tie), area +0.2%, same 22
+repair buffers. `repair_half_tns` (TNS 100→50): bit-identical to
+`camp_spi_base` (TNS already 0). Catalog/policy/names work; the gcd
+density lever does not transfer to a closed, sparse die. No combo cook.
+
+## 2026-09-01T21:15Z — J1 transfer cook starting (spi)
+
+`cook_recipe.py`: place-first, finish only if EVALUATE. Recipes
+`place_denser` and `repair_half_tns` on spi (not used to pick knobs).
+Same official yosys netlist. Human variant names.
+
 ## 2026-09-01T21:10Z — Named recipes, mean IR/density/congestion, joint catalog
 
 Synthesis method for new challengers is ABC area (not Verilog rewrite).

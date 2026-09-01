@@ -74,6 +74,16 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "Stesso Verilog DSE di B, DIE_AREA bloccata su A.",
         "Lose: ancora ~−350 ps. Non è un problema di die.",
     ),
+    "camp_spi_place_denser": RecipeLabel(
+        "Place più denso",
+        "Stessa netlist ufficiale. PLACE_DENSITY_LB_ADDON 0.20→0.25. Util resta il default di config (8).",
+        "Transfer miss su spi: WNS −1.5 ps (tie), area +0.2%, stessi 22 buffer. Il lever gcd non transferisce su un die già chiuso e sparso.",
+    ),
+    "camp_spi_repair_half_tns": RecipeLabel(
+        "Repair TNS a metà",
+        "Stessa netlist ufficiale. TNS_END_PERCENT 100→50. Util resta 8.",
+        "No-op su spi: WNS/area/IR/WL/buffer identici al default. TNS già 0; dimezzare il repair non cambia nulla.",
+    ),
 }
 
 

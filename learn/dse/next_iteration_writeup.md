@@ -102,7 +102,8 @@ reference flow** + challenger + Δ: `learn/dse/qor_compare.md`.
 | ibex `d20u60` | win | 123.8 → 86.2 mV | **−30.3%** | 438851 → 420930 | **−4.1%** |
 
 Su ibex il win slack è anche un calo IR/WL; power resta ~iso. §5 non
-usa IR/WL. 12 reference slot, 29 challenger, tutti con IR e GRT WL.
+usa IR/WL. 12 reference slot, 31 challenger (incluso J1 spi), tutti
+con IR e GRT WL. I due cook J1 non sono win §5.
 
 ## Direzione successiva (non design-based)
 
@@ -113,3 +114,22 @@ sono tutti sulla netlist ufficiale. Catalogo knob design-agnostic
 Nomi leggibili (cosa fa + vantaggio) in `qor_compare.md` § Ricette.
 Piano: `learn/dse/joint_recipe_plan.md`. Metriche extra: IR mean, cell
 density, congestion = WL/core.
+
+## J1 transfer (spi, non usato per scegliere i knob)
+
+Due ricette del catalogo, stessa netlist `camp_spi_base`, place-first,
+finish solo perché la policy ha detto EVALUATE. Nomi = cosa fanno.
+
+| Ricetta | Knob | §5 | WNS | Area | Buffer | IR mean | GRT WL |
+|---|---|---|---:|---:|---:|---:|---:|
+| ORFS default | util 8, LB 0.20, TNS 100 | — | +612.2 ps | 267.6 | 22 | 0.53 mV | 2257 |
+| Place più denso | LB 0.20→0.25 | tie | +610.7 ps (−1.5) | 268.1 (+0.2%) | 22 | 0.56 mV | 2205 |
+| Repair TNS a metà | TNS 100→50 | no-op | +612.2 ps | 267.6 | 22 | 0.53 mV | 2257 |
+
+Nessun win §5. spi è già chiuso di 612 ps su un die sparso (density 9.4%,
+util default 8 per PDN-0185). Il lever «più denso → meno buffer» di gcd
+non ha materiale su cui agire; dimezzare il TNS repair è un no-op se
+TNS è già 0. Catalogo, policy e nomi funzionano: il transfer è
+design-sensibile anche se i knob sono design-agnostic.
+
+Non si è cotto il combo (sarebbe un no-op) né aes/ibex/dynamic_node.

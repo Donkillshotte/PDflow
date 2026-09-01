@@ -1,8 +1,8 @@
 # QoR compare — reference flow vs challengers
 
 Plan sha: `cf02fb91ed5b757ba057354b2f53cb18a75586e7cf7ccf895369767436f76c98`
-Experiments: 58 (49 done)
-**Verdict:** QoR vs base: 12 reference slots, 29 challengers, 29 with IR, 29 with GRT WL, 4 §5 wins
+Experiments: 60 (51 done)
+**Verdict:** QoR vs base: 12 reference slots, 31 challengers, 31 with IR, 31 with GRT WL, 4 §5 wins
 
 I nomi in tabella dicono **cosa fa** la ricetta e (nella § Ricette) qual è il vantaggio o lo svantaggio. L'id `camp_*` resta solo il path ORFS.
 
@@ -55,6 +55,8 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | Core più largo — die più grande, fili più lunghi (`camp_ibex_q1_d20u40`) | Stessa netlist. CORE_UTILIZATION 50→40. | Lose: WNS −6 ps, WL +5%. Controesempio del core stretto. |
 | Core più stretto — die più piccolo, fili più corti (`camp_ibex_q1_d20u60`) | Stessa netlist e stesso density addon 0.20. CORE_UTILIZATION 50→60. | §5 win: WNS +42 vs +22 ps; IR −30%; WL −4%; power ~iso. |
 | Place più denso al clock dove il default chiude (0.55 ns) (`camp_gcd_q4_d25u35_c055`) | Stessi knob del win gcd, SDC 0.55 ns (regime area). | I4 falsa: chiude come il default, area 698 vs 697. Il win non transferisce di clock. |
+| Place più denso (`camp_spi_place_denser`) | Stessa netlist ufficiale. PLACE_DENSITY_LB_ADDON 0.20→0.25. Util resta il default di config (8). | Transfer miss su spi: WNS −1.5 ps (tie), area +0.2%, stessi 22 buffer. Il lever gcd non transferisce su un die già chiuso e sparso. |
+| Repair TNS a metà (`camp_spi_repair_half_tns`) | Stessa netlist ufficiale. TNS_END_PERCENT 100→50. Util resta 8. | No-op su spi: WNS/area/IR/WL/buffer identici al default. TNS già 0; dimezzare il repair non cambia nulla. |
 
 ### Reference flow (absolute, one row per design@clock)
 
@@ -118,6 +120,8 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | ibex | 3.520 | Sintesi ABC delay @ 3.52 ns (`camp_ibex_clk352_s`) | challenger | lose | 597.2 | 0.000 | 30033.5 | 55.188 | 620.45 | 30.35 | 5.33 | 50.9 | 7.11 | 419434 | 342.1 | 0 |
 | spi | 1.000 | ORFS default @ 1 ns (`camp_spi_base`) | reference | — | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
 | spi | 1.000 | Sintesi ABC delay @ 1 ns (`camp_spi_abcspeed`) | challenger | lose | 600.8 | 0.000 | 265.7 | 0.313 | 5.80 | 1.06 | 0.62 | 9.2 | 0.65 | 1889 | 2505.0 | 0 |
+| spi | 1.000 | Place più denso (`camp_spi_place_denser`) | challenger | tie | 610.7 | 0.000 | 268.1 | 0.307 | 5.35 | 1.07 | 0.56 | 9.4 | 0.78 | 2205 | 2569.0 | 0 |
+| spi | 1.000 | Repair TNS a metà (`camp_spi_repair_half_tns`) | challenger | tie | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
 
 ### Challengers vs the reference in the same slot (Δ)
 
@@ -154,6 +158,8 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | ibex | 2.200 | Core più largo — die più grande, fili più lunghi (`camp_ibex_q1_d20u40`) | lose | -6.30 | 0.14 | 0.22 | 0.08 | -42.45 | -32.77 | 4.87 | -16.18 | -19.96 |
 | ibex | 2.200 | Core più stretto — die più piccolo, fili più corti (`camp_ibex_q1_d20u60`) | win | 19.94 | -0.16 | -0.34 | -0.02 | -30.33 | -3.53 | -4.08 | 14.79 | 19.49 |
 | gcd | 0.550 | Place più denso al clock dove il default chiude (0.55 ns) (`camp_gcd_q4_d25u35_c055`) | tie | -0.33 | 0.15 | 0.35 | 0.26 | -0.31 | 0.67 | -0.94 | -0.94 | 0.15 |
+| spi | 1.000 | Place più denso (`camp_spi_place_denser`) | tie | -1.48 | 0.20 | 2.07 | 0.54 | 9.81 | 6.79 | -2.30 | -2.30 | 0.20 |
+| spi | 1.000 | Repair TNS a metà (`camp_spi_repair_half_tns`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 
 ### Side-by-side sheets (reference column + each challenger)
 
@@ -363,17 +369,17 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 
 #### spi @ 1.000 ns — reference: ORFS default @ 1 ns
 
-| Metric | `ORFS default @ 1 ns` | `Sintesi ABC delay @ 1 ns` |
-|---|---|---|
-| WNS (ps) | 612.2 | 600.8 |
-| TNS (ns) | 0.000 | 0.000 |
-| stdcell area (µm²) | 267.6 | 265.7 |
-| total power (mW) | 0.301 | 0.313 |
-| leakage (µW) | 5.32 | 5.80 |
-| IR worst VDD (mV) | 0.98 | 1.06 |
-| IR mean VDD (mV) | 0.53 | 0.62 |
-| cell density (%) | 9.4 | 9.2 |
-| congestion WL/core | 0.79 | 0.65 |
-| GRT wirelength | 2257 | 1889 |
-| fmax (MHz) | 2578.9 | 2505.0 |
-| setup violations | 0 | 0 |
+| Metric | `ORFS default @ 1 ns` | `Sintesi ABC delay @ 1 ns` | `Place più denso` | `Repair TNS a metà` |
+|---|---|---|---|---|
+| WNS (ps) | 612.2 | 600.8 | 610.7 | 612.2 |
+| TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 |
+| stdcell area (µm²) | 267.6 | 265.7 | 268.1 | 267.6 |
+| total power (mW) | 0.301 | 0.313 | 0.307 | 0.301 |
+| leakage (µW) | 5.32 | 5.80 | 5.35 | 5.32 |
+| IR worst VDD (mV) | 0.98 | 1.06 | 1.07 | 0.98 |
+| IR mean VDD (mV) | 0.53 | 0.62 | 0.56 | 0.53 |
+| cell density (%) | 9.4 | 9.2 | 9.4 | 9.4 |
+| congestion WL/core | 0.79 | 0.65 | 0.78 | 0.79 |
+| GRT wirelength | 2257 | 1889 | 2205 | 2257 |
+| fmax (MHz) | 2578.9 | 2505.0 | 2569.0 | 2578.9 |
+| setup violations | 0 | 0 | 0 | 0 |

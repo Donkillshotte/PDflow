@@ -558,6 +558,12 @@ def check_next_level(check, root: Path) -> None:
     check("Place" in titles_of(["place_denser"]), f"titles_of {titles_of(['place_denser'])}")
     tagged = label_for(type("E", (), {"variant": "camp_spi_place_denser", "role": "knob", "extra": {"recipe_ids": ["place_denser"]}})())
     check("denso" in tagged.title.lower(), f"catalog title on extra.recipe_ids: {tagged.title}")
+    spi_pd = label_for("camp_spi_place_denser")
+    check("denso" in spi_pd.title.lower() and "d25u35" not in spi_pd.title, f"J1 place title {spi_pd.title}")
+    check("transfer" in spi_pd.payoff.lower(), f"J1 place payoff is a transfer result: {spi_pd.payoff}")
+    spi_rt = label_for("camp_spi_repair_half_tns")
+    check("tns" in spi_rt.title.lower() or "repair" in spi_rt.title.lower(), f"J1 repair title {spi_rt.title}")
+    check("no-op" in spi_rt.payoff.lower() or "identici" in spi_rt.payoff.lower(), f"J1 repair payoff is honest: {spi_rt.payoff}")
     check((root / "learn/scripts/cook_recipe.py").is_file(), "cook_recipe.py exists")
 
 
