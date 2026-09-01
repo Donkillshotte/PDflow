@@ -85,16 +85,21 @@ def _beats_base(challenger: Experiment, base: Experiment) -> bool:
     return w == challenger.variant
 
 
+def _clk_key(exp: Experiment) -> str:
+    return f"{float(exp.clock_ns):.3f}"
+
+
 def _h1(exps: list[Experiment]) -> dict[str, Any]:
-    """Proxies invert true ranking if the finish winner ≠ proxy winner."""
-    by_design: dict[str, list[Experiment]] = defaultdict(list)
+    """Proxies invert true ranking if, at a fixed clock, finish winner ≠ proxy winner."""
+    by_slot: dict[tuple[str, str], list[Experiment]] = defaultdict(list)
     for e in exps:
         if e.role == "ainj":
             continue
         if e.status == "done" and e.finish_wns_ns is not None:
-            by_design[e.design].append(e)
-    out: dict[str, Any] = {"designs": {}, "supported": False, "inverted": []}
-    for design, rows in by_design.items():
+            by_slot[(e.design, _clk_key(e))].append(e)
+    out: dict[str, Any] = {"slots": {}, "supported": False, "inverted": []}
+    inverted_designs: set[str] = set()
+    for (design, clk), rows in sorted(by_slot.items()):
         finish_rank = sorted(rows, key=lambda r: -float(r.finish_wns_ns or -1e9))
         with_proxy = [r for r in rows if r.proxy_wns_ns is not None]
         finish_best = finish_rank[0].variant if finish_rank else None
@@ -107,7 +112,8 @@ def _h1(exps: list[Experiment]) -> dict[str, Any]:
             out["supported"] = True
         else:
             proxy_rank = []
-        out["designs"][design] = {
+        key = f"{design}@{clk}"
+        out["slots"][key] = {
             "n": len(rows),
             "finish_rank": [r.variant for r in finish_rank],
             "proxy_rank": [r.variant for r in proxy_rank] if with_proxy else None,
@@ -117,7 +123,9 @@ def _h1(exps: list[Experiment]) -> dict[str, Any]:
             "finish_wns_ps": {r.variant: r.finish_wns_ps() for r in finish_rank},
         }
         if inverted:
-            out["inverted"].append(design)
+            inverted_designs.add(design)
+            out["inverted"].append(key)
+    out["inverted_designs"] = sorted(inverted_designs)
     if out["inverted"]:
         out["verdict"] = "H1 supported on " + ", ".join(out["inverted"])
     elif out["supported"]:
@@ -128,9 +136,10 @@ def _h1(exps: list[Experiment]) -> dict[str, Any]:
 
 
 def _h2(exps: list[Experiment]) -> dict[str, Any]:
-    """§5: precision = promoted that finish better than worst promoted base;
-    recall = real product-wins the gate would have promoted.
-    Gate is live funnel P2: place WNS ≥ 0 ns.
+    """§5 precision/recall of the live P2 gate (place WNS ≥ 0 ns).
+
+    Compared per (design, clock): a product-win is a non-base that beats the
+    base at that same clock under frozen §5. Promoted = place WNS ≥ 0.
     """
     labeled = [
         e
@@ -141,31 +150,31 @@ def _h2(exps: list[Experiment]) -> dict[str, Any]:
         and e.role != "ainj"
     ]
     n = len(labeled)
-    by_design: dict[str, list[Experiment]] = defaultdict(list)
+    by_slot: dict[tuple[str, str], list[Experiment]] = defaultdict(list)
     for e in labeled:
-        by_design[e.design].append(e)
+        by_slot[(e.design, _clk_key(e))].append(e)
 
-    promoted = [e for e in labeled if e.place_wns_ns is not None and float(e.place_wns_ns) >= PLACE_WNS_GATE_NS - 1e-12]
-    bases = {d: next((r for r in rows if r.role == "base"), None) for d, rows in by_design.items()}
-    promoted_bases = [b for b in bases.values() if b is not None and b.place_wns_ns is not None and float(b.place_wns_ns) >= PLACE_WNS_GATE_NS - 1e-12]
-    worst_promoted_base_wns = None
-    if promoted_bases:
-        worst_promoted_base_wns = min(float(b.finish_wns_ns) for b in promoted_bases if b.finish_wns_ns is not None)
-
+    promoted = [
+        e for e in labeled if e.place_wns_ns is not None and float(e.place_wns_ns) >= PLACE_WNS_GATE_NS - 1e-12
+    ]
     tp_prec = 0
-    for e in promoted:
-        if worst_promoted_base_wns is None:
-            continue
-        if e.role == "base":
-            tp_prec += 1
-            continue
-        if float(e.finish_wns_ns) > worst_promoted_base_wns:
-            tp_prec += 1
-    prec = (tp_prec / len(promoted)) if promoted and worst_promoted_base_wns is not None else None
-
-    real_wins = []
-    for d, rows in by_design.items():
-        base = bases.get(d)
+    prec_den = 0
+    real_wins: list[Experiment] = []
+    for rows in by_slot.values():
+        base = next((r for r in rows if r.role == "base"), None)
+        slot_promoted = [
+            r for r in rows if r.place_wns_ns is not None and float(r.place_wns_ns) >= PLACE_WNS_GATE_NS - 1e-12
+        ]
+        promoted_bases = [b for b in ([base] if base else []) if b in slot_promoted]
+        worst = None
+        if promoted_bases and promoted_bases[0].finish_wns_ns is not None:
+            worst = float(promoted_bases[0].finish_wns_ns)
+        for e in slot_promoted:
+            if worst is None:
+                continue
+            prec_den += 1
+            if e.role == "base" or float(e.finish_wns_ns) > worst - 1e-15:
+                tp_prec += 1
         if base is None:
             continue
         for e in rows:
@@ -173,6 +182,7 @@ def _h2(exps: list[Experiment]) -> dict[str, Any]:
                 continue
             if _beats_base(e, base):
                 real_wins.append(e)
+    prec = (tp_prec / prec_den) if prec_den else None
     rec_hits = sum(
         1
         for e in real_wins
@@ -190,10 +200,12 @@ def _h2(exps: list[Experiment]) -> dict[str, Any]:
     )
     if pass_bar:
         verdict = "H2 pass"
-    elif enough:
-        verdict = "H2 fail (n enough, bar missed)"
-    else:
+    elif not enough:
         verdict = f"H2 incomplete (n={n} < {H2_MIN_N})"
+    elif rec is None:
+        verdict = "H2 incomplete (no product-wins vs same-clock base; recall N/A)"
+    else:
+        verdict = "H2 fail (n enough, bar missed)"
     return {
         "n": n,
         "n_promoted": len(promoted),
@@ -201,7 +213,6 @@ def _h2(exps: list[Experiment]) -> dict[str, Any]:
         "precision": prec,
         "recall": rec,
         "gate_place_wns_ns": PLACE_WNS_GATE_NS,
-        "worst_promoted_base_wns_ns": worst_promoted_base_wns,
         "min_n": H2_MIN_N,
         "bar": {"precision": H2_MIN_PREC, "recall": H2_MIN_REC},
         "enough_n": enough,
@@ -236,24 +247,29 @@ def _h3(exps: list[Experiment]) -> dict[str, Any]:
             "winner_role": winner.role,
             "winner_area": winner.stdcell_um2,
             "small_wins_area": small_wins,
+            "b_closed_a_open": bool(small) and not any(r.role in ("base", "ainj") for r in closed),
         })
     any_close = any(p["closed"] for p in points)
+    h3_hit = any(p.get("small_wins_area") or p.get("b_closed_a_open") for p in points)
+    if not any_close:
+        verdict = "H3 incomplete (nobody timing-closed yet)"
+    elif h3_hit:
+        verdict = "H3 supported (B closed first or ≥25% smaller when closed)"
+    else:
+        verdict = "H3 not supported (A closes first; B area win <25% bar)"
     return {
         "points": points,
         "any_timing_closed": any_close,
-        "verdict": (
-            "H3 incomplete (nobody timing-closed yet)"
-            if not any_close
-            else "H3 see points (small_wins_area vs frozen 25% bar)"
-        ),
+        "h3_hit": h3_hit if any_close else None,
+        "verdict": verdict,
     }
 
 
 def _h4(exps: list[Experiment]) -> dict[str, Any]:
+    """DSE value vs size at the design's product clock (P0 base vs DSE/abc at that clock)."""
+    p0 = [e for e in exps if e.status == "done" and e.finish_wns_ns is not None and e.phase == "P0"]
     by_design: dict[str, dict[str, Experiment]] = defaultdict(dict)
-    for e in exps:
-        if e.status != "done" or e.finish_wns_ns is None:
-            continue
+    for e in p0:
         if e.role in ("base", "abc_speed", "dse_small", "dse_fast", "dse_other"):
             by_design[e.design][e.role] = e
     rows = []
@@ -266,6 +282,7 @@ def _h4(exps: list[Experiment]) -> dict[str, Any]:
         rows.append({
             "design": design,
             "n_instances": base.stdcell_count,
+            "clock_ns": base.clock_ns,
             "base_wns_ps": base.finish_wns_ps(),
             "best_dse_variant": best.variant,
             "best_dse_wns_ps": best.finish_wns_ps(),
@@ -280,7 +297,7 @@ def _h4(exps: list[Experiment]) -> dict[str, Any]:
         "rows": rows,
         "monotonic_growing_delta": growing,
         "verdict": (
-            "H4 incomplete (need ≥3 designs with base+DSE finish)"
+            "H4 incomplete (need ≥3 designs with P0 base+DSE finish)"
             if len(rows) < 3
             else (
                 "H4 supported (delta grows with size)"
@@ -340,14 +357,14 @@ def _h5(exps: list[Experiment]) -> dict[str, Any]:
 
 def _h6(exps: list[Experiment]) -> dict[str, Any]:
     pairs = []
-    by_design: dict[str, dict[str, Experiment]] = defaultdict(dict)
+    by_slot: dict[tuple[str, str], dict[str, Experiment]] = defaultdict(dict)
     for e in exps:
         if e.status != "done" or e.role not in ("base", "ainj"):
             continue
-        by_design[e.design][e.role] = e
+        by_slot[(e.design, _clk_key(e))][e.role] = e
     all_match = True
     any_pair = False
-    for design, roles in by_design.items():
+    for (design, clk), roles in sorted(by_slot.items()):
         if "base" not in roles or "ainj" not in roles:
             continue
         any_pair = True
@@ -363,6 +380,7 @@ def _h6(exps: list[Experiment]) -> dict[str, Any]:
             all_match = False
         pairs.append({
             "design": design,
+            "clock_ns": clk,
             "base_variant": b.variant,
             "ainj_variant": a.variant,
             "report_sha_match": sha_ok,

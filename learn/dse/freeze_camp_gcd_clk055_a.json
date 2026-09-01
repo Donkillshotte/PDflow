@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "656c4544b968",
+  "phase": "P1",
+  "design": "gcd",
+  "variant": "camp_gcd_clk055_a",
+  "role": "base",
+  "status": "done",
+  "clock_ns": 0.55,
+  "sha256_6_report": "b012102513b9cf4d67dc39c449647f038b2be1ce9cc8f9904a67670a63cfa899",
+  "finish_wns_ns": 0.0133553,
+  "finish_tns_ns": 0.0,
+  "place_wns_ns": 0.0849075,
+  "stdcell_um2": 696.654,
+  "stdcell_count": 608,
+  "repair_buffer": 60,
+  "die_um2": 1970.03,
+  "place_promoted": true,
+  "notes": "P1 GCD clock sweep. CORE_UTILIZATION=35. Netlist a."
+}

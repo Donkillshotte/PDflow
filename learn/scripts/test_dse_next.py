@@ -450,7 +450,7 @@ def check_next_level(check, root: Path) -> None:
     camp = eval_campaign(reload)
     check(camp["n_done"] == 3, "eval_campaign parses synthetic JSONL")
     check("H6 supported" in camp["H6_oven_deterministic"]["verdict"], f"synthetic H6 match {camp['H6_oven_deterministic']}")
-    check(camp["H1_proxy_inversion"]["designs"]["toy"]["inverted"] is True, "synthetic H1: proxy winner ≠ finish winner")
+    check(camp["H1_proxy_inversion"]["slots"]["toy@1.000"]["inverted"] is True, "synthetic H1: proxy winner ≠ finish winner")
     check("incomplete" in camp["H2_place_dp_gate"]["verdict"], "synthetic H2 incomplete (n<15)")
 
 
