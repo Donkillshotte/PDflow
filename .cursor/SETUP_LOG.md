@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T22:20Z — Product loop cooked 4 (cycle picked)
+
+spi / ibex / dynamic_node: skip. gcd: repair_setup (lose, IR worse),
+aspect_wide (win, IR −61%). aes: place_denser ~tie; repair_setup
+**closes** (+17 vs −9 ps), IR −12%. First aes product win.
+
 ## 2026-09-01T21:55Z — Product loop + new win rule
 
 Product = physical knobs. Old DSE = lab. Win includes power/IR (10%).

@@ -124,6 +124,26 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "Yosys senza flatten prima di ABC.",
         "Su spi identico al default (il Verilog è già piatto).",
     ),
+    "camp_aes_place_denser": RecipeLabel(
+        "Place più denso",
+        "Stessa netlist ufficiale. Density addon +0.05. Die bloccato dal config.",
+        "Su aes quasi uguale al default (slack −8.6 vs −8.9 ps).",
+    ),
+    "camp_aes_repair_setup_margin": RecipeLabel(
+        "Margine di setup sul repair",
+        "Chiede 50 ps in più al repair di timing. Stessa netlist, die bloccato.",
+        "Su aes: primo a chiudere (+17 vs −9 ps). IR −12%. Area/potenza +3%. Win.",
+    ),
+    "camp_gcd_repair_setup_margin": RecipeLabel(
+        "Margine di setup sul repair",
+        "Chiede 50 ps in più al repair di timing.",
+        "Su gcd: slack un filo peggio, IR molto peggio. Perde.",
+    ),
+    "camp_gcd_aspect_wide": RecipeLabel(
+        "Floorplan più largo che alto",
+        "Rettangolo 2:1 invece di un quadrato.",
+        "Su gcd: slack uguale, IR −61%. Win su IR.",
+    ),
 }
 
 

@@ -1,7 +1,7 @@
 # Next-iteration eval vs frozen I1–I5
 
 Plan sha: `cf02fb91ed5b757ba057354b2f53cb18a75586e7cf7ccf895369767436f76c98`
-Experiments: 68 (59 done)
+Experiments: 72 (63 done)
 
 I1–I5 bars stay frozen (historical). Product win is `dse.win_rule` (slack + area/power/IR).
 Readable reference+challenger sheets: `learn/dse/qor_compare.md`.
@@ -45,9 +45,9 @@ Readable reference+challenger sheets: `learn/dse/qor_compare.md`.
 {
   "calibration": {
     "aes": {
-      "n": 1,
-      "mean_ns": -0.012051029999999999,
-      "std_ns": 0.0
+      "n": 3,
+      "mean_ns": 0.012723970000000001,
+      "std_ns": 0.02704717682951217
     },
     "dynamic_node": {
       "n": 1,
@@ -55,9 +55,9 @@ Readable reference+challenger sheets: `learn/dse/qor_compare.md`.
       "std_ns": 0.0
     },
     "gcd": {
-      "n": 25,
-      "mean_ns": -0.0515376128,
-      "std_ns": 0.018825573814637207
+      "n": 27,
+      "mean_ns": -0.05138256703703704,
+      "std_ns": 0.01813547699740373
     },
     "ibex": {
       "n": 12,
@@ -78,73 +78,73 @@ Readable reference+challenger sheets: `learn/dse/qor_compare.md`.
     {
       "variant": "camp_gcd_q1_d15u25",
       "design": "gcd",
-      "pred_ns": -0.040468950000000004,
+      "pred_ns": -0.04034497722222223,
       "actual_ns": -0.0444042,
-      "err_ns": -0.003935249999999994,
-      "band_ns": 0.047135033246270074,
+      "err_ns": -0.004059222777777767,
+      "band_ns": 0.04438109748587317,
       "inside": true
     },
     {
       "variant": "camp_gcd_q1_d15u35",
       "design": "gcd",
-      "pred_ns": -0.03848845,
+      "pred_ns": -0.03836447722222223,
       "actual_ns": -0.0436955,
-      "err_ns": -0.005207049999999998,
-      "band_ns": 0.047135033246270074,
+      "err_ns": -0.0053310227777777705,
+      "band_ns": 0.04438109748587317,
       "inside": true
     },
     {
       "variant": "camp_gcd_q1_d15u45",
       "design": "gcd",
-      "pred_ns": -0.03546665,
+      "pred_ns": -0.03534267722222223,
       "actual_ns": -0.0359792,
-      "err_ns": -0.0005125500000000005,
-      "band_ns": 0.047135033246270074,
+      "err_ns": -0.0006365227777777732,
+      "band_ns": 0.04438109748587317,
       "inside": true
     },
     {
       "variant": "camp_gcd_q1_d20u25",
       "design": "gcd",
-      "pred_ns": -0.04067763,
+      "pred_ns": -0.04055365722222223,
       "actual_ns": -0.0362789,
-      "err_ns": 0.0043987299999999965,
-      "band_ns": 0.047135033246270074,
+      "err_ns": 0.004274757222222224,
+      "band_ns": 0.04438109748587317,
       "inside": true
     },
     {
       "variant": "camp_gcd_q1_d20u45",
       "design": "gcd",
-      "pred_ns": -0.03596875,
+      "pred_ns": -0.03584477722222223,
       "actual_ns": -0.0376739,
-      "err_ns": -0.0017051500000000025,
-      "band_ns": 0.047135033246270074,
+      "err_ns": -0.0018291227777777752,
+      "band_ns": 0.04438109748587317,
       "inside": true
     },
     {
       "variant": "camp_gcd_q1_d25u25",
       "design": "gcd",
-      "pred_ns": -0.03866095,
+      "pred_ns": -0.03853697722222223,
       "actual_ns": -0.0417844,
-      "err_ns": -0.00312345,
-      "band_ns": 0.047135033246270074,
+      "err_ns": -0.0032474227777777726,
+      "band_ns": 0.04438109748587317,
       "inside": true
     },
     {
       "variant": "camp_gcd_q1_d25u35",
       "design": "gcd",
-      "pred_ns": -0.036978250000000004,
+      "pred_ns": -0.03685427722222223,
       "actual_ns": -0.0384003,
-      "err_ns": -0.0014220499999999942,
-      "band_ns": 0.047135033246270074,
+      "err_ns": -0.0015460227777777669,
+      "band_ns": 0.04438109748587317,
       "inside": true
     },
     {
       "variant": "camp_gcd_q1_d25u45",
       "design": "gcd",
-      "pred_ns": -0.03598545,
+      "pred_ns": -0.03586147722222223,
       "actual_ns": -0.0381096,
-      "err_ns": -0.0021241499999999983,
-      "band_ns": 0.047135033246270074,
+      "err_ns": -0.002248122777777771,
+      "band_ns": 0.04438109748587317,
       "inside": true
     },
     {
@@ -186,10 +186,10 @@ Readable reference+challenger sheets: `learn/dse/qor_compare.md`.
     {
       "variant": "camp_gcd_q4_d25u35_c055",
       "design": "gcd",
-      "pred_ns": 0.023823449999999996,
+      "pred_ns": 0.02394742277777777,
       "actual_ns": 0.0130203,
-      "err_ns": -0.010803149999999996,
-      "band_ns": 0.047135033246270074,
+      "err_ns": -0.010927122777777768,
+      "band_ns": 0.04438109748587317,
       "inside": true
     }
   ],
@@ -297,43 +297,43 @@ Readable reference+challenger sheets: `learn/dse/qor_compare.md`.
 
 ## I5_proxy_correlation
 
-**Verdict:** I5 supported (place Spearman 0.957 ≥ 0.6; F1 Spearman 0.866)
+**Verdict:** I5 supported (place Spearman 0.940 ≥ 0.6; F1 Spearman 0.866)
 
 ```json
 {
-  "n_place_pairs": 51,
+  "n_place_pairs": 55,
   "n_f1_pairs": 3,
-  "place_spearman": 0.9567028985507244,
+  "place_spearman": 0.9395667870036101,
   "f1_spearman": 0.8660254037844387,
   "bar": 0.6,
   "min_n": 8,
   "supported": true,
-  "verdict": "I5 supported (place Spearman 0.957 \u2265 0.6; F1 Spearman 0.866)"
+  "verdict": "I5 supported (place Spearman 0.940 \u2265 0.6; F1 Spearman 0.866)"
 }
 ```
 
 ## gate_diagnostics
 
-**Verdict:** gate FP=26 FN=0 precision=0.133 (4 product-wins among 39 challengers)
+**Verdict:** gate FP=28 FN=1 precision=0.125 (5 product-wins among 43 challengers)
 
 ```json
 {
-  "n_challengers": 39,
-  "n_promoted": 30,
-  "n_real_wins": 4,
+  "n_challengers": 43,
+  "n_promoted": 32,
+  "n_real_wins": 5,
   "tp": 4,
-  "fp": 26,
-  "fn": 0,
-  "tn": 9,
-  "precision": 0.13333333333333333,
-  "recall": 1.0,
-  "verdict": "gate FP=26 FN=0 precision=0.133 (4 product-wins among 39 challengers)"
+  "fp": 28,
+  "fn": 1,
+  "tn": 10,
+  "precision": 0.125,
+  "recall": 0.8,
+  "verdict": "gate FP=28 FN=1 precision=0.125 (5 product-wins among 43 challengers)"
 }
 ```
 
 ## QoR_vs_base
 
-**Verdict:** QoR vs base: 12 reference slots, 39 challengers, 39 with IR, 39 with GRT WL, 8 product wins
+**Verdict:** QoR vs base: 12 reference slots, 43 challengers, 43 with IR, 43 with GRT WL, 10 product wins
 
 I nomi in tabella dicono **cosa fa** la ricetta e (nella § Ricette) qual è il vantaggio o lo svantaggio. L'id `camp_*` resta solo il path ORFS.
 
@@ -396,6 +396,10 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | Core più stretto (`camp_spi_core_tighter`) | Util 8→18: die più piccolo. | Su spi: area −2.6%, fili −18%, slack +3 ps. IR peggiore. Non basta per un win. |
 | Core più largo (`camp_spi_core_looser`) | Util 8→5: die più grande (minimo 5). | Su spi: die più grande, area +2%, slack quasi uguale. |
 | Sintesi gerarchica (`camp_spi_synth_hier`) | Yosys senza flatten prima di ABC. | Su spi identico al default (il Verilog è già piatto). |
+| Margine di setup sul repair (`camp_gcd_repair_setup_margin`) | Chiede 50 ps in più al repair di timing. | Su gcd: slack un filo peggio, IR molto peggio. Perde. |
+| Floorplan più largo che alto (`camp_gcd_aspect_wide`) | Rettangolo 2:1 invece di un quadrato. | Su gcd: slack uguale, IR −61%. Win su IR. |
+| Place più denso (`camp_aes_place_denser`) | Stessa netlist ufficiale. Density addon +0.05. Die bloccato dal config. | Su aes quasi uguale al default (slack −8.6 vs −8.9 ps). |
+| Margine di setup sul repair (`camp_aes_repair_setup_margin`) | Chiede 50 ps in più al repair di timing. Stessa netlist, die bloccato. | Su aes: primo a chiudere (+17 vs −9 ps). IR −12%. Area/potenza +3%. Win. |
 
 ### Reference flow (absolute, one row per design@clock)
 
@@ -419,11 +423,14 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | Design | Clock ns | Ricetta | Role | Prodotto | WNS ps | TNS ns | Area µm² | Power mW | Leak µW | IR worst | IR mean | Density % | Cong. | GRT WL | fmax | setup |
 |---|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | aes | 0.820 | ORFS default @ 0.82 ns (`camp_aes_base`) | reference | — | -8.9 | -0.024 | 19921.3 | 315.081 | 493.36 | 81.28 | 38.89 | 37.7 | 6.68 | 352701 | 1206.4 | 5 |
+| aes | 0.820 | Margine di setup sul repair (`camp_aes_repair_setup_margin`) | challenger | win | 16.9 | 0.000 | 20470.3 | 322.686 | 513.84 | 71.85 | 39.30 | 38.8 | 6.74 | 355611 | 1245.1 | 0 |
+| aes | 0.820 | Place più denso (`camp_aes_place_denser`) | challenger | tie | -8.6 | -0.014 | 20077.9 | 315.833 | 498.26 | 81.48 | 39.49 | 38.0 | 6.60 | 348150 | 1206.8 | 3 |
 | dynamic_node | 6.000 | ORFS default @ 6 ns (`camp_dynamic_node_base`) | reference | — | 3353.8 | 0.000 | 22540.0 | 8.765 | 429.78 | 1.78 | 1.03 | 43.6 | 5.01 | 259047 | 377.9 | 0 |
 | gcd | 0.400 | ORFS default @ 0.4 ns (`camp_gcd_clk040_a`) | reference | — | -85.8 | -2.479 | 908.4 | 4.213 | 23.93 | 10.83 | 3.45 | 53.0 | 4.31 | 7381 | 2058.4 | 46 |
 | gcd | 0.400 | Netlist DSE / rewrite @ 0.4 ns (`camp_gcd_clk040_b`) | challenger | lose | -389.7 | -15.483 | 631.5 | 2.903 | 15.34 | 5.51 | 2.06 | 55.6 | 4.00 | 4545 | 1266.4 | 47 |
 | gcd | 0.400 | Netlist DSE / rewrite @ 0.4 ns (`camp_gcd_clk040_c`) | challenger | lose | -234.8 | -7.769 | 919.3 | 6.101 | 23.89 | 10.62 | 3.92 | 54.2 | 4.77 | 8088 | 1575.3 | 48 |
 | gcd | 0.460 | ORFS default — sintesi area, util 35, place +0.20 (`camp_gcd_base`) | reference | — | -37.2 | -0.595 | 940.3 | 3.932 | 25.64 | 6.67 | 2.64 | 54.9 | 4.43 | 7589 | 2011.4 | 38 |
+| gcd | 0.460 | Floorplan più largo che alto (`camp_gcd_aspect_wide`) | challenger | win | -38.1 | -0.345 | 907.6 | 3.723 | 24.36 | 2.62 | 1.29 | 51.7 | 4.19 | 7350 | 2007.7 | 17 |
 | gcd | 0.460 | Util 25 (`camp_gcd_q1_d20u25`) | challenger | win | -36.3 | -0.886 | 952.8 | 3.860 | 25.89 | 4.11 | 2.28 | 38.9 | 3.24 | 7928 | 2015.0 | 45 |
 | gcd | 0.460 | Util 45 (`camp_gcd_q1_d20u45`) | challenger | win | -37.7 | -1.040 | 956.5 | 4.016 | 26.05 | 5.72 | 2.33 | 70.6 | 5.44 | 7378 | 2009.3 | 45 |
 | gcd | 0.460 | Place più denso, util 25 (`camp_gcd_q1_d25u25`) | challenger | win | -41.8 | -0.326 | 861.0 | 3.542 | 22.56 | 4.93 | 2.23 | 35.2 | 2.95 | 7216 | 1992.9 | 12 |
@@ -435,6 +442,7 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | gcd | 0.460 | Place più sparso, util 35 (`camp_gcd_q1_d15u35`) | challenger | lose | -43.7 | -0.744 | 981.3 | 3.995 | 27.29 | 6.76 | 2.64 | 57.3 | 4.47 | 7660 | 1985.3 | 43 |
 | gcd | 0.460 | Place più sparso, util 45 (`camp_gcd_q1_d15u45`) | challenger | lose | -36.0 | -0.308 | 861.8 | 3.481 | 22.99 | 10.05 | 2.55 | 63.6 | 4.89 | 6631 | 2016.2 | 11 |
 | gcd | 0.460 | Place più denso, util 45 (`camp_gcd_q1_d25u45`) | challenger | tie | -38.1 | -0.584 | 860.8 | 3.545 | 22.79 | 6.87 | 2.47 | 63.5 | 5.08 | 6882 | 2007.6 | 42 |
+| gcd | 0.460 | Margine di setup sul repair (`camp_gcd_repair_setup_margin`) | challenger | lose | -41.1 | -0.512 | 963.7 | 3.995 | 26.41 | 12.22 | 3.12 | 56.3 | 4.50 | 7700 | 1995.7 | 26 |
 | gcd | 0.550 | ORFS default @ 0.55 ns (`camp_gcd_clk055_a`) | reference | — | 13.4 | 0.000 | 696.7 | 2.210 | 16.52 | 3.44 | 1.40 | 40.7 | 3.72 | 6369 | 1863.4 | 0 |
 | gcd | 0.550 | Netlist DSE / rewrite @ 0.55 ns (`camp_gcd_clk055_b`) | challenger | lose | -251.2 | -9.079 | 611.0 | 2.033 | 14.35 | 5.05 | 1.46 | 53.8 | 4.04 | 4594 | 1248.2 | 43 |
 | gcd | 0.550 | Netlist DSE / rewrite @ 0.55 ns (`camp_gcd_clk055_c`) | challenger | lose | -109.3 | -1.409 | 799.6 | 3.783 | 19.40 | 6.86 | 2.38 | 47.1 | 4.60 | 7800 | 1516.9 | 39 |
@@ -515,8 +523,29 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | spi | 1.000 | Core più stretto (`camp_spi_core_tighter`) | lose | 3.22 | -2.58 | -1.06 | 0.00 | 113.72 | 108.34 | -17.81 | 87.72 | 122.50 |
 | spi | 1.000 | Core più largo (`camp_spi_core_looser`) | lose | -0.53 | 1.99 | -0.12 | 0.00 | 17.74 | 2.49 | 2.26 | -36.10 | -36.27 |
 | spi | 1.000 | Sintesi gerarchica (`camp_spi_synth_hier`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| gcd | 0.460 | Margine di setup sul repair (`camp_gcd_repair_setup_margin`) | lose | -3.90 | 2.49 | 1.60 | 3.00 | 83.24 | 18.20 | 1.46 | 1.46 | 2.49 |
+| gcd | 0.460 | Floorplan più largo che alto (`camp_gcd_aspect_wide`) | win | -0.91 | -3.48 | -5.33 | -5.01 | -60.72 | -51.13 | -3.15 | -5.44 | -5.76 |
+| aes | 0.820 | Place più denso (`camp_aes_place_denser`) | tie | 0.28 | 0.79 | 0.24 | 0.99 | 0.25 | 1.54 | -1.29 | -1.29 | 0.79 |
+| aes | 0.820 | Margine di setup sul repair (`camp_aes_repair_setup_margin`) | win | 25.78 | 2.76 | 2.41 | 4.15 | -11.59 | 1.07 | 0.83 | 0.83 | 2.76 |
 
 ### Side-by-side sheets (reference column + each challenger)
+
+#### aes @ 0.820 ns — reference: ORFS default @ 0.82 ns
+
+| Metric | `ORFS default @ 0.82 ns` | `Margine di setup sul repair` | `Place più denso` |
+|---|---|---|---|
+| WNS (ps) | -8.9 | 16.9 | -8.6 |
+| TNS (ns) | -0.024 | 0.000 | -0.014 |
+| stdcell area (µm²) | 19921.3 | 20470.3 | 20077.9 |
+| total power (mW) | 315.081 | 322.686 | 315.833 |
+| leakage (µW) | 493.36 | 513.84 | 498.26 |
+| IR worst VDD (mV) | 81.28 | 71.85 | 81.48 |
+| IR mean VDD (mV) | 38.89 | 39.30 | 39.49 |
+| cell density (%) | 37.7 | 38.8 | 38.0 |
+| congestion WL/core | 6.68 | 6.74 | 6.60 |
+| GRT wirelength | 352701 | 355611 | 348150 |
+| fmax (MHz) | 1206.4 | 1245.1 | 1206.8 |
+| setup violations | 5 | 0 | 3 |
 
 #### gcd @ 0.400 ns — reference: ORFS default @ 0.4 ns
 
@@ -535,56 +564,73 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | fmax (MHz) | 2058.4 | 1266.4 | 1575.3 |
 | setup violations | 46 | 47 | 48 |
 
-#### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (1/3)
+#### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (1/4)
 
-| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Util 25` | `Util 45` | `Place più denso, util 25` | `Place più denso, stesso die — meno buffer di repair` |
+| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Floorplan più largo che alto` | `Util 25` | `Util 45` | `Place più denso, util 25` |
 |---|---|---|---|---|---|
-| WNS (ps) | -37.2 | -36.3 | -37.7 | -41.8 | -38.4 |
-| TNS (ns) | -0.595 | -0.886 | -1.040 | -0.326 | -0.354 |
-| stdcell area (µm²) | 940.3 | 952.8 | 956.5 | 861.0 | 841.6 |
-| total power (mW) | 3.932 | 3.860 | 4.016 | 3.542 | 3.434 |
-| leakage (µW) | 25.64 | 25.89 | 26.05 | 22.56 | 22.03 |
-| IR worst VDD (mV) | 6.67 | 4.11 | 5.72 | 4.93 | 6.15 |
-| IR mean VDD (mV) | 2.64 | 2.28 | 2.33 | 2.23 | 2.23 |
-| cell density (%) | 54.9 | 38.9 | 70.6 | 35.2 | 49.1 |
-| congestion WL/core | 4.43 | 3.24 | 5.44 | 2.95 | 4.07 |
-| GRT wirelength | 7589 | 7928 | 7378 | 7216 | 6971 |
-| fmax (MHz) | 2011.4 | 2015.0 | 2009.3 | 1992.9 | 2006.4 |
-| setup violations | 38 | 45 | 45 | 12 | 11 |
+| WNS (ps) | -37.2 | -38.1 | -36.3 | -37.7 | -41.8 |
+| TNS (ns) | -0.595 | -0.345 | -0.886 | -1.040 | -0.326 |
+| stdcell area (µm²) | 940.3 | 907.6 | 952.8 | 956.5 | 861.0 |
+| total power (mW) | 3.932 | 3.723 | 3.860 | 4.016 | 3.542 |
+| leakage (µW) | 25.64 | 24.36 | 25.89 | 26.05 | 22.56 |
+| IR worst VDD (mV) | 6.67 | 2.62 | 4.11 | 5.72 | 4.93 |
+| IR mean VDD (mV) | 2.64 | 1.29 | 2.28 | 2.33 | 2.23 |
+| cell density (%) | 54.9 | 51.7 | 38.9 | 70.6 | 35.2 |
+| congestion WL/core | 4.43 | 4.19 | 3.24 | 5.44 | 2.95 |
+| GRT wirelength | 7589 | 7350 | 7928 | 7378 | 7216 |
+| fmax (MHz) | 2011.4 | 2007.7 | 2015.0 | 2009.3 | 1992.9 |
+| setup violations | 38 | 17 | 45 | 45 | 12 |
 
-#### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (2/3)
+#### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (2/4)
 
-| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Sintesi ABC delay sulla stessa ricetta fisica` | `Netlist DSE rewrite sul die del default (controllo geometria)` | `Netlist DSE rewrite (sub_twos_complement) — place/route uguale al default` | `Place più sparso, util 25` |
+| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Place più denso, stesso die — meno buffer di repair` | `Sintesi ABC delay sulla stessa ricetta fisica` | `Netlist DSE rewrite sul die del default (controllo geometria)` | `Netlist DSE rewrite (sub_twos_complement) — place/route uguale al default` |
 |---|---|---|---|---|---|
-| WNS (ps) | -37.2 | -186.9 | -349.5 | -338.3 | -44.4 |
-| TNS (ns) | -0.595 | -5.981 | -13.025 | -13.090 | -0.344 |
-| stdcell area (µm²) | 940.3 | 963.5 | 635.5 | 609.9 | 874.3 |
-| total power (mW) | 3.932 | 5.527 | 2.539 | 2.428 | 3.631 |
-| leakage (µW) | 25.64 | 25.02 | 15.15 | 14.53 | 22.98 |
-| IR worst VDD (mV) | 6.67 | 8.26 | 4.70 | 3.33 | 4.95 |
-| IR mean VDD (mV) | 2.64 | 3.14 | 1.63 | 1.37 | 2.24 |
-| cell density (%) | 54.9 | 56.8 | 37.1 | 53.7 | 35.7 |
-| congestion WL/core | 4.43 | 4.60 | 2.94 | 3.93 | 3.07 |
-| GRT wirelength | 7589 | 7814 | 5038 | 4465 | 7506 |
-| fmax (MHz) | 2011.4 | 1545.9 | 1235.3 | 1252.7 | 1982.5 |
-| setup violations | 38 | 46 | 46 | 46 | 12 |
+| WNS (ps) | -37.2 | -38.4 | -186.9 | -349.5 | -338.3 |
+| TNS (ns) | -0.595 | -0.354 | -5.981 | -13.025 | -13.090 |
+| stdcell area (µm²) | 940.3 | 841.6 | 963.5 | 635.5 | 609.9 |
+| total power (mW) | 3.932 | 3.434 | 5.527 | 2.539 | 2.428 |
+| leakage (µW) | 25.64 | 22.03 | 25.02 | 15.15 | 14.53 |
+| IR worst VDD (mV) | 6.67 | 6.15 | 8.26 | 4.70 | 3.33 |
+| IR mean VDD (mV) | 2.64 | 2.23 | 3.14 | 1.63 | 1.37 |
+| cell density (%) | 54.9 | 49.1 | 56.8 | 37.1 | 53.7 |
+| congestion WL/core | 4.43 | 4.07 | 4.60 | 2.94 | 3.93 |
+| GRT wirelength | 7589 | 6971 | 7814 | 5038 | 4465 |
+| fmax (MHz) | 2011.4 | 2006.4 | 1545.9 | 1235.3 | 1252.7 |
+| setup violations | 38 | 11 | 46 | 46 | 46 |
 
-#### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (3/3)
+#### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (3/4)
 
-| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Place più sparso, util 35` | `Place più sparso, util 45` | `Place più denso, util 45` |
-|---|---|---|---|---|
-| WNS (ps) | -37.2 | -43.7 | -36.0 | -38.1 |
-| TNS (ns) | -0.595 | -0.744 | -0.308 | -0.584 |
-| stdcell area (µm²) | 940.3 | 981.3 | 861.8 | 860.8 |
-| total power (mW) | 3.932 | 3.995 | 3.481 | 3.545 |
-| leakage (µW) | 25.64 | 27.29 | 22.99 | 22.79 |
-| IR worst VDD (mV) | 6.67 | 6.76 | 10.05 | 6.87 |
-| IR mean VDD (mV) | 2.64 | 2.64 | 2.55 | 2.47 |
-| cell density (%) | 54.9 | 57.3 | 63.6 | 63.5 |
-| congestion WL/core | 4.43 | 4.47 | 4.89 | 5.08 |
-| GRT wirelength | 7589 | 7660 | 6631 | 6882 |
-| fmax (MHz) | 2011.4 | 1985.3 | 2016.2 | 2007.6 |
-| setup violations | 38 | 43 | 11 | 42 |
+| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Place più sparso, util 25` | `Place più sparso, util 35` | `Place più sparso, util 45` | `Place più denso, util 45` |
+|---|---|---|---|---|---|
+| WNS (ps) | -37.2 | -44.4 | -43.7 | -36.0 | -38.1 |
+| TNS (ns) | -0.595 | -0.344 | -0.744 | -0.308 | -0.584 |
+| stdcell area (µm²) | 940.3 | 874.3 | 981.3 | 861.8 | 860.8 |
+| total power (mW) | 3.932 | 3.631 | 3.995 | 3.481 | 3.545 |
+| leakage (µW) | 25.64 | 22.98 | 27.29 | 22.99 | 22.79 |
+| IR worst VDD (mV) | 6.67 | 4.95 | 6.76 | 10.05 | 6.87 |
+| IR mean VDD (mV) | 2.64 | 2.24 | 2.64 | 2.55 | 2.47 |
+| cell density (%) | 54.9 | 35.7 | 57.3 | 63.6 | 63.5 |
+| congestion WL/core | 4.43 | 3.07 | 4.47 | 4.89 | 5.08 |
+| GRT wirelength | 7589 | 7506 | 7660 | 6631 | 6882 |
+| fmax (MHz) | 2011.4 | 1982.5 | 1985.3 | 2016.2 | 2007.6 |
+| setup violations | 38 | 12 | 43 | 11 | 42 |
+
+#### gcd @ 0.460 ns — reference: ORFS default — sintesi area, util 35, place +0.20 (4/4)
+
+| Metric | `ORFS default — sintesi area, util 35, place +0.20` | `Margine di setup sul repair` |
+|---|---|---|
+| WNS (ps) | -37.2 | -41.1 |
+| TNS (ns) | -0.595 | -0.512 |
+| stdcell area (µm²) | 940.3 | 963.7 |
+| total power (mW) | 3.932 | 3.995 |
+| leakage (µW) | 25.64 | 26.41 |
+| IR worst VDD (mV) | 6.67 | 12.22 |
+| IR mean VDD (mV) | 2.64 | 3.12 |
+| cell density (%) | 54.9 | 56.3 |
+| congestion WL/core | 4.43 | 4.50 |
+| GRT wirelength | 7589 | 7700 |
+| fmax (MHz) | 2011.4 | 1995.7 |
+| setup violations | 38 | 26 |
 
 #### gcd @ 0.550 ns — reference: ORFS default @ 0.55 ns
 
