@@ -23,6 +23,17 @@
     "core_um2": 1712.51,
     "matches_a": true
   },
+  "fixed_finish_b": {
+    "variant": "flowlab_dse_fixedb",
+    "wns_setup_ns": -0.349488,
+    "place_wns_ns": -0.317536,
+    "stdcell_um2": 635.474,
+    "die_um2": 1970.03,
+    "vs_product_B_wns_ns": -0.338301,
+    "vs_A_wns_ns": -0.037167,
+    "f6_eligible": false,
+    "note": "Locking A's die does not rescue B. Place still −318 ps."
+  },
   "funnel": {
     "B_place_wns_ns": -0.313564,
     "C_place_wns_ns": -0.116708,

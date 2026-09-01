@@ -8,12 +8,14 @@ file and the PR comments before retrying heavy work.
 Finish-or-nothing: contratti, funnel R1→P2→F6, scheduler event-driven,
 F6 ingest, HV `--stop-metric f6`, `--next-level` su `*_nl.jsonl`.
 GNN/bandit isolati (`DSE_ENABLE_FOLKLORE=1` per il report GNN).
-`test_dse_next.py` ALL PASSED. Equiv Yosys identity + `sub_twos` +
+`test_dse.py` ALL PASSED (**1182** ok, F4 DirectLU 6.075, gold 45.298
+unrestamp, AES Krylov REFUSED). Equiv Yosys identity + `sub_twos` +
 `eqz_or_reduce` **pass** vs `learn/flowlab/gcd.v`.
 A-injected `flowlab_dse_ainj`: WNS **−37.167 ps**, Δ **0 ps**,
 `6_report` sha **identico** ad A (`5cba9a7a…`). Forno deterministico.
 Floorplan B su die di A (`flowlab_dse_fixedb`): die **1970.03**,
-core **1712.51**. Place B/C restano fuori F6. Wrapper rifiuta
+core **1712.51**. Finish B locked-die WNS **−349 ps** (place −318 ps) —
+il die grande non salva B. Place B/C restano fuori F6. Wrapper rifiuta
 `flowlab`/`learn`/AES. Oro 45.298 unrestamp. AES `febe6804241c` non
 toccato. Nessun Krylov.
 

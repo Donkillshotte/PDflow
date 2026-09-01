@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "exit": 0,
+  "variant": "flowlab_dse_fixedb",
+  "geometry": "locked_A",
+  "finish": {
+    "wns_setup_ns": -0.349488,
+    "tns_setup_ns": -13.025,
+    "stdcell_um2": 635.474,
+    "stdcell_count": 452,
+    "repair_buffer": 129,
+    "die_um2": 1970.03,
+    "core_um2": 1712.51,
+    "errors": 0
+  },
+  "place_wns_ns": -0.317536,
+  "product_B_wns_ns": -0.338301,
+  "product_B_die_um2": 1304.65,
+  "A_wns_ns": -0.037167,
+  "baseline_untouched": true
+}
