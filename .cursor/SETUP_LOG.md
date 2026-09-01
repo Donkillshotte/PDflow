@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T16:32Z — P0 spi ainj H6 PASS
+
+`camp_spi_ainj` 26s, sha `6_report` **identico** a base (`b8826a8ee535…`),
+WNS +612.234 ps identico. Forno deterministico su spi. H6 supportata su
+gcd+spi. H5 tentativo-ok (1/5 residuali fuori gcd ±2σ). Prossima:
+`camp_dyn_base` (dynamic_node, ricetta ORFS, SWAP_ARITH=1).
+
 ## 2026-09-01T16:31Z — P0 spi base DONE (timing-closed)
 
 `camp_spi_base` finish 26s. WNS **+612 ps**, place +582 ps, area 268 µm²,

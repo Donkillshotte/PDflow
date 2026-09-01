@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "66b05b324192",
+  "phase": "P0",
+  "design": "dynamic_node",
+  "variant": "camp_dynamic_node_base",
+  "role": "base",
+  "status": "done",
+  "clock_ns": 6.0,
+  "sha256_6_report": "fe663d2db2de75f40263642d079f4451cfc9769c5531f56973479c8e92e66d32",
+  "finish_wns_ns": 3.35383,
+  "finish_tns_ns": 0.0,
+  "place_wns_ns": 3.60357,
+  "stdcell_um2": 22540.0,
+  "stdcell_count": 11146,
+  "repair_buffer": 957,
+  "die_um2": 56867.9,
+  "place_promoted": true,
+  "notes": "P0 dynamic_node base. Official ORFS recipe SWAP_ARITH=1. 9167 synth inst."
+}
