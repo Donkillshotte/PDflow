@@ -486,6 +486,12 @@ def check_next_level(check, root: Path) -> None:
     src = wrapper.read_text()
     check("PLACE_DENSITY_LB_ADDON" in src, "wrapper passes PLACE_DENSITY_LB_ADDON")
 
+    from dse.fidelity_policy import decide as policy_decide
+    stop = policy_decide(design="gcd", place_wns_ns=-0.30, baseline_finish_ns=-0.037)
+    check(stop.action == "STOP", f"policy STOPs a clearly late place {stop}")
+    go = policy_decide(design="gcd", place_wns_ns=0.012, baseline_finish_ns=-0.037)
+    check(go.action == "EVALUATE", f"policy EVALUATEs near-base place {go}")
+
 
 if __name__ == "__main__":
     def _check(ok: bool, msg: str) -> None:

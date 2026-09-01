@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "dd6936cfb21e",
+  "phase": "Q1",
+  "design": "gcd",
+  "variant": "camp_gcd_q1_d25u35",
+  "role": "knob",
+  "status": "done",
+  "clock_ns": 0.46,
+  "sha256_6_report": "8722d5e4cdf0f91506e399e8decebcfa6596b06d7be34a0eba89ac0ce07e04ce",
+  "finish_wns_ns": -0.0384003,
+  "finish_tns_ns": -0.35363,
+  "place_wns_ns": 0.013582,
+  "stdcell_um2": 841.624,
+  "stdcell_count": 656,
+  "repair_buffer": 109,
+  "die_um2": 1970.03,
+  "place_promoted": true,
+  "notes": "Q1 knob sweep. LB=0.25 UTIL=35. Base yosys netlist."
+}

@@ -3,6 +3,14 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T19:50Z — Q1 gcd knob grid DONE: first §5 win
+
+8/8 gcd finishes. `camp_gcd_q1_d25u35` (LB=0.25, util=35) WNS −38.4 ps
+vs base −37.2 (Δ −1.2 ps, within ±5) and area 842 vs 940 = **−10.5%**.
+First frozen §5 product win of the campaign. Range 8.4 ps (under 25 ps
+bar; I1 still supported via the win). Closest non-win: d15u45 +1.2 ps
+but only −8.3% area. Next: ibex 4-point sweep.
+
 ## 2026-09-01T19:50Z — Q0 eval_policy: I5 supported, I1–I4 incomplete
 
 Zero-cost query on 45 registry rows. Place→finish Spearman **0.978**
