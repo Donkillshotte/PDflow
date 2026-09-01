@@ -3,6 +3,15 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T19:35Z — Pre-registered next iteration plan (no cooking)
+
+`learn/dse/next_iteration_plan.md`: generatore prima (Q1 knob fisici
+PLACE_DENSITY_LB_ADDON × CORE_UTILIZATION su gcd+ibex), policy poi (Q2
+fidelity policy con STOP verificati), schema per ultimo (Q3 delta/pred/
+EvaluationResult solo dove consumato). Ipotesi I1–I5 e barre frozen.
+Nessun proposer AI in questa iterazione. Nessun esperimento parte da
+questo commit.
+
 ## 2026-09-01T18:40Z — P5 done + P7 eval: base wins, H6 P0-only
 
 P5 ibex {1.98, 2.20, 2.75, 3.52} × {base, abc_speed} closed. abc_speed never
