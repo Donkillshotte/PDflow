@@ -1,7 +1,7 @@
 # Next-iteration eval vs frozen I1–I5
 
 Plan sha: `cf02fb91ed5b757ba057354b2f53cb18a75586e7cf7ccf895369767436f76c98`
-Experiments: 60 (51 done)
+Experiments: 68 (59 done)
 
 Win criteria and I1–I5 bars are **frozen**. This script does not retune them.
 §5 win stays WNS / area-tie / first-to-close. Power, leakage, IR and GRT WL are extra axes.
@@ -66,9 +66,9 @@ Readable reference+challenger sheets: `learn/dse/qor_compare.md`.
       "std_ns": 0.10630476012937778
     },
     "spi": {
-      "n": 4,
-      "mean_ns": 0.026310749999999966,
-      "std_ns": 0.006316941051648303
+      "n": 12,
+      "mean_ns": 0.028822666666666635,
+      "std_ns": 0.004047935171357746
     }
   },
   "n_holdout": 13,
@@ -298,43 +298,43 @@ Readable reference+challenger sheets: `learn/dse/qor_compare.md`.
 
 ## I5_proxy_correlation
 
-**Verdict:** I5 supported (place Spearman 0.970 ≥ 0.6; F1 Spearman 0.866)
+**Verdict:** I5 supported (place Spearman 0.957 ≥ 0.6; F1 Spearman 0.866)
 
 ```json
 {
-  "n_place_pairs": 43,
+  "n_place_pairs": 51,
   "n_f1_pairs": 3,
-  "place_spearman": 0.9699463867703692,
+  "place_spearman": 0.9567028985507244,
   "f1_spearman": 0.8660254037844387,
   "bar": 0.6,
   "min_n": 8,
   "supported": true,
-  "verdict": "I5 supported (place Spearman 0.970 \u2265 0.6; F1 Spearman 0.866)"
+  "verdict": "I5 supported (place Spearman 0.957 \u2265 0.6; F1 Spearman 0.866)"
 }
 ```
 
 ## gate_diagnostics
 
-**Verdict:** gate FP=18 FN=0 precision=0.182 (4 product-wins among 31 challengers)
+**Verdict:** gate FP=26 FN=0 precision=0.133 (4 product-wins among 39 challengers)
 
 ```json
 {
-  "n_challengers": 31,
-  "n_promoted": 22,
+  "n_challengers": 39,
+  "n_promoted": 30,
   "n_real_wins": 4,
   "tp": 4,
-  "fp": 18,
+  "fp": 26,
   "fn": 0,
   "tn": 9,
-  "precision": 0.18181818181818182,
+  "precision": 0.13333333333333333,
   "recall": 1.0,
-  "verdict": "gate FP=18 FN=0 precision=0.182 (4 product-wins among 31 challengers)"
+  "verdict": "gate FP=26 FN=0 precision=0.133 (4 product-wins among 39 challengers)"
 }
 ```
 
 ## QoR_vs_base
 
-**Verdict:** QoR vs base: 12 reference slots, 31 challengers, 31 with IR, 31 with GRT WL, 4 §5 wins
+**Verdict:** QoR vs base: 12 reference slots, 39 challengers, 39 with IR, 39 with GRT WL, 4 §5 wins
 
 I nomi in tabella dicono **cosa fa** la ricetta e (nella § Ricette) qual è il vantaggio o lo svantaggio. L'id `camp_*` resta solo il path ORFS.
 
@@ -388,7 +388,15 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | Core più stretto — die più piccolo, fili più corti (`camp_ibex_q1_d20u60`) | Stessa netlist e stesso density addon 0.20. CORE_UTILIZATION 50→60. | §5 win: WNS +42 vs +22 ps; IR −30%; WL −4%; power ~iso. |
 | Place più denso al clock dove il default chiude (0.55 ns) (`camp_gcd_q4_d25u35_c055`) | Stessi knob del win gcd, SDC 0.55 ns (regime area). | I4 falsa: chiude come il default, area 698 vs 697. Il win non transferisce di clock. |
 | Place più denso (`camp_spi_place_denser`) | Stessa netlist ufficiale. PLACE_DENSITY_LB_ADDON 0.20→0.25. Util resta il default di config (8). | Transfer miss su spi: WNS −1.5 ps (tie), area +0.2%, stessi 22 buffer. Il lever gcd non transferisce su un die già chiuso e sparso. |
-| Repair TNS a metà (`camp_spi_repair_half_tns`) | Stessa netlist ufficiale. TNS_END_PERCENT 100→50. Util resta 8. | No-op su spi: WNS/area/IR/WL/buffer identici al default. TNS già 0; dimezzare il repair non cambia nulla. |
+| Repair TNS a metà (`camp_spi_repair_half_tns`) | Stessa netlist ufficiale. TNS_END_PERCENT 100→50. Util resta 8. | Su spi non cambia nulla: era già in orario. |
+| Place più sparso (`camp_spi_place_sparser`) | Celle un po’ più larghe (density addon 0.20→0.15). | Su spi quasi uguale al default. Fili un po’ più lunghi. |
+| Padding celle +1 site (`camp_spi_cell_pad_plus`) | Un site di spazio extra tra le celle. | Su spi quasi uguale. Fili un po’ più lunghi. |
+| Margine di setup sul repair (`camp_spi_repair_setup_margin`) | Chiede 50 ps in più al repair di timing. | Su spi non cambia nulla: era già in orario. |
+| Buffer di clock più fitti (`camp_spi_cts_closer_bufs`) | Buffer di clock ogni 80 µm. | Su spi non cambia nulla (albero di clock già piccolo). |
+| Floorplan più largo che alto (`camp_spi_aspect_wide`) | Rettangolo 2:1 invece di un quadrato. | Su spi un po’ peggio: più celle, area +3%, IR peggiore. |
+| Core più stretto (`camp_spi_core_tighter`) | Util 8→18: die più piccolo. | Su spi: area −2.6%, fili −18%, slack +3 ps. IR peggiore. Non basta per un win. |
+| Core più largo (`camp_spi_core_looser`) | Util 8→5: die più grande (minimo 5). | Su spi: die più grande, area +2%, slack quasi uguale. |
+| Sintesi gerarchica (`camp_spi_synth_hier`) | Yosys senza flatten prima di ABC. | Su spi identico al default (il Verilog è già piatto). |
 
 ### Reference flow (absolute, one row per design@clock)
 
@@ -452,8 +460,16 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | ibex | 3.520 | Sintesi ABC delay @ 3.52 ns (`camp_ibex_clk352_s`) | challenger | lose | 597.2 | 0.000 | 30033.5 | 55.188 | 620.45 | 30.35 | 5.33 | 50.9 | 7.11 | 419434 | 342.1 | 0 |
 | spi | 1.000 | ORFS default @ 1 ns (`camp_spi_base`) | reference | — | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
 | spi | 1.000 | Sintesi ABC delay @ 1 ns (`camp_spi_abcspeed`) | challenger | lose | 600.8 | 0.000 | 265.7 | 0.313 | 5.80 | 1.06 | 0.62 | 9.2 | 0.65 | 1889 | 2505.0 | 0 |
+| spi | 1.000 | Floorplan più largo che alto (`camp_spi_aspect_wide`) | challenger | tie | 611.7 | 0.000 | 275.6 | 0.304 | 5.32 | 1.77 | 0.61 | 9.9 | 0.81 | 2268 | 2575.6 | 0 |
+| spi | 1.000 | Padding celle +1 site (`camp_spi_cell_pad_plus`) | challenger | tie | 612.5 | 0.000 | 267.6 | 0.302 | 5.32 | 0.93 | 0.52 | 9.4 | 0.83 | 2368 | 2580.3 | 0 |
+| spi | 1.000 | Core più largo (`camp_spi_core_looser`) | challenger | tie | 611.7 | 0.000 | 272.9 | 0.300 | 5.32 | 1.15 | 0.54 | 6.0 | 0.51 | 2308 | 2575.4 | 0 |
+| spi | 1.000 | Core più stretto (`camp_spi_core_tighter`) | challenger | tie | 615.5 | 0.000 | 260.7 | 0.298 | 5.32 | 2.09 | 1.10 | 21.0 | 1.49 | 1855 | 2600.5 | 0 |
+| spi | 1.000 | Buffer di clock più fitti (`camp_spi_cts_closer_bufs`) | challenger | tie | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
 | spi | 1.000 | Place più denso (`camp_spi_place_denser`) | challenger | tie | 610.7 | 0.000 | 268.1 | 0.307 | 5.35 | 1.07 | 0.56 | 9.4 | 0.78 | 2205 | 2569.0 | 0 |
+| spi | 1.000 | Place più sparso (`camp_spi_place_sparser`) | challenger | tie | 613.3 | 0.000 | 267.6 | 0.303 | 5.32 | 1.04 | 0.50 | 9.4 | 0.82 | 2317 | 2586.1 | 0 |
 | spi | 1.000 | Repair TNS a metà (`camp_spi_repair_half_tns`) | challenger | tie | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
+| spi | 1.000 | Margine di setup sul repair (`camp_spi_repair_setup_margin`) | challenger | tie | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
+| spi | 1.000 | Sintesi gerarchica (`camp_spi_synth_hier`) | challenger | tie | 612.2 | 0.000 | 267.6 | 0.301 | 5.32 | 0.98 | 0.53 | 9.4 | 0.79 | 2257 | 2578.9 | 0 |
 
 ### Challengers vs the reference in the same slot (Δ)
 
@@ -492,6 +508,14 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | gcd | 0.550 | Place più denso al clock dove il default chiude (0.55 ns) (`camp_gcd_q4_d25u35_c055`) | tie | -0.33 | 0.15 | 0.35 | 0.26 | -0.31 | 0.67 | -0.94 | -0.94 | 0.15 |
 | spi | 1.000 | Place più denso (`camp_spi_place_denser`) | tie | -1.48 | 0.20 | 2.07 | 0.54 | 9.81 | 6.79 | -2.30 | -2.30 | 0.20 |
 | spi | 1.000 | Repair TNS a metà (`camp_spi_repair_half_tns`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| spi | 1.000 | Place più sparso (`camp_spi_place_sparser`) | tie | 1.08 | 0.00 | 0.64 | 0.00 | 6.93 | -4.24 | 2.66 | 2.66 | 0.00 |
+| spi | 1.000 | Padding celle +1 site (`camp_spi_cell_pad_plus`) | tie | 0.22 | 0.00 | 0.30 | 0.00 | -5.22 | -2.07 | 4.92 | 4.92 | 0.00 |
+| spi | 1.000 | Margine di setup sul repair (`camp_spi_repair_setup_margin`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| spi | 1.000 | Buffer di clock più fitti (`camp_spi_cts_closer_bufs`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| spi | 1.000 | Floorplan più largo che alto (`camp_spi_aspect_wide`) | tie | -0.50 | 2.98 | 1.02 | 0.00 | 80.90 | 15.14 | 0.49 | 2.25 | 4.79 |
+| spi | 1.000 | Core più stretto (`camp_spi_core_tighter`) | tie | 3.22 | -2.58 | -1.06 | 0.00 | 113.72 | 108.34 | -17.81 | 87.72 | 122.50 |
+| spi | 1.000 | Core più largo (`camp_spi_core_looser`) | tie | -0.53 | 1.99 | -0.12 | 0.00 | 17.74 | 2.49 | 2.26 | -36.10 | -36.27 |
+| spi | 1.000 | Sintesi gerarchica (`camp_spi_synth_hier`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 
 ### Side-by-side sheets (reference column + each challenger)
 
@@ -699,21 +723,55 @@ IR worst = drop VDD massimo. **IR mean** = drop medio sul die (VDD_nom − V_avg
 | fmax (MHz) | 368.6 | 342.1 |
 | setup violations | 0 | 0 |
 
-#### spi @ 1.000 ns — reference: ORFS default @ 1 ns
+#### spi @ 1.000 ns — reference: ORFS default @ 1 ns (1/3)
 
-| Metric | `ORFS default @ 1 ns` | `Sintesi ABC delay @ 1 ns` | `Place più denso` | `Repair TNS a metà` |
+| Metric | `ORFS default @ 1 ns` | `Sintesi ABC delay @ 1 ns` | `Floorplan più largo che alto` | `Padding celle +1 site` | `Core più largo` |
+|---|---|---|---|---|---|
+| WNS (ps) | 612.2 | 600.8 | 611.7 | 612.5 | 611.7 |
+| TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| stdcell area (µm²) | 267.6 | 265.7 | 275.6 | 267.6 | 272.9 |
+| total power (mW) | 0.301 | 0.313 | 0.304 | 0.302 | 0.300 |
+| leakage (µW) | 5.32 | 5.80 | 5.32 | 5.32 | 5.32 |
+| IR worst VDD (mV) | 0.98 | 1.06 | 1.77 | 0.93 | 1.15 |
+| IR mean VDD (mV) | 0.53 | 0.62 | 0.61 | 0.52 | 0.54 |
+| cell density (%) | 9.4 | 9.2 | 9.9 | 9.4 | 6.0 |
+| congestion WL/core | 0.79 | 0.65 | 0.81 | 0.83 | 0.51 |
+| GRT wirelength | 2257 | 1889 | 2268 | 2368 | 2308 |
+| fmax (MHz) | 2578.9 | 2505.0 | 2575.6 | 2580.3 | 2575.4 |
+| setup violations | 0 | 0 | 0 | 0 | 0 |
+
+#### spi @ 1.000 ns — reference: ORFS default @ 1 ns (2/3)
+
+| Metric | `ORFS default @ 1 ns` | `Core più stretto` | `Buffer di clock più fitti` | `Place più denso` | `Place più sparso` |
+|---|---|---|---|---|---|
+| WNS (ps) | 612.2 | 615.5 | 612.2 | 610.7 | 613.3 |
+| TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| stdcell area (µm²) | 267.6 | 260.7 | 267.6 | 268.1 | 267.6 |
+| total power (mW) | 0.301 | 0.298 | 0.301 | 0.307 | 0.303 |
+| leakage (µW) | 5.32 | 5.32 | 5.32 | 5.35 | 5.32 |
+| IR worst VDD (mV) | 0.98 | 2.09 | 0.98 | 1.07 | 1.04 |
+| IR mean VDD (mV) | 0.53 | 1.10 | 0.53 | 0.56 | 0.50 |
+| cell density (%) | 9.4 | 21.0 | 9.4 | 9.4 | 9.4 |
+| congestion WL/core | 0.79 | 1.49 | 0.79 | 0.78 | 0.82 |
+| GRT wirelength | 2257 | 1855 | 2257 | 2205 | 2317 |
+| fmax (MHz) | 2578.9 | 2600.5 | 2578.9 | 2569.0 | 2586.1 |
+| setup violations | 0 | 0 | 0 | 0 | 0 |
+
+#### spi @ 1.000 ns — reference: ORFS default @ 1 ns (3/3)
+
+| Metric | `ORFS default @ 1 ns` | `Repair TNS a metà` | `Margine di setup sul repair` | `Sintesi gerarchica` |
 |---|---|---|---|---|
-| WNS (ps) | 612.2 | 600.8 | 610.7 | 612.2 |
+| WNS (ps) | 612.2 | 612.2 | 612.2 | 612.2 |
 | TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 |
-| stdcell area (µm²) | 267.6 | 265.7 | 268.1 | 267.6 |
-| total power (mW) | 0.301 | 0.313 | 0.307 | 0.301 |
-| leakage (µW) | 5.32 | 5.80 | 5.35 | 5.32 |
-| IR worst VDD (mV) | 0.98 | 1.06 | 1.07 | 0.98 |
-| IR mean VDD (mV) | 0.53 | 0.62 | 0.56 | 0.53 |
-| cell density (%) | 9.4 | 9.2 | 9.4 | 9.4 |
-| congestion WL/core | 0.79 | 0.65 | 0.78 | 0.79 |
-| GRT wirelength | 2257 | 1889 | 2205 | 2257 |
-| fmax (MHz) | 2578.9 | 2505.0 | 2569.0 | 2578.9 |
+| stdcell area (µm²) | 267.6 | 267.6 | 267.6 | 267.6 |
+| total power (mW) | 0.301 | 0.301 | 0.301 | 0.301 |
+| leakage (µW) | 5.32 | 5.32 | 5.32 | 5.32 |
+| IR worst VDD (mV) | 0.98 | 0.98 | 0.98 | 0.98 |
+| IR mean VDD (mV) | 0.53 | 0.53 | 0.53 | 0.53 |
+| cell density (%) | 9.4 | 9.4 | 9.4 | 9.4 |
+| congestion WL/core | 0.79 | 0.79 | 0.79 | 0.79 |
+| GRT wirelength | 2257 | 2257 | 2257 | 2257 |
+| fmax (MHz) | 2578.9 | 2578.9 | 2578.9 | 2578.9 |
 | setup violations | 0 | 0 | 0 | 0 |
 
 

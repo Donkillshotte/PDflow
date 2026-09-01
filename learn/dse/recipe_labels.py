@@ -82,7 +82,47 @@ _EXPLICIT: dict[str, RecipeLabel] = {
     "camp_spi_repair_half_tns": RecipeLabel(
         "Repair TNS a metà",
         "Stessa netlist ufficiale. TNS_END_PERCENT 100→50. Util resta 8.",
-        "No-op su spi: WNS/area/IR/WL/buffer identici al default. TNS già 0; dimezzare il repair non cambia nulla.",
+        "Su spi non cambia nulla: era già in orario.",
+    ),
+    "camp_spi_place_sparser": RecipeLabel(
+        "Place più sparso",
+        "Celle un po’ più larghe (density addon 0.20→0.15).",
+        "Su spi quasi uguale al default. Fili un po’ più lunghi.",
+    ),
+    "camp_spi_cell_pad_plus": RecipeLabel(
+        "Padding celle +1 site",
+        "Un site di spazio extra tra le celle.",
+        "Su spi quasi uguale. Fili un po’ più lunghi.",
+    ),
+    "camp_spi_repair_setup_margin": RecipeLabel(
+        "Margine di setup sul repair",
+        "Chiede 50 ps in più al repair di timing.",
+        "Su spi non cambia nulla: era già in orario.",
+    ),
+    "camp_spi_cts_closer_bufs": RecipeLabel(
+        "Buffer di clock più fitti",
+        "Buffer di clock ogni 80 µm.",
+        "Su spi non cambia nulla (albero di clock già piccolo).",
+    ),
+    "camp_spi_aspect_wide": RecipeLabel(
+        "Floorplan più largo che alto",
+        "Rettangolo 2:1 invece di un quadrato.",
+        "Su spi un po’ peggio: più celle, area +3%, IR peggiore.",
+    ),
+    "camp_spi_core_tighter": RecipeLabel(
+        "Core più stretto",
+        "Util 8→18: die più piccolo.",
+        "Su spi: area −2.6%, fili −18%, slack +3 ps. IR peggiore. Non basta per un win.",
+    ),
+    "camp_spi_core_looser": RecipeLabel(
+        "Core più largo",
+        "Util 8→5: die più grande (minimo 5).",
+        "Su spi: die più grande, area +2%, slack quasi uguale.",
+    ),
+    "camp_spi_synth_hier": RecipeLabel(
+        "Sintesi gerarchica",
+        "Yosys senza flatten prima di ABC.",
+        "Su spi identico al default (il Verilog è già piatto).",
     ),
 }
 

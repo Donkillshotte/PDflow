@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T21:35Z — All remaining catalog recipes cooked on spi
+
+8/8 done. No product win. Closest: Core più stretto (area −2.6%,
+WL −18%, slack +3 ps, IR worse). aspect_wide is a small lose.
+repair/cts/synth_hier match the default. 4 §5 wins still gcd/ibex only.
+
 ## 2026-09-01T21:30Z — Cook the rest of the catalog on spi
 
 J1 only ran 2 of 12 recipes. Remaining on spi (J2): place_sparser,

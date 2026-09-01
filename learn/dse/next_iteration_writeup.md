@@ -134,3 +134,25 @@ TNS è già 0 (`6_report.json` byte-identical al default, sha
 il transfer è design-sensibile anche se i knob sono design-agnostic.
 
 Non si è cotto il combo (sarebbe un no-op) né aes/ibex/dynamic_node.
+
+## Catalogo completo su spi (J2)
+
+Le altre 8 ricette sono girate. Nessuna batte il default abbastanza
+da contare come win.
+
+| Ricetta | Cosa cambia | Risultato su spi |
+|---|---|---|
+| Place più sparso | celle più larghe | quasi uguale; fili +3% |
+| Padding celle +1 | spazio extra tra celle | quasi uguale; fili +5% |
+| Margine di setup | chiede 50 ps in più | identico (già in orario) |
+| Buffer di clock più fitti | clock ogni 80 µm | identico |
+| Floorplan più largo | rettangolo 2:1 | peggio: area +3%, IR su |
+| Core più stretto | die più piccolo (util 18) | area −2.6%, fili −18%, slack +3 ps, IR peggiore. Non è un win |
+| Core più largo | die più grande (util 5) | area +2%, slack uguale |
+| Sintesi gerarchica | Yosys senza flatten | identico (Verilog già piatto) |
+
+Il più vicino è **Core più stretto**. Non basta: per vincere serve slack
+meglio di 5 ps, oppure slack uguale e area −10%.
+
+Le ricette ora sono tutte girate, non solo scritte. Su spi (già in
+orario, die vuoto) quasi tutte non fanno nulla. I win restano gcd e ibex.
