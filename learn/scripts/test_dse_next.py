@@ -367,7 +367,8 @@ def check_next_level(check, root: Path) -> None:
     # --- campaign infra: wrapper refusal, registry, eval parse ---
     import os
     import subprocess
-    from dse.experiments import Experiment, ExperimentLog, refuse_locked_variant
+    from dse.experiments import Experiment, ExperimentLog
+    from dse.experiments import refuse_locked_variant as refuse_campaign_variant
     from eval_campaign import evaluate as eval_campaign
 
     wrapper = root / "scripts" / "run_design_finish.sh"
@@ -387,7 +388,7 @@ def check_next_level(check, root: Path) -> None:
 
     raised = False
     try:
-        refuse_locked_variant("flowlab")
+        refuse_campaign_variant("flowlab")
     except ValueError:
         raised = True
     check(raised, "experiments.refuse_locked_variant(flowlab)")
