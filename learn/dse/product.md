@@ -29,6 +29,16 @@ prodotto da qui in poi.
 
 ## Ciclo
 
-Stato del circuito (slack, TNS, densità, IR, buffer, die bloccato) →
-quali ricette del catalogo possono servire → place → stop o finish →
-registro. Nessun `if design == …`. Si cucina solo se il ciclo lo decide.
+Due modi, entrambi senza `if design == …`.
+
+1. **Selettore.** Stato del circuito (slack, TNS, densità, IR, buffer,
+   die bloccato) → quali ricette possono servire → place → stop o
+   finish. Si cucina solo se lo stato lo chiede.
+2. **Cover-all.** Ogni ricetta del catalogo su ogni design di campagna,
+   dal finish più economico. Salta solo `synth_area` (già la netlist
+   ufficiale) e le ricette floorplan su un die bloccato
+   (`FLOORPLAN_DEF`). Un finish ABC-speed conta come `synth_delay`.
+
+Dopo ogni batch: regola win prodotto. Se uno slot non ha win, il ciclo
+inventa combo di assi indipendenti (place denso + margine setup, …) e
+le cucina. Non si riscrive il Verilog.

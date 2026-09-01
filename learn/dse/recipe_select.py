@@ -8,6 +8,10 @@ from .knob_catalog import RECIPES, by_id, resolve
 
 # Already the default, or never a product win in campaign.
 _NEVER = frozenset({"synth_area", "synth_delay"})
+# Default synth method: already the official netlist. Do not recook.
+SKIP_COVER = frozenset({"synth_area"})
+# Cheapest live finish first. Cover-all uses this order, not the selector.
+CHEAP_FIRST = ("gcd", "spi", "ibex", "aes", "dynamic_node")
 
 # Closed by a wide margin: cooking will not take a product win.
 VERY_CLOSED_NS = 0.100
@@ -16,6 +20,15 @@ HIGH_IR_V = 0.020
 DENSE = 0.55
 MANY_BUFFERS = 30
 MAX_PICK = 2
+
+# Combos of independent win axes. Used after a slot has no product win.
+# Floorplan parts are dropped when the die is locked — no design name.
+IMPROVE_COMBOS: tuple[tuple[str, ...], ...] = (
+    ("place_denser", "repair_setup_margin"),
+    ("aspect_wide", "place_denser"),
+    ("core_tighter", "place_denser"),
+    ("place_denser", "repair_half_tns"),
+)
 
 
 def floorplan_locked(config_mk: Path | str | None) -> bool:
@@ -110,6 +123,19 @@ def select_recipes(
     return ranked[: max(0, int(max_pick))]
 
 
+def is_synth_delay_run(exp: Any) -> bool:
+    """ABC-speed finishes already measure synth_delay. Do not recook them."""
+    role = str(getattr(exp, "role", "") or "")
+    if role in ("abc_speed", "dse_fast"):
+        return True
+    variant = str(getattr(exp, "variant", "") or "")
+    if "abcspeed" in variant or variant.endswith("_synth_delay"):
+        return True
+    extra = getattr(exp, "extra", None) or {}
+    knobs = extra.get("knobs") or {}
+    return str(knobs.get("ABC_SPEED", "0")) in ("1", "true", "True")
+
+
 def already_tried(exps: list[Any], recipe_id: str, defaults: dict[str, float]) -> bool:
     """True if this recipe (or the same knobs) already finished on these rows."""
     try:
@@ -119,9 +145,13 @@ def already_tried(exps: list[Any], recipe_id: str, defaults: dict[str, float]) -
     for e in exps:
         if getattr(e, "status", None) not in ("done", "stopped_by_policy"):
             continue
+        if recipe_id == "synth_delay" and is_synth_delay_run(e):
+            return True
         extra = getattr(e, "extra", None) or {}
         rids = extra.get("recipe_ids") or ([extra["recipe_id"]] if extra.get("recipe_id") else [])
         if recipe_id in rids:
+            return True
+        if rids and set(rids) == {recipe_id}:
             return True
         variant = str(getattr(e, "variant", "") or "")
         if variant.endswith("_" + recipe_id):
@@ -142,6 +172,67 @@ def already_tried(exps: list[Any], recipe_id: str, defaults: dict[str, float]) -
             if abs(float(util) - float(want["CORE_UTILIZATION"])) < 1.0:
                 return True
     return False
+
+
+def recipes_still_open(
+    rows: list[Any],
+    defaults: dict[str, float],
+    *,
+    locked_floorplan: bool = False,
+) -> list[str]:
+    """Catalog ids not yet measured on these rows. Skips default synth and locked floorplan."""
+    out: list[str] = []
+    for rec in RECIPES:
+        rid = rec["id"]
+        if rid in SKIP_COVER:
+            continue
+        if locked_floorplan and rec.get("stage") == "floorplan":
+            continue
+        if already_tried(rows, rid, defaults):
+            continue
+        out.append(rid)
+    return out
+
+
+def combo_already_tried(exps: list[Any], parts: list[str]) -> bool:
+    want = set(parts)
+    for e in exps:
+        if getattr(e, "status", None) not in ("done", "stopped_by_policy"):
+            continue
+        extra = getattr(e, "extra", None) or {}
+        rids = extra.get("recipe_ids") or []
+        if rids and set(rids) == want:
+            return True
+        variant = str(getattr(e, "variant", "") or "")
+        if variant.endswith("_" + "_".join(parts)):
+            return True
+    return False
+
+
+def propose_improve(
+    *,
+    locked_floorplan: bool = False,
+    already_parts: list[list[str]] | None = None,
+    product_wins: int = 0,
+) -> list[list[str]]:
+    """If this slot has no product win, try combos of independent axes.
+
+    No design name. Floorplan parts drop when the die is locked.
+    """
+    if int(product_wins) > 0:
+        return []
+    seen = {tuple(p) for p in (already_parts or [])}
+    out: list[list[str]] = []
+    for combo in IMPROVE_COMBOS:
+        parts = [p for p in combo if not (locked_floorplan and by_id(p).get("stage") == "floorplan")]
+        if len(parts) < 2:
+            continue
+        key = tuple(parts)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(list(parts))
+    return out
 
 
 def catalog_ids() -> list[str]:

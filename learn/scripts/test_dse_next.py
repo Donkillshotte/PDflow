@@ -579,7 +579,16 @@ def check_next_level(check, root: Path) -> None:
     check(remaining <= {r["id"] for r in RECIPES}, f"remaining catalog ids exist {remaining}")
 
     from dse.win_rule import verdict as prod_verdict
-    from dse.recipe_select import floorplan_locked, select_recipes
+    from dse.recipe_select import (
+        CHEAP_FIRST,
+        already_tried,
+        combo_already_tried,
+        floorplan_locked,
+        is_synth_delay_run,
+        propose_improve,
+        recipes_still_open,
+        select_recipes,
+    )
 
     def _E(**kw):
         return type("E", (), kw)()
@@ -604,6 +613,39 @@ def check_next_level(check, root: Path) -> None:
     check(floorplan_locked(root / "tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/config.mk"), "aes config locks floorplan")
     check((root / "learn/scripts/run_recipe_loop.py").is_file(), "run_recipe_loop.py exists")
     check("Prodotto" in qor_md or "product" in qor_md.lower() or "IR" in qor_md, "QoR sheet still renders")
+
+    loop_src = (root / "learn/scripts/run_recipe_loop.py").read_text()
+    check("--cover-all" in loop_src, "loop has --cover-all")
+    check("--improve" in loop_src, "loop has --improve")
+    check(CHEAP_FIRST[0] == "gcd" and CHEAP_FIRST[-1] == "dynamic_node", f"cheap-first order {CHEAP_FIRST}")
+    abc = _E(status="done", role="abc_speed", variant="camp_spi_abcspeed", extra={})
+    check(is_synth_delay_run(abc), "abc_speed is a synth_delay run")
+    check(already_tried([abc], "synth_delay", {}), "already_tried treats abc_speed as synth_delay")
+    dse_fast = _E(status="done", role="dse_fast", variant="camp_gcd_dse_fast", extra={})
+    check(already_tried([dse_fast], "synth_delay", {}), "already_tried treats dse_fast as synth_delay")
+    pad = _E(status="done", role="knob", variant="camp_spi_cell_pad_plus", extra={"recipe_ids": ["cell_pad_plus"]})
+    check(already_tried([pad], "cell_pad_plus", {}), "already_tried sees recipe_ids")
+    open_ids = recipes_still_open(
+        [abc, pad],
+        {"CORE_UTILIZATION": 8.0, "PLACE_DENSITY_LB_ADDON": 0.20},
+        locked_floorplan=True,
+    )
+    check("synth_area" not in open_ids, "cover skips default synth_area")
+    check("synth_delay" not in open_ids, "cover skips already-measured synth_delay")
+    check("cell_pad_plus" not in open_ids, "cover skips already-measured cell_pad_plus")
+    check("core_tighter" not in open_ids, f"cover skips locked floorplan {open_ids}")
+    check("place_denser" in open_ids, f"cover still wants unmeasured place {open_ids}")
+    check(propose_improve(product_wins=2) == [], "improve is silent when the slot already has a win")
+    combos = propose_improve(product_wins=0, locked_floorplan=True)
+    check(all("aspect_wide" not in c and "core_tighter" not in c for c in combos), f"locked die drops floorplan combos {combos}")
+    check(any(c == ["place_denser", "repair_setup_margin"] for c in combos), f"improve proposes denser+setup {combos}")
+    combo_row = _E(
+        status="done",
+        role="knob",
+        variant="camp_aes_place_denser_repair_setup_margin",
+        extra={"recipe_ids": ["place_denser", "repair_setup_margin"]},
+    )
+    check(combo_already_tried([combo_row], ["place_denser", "repair_setup_margin"]), "combo already tried")
 
 
 if __name__ == "__main__":

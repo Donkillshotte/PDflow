@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Product loop: pick recipes from circuit state, cook only if selected.
+"""Product loop: pick recipes from circuit state, or cover the catalog.
 
 No design name in the picker. Skips a recipe already tried (same id or knobs).
 
 Usage:
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --dry-run
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --max-cooks 4
+    PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --cover-all --dry-run
+    PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --cover-all --max-cooks 4
+    PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --improve --dry-run
 """
 from __future__ import annotations
 
@@ -21,15 +24,20 @@ if str(_LEARN) not in sys.path:
     sys.path.insert(0, str(_LEARN))
 
 from dse.experiments import DESIGN_CATALOG, ExperimentLog  # noqa: E402
-from dse.knob_catalog import config_mk_for, parse_config_defaults  # noqa: E402
+from dse.knob_catalog import RECIPES, config_mk_for, parse_config_defaults  # noqa: E402
 from dse.recipe_select import (  # noqa: E402
+    CHEAP_FIRST,
     already_tried,
+    combo_already_tried,
     floorplan_locked,
+    propose_improve,
+    recipes_still_open,
     select_recipes,
     state_from_exp,
 )
+from dse.win_rule import verdict  # noqa: E402
 
-DESIGNS = ("gcd", "spi", "ibex", "aes", "dynamic_node")
+DESIGNS = CHEAP_FIRST
 
 
 def _base(log: ExperimentLog, design: str, clock_ns: float):
@@ -53,6 +61,20 @@ def _same_slot(log: ExperimentLog, design: str, clock_ns: float):
     return out
 
 
+def _product_wins(rows, base) -> int:
+    if base is None:
+        return 0
+    n = 0
+    for e in rows:
+        if e is base or e.role == "base":
+            continue
+        if e.status != "done" or e.finish_wns_ns is None:
+            continue
+        if verdict(e, base) == "win":
+            n += 1
+    return n
+
+
 def plan_for(design: str, log: ExperimentLog) -> dict:
     clock = float(DESIGN_CATALOG[design]["clk_ns"])
     base = _base(log, design, clock)
@@ -62,8 +84,6 @@ def plan_for(design: str, log: ExperimentLog) -> dict:
     defaults = parse_config_defaults(cfg)
     locked = floorplan_locked(cfg)
     rows = _same_slot(log, design, clock)
-    from dse.knob_catalog import RECIPES
-
     already = {r["id"] for r in RECIPES if already_tried(rows, r["id"], defaults)}
     pick = select_recipes(state_from_exp(base), locked_floorplan=locked, already=already)
     return {
@@ -80,47 +100,134 @@ def plan_for(design: str, log: ExperimentLog) -> dict:
     }
 
 
+def cover_plan_for(design: str, log: ExperimentLog) -> dict:
+    clock = float(DESIGN_CATALOG[design]["clk_ns"])
+    base = _base(log, design, clock)
+    cfg = config_mk_for(design)
+    defaults = parse_config_defaults(cfg)
+    locked = floorplan_locked(cfg)
+    rows = _same_slot(log, design, clock)
+    pick = recipes_still_open(rows, defaults, locked_floorplan=locked) if base else []
+    return {
+        "design": design,
+        "clock_ns": clock,
+        "mode": "cover",
+        "base": None if base is None else base.variant,
+        "wns_ns": None if base is None else base.finish_wns_ns,
+        "locked_floorplan": locked,
+        "pick": pick,
+        "skip": "no_base" if base is None else (None if pick else "covered"),
+    }
+
+
+def cover_queue(log: ExperimentLog, designs: list[str]) -> list[dict]:
+    """(design, recipe) still unmeasured, cheapest design first."""
+    jobs = []
+    for d in designs:
+        pl = cover_plan_for(d, log)
+        for rid in pl.get("pick") or []:
+            jobs.append({"design": d, "recipes": [rid], "id": rid, "mode": "cover"})
+    return jobs
+
+
+def improve_queue(log: ExperimentLog, designs: list[str]) -> list[dict]:
+    """Combos of win axes on slots that still have no product win."""
+    jobs = []
+    for d in designs:
+        clock = float(DESIGN_CATALOG[d]["clk_ns"])
+        base = _base(log, d, clock)
+        if base is None:
+            continue
+        cfg = config_mk_for(d)
+        locked = floorplan_locked(cfg)
+        rows = _same_slot(log, d, clock)
+        wins = _product_wins(rows, base)
+        already = []
+        for e in rows:
+            extra = e.extra or {}
+            rids = extra.get("recipe_ids") or []
+            if len(rids) >= 2:
+                already.append(list(rids))
+        for parts in propose_improve(
+            locked_floorplan=locked, already_parts=already, product_wins=wins
+        ):
+            if combo_already_tried(rows, parts):
+                continue
+            jobs.append(
+                {
+                    "design": d,
+                    "recipes": parts,
+                    "id": "_".join(parts),
+                    "mode": "improve",
+                }
+            )
+    return jobs
+
+
+def _cook_one(design: str, recipes: list[str], phase: str) -> int:
+    cook = _LEARN / "scripts" / "cook_recipe.py"
+    cmd = [
+        sys.executable,
+        str(cook),
+        "--design",
+        design,
+        "--recipes",
+        *recipes,
+        "--phase",
+        phase,
+    ]
+    print(json.dumps({"cook": True, "design": design, "recipes": recipes, "phase": phase}))
+    rc = subprocess.run(cmd, cwd=str(_ROOT), check=False).returncode
+    print(json.dumps({"cooked": recipes, "design": design, "rc": rc}))
+    if rc != 0:
+        print(json.dumps({"warn": "cook_failed", "design": design, "recipes": recipes}))
+    return rc
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--designs", nargs="+", default=list(DESIGNS))
     p.add_argument("--phase", default="L1")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--max-cooks", type=int, default=4)
+    p.add_argument(
+        "--cover-all",
+        action="store_true",
+        help="Cook every unmeasured catalog recipe, cheapest design first.",
+    )
+    p.add_argument(
+        "--improve",
+        action="store_true",
+        help="On slots with no product win, cook combos of independent axes.",
+    )
     args = p.parse_args(argv)
 
     log = ExperimentLog()
-    plans = [plan_for(d, log) for d in args.designs]
-    print(json.dumps({"plans": plans, "dry_run": args.dry_run}, indent=2, default=str))
+    if args.cover_all:
+        jobs = cover_queue(log, args.designs)
+        plans = [cover_plan_for(d, log) for d in args.designs]
+        print(json.dumps({"mode": "cover", "plans": plans, "jobs": jobs, "dry_run": args.dry_run}, indent=2, default=str))
+    elif args.improve:
+        jobs = improve_queue(log, args.designs)
+        print(json.dumps({"mode": "improve", "jobs": jobs, "dry_run": args.dry_run}, indent=2, default=str))
+    else:
+        plans = [plan_for(d, log) for d in args.designs]
+        print(json.dumps({"plans": plans, "dry_run": args.dry_run}, indent=2, default=str))
+        jobs = []
+        for pl in plans:
+            for rid in pl.get("pick") or []:
+                jobs.append({"design": pl["design"], "recipes": [rid], "id": rid, "mode": "select"})
 
     if args.dry_run:
         return 0
 
     cooked = 0
-    cook = _LEARN / "scripts" / "cook_recipe.py"
-    for pl in plans:
-        for rid in pl.get("pick") or []:
-            if cooked >= args.max_cooks:
-                print(json.dumps({"stop": "max_cooks", "cooked": cooked}))
-                return 0
-            print(json.dumps({"cook": True, "design": pl["design"], "recipe": rid, "phase": args.phase}))
-            rc = subprocess.run(
-                [
-                    sys.executable,
-                    str(cook),
-                    "--design",
-                    pl["design"],
-                    "--recipes",
-                    rid,
-                    "--phase",
-                    args.phase,
-                ],
-                cwd=str(_ROOT),
-                check=False,
-            ).returncode
-            cooked += 1
-            print(json.dumps({"cooked": rid, "design": pl["design"], "rc": rc}))
-            if rc != 0:
-                print(json.dumps({"warn": "cook_failed", "design": pl["design"], "recipe": rid}))
+    for job in jobs:
+        if cooked >= args.max_cooks:
+            print(json.dumps({"stop": "max_cooks", "cooked": cooked}))
+            return 0
+        _cook_one(job["design"], list(job["recipes"]), args.phase)
+        cooked += 1
     print(json.dumps({"ok": True, "cooked": cooked}))
     return 0
 
