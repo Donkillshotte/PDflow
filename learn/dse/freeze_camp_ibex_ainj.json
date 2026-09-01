@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "6da854b6ee74",
+  "phase": "P0",
+  "design": "ibex",
+  "variant": "camp_ibex_ainj",
+  "role": "ainj",
+  "status": "done",
+  "clock_ns": 2.2,
+  "sha256_6_report": "dc42f9418f2dd0a1f0d6d481e25bac26a48c546a1cb0cc370f427fff41462bfc",
+  "finish_wns_ns": 0.0224143,
+  "finish_tns_ns": 0.0,
+  "place_wns_ns": 0.261252,
+  "stdcell_um2": 30735.2,
+  "stdcell_count": 23434,
+  "repair_buffer": 777,
+  "die_um2": 62991.0,
+  "place_promoted": true,
+  "notes": "P0 ibex A-injected from camp_ibex_base 1_2_yosys.v"
+}

@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T16:52Z — P0 ibex base DONE (barely closed)
+
+`camp_ibex_base` Verilog overlay, 453s, peak 1.6 GiB. WNS **+22.4 ps**,
+place +261 ps, 23434 inst, area 30735, die 62991, repair 777, sha
+`dc42f9418f2d…`. Clock 2.2 ns è il più stretto dei medi (P5 candidate).
+Prossima: ainj.
+
 ## 2026-09-01T16:43Z — P0 dynamic_node ainj H6 PASS
 
 Sha `6_report` identico (`fe663d2db2de…`), WNS +3.35383 ns identico.
