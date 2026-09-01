@@ -93,10 +93,10 @@ from .pdn_space import GOLD_KNOBS, next_pdn_spec
 from .physical_space import gpl_density, propose_synthesis_f0
 from .planner import plan_search, rank_extracts, next_candidate_ids
 from .proposer import propose as propose_from_attr
+from .folklore import folklore_report, gnn_report
 from .surrogate import (
     predict_f1_area,
     predict_f2_from_f1,
-    predict_f2_gnn,
     predict_f4_from_f1,
     predict_gpl_from_f1,
     predict_power_from_f1,
@@ -2297,7 +2297,8 @@ def run_controller(
         "memory": str(mem_path),
         "surrogate_f0": pred,
         "surrogate_f1_to_f2": predict_f2_from_f1(mem.all()),
-        "surrogate_f1_to_f2_gnn": predict_f2_gnn(mem.all()),
+        "surrogate_f1_to_f2_gnn": gnn_report(mem.all()),
+        "folklore": folklore_report(),
         "surrogate_f1_to_gpl": predict_gpl_from_f1(mem.all()),
         "surrogate_f1_to_wns": predict_wns_from_f1(mem.all()),
         "surrogate_f1_to_power": predict_power_from_f1(mem.all()),

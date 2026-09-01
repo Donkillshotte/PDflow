@@ -1,5 +1,9 @@
 """Contextual bandit over refine stages. Does not flatten knobs into one arm.
 
+Isolated folklore: ``choose`` is unused by the Next Level scheduler and
+by ``run_controller``. See ``dse.folklore``. Tests in ``test_designs.py``
+still exercise the module in isolation.
+
 Context is (depth, leftover_n, last_dyn_mv). Arms are the generic refine
 stages already gated by `actions.py`. Reward is −Δ dynamic IR vs the
 depth's PDN host (improvement is positive reward).

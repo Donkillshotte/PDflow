@@ -6,10 +6,13 @@ the BOiLS standard alphabet. Architecture uses a datapath e-graph.
 """
 
 from .campaign import run_campaign
+from .contracts import ConstraintContract, GeometryContract, SemanticContract
 from .current_scenario import CurrentScenario, infer_scenario
+from .feasibility import constraint_dominates, feasibility_of, feasible_pareto
 from .layers import ADAPTERS
 from .memory import DesignMemory, Candidate
 from .metrics import QoR, pareto_front, dominates, qor_delta, baseline_delta_of, pareto_front_gated, dominates_with_fidelity
+from .next_level import run_next_level
 from .resources import admit_solve
 from .solve_result import (
     SolveResult,
@@ -39,4 +42,11 @@ __all__ = [
     "CurrentScenario",
     "infer_scenario",
     "run_campaign",
+    "run_next_level",
+    "feasibility_of",
+    "constraint_dominates",
+    "feasible_pareto",
+    "ConstraintContract",
+    "GeometryContract",
+    "SemanticContract",
 ]

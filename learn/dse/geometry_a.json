@@ -1,0 +1,17 @@
+{
+  "kind": "fixed_geometry_freeze",
+  "name": "A",
+  "variant": "flowlab",
+  "note": "Die/core of baseline A from 6_final.def. Lock these to compare netlists on the same scene. Never overwrite flowlab.",
+  "def": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.def",
+  "units_distance_microns": 2000,
+  "die_dbu": [0, 0, 88770, 88770],
+  "core_dbu": [2280, 2800, 86640, 84000],
+  "die_area": "0 0 44.385 44.385",
+  "core_area": "1.14 1.4 43.32 42.0",
+  "die_um2": 1970.03,
+  "core_um2": 1712.51,
+  "rows": 29,
+  "sha256_6_report": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543",
+  "sha256_6_final_odb": "f691539f60f2f66f025108163819b827df43670a660f24362368d0ce56e62594"
+}

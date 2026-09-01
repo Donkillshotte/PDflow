@@ -44,6 +44,16 @@ class Candidate:
     failure: str | None = None
     created_at: float = 0.0
     note: str = ""
+    schema_version: int = 1
+    scenario_id: str | None = None
+    constraint_contract: dict = field(default_factory=dict)
+    geometry_contract: dict = field(default_factory=dict)
+    semantic_contract: dict = field(default_factory=dict)
+    finish_ready: bool = False
+    evidence: dict = field(default_factory=dict)
+    artifact_hashes: dict = field(default_factory=dict)
+    promotion_history: list = field(default_factory=list)
+    rejection_reason: str | None = None
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -74,6 +84,16 @@ class Candidate:
             failure=d.get("failure"),
             created_at=float(d.get("created_at") or 0.0),
             note=str(d.get("note") or ""),
+            schema_version=int(d.get("schema_version") or 1),
+            scenario_id=d.get("scenario_id"),
+            constraint_contract=dict(d.get("constraint_contract") or {}),
+            geometry_contract=dict(d.get("geometry_contract") or {}),
+            semantic_contract=dict(d.get("semantic_contract") or {}),
+            finish_ready=bool(d.get("finish_ready")),
+            evidence=dict(d.get("evidence") or {}),
+            artifact_hashes=dict(d.get("artifact_hashes") or {}),
+            promotion_history=list(d.get("promotion_history") or []),
+            rejection_reason=d.get("rejection_reason"),
         )
 
 

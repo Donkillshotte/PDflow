@@ -50,6 +50,30 @@ def lifetime_shots(inner_i: int, base: dict[str, int] | None = None) -> dict[str
     return {k: int(v) + bump for k, v in src.items()}
 
 
+def f6_hv_points(mem: DesignMemory) -> list[tuple[float, float]]:
+    """Finish (area, wns_cost) pairs. Missing axes dropped. Not logic F3."""
+    pts: list[tuple[float, float]] = []
+    for c in mem.all():
+        if c.status != "ok":
+            continue
+        if c.fidelity != "F6" and c.level != "signoff":
+            continue
+        a, w = (c.qor.area_um2 if c.qor else None), (c.qor.wns_cost if c.qor else None)
+        if a is None or w is None:
+            continue
+        pts.append((float(a), float(w)))
+    return pts
+
+
+def gated_hv_f6(mem: DesignMemory, ref: tuple[float, float] | None) -> float:
+    if ref is None:
+        return 0.0
+    pts = f6_hv_points(mem)
+    if not pts:
+        return 0.0
+    return float(hypervolume_2d(pts, ref))
+
+
 def logic_hv_points(mem: DesignMemory, pred: dict[str, float] | None = None) -> list[tuple[float, float]]:
     """Gated logic front as (area, wns_cost) pairs. Missing axes are dropped."""
     by_id = {c.id: c for c in mem.by_level("logic") if c.status == "ok"}
@@ -176,6 +200,7 @@ def run_campaign(
     arch_max: int = 3,
     shots_base: dict[str, int] | None = None,
     start_inner: int | None = None,
+    stop_metric: str = "logic",
 ) -> dict:
     """Loop ``inner_runner`` (default ``run_controller``) on one JSONL until HV stalls.
 
@@ -207,10 +232,16 @@ def run_campaign(
 
     mem0 = DesignMemory(path)
     pred0 = pred_costs(mem0) or None
-    pts0 = logic_hv_points(mem0, pred=pred0)
-    if pts0:
-        ref = suggest_ref(pts0)
-        prev_hv = gated_hv(mem0, ref, pred=pred0)
+    if str(stop_metric) == "f6":
+        pts0 = f6_hv_points(mem0)
+        if pts0:
+            ref = suggest_ref(pts0)
+            prev_hv = gated_hv_f6(mem0, ref)
+    else:
+        pts0 = logic_hv_points(mem0, pred=pred0)
+        if pts0:
+            ref = suggest_ref(pts0)
+            prev_hv = gated_hv(mem0, ref, pred=pred0)
     first = int(start_inner) if start_inner is not None else infer_start_inner(
         mem0, f1_max_per_run=f1_max_per_run, shots_base=shots_base
     )
@@ -245,10 +276,16 @@ def run_campaign(
         )
         mem = DesignMemory(path)
         pred = pred_costs(mem) or None
-        pts = logic_hv_points(mem, pred=pred)
-        if ref is None and pts:
-            ref = suggest_ref(pts)
-        hv = gated_hv(mem, ref, pred=pred)
+        if str(stop_metric) == "f6":
+            pts = f6_hv_points(mem)
+            if ref is None and pts:
+                ref = suggest_ref(pts)
+            hv = gated_hv_f6(mem, ref)
+        else:
+            pts = logic_hv_points(mem, pred=pred)
+            if ref is None and pts:
+                ref = suggest_ref(pts)
+            hv = gated_hv(mem, ref, pred=pred)
         n_after = _n_ok(mem)
         n_new = n_after - n_before
         inners.append(

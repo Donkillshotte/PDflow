@@ -1,5 +1,8 @@
 """Tiny GNN surrogate on the mapped hypergraph. Never physical truth.
 
+Isolated folklore: Next Level does not consult this. Controller reports
+it only when ``DSE_ENABLE_FOLKLORE=1``. See ``dse.folklore``.
+
 Two mean-aggregate layers + mean/max readout, then ridge from embeddings
 to F2-fast HPWL when enough teacher pairs exist. Uncertainty stays high
 until n≥4. This is not a neural voltage map and not Dynamic IR gold.

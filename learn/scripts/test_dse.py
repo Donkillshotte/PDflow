@@ -43,6 +43,10 @@ def main() -> int:
 
     check_campaign(check)
 
+    from test_dse_next import check_next_level
+
+    check_next_level(check, root=_ROOT)
+
     from test_dse_live_f4 import check_live_f4
 
     check_live_f4(check, root=_ROOT)

@@ -45,10 +45,49 @@ def main() -> int:
         help="campaign total wall seconds (default: campaign-inner × budget-s)",
     )
     ap.add_argument("--hv-eps", type=float, default=float(os.environ.get("DSE_HV_EPS", "0.001")))
+    ap.add_argument(
+        "--stop-metric",
+        default=os.environ.get("DSE_STOP_METRIC", "logic"),
+        choices=("logic", "f6"),
+        help="campaign HV on logic F3 (legacy) or finish F6",
+    )
+    ap.add_argument(
+        "--next-level",
+        action="store_true",
+        help="event-driven funnel/scheduler (separate *_nl.jsonl; does not replace the controller tour)",
+    )
+    ap.add_argument(
+        "--launch-finish",
+        action="store_true",
+        help="with --next-level, allow isolated F6 handoff (never flowlab/learn/AES)",
+    )
+    ap.add_argument("--finish-shots", type=int, default=int(os.environ.get("DSE_FINISH_SHOTS", "1")))
     args = ap.parse_args()
     rtl_name = str(args.rtl or os.environ.get("DESIGN_ID") or "").lower()
     if "aes" in rtl_name:
         require_heavy("DSE on AES (not GCD FlowLab)")
+    if args.next_level:
+        if "aes" in str(args.variant).lower():
+            require_heavy("DSE Next Level on AES (not GCD FlowLab)")
+        from dse.next_level import default_nl_memory, make_live_runner, run_next_level
+
+        mem_path = default_nl_memory(args.variant)
+        if args.fresh and mem_path.is_file():
+            mem_path.unlink()
+        wall = args.wall_s if args.wall_s is not None else max(float(args.budget_s), 30.0)
+        report = run_next_level(
+            memory_path=mem_path,
+            wall_s=wall,
+            runner=make_live_runner(launch_finish=args.launch_finish),
+            finish_shots=args.finish_shots,
+        )
+        print("DSE_NEXT_LEVEL_DONE")
+        print(
+            f"stop={report.get('stop')} n_actions={report.get('n_actions')} "
+            f"shots_left={report.get('finish_shots_left')}"
+        )
+        print(f"memory → {report.get('memory')}")
+        return 0 if report.get("ok") else 1
     if args.campaign:
         wall = args.wall_s
         if wall is None:
@@ -65,6 +104,7 @@ def main() -> int:
             hv_eps=args.hv_eps,
             max_inner=args.campaign_inner,
             design_id=os.environ.get("DESIGN_ID") or "gcd",
+            stop_metric=args.stop_metric,
         )
         print("DSE_CAMPAIGN_DONE")
         print(

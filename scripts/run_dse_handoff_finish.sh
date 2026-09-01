@@ -41,16 +41,26 @@ AS_BYTES="${PDN_AS_BYTES:-8589934592}"
 CPU_S="${PDN_CPU_S:-900}"
 CORE_UTILIZATION="${CORE_UTILIZATION:-35}"
 
-echo "DSE handoff finish: variant=${VARIANT} netlist=${NETLIST} target=${TARGET} util=${CORE_UTILIZATION} sdc=0.46ns as=${AS_BYTES}"
+MAKE_EXTRA=(
+  DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk
+  FLOW_VARIANT="${VARIANT}"
+  SDC_FILE="${SDC}"
+  SYNTH_NETLIST_FILES="${NETLIST}"
+  OPENROAD_EXE="${OPENROAD_EXE:-$(command -v openroad)}"
+  OPENSTA_EXE="${OPENSTA_EXE:-$(command -v sta)}"
+  YOSYS_EXE="${YOSYS_EXE:-$(command -v yosys)}"
+)
+if [[ -n "${DIE_AREA:-}" && -n "${CORE_AREA:-}" ]]; then
+  # Mutually exclusive with CORE_UTILIZATION in ORFS floorplan.tcl.
+  MAKE_EXTRA+=( DIE_AREA="${DIE_AREA}" CORE_AREA="${CORE_AREA}" CORE_UTILIZATION= )
+  echo "DSE handoff ${TARGET}: variant=${VARIANT} netlist=${NETLIST} locked DIE_AREA=${DIE_AREA} CORE_AREA=${CORE_AREA} sdc=0.46ns as=${AS_BYTES}"
+else
+  MAKE_EXTRA+=( CORE_UTILIZATION="${CORE_UTILIZATION}" )
+  echo "DSE handoff ${TARGET}: variant=${VARIANT} netlist=${NETLIST} util=${CORE_UTILIZATION} sdc=0.46ns as=${AS_BYTES}"
+fi
+
 cd "${FLOW}"
 exec prlimit --as="${AS_BYTES}" --cpu="${CPU_S}" \
   make \
-    DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-    FLOW_VARIANT="${VARIANT}" \
-    CORE_UTILIZATION="${CORE_UTILIZATION}" \
-    SDC_FILE="${SDC}" \
-    SYNTH_NETLIST_FILES="${NETLIST}" \
-    OPENROAD_EXE="${OPENROAD_EXE:-$(command -v openroad)}" \
-    OPENSTA_EXE="${OPENSTA_EXE:-$(command -v sta)}" \
-    YOSYS_EXE="${YOSYS_EXE:-$(command -v yosys)}" \
+    "${MAKE_EXTRA[@]}" \
     "${TARGET}"
