@@ -3,6 +3,22 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T11:30Z — Confronto ORFS finish vs DSE (GCD)
+
+Onesto, non marketing. Fonte finish: `6_report.json` + `3_5_place_dp.json`.
+Fonte DSE: `memory_flowlab.jsonl` 140/137 ok (campagna live, prima solo in
+WT). Write-up: `learn/sim/reports/flow_vs_dse_gcd.md`.
+
+ORFS vince il chip: WNS **−37 ps**, 132 repair buf, stdcell finish 940 µm².
+Place era già meeting (**+12 ps**, 684 µm²) — finish peggiora col CTS.
+DSE non chiude: F5-lite **−641 ps** (no repair), ideal ABC **−114 ps**.
+Mapped 407.5 ≠ finish 940 (categorie diverse).
+
+DSE vince la ricerca: 140 candidati vs 1 ricetta; ABC cono `boils_balance`
+wns_cost **0.2088**; PDN **stesso** extract finish (`n_r=5816`) DirectLU
+**6.075 → decap 4.156 mV**. Non usare catalog 1.705 né leftover 3.942 vs
+finish. Gold 45.298 unrestamp. AES sha intatto. Nessun Krylov AES.
+
 ## 2026-09-01T10:50Z — Campagna live GCD (resume JSONL)
 
 `run_dse.py --campaign --wall-s 180`. Resume `memory_flowlab.jsonl` (no

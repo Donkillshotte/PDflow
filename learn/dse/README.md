@@ -117,3 +117,6 @@ python3 learn/scripts/run_aes_slice.py
 ```
 
 Studio: `cd studio && npm run dev` (port 43217).
+
+GCD vs ORFS `make finish` (honest, not a slide):
+[`flow_vs_orfs_gcd.md`](flow_vs_orfs_gcd.md).
