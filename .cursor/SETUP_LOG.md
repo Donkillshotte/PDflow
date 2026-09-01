@@ -3,6 +3,19 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T10:50Z — Campagna live GCD (resume JSONL)
+
+`run_dse.py --campaign --wall-s 180`. Resume `memory_flowlab.jsonl` (no
+`--fresh`, no AES). `start_inner=1` (tetti inner 0 già spesi).
+`stop=hv_eps` dopo 2 inner (~151 s). HV 257.090 → 257.787 (ref congelato).
++27 candidati (26 ok): 5 F1 cone ABC, 1 GPL, 2 GRT, 2 F5-lite, 2 CTS,
+2 cell size-up. Best logic `wns_cost` 0.2106 → **0.2088** (`boils_balance`
+553.28 µm², prima senza STA). Size-up sull’arch winner: 425.6 µm² WNS
+−0.405 ns. Corone invariate: area arch **407.512**, synth WNS **−0.114**,
+DirectLU **6.075**, decap **4.156**. Gold **45.298** unrestamp; AES
+`febe6804241c` sha `9e89f6e88b61` intatto. `prlimit --as=8GiB`. Fix
+UnboundLocalError wrapper F4 in `run_controller` (prima chiamata live).
+
 ## 2026-09-01T08:20Z — Campagna DSE (HV gated, JSONL condiviso)
 
 `dse.campaign.run_campaign` rilancia `run_controller` sulla stessa JSONL.
