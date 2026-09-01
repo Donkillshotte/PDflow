@@ -33,10 +33,12 @@ read_verilog {gold}
 hierarchy -check -top {top}
 proc; flatten; opt_expr; opt_clean
 design -save gold_rtl
+design -reset
 read_verilog {gate}
 hierarchy -check -top {top}
 proc; flatten; opt_expr; opt_clean
 design -save gate_rtl
+design -reset
 design -copy-from gold_rtl -as gold {top}
 design -copy-from gate_rtl -as gate {top}
 equiv_make gold gate equiv

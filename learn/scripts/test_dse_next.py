@@ -37,6 +37,9 @@ def _cand(mem_kwargs=None, **kw) -> Candidate:
         status="ok",
     )
     base.update(kw)
+    q = base.get("qor")
+    if "fidelity" not in kw and q is not None and getattr(q, "fidelity", None):
+        base["fidelity"] = q.fidelity
     return Candidate(**base)
 
 
@@ -164,14 +167,28 @@ def check_next_level(check, root: Path) -> None:
     check(raised, "launch into flowlab refused")
 
     # --- scheduler ---
+    b_sched = _cand(
+        id="Bsched",
+        qor=QoR(area_um2=610, wns_cost=0.314, fidelity="F2"),
+        artifacts={"place_wns_ns": -0.313564, "mapped_v": "x"},
+        semantic_contract={"status": "pass"},
+        attr={"equiv": "PASS"},
+    )
     mem_s = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-nl-s-")) / "s.jsonl")
-    mem_s.add(b)
+    mem_s.add(b_sched)
     act = next_action(mem_s, budget_s=120, finish_shots_left=1)
     check(act.kind in ("reject", "equiv"), f"scheduler does not finish B-like, got {act}")
+    a_sched = _cand(
+        id="Asched",
+        qor=QoR(area_um2=684, wns_cost=-0.012, fidelity="F2"),
+        artifacts={"place_wns_ns": 0.0123135, "flow_errors": 0},
+        semantic_contract={"status": "pass"},
+        attr={"equiv": "PASS"},
+    )
     mem_s2 = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-nl-s2-")) / "s.jsonl")
-    mem_s2.add(a_place)
+    mem_s2.add(a_sched)
     act2 = next_action(mem_s2, budget_s=120, finish_shots_left=1)
-    check(act2.kind == "finish" and act2.candidate_id == a_place.id, f"scheduler finishes A-like, got {act2}")
+    check(act2.kind == "finish" and act2.candidate_id == a_sched.id, f"scheduler finishes A-like, got {act2}")
 
     def fake_runner(action, memory):
         if action.kind == "finish" and action.candidate_id:
@@ -185,8 +202,17 @@ def check_next_level(check, root: Path) -> None:
         return {}
 
     mem_nl = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-nl-run-")) / "r.jsonl")
-    mem_nl.add(a_place)
-    report = run_next_level(memory_path=mem_nl.path, wall_s=5.0, runner=fake_runner, finish_shots=1)
+    a_run = _cand(
+        id="Arun",
+        qor=QoR(area_um2=684, wns_cost=-0.012, fidelity="F2"),
+        artifacts={"place_wns_ns": 0.0123135, "flow_errors": 0},
+        semantic_contract={"status": "pass"},
+        attr={"equiv": "PASS"},
+    )
+    mem_nl.add(a_run)
+    pre = next_action(DesignMemory(mem_nl.path), budget_s=90, finish_shots_left=1)
+    check(pre.kind == "finish", f"precondition: reloaded A-run is finish, got {pre} n={len(DesignMemory(mem_nl.path))}")
+    report = run_next_level(memory_path=mem_nl.path, wall_s=90.0, runner=fake_runner, finish_shots=1)
     check(report["ok"] and report["n_actions"] >= 1, f"next_level loop ran {report}")
     kinds = [a["kind"] for a in report["actions"]]
     check("finish" in kinds, f"next_level paid a finish action {kinds}")
@@ -294,10 +320,7 @@ def check_next_level(check, root: Path) -> None:
 
     gold = root / "learn/flowlab/gcd.v"
     ident = equiv_rtl_pair(gold, gold, top="gcd")
-    check(ident.status in ("pass", "unsupported"), f"identity equiv status {ident.status}")
-    if ident.status == "unsupported":
-        check(False, f"yosys equiv unavailable: {ident.log}")
-    check(ident.status == "pass", "gcd.v proves equivalent to itself")
+    check(ident.status == "pass", f"gcd.v proves equivalent to itself ({ident.status} log={ident.log})")
     dest = Path(tempfile.mkdtemp(prefix="dse-nl-rtl-")) / "sub.v"
     arch_plugin("sub_twos_complement").emit(gold, dest)
     sub_eq = equiv_rtl_pair(gold, dest, top="gcd")

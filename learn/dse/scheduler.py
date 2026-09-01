@@ -104,11 +104,13 @@ def next_action(
             c = ranked[0][1]
             return Action("finish", c.id, "f6_place_ready", COST["finish"], expected_gain=ranked[0][0])
 
-    # 5. Same-extract PDN on a finish winner
+    # 5. Same-extract PDN on a finish winner (once)
     for c in ok:
         fs = feasibility_of(c, require_finish=True)
         if fs.feasible and budget_s >= COST["pdn"]:
             has_ir = (c.qor and c.qor.dynamic_ir_mv is not None) or bool((c.evidence or {}).get("dynamic_ir_mv"))
+            if (c.artifacts or {}).get("pdn_done") or (c.artifacts or {}).get("pdn_skipped"):
+                continue
             if not has_ir and c.fidelity == "F6":
                 return Action("pdn", c.id, "same_extract_pdn", COST["pdn"], expected_gain=0.4)
 

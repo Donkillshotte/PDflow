@@ -152,13 +152,16 @@ def run_next_level(
         if act.candidate_id:
             c = mem.get(act.candidate_id)
             if c is not None:
+                if act.kind == "pdn":
+                    c.artifacts = dict(c.artifacts or {}, pdn_done=True)
+                    if info.get("skipped"):
+                        c.artifacts["pdn_skipped"] = True
                 promote_or_reject(c)
                 mem.touch(c)
         if info.get("stop"):
             stop = str(info["stop"])
             break
         if info.get("skipped") and act.kind == "finish":
-            # Do not loop forever paying a finish shot we refused to launch.
             stop = "finish_skipped"
             break
     else:
