@@ -8,8 +8,10 @@ file and the PR comments before retrying heavy work.
 `eval_vs_base_flow.py` su 5 cotture. A resta. Ainj bit-identical (ΔWNS 0,
 sha 6_report identico). B −301 ps vs A; Bfix −312 ps (stesso die);
 C −150 ps e +23 µm². Funnel skip B/C/Bfix. Nessuno timing-closed.
-Pareto F6: A+Ainj. `test_dse_next` include questi assert. Freeze
-`5cba9a7a…` / `f691539f…` intatto. Write-up `learn/dse/eval_vs_base_flow.md`.
+Pareto F6: A+Ainj. `test_dse.py` ALL PASSED **1193** ok (eval vs-base
+incluso; F4 DirectLU 6.075; gold 45.298 unrestamp; AES Krylov REFUSED).
+Freeze `5cba9a7a…` / `f691539f…` intatto. Write-up
+`learn/dse/eval_vs_base_flow.md`.
 
 ## 2026-09-01T14:46Z — Next Level DSE implementato e controllato
 
