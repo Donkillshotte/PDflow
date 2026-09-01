@@ -361,6 +361,9 @@ def _h6(exps: list[Experiment]) -> dict[str, Any]:
     for e in exps:
         if e.status != "done" or e.role not in ("base", "ainj"):
             continue
+        # P6 reuses role=base for same-extract bookkeeping and has no 6_report.
+        if e.phase != "P0":
+            continue
         by_slot[(e.design, _clk_key(e))][e.role] = e
     all_match = True
     any_pair = False

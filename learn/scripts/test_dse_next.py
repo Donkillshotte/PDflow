@@ -453,6 +453,29 @@ def check_next_level(check, root: Path) -> None:
     check(camp["H1_proxy_inversion"]["slots"]["toy@1.000"]["inverted"] is True, "synthetic H1: proxy winner ≠ finish winner")
     check("incomplete" in camp["H2_place_dp_gate"]["verdict"], "synthetic H2 incomplete (n<15)")
 
+    # P6 same-extract rows reuse role=base and have no 6_report; H6 must stay P0-only.
+    log.append(
+        Experiment(
+            id="synp6pdn000001",
+            phase="P6",
+            design="toy",
+            clock_ns=1.0,
+            variant="camp_toy_p6_pdn",
+            role="base",
+            status="done",
+            notes="P6 same-extract already on disk; no new 6_report",
+        )
+    )
+    camp_p6 = eval_campaign(log)
+    check(
+        "H6 supported" in camp_p6["H6_oven_deterministic"]["verdict"],
+        f"H6 ignores P6 base rows {camp_p6['H6_oven_deterministic']}",
+    )
+    check(
+        all(p["base_variant"] != "camp_toy_p6_pdn" for p in camp_p6["H6_oven_deterministic"]["pairs"]),
+        "H6 pairs are P0 base+ainj only",
+    )
+
 
 if __name__ == "__main__":
     def _check(ok: bool, msg: str) -> None:

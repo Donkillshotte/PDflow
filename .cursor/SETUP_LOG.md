@@ -3,6 +3,21 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T18:40Z — P5 done + P7 eval: base wins, H6 P0-only
+
+P5 ibex {1.98, 2.20, 2.75, 3.52} × {base, abc_speed} closed. abc_speed never
+takes a §5 win (2.20 is ±2 ps slack tie, area −0.5%). H6 eval now pairs
+**P0 only** so `camp_gcd_p6_pdn` (no 6_report) cannot fail the oven check.
+Re-eval: H1 supported, H2 incomplete, H3/H4/H5 not supported, H6 5/5.
+Product verdict: ORFS base recipe wins this design set. Gold 45.298
+unrestamped. No flowlab overwrite. Jpeg stretch not started.
+
+## 2026-09-01T18:15Z — P5 ibex@1.98 ns: base still less late
+
+Tighter clock 1.98 ns: base WNS **−23 ps** (open), abc_speed **−61 ps**
+(peggio, place −118, funnel skip). A chiudeva a 2.2; nessuno chiude a 1.98.
+abc_speed non è primo a chiudere. Restano 2.75 e 3.52 × {A,S}.
+
 ## 2026-09-01T17:50Z — P2 abc_speed: spi/ibex cotti, dyn/aes già speed
 
 `camp_spi_abcspeed` WNS +601 vs base +612 (Δ −11 ps), area −0.7%.

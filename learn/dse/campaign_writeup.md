@@ -57,17 +57,17 @@ supported.**
 
 ## H5 — place→finish residual transfers
 
-GCD mean residual ≈ −51 ps (σ ≈ 24 ps). SPI +30 ps, AES −12 ps, ibex −239 ps,
-dynamic_node −250 ps. Outlier fraction vs gcd ±2σ is ≤30% in the current
-eval (**supported** on that frozen bar) but the mid-size residuals are ~5×
-the gcd mean — the model should be recalibrated per-design before use as a
-finish substitute. It is not one.
+GCD mean residual ≈ −51 ps (σ ≈ 24 ps). Mid-size finishes sit far outside
+that band (ibex/dynamic_node ≈ −240 ps). After the ibex clock sweep the
+outlier fraction vs gcd ±2σ is **>30%**. **H5 not supported.** Do not use
+−50 ps as a universal finish substitute.
 
 ## H6 — oven deterministic
 
 **Supported on 5/5 designs.** A-injected `6_report` sha and WNS match the
-base at the same clock (gcd, spi, dynamic_node, ibex, aes). Eval pairs by
-`(design, clock)` so clock-sweep bases are not compared to the 0.46 ns ainj.
+base at the same clock (gcd, spi, dynamic_node, ibex, aes). Eval pairs
+**P0** rows by `(design, clock)` so clock-sweep and P6 same-extract
+bookkeeping (`camp_gcd_p6_pdn`, no `6_report`) cannot poison H6.
 
 ## P3 / P4 (proxy + funnel)
 
@@ -79,11 +79,31 @@ base at the same clock (gcd, spi, dynamic_node, ibex, aes). Eval pairs by
 
 P4: no new F6-eligible DSE netlist to pay. control_negative already paid on GCD B/C.
 
+## P5 — ibex clock sweep
+
+{1.98, 2.20, 2.75, 3.52} ns × {base yosys, abc_speed yosys}:
+
+| Clock | Base WNS | abc_speed WNS | Closed first |
+|---:|---:|---:|---|
+| 1.98 ns | −23 ps | −61 ps | nobody |
+| 2.20 ns | **+22 ps** | +20 ps | base (tie ±2 ps, no 10% area) |
+| 2.75 ns | **+285 ps** | +166 ps | both; base better WNS |
+| 3.52 ns | **+807 ps** | +597 ps | both; base better WNS |
+
+abc_speed never takes a §5 win. Tightening 10% opens both; relaxing does not
+make abc_speed smaller by 10%.
+
 ## P6 PDN
 
 GCD finish extract DirectLU **6.075 mV** (`n_r=5816`) already on disk;
 gold **45.298 mV** unrestamped. AES Krylov remains REFUSED. No new AES
 extract. Other designs: no same-extract PDN paid this campaign.
+
+## H5 (updated after P5)
+
+With ibex clock-sweep residuals (~−0.11 to −0.29 ns) the outlier fraction
+vs gcd ±2σ exceeds 30%. **H5 not supported** on the frozen bar. Recalibrate
+per-design; do not use −50 ps as a universal finish substitute.
 
 ## Product verdict
 
