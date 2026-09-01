@@ -3,6 +3,18 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T08:20Z — Campagna DSE (HV gated, JSONL condiviso)
+
+`dse.campaign.run_campaign` rilancia `run_controller` sulla stessa JSONL.
+Stop: HV relativo < eps (front gated logic area vs `wns_cost`, ref congelato),
+wall, zero nuovi `ok`, max_inner. Tetti lifetime: inner 0 = default di oggi
+(GPL/F5/CTS/cell/net = 1, F3=8, F2-fast=4). Inner successivi `v+i`.
+`f1_max = 6×(inner+1)`. Skip parent già coperti; `pred` solo tie-break.
+CLI `--campaign` opt-in. `test_dse_campaign.py` fake runner (no OpenROAD/AES/F4).
+`test_dse` ALL PASSED **1120** `ok` (~291 s): 1086 + 34 campagna. DirectLU
+6.075 + `sta_t50`; gold 45.298 unrestamp; AES `febe6804241c` sha `9e89f6e88b61`
+static 6.954 intatto. Gate AES Krylov resta REFUSED. Nessun DesignState.
+
 ## 2026-09-01T07:45Z — PD QoR axes (leakage, TNS, HPWL, stdcell)
 
 `QoR` first-class: `leakage_w`, `tns_cost`, `hpwl_um`; observation
