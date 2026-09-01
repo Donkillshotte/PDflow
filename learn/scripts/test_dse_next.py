@@ -476,6 +476,16 @@ def check_next_level(check, root: Path) -> None:
         "H6 pairs are P0 base+ainj only",
     )
 
+    from eval_policy import evaluate as eval_policy, spearman
+
+    check(abs((spearman([1.0, 2.0, 3.0], [10.0, 20.0, 30.0]) or 0) - 1.0) < 1e-9, "spearman perfect +1")
+    check(abs((spearman([1.0, 2.0, 3.0], [30.0, 20.0, 10.0]) or 0) + 1.0) < 1e-9, "spearman perfect -1")
+    pol = eval_policy(reload)
+    check("I5" in pol["I5_proxy_correlation"]["verdict"], f"eval_policy I5 {pol['I5_proxy_correlation']}")
+    check("incomplete" in pol["I1_physical_knobs"]["verdict"], "eval_policy I1 incomplete without Q1")
+    src = wrapper.read_text()
+    check("PLACE_DENSITY_LB_ADDON" in src, "wrapper passes PLACE_DENSITY_LB_ADDON")
+
 
 if __name__ == "__main__":
     def _check(ok: bool, msg: str) -> None:

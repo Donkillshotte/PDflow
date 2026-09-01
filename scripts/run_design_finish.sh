@@ -128,6 +128,9 @@ if [[ "${ABC_SPEED:-}" == "1" ]]; then
   # Empty ABC_AREA= is not a TCL boolean. Force 0 so ORFS uses the speed script.
   MAKE_EXTRA+=( ABC_SPEED=1 ABC_AREA=0 )
 fi
+if [[ -n "${PLACE_DENSITY_LB_ADDON:-}" ]]; then
+  MAKE_EXTRA+=( PLACE_DENSITY_LB_ADDON="${PLACE_DENSITY_LB_ADDON}" )
+fi
 if [[ -n "${SWAP_ARITH_OPERATORS:-}" ]]; then
   MAKE_EXTRA+=( SWAP_ARITH_OPERATORS="${SWAP_ARITH_OPERATORS}" )
 fi

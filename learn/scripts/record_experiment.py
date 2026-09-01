@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--runtime-s", type=float, default=0.0)
     p.add_argument("--exit-code", type=int, default=0)
     p.add_argument("--notes", default="")
+    p.add_argument("--extra", default=None, help="JSON object stored on Experiment.extra")
     p.add_argument("--status", default=None, help="override (timeout/refused/oom/…)")
     p.add_argument("--jsonl", type=Path, default=None)
     p.add_argument("--freeze", type=Path, default=None)
@@ -65,6 +66,7 @@ def main(argv: list[str] | None = None) -> int:
         orfs_variant=args.orfs_variant,
         orfs_design=args.orfs_design or cat.get("orfs_design"),
         notes=args.notes,
+        extra=json.loads(args.extra) if args.extra else {},
     )
     if args.status in ("timeout", "refused", "oom", "missing_logs", "frozen"):
         exp.status = args.status
