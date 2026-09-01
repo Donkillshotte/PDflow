@@ -484,7 +484,7 @@ def check_next_level(check, root: Path) -> None:
         "H6 pairs are P0 base+ainj only",
     )
 
-    from dse.knob_catalog import RECIPES, resolve, stages
+    from dse.knob_catalog import RECIPES, config_mk_for, parse_config_defaults, resolve, resolve_many, stages, titles_of
     from dse.recipe_labels import label_for, synth_method_from_exploration
     from eval_policy import evaluate as eval_policy, render_qor_md, spearman
 
@@ -549,6 +549,16 @@ def check_next_level(check, root: Path) -> None:
     check(abs(float(env["PLACE_DENSITY_LB_ADDON"]) - 0.25) < 1e-9, f"place_denser is +0.05 from default {env}")
     src = wrapper.read_text()
     check("TNS_END_PERCENT" in src and "CORE_ASPECT_RATIO" in src and "CTS_BUF_DISTANCE" in src, "wrapper passes multi-stage knobs")
+    spi_def = parse_config_defaults(config_mk_for("spi"))
+    check(abs(spi_def["CORE_UTILIZATION"] - 8.0) < 1e-9, f"spi util default {spi_def.get('CORE_UTILIZATION')}")
+    check(abs(spi_def["PLACE_DENSITY_LB_ADDON"] - 0.20) < 1e-9, f"spi LB default {spi_def.get('PLACE_DENSITY_LB_ADDON')}")
+    both = resolve_many(["place_denser", "repair_half_tns"], spi_def)
+    check(abs(float(both["PLACE_DENSITY_LB_ADDON"]) - 0.25) < 1e-9, "combo keeps place_denser offset")
+    check(both["TNS_END_PERCENT"] == "50", f"combo sets TNS 50 {both}")
+    check("Place" in titles_of(["place_denser"]), f"titles_of {titles_of(['place_denser'])}")
+    tagged = label_for(type("E", (), {"variant": "camp_spi_place_denser", "role": "knob", "extra": {"recipe_ids": ["place_denser"]}})())
+    check("denso" in tagged.title.lower(), f"catalog title on extra.recipe_ids: {tagged.title}")
+    check((root / "learn/scripts/cook_recipe.py").is_file(), "cook_recipe.py exists")
 
 
 if __name__ == "__main__":

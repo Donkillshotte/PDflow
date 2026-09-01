@@ -5,7 +5,12 @@ The same recipe id is valid on gcd, ibex, aes, … — no per-design branch.
 """
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import Any
+
+_REPO = Path(__file__).resolve().parents[2]
+_EXPORT = re.compile(r"^export\s+([A-Z0-9_]+)\s*(?:\?=|=)\s*(\S+)")
 
 # One axis = one named change. Combine a few, never a full factorial.
 # `env` values are absolute ORFS knobs. `offset` is added to the config default
@@ -138,3 +143,42 @@ def resolve(recipe_id: str, defaults: dict[str, float] | None = None) -> dict[st
             raise KeyError(f"{recipe_id} needs default {key} from config.mk")
         env[key] = str(float(defaults[key]) + float(delta))
     return env
+
+
+def resolve_many(recipe_ids: list[str], defaults: dict[str, float] | None = None) -> dict[str, str]:
+    env: dict[str, str] = {}
+    for rid in recipe_ids:
+        env.update(resolve(rid, defaults))
+    return env
+
+
+def parse_config_defaults(config_mk: Path | str) -> dict[str, float]:
+    """Numeric `export NAME = value` / `?=` lines from an ORFS config.mk."""
+    out: dict[str, float] = {}
+    for line in Path(config_mk).read_text().splitlines():
+        m = _EXPORT.match(line.strip())
+        if not m:
+            continue
+        try:
+            out[m.group(1)] = float(m.group(2))
+        except ValueError:
+            continue
+    return out
+
+
+def config_mk_for(design: str) -> Path:
+    from .experiments import DESIGN_CATALOG
+
+    cat = DESIGN_CATALOG.get(design) or {}
+    nick = cat.get("orfs_config") or design
+    learn_cfg = _REPO / "learn" / "designs" / "nangate45" / nick / "config.mk"
+    if learn_cfg.is_file():
+        return learn_cfg
+    orfs_cfg = _REPO / "tools/OpenROAD-flow-scripts/flow/designs/nangate45" / nick / "config.mk"
+    if orfs_cfg.is_file():
+        return orfs_cfg
+    raise FileNotFoundError(f"no config.mk for design={design}")
+
+
+def titles_of(recipe_ids: list[str]) -> str:
+    return " + ".join(by_id(r)["title"] for r in recipe_ids)

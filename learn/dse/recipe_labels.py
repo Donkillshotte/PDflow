@@ -148,6 +148,20 @@ def label_for(exp: Any) -> RecipeLabel:
             "Cambia la netlist. I knob fisici restano quelli del default.",
             "In campagna: proxy invertito (H1), nessun win §5.",
         )
+    rid = extra.get("recipe_id")
+    rids = extra.get("recipe_ids") or ([rid] if rid else None)
+    if rids:
+        try:
+            from dse.knob_catalog import by_id, titles_of
+
+            recs = [by_id(r) for r in rids]
+            return RecipeLabel(
+                titles_of(list(rids)),
+                " ".join(r["does"] for r in recs),
+                " ".join(r["payoff"] for r in recs),
+            )
+        except Exception:
+            pass
     lb = extra.get("place_density_lb_addon")
     util = extra.get("core_utilization")
     derived = _knob_label(

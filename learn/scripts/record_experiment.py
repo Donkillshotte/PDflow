@@ -68,14 +68,13 @@ def main(argv: list[str] | None = None) -> int:
         notes=args.notes,
         extra=json.loads(args.extra) if args.extra else {},
     )
-    if args.status in ("timeout", "refused", "oom", "missing_logs", "frozen"):
+    fill_from_logs(exp, root=_ROOT)
+    if args.status in ("timeout", "refused", "oom", "missing_logs", "frozen", "stopped_by_policy"):
         exp.status = args.status
+    elif exp.finish_wns_ns is None:
+        exp.status = args.status or ("failed" if args.exit_code else "missing_logs")
     else:
-        fill_from_logs(exp, root=_ROOT)
-        if exp.finish_wns_ns is None:
-            exp.status = args.status or ("failed" if args.exit_code else "missing_logs")
-        else:
-            exp.status = "done"
+        exp.status = "done"
     log = ExperimentLog(args.jsonl)
     if log.has(exp.variant, exp.phase):
         print(json.dumps({"skipped": True, "variant": exp.variant, "phase": exp.phase}))
@@ -116,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
     dest = args.freeze or (_LEARN / "dse" / f"freeze_{exp.variant}.json")
     dest.write_text(json.dumps(freeze, indent=2) + "\n")
     print(json.dumps({"ok": exp.status == "done", "freeze": str(dest), **freeze}, default=str))
-    return 0 if exp.status in ("done", "frozen", "timeout", "refused", "oom", "missing_logs") else 1
+    return 0 if exp.status in ("done", "frozen", "timeout", "refused", "oom", "missing_logs", "stopped_by_policy") else 1
 
 
 if __name__ == "__main__":
