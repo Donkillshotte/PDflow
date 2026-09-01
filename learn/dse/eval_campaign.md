@@ -1,7 +1,7 @@
 # Campaign eval vs frozen H1–H6
 
 Plan sha: `a9446c2103c5eca2126a50daa9272fe481e5f6bb6a390af6a21e0a5bbae7fbc3`
-Experiments: 7 (7 done)
+Experiments: 9 (9 done)
 
 Win criteria are **frozen**. This script does not retune them.
 
@@ -47,6 +47,19 @@ Win criteria are **frozen**. This script does not retune them.
       "finish_wns_ps": {
         "camp_spi_base": 612.2339999999999
       }
+    },
+    "dynamic_node": {
+      "n": 1,
+      "finish_rank": [
+        "camp_dynamic_node_base"
+      ],
+      "proxy_rank": null,
+      "finish_best": "camp_dynamic_node_base",
+      "proxy_best": null,
+      "inverted": null,
+      "finish_wns_ps": {
+        "camp_dynamic_node_base": 3353.83
+      }
     }
   },
   "supported": true,
@@ -59,12 +72,12 @@ Win criteria are **frozen**. This script does not retune them.
 
 ## H2_place_dp_gate
 
-**Verdict:** H2 incomplete (n=5 < 15)
+**Verdict:** H2 incomplete (n=6 < 15)
 
 ```json
 {
-  "n": 5,
-  "n_promoted": 2,
+  "n": 6,
+  "n_promoted": 3,
   "n_real_wins": 0,
   "precision": 1.0,
   "recall": null,
@@ -77,7 +90,7 @@ Win criteria are **frozen**. This script does not retune them.
   },
   "enough_n": false,
   "pass": false,
-  "verdict": "H2 incomplete (n=5 < 15)"
+  "verdict": "H2 incomplete (n=6 < 15)"
 }
 ```
 
@@ -123,11 +136,11 @@ Win criteria are **frozen**. This script does not retune them.
 
 ## H5_place_finish_residual
 
-**Verdict:** H5 supported (≤30% residuals outside gcd ±2σ)
+**Verdict:** H5 not supported (>30% residuals outside gcd ±2σ)
 
 ```json
 {
-  "n": 5,
+  "n": 6,
   "residuals": [
     {
       "variant": "camp_gcd_base",
@@ -153,16 +166,22 @@ Win criteria are **frozen**. This script does not retune them.
       "variant": "camp_spi_base",
       "design": "spi",
       "residual_ns": 0.030112999999999945
+    },
+    {
+      "variant": "camp_dynamic_node_base",
+      "design": "dynamic_node",
+      "residual_ns": -0.24974000000000007
     }
   ],
   "gcd_mean_residual_ns": -0.044087125000000005,
   "gcd_std_residual_ns": 0.0202613180814041,
   "other_means_ns": {
-    "spi": 0.030112999999999945
+    "spi": 0.030112999999999945,
+    "dynamic_node": -0.24974000000000007
   },
-  "outlier_frac": 0.2,
-  "transfer_ok": true,
-  "verdict": "H5 supported (\u226430% residuals outside gcd \u00b12\u03c3)"
+  "outlier_frac": 0.3333333333333333,
+  "transfer_ok": false,
+  "verdict": "H5 not supported (>30% residuals outside gcd \u00b12\u03c3)"
 }
 ```
 
@@ -192,6 +211,16 @@ Win criteria are **frozen**. This script does not retune them.
       "match": true,
       "base_report_sha": "b8826a8ee5356ac02056939f64d45349f4f138644f6583ee0c552ac37f2c5656",
       "ainj_report_sha": "b8826a8ee5356ac02056939f64d45349f4f138644f6583ee0c552ac37f2c5656"
+    },
+    {
+      "design": "dynamic_node",
+      "base_variant": "camp_dynamic_node_base",
+      "ainj_variant": "camp_dynamic_node_ainj",
+      "report_sha_match": true,
+      "wns_match": true,
+      "match": true,
+      "base_report_sha": "fe663d2db2de75f40263642d079f4451cfc9769c5531f56973479c8e92e66d32",
+      "ainj_report_sha": "fe663d2db2de75f40263642d079f4451cfc9769c5531f56973479c8e92e66d32"
     }
   ],
   "all_match": true,

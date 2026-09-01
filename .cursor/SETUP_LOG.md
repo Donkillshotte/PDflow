@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T16:38Z — P0 dynamic_node base DONE (closed)
+
+`camp_dynamic_node_base` 242s, peak ~1.3 GiB. WNS **+3.354 ns**, place +3.604,
+11146 inst, area 22540, die 56868, repair 957, sha `fe663d2db2de…`.
+Clock 6.0 ns è larghissimo. SWAP_ARITH=1 (ricetta ORFS). Prossima: ainj.
+
 ## 2026-09-01T16:32Z — P0 spi ainj H6 PASS
 
 `camp_spi_ainj` 26s, sha `6_report` **identico** a base (`b8826a8ee535…`),
