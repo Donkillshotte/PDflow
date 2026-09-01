@@ -108,7 +108,7 @@ def should_pay_f3_sdf(
     """Pay one OpenSTA + GRT SDF shot. Not OpenRCX SPEF, not finish/F5."""
     from pathlib import Path
 
-    if any(
+    if sdf_max <= 1 and any(
         (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok" for c in mem.all()
     ):
         return False, "already have an OpenSTA+SDF child"
@@ -753,7 +753,7 @@ def should_pay_f5_cts(
         (c.knobs or {}).get("source") == "f5_openroad_cts_rcx" and c.status == "ok"
         for c in mem.by_level("routing")
     )
-    if have_cts:
+    if have_cts and f5_cts_max <= 1:
         return False, "already have a CTS SPEF child"
     winners = [
         c
@@ -827,7 +827,7 @@ def should_pay_f5_local(
     )
     if not have_lite:
         return False, "F5-lite on the F1 netlist is the baseline — local SPEF is the residual"
-    if any(
+    if f5_local_max <= 1 and any(
         (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
         for c in mem.by_level("routing")
     ):
@@ -863,7 +863,7 @@ def should_pay_f5_port(
         for c in mem.by_level("routing")
     ):
         return False, "F5-lite on the F1 netlist is the baseline — port SPEF is the residual"
-    if any(
+    if f5_port_max <= 1 and any(
         (c.knobs or {}).get("source") == "f5_openroad_local"
         and (c.knobs or {}).get("host_level") == "port"
         and c.status == "ok"
@@ -999,7 +999,9 @@ def should_pay_f3_spef(
         return False, "F3 SPEF shot already spent"
     if budget_left < min_s:
         return False, "wall budget would not cover OpenSTA+SPEF"
-    if any((c.knobs or {}).get("source") == "f3_opensta_spef" and c.status == "ok" for c in mem.all()):
+    if spef_max <= 1 and any(
+        (c.knobs or {}).get("source") == "f3_opensta_spef" and c.status == "ok" for c in mem.all()
+    ):
         return False, "already have an OpenSTA+SPEF child"
     for c in mem.all():
         art = c.artifacts or {}
@@ -1049,10 +1051,11 @@ def should_pay_f1_synth(
     budget_left: float,
     n_f1: int,
     f1_max: int = 6,
+    synth_max: int = 1,
     min_s: float = 8.0,
 ) -> tuple[bool, str]:
     """Pay one ORFS delay-script F1. Not logic ``-fast``; not ``abc_ops``."""
-    if any(c.level == "synthesis" and c.fidelity == "F1" for c in mem.all()):
+    if synth_max <= 1 and any(c.level == "synthesis" and c.fidelity == "F1" for c in mem.all()):
         return False, "synthesis F1 already measured"
     if n_f1 >= f1_max:
         return False, "F1 budget exhausted"
@@ -1128,7 +1131,9 @@ def should_pay_cell_size(
         return False, "cell-local size shot already spent"
     if budget_left < min_s:
         return False, "wall budget would not cover cell-local STA"
-    if any((c.knobs or {}).get("source") == "cell_size_up" and c.status == "ok" for c in mem.by_level("cell")):
+    if cell_max <= 1 and any(
+        (c.knobs or {}).get("source") == "cell_size_up" and c.status == "ok" for c in mem.by_level("cell")
+    ):
         return False, "already have a cell-local size child"
     cells = _attributed_path_cells(mem)
     if len(cells) < 2:
@@ -2398,7 +2403,9 @@ def should_pay_net_buffer(
         return False, "net-local buffer shot already spent"
     if budget_left < min_s:
         return False, "wall budget would not cover net-local STA"
-    if any((c.knobs or {}).get("source") == "net_buffer" and c.status == "ok" for c in mem.by_level("net")):
+    if net_max <= 1 and any(
+        (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok" for c in mem.by_level("net")
+    ):
         return False, "already have a net-local buffer child"
     hops = _attributed_path_nets(mem)
     if len(hops) < 1:
@@ -2420,7 +2427,7 @@ def should_pay_net_port(
         return False, "port-net buffer shot already spent"
     if budget_left < min_s:
         return False, "wall budget would not cover port-net STA"
-    if any(
+    if port_max <= 1 and any(
         (c.knobs or {}).get("source") == "net_buffer_port" and c.status == "ok" for c in mem.by_level("net")
     ):
         return False, "already have a port-net buffer child"

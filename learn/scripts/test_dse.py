@@ -39,6 +39,10 @@ def main() -> int:
 
     check_steer(check)
 
+    from test_dse_campaign import check_campaign
+
+    check_campaign(check)
+
     from test_dse_live_f4 import check_live_f4
 
     check_live_f4(check, root=_ROOT)

@@ -93,10 +93,18 @@ Replaceable adapters in `dse.layers.ADAPTERS`:
   ``SolveResult`` (``dse.solve_result``) is the F4 observation contract;
   DirectLU is the numerical reference. ``admit_solve`` is the resource gate.
 
-## Run
+## Campaign
+
+Default CLI is one ``run_controller`` pass. ``--campaign`` loops that pass on
+the **same** JSONL until gated hypervolume (logic area vs ``wns_cost``) stops
+growing, the wall budget ends, or an inner run adds zero new ``ok`` rows.
+Lifetime shot caps start at today's defaults (GPL/F5/CTS/cell/net = 1) and
+rise by one per inner so a later parent can be placed; knobs fingerprints
+still skip duplicates. ``Candidate.pred`` is order/tie-break only.
 
 ```bash
 python3 -m dse   # or the Studio DSE action
+python3 learn/scripts/run_dse.py --campaign --wall-s 180 --hv-eps 0.001
 python3 learn/scripts/test_dse.py
 python3 learn/scripts/test_frame.py
 python3 learn/scripts/test_actions.py

@@ -32,6 +32,55 @@ def next_candidate_ids(
     )
 
 
+def pred_costs(mem: DesignMemory) -> dict[str, float]:
+    """Scalar surrogate cost per id from ``Candidate.pred['mean']``. Empty if none."""
+    out: dict[str, float] = {}
+    for c in mem.all():
+        mean = (c.pred or {}).get("mean")
+        if mean is None:
+            continue
+        try:
+            out[c.id] = float(mean)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def have_child_parents(
+    mem: DesignMemory,
+    *,
+    source: str | tuple[str, ...] | set[str],
+    level: str | None = None,
+) -> set:
+    """Parent ids that already have an ok child with ``source`` (optional ``level``)."""
+    src = {source} if isinstance(source, str) else set(source)
+    rows = mem.by_level(level) if level else mem.all()
+    return {
+        (c.knobs or {}).get("parent_id")
+        for c in rows
+        if (c.knobs or {}).get("source") in src and c.status == "ok"
+    }
+
+
+def parent_queue(
+    cands,
+    *,
+    have_child_ids: set | None = None,
+    pred_by_id: dict[str, float] | None = None,
+) -> list:
+    """Skip parents that already have this child. Reorder by pred only when non-empty."""
+    have = have_child_ids or set()
+    xs = [c for c in (cands or []) if c is not None and getattr(c, "id", None) not in have]
+    if pred_by_id:
+        xs.sort(
+            key=lambda c: (
+                pred_by_id.get(c.id) is None,
+                float(pred_by_id[c.id]) if pred_by_id.get(c.id) is not None else 0.0,
+            )
+        )
+    return xs
+
+
 def prefer_gated(mem: DesignMemory, level: str, cands, *, pred: dict[str, float] | None = None) -> list:
     """Keep ``cands`` that sit on the gated front. Empty front → ``cands`` unchanged.
 

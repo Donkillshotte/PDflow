@@ -329,6 +329,7 @@ def run_controller(
     memory_path: Path | None = None,
     fresh: bool = False,
     arch_max: int = 3,
+    max_shots: dict | None = None,
 ) -> dict:
     t_end = time.time() + max(float(budget_s), 1.0)
     root = Path(__file__).resolve().parents[1].parent
@@ -832,6 +833,8 @@ def run_controller(
             )
             time_candidate(cand, reason="F3 after ctrl-cone ABC")
 
+    from .planner import pred_costs
+
     _stage_ctx = {
         "mem": mem,
         "plan": plan,
@@ -853,6 +856,8 @@ def run_controller(
         "attr": attr,
         "time_candidate": time_candidate,
         "f1_max": f1_max,
+        "max_shots": dict(max_shots or {}),
+        "pred_by_id": pred_costs(mem),
         "variant": variant,
         "admit_paid_f4": admit_paid_f4,
         "evaluate_f4_extract": evaluate_f4_extract,

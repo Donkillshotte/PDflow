@@ -18,6 +18,32 @@ from .ir_region_cell import run_winning_ir_region_cell
 from .ir_solvers import run_ir_solvers
 
 
+def shot_cap(ctx: dict, key: str, default: int) -> int:
+    """Lifetime shot cap from ``ctx['max_shots']``; missing keys keep today's default."""
+    shots = ctx.get("max_shots")
+    if isinstance(shots, dict) and key in shots:
+        return int(shots[key])
+    return int(default)
+
+
+def _mapped_new_parent(ctx: dict, cands, *, level: str, source: str):
+    """``mapped_pick`` after skipping parents that already have this child.
+
+    ``pred_by_id`` reorders only when non-empty so the first inner keeps
+    today's area-winner-first order.
+    """
+    from .planner import have_child_parents, parent_queue
+
+    queue = parent_queue(
+        cands,
+        have_child_ids=have_child_parents(ctx["mem"], level=level, source=source),
+        pred_by_id=ctx.get("pred_by_id") or None,
+    )
+    return ctx["mapped_pick"](
+        queue, rtl=ctx["rtl"], liberty=ctx["liberty"], top=ctx["top"]
+    )
+
+
 def should_pay_generic(
     *,
     budget_left: float | None = None,
@@ -126,19 +152,34 @@ def run_f2_fast(ctx: dict) -> bool:
     from .fidelity import evaluate_f2_fast
 
     mem = ctx["mem"]
-    n_f2 = 0
-    pay, why = should_pay_f2_fast(mem, n_f2=n_f2)
+    f2_max = shot_cap(ctx, "f2_fast", 4)
+    n_f2 = sum(
+        1
+        for c in mem.by_level("physical")
+        if (c.knobs or {}).get("source") in ("f2_fast_netgraph", "f2_fast_barycenter")
+        and c.status == "ok"
+    )
+    pay, why = should_pay_f2_fast(mem, n_f2=n_f2, f2_max=f2_max)
 
     def _eval() -> bool:
         nonlocal n_f2
+        from .planner import have_child_parents, parent_queue
+
         winners = list(ctx["f1_pareto_parents"](mem))
         seen = {c.id for c in winners}
         extra = [c for c in ctx["f1_ok"](mem) if c.id not in seen]
         extra.sort(key=lambda c: float(c.qor.area_um2))
         winners.extend(extra)
+        winners = parent_queue(
+            winners,
+            have_child_ids=have_child_parents(
+                mem, level="physical", source=("f2_fast_netgraph", "f2_fast_barycenter")
+            ),
+            pred_by_id=ctx.get("pred_by_id") or None,
+        )
         paid = False
         for w in winners:
-            if n_f2 >= 4 or time.time() >= ctx["t_end"]:
+            if n_f2 >= f2_max or time.time() >= ctx["t_end"]:
                 break
             w = ctx["ensure_mapped_netlist"](w, rtl=ctx["rtl"], liberty=ctx["liberty"], top=ctx["top"])
             mem.touch(w)
@@ -176,16 +217,17 @@ def run_f2_gpl(ctx: dict) -> bool:
         if (c.knobs or {}).get("source") == "f2_openroad_gpl" and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F2", ctx["design_id"], cost_key="F2_GPL")
+    gpl_max = shot_cap(ctx, "gpl", 1)
     pay, why = should_pay_f2_gpl(
-        mem, budget_left=ctx["t_end"] - time.time(), n_gpl=n_gpl, min_s=min_s
+        mem, budget_left=ctx["t_end"] - time.time(), n_gpl=n_gpl, gpl_max=gpl_max, min_s=min_s
     )
 
     def _eval() -> bool:
-        pick = ctx["mapped_pick"](
+        pick = _mapped_new_parent(
+            ctx,
             [ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
-            rtl=ctx["rtl"],
-            liberty=ctx["liberty"],
-            top=ctx["top"],
+            level="physical",
+            source="f2_openroad_gpl",
         )
         if not pick:
             return False
@@ -225,19 +267,28 @@ def run_f3_sta(ctx: dict) -> bool:
         1 for c in mem.all() if (c.knobs or {}).get("source") == "f3_opensta_ideal" and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F3", ctx["design_id"], cost_key="F3")
+    sta_max = shot_cap(ctx, "f3", 8)
     pay, why = should_pay_f3_sta(
-        mem, budget_left=ctx["t_end"] - time.time(), n_sta=n_sta, min_s=min_s
+        mem, budget_left=ctx["t_end"] - time.time(), n_sta=n_sta, sta_max=sta_max, min_s=min_s
     )
 
     def _eval() -> bool:
+        from .planner import have_child_parents, parent_queue
+
         ranked = [
             c
             for c in mem.all()
             if c.status == "ok" and c.fidelity == "F1" and c.qor.area_um2 is not None
         ]
         ranked.sort(key=lambda c: float(c.qor.area_um2))
+        ranked = parent_queue(
+            ranked,
+            have_child_ids=have_child_parents(mem, source="f3_opensta_ideal"),
+            pred_by_id=ctx.get("pred_by_id") or None,
+        )
         paid = False
-        for w in ranked[:4]:
+        remain = max(int(sta_max) - n_sta, 0)
+        for w in ranked[: min(4, remain)]:
             if time.time() >= ctx["t_end"]:
                 break
             w = ctx["ensure_mapped_netlist"](w, rtl=ctx["rtl"], liberty=ctx["liberty"], top=ctx["top"])
@@ -276,8 +327,9 @@ def run_f3_sdf(ctx: dict) -> bool:
         if (c.knobs or {}).get("source") == "f3_opensta_sdf_grt" and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F3", ctx["design_id"], cost_key="F3_SDF")
+    sdf_max = shot_cap(ctx, "sdf", 1)
     pay, why = should_pay_f3_sdf(
-        mem, budget_left=ctx["t_end"] - time.time(), n_sdf=n_sdf, min_s=min_s
+        mem, budget_left=ctx["t_end"] - time.time(), n_sdf=n_sdf, sdf_max=sdf_max, min_s=min_s
     )
 
     def _eval() -> bool:
@@ -328,16 +380,17 @@ def run_routing(ctx: dict) -> bool:
         if (c.knobs or {}).get("source") == "f2_openroad_grt" and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F2", ctx["design_id"], cost_key="F2_GRT")
+    grt_max = shot_cap(ctx, "grt", 1)
     pay, why = should_pay_f2_grt(
-        mem, budget_left=ctx["t_end"] - time.time(), n_grt=n_grt, min_s=min_s
+        mem, budget_left=ctx["t_end"] - time.time(), n_grt=n_grt, grt_max=grt_max, min_s=min_s
     )
 
     def _eval() -> bool:
-        pick = ctx["mapped_pick"](
+        pick = _mapped_new_parent(
+            ctx,
             [ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
-            rtl=ctx["rtl"],
-            liberty=ctx["liberty"],
-            top=ctx["top"],
+            level="routing",
+            source="f2_openroad_grt",
         )
         if not pick:
             return False
@@ -376,16 +429,17 @@ def run_f5_drt(ctx: dict) -> bool:
         if (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F5", ctx["design_id"], cost_key="F5")
+    f5_max = shot_cap(ctx, "f5", 1)
     pay, why = should_pay_f5_drt(
-        mem, budget_left=ctx["t_end"] - time.time(), n_f5=n_f5, min_s=min_s
+        mem, budget_left=ctx["t_end"] - time.time(), n_f5=n_f5, f5_max=f5_max, min_s=min_s
     )
 
     def _eval() -> bool:
-        pick = ctx["mapped_pick"](
+        pick = _mapped_new_parent(
+            ctx,
             [ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
-            rtl=ctx["rtl"],
-            liberty=ctx["liberty"],
-            top=ctx["top"],
+            level="routing",
+            source="f5_openroad_drt_rcx",
         )
         if not pick:
             return False
@@ -424,8 +478,9 @@ def run_f3_spef(ctx: dict) -> bool:
         1 for c in mem.all() if (c.knobs or {}).get("source") == "f3_opensta_spef" and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F3", ctx["design_id"], cost_key="F3")
+    spef_max = shot_cap(ctx, "spef", 1)
     pay, why = should_pay_f3_spef(
-        mem, budget_left=ctx["t_end"] - time.time(), n_spef=n_spef, min_s=min_s
+        mem, budget_left=ctx["t_end"] - time.time(), n_spef=n_spef, spef_max=spef_max, min_s=min_s
     )
 
     def _eval() -> bool:
@@ -476,16 +531,21 @@ def run_f5_cts(ctx: dict) -> bool:
         if (c.knobs or {}).get("source") == "f5_openroad_cts_rcx" and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F5", ctx["design_id"], cost_key="F5_CTS")
+    f5_cts_max = shot_cap(ctx, "f5_cts", 1)
     pay, why = should_pay_f5_cts(
-        mem, budget_left=ctx["t_end"] - time.time(), n_f5_cts=n_f5_cts, min_s=min_s
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        n_f5_cts=n_f5_cts,
+        f5_cts_max=f5_cts_max,
+        min_s=min_s,
     )
 
     def _eval() -> bool:
-        pick = ctx["mapped_pick"](
+        pick = _mapped_new_parent(
+            ctx,
             [ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
-            rtl=ctx["rtl"],
-            liberty=ctx["liberty"],
-            top=ctx["top"],
+            level="routing",
+            source="f5_openroad_cts_rcx",
         )
         if not pick:
             return False
@@ -526,17 +586,28 @@ def run_f5_local(ctx: dict) -> bool:
         if (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F5", ctx["design_id"], cost_key="F5")
+    f5_local_max = shot_cap(ctx, "f5_local", 1)
     pay, why = should_pay_f5_local(
-        mem, budget_left=ctx["t_end"] - time.time(), n_f5_local=n_f5_local, min_s=min_s
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        n_f5_local=n_f5_local,
+        f5_local_max=f5_local_max,
+        min_s=min_s,
     )
     hosts_ord, host_why = order_local_hosts(mem)
 
     def _eval() -> bool:
         from .acquire import local_hosts
+        from .planner import have_child_parents, parent_queue
 
         child = None
         host = None
-        for cand in hosts_ord or local_hosts(mem):
+        hosts = parent_queue(
+            hosts_ord or local_hosts(mem),
+            have_child_ids=have_child_parents(mem, level="routing", source="f5_openroad_local"),
+            pred_by_id=ctx.get("pred_by_id") or None,
+        )
+        for cand in hosts:
             mem.touch(cand)
             child = evaluate_f5_local(cand, mem, design_id=ctx["design_id"])
             host = cand
@@ -578,8 +649,13 @@ def run_f5_port(ctx: dict) -> bool:
         and c.status == "ok"
     )
     min_s = estimated_cost_s(mem, "F5", ctx["design_id"], cost_key="F5")
+    f5_port_max = shot_cap(ctx, "f5_port", 1)
     pay, why = should_pay_f5_port(
-        mem, budget_left=ctx["t_end"] - time.time(), n_f5_port=n_f5_port, min_s=min_s
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        n_f5_port=n_f5_port,
+        f5_port_max=f5_port_max,
+        min_s=min_s,
     )
 
     def _eval() -> bool:
@@ -621,6 +697,7 @@ def run_synthesis(ctx: dict) -> bool:
         budget_left=ctx["t_end"] - time.time(),
         n_f1=n_f1,
         f1_max=ctx["f1_max"],
+        synth_max=shot_cap(ctx, "synth", 1),
     )
 
     def _eval() -> bool:
@@ -676,16 +753,17 @@ def run_cell(ctx: dict) -> bool:
     n_cell = sum(
         1 for c in mem.by_level("cell") if (c.knobs or {}).get("source") == "cell_size_up" and c.status == "ok"
     )
+    cell_max = shot_cap(ctx, "cell", 1)
     pay, why = should_pay_cell_size(
-        mem, budget_left=ctx["t_end"] - time.time(), n_cell=n_cell
+        mem, budget_left=ctx["t_end"] - time.time(), n_cell=n_cell, cell_max=cell_max
     )
 
     def _eval() -> bool:
-        pick = ctx["mapped_pick"](
+        pick = _mapped_new_parent(
+            ctx,
             [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
-            rtl=ctx["rtl"],
-            liberty=ctx["liberty"],
-            top=ctx["top"],
+            level="cell",
+            source="cell_size_up",
         )
         if not pick:
             return False
@@ -722,24 +800,31 @@ def run_net(ctx: dict) -> bool:
     n_net = sum(
         1 for c in mem.by_level("net") if (c.knobs or {}).get("source") == "net_buffer" and c.status == "ok"
     )
+    net_max = shot_cap(ctx, "net", 1)
     pay, why = should_pay_net_buffer(
-        mem, budget_left=ctx["t_end"] - time.time(), n_net=n_net
+        mem, budget_left=ctx["t_end"] - time.time(), n_net=n_net, net_max=net_max
     )
 
     def _eval() -> bool:
+        from .planner import have_child_parents
+
+        have = have_child_parents(mem, level="net", source="net_buffer")
         pick = next(
             (
                 c
                 for c in reversed(list(mem.by_level("cell")))
-                if c.status == "ok" and (c.artifacts or {}).get("mapped_v")
+                if c.status == "ok"
+                and (c.artifacts or {}).get("mapped_v")
+                and c.id not in have
             ),
             None,
         )
         if pick is None:
-            pick = ctx["mapped_pick"](
+            pick = _mapped_new_parent(
+                ctx,
                 [ctx["f1_wns_winner"](mem), ctx["f1_area_winner"](mem)] + [c for c in ctx["f1_ok"](mem)],
-                rtl=ctx["rtl"],
-                liberty=ctx["liberty"],
+                level="net",
+                source="net_buffer",
             )
         if not pick:
             return False
@@ -784,8 +869,13 @@ def run_net_port(ctx: dict) -> bool:
         for c in mem.by_level("net")
         if (c.knobs or {}).get("source") == "net_buffer_port" and c.status == "ok"
     )
+    port_max = shot_cap(ctx, "net_port", 1)
     pay, why = should_pay_net_port(
-        mem, budget_left=ctx["t_end"] - time.time(), n_net=n_net, n_port=n_port
+        mem,
+        budget_left=ctx["t_end"] - time.time(),
+        n_net=n_net,
+        n_port=n_port,
+        port_max=port_max,
     )
 
     def _eval() -> bool:
