@@ -1,8 +1,8 @@
 # QoR compare — reference flow vs challengers
 
 Plan sha: `cf02fb91ed5b757ba057354b2f53cb18a75586e7cf7ccf895369767436f76c98`
-Experiments: 76 (67 done)
-**Verdict:** QoR vs base: 12 reference slots, 47 challengers, 47 with IR, 47 with GRT WL, 11 product wins
+Experiments: 82 (73 done)
+**Verdict:** QoR vs base: 12 reference slots, 53 challengers, 53 with IR, 53 with GRT WL, 14 product wins
 
 I nomi in tabella dicono **cosa fa** la ricetta e (nella § Ricette) qual è il vantaggio o lo svantaggio. L'id `camp_*` resta solo il path ORFS.
 
@@ -73,6 +73,12 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | Padding celle +1 site (`camp_gcd_cell_pad_plus`) | Un site di spazio extra tra le celle. Stessa netlist, stesso die. | Su gcd: win. IR −19%, area −7%, potenza −8%. Slack −3.6 ps (dentro 5 ps). |
 | Repair TNS a metà (`camp_gcd_repair_half_tns`) | TNS_END_PERCENT 100→50: ripara meno path violati. | Su gcd: perde. IR +19%. Slack e area quasi uguali. |
 | Buffer di clock più fitti (`camp_gcd_cts_closer_bufs`) | Buffer di clock ogni 80 µm. | Su gcd: identico al default. No-op. |
+| Sintesi gerarchica (`camp_ibex_synth_hier`) | Yosys senza flatten prima di ABC. | Su ibex: perde. Slack +8 ps, ma IR +18%. |
+| Floorplan più largo che alto (`camp_ibex_aspect_wide`) | Rettangolo 2:1 invece di un quadrato. | Su ibex: win. IR −31%. Slack +2.5 ps. |
+| Padding celle +1 site (`camp_ibex_cell_pad_plus`) | Un site di spazio extra tra le celle. Stessa netlist, stesso die. | Su ibex: win. IR −36%. Slack e area ~iso. |
+| Repair TNS a metà (`camp_ibex_repair_half_tns`) | TNS_END_PERCENT 100→50: ripara meno path violati. | Su ibex: identico al default (già in orario). No-op. |
+| Margine di setup sul repair (`camp_ibex_repair_setup_margin`) | Chiede 50 ps in più al repair di timing. | Su ibex: win. Slack +41 ps. Area/potenza/IR ~iso. |
+| Buffer di clock più fitti (`camp_ibex_cts_closer_bufs`) | Buffer di clock ogni 80 µm. | Su ibex: slack +4 ps. Non basta per un win. Pareggio. |
 
 ### Reference flow (absolute, one row per design@clock)
 
@@ -134,10 +140,16 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | ibex | 1.980 | Sintesi ABC delay @ 1.98 ns (`camp_ibex_clk198_s`) | challenger | lose | -61.1 | -7.110 | 33052.1 | 117.855 | 727.21 | 65.97 | 11.31 | 56.0 | 7.34 | 432835 | 489.9 | 301 |
 | ibex | 2.200 | ORFS default — sintesi area, util 50, place +0.20 (`camp_ibex_base`) | reference | — | 22.4 | 0.000 | 30735.2 | 107.868 | 688.21 | 123.77 | 13.11 | 49.9 | 7.12 | 438851 | 459.2 | 0 |
 | ibex | 2.200 | Sintesi ABC delay @ 2.2 ns (`camp_ibex_abcspeed`) | challenger | win | 20.4 | 0.000 | 30575.4 | 90.815 | 640.35 | 49.13 | 8.77 | 51.8 | 7.16 | 422381 | 458.8 | 0 |
+| ibex | 2.200 | Floorplan più largo che alto (`camp_ibex_aspect_wide`) | challenger | win | 24.9 | 0.000 | 30796.4 | 109.442 | 690.62 | 85.83 | 10.49 | 49.9 | 7.62 | 470857 | 459.7 | 0 |
+| ibex | 2.200 | Padding celle +1 site (`camp_ibex_cell_pad_plus`) | challenger | win | 21.8 | 0.000 | 30751.2 | 108.247 | 688.60 | 78.68 | 12.14 | 49.9 | 7.60 | 468115 | 459.1 | 0 |
 | ibex | 2.200 | Place più sparso, stesso die (`camp_ibex_q1_d15u50`) | challenger | win | 36.2 | 0.000 | 30748.3 | 107.922 | 688.40 | 125.04 | 12.76 | 49.9 | 7.22 | 445041 | 462.2 | 0 |
 | ibex | 2.200 | Core più stretto — die più piccolo, fili più corti (`camp_ibex_q1_d20u60`) | challenger | win | 42.3 | 0.000 | 30686.0 | 107.499 | 688.06 | 86.24 | 12.65 | 59.6 | 8.17 | 420930 | 463.5 | 0 |
 | ibex | 2.200 | Place più denso, stesso die (`camp_ibex_q1_d25u50`) | challenger | win | 39.9 | 0.000 | 30711.0 | 107.344 | 687.50 | 116.96 | 13.41 | 49.8 | 7.02 | 432786 | 462.9 | 0 |
+| ibex | 2.200 | Margine di setup sul repair (`camp_ibex_repair_setup_margin`) | challenger | win | 63.5 | 0.000 | 30743.7 | 107.966 | 688.50 | 123.77 | 13.12 | 49.9 | 7.12 | 438976 | 468.1 | 0 |
+| ibex | 2.200 | Buffer di clock più fitti (`camp_ibex_cts_closer_bufs`) | challenger | tie | 26.5 | 0.000 | 30740.6 | 107.785 | 688.33 | 123.79 | 13.09 | 49.9 | 7.11 | 438255 | 460.1 | 0 |
 | ibex | 2.200 | Core più largo — die più grande, fili più lunghi (`camp_ibex_q1_d20u40`) | challenger | lose | 16.1 | 0.000 | 30776.7 | 108.105 | 688.77 | 71.23 | 8.81 | 39.9 | 5.97 | 460215 | 457.9 | 0 |
+| ibex | 2.200 | Repair TNS a metà (`camp_ibex_repair_half_tns`) | challenger | tie | 22.4 | 0.000 | 30735.2 | 107.868 | 688.21 | 123.77 | 13.11 | 49.9 | 7.12 | 438851 | 459.2 | 0 |
+| ibex | 2.200 | Sintesi gerarchica (`camp_ibex_synth_hier`) | challenger | lose | 30.9 | 0.000 | 30728.3 | 108.751 | 685.46 | 145.53 | 14.34 | 49.7 | 7.04 | 434867 | 461.0 | 0 |
 | ibex | 2.750 | ORFS default @ 2.75 ns (`camp_ibex_clk275_a`) | reference | — | 285.0 | 0.000 | 30707.3 | 86.457 | 685.80 | 76.31 | 10.48 | 49.8 | 7.14 | 440282 | 405.7 | 0 |
 | ibex | 2.750 | Sintesi ABC delay @ 2.75 ns (`camp_ibex_clk275_s`) | challenger | lose | 166.3 | 0.000 | 30065.2 | 70.620 | 621.71 | 26.41 | 6.77 | 51.0 | 7.08 | 417747 | 387.0 | 0 |
 | ibex | 3.520 | ORFS default @ 3.52 ns (`camp_ibex_clk352_a`) | reference | — | 806.7 | 0.000 | 30683.1 | 67.642 | 684.74 | 62.18 | 8.18 | 49.8 | 7.15 | 440701 | 368.6 | 0 |
@@ -208,6 +220,12 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | gcd | 0.460 | Padding celle +1 site (`camp_gcd_cell_pad_plus`) | win | -3.59 | -6.87 | -8.01 | -8.40 | -19.40 | -19.84 | 1.65 | 1.65 | -6.87 |
 | gcd | 0.460 | Repair TNS a metà (`camp_gcd_repair_half_tns`) | lose | 0.55 | -4.87 | -6.49 | -6.41 | 19.47 | -1.98 | -2.74 | -2.74 | -4.87 |
 | gcd | 0.460 | Buffer di clock più fitti (`camp_gcd_cts_closer_bufs`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| ibex | 2.200 | Sintesi gerarchica (`camp_ibex_synth_hier`) | lose | 8.46 | -0.02 | 0.82 | -0.40 | 17.58 | 9.38 | -0.91 | -1.13 | -0.25 |
+| ibex | 2.200 | Floorplan più largo che alto (`camp_ibex_aspect_wide`) | win | 2.48 | 0.20 | 1.46 | 0.35 | -30.65 | -19.97 | 7.29 | 7.07 | -0.01 |
+| ibex | 2.200 | Padding celle +1 site (`camp_ibex_cell_pad_plus`) | win | -0.66 | 0.05 | 0.35 | 0.06 | -36.43 | -7.40 | 6.67 | 6.67 | 0.05 |
+| ibex | 2.200 | Repair TNS a metà (`camp_ibex_repair_half_tns`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| ibex | 2.200 | Margine di setup sul repair (`camp_ibex_repair_setup_margin`) | win | 41.11 | 0.03 | 0.09 | 0.04 | -0.00 | 0.08 | 0.03 | 0.03 | 0.03 |
+| ibex | 2.200 | Buffer di clock più fitti (`camp_ibex_cts_closer_bufs`) | tie | 4.11 | 0.02 | -0.08 | 0.02 | 0.01 | -0.15 | -0.14 | -0.14 | 0.02 |
 
 ### Side-by-side sheets (reference column + each challenger)
 
@@ -398,39 +416,56 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | fmax (MHz) | 499.2 | 489.9 |
 | setup violations | 4 | 301 |
 
-#### ibex @ 2.200 ns — reference: ORFS default — sintesi area, util 50, place +0.20 (1/2)
+#### ibex @ 2.200 ns — reference: ORFS default — sintesi area, util 50, place +0.20 (1/3)
 
-| Metric | `ORFS default — sintesi area, util 50, place +0.20` | `Sintesi ABC delay @ 2.2 ns` | `Place più sparso, stesso die` | `Core più stretto — die più piccolo, fili più corti` | `Place più denso, stesso die` |
+| Metric | `ORFS default — sintesi area, util 50, place +0.20` | `Sintesi ABC delay @ 2.2 ns` | `Floorplan più largo che alto` | `Padding celle +1 site` | `Place più sparso, stesso die` |
 |---|---|---|---|---|---|
-| WNS (ps) | 22.4 | 20.4 | 36.2 | 42.3 | 39.9 |
+| WNS (ps) | 22.4 | 20.4 | 24.9 | 21.8 | 36.2 |
 | TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
-| stdcell area (µm²) | 30735.2 | 30575.4 | 30748.3 | 30686.0 | 30711.0 |
-| total power (mW) | 107.868 | 90.815 | 107.922 | 107.499 | 107.344 |
-| leakage (µW) | 688.21 | 640.35 | 688.40 | 688.06 | 687.50 |
-| IR worst VDD (mV) | 123.77 | 49.13 | 125.04 | 86.24 | 116.96 |
-| IR mean VDD (mV) | 13.11 | 8.77 | 12.76 | 12.65 | 13.41 |
-| cell density (%) | 49.9 | 51.8 | 49.9 | 59.6 | 49.8 |
-| congestion WL/core | 7.12 | 7.16 | 7.22 | 8.17 | 7.02 |
-| GRT wirelength | 438851 | 422381 | 445041 | 420930 | 432786 |
-| fmax (MHz) | 459.2 | 458.8 | 462.2 | 463.5 | 462.9 |
+| stdcell area (µm²) | 30735.2 | 30575.4 | 30796.4 | 30751.2 | 30748.3 |
+| total power (mW) | 107.868 | 90.815 | 109.442 | 108.247 | 107.922 |
+| leakage (µW) | 688.21 | 640.35 | 690.62 | 688.60 | 688.40 |
+| IR worst VDD (mV) | 123.77 | 49.13 | 85.83 | 78.68 | 125.04 |
+| IR mean VDD (mV) | 13.11 | 8.77 | 10.49 | 12.14 | 12.76 |
+| cell density (%) | 49.9 | 51.8 | 49.9 | 49.9 | 49.9 |
+| congestion WL/core | 7.12 | 7.16 | 7.62 | 7.60 | 7.22 |
+| GRT wirelength | 438851 | 422381 | 470857 | 468115 | 445041 |
+| fmax (MHz) | 459.2 | 458.8 | 459.7 | 459.1 | 462.2 |
 | setup violations | 0 | 0 | 0 | 0 | 0 |
 
-#### ibex @ 2.200 ns — reference: ORFS default — sintesi area, util 50, place +0.20 (2/2)
+#### ibex @ 2.200 ns — reference: ORFS default — sintesi area, util 50, place +0.20 (2/3)
 
-| Metric | `ORFS default — sintesi area, util 50, place +0.20` | `Core più largo — die più grande, fili più lunghi` |
-|---|---|---|
-| WNS (ps) | 22.4 | 16.1 |
-| TNS (ns) | 0.000 | 0.000 |
-| stdcell area (µm²) | 30735.2 | 30776.7 |
-| total power (mW) | 107.868 | 108.105 |
-| leakage (µW) | 688.21 | 688.77 |
-| IR worst VDD (mV) | 123.77 | 71.23 |
-| IR mean VDD (mV) | 13.11 | 8.81 |
-| cell density (%) | 49.9 | 39.9 |
-| congestion WL/core | 7.12 | 5.97 |
-| GRT wirelength | 438851 | 460215 |
-| fmax (MHz) | 459.2 | 457.9 |
-| setup violations | 0 | 0 |
+| Metric | `ORFS default — sintesi area, util 50, place +0.20` | `Core più stretto — die più piccolo, fili più corti` | `Place più denso, stesso die` | `Margine di setup sul repair` | `Buffer di clock più fitti` |
+|---|---|---|---|---|---|
+| WNS (ps) | 22.4 | 42.3 | 39.9 | 63.5 | 26.5 |
+| TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| stdcell area (µm²) | 30735.2 | 30686.0 | 30711.0 | 30743.7 | 30740.6 |
+| total power (mW) | 107.868 | 107.499 | 107.344 | 107.966 | 107.785 |
+| leakage (µW) | 688.21 | 688.06 | 687.50 | 688.50 | 688.33 |
+| IR worst VDD (mV) | 123.77 | 86.24 | 116.96 | 123.77 | 123.79 |
+| IR mean VDD (mV) | 13.11 | 12.65 | 13.41 | 13.12 | 13.09 |
+| cell density (%) | 49.9 | 59.6 | 49.8 | 49.9 | 49.9 |
+| congestion WL/core | 7.12 | 8.17 | 7.02 | 7.12 | 7.11 |
+| GRT wirelength | 438851 | 420930 | 432786 | 438976 | 438255 |
+| fmax (MHz) | 459.2 | 463.5 | 462.9 | 468.1 | 460.1 |
+| setup violations | 0 | 0 | 0 | 0 | 0 |
+
+#### ibex @ 2.200 ns — reference: ORFS default — sintesi area, util 50, place +0.20 (3/3)
+
+| Metric | `ORFS default — sintesi area, util 50, place +0.20` | `Core più largo — die più grande, fili più lunghi` | `Repair TNS a metà` | `Sintesi gerarchica` |
+|---|---|---|---|---|
+| WNS (ps) | 22.4 | 16.1 | 22.4 | 30.9 |
+| TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 |
+| stdcell area (µm²) | 30735.2 | 30776.7 | 30735.2 | 30728.3 |
+| total power (mW) | 107.868 | 108.105 | 107.868 | 108.751 |
+| leakage (µW) | 688.21 | 688.77 | 688.21 | 685.46 |
+| IR worst VDD (mV) | 123.77 | 71.23 | 123.77 | 145.53 |
+| IR mean VDD (mV) | 13.11 | 8.81 | 13.11 | 14.34 |
+| cell density (%) | 49.9 | 39.9 | 49.9 | 49.7 |
+| congestion WL/core | 7.12 | 5.97 | 7.12 | 7.04 |
+| GRT wirelength | 438851 | 460215 | 438851 | 434867 |
+| fmax (MHz) | 459.2 | 457.9 | 459.2 | 461.0 |
+| setup violations | 0 | 0 | 0 | 0 |
 
 #### ibex @ 2.750 ns — reference: ORFS default @ 2.75 ns
 

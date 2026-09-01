@@ -164,6 +164,36 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "Buffer di clock ogni 80 µm.",
         "Su gcd: identico al default. No-op.",
     ),
+    "camp_ibex_synth_hier": RecipeLabel(
+        "Sintesi gerarchica",
+        "Yosys senza flatten prima di ABC.",
+        "Su ibex: perde. Slack +8 ps, ma IR +18%.",
+    ),
+    "camp_ibex_aspect_wide": RecipeLabel(
+        "Floorplan più largo che alto",
+        "Rettangolo 2:1 invece di un quadrato.",
+        "Su ibex: win. IR −31%. Slack +2.5 ps.",
+    ),
+    "camp_ibex_cell_pad_plus": RecipeLabel(
+        "Padding celle +1 site",
+        "Un site di spazio extra tra le celle. Stessa netlist, stesso die.",
+        "Su ibex: win. IR −36%. Slack e area ~iso.",
+    ),
+    "camp_ibex_repair_half_tns": RecipeLabel(
+        "Repair TNS a metà",
+        "TNS_END_PERCENT 100→50: ripara meno path violati.",
+        "Su ibex: identico al default (già in orario). No-op.",
+    ),
+    "camp_ibex_repair_setup_margin": RecipeLabel(
+        "Margine di setup sul repair",
+        "Chiede 50 ps in più al repair di timing.",
+        "Su ibex: win. Slack +41 ps. Area/potenza/IR ~iso.",
+    ),
+    "camp_ibex_cts_closer_bufs": RecipeLabel(
+        "Buffer di clock più fitti",
+        "Buffer di clock ogni 80 µm.",
+        "Su ibex: slack +4 ps. Non basta per un win. Pareggio.",
+    ),
 }
 
 
