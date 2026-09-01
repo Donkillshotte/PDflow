@@ -3,6 +3,22 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T17:50Z — P2 abc_speed: spi/ibex cotti, dyn/aes già speed
+
+`camp_spi_abcspeed` WNS +601 vs base +612 (Δ −11 ps), area −0.7%.
+`camp_ibex_abcspeed` WNS +20.4 vs +22.4 (Δ −2 ps, dentro ±5), area −0.5%
+(<10% → pareggio, non win). Primo `camp_spi_abc_speed` fallito (ABC_AREA
+vuoto); wrapper ora `ABC_AREA=0`. H4 **non** monotona (spi −11, gcd −150,
+ibex −2). Nessun product-win.
+
+## 2026-09-01T17:30Z — P1 GCD clock sweep DONE + eval slot-correct
+
+12 cotture `camp_gcd_clk{040,055,070,090}_{a,b,c}`, util 35. A chiude a
+**0.55 ns** (+13 ps); C a 0.70 (+3 ps); B a 0.90 (+4.7 ps, area −24.1%
+< bar 25%). H3 **non supportata**. H6 resta pass (coppie stesso clock).
+H1 invertita solo a 0.46. H2: nessun product-win vs base → recall N/A.
+Eval raggruppa per (design, clock): non confrontare ainj 0.46 con clk090.
+
 ## 2026-09-01T17:16Z — P0 COMPLETO (5/5 design, H6 5/5)
 
 AES ainj bit-identical (sha `4e2c65002b05…`, WNS −8.921 ps). P0: gcd

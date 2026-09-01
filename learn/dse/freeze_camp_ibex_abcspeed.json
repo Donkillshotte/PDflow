@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "1e546144bd26",
+  "phase": "P2",
+  "design": "ibex",
+  "variant": "camp_ibex_abcspeed",
+  "role": "abc_speed",
+  "status": "done",
+  "clock_ns": 2.2,
+  "sha256_6_report": "6a5da07419477cd27e833e49c2f0ebbf7806c9fd86c2914f5460ef3853484bb0",
+  "finish_wns_ns": 0.0203932,
+  "finish_tns_ns": 0.0,
+  "place_wns_ns": 0.0180782,
+  "stdcell_um2": 30575.4,
+  "stdcell_count": 18707,
+  "repair_buffer": 1352,
+  "die_um2": 60444.7,
+  "place_promoted": true,
+  "notes": "P2 ABC_SPEED=1 ABC_AREA=0 vs P0 ABC_AREA base."
+}

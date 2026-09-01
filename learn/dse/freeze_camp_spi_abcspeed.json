@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "5159609714ec",
+  "phase": "P2",
+  "design": "spi",
+  "variant": "camp_spi_abcspeed",
+  "role": "abc_speed",
+  "status": "done",
+  "clock_ns": 1.0,
+  "sha256_6_report": "1ee0bc3feb5d8510fdc7c56dc18f0d87cc9600f300fb3cab26816a4a86f070ba",
+  "finish_wns_ns": 0.600801,
+  "finish_tns_ns": 0.0,
+  "place_wns_ns": 0.583855,
+  "stdcell_um2": 265.734,
+  "stdcell_count": 190,
+  "repair_buffer": 22,
+  "die_um2": 3232.49,
+  "place_promoted": true,
+  "notes": "P2 ABC_SPEED=1 ABC_AREA=0 vs P0 ABC_AREA base."
+}

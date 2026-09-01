@@ -1,7 +1,7 @@
 # Campaign eval vs frozen H1–H6
 
 Plan sha: `a9446c2103c5eca2126a50daa9272fe481e5f6bb6a390af6a21e0a5bbae7fbc3`
-Experiments: 25 (25 done)
+Experiments: 31 (27 done)
 
 Win criteria are **frozen**. This script does not retune them.
 
@@ -130,29 +130,33 @@ Win criteria are **frozen**. This script does not retune them.
       }
     },
     "ibex@2.200": {
-      "n": 1,
+      "n": 2,
       "finish_rank": [
-        "camp_ibex_base"
+        "camp_ibex_base",
+        "camp_ibex_abcspeed"
       ],
       "proxy_rank": null,
       "finish_best": "camp_ibex_base",
       "proxy_best": null,
       "inverted": null,
       "finish_wns_ps": {
-        "camp_ibex_base": 22.4143
+        "camp_ibex_base": 22.4143,
+        "camp_ibex_abcspeed": 20.3932
       }
     },
     "spi@1.000": {
-      "n": 1,
+      "n": 2,
       "finish_rank": [
-        "camp_spi_base"
+        "camp_spi_base",
+        "camp_spi_abcspeed"
       ],
       "proxy_rank": null,
       "finish_best": "camp_spi_base",
       "proxy_best": null,
       "inverted": null,
       "finish_wns_ps": {
-        "camp_spi_base": 612.2339999999999
+        "camp_spi_base": 612.2339999999999,
+        "camp_spi_abcspeed": 600.801
       }
     }
   },
@@ -173,10 +177,10 @@ Win criteria are **frozen**. This script does not retune them.
 
 ```json
 {
-  "n": 20,
-  "n_promoted": 11,
+  "n": 22,
+  "n_promoted": 13,
   "n_real_wins": 0,
-  "precision": 0.7272727272727273,
+  "precision": 0.6153846153846154,
   "recall": null,
   "gate_place_wns_ns": 0.0,
   "min_n": 15,
@@ -254,11 +258,20 @@ Win criteria are **frozen**. This script does not retune them.
 
 ## H4_dse_value_vs_size
 
-**Verdict:** H4 incomplete (need ≥3 designs with P0 base+DSE finish)
+**Verdict:** H4 not supported (delta not monotonic in size)
 
 ```json
 {
   "rows": [
+    {
+      "design": "spi",
+      "n_instances": 238,
+      "clock_ns": 1.0,
+      "base_wns_ps": 612.2339999999999,
+      "best_dse_variant": "camp_spi_abcspeed",
+      "best_dse_wns_ps": 600.801,
+      "delta_wns_ps": -11.432999999999879
+    },
     {
       "design": "gcd",
       "n_instances": 680,
@@ -267,10 +280,19 @@ Win criteria are **frozen**. This script does not retune them.
       "best_dse_variant": "camp_gcd_dse_fast",
       "best_dse_wns_ps": -186.887,
       "delta_wns_ps": -149.72
+    },
+    {
+      "design": "ibex",
+      "n_instances": 23434,
+      "clock_ns": 2.2,
+      "base_wns_ps": 22.4143,
+      "best_dse_variant": "camp_ibex_abcspeed",
+      "best_dse_wns_ps": 20.3932,
+      "delta_wns_ps": -2.0211000000000006
     }
   ],
-  "monotonic_growing_delta": null,
-  "verdict": "H4 incomplete (need \u22653 designs with P0 base+DSE finish)"
+  "monotonic_growing_delta": false,
+  "verdict": "H4 not supported (delta not monotonic in size)"
 }
 ```
 
@@ -280,7 +302,7 @@ Win criteria are **frozen**. This script does not retune them.
 
 ```json
 {
-  "n": 20,
+  "n": 22,
   "residuals": [
     {
       "variant": "camp_gcd_base",
@@ -381,17 +403,27 @@ Win criteria are **frozen**. This script does not retune them.
       "variant": "camp_gcd_clk090_c",
       "design": "gcd",
       "residual_ns": -0.079047
+    },
+    {
+      "variant": "camp_spi_abcspeed",
+      "design": "spi",
+      "residual_ns": 0.016946000000000017
+    },
+    {
+      "variant": "camp_ibex_abcspeed",
+      "design": "ibex",
+      "residual_ns": 0.002315000000000001
     }
   ],
   "gcd_mean_residual_ns": -0.05056025,
   "gcd_std_residual_ns": 0.023567516623135037,
   "other_means_ns": {
-    "spi": 0.030112999999999945,
+    "spi": 0.02352949999999998,
     "dynamic_node": -0.24974000000000007,
-    "ibex": -0.2388377,
+    "ibex": -0.11826134999999999,
     "aes": -0.012051029999999999
   },
-  "outlier_frac": 0.15,
+  "outlier_frac": 0.22727272727272727,
   "transfer_ok": true,
   "verdict": "H5 supported (\u226430% residuals outside gcd \u00b12\u03c3)"
 }

@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "25da7d1a0d56",
+  "phase": "P2",
+  "design": "dynamic_node",
+  "variant": "camp_dynamic_node_abc_speed",
+  "role": "abc_speed",
+  "status": "frozen",
+  "clock_ns": 6.0,
+  "sha256_6_report": null,
+  "finish_wns_ns": null,
+  "finish_tns_ns": null,
+  "place_wns_ns": null,
+  "stdcell_um2": null,
+  "stdcell_count": null,
+  "repair_buffer": null,
+  "die_um2": null,
+  "place_promoted": null,
+  "notes": "P2 skip: P0 ORFS recipe already used ABC speed (no ABC_AREA in official config)."
+}

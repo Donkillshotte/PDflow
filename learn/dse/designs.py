@@ -71,6 +71,17 @@ DESIGNS: dict[str, DesignSpec] = {
         cones=("dpath", "ctrl"),
         arch_extracts=True,
     ),
+    "spi": DesignSpec(
+        id="spi",
+        top="spi",
+        rtl=ORFS_SRC / "spi" / "spi.v",
+        rtl_files=(ORFS_SRC / "spi" / "spi.v",),
+        orfs_name="spi",
+        cones=(),
+        arch_extracts=False,
+        clk_period_ns=1.0,
+        f3_timeout_s=20.0,
+    ),
     "aes": DesignSpec(
         id="aes",
         top="aes_cipher_top",

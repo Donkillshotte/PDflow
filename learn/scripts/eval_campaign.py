@@ -267,7 +267,7 @@ def _h3(exps: list[Experiment]) -> dict[str, Any]:
 
 def _h4(exps: list[Experiment]) -> dict[str, Any]:
     """DSE value vs size at the design's product clock (P0 base vs DSE/abc at that clock)."""
-    p0 = [e for e in exps if e.status == "done" and e.finish_wns_ns is not None and e.phase == "P0"]
+    p0 = [e for e in exps if e.status == "done" and e.finish_wns_ns is not None and e.phase in ("P0", "P2")]
     by_design: dict[str, dict[str, Experiment]] = defaultdict(dict)
     for e in p0:
         if e.role in ("base", "abc_speed", "dse_small", "dse_fast", "dse_other"):
