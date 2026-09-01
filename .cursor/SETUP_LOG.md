@@ -3,6 +3,12 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T16:30Z — P0 spi base: PDN-0185, util 8
+
+`camp_spi_base` synth+FP ok (139 inst, 230 µm²) poi PDN fail: core 23.75 µm < straps
+metal4 28.5 µm. Config spi `CORE_UTILIZATION` 40→8 (die più largo, stessa ricetta
+ABC_AREA). Variant da ricuocere; `flowlab/` non toccato.
+
 ## 2026-09-01T16:25Z — Campagna: esecuzione partita (infra P0)
 
 `/goal` sul piano `experiment_campaign_plan.md`. Infra: `scripts/run_design_finish.sh`
