@@ -345,6 +345,25 @@ def check_next_level(check, root: Path) -> None:
     help_src = (root / "learn/scripts/run_dse.py").read_text()
     check("--next-level" in help_src and "make_live_runner" in help_src, "CLI wires --next-level to live runner")
 
+    from eval_vs_base_flow import evaluate
+
+    vs = evaluate(root)
+    v = vs["verdict"]
+    check(v["baseline_untouched"], "eval freeze A still holds")
+    check(v["A_stays"], f"eval: no cook beats ORFS finish ({v['summary']})")
+    check(v["ainj_reproduces_A"], "eval: A-injected matches A WNS+sha")
+    check(v["any_timing_closed"] is False, "eval: nobody is timing-closed at 0.46 ns")
+    check(v["funnel_would_skip_B_C_Bfix"], "eval: funnel skips B/C/Bfix")
+    check(v["A_dominates_B"] and v["A_dominates_C"], "eval: A constraint-dominates B and C")
+    dB = vs["delta_vs_A"]["B"]["d_wns_ps"]
+    dC = vs["delta_vs_A"]["C"]["d_wns_ps"]
+    dF = vs["delta_vs_A"]["Bfix"]["d_wns_ps"]
+    check(dB is not None and dB < -200, f"eval: B at least 200 ps later than A ({dB})")
+    check(dC is not None and dC < -100, f"eval: C at least 100 ps later than A ({dC})")
+    check(dF is not None and dF < -200, f"eval: Bfix at least 200 ps later than A ({dF})")
+    check(vs["delta_vs_A"]["Bfix"]["same_die_as_A"], "eval: Bfix die matches A")
+    check(abs(vs["delta_vs_A"]["Ainj"]["d_wns_ps"]) < 1e-6, "eval: Ainj ΔWNS is 0")
+
 
 if __name__ == "__main__":
     def _check(ok: bool, msg: str) -> None:

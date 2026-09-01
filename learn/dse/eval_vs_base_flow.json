@@ -1,0 +1,856 @@
+{
+  "kind": "eval_vs_base_flow",
+  "freeze": {
+    "sha256_6_report": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543",
+    "sha256_6_final_odb": "f691539f60f2f66f025108163819b827df43670a660f24362368d0ce56e62594"
+  },
+  "cooks": [
+    {
+      "tag": "A",
+      "variant": "flowlab",
+      "note": "ORFS Yosys+abc_area (baseline, not relaunched)",
+      "stages": {
+        "floorplan": {
+          "wns_ns": 0.0434056,
+          "tns_ns": 0.0,
+          "fmax_hz": 2400420000.0,
+          "stdcell_um2": 628.824,
+          "stdcell_count": 496,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.367195,
+          "power_w": 0.00205658,
+          "leakage_w": 1.50133e-05,
+          "setup_viol": null,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "place": {
+          "wns_ns": 0.0123135,
+          "tns_ns": 0.0,
+          "fmax_hz": 2233710000.0,
+          "stdcell_um2": 684.418,
+          "stdcell_count": 604,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.399658,
+          "power_w": 0.00233848,
+          "leakage_w": 1.61471e-05,
+          "setup_viol": 0,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "cts": {
+          "wns_ns": -0.0396463,
+          "tns_ns": -0.399655,
+          "fmax_hz": 2001420000.0,
+          "stdcell_um2": 827.792,
+          "stdcell_count": 657,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.48338,
+          "power_w": 0.00333628,
+          "leakage_w": 2.13513e-05,
+          "setup_viol": 32,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "grt": {
+          "wns_ns": -0.0486843,
+          "tns_ns": -0.952972,
+          "fmax_hz": 1965860000.0,
+          "stdcell_um2": 940.31,
+          "stdcell_count": 680,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.549084,
+          "power_w": 0.00404195,
+          "leakage_w": 2.56439e-05,
+          "setup_viol": 43,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "finish": {
+          "wns_ns": -0.037167,
+          "tns_ns": -0.595003,
+          "fmax_hz": 2011400000.0,
+          "stdcell_um2": 940.31,
+          "stdcell_count": 680,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.549084,
+          "power_w": 0.00393245,
+          "leakage_w": 2.56439e-05,
+          "setup_viol": 38,
+          "errors": 0,
+          "psm_vdd_drop_v": 0.00666716
+        }
+      },
+      "finish": {
+        "wns_setup_ns": -0.037167,
+        "tns_setup_ns": -0.595003,
+        "stdcell_um2": 940.31,
+        "stdcell_count": 680,
+        "repair_buffer": 132,
+        "clock_buffer": 7,
+        "power_w": 0.00393245,
+        "leakage_w": 2.56439e-05,
+        "util": 0.549084,
+        "psm_vdd_drop_v": 0.00666716,
+        "fmax_hz": 2011400000.0,
+        "die_um2": 1970.03,
+        "core_um2": 1712.51,
+        "setup_violation_count": 38,
+        "errors": 0,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/6_report.json",
+        "sha256": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
+      },
+      "place": {
+        "place_wns_ns": 0.0123135,
+        "place_tns_ns": 0,
+        "place_stdcell_um2": 684.418,
+        "place_stdcell_count": 604,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/3_5_place_dp.json"
+      },
+      "floorplan": {
+        "die_um2": 1970.03,
+        "core_um2": 1712.51,
+        "rows": 29,
+        "fp_wns_ns": 0.0434056,
+        "fp_stdcell_um2": 628.824,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/2_1_floorplan.json"
+      },
+      "place_to_finish_residual_ns": -0.0494805,
+      "funnel": {
+        "stage": "F6",
+        "ok": true,
+        "reason": "promote_finish"
+      },
+      "feasibility": {
+        "feasible": false,
+        "equiv_ok": true,
+        "flow_ok": true,
+        "timing_closed": false,
+        "finish_ready": true,
+        "reason": "timing_open",
+        "wns_ns": -0.037167,
+        "tns_ns": -0.595003,
+        "timing_source": "finish"
+      },
+      "place_finish_model": {
+        "mu_ns": -0.037686500000000005,
+        "sigma_ns": 0.04,
+        "p_close": 0.20875951815770177,
+        "information": 25.0,
+        "source": "place"
+      },
+      "sha256_6_report": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
+    },
+    {
+      "tag": "Ainj",
+      "variant": "flowlab_dse_ainj",
+      "note": "A's 1_2_yosys.v re-cooked in isolated variant",
+      "stages": {
+        "floorplan": {
+          "wns_ns": 0.0434056,
+          "tns_ns": 0.0,
+          "fmax_hz": 2400420000.0,
+          "stdcell_um2": 628.824,
+          "stdcell_count": 496,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.367195,
+          "power_w": 0.00205658,
+          "leakage_w": 1.50133e-05,
+          "setup_viol": null,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "place": {
+          "wns_ns": 0.0123135,
+          "tns_ns": 0.0,
+          "fmax_hz": 2233710000.0,
+          "stdcell_um2": 684.418,
+          "stdcell_count": 604,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.399658,
+          "power_w": 0.00233848,
+          "leakage_w": 1.61471e-05,
+          "setup_viol": 0,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "cts": {
+          "wns_ns": -0.0396463,
+          "tns_ns": -0.399655,
+          "fmax_hz": 2001420000.0,
+          "stdcell_um2": 827.792,
+          "stdcell_count": 657,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.48338,
+          "power_w": 0.00333628,
+          "leakage_w": 2.13513e-05,
+          "setup_viol": 32,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "grt": {
+          "wns_ns": -0.0486843,
+          "tns_ns": -0.952972,
+          "fmax_hz": 1965860000.0,
+          "stdcell_um2": 940.31,
+          "stdcell_count": 680,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.549084,
+          "power_w": 0.00404195,
+          "leakage_w": 2.56439e-05,
+          "setup_viol": 43,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "finish": {
+          "wns_ns": -0.037167,
+          "tns_ns": -0.595003,
+          "fmax_hz": 2011400000.0,
+          "stdcell_um2": 940.31,
+          "stdcell_count": 680,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.549084,
+          "power_w": 0.00393245,
+          "leakage_w": 2.56439e-05,
+          "setup_viol": 38,
+          "errors": 0,
+          "psm_vdd_drop_v": 0.00666716
+        }
+      },
+      "finish": {
+        "wns_setup_ns": -0.037167,
+        "tns_setup_ns": -0.595003,
+        "stdcell_um2": 940.31,
+        "stdcell_count": 680,
+        "repair_buffer": 132,
+        "clock_buffer": 7,
+        "power_w": 0.00393245,
+        "leakage_w": 2.56439e-05,
+        "util": 0.549084,
+        "psm_vdd_drop_v": 0.00666716,
+        "fmax_hz": 2011400000.0,
+        "die_um2": 1970.03,
+        "core_um2": 1712.51,
+        "setup_violation_count": 38,
+        "errors": 0,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_ainj/6_report.json",
+        "sha256": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
+      },
+      "place": {
+        "place_wns_ns": 0.0123135,
+        "place_tns_ns": 0,
+        "place_stdcell_um2": 684.418,
+        "place_stdcell_count": 604,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_ainj/3_5_place_dp.json"
+      },
+      "floorplan": {
+        "die_um2": 1970.03,
+        "core_um2": 1712.51,
+        "rows": 29,
+        "fp_wns_ns": 0.0434056,
+        "fp_stdcell_um2": 628.824,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_ainj/2_1_floorplan.json"
+      },
+      "place_to_finish_residual_ns": -0.0494805,
+      "funnel": {
+        "stage": "F6",
+        "ok": true,
+        "reason": "promote_finish"
+      },
+      "feasibility": {
+        "feasible": false,
+        "equiv_ok": true,
+        "flow_ok": true,
+        "timing_closed": false,
+        "finish_ready": true,
+        "reason": "timing_open",
+        "wns_ns": -0.037167,
+        "tns_ns": -0.595003,
+        "timing_source": "finish"
+      },
+      "place_finish_model": {
+        "mu_ns": -0.037686500000000005,
+        "sigma_ns": 0.04,
+        "p_close": 0.20875951815770177,
+        "information": 25.0,
+        "source": "place"
+      },
+      "sha256_6_report": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
+    },
+    {
+      "tag": "B",
+      "variant": "flowlab_dse_small",
+      "note": "DSE sub_twos_complement, product die",
+      "stages": {
+        "floorplan": {
+          "wns_ns": -0.365193,
+          "tns_ns": -12.3282,
+          "fmax_hz": 1211840000.0,
+          "stdcell_um2": 452.998,
+          "stdcell_count": 257,
+          "die_um2": 1304.65,
+          "core_um2": 1136.35,
+          "util": 0.398642,
+          "power_w": 0.00154182,
+          "leakage_w": 9.96744e-06,
+          "setup_viol": null,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "place": {
+          "wns_ns": -0.313564,
+          "tns_ns": -11.5717,
+          "fmax_hz": 1292720000.0,
+          "stdcell_um2": 566.314,
+          "stdcell_count": 420,
+          "die_um2": 1304.65,
+          "core_um2": 1136.35,
+          "util": 0.498361,
+          "power_w": 0.00192268,
+          "leakage_w": 1.30077e-05,
+          "setup_viol": 43,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "cts": {
+          "wns_ns": -0.348885,
+          "tns_ns": -13.3921,
+          "fmax_hz": 1236270000.0,
+          "stdcell_um2": 600.628,
+          "stdcell_count": 433,
+          "die_um2": 1304.65,
+          "core_um2": 1136.35,
+          "util": 0.528558,
+          "power_w": 0.00237738,
+          "leakage_w": 1.42012e-05,
+          "setup_viol": 46,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "grt": {
+          "wns_ns": -0.355553,
+          "tns_ns": -13.7837,
+          "fmax_hz": 1226160000.0,
+          "stdcell_um2": 609.938,
+          "stdcell_count": 439,
+          "die_um2": 1304.65,
+          "core_um2": 1136.35,
+          "util": 0.536751,
+          "power_w": 0.00250921,
+          "leakage_w": 1.45257e-05,
+          "setup_viol": 46,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "finish": {
+          "wns_ns": -0.338301,
+          "tns_ns": -13.0896,
+          "fmax_hz": 1252660000.0,
+          "stdcell_um2": 609.938,
+          "stdcell_count": 439,
+          "die_um2": 1304.65,
+          "core_um2": 1136.35,
+          "util": 0.536751,
+          "power_w": 0.00242781,
+          "leakage_w": 1.45257e-05,
+          "setup_viol": 46,
+          "errors": 0,
+          "psm_vdd_drop_v": 0.00332845
+        }
+      },
+      "finish": {
+        "wns_setup_ns": -0.338301,
+        "tns_setup_ns": -13.0896,
+        "stdcell_um2": 609.938,
+        "stdcell_count": 439,
+        "repair_buffer": 126,
+        "clock_buffer": 7,
+        "power_w": 0.00242781,
+        "leakage_w": 1.45257e-05,
+        "util": 0.536751,
+        "psm_vdd_drop_v": 0.00332845,
+        "fmax_hz": 1252660000.0,
+        "die_um2": 1304.65,
+        "core_um2": 1136.35,
+        "setup_violation_count": 46,
+        "errors": 0,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_small/6_report.json",
+        "sha256": "617d0c9a4b28e639168782d3438bb343080e063ae1d376e54374c152e8640829"
+      },
+      "place": {
+        "place_wns_ns": -0.313564,
+        "place_tns_ns": -11.5717,
+        "place_stdcell_um2": 566.314,
+        "place_stdcell_count": 420,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_small/3_5_place_dp.json"
+      },
+      "floorplan": {
+        "die_um2": 1304.65,
+        "core_um2": 1136.35,
+        "rows": 24,
+        "fp_wns_ns": -0.365193,
+        "fp_stdcell_um2": 452.998,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_small/2_1_floorplan.json"
+      },
+      "place_to_finish_residual_ns": -0.02473700000000001,
+      "funnel": {
+        "stage": "P2",
+        "ok": false,
+        "reason": "place_wns_-0.3136_below_0.0"
+      },
+      "feasibility": {
+        "feasible": false,
+        "equiv_ok": true,
+        "flow_ok": true,
+        "timing_closed": false,
+        "finish_ready": true,
+        "reason": "timing_open",
+        "wns_ns": -0.338301,
+        "tns_ns": -13.0896,
+        "timing_source": "finish"
+      },
+      "place_finish_model": {
+        "mu_ns": -0.363564,
+        "sigma_ns": 0.06508512,
+        "p_close": 0.0003706932873356328,
+        "information": 15.364494987487156,
+        "source": "place"
+      },
+      "sha256_6_report": "617d0c9a4b28e639168782d3438bb343080e063ae1d376e54374c152e8640829"
+    },
+    {
+      "tag": "Bfix",
+      "variant": "flowlab_dse_fixedb",
+      "note": "same B netlist, A's die locked",
+      "stages": {
+        "floorplan": {
+          "wns_ns": -0.365193,
+          "tns_ns": -12.3282,
+          "fmax_hz": 1211840000.0,
+          "stdcell_um2": 452.998,
+          "stdcell_count": 257,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.264523,
+          "power_w": 0.00154182,
+          "leakage_w": 9.96744e-06,
+          "setup_viol": null,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "place": {
+          "wns_ns": -0.317536,
+          "tns_ns": -11.7156,
+          "fmax_hz": 1286110000.0,
+          "stdcell_um2": 571.102,
+          "stdcell_count": 434,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.333489,
+          "power_w": 0.00195146,
+          "leakage_w": 1.30488e-05,
+          "setup_viol": 43,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "cts": {
+          "wns_ns": -0.35639,
+          "tns_ns": -13.5711,
+          "fmax_hz": 1224900000.0,
+          "stdcell_um2": 605.948,
+          "stdcell_count": 448,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.353837,
+          "power_w": 0.00239113,
+          "leakage_w": 1.4297e-05,
+          "setup_viol": 46,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "grt": {
+          "wns_ns": -0.367907,
+          "tns_ns": -13.7703,
+          "fmax_hz": 1207860000.0,
+          "stdcell_um2": 635.474,
+          "stdcell_count": 452,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.371078,
+          "power_w": 0.00263028,
+          "leakage_w": 1.51453e-05,
+          "setup_viol": 46,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "finish": {
+          "wns_ns": -0.349488,
+          "tns_ns": -13.025,
+          "fmax_hz": 1235350000.0,
+          "stdcell_um2": 635.474,
+          "stdcell_count": 452,
+          "die_um2": 1970.03,
+          "core_um2": 1712.51,
+          "util": 0.371078,
+          "power_w": 0.00253901,
+          "leakage_w": 1.51453e-05,
+          "setup_viol": 46,
+          "errors": 0,
+          "psm_vdd_drop_v": 0.00470149
+        }
+      },
+      "finish": {
+        "wns_setup_ns": -0.349488,
+        "tns_setup_ns": -13.025,
+        "stdcell_um2": 635.474,
+        "stdcell_count": 452,
+        "repair_buffer": 129,
+        "clock_buffer": 7,
+        "power_w": 0.00253901,
+        "leakage_w": 1.51453e-05,
+        "util": 0.371078,
+        "psm_vdd_drop_v": 0.00470149,
+        "fmax_hz": 1235350000.0,
+        "die_um2": 1970.03,
+        "core_um2": 1712.51,
+        "setup_violation_count": 46,
+        "errors": 0,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_fixedb/6_report.json",
+        "sha256": "cfd445f85314069cda36efc01111e5c0efa80d2ca45ddd9f85253f3bac181906"
+      },
+      "place": {
+        "place_wns_ns": -0.317536,
+        "place_tns_ns": -11.7156,
+        "place_stdcell_um2": 571.102,
+        "place_stdcell_count": 434,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_fixedb/3_5_place_dp.json"
+      },
+      "floorplan": {
+        "die_um2": 1970.03,
+        "core_um2": 1712.51,
+        "rows": 29,
+        "fp_wns_ns": -0.365193,
+        "fp_stdcell_um2": 452.998,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_fixedb/2_1_floorplan.json"
+      },
+      "place_to_finish_residual_ns": -0.031952000000000036,
+      "funnel": {
+        "stage": "P2",
+        "ok": false,
+        "reason": "place_wns_-0.3175_below_0.0"
+      },
+      "feasibility": {
+        "feasible": false,
+        "equiv_ok": true,
+        "flow_ok": true,
+        "timing_closed": false,
+        "finish_ready": true,
+        "reason": "timing_open",
+        "wns_ns": -0.349488,
+        "tns_ns": -13.025,
+        "timing_source": "finish"
+      },
+      "place_finish_model": {
+        "mu_ns": -0.367536,
+        "sigma_ns": 0.06540288,
+        "p_close": 0.0003535009717336446,
+        "information": 15.289846563331768,
+        "source": "place"
+      },
+      "sha256_6_report": "cfd445f85314069cda36efc01111e5c0efa80d2ca45ddd9f85253f3bac181906"
+    },
+    {
+      "tag": "C",
+      "variant": "flowlab_dse_fast",
+      "note": "DSE orfs_abc_speed, product die",
+      "stages": {
+        "floorplan": {
+          "wns_ns": -0.0903165,
+          "tns_ns": -3.09857,
+          "fmax_hz": 1817140000.0,
+          "stdcell_um2": 696.122,
+          "stdcell_count": 408,
+          "die_um2": 1940.84,
+          "core_um2": 1697.08,
+          "util": 0.410188,
+          "power_w": 0.003386,
+          "leakage_w": 1.72108e-05,
+          "setup_viol": null,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "place": {
+          "wns_ns": -0.116708,
+          "tns_ns": -4.44911,
+          "fmax_hz": 1733980000.0,
+          "stdcell_um2": 844.018,
+          "stdcell_count": 633,
+          "die_um2": 1940.84,
+          "core_um2": 1697.08,
+          "util": 0.497335,
+          "power_w": 0.00417292,
+          "leakage_w": 2.08959e-05,
+          "setup_viol": 44,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "cts": {
+          "wns_ns": -0.186048,
+          "tns_ns": -5.36994,
+          "fmax_hz": 1547870000.0,
+          "stdcell_um2": 942.438,
+          "stdcell_count": 656,
+          "die_um2": 1940.84,
+          "core_um2": 1697.08,
+          "util": 0.555329,
+          "power_w": 0.00533103,
+          "leakage_w": 2.42041e-05,
+          "setup_viol": 45,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "grt": {
+          "wns_ns": -0.197453,
+          "tns_ns": -6.33651,
+          "fmax_hz": 1521020000.0,
+          "stdcell_um2": 963.452,
+          "stdcell_count": 660,
+          "die_um2": 1940.84,
+          "core_um2": 1697.08,
+          "util": 0.567712,
+          "power_w": 0.00567413,
+          "leakage_w": 2.50236e-05,
+          "setup_viol": 46,
+          "errors": 0,
+          "psm_vdd_drop_v": null
+        },
+        "finish": {
+          "wns_ns": -0.186887,
+          "tns_ns": -5.98079,
+          "fmax_hz": 1545860000.0,
+          "stdcell_um2": 963.452,
+          "stdcell_count": 660,
+          "die_um2": 1940.84,
+          "core_um2": 1697.08,
+          "util": 0.567712,
+          "power_w": 0.00552729,
+          "leakage_w": 2.50236e-05,
+          "setup_viol": 46,
+          "errors": 0,
+          "psm_vdd_drop_v": 0.00825686
+        }
+      },
+      "finish": {
+        "wns_setup_ns": -0.186887,
+        "tns_setup_ns": -5.98079,
+        "stdcell_um2": 963.452,
+        "stdcell_count": 660,
+        "repair_buffer": 198,
+        "clock_buffer": 7,
+        "power_w": 0.00552729,
+        "leakage_w": 2.50236e-05,
+        "util": 0.567712,
+        "psm_vdd_drop_v": 0.00825686,
+        "fmax_hz": 1545860000.0,
+        "die_um2": 1940.84,
+        "core_um2": 1697.08,
+        "setup_violation_count": 46,
+        "errors": 0,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_fast/6_report.json",
+        "sha256": "f0235b2043d28c8588339965d55f053f9da16afd054e4fb1bc0fa70416b62f76"
+      },
+      "place": {
+        "place_wns_ns": -0.116708,
+        "place_tns_ns": -4.44911,
+        "place_stdcell_um2": 844.018,
+        "place_stdcell_count": 633,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_fast/3_5_place_dp.json"
+      },
+      "floorplan": {
+        "die_um2": 1940.84,
+        "core_um2": 1697.08,
+        "rows": 29,
+        "fp_wns_ns": -0.0903165,
+        "fp_stdcell_um2": 696.122,
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_fast/2_1_floorplan.json"
+      },
+      "place_to_finish_residual_ns": -0.07017899999999999,
+      "funnel": {
+        "stage": "P2",
+        "ok": false,
+        "reason": "place_wns_-0.1167_below_0.0"
+      },
+      "feasibility": {
+        "feasible": false,
+        "equiv_ok": true,
+        "flow_ok": true,
+        "timing_closed": false,
+        "finish_ready": true,
+        "reason": "timing_open",
+        "wns_ns": -0.186887,
+        "tns_ns": -5.98079,
+        "timing_source": "finish"
+      },
+      "place_finish_model": {
+        "mu_ns": -0.16670800000000002,
+        "sigma_ns": 0.04933664,
+        "p_close": 0.008337552166488682,
+        "information": 20.268911705377587,
+        "source": "place"
+      },
+      "sha256_6_report": "f0235b2043d28c8588339965d55f053f9da16afd054e4fb1bc0fa70416b62f76"
+    }
+  ],
+  "delta_vs_A": {
+    "Ainj": {
+      "d_wns_ps": 0.0,
+      "d_area_um2": 0.0,
+      "d_place_wns_ps": 0.0,
+      "d_die_um2": 0.0,
+      "timing_better_than_A": false,
+      "area_smaller_than_A": false,
+      "same_die_as_A": true,
+      "beats_A_product": false
+    },
+    "B": {
+      "d_wns_ps": -301.134,
+      "d_area_um2": -330.37199999999996,
+      "d_place_wns_ps": -325.8775,
+      "d_die_um2": -665.3799999999999,
+      "timing_better_than_A": false,
+      "area_smaller_than_A": true,
+      "same_die_as_A": false,
+      "beats_A_product": false
+    },
+    "Bfix": {
+      "d_wns_ps": -312.321,
+      "d_area_um2": -304.8359999999999,
+      "d_place_wns_ps": -329.8495,
+      "d_die_um2": 0.0,
+      "timing_better_than_A": false,
+      "area_smaller_than_A": true,
+      "same_die_as_A": true,
+      "beats_A_product": false
+    },
+    "C": {
+      "d_wns_ps": -149.72,
+      "d_area_um2": 23.142000000000053,
+      "d_place_wns_ps": -129.0215,
+      "d_die_um2": -29.190000000000055,
+      "timing_better_than_A": false,
+      "area_smaller_than_A": false,
+      "same_die_as_A": false,
+      "beats_A_product": false
+    }
+  },
+  "dse_proxy": {
+    "n_rows": 140,
+    "n_ok": 137,
+    "cooks": {
+      "B_arch": {
+        "id": "54142494d890",
+        "level": "architecture",
+        "fidelity": "F1",
+        "area_um2": 407.512,
+        "wns_cost": 0.5215,
+        "knobs": {
+          "abc_script": "file",
+          "extract": "sub_twos_complement",
+          "module": "dpath",
+          "name": "sub_twos_complement",
+          "scope": "logic_cone"
+        },
+        "note": "F1 sub_twos_complement equiv=PASS"
+      },
+      "C_synth": {
+        "id": "52e0ecacb19b",
+        "level": "synthesis",
+        "fidelity": "F1",
+        "area_um2": 618.982,
+        "wns_cost": 0.1142,
+        "knobs": {
+          "abcArea": 0,
+          "abc_args": [
+            "-script",
+            "/workspace/tools/OpenROAD-flow-scripts/flow/scripts/abc_speed.script",
+            "-D",
+            "460"
+          ],
+          "abc_script": "file",
+          "name": "orfs_abc_speed",
+          "source": "orfs_abc_script"
+        },
+        "note": "F1 orfs_abc_speed equiv=PASS \u00b7 ORFS abc_speed"
+      }
+    },
+    "best_logic": {
+      "id": "5c3846870699",
+      "area_um2": 553.28,
+      "wns_cost": 0.2088,
+      "knobs": {
+        "abc_args": [],
+        "abc_ops": [
+          "balance"
+        ],
+        "abc_script": "file",
+        "acq": {
+          "ehvi": 39.6447758531005,
+          "ehvi_ir": 0.0,
+          "ei": 1.0896603057399348,
+          "mu": 553.8315919299729,
+          "mu_ir": null,
+          "mu_wns": 0.2106,
+          "objectives": [
+            "area_um2",
+            "wns_cost"
+          ],
+          "std": 2.0555329769486868,
+          "std_ir": null,
+          "std_wns": 0.7400197281481155,
+          "via": "ssk_gp_ehvi"
+        },
+        "cone": "dpath",
+        "cone_module": "GcdUnitDpathRTL_0x4d0fc71ead8d3d9e",
+        "cone_modules": [
+          "GcdUnitDpathRTL_0x4d0fc71ead8d3d9e",
+          "RegEn_0x68db79c4ec1d6e5b",
+          "LtComparator_0x422b1f52edd46a85",
+          "ZeroComparator_0x422b1f52edd46a85",
+          "Mux_0x683fa1a418b072c9",
+          "Mux_0xdd6473406d1a99a",
+          "Subtractor_0x422b1f52edd46a85"
+        ],
+        "name": "boils_balance",
+        "scope": "logic_cone",
+        "via": "trust_region_delete"
+      },
+      "fidelity": "F1"
+    }
+  },
+  "verdict": {
+    "A_stays": true,
+    "ainj_reproduces_A": true,
+    "any_timing_closed": false,
+    "any_feasible": false,
+    "funnel_would_skip_B_C_Bfix": true,
+    "funnel_A_place_was_eligible": true,
+    "baseline_untouched": true,
+    "pareto_front": [
+      "A",
+      "Ainj"
+    ],
+    "A_dominates_B": true,
+    "A_dominates_C": true,
+    "summary": "A resta. Nessuna cottura DSE batte il WNS finish ORFS. A-injected \u00e8 bit-identical. B sul die di A \u00e8 ancora in ritardo. Nessuno \u00e8 timing-closed a 0.46 ns."
+  }
+}
