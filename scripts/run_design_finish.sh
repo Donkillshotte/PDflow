@@ -125,7 +125,8 @@ if [[ -n "${SYNTH_NETLIST_FILES:-}" ]]; then
   MAKE_EXTRA+=( SYNTH_NETLIST_FILES="${SYNTH_NETLIST_FILES}" )
 fi
 if [[ "${ABC_SPEED:-}" == "1" ]]; then
-  MAKE_EXTRA+=( ABC_SPEED=1 ABC_AREA= )
+  # Empty ABC_AREA= is not a TCL boolean. Force 0 so ORFS uses the speed script.
+  MAKE_EXTRA+=( ABC_SPEED=1 ABC_AREA=0 )
 fi
 if [[ -n "${SWAP_ARITH_OPERATORS:-}" ]]; then
   MAKE_EXTRA+=( SWAP_ARITH_OPERATORS="${SWAP_ARITH_OPERATORS}" )

@@ -39,16 +39,16 @@ run_speed() {
   PYTHONPATH=learn:learn/scripts python3 "$ROOT/learn/scripts/record_experiment.py" \
     --phase P2 --design "$design" --variant "$variant" --role abc_speed --clock "$clk" \
     --runtime-s "${elapsed:-0}" --exit-code "$ec" \
-    --notes "P2 ABC_SPEED=1 vs P0 ABC_AREA base." \
-    "${extra[@]}" | tee -a "$SUMMARY"
+    --notes "P2 ABC_SPEED=1 ABC_AREA=0 vs P0 ABC_AREA base." \
+    "${extra[@]}" | tee -a "$SUMMARY" || true
   return 0
 }
 
 # P0 gcd already has camp_gcd_dse_fast (orfs_abc_speed) at 0.46.
 record_skip gcd camp_gcd_abc_speed 0.46 "P2 skip: P0 already has camp_gcd_dse_fast (orfs_abc_speed) at 0.46 ns."
 
-run_speed spi camp_spi_abc_speed 1.0
-run_speed ibex camp_ibex_abc_speed 2.2
+run_speed spi camp_spi_abcspeed 1.0
+run_speed ibex camp_ibex_abcspeed 2.2
 
 # Confirm ORFS default is already speed before skipping.
 record_skip dynamic_node camp_dynamic_node_abc_speed 6.0 \
