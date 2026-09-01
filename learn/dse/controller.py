@@ -349,12 +349,14 @@ def run_controller(
     def step(kind: str, **kw):
         log.append({"t": time.time(), "kind": kind, **kw})
 
-    _raw_f4_pdn = evaluate_f4_pdn
-    _raw_f4_extract = evaluate_f4_extract
-    _raw_f4_scale = evaluate_f4_scale
-    _raw_f4_static_mesh = evaluate_f4_static_mesh
-    _raw_f4_static_straps = evaluate_f4_static_straps
-    _raw_f4_em_straps = evaluate_f4_em_straps
+    from . import fidelity as _fid
+
+    _raw_f4_pdn = _fid.evaluate_f4_pdn
+    _raw_f4_extract = _fid.evaluate_f4_extract
+    _raw_f4_scale = _fid.evaluate_f4_scale
+    _raw_f4_static_mesh = _fid.evaluate_f4_static_mesh
+    _raw_f4_static_straps = _fid.evaluate_f4_static_straps
+    _raw_f4_em_straps = _fid.evaluate_f4_em_straps
 
     def evaluate_f4_pdn(*args, **kwargs):
         solver = kwargs.get("solver") or "direct"
@@ -471,7 +473,8 @@ def run_controller(
             for c in mem.all()
             if (c.knobs or {}).get("source") == "f3_opensta_ideal" and c.status == "ok"
         )
-        if n_have >= 8:
+        sta_max = int((max_shots or {}).get("f3", 8))
+        if n_have >= sta_max:
             return None
         if any(
             (c.knobs or {}).get("source") == "f3_opensta_ideal"
