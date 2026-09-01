@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T20:45Z — Finish QoR now includes power/leakage
+
+`6_report` already had `finish__power__*`. Registry and eval now copy
+total/internal/switching/leakage. 46 rows enriched from logs (no recook).
+§5 unchanged. gcd d25u35: area −10.5%, power −12.7%, leak −14.1%.
+Ibex WNS wins: power ~flat (~108 mW).
+
 ## 2026-09-01T20:30Z — Q0–Q4 done: physical knobs win, I4 false
 
 First §5 product wins of the campaign: gcd `d25u35` (−10.5% area, ±1.2 ps)
