@@ -3,6 +3,14 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T15:45Z — Eval esaustiva vs flow base A
+
+`eval_vs_base_flow.py` su 5 cotture. A resta. Ainj bit-identical (ΔWNS 0,
+sha 6_report identico). B −301 ps vs A; Bfix −312 ps (stesso die);
+C −150 ps e +23 µm². Funnel skip B/C/Bfix. Nessuno timing-closed.
+Pareto F6: A+Ainj. `test_dse_next` include questi assert. Freeze
+`5cba9a7a…` / `f691539f…` intatto. Write-up `learn/dse/eval_vs_base_flow.md`.
+
 ## 2026-09-01T14:46Z — Next Level DSE implementato e controllato
 
 Finish-or-nothing: contratti, funnel R1→P2→F6, scheduler event-driven,
