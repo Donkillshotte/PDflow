@@ -129,7 +129,8 @@ finish solo perché la policy ha detto EVALUATE. Nomi = cosa fanno.
 Nessun win §5. spi è già chiuso di 612 ps su un die sparso (density 9.4%,
 util default 8 per PDN-0185). Il lever «più denso → meno buffer» di gcd
 non ha materiale su cui agire; dimezzare il TNS repair è un no-op se
-TNS è già 0. Catalogo, policy e nomi funzionano: il transfer è
-design-sensibile anche se i knob sono design-agnostic.
+TNS è già 0 (`6_report.json` byte-identical al default, sha
+`b8826a8ee5356ac0`, inode diverso). Catalogo, policy e nomi funzionano:
+il transfer è design-sensibile anche se i knob sono design-agnostic.
 
 Non si è cotto il combo (sarebbe un no-op) né aes/ibex/dynamic_node.
