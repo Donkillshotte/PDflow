@@ -3,6 +3,18 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T07:45Z — PD QoR axes (leakage, TNS, HPWL, stdcell)
+
+`QoR` first-class: `leakage_w`, `tns_cost`, `hpwl_um`; observation
+`internal_power_w` / `switching_power_w` / `wirelength_um` / `core_util`.
+`area_um2` documented as mapped stdcell instance area. OpenSTA
+`report_power` Total row split (internal/switching/leakage/total).
+TIMING_POWER gated includes TNS+leakage. `test_dse` ALL PASSED **1086**
+`ok` (~294 s). Live GCD F3: WNS −0.522 ns TNS −16.719 ns P 1.26 mW leak
+8.56 µW. DirectLU 6.075 + `sta_t50`; gold 45.298 unrestamp; AES
+`febe6804241c` sha `9e89f6e88b61` static 6.954 intatto. Studio
+`DsePanel` columns: stdcell, cells, TNS, leak, P tot, HPWL µm.
+
 ## 2026-08-31T22:25Z — E2E no-skip (extract + gold + F5 GCD)
 
 I skip della run 994 non erano OpenROAD assente: `extract_available`
