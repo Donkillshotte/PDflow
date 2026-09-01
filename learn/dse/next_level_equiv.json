@@ -1,0 +1,27 @@
+{
+  "identity": {
+    "kind": "same_latency",
+    "status": "pass",
+    "vs": "/workspace/learn/flowlab/gcd.v",
+    "latency_cycles": null,
+    "log": "/tmp/tmp8dzfx0pv.ys.log",
+    "engine": "yosys_equiv"
+  },
+  "sub_twos_complement": {
+    "kind": "same_latency",
+    "status": "pass",
+    "vs": "/workspace/learn/flowlab/gcd.v",
+    "latency_cycles": null,
+    "log": "/tmp/tmp_9tzrtnj.ys.log",
+    "engine": "yosys_equiv"
+  },
+  "eqz_or_reduce": {
+    "kind": "same_latency",
+    "status": "pass",
+    "vs": "/workspace/learn/flowlab/gcd.v",
+    "latency_cycles": null,
+    "log": "/tmp/tmpyknflz39.ys.log",
+    "engine": "yosys_equiv"
+  },
+  "ok": true
+}

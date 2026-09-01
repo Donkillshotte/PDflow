@@ -1,0 +1,33 @@
+{
+  "kind": "next_level_live_controls",
+  "ok": true,
+  "baseline_untouched": true,
+  "sha256_6_report_flowlab": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543",
+  "sha256_6_final_odb_flowlab": "f691539f60f2f66f025108163819b827df43670a660f24362368d0ce56e62594",
+  "equiv": {
+    "identity": "pass",
+    "sub_twos_complement": "pass",
+    "eqz_or_reduce": "pass"
+  },
+  "ainj": {
+    "variant": "flowlab_dse_ainj",
+    "wns_setup_ns": -0.037167,
+    "delta_wns_ps": 0.0,
+    "sha256_6_report": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543",
+    "matches_baseline_bit_identical": true,
+    "errors": 0
+  },
+  "fixed_floorplan_b": {
+    "variant": "flowlab_dse_fixedb",
+    "die_um2": 1970.03,
+    "core_um2": 1712.51,
+    "matches_a": true
+  },
+  "funnel": {
+    "B_place_wns_ns": -0.313564,
+    "C_place_wns_ns": -0.116708,
+    "A_place_wns_ns": 0.0123135,
+    "B_C_f6_eligible": false,
+    "A_place_f6_eligible": true
+  }
+}

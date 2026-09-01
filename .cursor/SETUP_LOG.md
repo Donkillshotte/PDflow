@@ -3,6 +3,20 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T14:46Z — Next Level DSE implementato e controllato
+
+Finish-or-nothing: contratti, funnel R1→P2→F6, scheduler event-driven,
+F6 ingest, HV `--stop-metric f6`, `--next-level` su `*_nl.jsonl`.
+GNN/bandit isolati (`DSE_ENABLE_FOLKLORE=1` per il report GNN).
+`test_dse_next.py` ALL PASSED. Equiv Yosys identity + `sub_twos` +
+`eqz_or_reduce` **pass** vs `learn/flowlab/gcd.v`.
+A-injected `flowlab_dse_ainj`: WNS **−37.167 ps**, Δ **0 ps**,
+`6_report` sha **identico** ad A (`5cba9a7a…`). Forno deterministico.
+Floorplan B su die di A (`flowlab_dse_fixedb`): die **1970.03**,
+core **1712.51**. Place B/C restano fuori F6. Wrapper rifiuta
+`flowlab`/`learn`/AES. Oro 45.298 unrestamp. AES `febe6804241c` non
+toccato. Nessun Krylov.
+
 ## 2026-09-01T12:52Z — Handoff finish B+C eseguito; A resta
 
 Stesso forno: SDC 0.46, CORE_UTILIZATION=35, SYNTH_NETLIST_FILES, variant

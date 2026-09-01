@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "exit": 0,
+  "variant": "flowlab_dse_fixedb",
+  "target": "floorplan",
+  "die_um2": 1970.03,
+  "core_um2": 1712.51,
+  "expected_die_um2": 1970.03,
+  "baseline_untouched": true,
+  "stderr_tail": ""
+}

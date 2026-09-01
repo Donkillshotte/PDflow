@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "exit": 0,
+  "variant": "flowlab_dse_ainj",
+  "netlist": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/1_2_yosys.v",
+  "finish": {
+    "wns_setup_ns": -0.037167,
+    "tns_setup_ns": -0.595003,
+    "stdcell_um2": 940.31,
+    "stdcell_count": 680,
+    "repair_buffer": 132,
+    "clock_buffer": 7,
+    "power_w": 0.00393245,
+    "leakage_w": 2.56439e-05,
+    "util": 0.549084,
+    "psm_vdd_drop_v": 0.00666716,
+    "fmax_hz": 2011400000.0,
+    "die_um2": 1970.03,
+    "core_um2": 1712.51,
+    "setup_violation_count": 38,
+    "errors": 0,
+    "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_ainj/6_report.json",
+    "sha256": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
+  },
+  "baseline_wns_ns": -0.037167,
+  "delta_wns_ps": 0.0,
+  "baseline_untouched": true
+}
