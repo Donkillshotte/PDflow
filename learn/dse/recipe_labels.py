@@ -144,6 +144,26 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "Rettangolo 2:1 invece di un quadrato.",
         "Su gcd: slack uguale, IR −61%. Win su IR.",
     ),
+    "camp_gcd_synth_hier": RecipeLabel(
+        "Sintesi gerarchica",
+        "Yosys senza flatten prima di ABC.",
+        "Su gcd: perde. Slack −5 ps, potenza +150%, IR +155%. Non usarla qui.",
+    ),
+    "camp_gcd_cell_pad_plus": RecipeLabel(
+        "Padding celle +1 site",
+        "Un site di spazio extra tra le celle. Stessa netlist, stesso die.",
+        "Su gcd: win. IR −19%, area −7%, potenza −8%. Slack −3.6 ps (dentro 5 ps).",
+    ),
+    "camp_gcd_repair_half_tns": RecipeLabel(
+        "Repair TNS a metà",
+        "TNS_END_PERCENT 100→50: ripara meno path violati.",
+        "Su gcd: perde. IR +19%. Slack e area quasi uguali.",
+    ),
+    "camp_gcd_cts_closer_bufs": RecipeLabel(
+        "Buffer di clock più fitti",
+        "Buffer di clock ogni 80 µm.",
+        "Su gcd: identico al default. No-op.",
+    ),
 }
 
 
