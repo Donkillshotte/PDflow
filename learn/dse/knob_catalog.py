@@ -133,6 +133,14 @@ def stages() -> list[str]:
     return out
 
 
+# Offsets can go out of range on a design whose default is already extreme
+# (spi util=8; core_looser would be −2). Same recipe id stays valid everywhere.
+_CLAMP = {
+    "CORE_UTILIZATION": (5.0, 95.0),
+    "PLACE_DENSITY_LB_ADDON": (0.0, 0.99),
+}
+
+
 def resolve(recipe_id: str, defaults: dict[str, float] | None = None) -> dict[str, str]:
     """Absolute env for make. `defaults` supplies config.mk values for offsets."""
     rec = by_id(recipe_id)
@@ -141,7 +149,13 @@ def resolve(recipe_id: str, defaults: dict[str, float] | None = None) -> dict[st
     for key, delta in (rec.get("offset") or {}).items():
         if key not in defaults:
             raise KeyError(f"{recipe_id} needs default {key} from config.mk")
-        env[key] = str(float(defaults[key]) + float(delta))
+        raw = float(defaults[key]) + float(delta)
+        lo, hi = _CLAMP.get(key, (None, None))
+        if lo is not None:
+            raw = max(lo, raw)
+        if hi is not None:
+            raw = min(hi, raw)
+        env[key] = str(raw)
     return env
 
 

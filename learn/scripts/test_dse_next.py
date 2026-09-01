@@ -564,7 +564,16 @@ def check_next_level(check, root: Path) -> None:
     spi_rt = label_for("camp_spi_repair_half_tns")
     check("tns" in spi_rt.title.lower() or "repair" in spi_rt.title.lower(), f"J1 repair title {spi_rt.title}")
     check("no-op" in spi_rt.payoff.lower() or "identici" in spi_rt.payoff.lower(), f"J1 repair payoff is honest: {spi_rt.payoff}")
+    cook_src = (root / "learn/scripts/cook_recipe.py").read_text()
     check((root / "learn/scripts/cook_recipe.py").is_file(), "cook_recipe.py exists")
+    check("_needs_fresh_synth" in cook_src, "cook_recipe reruns Yosys for synth knobs")
+    check("synth_hier" in cook_src or "stage" in cook_src, "fresh synth looks at recipe stage")
+    loose = resolve("core_looser", {"CORE_UTILIZATION": 8.0})
+    check(abs(float(loose["CORE_UTILIZATION"]) - 5.0) < 1e-9, f"core_looser clamps spi 8-10 to 5, got {loose}")
+    tight = resolve("core_tighter", {"CORE_UTILIZATION": 8.0})
+    check(abs(float(tight["CORE_UTILIZATION"]) - 18.0) < 1e-9, f"core_tighter spi 8+10=18, got {tight}")
+    remaining = {"place_sparser", "cell_pad_plus", "aspect_wide", "core_tighter", "core_looser", "repair_setup_margin", "cts_closer_bufs", "synth_hier"}
+    check(remaining <= {r["id"] for r in RECIPES}, f"remaining catalog ids exist {remaining}")
 
 
 if __name__ == "__main__":

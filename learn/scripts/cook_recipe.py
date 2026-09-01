@@ -27,6 +27,7 @@ from dse.experiments import DESIGN_CATALOG, ExperimentLog, fill_from_logs, Exper
 from dse.f6_finish import parse_place_dp  # noqa: E402
 from dse.fidelity_policy import decide  # noqa: E402
 from dse.knob_catalog import (  # noqa: E402
+    by_id,
     config_mk_for,
     parse_config_defaults,
     resolve_many,
@@ -59,17 +60,27 @@ def _base_finish_ns(design: str, clock_ns: float) -> float | None:
     return None
 
 
-def _run_wrapper(design: str, variant: str, clock_ns: float, target: str, env_knobs: dict[str, str], net: Path) -> tuple[int, float]:
+def _needs_fresh_synth(recipe_ids: list[str]) -> bool:
+    """Reuse the official netlist unless a recipe actually changes Yosys/ABC."""
+    for rid in recipe_ids:
+        rec = by_id(rid)
+        if rec["stage"] == "synth" and rid != "synth_area":
+            return True
+    return False
+
+
+def _run_wrapper(design: str, variant: str, clock_ns: float, target: str, env_knobs: dict[str, str], net: Path | None) -> tuple[int, float]:
     env = os.environ.copy()
     env.update(
         {
             "DESIGN": design,
             "FLOW_VARIANT": variant,
             "SDC_NS": str(clock_ns),
-            "SYNTH_NETLIST_FILES": str(net),
             **env_knobs,
         }
     )
+    if net is not None:
+        env["SYNTH_NETLIST_FILES"] = str(net)
     t0 = time.time()
     proc = subprocess.run(
         ["bash", str(_ROOT / "scripts/run_design_finish.sh"), target],
@@ -117,10 +128,17 @@ def main(argv: list[str] | None = None) -> int:
     if "ABC_SPEED" not in knobs and "ABC_AREA" not in knobs:
         knobs["ABC_AREA"] = str(synth["ABC_AREA"])
         knobs["ABC_SPEED"] = str(synth["ABC_SPEED"])
-    net = _base_netlist(design)
+    net = None if _needs_fresh_synth(rids) else _base_netlist(design)
     base_ns = _base_finish_ns(design, clock)
 
-    print(json.dumps({"start": True, "variant": variant, "title": title, "knobs": knobs, "netlist": str(net)}, indent=2))
+    print(json.dumps({
+        "start": True,
+        "variant": variant,
+        "title": title,
+        "knobs": knobs,
+        "netlist": str(net) if net else None,
+        "fresh_synth": net is None,
+    }, indent=2))
     ec_p, t_p = _run_wrapper(design, variant, clock, "place", knobs, net)
     place_ns = _place_wns(design, variant)
     dec = decide(design=design, place_wns_ns=place_ns, baseline_finish_ns=base_ns)
@@ -133,7 +151,9 @@ def main(argv: list[str] | None = None) -> int:
         "knobs": knobs,
         "policy": dec.to_dict(),
         "transfer_design": True,
+        "fresh_synth": net is None,
     }
+    how = "Fresh Yosys (synth knob)." if net is None else "Official yosys netlist."
     rec_cmd = [
         sys.executable,
         str(_LEARN / "scripts/record_experiment.py"),
@@ -147,13 +167,13 @@ def main(argv: list[str] | None = None) -> int:
         "knob",
         "--clock",
         str(clock),
-        "--netlist",
-        str(net),
         "--extra",
         json.dumps(extra),
         "--notes",
-        f"{title}. Transfer cook. Official yosys netlist. Policy {dec.action}.",
+        f"{title}. Transfer cook. {how} Policy {dec.action}.",
     ]
+    if net is not None:
+        rec_cmd += ["--netlist", str(net)]
 
     if ec_p != 0 or place_ns is None:
         rec_cmd += ["--exit-code", str(ec_p or 1), "--status", "failed", "--runtime-s", str(t_p)]

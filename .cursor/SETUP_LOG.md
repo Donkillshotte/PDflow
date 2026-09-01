@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T21:30Z — Cook the rest of the catalog on spi
+
+J1 only ran 2 of 12 recipes. Remaining on spi (J2): place_sparser,
+cell_pad_plus, aspect_wide, core_tighter, core_looser, repair_setup_margin,
+cts_closer_bufs, synth_hier. synth_area/delay already covered. Cook now
+re-runs Yosys for synth knobs. Util offsets clamp to 5–95.
+
 ## 2026-09-01T21:25Z — J1 transfer on spi: no §5 win
 
 `place_denser` (LB 0.20→0.25): WNS −1.5 ps (tie), area +0.2%, same 22
