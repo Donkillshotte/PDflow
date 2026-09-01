@@ -44,6 +44,9 @@ _FINISH_KEYS = {
     "switching_power_w": "finish__power__switching__total",
     "util": "finish__design__instance__utilization",
     "psm_vdd_drop_v": "finish__design_powergrid__drop__worst__net:VDD__corner:default",
+    "psm_vdd_avg": "finish__design_powergrid__drop__average__net:VDD__corner:default",
+    "psm_vdd_worst_voltage": "finish__design_powergrid__voltage__worst__net:VDD__corner:default",
+    "psm_vss_avg_drop_v": "finish__design_powergrid__drop__average__net:VSS__corner:default",
     "fmax_hz": "finish__timing__fmax",
     "die_um2": "finish__design__die__area",
     "core_um2": "finish__design__core__area",
@@ -70,6 +73,17 @@ def parse_6_report(path: Path | str) -> dict[str, Any]:
             out[name] = d[key]
     out["path"] = str(path)
     out["sha256"] = hash_file(path)
+    # ORFS names VDD drop__average but the value is average voltage (~1.1 V).
+    # Mean IR = VDD_nom − V_avg, with VDD_nom = V_worst + drop_worst.
+    avg = out.get("psm_vdd_avg")
+    worst_v = out.get("psm_vdd_worst_voltage")
+    worst_d = out.get("psm_vdd_drop_v")
+    if avg is not None and worst_v is not None and worst_d is not None:
+        nom = float(worst_v) + float(worst_d)
+        if float(avg) > 0.5:
+            out["psm_vdd_mean_drop_v"] = nom - float(avg)
+        else:
+            out["psm_vdd_mean_drop_v"] = float(avg)
     return out
 
 
@@ -90,6 +104,7 @@ def parse_grt(path: Path | str) -> dict[str, Any]:
     return {
         "grt_wl": d.get("globalroute__global_route__wirelength"),
         "grt_wl_est": d.get("globalroute__route__wirelength__estimated"),
+        "grt_violations": d.get("globalroute__design__violations"),
         "path": str(path),
     }
 

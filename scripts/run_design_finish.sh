@@ -131,6 +131,17 @@ fi
 if [[ -n "${PLACE_DENSITY_LB_ADDON:-}" ]]; then
   MAKE_EXTRA+=( PLACE_DENSITY_LB_ADDON="${PLACE_DENSITY_LB_ADDON}" )
 fi
+# Design-agnostic optional knobs (floorplan / place / repair / CTS / synth).
+# Unset = keep the design's config.mk default. Never applied to locked variants.
+for _knob in \
+  TNS_END_PERCENT SETUP_SLACK_MARGIN HOLD_SLACK_MARGIN \
+  CELL_PAD_IN_SITES_GLOBAL_PLACEMENT CELL_PAD_IN_SITES_DETAIL_PLACEMENT \
+  CORE_ASPECT_RATIO CTS_BUF_DISTANCE GPL_TIMING_DRIVEN SYNTH_HIERARCHICAL
+do
+  if [[ -n "${!_knob:-}" ]]; then
+    MAKE_EXTRA+=( "${_knob}=${!_knob}" )
+  fi
+done
 if [[ -n "${SWAP_ARITH_OPERATORS:-}" ]]; then
   MAKE_EXTRA+=( SWAP_ARITH_OPERATORS="${SWAP_ARITH_OPERATORS}" )
 fi

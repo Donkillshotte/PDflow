@@ -101,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
         "internal_power_w": exp.internal_power_w,
         "switching_power_w": exp.switching_power_w,
         "ir_drop_v": exp.ir_drop_v,
+        "ir_mean_v": exp.ir_mean_v,
+        "cong_wl_per_um2": exp.cong_wl_per_um2,
         "fmax_hz": exp.fmax_hz,
         "setup_violation_count": exp.setup_violation_count,
         "grt_wl": exp.grt_wl,

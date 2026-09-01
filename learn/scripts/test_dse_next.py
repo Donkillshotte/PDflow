@@ -154,6 +154,8 @@ def check_next_level(check, root: Path) -> None:
     check(qa.fidelity == "F6" and qa.area_um2 and qa.area_um2 > 900, "F6 QoR from finish area")
     check(pa.get("psm_vdd_drop_v") is not None, "parse A IR VDD from 6_report")
     check(abs(float(pa["psm_vdd_drop_v"]) - 0.00666716) < 1e-8, f"parse A IR {pa.get('psm_vdd_drop_v')}")
+    check(pa.get("psm_vdd_mean_drop_v") is not None, "parse A mean IR")
+    check(abs(float(pa["psm_vdd_mean_drop_v"]) - 0.00264) < 5e-4, f"parse A mean IR {pa.get('psm_vdd_mean_drop_v')}")
     a_grt = root / "tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/5_1_grt.json"
     check(a_grt.is_file(), "A 5_1_grt.json on disk")
     ga = parse_grt(a_grt)
@@ -482,6 +484,8 @@ def check_next_level(check, root: Path) -> None:
         "H6 pairs are P0 base+ainj only",
     )
 
+    from dse.knob_catalog import RECIPES, resolve, stages
+    from dse.recipe_labels import label_for, synth_method_from_exploration
     from eval_policy import evaluate as eval_policy, render_qor_md, spearman
 
     check(abs((spearman([1.0, 2.0, 3.0], [10.0, 20.0, 30.0]) or 0) - 1.0) < 1e-9, "spearman perfect +1")
@@ -528,9 +532,23 @@ def check_next_level(check, root: Path) -> None:
     qor_md = render_qor_md(eval_policy(log))
     check("Reference flow" in qor_md, "QoR sheet has a Reference flow table")
     check("`camp_toy_base`" in qor_md, "QoR sheet names the reference variant")
-    check("IR mV" in qor_md and "GRT WL" in qor_md, "QoR sheet includes IR and GRT WL")
+    check("IR worst" in qor_md and "GRT WL" in qor_md, "QoR sheet includes IR and GRT WL")
     check("6.67" in qor_md and "7589" in qor_md, f"QoR sheet shows reference IR/WL absolutes")
     check("Side-by-side sheets" in qor_md, "QoR sheet has side-by-side reference columns")
+    check("Ricette" in qor_md, "QoR sheet has a human recipe legend")
+    check("IR mean" in qor_md and "Density" in qor_md, "QoR sheet has mean IR and density")
+
+    win = label_for(type("E", (), {"variant": "camp_gcd_q1_d25u35", "role": "knob", "extra": {}})())
+    check("denso" in win.title.lower() or "buffer" in win.title.lower(), f"win title is readable: {win.title}")
+    check("d25u35" not in win.title, "win title is not the coded variant id")
+    sm = synth_method_from_exploration()
+    check(sm["abc"] == "area" and sm["ABC_SPEED"] == 0, f"explored synth method is ABC area {sm}")
+    check("gcd" not in {r["id"] for r in RECIPES}, "knob catalog ids are not design-specific")
+    check(set(stages()) >= {"synth", "floorplan", "place", "repair", "cts"}, f"catalog covers stages {stages()}")
+    env = resolve("place_denser", {"PLACE_DENSITY_LB_ADDON": 0.20})
+    check(abs(float(env["PLACE_DENSITY_LB_ADDON"]) - 0.25) < 1e-9, f"place_denser is +0.05 from default {env}")
+    src = wrapper.read_text()
+    check("TNS_END_PERCENT" in src and "CORE_ASPECT_RATIO" in src and "CTS_BUF_DISTANCE" in src, "wrapper passes multi-stage knobs")
 
 
 if __name__ == "__main__":

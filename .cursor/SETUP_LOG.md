@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T21:10Z — Named recipes, mean IR/density/congestion, joint catalog
+
+Synthesis method for new challengers is ABC area (not Verilog rewrite).
+Knob catalog is design-agnostic across synth/floorplan/place/repair/CTS.
+qor_compare.md now uses human titles + payoff, plus IR mean, cell density,
+and congestion as WL/core. No new finish from this commit. §5 unchanged.
+
 ## 2026-09-01T21:00Z — QoR table includes IR, GRT WL, and reference flow
 
 `eval_policy` now emits `learn/dse/qor_compare.md`: reference-flow

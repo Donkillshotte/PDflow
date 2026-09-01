@@ -105,9 +105,12 @@ class Experiment:
     switching_power_w: float | None = None
     util: float | None = None
     ir_drop_v: float | None = None
+    ir_mean_v: float | None = None
     fmax_hz: float | None = None
     setup_violation_count: int | None = None
     grt_wl: float | None = None
+    grt_violations: int | None = None
+    cong_wl_per_um2: float | None = None
     core_um2: float | None = None
     repair_buffer: int | None = None
     die_um2: float | None = None
@@ -221,6 +224,7 @@ def fill_from_logs(exp: Experiment, root: Path | None = None) -> Experiment:
         exp.switching_power_w = _f(blob.get("switching_power_w"))
         exp.util = _f(blob.get("util"))
         exp.ir_drop_v = _f(blob.get("psm_vdd_drop_v"))
+        exp.ir_mean_v = _f(blob.get("psm_vdd_mean_drop_v"))
         exp.fmax_hz = _f(blob.get("fmax_hz"))
         svc = blob.get("setup_violation_count")
         exp.setup_violation_count = int(svc) if svc is not None else None
@@ -236,8 +240,12 @@ def fill_from_logs(exp: Experiment, root: Path | None = None) -> Experiment:
     if grt.is_file():
         gblob = parse_grt(grt)
         exp.grt_wl = _f(gblob.get("grt_wl"))
+        gv = gblob.get("grt_violations")
+        exp.grt_violations = int(gv) if gv is not None else None
         exp.extra = dict(exp.extra or {})
         exp.extra["grt_path"] = str(grt)
+    if exp.grt_wl is not None and exp.core_um2 not in (None, 0):
+        exp.cong_wl_per_um2 = float(exp.grt_wl) / float(exp.core_um2)
     if place.is_file():
         pblob = parse_place_dp(place)
         exp.place_wns_ns = _f(pblob.get("place_wns_ns"))
@@ -262,9 +270,9 @@ def enrich_power_from_logs(log: ExperimentLog, *, root: Path | None = None) -> i
     for exp in log.all():
         if exp.status != "done":
             continue
-        before = (exp.power_w, exp.ir_drop_v, exp.grt_wl, exp.fmax_hz)
+        before = (exp.power_w, exp.ir_drop_v, exp.ir_mean_v, exp.grt_wl, exp.cong_wl_per_um2)
         fill_from_logs(exp, root=root)
-        after = (exp.power_w, exp.ir_drop_v, exp.grt_wl, exp.fmax_hz)
+        after = (exp.power_w, exp.ir_drop_v, exp.ir_mean_v, exp.grt_wl, exp.cong_wl_per_um2)
         if after != before:
             n += 1
     if n:

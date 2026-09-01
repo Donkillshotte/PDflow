@@ -24,12 +24,14 @@ if str(_LEARN) not in sys.path:
     sys.path.insert(0, str(_LEARN))
 
 from dse.experiments import Experiment, ExperimentLog, DEFAULT_LOG  # noqa: E402
+from dse.recipe_labels import label_for, synth_method_from_exploration  # noqa: E402
 from eval_campaign import WIN_AREA_FRAC, WIN_WNS_EPS_PS, _beats_base, winner_variant  # noqa: E402
 
 NEXT_PLAN = _LEARN / "dse" / "next_iteration_plan.md"
 OUT_MD = _LEARN / "dse" / "eval_policy.md"
 OUT_JSON = _LEARN / "dse" / "eval_policy.json"
 OUT_QOR = _LEARN / "dse" / "qor_compare.md"
+OUT_SYNTH = _LEARN / "dse" / "synth_method.json"
 
 SPEARMAN_BAR = 0.6
 I5_MIN_N = 8
@@ -455,8 +457,12 @@ def _pct(child: float | None, base: float | None) -> float | None:
 
 
 def _abs_metrics(e: Experiment) -> dict[str, Any]:
+    lab = label_for(e)
     return {
         "variant": e.variant,
+        "title": lab.title,
+        "does": lab.does,
+        "payoff": lab.payoff,
         "wns_ps": None if e.finish_wns_ns is None else float(e.finish_wns_ns) * 1000.0,
         "tns_ns": e.finish_tns_ns,
         "area_um2": e.stdcell_um2,
@@ -466,8 +472,12 @@ def _abs_metrics(e: Experiment) -> dict[str, Any]:
         "internal_mw": None if e.internal_power_w is None else float(e.internal_power_w) * 1000.0,
         "switching_mw": None if e.switching_power_w is None else float(e.switching_power_w) * 1000.0,
         "ir_mv": None if e.ir_drop_v is None else float(e.ir_drop_v) * 1000.0,
+        "ir_mean_mv": None if e.ir_mean_v is None else float(e.ir_mean_v) * 1000.0,
+        "density_pct": None if e.util is None else float(e.util) * 100.0,
         "util": e.util,
         "grt_wl": e.grt_wl,
+        "cong_wl_per_um2": e.cong_wl_per_um2,
+        "grt_violations": e.grt_violations,
         "fmax_mhz": None if e.fmax_hz is None else float(e.fmax_hz) / 1e6,
         "setup_viol": e.setup_violation_count,
         "die_um2": e.die_um2,
@@ -504,7 +514,10 @@ def _qor_vs_base(exps: list[Experiment]) -> dict[str, Any]:
             "d_power_pct": _pct(e.power_w, base.power_w),
             "d_leak_pct": _pct(e.leakage_w, base.leakage_w),
             "d_ir_pct": _pct(e.ir_drop_v, base.ir_drop_v),
+            "d_ir_mean_pct": _pct(e.ir_mean_v, base.ir_mean_v),
             "d_wl_pct": _pct(e.grt_wl, base.grt_wl),
+            "d_cong_pct": _pct(e.cong_wl_per_um2, base.cong_wl_per_um2),
+            "d_density_pct": _pct(e.util, base.util),
         })
     n_ir = sum(1 for r in rows if r["base"]["ir_mv"] is not None)
     n_wl = sum(1 for r in rows if r["base"]["grt_wl"] is not None)
@@ -542,6 +555,7 @@ def evaluate(log: ExperimentLog) -> dict[str, Any]:
         "I5_proxy_correlation": _i5(exps),
         "gate_diagnostics": _gate(exps),
         "QoR_vs_base": _qor_vs_base(exps),
+        "synth_method": synth_method_from_exploration(),
     }
 
 
@@ -571,10 +585,21 @@ def _metric_cells(m: dict[str, Any]) -> list[str]:
         _n(m.get("power_mw"), 3),
         _n(m.get("leak_uw"), 2),
         _n(m.get("ir_mv"), 2),
+        _n(m.get("ir_mean_mv"), 2),
+        _n(m.get("density_pct"), 1),
+        _n(m.get("cong_wl_per_um2"), 2),
         _ni(m.get("grt_wl")),
         _n(m.get("fmax_mhz"), 1),
         _ni(m.get("setup_viol")),
     ]
+
+
+def _flow_name(m: dict[str, Any]) -> str:
+    title = m.get("title") or m.get("variant") or ""
+    variant = m.get("variant") or ""
+    if title and variant and title != variant:
+        return f"{title} (`{variant}`)"
+    return f"`{variant}`" if variant else title
 
 
 def render_qor_tables(block: dict[str, Any]) -> list[str]:
@@ -582,23 +607,41 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
     refs = list(block.get("references") or [])
     rows = list(block.get("rows") or [])
     lines = [
-        "Absolute numbers for the ORFS `base` (or historical `flowlab`) reference "
-        "are in the first table and as the first row of each design@clock group. "
-        "IR is worst VDD drop from `6_report` (mV). WL is GRT wirelength from "
-        "`5_1_grt.json` — these ORFS logs have no overflow fraction, only WL "
-        "(congestion_*_s keys are runtimes).",
+        "I nomi in tabella dicono **cosa fa** la ricetta e (nella § Ricette) "
+        "qual è il vantaggio o lo svantaggio. L'id `camp_*` resta solo il path ORFS.",
         "",
-        "§5 win stays WNS / WNS+area / first-to-close. IR and WL are extra axes.",
+        "IR worst = drop VDD massimo. **IR mean** = drop medio sul die "
+        "(VDD_nom − V_avg; la chiave ORFS `drop__average` su VDD è in realtà una tensione). "
+        "**Density** = utilizzazione stdcell sul core. **Congestion** = GRT WL / area core "
+        "(i JSON non hanno overflow fraction; `congestion_*_s` sono runtime).",
+        "",
+        "§5 win resta WNS / WNS+area / first-to-close. IR/density/congestion sono assi extra.",
+        "",
+        "### Ricette (cosa fanno, che vantaggio hanno)",
+        "",
+        "| Ricetta | Cosa fa | Vantaggio / esito |",
+        "|---|---|---|",
+    ]
+    seen: set[str] = set()
+    for src in list(refs) + [r.get("cand") or r for r in rows]:
+        key = src.get("variant")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        lines.append(
+            f"| {_flow_name(src)} | {src.get('does') or '—'} | {src.get('payoff') or '—'} |"
+        )
+    lines.extend([
         "",
         "### Reference flow (absolute, one row per design@clock)",
         "",
-        "| Design | Clock ns | Reference variant | WNS ps | TNS ns | Area µm² | "
-        "Power mW | Leak µW | IR mV | GRT WL | fmax MHz | setup viol |",
-        "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
-    ]
+        "| Design | Clock ns | Ricetta | WNS ps | TNS ns | Area µm² | "
+        "Power mW | Leak µW | IR worst | IR mean | Density % | Cong. WL/core | GRT WL | fmax MHz | setup viol |",
+        "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ])
     for r in refs:
         lines.append(
-            f"| {r['design']} | {_n(r.get('clock_ns'), 3)} | `{r['variant']}` | "
+            f"| {r['design']} | {_n(r.get('clock_ns'), 3)} | {_flow_name(r)} | "
             + " | ".join(_metric_cells(r))
             + " |"
         )
@@ -606,9 +649,9 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "",
         "### All flows (reference + challengers, absolute values)",
         "",
-        "| Design | Clock ns | Flow | Role | §5 | WNS ps | TNS ns | Area µm² | "
-        "Power mW | Leak µW | IR mV | GRT WL | fmax MHz | setup viol |",
-        "|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Design | Clock ns | Ricetta | Role | §5 | WNS ps | TNS ns | Area µm² | "
+        "Power mW | Leak µW | IR worst | IR mean | Density % | Cong. | GRT WL | fmax | setup |",
+        "|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
     by_slot: dict[tuple[str, float], list[dict]] = {}
     for r in rows:
@@ -616,14 +659,14 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
     for ref in refs:
         key = (ref["design"], float(ref["clock_ns"]))
         lines.append(
-            f"| {ref['design']} | {_n(ref.get('clock_ns'), 3)} | `{ref['variant']}` | "
+            f"| {ref['design']} | {_n(ref.get('clock_ns'), 3)} | {_flow_name(ref)} | "
             f"reference | — | " + " | ".join(_metric_cells(ref)) + " |"
         )
         slot = by_slot.get(key) or []
         slot = sorted(slot, key=lambda x: (0 if x["section5"] == "win" else 1, x["variant"]))
         for r in slot:
             lines.append(
-                f"| {r['design']} | {_n(r.get('clock_ns'), 3)} | `{r['variant']}` | "
+                f"| {r['design']} | {_n(r.get('clock_ns'), 3)} | {_flow_name(r.get('cand') or r)} | "
                 f"challenger | {r['section5']} | " + " | ".join(_metric_cells(r["cand"])) + " |"
             )
     lines.extend([
@@ -633,19 +676,17 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "ΔWNS = cand − reference (ps; + better). Percent columns = "
         "100·(cand−reference)/reference (− better for area/power/leak/IR/WL).",
         "",
-        "| Design | Clock | Variant | §5 | ΔWNS ps | Δarea % | Δpower % | Δleak % | "
-        "ΔIR % | ΔWL % | P cand | P ref | IR cand | IR ref | WL cand | WL ref |",
-        "|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Design | Clock | Ricetta | §5 | ΔWNS | Δarea % | Δpower % | Δleak % | "
+        "ΔIR worst % | ΔIR mean % | ΔWL % | Δcong % | Δdens % |",
+        "|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
     for r in rows:
         b, c = r.get("base") or {}, r.get("cand") or {}
         lines.append(
-            f"| {r['design']} | {_n(r.get('clock_ns'), 3)} | `{r['variant']}` | {r['section5']} | "
+            f"| {r['design']} | {_n(r.get('clock_ns'), 3)} | {_flow_name(c or r)} | {r['section5']} | "
             f"{_n(r.get('d_wns_ps'))} | {_n(r.get('d_area_pct'))} | {_n(r.get('d_power_pct'))} | "
-            f"{_n(r.get('d_leak_pct'))} | {_n(r.get('d_ir_pct'))} | {_n(r.get('d_wl_pct'))} | "
-            f"{_n(c.get('power_mw'), 3)} | {_n(b.get('power_mw'), 3)} | "
-            f"{_n(c.get('ir_mv'), 2)} | {_n(b.get('ir_mv'), 2)} | "
-            f"{_ni(c.get('grt_wl'))} | {_ni(b.get('grt_wl'))} |"
+            f"{_n(r.get('d_leak_pct'))} | {_n(r.get('d_ir_pct'))} | {_n(r.get('d_ir_mean_pct'))} | "
+            f"{_n(r.get('d_wl_pct'))} | {_n(r.get('d_cong_pct'))} | {_n(r.get('d_density_pct'))} |"
         )
     lines.extend([
         "",
@@ -658,7 +699,10 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         ("stdcell area (µm²)", "area_um2", 1, False),
         ("total power (mW)", "power_mw", 3, False),
         ("leakage (µW)", "leak_uw", 2, False),
-        ("IR drop VDD (mV)", "ir_mv", 2, False),
+        ("IR worst VDD (mV)", "ir_mv", 2, False),
+        ("IR mean VDD (mV)", "ir_mean_mv", 2, False),
+        ("cell density (%)", "density_pct", 1, False),
+        ("congestion WL/core", "cong_wl_per_um2", 2, False),
         ("GRT wirelength", "grt_wl", 0, True),
         ("fmax (MHz)", "fmax_mhz", 1, False),
         ("setup violations", "setup_viol", 0, True),
@@ -672,8 +716,13 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         for i in range(0, len(slot), 4):
             chunks.append(slot[i : i + 4])
         for ci, chunk in enumerate(chunks):
-            variants = [ref["variant"]] + [r["variant"] for r in chunk]
-            title = f"#### {ref['design']} @ {_n(ref.get('clock_ns'), 3)} ns — reference `{ref['variant']}`"
+            variants = [ref.get("title") or ref["variant"]] + [
+                (r.get("cand") or {}).get("title") or r["variant"] for r in chunk
+            ]
+            title = (
+                f"#### {ref['design']} @ {_n(ref.get('clock_ns'), 3)} ns — "
+                f"reference: {ref.get('title') or ref['variant']}"
+            )
             if len(chunks) > 1:
                 title += f" ({ci + 1}/{len(chunks)})"
             lines.append(title)
@@ -724,10 +773,19 @@ def render_md(payload: dict[str, Any]) -> str:
         "I5_proxy_correlation",
         "gate_diagnostics",
         "QoR_vs_base",
+        "synth_method",
     ):
         block = payload[key]
         lines.append(f"## {key}")
         lines.append("")
+        if key == "synth_method":
+            lines.append(f"**Metodo di sintesi (nuovi challenger):** ABC `{block.get('abc')}` — {block.get('why')}")
+            lines.append("")
+            lines.append("```json")
+            lines.append(json.dumps(block, indent=2))
+            lines.append("```")
+            lines.append("")
+            continue
         lines.append(f"**Verdict:** {block.get('verdict')}")
         lines.append("")
         if key == "QoR_vs_base":
@@ -748,12 +806,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out-md", type=Path, default=OUT_MD)
     p.add_argument("--out-json", type=Path, default=OUT_JSON)
     p.add_argument("--out-qor", type=Path, default=OUT_QOR)
+    p.add_argument("--out-synth", type=Path, default=OUT_SYNTH)
     args = p.parse_args(argv)
     payload = evaluate(ExperimentLog(args.jsonl))
     args.out_json.parent.mkdir(parents=True, exist_ok=True)
     args.out_json.write_text(json.dumps(payload, indent=2, default=str) + "\n")
     args.out_md.write_text(render_md(payload))
     args.out_qor.write_text(render_qor_md(payload))
+    args.out_synth.write_text(json.dumps(payload["synth_method"], indent=2) + "\n")
     summary = {
         "n_experiments": payload["n_experiments"],
         "n_done": payload["n_done"],
@@ -769,8 +829,9 @@ def main(argv: list[str] | None = None) -> int:
         "QoR_vs_base",
     ):
         summary[k] = payload[k].get("verdict")
+    summary["synth_method"] = payload["synth_method"].get("abc")
     print(json.dumps(summary, indent=2))
-    print(f"wrote {args.out_md} {args.out_json} {args.out_qor}", file=sys.stderr)
+    print(f"wrote {args.out_md} {args.out_json} {args.out_qor} {args.out_synth}", file=sys.stderr)
     return 0
 
 

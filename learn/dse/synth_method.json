@@ -1,0 +1,20 @@
+{
+  "abc": "area",
+  "ABC_AREA": 1,
+  "ABC_SPEED": 0,
+  "apply_to": "new challenger variants only",
+  "never_apply_to": [
+    "role=base",
+    "FLOW_VARIANT=flowlab",
+    "FLOW_VARIANT=learn"
+  ],
+  "avoid_as_default": [
+    "abc_speed",
+    "dse_rtl_rewrite"
+  ],
+  "why": "Q1\u2013Q4: 4 win \u00a75 sulla netlist ufficiale (ABC area) + knob fisici. ABC delay e i rewrite DSE non hanno mai vinto \u00a75 (H1: il proxy inverte).",
+  "next_synth_axes": [
+    "SYNTH_HIERARCHICAL",
+    "TNS_END_PERCENT after map"
+  ]
+}

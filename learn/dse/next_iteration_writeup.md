@@ -103,3 +103,13 @@ reference flow** + challenger + Δ: `learn/dse/qor_compare.md`.
 
 Su ibex il win slack è anche un calo IR/WL; power resta ~iso. §5 non
 usa IR/WL. 12 reference slot, 29 challenger, tutti con IR e GRT WL.
+
+## Direzione successiva (non design-based)
+
+Non si aggiorna il Verilog. Si aggiorna il **metodo di sintesi** dei
+nuovi challenger: ABC area (`learn/dse/synth_method.json`), perché i win
+sono tutti sulla netlist ufficiale. Catalogo knob design-agnostic
+(synth / floorplan / place / repair / CTS): `learn/dse/knob_catalog.py`.
+Nomi leggibili (cosa fa + vantaggio) in `qor_compare.md` § Ricette.
+Piano: `learn/dse/joint_recipe_plan.md`. Metriche extra: IR mean, cell
+density, congestion = WL/core.
