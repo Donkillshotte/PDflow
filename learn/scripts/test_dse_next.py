@@ -9,7 +9,7 @@ from dse.arch_plugins import classify, plugin
 from dse.campaign import f6_hv_points, gated_hv_f6, run_campaign, suggest_ref
 from dse.contracts import ConstraintContract, GeometryContract, SemanticContract, stamp_evidence
 from dse.exporter import mark_export
-    from dse.f6_finish import ingest_finish, parse_6_report, parse_grt, qor_from_finish, refuse_locked_variant
+from dse.f6_finish import ingest_finish, parse_6_report, parse_grt, qor_from_finish, refuse_locked_variant
 from dse.feasibility import constraint_dominates, feasibility_of, feasible_pareto, ir_comparable
 from dse.fingerprint import knobs_fp
 from dse.funnel import promote_or_reject

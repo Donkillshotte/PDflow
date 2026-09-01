@@ -95,3 +95,11 @@ IR (worst VDD drop) e GRT wirelength sono assi extra letti da
 `6_report` / `5_1_grt.json`. Non c'è overflow fraction in questi JSON
 ORFS (`congestion_*_s` sono runtime). Tabella con **valori assoluti del
 reference flow** + challenger + Δ: `learn/dse/qor_compare.md`.
+
+| Variant | §5 | IR ref → cand | ΔIR | GRT WL ref → cand | ΔWL |
+|---|---|---|---:|---|---:|
+| gcd `d25u35` | win | 6.67 → 6.15 mV | **−7.7%** | 7589 → 6971 | **−8.1%** |
+| ibex `d20u60` | win | 123.8 → 86.2 mV | **−30.3%** | 438851 → 420930 | **−4.1%** |
+
+Su ibex il win slack è anche un calo IR/WL; power resta ~iso. §5 non
+usa IR/WL. 12 reference slot, 29 challenger, tutti con IR e GRT WL.

@@ -665,7 +665,7 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
     ]
     for ref in refs:
         key = (ref["design"], float(ref["clock_ns"]))
-        slot = by_slot.get(key) or []
+        slot = sorted(by_slot.get(key) or [], key=lambda x: (0 if x["section5"] == "win" else 1, x["variant"]))
         if not slot:
             continue
         chunks: list[list[dict]] = []
