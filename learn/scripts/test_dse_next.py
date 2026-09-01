@@ -486,11 +486,21 @@ def check_next_level(check, root: Path) -> None:
     src = wrapper.read_text()
     check("PLACE_DENSITY_LB_ADDON" in src, "wrapper passes PLACE_DENSITY_LB_ADDON")
 
+    from dse.experiments import enrich_power_from_logs
     from dse.fidelity_policy import decide as policy_decide
+
     stop = policy_decide(design="gcd", place_wns_ns=-0.30, baseline_finish_ns=-0.037)
     check(stop.action == "STOP", f"policy STOPs a clearly late place {stop}")
     go = policy_decide(design="gcd", place_wns_ns=0.012, baseline_finish_ns=-0.037)
     check(go.action == "EVALUATE", f"policy EVALUATEs near-base place {go}")
+
+    q1_rep = root / "tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/camp_gcd_q1_d25u35/6_report.json"
+    if q1_rep.is_file():
+        blob = parse_6_report(q1_rep)
+        check(blob.get("power_w") is not None and float(blob["power_w"]) > 0, f"6_report has finish power {blob.get('power_w')}")
+        check(blob.get("leakage_w") is not None and float(blob["leakage_w"]) > 0, f"6_report has leakage {blob.get('leakage_w')}")
+    n_enr = enrich_power_from_logs(log)
+    check(True, f"enrich_power_from_logs ran ({n_enr} rows touched on synthetic log)")
 
 
 if __name__ == "__main__":

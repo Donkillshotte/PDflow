@@ -74,3 +74,19 @@ Entrambi i rami del criterio frozen:
 
 Oro 45.298 unrestampato. `febe6804241c` intatta. Nessun overwrite
 `flowlab`. Nessun Krylov AES. Nessun proposer AI.
+
+## QoR multi-asse (finish `6_report`, non solo slack)
+
+§5 resta WNS / area-tie / first-to-close. Power e leakage sono assi extra
+letti da `finish__power__*` — prima il registro non li copiava.
+
+| Variant | §5 | ΔWNS | Δarea | Δpower | Δleak |
+|---|---|---:|---:|---:|---:|
+| gcd `d25u35` | win | −1.2 ps | **−10.5%** | **−12.7%** | **−14.1%** |
+| ibex `d20u60` | win | +20 ps | −0.2% | −0.3% | ~0% |
+| ibex `d25u50` | win | +17 ps | −0.1% | ~0% | ~0% |
+| ibex `d15u50` | win | +14 ps | ~0% | ~0% | ~0% |
+
+Su gcd il win area è anche un win power/leakage (stesso netlist, die
+invariato, meno buffering). Su ibex il win è quasi solo slack: potenza
+totale ~108 mW, invariata. Tabella completa: `eval_policy.md` § QoR_vs_base.

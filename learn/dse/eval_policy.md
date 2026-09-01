@@ -4,6 +4,7 @@ Plan sha: `cf02fb91ed5b757ba057354b2f53cb18a75586e7cf7ccf895369767436f76c98`
 Experiments: 58 (49 done)
 
 Win criteria and I1–I5 bars are **frozen**. This script does not retune them.
+§5 win stays WNS / area-tie / first-to-close. Power and leakage are extra axes.
 
 ## I1_physical_knobs
 
@@ -329,4 +330,40 @@ Win criteria and I1–I5 bars are **frozen**. This script does not retune them.
   "verdict": "gate FP=16 FN=0 precision=0.200 (4 product-wins among 29 challengers)"
 }
 ```
+
+## QoR_vs_base
+
+**Verdict:** QoR vs base: 29 challengers, 29 with finish power, 4 §5 wins (WNS/area bars unchanged)
+
+| Variant | §5 | ΔWNS ps | Δarea % | Δpower % | Δleak % | P cand mW | P base mW |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `camp_gcd_dse_small` | lose | -301.13 | -35.13 | -38.26 | -43.36 | 2.428 | 3.932 |
+| `camp_gcd_dse_fast` | lose | -149.72 | 2.46 | 40.56 | -2.42 | 5.527 | 3.932 |
+| `camp_gcd_dse_fixedb` | lose | -312.32 | -32.42 | -35.43 | -40.94 | 2.539 | 3.932 |
+| `camp_gcd_clk040_b` | lose | -303.84 | -30.48 | -31.10 | -35.91 | 2.903 | 4.213 |
+| `camp_gcd_clk040_c` | lose | -149.00 | 1.20 | 44.81 | -0.18 | 6.101 | 4.213 |
+| `camp_gcd_clk055_b` | lose | -264.54 | -12.29 | -8.00 | -13.14 | 2.033 | 2.210 |
+| `camp_gcd_clk055_c` | lose | -122.61 | 14.78 | 71.23 | 17.42 | 3.783 | 2.210 |
+| `camp_gcd_clk070_b` | lose | -256.48 | -14.61 | -10.03 | -14.41 | 1.534 | 1.705 |
+| `camp_gcd_clk070_c` | lose | -124.89 | 2.88 | 45.86 | 1.01 | 2.486 | 1.705 |
+| `camp_gcd_clk090_b` | lose | -284.37 | -24.07 | -22.18 | -27.24 | 1.039 | 1.335 |
+| `camp_gcd_clk090_c` | lose | -167.44 | -0.93 | 36.36 | -5.05 | 1.820 | 1.335 |
+| `camp_spi_abcspeed` | lose | -11.43 | -0.70 | 3.93 | 9.05 | 0.313 | 0.301 |
+| `camp_ibex_abcspeed` | tie | -2.02 | -0.52 | -15.81 | -6.95 | 90.815 | 107.868 |
+| `camp_ibex_clk198_s` | lose | -37.97 | 7.04 | -2.20 | 4.65 | 117.855 | 120.508 |
+| `camp_ibex_clk275_s` | lose | -118.73 | -2.09 | -18.32 | -9.35 | 70.620 | 86.457 |
+| `camp_ibex_clk352_s` | lose | -209.54 | -2.12 | -18.41 | -9.39 | 55.188 | 67.642 |
+| `camp_gcd_q1_d15u25` | lose | -7.24 | -7.02 | -7.67 | -10.40 | 3.631 | 3.932 |
+| `camp_gcd_q1_d15u35` | lose | -6.53 | 4.36 | 1.60 | 6.40 | 3.995 | 3.932 |
+| `camp_gcd_q1_d15u45` | tie | 1.19 | -8.35 | -11.48 | -10.36 | 3.481 | 3.932 |
+| `camp_gcd_q1_d20u25` | tie | 0.89 | 1.33 | -1.84 | 0.96 | 3.860 | 3.932 |
+| `camp_gcd_q1_d20u45` | tie | -0.51 | 1.73 | 2.11 | 1.60 | 4.016 | 3.932 |
+| `camp_gcd_q1_d25u25` | tie | -4.62 | -8.43 | -9.94 | -12.03 | 3.542 | 3.932 |
+| `camp_gcd_q1_d25u35` | win | -1.23 | -10.50 | -12.67 | -14.11 | 3.434 | 3.932 |
+| `camp_gcd_q1_d25u45` | tie | -0.94 | -8.46 | -9.86 | -11.14 | 3.545 | 3.932 |
+| `camp_ibex_q1_d15u50` | win | 13.81 | 0.04 | 0.05 | 0.03 | 107.922 | 107.868 |
+| `camp_ibex_q1_d25u50` | win | 17.48 | -0.08 | -0.49 | -0.10 | 107.344 | 107.868 |
+| `camp_ibex_q1_d20u40` | lose | -6.30 | 0.14 | 0.22 | 0.08 | 108.105 | 107.868 |
+| `camp_ibex_q1_d20u60` | win | 19.94 | -0.16 | -0.34 | -0.02 | 107.499 | 107.868 |
+| `camp_gcd_q4_d25u35_c055` | tie | -0.34 | 0.15 | 0.35 | 0.26 | 2.217 | 2.210 |
 

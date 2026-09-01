@@ -24,7 +24,7 @@ if str(_LEARN) not in sys.path:
     sys.path.insert(0, str(_LEARN))
 
 from dse.experiments import Experiment, ExperimentLog, DEFAULT_LOG  # noqa: E402
-from eval_campaign import WIN_AREA_FRAC, WIN_WNS_EPS_PS, _beats_base  # noqa: E402
+from eval_campaign import WIN_AREA_FRAC, WIN_WNS_EPS_PS, _beats_base, winner_variant  # noqa: E402
 
 NEXT_PLAN = _LEARN / "dse" / "next_iteration_plan.md"
 OUT_MD = _LEARN / "dse" / "eval_policy.md"
@@ -447,6 +447,59 @@ def _i4(exps: list[Experiment]) -> dict[str, Any]:
     }
 
 
+def _pct(child: float | None, base: float | None) -> float | None:
+    if child is None or base is None or abs(float(base)) < 1e-18:
+        return None
+    return (float(child) - float(base)) / float(base) * 100.0
+
+
+def _qor_vs_base(exps: list[Experiment]) -> dict[str, Any]:
+    """Multi-axis delta vs same-clock base. Does not retune §5."""
+    bases = _bases(exps)
+    rows = []
+    for e in _labeled(exps):
+        base = bases.get((e.design, _clk(e)))
+        if base is None or e.variant == base.variant:
+            continue
+        if e.power_w is None and e.stdcell_um2 is None:
+            continue
+        win = winner_variant(e, base)
+        rows.append({
+            "variant": e.variant,
+            "design": e.design,
+            "clock_ns": e.clock_ns,
+            "phase": e.phase,
+            "section5": "win" if win == e.variant else ("tie" if win == "tie" else "lose"),
+            "d_wns_ps": None if e.finish_wns_ns is None or base.finish_wns_ns is None
+            else (float(e.finish_wns_ns) - float(base.finish_wns_ns)) * 1000.0,
+            "d_tns_ns": None if e.finish_tns_ns is None or base.finish_tns_ns is None
+            else float(e.finish_tns_ns) - float(base.finish_tns_ns),
+            "d_area_pct": _pct(e.stdcell_um2, base.stdcell_um2),
+            "d_power_pct": _pct(e.power_w, base.power_w),
+            "d_leak_pct": _pct(e.leakage_w, base.leakage_w),
+            "d_internal_pct": _pct(e.internal_power_w, base.internal_power_w),
+            "d_switching_pct": _pct(e.switching_power_w, base.switching_power_w),
+            "cand_area_um2": e.stdcell_um2,
+            "base_area_um2": base.stdcell_um2,
+            "cand_power_mw": None if e.power_w is None else float(e.power_w) * 1000.0,
+            "base_power_mw": None if base.power_w is None else float(base.power_w) * 1000.0,
+            "cand_leak_uw": None if e.leakage_w is None else float(e.leakage_w) * 1e6,
+            "base_leak_uw": None if base.leakage_w is None else float(base.leakage_w) * 1e6,
+        })
+    n_power = sum(1 for r in rows if r["d_power_pct"] is not None)
+    wins = [r for r in rows if r["section5"] == "win"]
+    return {
+        "n_compared": len(rows),
+        "n_with_power": n_power,
+        "n_section5_wins": len(wins),
+        "rows": rows,
+        "verdict": (
+            f"QoR vs base: {len(rows)} challengers, {n_power} with finish power, "
+            f"{len(wins)} §5 wins (WNS/area bars unchanged)"
+        ),
+    }
+
+
 def evaluate(log: ExperimentLog) -> dict[str, Any]:
     exps = log.all()
     return {
@@ -464,6 +517,7 @@ def evaluate(log: ExperimentLog) -> dict[str, Any]:
         "I4_area_regime": _i4(exps),
         "I5_proxy_correlation": _i5(exps),
         "gate_diagnostics": _gate(exps),
+        "QoR_vs_base": _qor_vs_base(exps),
     }
 
 
@@ -475,6 +529,7 @@ def render_md(payload: dict[str, Any]) -> str:
         f"Experiments: {payload['n_experiments']} ({payload['n_done']} done)",
         "",
         "Win criteria and I1–I5 bars are **frozen**. This script does not retune them.",
+        "§5 win stays WNS / area-tie / first-to-close. Power and leakage are extra axes.",
         "",
     ]
     for key in (
@@ -484,12 +539,26 @@ def render_md(payload: dict[str, Any]) -> str:
         "I4_area_regime",
         "I5_proxy_correlation",
         "gate_diagnostics",
+        "QoR_vs_base",
     ):
         block = payload[key]
         lines.append(f"## {key}")
         lines.append("")
         lines.append(f"**Verdict:** {block.get('verdict')}")
         lines.append("")
+        if key == "QoR_vs_base":
+            lines.append("| Variant | §5 | ΔWNS ps | Δarea % | Δpower % | Δleak % | P cand mW | P base mW |")
+            lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
+            for r in block.get("rows") or []:
+                def _n(v, nd=2):
+                    return "—" if v is None else f"{float(v):.{nd}f}"
+                lines.append(
+                    f"| `{r['variant']}` | {r['section5']} | {_n(r['d_wns_ps'])} | "
+                    f"{_n(r['d_area_pct'])} | {_n(r['d_power_pct'])} | {_n(r['d_leak_pct'])} | "
+                    f"{_n(r['cand_power_mw'], 3)} | {_n(r['base_power_mw'], 3)} |"
+                )
+            lines.append("")
+            continue
         lines.append("```json")
         dumped = json.dumps(block, indent=2, default=str)
         lines.append(dumped if len(dumped) < 4000 else dumped[:4000] + "\n…")
@@ -520,6 +589,7 @@ def main(argv: list[str] | None = None) -> int:
         "I4_area_regime",
         "I5_proxy_correlation",
         "gate_diagnostics",
+        "QoR_vs_base",
     ):
         summary[k] = payload[k].get("verdict")
     print(json.dumps(summary, indent=2))

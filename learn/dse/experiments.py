@@ -99,6 +99,11 @@ class Experiment:
     place_wns_ns: float | None = None
     stdcell_um2: float | None = None
     stdcell_count: int | None = None
+    power_w: float | None = None
+    leakage_w: float | None = None
+    internal_power_w: float | None = None
+    switching_power_w: float | None = None
+    util: float | None = None
     repair_buffer: int | None = None
     die_um2: float | None = None
     errors: int | None = None
@@ -174,6 +179,14 @@ class ExperimentLog:
             fh.write(json.dumps(exp.to_dict(), sort_keys=True) + "\n")
         return exp
 
+    def rewrite(self) -> None:
+        """Rewrite the JSONL from memory. Used only for schema enrichment."""
+        tmp = self.path.with_suffix(self.path.suffix + ".tmp")
+        with tmp.open("w") as fh:
+            for exp in self._rows:
+                fh.write(json.dumps(exp.to_dict(), sort_keys=True) + "\n")
+        tmp.replace(self.path)
+
 
 def new_id() -> str:
     return uuid.uuid4().hex[:12]
@@ -197,6 +210,11 @@ def fill_from_logs(exp: Experiment, root: Path | None = None) -> Experiment:
         exp.stdcell_um2 = _f(blob.get("stdcell_um2"))
         n = blob.get("stdcell_count")
         exp.stdcell_count = int(n) if n is not None else None
+        exp.power_w = _f(blob.get("power_w"))
+        exp.leakage_w = _f(blob.get("leakage_w"))
+        exp.internal_power_w = _f(blob.get("internal_power_w"))
+        exp.switching_power_w = _f(blob.get("switching_power_w"))
+        exp.util = _f(blob.get("util"))
         rb = blob.get("repair_buffer")
         exp.repair_buffer = int(rb) if rb is not None else None
         exp.die_um2 = _f(blob.get("die_um2"))
@@ -220,6 +238,21 @@ def _f(v: Any) -> float | None:
     if v is None:
         return None
     return float(v)
+
+
+def enrich_power_from_logs(log: ExperimentLog, *, root: Path | None = None) -> int:
+    """Fill power/leakage on existing rows from on-disk 6_report. No make."""
+    n = 0
+    for exp in log.all():
+        if exp.status != "done":
+            continue
+        before = exp.power_w
+        fill_from_logs(exp, root=root)
+        if exp.power_w is not None and before != exp.power_w:
+            n += 1
+        elif exp.power_w is not None and before is None:
+            n += 1
+    return n
 
 
 def seed_gcd_bakeoff(log: ExperimentLog | None = None, *, root: Path | None = None) -> list[str]:
