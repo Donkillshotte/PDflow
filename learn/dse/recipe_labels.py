@@ -194,6 +194,36 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "Buffer di clock ogni 80 µm.",
         "Su ibex: slack +4 ps. Non basta per un win. Pareggio.",
     ),
+    "camp_aes_synth_delay": RecipeLabel(
+        "Sintesi ABC delay",
+        "Yosys + script ABC speed. Stesso RTL, altro mapping.",
+        "Su aes: identico al default (il config ufficiale è già ABC speed). No-op.",
+    ),
+    "camp_aes_synth_hier": RecipeLabel(
+        "Sintesi gerarchica",
+        "Yosys senza flatten prima di ABC.",
+        "Su aes: perde. IR +16%. Slack ~iso.",
+    ),
+    "camp_aes_place_sparser": RecipeLabel(
+        "Place più sparso",
+        "Density addon −0.05. Die bloccato dal config.",
+        "Su aes: win. IR −13%. Slack −0.9 ps (dentro 5 ps).",
+    ),
+    "camp_aes_cell_pad_plus": RecipeLabel(
+        "Padding celle +1 site",
+        "Un site di spazio extra tra le celle. Die bloccato.",
+        "Su aes: perde. Slack −21 ps. IR meglio non basta.",
+    ),
+    "camp_aes_repair_half_tns": RecipeLabel(
+        "Repair TNS a metà",
+        "TNS_END_PERCENT 100→50. Die bloccato.",
+        "Su aes: perde. Slack −16 ps.",
+    ),
+    "camp_aes_cts_closer_bufs": RecipeLabel(
+        "Buffer di clock più fitti",
+        "Buffer di clock ogni 80 µm. Die bloccato.",
+        "Su aes: win. Slack +8 ps. Area/potenza/IR ~iso.",
+    ),
 }
 
 
