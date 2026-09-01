@@ -1,0 +1,20 @@
+{
+  "kind": "campaign_freeze",
+  "id": "5a96221720f1",
+  "phase": "P0",
+  "design": "spi",
+  "variant": "camp_spi_base",
+  "role": "base",
+  "status": "done",
+  "clock_ns": 1.0,
+  "sha256_6_report": "b8826a8ee5356ac02056939f64d45349f4f138644f6583ee0c552ac37f2c5656",
+  "finish_wns_ns": 0.612234,
+  "finish_tns_ns": 0.0,
+  "place_wns_ns": 0.582121,
+  "stdcell_um2": 267.596,
+  "stdcell_count": 238,
+  "repair_buffer": 22,
+  "die_um2": 3091.36,
+  "place_promoted": true,
+  "notes": "P0 spi base. util=8 after PDN-0185 at util=40. 139 synth inst."
+}
