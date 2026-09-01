@@ -77,6 +77,26 @@ def main() -> int:
           "artifacts/attr/pred stay distinct")
     mem2 = DesignMemory(tmp)
     check(mem2.get("c1").delta.get("dynamic_ir_mv") == -2.0, "delta survives JSONL reload")
+    pd = QoR(
+        area_um2=409.108,
+        n_cells=248,
+        wns_cost=0.52,
+        tns_cost=2.1,
+        power_w=1.2e-4,
+        leakage_w=9e-7,
+        internal_power_w=1e-4,
+        switching_power_w=2e-5,
+        hpwl_um=1234.5,
+        fidelity="F3",
+    )
+    mem.add(_cand(id="pd1", level="logic", fidelity="F3", qor=pd, knobs={"source": "f3_opensta_ideal"}))
+    mem_pd = DesignMemory(tmp)
+    r = mem_pd.get("pd1").qor
+    check(
+        r.leakage_w == 9e-7 and r.tns_cost == 2.1 and r.hpwl_um == 1234.5,
+        f"PD QoR survives JSONL, got leak={r.leakage_w} tns={r.tns_cost} hpwl={r.hpwl_um}",
+    )
+    check(r.internal_power_w == 1e-4 and r.n_cells == 248, "internal/stdcell observation survives JSONL")
     # old row without delta
     raw = json.dumps({
         "id": "legacy",

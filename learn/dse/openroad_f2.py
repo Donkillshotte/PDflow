@@ -20,6 +20,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from .sta_f3 import parse_sta_power
+
 REPO = Path(__file__).resolve().parents[1].parent
 PLATFORM = REPO / "tools/OpenROAD-flow-scripts/flow/platforms/nangate45"
 TECH_LEF = PLATFORM / "lef/NangateOpenCellLibrary.tech.lef"
@@ -38,10 +40,6 @@ TAP_MASTER = "TAPCELL_X1"
 
 _WNS = re.compile(r"wns max\s+(-?[0-9.]+)")
 _TNS = re.compile(r"tns max\s+(-?[0-9.]+)")
-_PWR = re.compile(
-    r"^Total\s+[0-9.eE+\-]+\s+[0-9.eE+\-]+\s+[0-9.eE+\-]+\s+([0-9.eE+\-]+)",
-    re.M,
-)
 _START = re.compile(r"Startpoint:\s+(\S+)")
 _END = re.compile(r"Endpoint:\s+(\S+)")
 _GRT_WL = re.compile(r"Total wirelength:\s+([0-9.]+)")
@@ -322,7 +320,7 @@ exit
     overflow = float(rows[-1][1]) if rows else None
     wns = _WNS.search(log)
     tns = _TNS.search(log)
-    pwr = _PWR.search(log)
+    pwr = parse_sta_power(log)
     gwl = _GRT_WL.search(log)
     gov = _GRT_OV.search(log)
     start = _START.search(log)
@@ -342,7 +340,7 @@ exit
         "grt_wl": float(gwl.group(1)) if gwl else None,
         "wns_ns": float(wns.group(1)) if wns else None,
         "tns_ns": float(tns.group(1)) if tns else None,
-        "power_w": float(pwr.group(1)) if pwr else None,
+        **pwr,
         "path_start": start.group(1) if start else None,
         "path_end": end.group(1) if end else None,
         "util": float(util),
@@ -479,7 +477,7 @@ exit
             }
     wns = _WNS.search(log)
     tns = _TNS.search(log)
-    pwr = _PWR.search(log)
+    pwr = parse_sta_power(log)
     start = _START.search(log)
     end = _END.search(log)
     gwl = _GRT_WL.search(log)
@@ -501,7 +499,10 @@ exit
         "n_rc_segments": segs,
         "wns_or_ns": float(wns.group(1)) if wns else None,
         "tns_or_ns": float(tns.group(1)) if tns else None,
-        "power_or_w": float(pwr.group(1)) if pwr else None,
+        "power_or_w": pwr.get("power_w"),
+        "leakage_or_w": pwr.get("leakage_w"),
+        "internal_or_w": pwr.get("internal_power_w"),
+        "switching_or_w": pwr.get("switching_power_w"),
         "path_start": start.group(1) if start else None,
         "path_end": end.group(1) if end else None,
         "grt_wl": float(gwl.group(1)) if gwl else None,
@@ -631,7 +632,7 @@ exit
         log = (proc.stdout or "") + "\n" + (proc.stderr or "")
     wns = _WNS.search(log)
     tns = _TNS.search(log)
-    pwr = _PWR.search(log)
+    pwr = parse_sta_power(log)
     start = _START.search(log)
     end = _END.search(log)
     gwl = _GRT_WL.search(log)
@@ -664,7 +665,10 @@ exit
         "n_rc_segments": segs,
         "wns_or_ns": float(wns.group(1)) if wns else None,
         "tns_or_ns": float(tns.group(1)) if tns else None,
-        "power_or_w": float(pwr.group(1)) if pwr else None,
+        "power_or_w": pwr.get("power_w"),
+        "leakage_or_w": pwr.get("leakage_w"),
+        "internal_or_w": pwr.get("internal_power_w"),
+        "switching_or_w": pwr.get("switching_power_w"),
         "path_start": start.group(1) if start else None,
         "path_end": end.group(1) if end else None,
         "grt_wl": float(gwl.group(1)) if gwl else None,

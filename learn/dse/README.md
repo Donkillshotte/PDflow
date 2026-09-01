@@ -82,6 +82,11 @@ Replaceable adapters in `dse.layers.ADAPTERS`:
   (decap/pkg L ≠ pkg_r ≠ bumps ≠ pitch ≠ width).
 - `QoR.static_ir_mv` is on-die ideal-bump; package-inclusive is
   `static_ir_pkg_mv` only.
+- `QoR.area_um2` is mapped **stdcell / instance** area, not die size.
+  `n_cells` is the instance count. `power_w` is OpenSTA Total;
+  `leakage_w` is the Leakage column. Internal/switching are observation
+  fields, not Pareto axes. `tns_cost` is `-TNS`. `hpwl_um` is OpenROAD
+  microns (never F2-fast grid HPWL). Missing ≠ 0.
 - Do not flatten architecture + ABC + util + PDN into one vector.
 - ``Candidate`` roles stay split: ``knobs`` action, ``artifacts`` observation,
   ``attr`` interpretation, ``pred`` prediction, ``delta`` vs parent.

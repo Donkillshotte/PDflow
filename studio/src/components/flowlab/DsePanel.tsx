@@ -18,13 +18,21 @@ type Cand = {
     host_source?: string;
     i_scale?: number;
   };
-  qor?: {
+    qor?: {
     area_um2?: number | null;
+    n_cells?: number | null;
     static_ir_mv?: number | null;
     dynamic_ir_mv?: number | null;
     congestion?: number | null;
     wns_cost?: number | null;
+    tns_cost?: number | null;
     power_w?: number | null;
+    leakage_w?: number | null;
+    internal_power_w?: number | null;
+    switching_power_w?: number | null;
+    hpwl_um?: number | null;
+    wirelength_um?: number | null;
+    core_util?: number | null;
     em_j_a_m2?: number | null;
   };
   artifacts?: {
@@ -707,8 +715,12 @@ function LevelTable({
           <tr>
             <th>Nome</th>
             <th>F</th>
-            <th>Area µm²</th>
+            <th>Stdcell µm²</th>
+            <th>Celle</th>
             <th>WNS</th>
+            <th>TNS</th>
+            <th>Leak</th>
+            <th>P tot</th>
             <th>Stato</th>
             <th>Pareto</th>
           </tr>
@@ -719,8 +731,18 @@ function LevelTable({
               <td>{c.knobs?.name ?? c.knobs?.extract ?? c.id}</td>
               <td>{c.fidelity}</td>
               <td>{c.qor?.area_um2 != null ? c.qor.area_um2.toFixed(3) : "—"}</td>
+              <td>{c.qor?.n_cells != null ? String(c.qor.n_cells) : "—"}</td>
               <td>
                 {c.qor?.wns_cost != null ? `${(-c.qor.wns_cost).toFixed(3)} ns` : "—"}
+              </td>
+              <td>
+                {c.qor?.tns_cost != null ? `${(-c.qor.tns_cost).toFixed(3)} ns` : "—"}
+              </td>
+              <td>
+                {c.qor?.leakage_w != null ? `${c.qor.leakage_w.toExponential(2)} W` : "—"}
+              </td>
+              <td>
+                {c.qor?.power_w != null ? `${c.qor.power_w.toExponential(2)} W` : "—"}
               </td>
               <td>{c.status}</td>
               <td>{front.has(c.id) ? "sì" : ""}</td>
@@ -744,6 +766,8 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
             <th>F</th>
             <th>HPWL</th>
             <th>WNS</th>
+            <th>TNS</th>
+            <th>Leak</th>
             <th>Cong</th>
             <th>Stato</th>
           </tr>
@@ -758,11 +782,13 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
               </td>
               <td>{c.fidelity}</td>
               <td>
-                {c.artifacts?.hpwl_um != null
-                  ? `${c.artifacts.hpwl_um.toFixed(1)} µm`
-                  : c.artifacts?.hpwl != null
-                    ? c.artifacts.hpwl.toFixed(1)
-                    : "—"}
+                {c.qor?.hpwl_um != null
+                  ? `${c.qor.hpwl_um.toFixed(1)} µm`
+                  : c.artifacts?.hpwl_um != null
+                    ? `${c.artifacts.hpwl_um.toFixed(1)} µm`
+                    : c.artifacts?.hpwl != null
+                      ? c.artifacts.hpwl.toFixed(1)
+                      : "—"}
               </td>
               <td>
                 {c.artifacts?.wns_ns != null
@@ -770,6 +796,12 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
                   : c.qor?.wns_cost != null
                     ? `${(-c.qor.wns_cost).toFixed(3)} ns`
                     : "—"}
+              </td>
+              <td>
+                {c.qor?.tns_cost != null ? `${(-c.qor.tns_cost).toFixed(3)} ns` : "—"}
+              </td>
+              <td>
+                {c.qor?.leakage_w != null ? `${c.qor.leakage_w.toExponential(2)} W` : "—"}
               </td>
               <td>{c.qor?.congestion != null ? c.qor.congestion.toFixed(3) : "—"}</td>
               <td>{c.status}</td>

@@ -976,6 +976,7 @@ def run_controller(
             "port-net BUF on attributed ctrl↔dpath hops at the parent (scope=port); not intra-module hops",
             "F2 ingest + F2-fast netgraph + budgeted GPL + catalog GPL + IR-bin region GPL + GRT",
             "F3 OpenSTA interleaved after each F1 (ideal; hier paths on cone F1) + GRT SDF + OpenRCX SPEF",
+            "QoR PD axes: stdcell area, n_cells, WNS, TNS, total power, leakage; HPWL µm at F2+; internal/switching observation-only",
             "F5-lite detailed_route (2 iter, no CTS) + OpenRCX SPEF + OpenSTA read_spef — not make finish",
             "F5-CTS clock_tree_synthesis + DRT + OpenRCX + OpenSTA set_propagated_clock — not make finish",
             "F5-local OpenRCX SPEF on the cell/net netlist — F3→F5 residual, not a reused F1 SPEF",

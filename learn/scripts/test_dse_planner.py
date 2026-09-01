@@ -909,8 +909,15 @@ def check_planner(check, *, root: Path, mem, mem2) -> None:
         sta = evaluate_sta(mapped_ok)
         check(sta.get("status") == "ok", f"OpenSTA F3 on mapped F1 ({sta.get('reason')})")
         check(sta.get("wns_ns") is not None, "F3 reports WNS")
+        check(sta.get("tns_ns") is not None, "F3 reports TNS")
         check((sta.get("power_w") or 0) > 0, f"F3 reports power, got {sta.get('power_w')}")
-        print(f"    F3 STA WNS={sta['wns_ns']:.3f} ns P={sta['power_w']:.4e} W ({sta['cost_s']:.2f}s)")
+        check((sta.get("leakage_w") or 0) > 0, f"F3 reports leakage, got {sta.get('leakage_w')}")
+        check(sta.get("internal_power_w") is not None, "F3 reports internal power")
+        check(sta.get("switching_power_w") is not None, "F3 reports switching power")
+        print(
+            f"    F3 STA WNS={sta['wns_ns']:.3f} ns TNS={sta['tns_ns']:.3f} ns "
+            f"P={sta['power_w']:.4e} W leak={sta['leakage_w']:.4e} W ({sta['cost_s']:.2f}s)"
+        )
         sattr = attribute_sta(sta, inherit={"modules": ["dpath"], "scope": "logic_cone"})
         check(sattr["restart_chip"] is False, "STA attribution refuses a chip restart")
         check("dpath" in (sattr.get("modules") or []), "STA inherit keeps the dpath cone")

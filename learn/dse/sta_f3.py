@@ -27,8 +27,9 @@ EXPORT_ARRIVALS = REPO / "learn" / "scripts" / "export_sta_arrivals.py"
 
 _WNS = re.compile(r"wns max\s+(-?[0-9.]+)")
 _TNS = re.compile(r"tns max\s+(-?[0-9.]+)")
-_PWR = re.compile(
-    r"^Total\s+[0-9.eE+\-]+\s+[0-9.eE+\-]+\s+[0-9.eE+\-]+\s+([0-9.eE+\-]+)",
+# OpenSTA report_power Group table: Internal Switching Leakage Total
+_PWR_TOTAL = re.compile(
+    r"^Total\s+([0-9.eE+\-]+)\s+([0-9.eE+\-]+)\s+([0-9.eE+\-]+)\s+([0-9.eE+\-]+)",
     re.M,
 )
 _START = re.compile(r"Startpoint:\s+(\S+)")
@@ -36,6 +37,23 @@ _END = re.compile(r"Endpoint:\s+(\S+)")
 _PATH_PIN = re.compile(
     r"([A-Za-z0-9_./$\\]+)/([A-Za-z0-9]+)\s+\(([A-Za-z0-9_]+)\)"
 )
+
+
+def parse_sta_power(log: str) -> dict:
+    """Split OpenSTA ``report_power`` Total row. Empty dict if the table is absent.
+
+    Does not invent leakage from Total. Units are watts.
+    """
+    m = _PWR_TOTAL.search(log or "")
+    if not m:
+        return {}
+    internal, switching, leakage, total = (float(m.group(i)) for i in range(1, 5))
+    return {
+        "internal_power_w": internal,
+        "switching_power_w": switching,
+        "leakage_w": leakage,
+        "power_w": total,
+    }
 
 
 def available() -> bool:
@@ -127,7 +145,7 @@ puts DSE_STA_OK
         log = (proc.stdout or "") + "\n" + (proc.stderr or "")
     wns = _WNS.search(log)
     tns = _TNS.search(log)
-    pwr = _PWR.search(log)
+    pwr = parse_sta_power(log)
     start = _START.search(log)
     end = _END.search(log)
     path_cells, path_nets, path_types = _parse_path(log)
@@ -140,7 +158,7 @@ puts DSE_STA_OK
         "sdc": str(sdc_path),
         "wns_ns": float(wns.group(1)) if wns else None,
         "tns_ns": float(tns.group(1)) if tns else None,
-        "power_w": float(pwr.group(1)) if pwr else None,
+        **pwr,
         "path_start": start.group(1) if start else None,
         "path_end": end.group(1) if end else None,
         "path_cells": path_cells,

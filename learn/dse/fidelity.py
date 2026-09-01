@@ -30,7 +30,7 @@ from .frame import (
     refine_label,
 )
 from .memory import Candidate, DesignMemory
-from .metrics import QoR, wns_cost_from_slack_ns
+from .metrics import QoR, core_util_from_report, enrich_parent_qor_from, inherit_parent_pd, merge_sta_into_qor, wns_cost_from_slack_ns
 from .netgraph import (
     estimate_physical,
     is_gate_cell_netlist,
@@ -94,6 +94,25 @@ COST_HINT = {
     "F5": 15.0,
     "F5_CTS": 25.0,
 }
+
+
+def _overlay_sta(raw: dict, sta: dict) -> dict:
+    """Copy OpenSTA WNS/TNS/power split onto an F5/GRT blob. Missing stays missing."""
+    out = dict(raw)
+    out["sta"] = sta
+    for k in (
+        "wns_ns",
+        "tns_ns",
+        "power_w",
+        "leakage_w",
+        "internal_power_w",
+        "switching_power_w",
+    ):
+        if sta.get(k) is not None:
+            out[k] = sta[k]
+    if sta.get("interconnect"):
+        out["interconnect"] = sta.get("interconnect")
+    return out
 
 
 def reports_dir(variant: str) -> Path:
@@ -721,17 +740,15 @@ def evaluate_f4_scale(
     attr["host_source"] = parent.knobs.get("source") or parent.level
     attr["sta_via"] = sta_via or ("extract" if sta else "none")
     q = QoR(
-        area_um2=parent.qor.area_um2,
-        n_cells=parent.qor.n_cells,
-        wns_cost=parent.qor.wns_cost,
-        power_w=pwr,
         static_ir_mv=dyn.get("static_ir_mv"),
         dynamic_ir_mv=dyn.get("worst_droop_mv"),
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
+        power_w=pwr,
         fidelity="F4",
         note=f"I(t)×{scale:.3f} on {extract_id} — not gold, not a new VCD map",
     )
+    inherit_parent_pd(q, parent.qor)
     if source == "f4_iscale_win":
         attr["via"] = "f4_iscale_win"
     if source == "f4_iscale_champ":
@@ -817,14 +834,13 @@ def evaluate_host_arrivals(
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
-        wns_cost=parent.qor.wns_cost,
-        power_w=parent.qor.power_w,
         fidelity="F3",
         note=(
             f"report_arrival on {host} n_inst={arr.get('n_inst')} "
             "— attributed host t50, not extract STA, not VCD"
         ),
     )
+    inherit_parent_pd(q, parent.qor)
     return mem.add(
         Candidate(
             id=cid,
@@ -1188,10 +1204,6 @@ def evaluate_f4_extract(
         else "candidate"
     )
     q = QoR(
-        area_um2=parent.qor.area_um2,
-        n_cells=parent.qor.n_cells,
-        wns_cost=parent.qor.wns_cost,
-        power_w=parent.qor.power_w,
         congestion=ext.get("overflow"),
         static_ir_mv=ext.get("static_ir_mv") or dyn.get("static_ir_mv"),
         dynamic_ir_mv=ext.get("worst_droop_mv"),
@@ -1204,6 +1216,7 @@ def evaluate_f4_extract(
             "— not finish, not gold"
         ),
     )
+    inherit_parent_pd(q, parent.qor)
     ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
     if ok and ext.get("worst_droop_mv") is not None and kind in (
         "candidate",
@@ -1283,20 +1296,35 @@ def ingest_f2(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candid
         if hm:
             hpwl = float(hm.group(1))
     area = None
+    n_cells = None
     power = None
     slack = None
     util = None
+    leakage = None
+    internal = None
+    switching = None
     if finish:
         area = finish.get("finish__design__instance__area")
+        n_cells = finish.get("finish__design__instance__count")
         power = finish.get("finish__power__total")
         slack = finish.get("finish__timing__setup__ws")
         util = finish.get("finish__design__instance__utilization")
+        leakage = finish.get("finish__power__leakage")
+        internal = finish.get("finish__power__internal")
+        switching = finish.get("finish__power__switching")
     cong = overflow if overflow is not None else usage
     q = QoR(
         area_um2=float(area) if area is not None else None,
+        n_cells=float(n_cells) if n_cells is not None else None,
         power_w=float(power) if power is not None else None,
+        leakage_w=float(leakage) if leakage is not None else None,
+        internal_power_w=float(internal) if internal is not None else None,
+        switching_power_w=float(switching) if switching is not None else None,
         wns_cost=wns_cost_from_slack_ns(float(slack)) if slack is not None else None,
         congestion=float(cong) if cong is not None else None,
+        hpwl_um=float(hpwl) if hpwl is not None else None,
+        wirelength_um=float(wl) if wl is not None else None,
+        core_util=core_util_from_report(util),
         fidelity="F2",
         note=(
             f"ORFS ingest HPWL={hpwl} GRT_wl={wl} util={util} overflow={overflow} "
@@ -1519,12 +1547,12 @@ def evaluate_f1_abc(
         n_cells=n_cells,
         fidelity="F1",
         note=(
-            "Yosys+ABC ORFS abc_speed.script (ABC_AREA=0); delay/IR not claimed from F1"
+            "Yosys+ABC ORFS abc_speed.script (ABC_AREA=0); stdcell area; delay/IR not claimed from F1"
             if level == "synthesis"
             else (
-                f"Yosys+ABC cone-local map on {knobs.get('cone') or 'named'} modules; delay/IR not claimed from F1"
+                f"Yosys+ABC cone-local map on {knobs.get('cone') or 'named'} modules; stdcell area; delay/IR not claimed from F1"
                 if is_cone_abc(knobs)
-                else "Yosys+ABC mapped area; delay/IR not claimed from F1"
+                else "Yosys+ABC mapped stdcell area; delay/IR not claimed from F1"
             )
         ),
     )
@@ -1786,6 +1814,7 @@ def evaluate_f2_gpl(
         area_um2=gpl.get("inst_area_um2") or parent.qor.area_um2,
         n_cells=gpl.get("n_inst") or parent.qor.n_cells,
         congestion=gpl.get("overflow"),
+        hpwl_um=gpl.get("hpwl_um"),
         fidelity="F2",
         note=(
             f"OpenROAD GPL HPWL={gpl.get('hpwl_um')} um overflow={gpl.get('overflow')} "
@@ -1846,17 +1875,16 @@ def evaluate_f3_sta(
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
-        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
-        power_w=sta.get("power_w"),
         fidelity="F3",
         note=(
             f"OpenSTA ideal WNS={sta.get('wns_ns')} ns P={sta.get('power_w')} W "
+            f"leak={sta.get('leakage_w')} W "
             f"{'(hier paths)' if knobs.get('hierarchy') else ''} — not SPEF signoff, not IR"
         ),
     )
+    merge_sta_into_qor(q, sta)
     if sta.get("status") == "ok":
-        parent.qor.wns_cost = q.wns_cost
-        parent.qor.power_w = q.power_w
+        enrich_parent_qor_from(parent.qor, q)
         parent.attr = dict(parent.attr or {})
         parent.attr["sta"] = attr
         mem.touch(parent)
@@ -2045,11 +2073,10 @@ def evaluate_cell_size(
     q = QoR(
         area_um2=area,
         n_cells=n_cells,
-        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
-        power_w=sta.get("power_w"),
         fidelity="F3",
         note=note,
     )
+    merge_sta_into_qor(q, sta)
     return mem.add(
         Candidate(
             id=cid,
@@ -2174,14 +2201,13 @@ def evaluate_net_buffer(
     q = QoR(
         area_um2=area,
         n_cells=n_cells,
-        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
-        power_w=sta.get("power_w"),
         fidelity="F3",
         note=(
             f"net-local BUF n={bufd['n_changed']} WNS={sta.get('wns_ns')} "
             "— attributed hops, not ABC, not IR"
         ),
     )
+    merge_sta_into_qor(q, sta)
     return mem.add(
         Candidate(
             id=cid,
@@ -2307,14 +2333,13 @@ def evaluate_net_port_buffer(
     q = QoR(
         area_um2=area,
         n_cells=n_cells,
-        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
-        power_w=sta.get("power_w"),
         fidelity="F3",
         note=(
             f"port-net BUF n={bufd['n_changed']} WNS={sta.get('wns_ns')} "
             "— parent-scoped crossing, not intra-module, not ABC"
         ),
     )
+    merge_sta_into_qor(q, sta)
     return mem.add(
         Candidate(
             id=cid,
@@ -2384,8 +2409,6 @@ def evaluate_f2_grt(
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
-        wns_cost=wns_cost_from_slack_ns(grt.get("wns_ns")),
-        power_w=grt.get("power_w"),
         congestion=cong,
         fidelity="F2",
         note=(
@@ -2393,6 +2416,7 @@ def evaluate_f2_grt(
             f"HPWL={grt.get('hpwl_um')} — not detailed route/F5, not IR"
         ),
     )
+    merge_sta_into_qor(q, grt)
     if grt.get("sdf"):
         grt = dict(grt)
         parent.artifacts = dict(parent.artifacts or {})
@@ -2447,13 +2471,12 @@ def evaluate_f3_sdf(
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
-        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
-        power_w=sta.get("power_w"),
         fidelity="F3",
         note=(
             f"OpenSTA + GRT SDF WNS={sta.get('wns_ns')} ns — not SPEF/OpenRCX, not finish/F5"
         ),
     )
+    merge_sta_into_qor(q, sta)
     if sta.get("status") == "ok":
         parent.attr = dict(parent.attr or {})
         parent.attr["sta_sdf"] = attr
@@ -2526,10 +2549,7 @@ def evaluate_f5_drt(
     sta = {}
     if raw.get("status") == "ok" and raw.get("spef"):
         sta = evaluate_sta(Path(mapped), spef=Path(raw["spef"]), design_id=design_id)
-        raw = dict(raw)
-        raw["sta"] = sta
-        raw["wns_ns"] = sta.get("wns_ns")
-        raw["power_w"] = sta.get("power_w")
+        raw = _overlay_sta(raw, sta)
         raw["interconnect"] = sta.get("interconnect") or "spef_openrcx"
     from .attribute import attribute_sta
 
@@ -2537,15 +2557,15 @@ def evaluate_f5_drt(
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
-        wns_cost=wns_cost_from_slack_ns(raw.get("wns_ns")),
-        power_w=raw.get("power_w") or sta.get("power_w"),
         congestion=raw.get("grt_overflow"),
+        hpwl_um=raw.get("hpwl_um"),
         fidelity="F5",
         note=(
             f"OpenRCX SPEF WNS={raw.get('wns_ns')} segs={raw.get('n_rc_segments')} "
             "— F5-lite, not make finish, clock ideal"
         ),
     )
+    merge_sta_into_qor(q, sta or raw)
     if raw.get("spef"):
         parent.artifacts = dict(parent.artifacts or {})
         parent.artifacts["spef"] = raw["spef"]
@@ -2621,10 +2641,7 @@ def evaluate_f5_local(
     sta = {}
     if raw.get("status") == "ok" and raw.get("spef"):
         sta = evaluate_sta(Path(mapped), spef=Path(raw["spef"]), design_id=design_id)
-        raw = dict(raw)
-        raw["sta"] = sta
-        raw["wns_ns"] = sta.get("wns_ns")
-        raw["power_w"] = sta.get("power_w")
+        raw = _overlay_sta(raw, sta)
         raw["interconnect"] = sta.get("interconnect") or "spef_openrcx"
         raw["ideal_wns_ns"] = (parent.artifacts or {}).get("wns_ns")
         raw["host_level"] = host_level
@@ -2635,15 +2652,15 @@ def evaluate_f5_local(
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
-        wns_cost=wns_cost_from_slack_ns(raw.get("wns_ns")),
-        power_w=raw.get("power_w") or sta.get("power_w"),
         congestion=raw.get("grt_overflow"),
+        hpwl_um=raw.get("hpwl_um"),
         fidelity="F5",
         note=(
             f"local OpenRCX SPEF WNS={raw.get('wns_ns')} on {host_level} "
             f"(ideal {raw.get('ideal_wns_ns')}) — not F1 F5-lite, not make finish"
         ),
     )
+    merge_sta_into_qor(q, sta or raw)
     if raw.get("spef"):
         parent.artifacts = dict(parent.artifacts or {})
         parent.artifacts["spef_local"] = raw["spef"]
@@ -2719,10 +2736,7 @@ def evaluate_f5_cts(
     sta_v = Path(raw["cts_v"]) if raw.get("cts_v") else Path(mapped)
     if raw.get("status") == "ok" and raw.get("spef"):
         sta = evaluate_sta(sta_v, spef=Path(raw["spef"]), propagated_clock=True, design_id=design_id)
-        raw = dict(raw)
-        raw["sta"] = sta
-        raw["wns_ns"] = sta.get("wns_ns")
-        raw["power_w"] = sta.get("power_w")
+        raw = _overlay_sta(raw, sta)
         raw["interconnect"] = sta.get("interconnect") or "spef_openrcx"
         raw["clock"] = "propagated"
     from .attribute import attribute_sta
@@ -2731,15 +2745,15 @@ def evaluate_f5_cts(
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
-        wns_cost=wns_cost_from_slack_ns(raw.get("wns_ns")),
-        power_w=raw.get("power_w") or sta.get("power_w"),
         congestion=raw.get("grt_overflow"),
+        hpwl_um=raw.get("hpwl_um"),
         fidelity="F5",
         note=(
             f"CTS SPEF WNS={raw.get('wns_ns')} n_clkbuf={raw.get('n_clkbuf')} "
             "— F5-CTS, not make finish, clock propagated"
         ),
     )
+    merge_sta_into_qor(q, sta or raw)
     if raw.get("spef"):
         parent.artifacts = dict(parent.artifacts or {})
         parent.artifacts["spef_cts"] = raw["spef"]
@@ -2797,11 +2811,10 @@ def evaluate_f3_spef(
     q = QoR(
         area_um2=parent.qor.area_um2,
         n_cells=parent.qor.n_cells,
-        wns_cost=wns_cost_from_slack_ns(sta.get("wns_ns")),
-        power_w=sta.get("power_w"),
         fidelity="F3",
         note=f"OpenSTA + OpenRCX SPEF WNS={sta.get('wns_ns')} ns — not finish/F5 launch",
     )
+    merge_sta_into_qor(q, sta)
     if sta.get("status") == "ok":
         parent.attr = dict(parent.attr or {})
         parent.attr["sta_spef"] = attr
