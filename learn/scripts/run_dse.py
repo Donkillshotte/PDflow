@@ -67,7 +67,10 @@ def main() -> int:
             design_id=os.environ.get("DESIGN_ID") or "gcd",
         )
         print("DSE_CAMPAIGN_DONE")
-        print(f"stop={report.get('stop')} n_inner={report.get('n_inner')} hv={report.get('hv')}")
+        print(
+            f"stop={report.get('stop')} n_inner={report.get('n_inner')} "
+            f"start_inner={report.get('start_inner')} hv={report.get('hv')}"
+        )
         print(f"memory → {report.get('memory')}")
         return 0 if report.get("ok") else 1
     report = run_controller(

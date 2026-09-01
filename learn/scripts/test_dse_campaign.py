@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 from dse.acquire import should_pay_cell_size, should_pay_f5_cts
-from dse.campaign import DEFAULT_SHOTS, lifetime_shots, run_campaign, suggest_ref
+from dse.campaign import DEFAULT_SHOTS, infer_start_inner, lifetime_shots, occupancy, run_campaign, suggest_ref
 from dse.memory import Candidate, DesignMemory
 from dse.metrics import QoR
 from dse.planner import parent_queue, pred_costs
@@ -64,6 +64,8 @@ def check_campaign(check) -> None:
     check(DEFAULT_SHOTS["f3"] == 8, "default F3 max_shots is 8")
     check(lifetime_shots(1)["gpl"] == 2, "inner 1 raises GPL lifetime cap to 2")
     check(lifetime_shots(1)["f3"] == 9, "inner 1 raises F3 lifetime cap by one")
+    empty = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-empty-")) / "e.jsonl")
+    check(infer_start_inner(empty) == 0, "empty memory starts at inner 0")
 
     a = _cand("a", area=100, wns=1.0, pred_mean=3.0)
     b = _cand("b", area=90, wns=1.1, pred_mean=1.0)
@@ -118,6 +120,83 @@ def check_campaign(check) -> None:
     check(seen[0]["f1_max"] == 6 and seen[1]["f1_max"] == 12, "f1_max grows as per-run × (inner+1)")
     check(seen[0]["max_shots"]["gpl"] == 1 and seen[1]["max_shots"]["gpl"] == 2, "GPL cap grows per inner")
     check(seen[0]["fresh"] is False and seen[1]["fresh"] is False, "campaign never wipes between inners")
+
+    sat = DesignMemory(tmp / "sat.jsonl")
+    for i in range(6):
+        sat.add(_cand(f"f1{i}", area=400.0 + i, wns=0.5, fidelity="F1"))
+    for i in range(4):
+        sat.add(
+            _cand(
+                f"ff{i}",
+                area=1,
+                wns=1,
+                level="physical",
+                knobs={"source": "f2_fast_netgraph"},
+                fidelity="F2",
+            )
+        )
+    sat.add(
+        _cand("g0", area=1, wns=1, level="physical", knobs={"source": "f2_openroad_gpl"}, fidelity="F2")
+    )
+    for i in range(8):
+        sat.add(_cand(f"sta{i}", area=1, wns=1, knobs={"source": "f3_opensta_ideal"}, fidelity="F3"))
+    for src, level, fid, n, key in (
+        ("f3_opensta_sdf_grt", "logic", "F3", 1, "sdf"),
+        ("f2_openroad_grt", "routing", "F2", 1, "grt"),
+        ("f5_openroad_drt_rcx", "routing", "F5", 1, "f5"),
+        ("f3_opensta_spef", "logic", "F3", 1, "spef"),
+        ("f5_openroad_cts_rcx", "routing", "F5", 1, "f5_cts"),
+        ("f5_openroad_local", "routing", "F5", 1, "f5_local"),
+        ("cell_size_up", "cell", "F3", 1, "cell"),
+        ("net_buffer", "net", "F3", 1, "net"),
+        ("net_buffer_port", "net", "F3", 1, "net_port"),
+    ):
+        for j in range(n):
+            extra = {"host_level": "port"} if key == "f5_port" else {}
+            sat.add(
+                _cand(
+                    f"{key}{j}",
+                    area=1,
+                    wns=1,
+                    level=level,
+                    knobs={"source": src, **extra},
+                    fidelity=fid,
+                )
+            )
+    sat.add(
+        _cand(
+            "fp0",
+            area=1,
+            wns=1,
+            level="routing",
+            knobs={"source": "f5_openroad_local", "host_level": "port"},
+            fidelity="F5",
+        )
+    )
+    sat.add(
+        _cand(
+            "sy0",
+            area=1,
+            wns=1,
+            level="synthesis",
+            knobs={"source": "orfs_abc_speed"},
+            fidelity="F1",
+        )
+    )
+    occ = occupancy(sat)
+    check(infer_start_inner(sat) == 1, f"spent default caps resume at inner 1, occ={occ}")
+    seen_sat: list = []
+    sat_runner, _ = _scripted([[(70.0, 0.5)]], seen=seen_sat)
+    sat_run = run_campaign(
+        inner_runner=sat_runner,
+        memory_path=sat.path,
+        wall_s=30,
+        max_inner=1,
+        hv_eps=1e-3,
+    )
+    check(sat_run.get("start_inner") == 1, f"campaign start_inner is 1, got {sat_run.get('start_inner')}")
+    check(seen_sat and seen_sat[0]["f1_max"] == 12, "resumed inner uses f1_max=12 not 6")
+    check(seen_sat[0]["max_shots"]["gpl"] == 2, "resumed inner uses GPL cap 2")
 
     hv_runner, _ = _scripted(
         [

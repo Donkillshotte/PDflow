@@ -83,6 +83,65 @@ def gated_hv(mem: DesignMemory, ref: tuple[float, float] | None, pred: dict[str,
     return float(hypervolume_2d(pts, ref))
 
 
+def _n_src(mem: DesignMemory, source: str, *, level: str | None = None) -> int:
+    rows = mem.by_level(level) if level else mem.all()
+    return sum(
+        1 for c in rows if (c.knobs or {}).get("source") == source and c.status == "ok"
+    )
+
+
+def occupancy(mem: DesignMemory) -> dict[str, int]:
+    """Lifetime shot counts that ``lifetime_shots`` raises. Used to resume past spent caps."""
+    return {
+        "f1": sum(1 for c in mem.all() if c.fidelity == "F1"),
+        "f2_fast": sum(
+            1
+            for c in mem.by_level("physical")
+            if (c.knobs or {}).get("source") in ("f2_fast_netgraph", "f2_fast_barycenter")
+            and c.status == "ok"
+        ),
+        "gpl": _n_src(mem, "f2_openroad_gpl", level="physical"),
+        "f3": _n_src(mem, "f3_opensta_ideal"),
+        "sdf": _n_src(mem, "f3_opensta_sdf_grt"),
+        "grt": _n_src(mem, "f2_openroad_grt", level="routing"),
+        "f5": _n_src(mem, "f5_openroad_drt_rcx", level="routing"),
+        "spef": _n_src(mem, "f3_opensta_spef"),
+        "f5_cts": _n_src(mem, "f5_openroad_cts_rcx", level="routing"),
+        "f5_local": _n_src(mem, "f5_openroad_local", level="routing"),
+        "f5_port": sum(
+            1
+            for c in mem.by_level("routing")
+            if (c.knobs or {}).get("source") == "f5_openroad_local"
+            and (c.knobs or {}).get("host_level") == "port"
+            and c.status == "ok"
+        ),
+        "synth": sum(1 for c in mem.all() if c.level == "synthesis" and c.fidelity == "F1"),
+        "cell": _n_src(mem, "cell_size_up", level="cell"),
+        "net": _n_src(mem, "net_buffer", level="net"),
+        "net_port": _n_src(mem, "net_buffer_port", level="net"),
+    }
+
+
+def infer_start_inner(
+    mem: DesignMemory,
+    *,
+    f1_max_per_run: int = 6,
+    shots_base: dict[str, int] | None = None,
+    max_scan: int = 64,
+) -> int:
+    """First inner whose lifetime caps still have room. Empty memory → 0."""
+    occ = occupancy(mem)
+    keys = [k for k in DEFAULT_SHOTS if k != "f1"]
+    for i in range(max(int(max_scan), 1)):
+        shots = lifetime_shots(i, shots_base)
+        f1_max = int(f1_max_per_run) * (i + 1)
+        if occ["f1"] < f1_max:
+            return i
+        if any(occ.get(k, 0) < int(shots[k]) for k in keys):
+            return i
+    return 0
+
+
 def _n_ok(mem: DesignMemory) -> int:
     return sum(1 for c in mem.all() if c.status == "ok")
 
@@ -116,6 +175,7 @@ def run_campaign(
     fresh: bool = False,
     arch_max: int = 3,
     shots_base: dict[str, int] | None = None,
+    start_inner: int | None = None,
 ) -> dict:
     """Loop ``inner_runner`` (default ``run_controller``) on one JSONL until HV stalls.
 
@@ -145,9 +205,21 @@ def run_campaign(
     if fresh:
         _wipe(path)
 
+    mem0 = DesignMemory(path)
+    pred0 = pred_costs(mem0) or None
+    pts0 = logic_hv_points(mem0, pred=pred0)
+    if pts0:
+        ref = suggest_ref(pts0)
+        prev_hv = gated_hv(mem0, ref, pred=pred0)
+    first = int(start_inner) if start_inner is not None else infer_start_inner(
+        mem0, f1_max_per_run=f1_max_per_run, shots_base=shots_base
+    )
+    first = max(first, 0)
+
     t_end = time.time() + float(wall_s)
     n_cap = max(int(max_inner), 0)
-    for inner_i in range(n_cap):
+    for k in range(n_cap):
+        inner_i = first + k
         if time.time() >= t_end:
             stop = "wall"
             break
@@ -208,6 +280,7 @@ def run_campaign(
         "ok": True,
         "stop": stop,
         "n_inner": n_inner,
+        "start_inner": first,
         "hv": [row["hv"] for row in inners],
         "ref": list(ref) if ref else None,
         "memory": str(path),
