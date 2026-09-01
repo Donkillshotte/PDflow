@@ -120,3 +120,5 @@ Studio: `cd studio && npm run dev` (port 43217).
 
 GCD vs ORFS `make finish` (honest, not a slide):
 [`flow_vs_orfs_gcd.md`](flow_vs_orfs_gcd.md).
+Piano per cucinare i winner DSE con lo stesso finish:
+[`handoff_finish_plan.md`](handoff_finish_plan.md).

@@ -3,6 +3,16 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T12:45Z — Piano handoff DSE → make finish
+
+Piano (non eseguito): `learn/dse/handoff_finish_plan.md`. Tre cotture,
+stesso forno, solo il netlist cambia. A = finish `flowlab` già su disco
+(non toccare). B = arch `sub_twos_complement` (`54142494d890`). C =
+`orfs_abc_speed` (`52e0ecacb19b`). Variant ORFS nuove, util/SDC del
+baseline (≈55%), Yosys saltato. Niente finish nel controller, niente
+cono ABC in v1, niente AES/oro. Criterio: WNS/TNS/area/n. repair sullo
+stesso `6_report.json`. Pareggio è una risposta valida.
+
 ## 2026-09-01T11:30Z — Confronto ORFS finish vs DSE (GCD)
 
 Onesto, non marketing. Fonte finish: `6_report.json` + `3_5_place_dp.json`.
