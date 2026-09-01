@@ -336,26 +336,60 @@ def _i1(exps: list[Experiment]) -> dict[str, Any]:
 
 
 def _i3(exps: list[Experiment]) -> dict[str, Any]:
-    controls = [
+    from dse.fidelity_policy import decide as policy_decide
+
+    train = [
         e
-        for e in exps
-        if e.phase == "Q2"
-        and "control_negative" in (e.notes or "")
-        and e.status == "done"
-        and e.finish_wns_ns is not None
+        for e in _labeled(exps)
+        if (not str(e.phase).startswith("Q")) and e.place_wns_ns is not None
     ]
+    by_d: dict[str, list[float]] = defaultdict(list)
+    for e in train:
+        by_d[e.design].append(float(e.finish_wns_ns) - float(e.place_wns_ns))
+    table: dict[str, tuple[float, float]] = {}
+    for design, xs in by_d.items():
+        mu, sd = _mean_std(xs)
+        if mu is not None:
+            table[design] = (mu, sd if sd else 0.04)
+
     bases = _bases(exps)
-    n_lose = 0
     rows = []
-    for e in controls:
+    n_lose = 0
+    seen: set[str] = set()
+
+    def _consider(e: Experiment, via: str) -> None:
+        nonlocal n_lose
+        if e.variant in seen or e.role == "base" or e.place_wns_ns is None:
+            return
         base = bases.get((e.design, _clk(e)))
-        lose = True if base is None else not _beats_base(e, base)
+        if base is None or e.variant == base.variant:
+            return
+        dec = policy_decide(
+            design=e.design,
+            place_wns_ns=float(e.place_wns_ns),
+            baseline_finish_ns=float(base.finish_wns_ns) if base.finish_wns_ns is not None else None,
+            residual_table=table or None,
+        )
+        if dec.action != "STOP" and via != "control_negative":
+            return
+        if dec.action != "STOP" and via == "control_negative":
+            return
+        lose = not _beats_base(e, base)
+        seen.add(e.variant)
         n_lose += int(lose)
-        rows.append({"variant": e.variant, "loses": lose})
-    n = len(controls)
+        rows.append({"variant": e.variant, "loses": lose, "via": via, "policy": dec.action})
+
+    for e in exps:
+        if e.phase == "Q2" and "control_negative" in (e.notes or "") and e.status == "done" and e.finish_wns_ns is not None:
+            _consider(e, "control_negative")
+    for e in _labeled(exps):
+        if e.role in ("dse_small", "dse_fast", "dse_other") or e.phase in ("Q1", "Q2"):
+            _consider(e, "replay")
+
+    n = len(rows)
     prec = (n_lose / n) if n else None
     if prec is None:
-        verdict = "I3 incomplete (no verified Q2 control_negative finishes)"
+        verdict = "I3 incomplete (no verified STOP decisions)"
         supported = None
     elif prec >= I3_PREC:
         verdict = f"I3 supported (STOP precision {prec:.0%} on {n} verified rejects)"

@@ -280,3 +280,34 @@ def pareto_front(items: Iterable[tuple[str, QoR]]) -> list[str]:
             continue
         keep.append(i)
     return keep
+
+
+def pareto_status(cid: str, front: Iterable[str], *, closed: bool | None, observed: bool) -> str:
+    """Label a point: dominated/non-dominated × feasible/infeasible/uncertain.
+
+    Does not compress axes into a scalar. ``front`` is the non-dominated id set.
+    """
+    if not observed:
+        return "uncertain"
+    membership = "non-dominated" if cid in set(front) else "dominated"
+    if closed is None:
+        feas = "uncertain"
+    elif closed:
+        feas = "feasible"
+    else:
+        feas = "infeasible"
+    return f"{membership}/{feas}"
+    """Label a point: dominated/non-dominated × feasible/infeasible/uncertain.
+
+    Does not compress axes into a scalar. ``front`` is the non-dominated id set.
+    """
+    if not observed:
+        return "uncertain"
+    membership = "non-dominated" if cid in set(front) else "dominated"
+    if closed is None:
+        feas = "uncertain"
+    elif closed:
+        feas = "feasible"
+    else:
+        feas = "infeasible"
+    return f"{membership}/{feas}"

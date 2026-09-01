@@ -88,7 +88,17 @@ def next_action(
             if budget_s >= COST["place"] and c.level in ("architecture", "logic", "synthesis", "physical"):
                 return Action("place", c.id, "need_place_gate", COST["place"], expected_gain=0.8)
 
-    # 4. Finish only place-ready + shots left
+    # 4. Finish only place-ready + shots left. Per-design residual may STOP
+    # a candidate that is confidently worse than the best finish already in memory.
+    from .fidelity_policy import decide as policy_decide
+
+    baselines = [
+        float(c.artifacts["finish_wns_ns"])
+        for c in mem.all()
+        if (c.artifacts or {}).get("finish_wns_ns") is not None
+    ]
+    base_w = max(baselines) if baselines else None
+
     if finish_shots_left > 0 and budget_s >= COST["finish"]:
         ranked: list[tuple[float, Candidate]] = []
         for c in ok:
@@ -97,6 +107,14 @@ def next_action(
                 continue
             if c.fidelity == "F6" or (c.artifacts or {}).get("finish_wns_ns") is not None:
                 continue
+            place = (c.artifacts or {}).get("place_wns_ns")
+            dec = policy_decide(
+                design=str(c.design_id),
+                place_wns_ns=None if place is None else float(place),
+                baseline_finish_ns=base_w,
+            )
+            if dec.action == "STOP":
+                return Action("reject", c.id, f"policy_stop_{dec.reason}", COST["reject"])
             pred = predict_finish_wns(c)
             ranked.append((pred.p_close + 0.01 * pred.information, c))
         ranked.sort(key=lambda t: -t[0])
