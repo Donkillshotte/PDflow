@@ -3,6 +3,13 @@
 Durable GitHub log. Newest entries first. If a session expires, read this
 file and the PR comments before retrying heavy work.
 
+## 2026-09-01T16:31Z — P0 spi base DONE (timing-closed)
+
+`camp_spi_base` finish 26s. WNS **+612 ps**, place +582 ps, area 268 µm²,
+238 inst, die 3091, repair 22, sha `b8826a8ee535…`. Clock 1.0 ns è largo
+(H3: spi già chiuso al T_base). Prossima: `camp_spi_ainj` sullo stesso
+`1_2_yosys.v`. `flowlab/` non toccato.
+
 ## 2026-09-01T16:30Z — P0 spi base: PDN-0185, util 8
 
 `camp_spi_base` synth+FP ok (139 inst, 230 µm²) poi PDN fail: core 23.75 µm < straps
