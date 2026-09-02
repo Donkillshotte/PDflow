@@ -21,6 +21,14 @@ from pdn_extract import parse_pg_sinks
 VDD_DEFAULT = 1.1
 ALPHA_DEFAULT = 1.3
 GOLD_IR_MV = 45.298
+_REPO = Path(__file__).resolve().parents[2]
+
+
+def _rel(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(_REPO))
+    except ValueError:
+        return str(path)
 
 
 def load_sta_path(sta_json: Path) -> dict | None:
@@ -159,7 +167,7 @@ def build_report(
         "via": "OpenSTA worst max path × ITerm V from Dynamic IR map.csv + write_pg_spice sinks",
         "gold_ir_mv": GOLD_IR_MV,
         "sta": {
-            "arrivals": str(sta_json),
+            "arrivals": _rel(sta_json),
             "path_status": path_meta.get("status"),
             "startpoint": path_meta.get("startpoint"),
             "endpoint": path_meta.get("endpoint"),
@@ -180,8 +188,8 @@ def build_report(
             "mean_cell_ir_mv": (
                 sum(c["ir_mv"] or 0.0 for c in joined) / len(joined) if joined else None
             ),
-            "map": str(map_csv),
-            "spice": str(spice),
+            "map": _rel(map_csv),
+            "spice": _rel(spice),
         },
         "timing": timing,
         "path_gates": [
