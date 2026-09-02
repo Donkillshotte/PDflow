@@ -3267,7 +3267,7 @@ button.pipeline-node {
 }
 .fl-vp:active { cursor: grabbing; }
 .fl-vp.is-loading::after {
-  content: "Caricamento layout…";
+  content: "Loading layout…";
   position: absolute;
   inset: 0;
   display: grid;

@@ -69,13 +69,16 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
     <div className={clsx("suite-hub", compact && "suite-hub-compact")}>
       <div className="ops-head">
         <div>
-          <h2>Collaborative suite</h2>
+          <h2>Toolchain on the unified path</h2>
           <p className="muted">
-            Hook wrapper · {data.summary.hooksOk}/{data.summary.hooksTotal} ok ·
+            Hooks for course, FlowLab, and product cooks ·{" "}
+            {data.summary.hooksOk}/{data.summary.hooksTotal} ok ·
             lessons {data.summary.lessonsDone}/{data.summary.lessonsTotal} ·
             pipeline {data.summary.pipelineReady}/6 · recent jobs{" "}
             {data.summary.recentJobs}
             {data.summary.viewerRunning ? " · web viewer ON" : ""}
+            {" · "}
+            <Link href="/#story">story</Link>
           </p>
         </div>
         <div className="lesson-actions">

@@ -9,6 +9,7 @@ import { OpsDashboard } from "@/components/OpsDashboard";
 import { InspectPanel } from "@/components/InspectPanel";
 import { FlowLabLayoutCanvas } from "@/components/flowlab/FlowLabLayoutCanvas";
 import { SuiteHub } from "@/components/SuiteHub";
+import { ProductStory } from "@/components/ProductStory";
 import { useToast } from "@/components/ToastProvider";
 
 type Tool = { name: string; ok: boolean; detail: string };
@@ -160,14 +161,16 @@ export default function ToolsClient() {
           <p className="studio-pro-eyebrow">OpenROAD Studio · Tools</p>
           <h1>Console, suite, and inspection</h1>
           <p>
-            Variant <code>learn</code> for the course · variant <code>flowlab</code> in the
-            interactive lab.
+            Same unified path as Studio home: course variant <code>learn</code>,
+            FlowLab variant <code>flowlab</code>.
           </p>
         </div>
         <Link href="/flow" className="btn-primary">
           Open FlowLab →
         </Link>
       </header>
+
+      <ProductStory compact />
 
       <header className="page-head page-head-compact">
         <p>
