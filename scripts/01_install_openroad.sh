@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Installa OpenROAD dai binari precompilati di Precision Innovations (VaultLink).
-# Supporta Ubuntu 22.04 e 24.04.
+# Install OpenROAD from Precision Innovations precompiled binaries (VaultLink).
+# Supports Ubuntu 22.04 and 24.04.
 set -euo pipefail
 
 API="https://vaultlink.precisioninno.com/api"
 UBUNTU_VER="$(. /etc/os-release && echo "$VERSION_ID")"
 
-echo "==> Cerco l'ultima release di OpenROAD per Ubuntu ${UBUNTU_VER}..."
+echo "==> Looking for the latest OpenROAD release for Ubuntu ${UBUNTU_VER}..."
 LATEST_JSON="$(curl -fsSL "${API}/releases/latest")"
 VERSION="$(echo "${LATEST_JSON}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
 FILE="$(echo "${LATEST_JSON}" | python3 -c "
@@ -17,16 +17,16 @@ print(names[0] if names else '')
 ")"
 
 if [[ -z "${FILE}" ]]; then
-  echo "ERRORE: nessun pacchetto per Ubuntu ${UBUNTU_VER} nella release ${VERSION}" >&2
+  echo "ERROR: no package for Ubuntu ${UBUNTU_VER} in release ${VERSION}" >&2
   exit 1
 fi
 
-echo "==> Scarico ${FILE} (release ${VERSION})..."
+echo "==> Downloading ${FILE} (release ${VERSION})..."
 curl -fsSL -o /tmp/openroad.deb "${API}/releases/${VERSION}/${FILE}/download"
 
-echo "==> Installo il pacchetto..."
+echo "==> Installing package..."
 sudo apt-get update -qq
 sudo apt-get install -y /tmp/openroad.deb
 rm -f /tmp/openroad.deb
 
-echo "==> Installato: openroad $(openroad -version)"
+echo "==> Installed: openroad $(openroad -version)"

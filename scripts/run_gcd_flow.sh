@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Esegue il flusso completo RTL -> GDS con ORFS sul design di esempio "gcd"
-# (PDK Nangate45): sintesi (yosys), floorplan, place, CTS, route, finish (GDS).
-# I risultati finiscono in tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/.
+# Run the full RTL -> GDS flow with ORFS on the example "gcd" design
+# (Nangate45 PDK): synthesis (yosys), floorplan, place, CTS, route, finish (GDS).
+# Results land in tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Compila e installa OpenSTA (con la libreria BDD CUDD) dai sorgenti.
-# Installa in tools/opensta e crea il symlink /usr/local/bin/sta.
+# Build and install OpenSTA (with CUDD BDD library) from source.
+# Installs to tools/opensta and creates symlink /usr/local/bin/sta.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -11,7 +11,7 @@ CUDD_PREFIX="${ROOT}/tools/cudd"
 STA_PREFIX="${ROOT}/tools/opensta"
 JOBS="${EDA_JOBS}"
 
-echo "==> Installo le dipendenze di build..."
+echo "==> Installing build dependencies..."
 sudo apt-get install -y -qq build-essential cmake tcl8.6-dev swig bison flex \
   libeigen3-dev zlib1g-dev libreadline-dev tcl-tclreadline automake autotools-dev \
   libtool libtool-bin m4
@@ -19,15 +19,15 @@ sudo apt-get install -y -qq build-essential cmake tcl8.6-dev swig bison flex \
 mkdir -p "${SRC}"
 
 if [[ ! -d "${SRC}/cudd" ]]; then
-  echo "==> Clono CUDD..."
+  echo "==> Cloning CUDD..."
   git clone --depth 1 https://github.com/The-OpenROAD-Project/cudd.git "${SRC}/cudd"
 fi
-echo "==> Compilo CUDD..."
+echo "==> Building CUDD..."
 (
   cd "${SRC}/cudd"
-  # Il clone fresco ha timestamp che spingono i target autotools a rigenerarsi
-  # con una versione pinnata di aclocal (aclocal-1.14) non presente qui.
-  # Rigeneriamo i file autotools con la toolchain locale per renderlo robusto.
+  # A fresh clone has timestamps that push autotools targets to regenerate
+  # with a pinned aclocal version (aclocal-1.14) not present here.
+  # Regenerate autotools files with the local toolchain for robustness.
   autoreconf -fi
   ./configure --prefix="${CUDD_PREFIX}"
   make -j"${JOBS}"
@@ -35,10 +35,10 @@ echo "==> Compilo CUDD..."
 )
 
 if [[ ! -d "${SRC}/OpenSTA" ]]; then
-  echo "==> Clono OpenSTA..."
+  echo "==> Cloning OpenSTA..."
   git clone --depth 1 https://github.com/parallaxsw/OpenSTA.git "${SRC}/OpenSTA"
 fi
-echo "==> Compilo OpenSTA..."
+echo "==> Building OpenSTA..."
 (
   cd "${SRC}/OpenSTA"
   cmake -S . -B build \
@@ -52,4 +52,4 @@ echo "==> Compilo OpenSTA..."
 )
 
 sudo ln -sf "${STA_PREFIX}/bin/sta" /usr/local/bin/sta
-echo "==> Installato: OpenSTA $(sta -version)"
+echo "==> Installed: OpenSTA $(sta -version)"

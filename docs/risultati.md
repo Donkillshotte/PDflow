@@ -6,7 +6,7 @@ Verdict = `win_rule`, not the TPE score.
 Percentages = metric change vs the slot base.
 Negative on area / power / leakage / IR = smaller (better).
 
-## Per slot
+## By slot
 
 | Slot | Base | OFAT | TPE | Min/finish |
 |---|---|---|---|---|

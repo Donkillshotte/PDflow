@@ -48,7 +48,7 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 cts
 ```
 
-Se fallisce → Part 4. Se passa:
+If it fails → Part 4. If it passes:
 
 ```bash
 rg -n 'DPL-0006|Inserted|RSZ-0062|worst slack' \
@@ -56,19 +56,19 @@ rg -n 'DPL-0006|Inserted|RSZ-0062|worst slack' \
   reports/nangate45/gcd/learn/4_cts_final.rpt | head -40
 ```
 
-Riferimento: util 40.5% → 48.3%, `Inserted 45 buffers`, possible **RSZ-0062**, WNS −0.04.  
-RSZ-0062 **non** is DPL-0038: placement is legale, the timing no.
+Reference: util 40.5% → 48.3%, `Inserted 45 buffers`, possible **RSZ-0062**, WNS −0.04.  
+RSZ-0062 **is not** DPL-0038: placement is legal, timing is not.
 
 ---
 
-## Part 3 — GUI e conteggio buffer (25 min)
+## Part 3 — GUI and buffer count (25 min)
 
 ```bash
 # Pre
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_place.odb
-# Post (another shell, stesso cwd):
+# Post (another shell, same cwd):
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_4_cts.odb
 ```
@@ -80,18 +80,18 @@ select -name "clkbuf*" -type Inst
 select -name "clk" -type Net
 ```
 
-O da shell sul Verilog/ODB dump:
+Or from shell on Verilog/ODB dump:
 
 ```bash
 rg -c 'CLKBUF' results/nangate45/gcd/learn/3_place.sdc
-# meglio: netlist o report cell usage
+# better: netlist or cell usage report
 rg -c 'CLKBUF_' results/nangate45/gcd/learn/6_final.v || true
 ```
 
 Checklist atlas:
 
 - [ ] `win_cts.png` vs your window
-- [ ] Inspector net `clk` after route: `CTS_NDR_0` (lesson 07, ma the rule originates here)
+- [ ] Inspector net `clk` after route: `CTS_NDR_0` (lesson 07, but the rule originates here)
 - [ ] View → Clock Tree Viewer **or** PNG `orfs_cts_clock_tree.png`
 
 Note: additional clock buffers ≈ ______.
@@ -100,7 +100,7 @@ Note: additional clock buffers ≈ ______.
 
 ## Part 4 — Intentional debug DPL-0038 (35 min)
 
-**Un parayardstick per volta.** Backup SDC.
+**One yardstick at a time.** Backup SDC.
 
 ```bash
 cp learn/designs/nangate45/gcd-tutorial/constraint.sdc \
@@ -118,14 +118,14 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=55 synth floorplan place cts
 ```
 
-Expected: **DPL-0038** (o fail affine) in `4_1_cts.log`.
+Expected: **DPL-0038** (or affine fail) in `4_1_cts.log`.
 
 ```bash
 rg -n 'DPL-0038|DPL-0006|Utilization greater' \
   logs/nangate45/gcd/learn/4_1_cts.log
 ```
 
-If it exists `4_1_error.odb`:
+If `4_1_error.odb` exists:
 
 ```bash
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
@@ -136,7 +136,7 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 
 - A: `CORE_UTILIZATION=30` + SDC tight
 - B: SDC default 0.46 + util 55
-- C: entrambi rilassati (controllo positivo)
+- C: both relaxed (positive control)
 
 Restore:
 
@@ -157,7 +157,7 @@ sed -n '1,40p' tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/learn/4_ct
 
 Fill in:
 
-| Campo | Valore |
+| Field | Value |
 |---|---|
 | WNS | |
 | setup skew | |

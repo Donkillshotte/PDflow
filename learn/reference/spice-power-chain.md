@@ -1,45 +1,45 @@
-# Catena power RTL → PKG · guide esaustiva
+# RTL → PKG power chain · comprehensive guide
 
-**Master** document linking the **8 course lessons (00–07)**, the **9 FlowLab phases**, **ORFS artifacts**, **Studio actions**, and the **two SPICE families** (mesh on-die + ladder System PDN).
+**Master** document linking the **8 course lessons (00–07)**, the **9 FlowLab phases**, **ORFS artifacts**, **Studio actions**, and the **two SPICE families** (on-die mesh + System PDN ladder).
 
-## Matrice completa
+## Complete matrix
 
-| Lesson | FlowLab | ORFS make / output chiave | Azioni Studio | SPICE / report |
+| Lesson | FlowLab | Key ORFS make / output | Studio actions | SPICE / report |
 |---|---|---|---|---|
-| [00-intro](#lesson-00-intro) | `rtl` | `gcd.v`, `gcd.vcd` | `rtl_sim` | — (VCD → activity futura) |
+| [00-intro](#lesson-00-intro) | `rtl` | `gcd.v`, `gcd.vcd` | `rtl_sim` | — (VCD → future activity) |
 | [01-constraints](#lesson-01-constraints) | `synth` (prep) | `constraint.sdc`, `config.mk` | — | — |
 | [02-synthesis](#lesson-02-synthesis) | `synth` | `1_synth.*`, `.lib` | `synth` | `nangate_inverter_demo.sp` |
 | [03-floorplan](#lesson-03-floorplan) | `floorplan`, `pdn` | `2_4_floorplan_pdn.odb` | `floorplan`, `gridcheck` | mesh post-finish |
 | [04-placement](#lesson-04-placement) | `place` | `3_*place*.odb` | `place` | `ITermNode_*` in mesh |
 | [05-cts](#lesson-05-cts) | `cts` | `4_*cts*.odb` | `cts` | ↑ switching clock |
 | [06-routing](#lesson-06-routing) | `route` | `5_*route*.odb`, guide | `route` | SPEF → STA |
-| [07-finish](#lesson-07-finish) | `finish`, `pkg` | `6_final.*`, IR PNG | signoff chain | all i report |
+| [07-finish](#lesson-07-finish) | `finish`, `pkg` | `6_final.*`, IR PNG | signoff chain | all reports |
 | Post-course | `pkg` | `system_pdn/`, reports | `system_pdn`, `power_chain` | ngspice JSON |
 
 ### Two SPICE engines (do not confuse them)
 
 | | Chip mesh | System ladder |
 |---|---|---|
-| **Question** | Where on the die is there IR/droop? | VRM→board→pkg handles the load-step? |
-| **Netlist** | `write_pg_spice` (~5k R) | `system_pdn_hier.py` (~15 elementi) |
+| **Question** | Where on the die is there IR/droop? | Does VRM→board→pkg handle the load-step? |
+| **Netlist** | `write_pg_spice` (~5k R) | `system_pdn_hier.py` (~15 elements) |
 | **Sim** | PDNSim + `pdn_transient.py` | ngspice TRAN + AC |
-| **Quando** | Post-finish | Post-finish (I_die da activity) |
+| **When** | Post-finish | Post-finish (I_die from activity) |
 | **Doc** | [spice-chip-mesh.md](./spice-chip-mesh.md) | [spice-ngspice-primer.md](./spice-ngspice-primer.md) |
 
 ---
 
-## Diagramma end-to-end
+## End-to-end diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ CORso 00–07 (FLOW_VARIANT=learn)     │  FlowLab (FLOW_VARIANT=flowlab) │
+│ Course 00–07 (FLOW_VARIANT=learn)     │  FlowLab (FLOW_VARIANT=flowlab) │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ 00 RTL sim → VCD                     │  rtl_sim → gcd.vcd               │
 │ 02 Synth → netlist + .lib            │  synth → 1_synth.odb             │
 │ 03 Floorplan → 2_4 PDN ODB           │  floorplan → 2_4_floorplan_pdn   │
 │      └─ gridcheck (FlowLab PDN)      │  gridcheck → .gridcheck_pdn.ok   │
-│ 04 Place → coordinate celle          │  place → 3_place.odb             │
-│ 05 CTS → buffer clock                │  cts → 4_cts.odb                 │
+│ 04 Place → cell coordinates          │  place → 3_place.odb             │
+│ 05 CTS → clock buffers               │  cts → 4_cts.odb                 │
 │ 06 Route → guide + DRC               │  route → 5_route.odb             │
 │ 07 Finish → GDS/SPEF/IR heatmap      │  finish → 6_final.*              │
 │      └─ (post) signoff SPICE         │  activity_power → I_avg          │
@@ -53,11 +53,11 @@
 
 ## Lesson 00-intro {#lesson-00-intro}
 
-**Course:** `learn/lessons/00-intro/` · **FlowLab:** [fase RTL](/flusso?phase=rtl)
+**Course:** `learn/lessons/00-intro/` · **FlowLab:** [RTL phase](/flusso?phase=rtl)
 
-| Produce | Consuma |
+| Produces | Consumes |
 |---|---|
-| `learn/sim/gcd/gcd.vcd` | `learn/flowlab/gcd.v` o `designs/.../gcd.v` |
+| `learn/sim/gcd/gcd.vcd` | `learn/flowlab/gcd.v` or `designs/.../gcd.v` |
 
 VCD records **toggle** on signals. In tapeout:
 
@@ -66,21 +66,21 @@ read_vcd -scope tb_gcd/dut gcd.vcd
 report_power
 ```
 
-Studio use **`read_vcd`** (non `read_power_activities`) when `run_rtl_sim.sh` produced `gcd.vcd` — see `learn/lib/power_vcd.sh`. For IR without vectors: azione `vectorless` ([vectorless-power.md](./vectorless-power.md)).
+Studio uses **`read_vcd`** (not `read_power_activities`) when `run_rtl_sim.sh` produced `gcd.vcd` — see `learn/lib/power_vcd.sh`. For IR without vectors: `vectorless` action ([vectorless-power.md](./vectorless-power.md)).
 
-**Prossimo passo catena:** 02 synth (celle) → 07 finish (`report_power`).
+**Next chain step:** 02 synth (cells) → 07 finish (`report_power`).
 
 ---
 
 ## Lesson 01-constraints {#lesson-01-constraints}
 
-**Course:** `learn/lessons/01-constraints/` · **FlowLab:** prep synth ([SDC preset](/flusso?phase=synth))
+**Course:** `learn/lessons/01-constraints/` · **FlowLab:** synth prep ([SDC preset](/flusso?phase=synth))
 
-| Impatto power | Dettaglio |
+| Power impact | Detail |
 |---|---|
-| `create_clock` period | Frequenza ↑ → switching ↑ |
-| I/O delay | Activity periferica |
-| `config.mk` | `ABC_AREA`, util indiretti |
+| `create_clock` period | Higher frequency ↑ → switching ↑ |
+| I/O delay | Peripheral activity |
+| `config.mk` | `ABC_AREA`, indirect util |
 
 Does not generate SPICE netlist; prepares timing context where `report_power` will be read at L07.
 
@@ -93,24 +93,24 @@ Does not generate SPICE netlist; prepares timing context where `report_power` wi
 | Artifact | Role in power chain |
 |---|---|
 | `NangateOpenCellLibrary_typical.lib` | Per-cell power models |
-| `1_synth.v` / `1_synth.odb` | Netlist gate-level (pre-place) |
+| `1_synth.v` / `1_synth.odb` | Gate-level netlist (pre-place) |
 
 ### Liberty → currents (not ORFS transistor-level SPICE)
 
-| Sezione `.lib` | Meaning |
+| `.lib` section | Meaning |
 |---|---|
-| `cell_leakage_power` | Statico |
-| `internal_power` / `switching_power` | Per transizione |
-| `pin` capacitance | Carico |
+| `cell_leakage_power` | Static |
+| `internal_power` / `switching_power` | Per transition |
+| `pin` capacitance | Load |
 
-OpenROAD aggrega in `report_power`:
+OpenROAD aggregates in `report_power`:
 
 ```
 Sequential / Combinational / Clock → Total W
 I_avg ≈ P_total / Vdd  →  load System PDN
 ```
 
-**Lab SPICE educational:** [nangate_inverter_demo.sp](../sim/spice/nangate_inverter_demo.sp) — inverter CMOS transistor-level (not foundry Nangate45).
+**Educational SPICE lab:** [nangate_inverter_demo.sp](../sim/spice/nangate_inverter_demo.sp) — transistor-level CMOS inverter (not foundry Nangate45).
 
 ```bash
 ngspice -b learn/sim/spice/nangate_inverter_demo.sp
@@ -122,17 +122,17 @@ ngspice -b learn/sim/spice/nangate_inverter_demo.sp
 
 **Course:** `learn/lessons/03-floorplan/` · **FlowLab:** [floorplan](/flusso?phase=floorplan) + [PDN](/flusso?phase=pdn)
 
-| Step ORFS | Output | Catena power |
+| ORFS step | Output | Power chain |
 |---|---|---|
-| 2_1 | die/core/rows | geometria |
-| 2_4 | `2_4_floorplan_pdn.odb` | straps VDD/VSS |
+| 2_1 | die/core/rows | geometry |
+| 2_4 | `2_4_floorplan_pdn.odb` | VDD/VSS straps |
 | gridcheck | `.gridcheck_pdn.ok` | PSM-0040 connectivity |
 
-Files strategia: `grid_strategy-M1-M4-M7.tcl` (course) / nangate45 M5/M8 (FlowLab).
+Strategy files: `grid_strategy-M1-M4-M7.tcl` (course) / nangate45 M5/M8 (FlowLab).
 
-**Note:** resistive SPICE netlist is born **only post-finish** con `write_pg_spice`. At L03 verify the grid exists; at L07 simulate it.
+**Note:** resistive SPICE netlist is born **only post-finish** with `write_pg_spice`. At L03 verify the grid exists; at L07 simulate it.
 
-IR heatmap L07 (`orfs_final_ir_drop.png`) is **cieca** se 2_4 PDN manca.
+L07 IR heatmap (`orfs_final_ir_drop.png`) is **blind** if 2_4 PDN is missing.
 
 ---
 
@@ -140,7 +140,7 @@ IR heatmap L07 (`orfs_final_ir_drop.png`) is **cieca** se 2_4 PDN manca.
 
 **Course:** `learn/lessons/04-placement/` · **FlowLab:** [place](/flusso?phase=place)
 
-Every cella piazzata otkeeps coordinate → pin VDD su nodi `ITermNode_metal*_*` in `pg_vdd_bumps.sp`.
+Every placed cell gets coordinates → VDD pins on `ITermNode_metal*_*` nodes in `pg_vdd_bumps.sp`.
 
 ```
 R0 Node_metal1_2400_5600 ITermNode_metal1_2470_5345 R=1e-3
@@ -149,7 +149,7 @@ I0 ITermNode_metal1_2470_5345 0 DC 1.23e-05
 
 PDNSim distributes current from `report_power` on pins based on activity and cell type.
 
-See [spice-chip-mesh.md § anatomia](./spice-chip-mesh.md#anatomia-di-pg_vdd_bumpssp).
+See [spice-chip-mesh.md § anatomy](./spice-chip-mesh.md#anatomia-di-pg_vdd_bumpssp).
 
 ---
 
@@ -157,12 +157,12 @@ See [spice-chip-mesh.md § anatomia](./spice-chip-mesh.md#anatomia-di-pg_vdd_bum
 
 **Course:** `learn/lessons/05-cts/` · **FlowLab:** [cts](/flusso?phase=cts)
 
-| Effetto | Catena power |
+| Effect | Power chain |
 |---|---|
-| Buffer clock inserted | ↑ capacitance + toggle |
-| Skew repair | Nuove celle → nuovi sink |
+| Inserted clock buffers | ↑ capacitance + toggle |
+| Skew repair | New cells → new sinks |
 
-`report_power` post-CTS often shows significant **Clock** group (~11% su GCD flowlab).
+`report_power` post-CTS often shows significant **Clock** group (~11% on GCD flowlab).
 
 ---
 
@@ -170,13 +170,13 @@ See [spice-chip-mesh.md § anatomia](./spice-chip-mesh.md#anatomia-di-pg_vdd_bum
 
 **Course:** `learn/lessons/06-routing/` · **FlowLab:** [route](/flusso?phase=route)
 
-| Output | Uso |
+| Output | Use |
 |---|---|
-| `5_*route*.odb` | Mesh completa pre-finish |
-| `route.guide` | Congestion (indiretto su timing → activity) |
-| SPEF (a L07) | Parasitics for STA |
+| `5_*route*.odb` | Complete mesh pre-finish |
+| `route.guide` | Congestion (indirect on timing → activity) |
+| SPEF (at L07) | Parasitics for STA |
 
-IR drop statico use geometria **post-route/finish**, not placement alone.
+Static IR drop uses **post-route/finish** geometry, not placement alone.
 
 ---
 
@@ -184,29 +184,29 @@ IR drop statico use geometria **post-route/finish**, not placement alone.
 
 **Course:** `learn/lessons/07-finish/` · **FlowLab:** [finish](/flusso?phase=finish) + signoff + [PKG](/flusso?phase=pkg)
 
-### Deliverable ORFS
+### ORFS deliverables
 
-| Files | Signoff | Catena SPICE |
+| Files | Signoff | SPICE chain |
 |---|---|---|
-| `6_final.odb` | timing, power | input PDNSim |
+| `6_final.odb` | timing, power | PDNSim input |
 | `6_final.gds` | mask/DRC | — |
 | `6_final.spef` | STA post-route | — |
-| `orfs_final_ir_drop.png` | IR statico PDNSim | confronta chip IR JSON |
+| `orfs_final_ir_drop.png` | PDNSim static IR | compare chip IR JSON |
 
-### Signoff FlowLab (ordine recommended)
+### FlowLab signoff (recommended order)
 
 1. **`activity_power`** → `activity_power_<variant>.log` → **I_die**
 2. **`chip_pdn_ir`** → `pg_vdd_bumps.sp` + `pdn_chip_ir_*.json`
 3. **`vyges_em_ir`** → same mesh, binary CG + backward Euler (`vyges_em_ir_*.json`)
 4. **`dynamic_ir`** → I(t) per pin + heatmap (`dynamic_ir_*.json` + `.svg`)
 5. **`system_pdn`** → `system_pdn_*.json` (Zmax, droop)
-6. **`power_chain`** → esegue activity → chip IR → system → export lab
+6. **`power_chain`** → runs activity → chip IR → system → lab export
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh
 ```
 
-### Confronto metrics GCD flowlab (tipico)
+### GCD flowlab metrics comparison (typical)
 
 | Metric | Chip mesh | System ladder |
 |---|---|---|
@@ -219,11 +219,11 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh
 
 ---
 
-## Fase FlowLab PKG (post L07) {#fase-pkg}
+## FlowLab PKG phase (post L07) {#fase-pkg}
 
 **Hub:** [/pkg](/pkg) · **Config:** `learn/system_pdn/default.json`
 
-ngspice simula:
+ngspice simulates:
 
 ```
 VRM (R,L,C,ESR) → board plane/bulk/HF → package RLC/bumps → C_die + I_DIE pulse
@@ -235,14 +235,14 @@ Deep dive: [spice-ngspice-primer.md](./spice-ngspice-primer.md)
 
 ---
 
-## Lab netlist SPICE
+## SPICE lab netlists
 
 | Path | Content |
 |---|---|
-| [sim/spice/README.md](../sim/spice/README.md) | Indice lab |
-| `system_pdn_tran_demo.sp` | Ladder eseguibile |
-| `nangate_inverter_demo.sp` | Cella educational |
-| `export_spice_lab.sh` | Copia mesh + stats |
+| [sim/spice/README.md](../sim/spice/README.md) | Lab index |
+| `system_pdn_tran_demo.sp` | Runnable ladder |
+| `nangate_inverter_demo.sp` | Educational cell |
+| `export_spice_lab.sh` | Copy mesh + stats |
 
 After export (flowlab):
 
@@ -253,45 +253,45 @@ After export (flowlab):
 
 ---
 
-## Comandi rapidi
+## Quick commands
 
 ```bash
-# Singoli step
+# Individual steps
 FLOW_VARIANT=flowlab ./learn/scripts/run_activity_power.sh
 FLOW_VARIANT=flowlab ./learn/scripts/run_chip_pdn_ir.sh
 FLOW_VARIANT=flowlab ./learn/scripts/run_system_pdn.sh
 FLOW_VARIANT=flowlab ./learn/scripts/export_spice_lab.sh
 
-# Catena completa
+# Full chain
 FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh
 
-# Demo ngspice
+# ngspice demo
 ngspice -b learn/sim/spice/system_pdn_tran_demo.sp
 ```
 
 ---
 
-## Limiti onesti
+## Honest limits
 
-- Nessun SPICE transistor-level Nangate45 in ORFS GCD
+- No transistor-level Nangate45 SPICE in ORFS GCD
 - VCD → `read_vcd` via `power_vcd.sh` in `run_activity_power.sh` (FlowLab `rtl_sim` → activity)
 - Vectorless IR → `run_vectorless.sh` (Najm + Kouroussis)
-- System PDN = ladder lumped educativo
-- Chip `BUMPS` = pattern sintetico OpenROAD (PSM-0073)
+- System PDN = educational lumped ladder
+- Chip `BUMPS` = synthetic OpenROAD pattern (PSM-0073)
 - Lessons 00–07 **do not require** SPICE for completion — **post-course** module recommended
 
 ---
 
-## Indice documentazione correlata
+## Related documentation index
 
-| Doc | Quando leggerlo |
+| Doc | When to read |
 |---|---|
-| [spice-chip-mesh.md](./spice-chip-mesh.md) | After L07, before di chip_pdn_ir |
-| [spice-ngspice-primer.md](./spice-ngspice-primer.md) | Before di PKG / system_pdn |
-| [system-pdn.md](./system-pdn.md) | Landscape tool |
-| [pkg-design-package.md](./pkg-design-package.md) | Packaging tapeout |
-| [extended-flow.md](./extended-flow.md) | §8 modules opzionali |
+| [spice-chip-mesh.md](./spice-chip-mesh.md) | After L07, before chip_pdn_ir |
+| [spice-ngspice-primer.md](./spice-ngspice-primer.md) | Before PKG / system_pdn |
+| [system-pdn.md](./system-pdn.md) | Tool landscape |
+| [pkg-design-package.md](./pkg-design-package.md) | Tapeout packaging |
+| [extended-flow.md](./extended-flow.md) | §8 optional modules |
 | [golden-metrics.md](./golden-metrics.md) | IR heatmap vs report JSON |
-| [glossary.md](./glossary.md) | Termini SPICE/ngspice |
+| [glossary.md](./glossary.md) | SPICE/ngspice terms |
 
 **UI:** FlowLab shows the chain below the pipeline · Lessons have «Power chain» panel · Post-finish signoff in GDSII phase.

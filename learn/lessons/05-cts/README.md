@@ -84,7 +84,7 @@ On the healthy run you are at **48%** post-CTS. DPL-0038 appears when this colum
 | WNS/TNS / viol count | same report |
 | Buffer inserted | log `4_1_cts.log` `Inserted N buffers` |
 | Util DPL | log `DPL-0006` |
-| Albero | `reports/.../cts_core_clock.webp.png` (copied to `gui-shots/orfs_cts_clock_tree.png`) |
+| Tree | `reports/.../cts_core_clock.webp.png` (copied to `gui-shots/orfs_cts_clock_tree.png`) |
 
 ## GUI
 

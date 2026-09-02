@@ -8,11 +8,11 @@
 #   analysis  core + native DPN engine (synthetic dpn_test only)
 #   full      analysis + OpenSTA standalone (CUDD) for scripts/run_opensta_example.sh
 #
-# Variabili:
-#   EDA_JOBS=2           parallelismo compilazione (default 2, max 8)
-#   SKIP_EDA=1           salta 01..04
-#   SKIP_STUDIO=1        salta npm ci
-#   PD_FLOW_PROFILE=...  vedi sopra
+# Variables:
+#   EDA_JOBS=2           build parallelism (default 2, max 8)
+#   SKIP_EDA=1           skip 01..04
+#   SKIP_STUDIO=1        skip npm ci
+#   PD_FLOW_PROFILE=...  see above
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,20 +24,20 @@ PROFILE="${PD_FLOW_PROFILE:-core}"
 case "${PROFILE}" in
   core|analysis|full) ;;
   *)
-    echo "ERRORE: PD_FLOW_PROFILE=${PROFILE} (attesi: core|analysis|full)" >&2
+    echo "ERROR: PD_FLOW_PROFILE=${PROFILE} (expected: core|analysis|full)" >&2
     exit 1
     ;;
 esac
 
 log() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
-log "Profilo ${PROFILE}  EDA_JOBS=${EDA_JOBS}"
-log "Nessun flow OpenROAD / AES / DSE / Krylov in questo script."
+log "Profile ${PROFILE}  EDA_JOBS=${EDA_JOBS}"
+log "No OpenROAD flow / AES / DSE / Krylov in this script."
 
 # ---------------------------------------------------------------------------
-# 1. Pacchetti di sistema
+# 1. System packages
 # ---------------------------------------------------------------------------
-log "Pacchetti di sistema (build deps + tool ausiliari)"
+log "System packages (build deps + auxiliary tools)"
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update -qq
 APT_PKGS=(
@@ -55,59 +55,59 @@ fi
 sudo apt-get install -y -qq "${APT_PKGS[@]}"
 
 # ---------------------------------------------------------------------------
-# 2. Toolchain EDA (OpenROAD / KLayout / ORFS + yosys)
+# 2. EDA toolchain (OpenROAD / KLayout / ORFS + yosys)
 # ---------------------------------------------------------------------------
 if [[ "${SKIP_EDA:-0}" != "1" ]]; then
   if ! command -v openroad >/dev/null 2>&1; then
-    log "OpenROAD (binari Precision Innovations)"
+    log "OpenROAD (Precision Innovations binaries)"
     ./scripts/01_install_openroad.sh
   else
-    log "OpenROAD gia' presente: $(openroad -version | head -1)"
+    log "OpenROAD already present: $(openroad -version | head -1)"
   fi
 
   if ! command -v klayout >/dev/null 2>&1; then
-    log "KLayout (.deb ufficiale)"
+    log "KLayout (official .deb)"
     ./scripts/03_install_klayout.sh
   else
-    log "KLayout gia' presente: $(klayout -v 2>&1 | head -1)"
+    log "KLayout already present: $(klayout -v 2>&1 | head -1)"
   fi
 
   if ! command -v yosys >/dev/null 2>&1 || [[ ! -d "${ROOT}/tools/OpenROAD-flow-scripts" ]]; then
-    log "ORFS + yosys (clone + build dai sorgenti, EDA_JOBS=${EDA_JOBS})"
+    log "ORFS + yosys (clone + build from source, EDA_JOBS=${EDA_JOBS})"
     ./scripts/04_setup_orfs.sh
   else
-    log "yosys/ORFS gia' presenti: $(yosys -V 2>/dev/null | head -1)"
+    log "yosys/ORFS already present: $(yosys -V 2>/dev/null | head -1)"
   fi
 
   if [[ "${PROFILE}" == "full" ]]; then
     if [[ ! -x "${ROOT}/tools/opensta/bin/sta" ]]; then
-      log "OpenSTA standalone (profilo full, EDA_JOBS=${EDA_JOBS})"
+      log "OpenSTA standalone (full profile, EDA_JOBS=${EDA_JOBS})"
       ./scripts/02_install_opensta.sh
     else
-      log "OpenSTA standalone gia' presente: $("${ROOT}/tools/opensta/bin/sta" -version 2>/dev/null | head -1)"
+      log "OpenSTA standalone already present: $("${ROOT}/tools/opensta/bin/sta" -version 2>/dev/null | head -1)"
     fi
   else
-    log "Salto OpenSTA standalone (profilo ${PROFILE}; OpenROAD include STA)"
+    log "Skipping OpenSTA standalone (profile ${PROFILE}; OpenROAD includes STA)"
   fi
 else
-  log "SKIP_EDA=1: salto la toolchain EDA"
+  log "SKIP_EDA=1: skipping EDA toolchain"
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Solver nativo — solo analysis/full, e solo dpn_test sintetico
+# 3. Native solver — analysis/full only, synthetic dpn_test only
 # ---------------------------------------------------------------------------
 if [[ "${PROFILE}" == "analysis" || "${PROFILE}" == "full" ]]; then
-  log "Solver nativo DPN (engine) — dpn_test sintetico, nessuna mesh reale"
+  log "Native DPN solver (engine) — synthetic dpn_test, no real mesh"
   ./learn/scripts/build_dpn_engine.sh
 else
-  log "Salto engine/libdpn (profilo core)"
+  log "Skipping engine/libdpn (core profile)"
 fi
 
 # ---------------------------------------------------------------------------
 # 4. Studio (Next.js)
 # ---------------------------------------------------------------------------
 if [[ "${SKIP_STUDIO:-0}" != "1" ]]; then
-  log "Studio: dipendenze npm"
+  log "Studio: npm dependencies"
   (
     cd studio
     if [[ -f package-lock.json ]]; then
@@ -117,13 +117,13 @@ if [[ "${SKIP_STUDIO:-0}" != "1" ]]; then
     fi
   )
 else
-  log "SKIP_STUDIO=1: salto npm install"
+  log "SKIP_STUDIO=1: skipping npm install"
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Smoke versioni — mai un make ORFS
+# 5. Version smoke — never an ORFS make
 # ---------------------------------------------------------------------------
-log "Smoke versioni"
+log "Version smoke"
 ./scripts/cloud_agent_smoke.sh
 
-log "Setup completato (profilo ${PROFILE})."
+log "Setup complete (profile ${PROFILE})."

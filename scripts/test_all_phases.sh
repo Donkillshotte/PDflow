@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Validazione esaustiva fasi corso + FlowLab + catena power.
-# Richiede Studio su 127.0.0.1:43217 per i test API (opzionale).
+# Exhaustive validation of course phases + FlowLab + power chain.
+# Requires Studio on 127.0.0.1:43217 for API tests (optional).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -8,70 +8,70 @@ FAIL=0
 ok() { echo "OK  $*"; }
 bad() { echo "FAIL $*"; FAIL=1; }
 
-echo "== Fasi lezione 00–07 =="
+echo "== Lesson phases 00–07 =="
 for id in 00-intro 01-constraints 02-synthesis 03-floorplan 04-placement 05-cts 06-routing 07-finish; do
   dir="${ROOT}/learn/lessons/${id}"
   for f in README.md LAB.md run.sh; do
-    [[ -f "${dir}/${f}" ]] && ok "${id}/${f}" || bad "manca ${id}/${f}"
+    [[ -f "${dir}/${f}" ]] && ok "${id}/${f}" || bad "missing ${id}/${f}"
   done
-  [[ -x "${dir}/run.sh" ]] && ok "${id}/run.sh executable" || bad "${id}/run.sh non eseguibile"
+  [[ -x "${dir}/run.sh" ]] && ok "${id}/run.sh executable" || bad "${id}/run.sh not executable"
   bash -n "${dir}/run.sh" && ok "${id}/run.sh syntax" || bad "${id}/run.sh syntax error"
-  rg -q 'Catena power|SPICE|power' "${dir}/README.md" && ok "${id} power section" || bad "${id} README senza power/SPICE"
+  rg -q 'Catena power|SPICE|power' "${dir}/README.md" && ok "${id} power section" || bad "${id} README missing power/SPICE"
 done
 
-echo "== powerChainLessons.ts copertura =="
+echo "== powerChainLessons.ts coverage =="
 for id in 00-intro 01-constraints 02-synthesis 03-floorplan 04-placement 05-cts 06-routing 07-finish; do
   rg -q "lessonId: \"${id}\"" "${ROOT}/studio/src/lib/powerChainLessons.ts" \
-    && ok "powerChain ${id}" || bad "powerChainLessons manca ${id}"
+    && ok "powerChain ${id}" || bad "powerChainLessons missing ${id}"
 done
 
-echo "== FlowLab 9 fasi =="
+echo "== FlowLab 9 phases =="
 for phase in rtl synth floorplan pdn place cts route finish pkg; do
   rg -q "id: \"${phase}\"" "${ROOT}/studio/src/components/flowlab/phases.ts" \
-    && ok "phase ${phase}" || bad "manca fase ${phase}"
+    && ok "phase ${phase}" || bad "missing phase ${phase}"
 done
 
-echo "== Azioni power in run.ts =="
+echo "== Power actions in run.ts =="
 for action in rtl_sim synth floorplan gridcheck place cts route finish \
   activity_power vectorless vyges_em_ir dynamic_ir chip_pdn_ir system_pdn export_spice_lab power_chain \
   yosys_equiv formal_gcd openrcx_report analytical_pex layout_tools tool_matrix; do
   rg -q "\"${action}\"" "${ROOT}/studio/src/lib/run.ts" \
-    && ok "action ${action}" || bad "run.ts senza ${action}"
+    && ok "action ${action}" || bad "run.ts missing ${action}"
 done
 
-echo "== Script signoff Fase 2 =="
+echo "== Phase 2 signoff scripts =="
 for s in run_thermal_signoff.sh run_pkg_bump.sh run_pkg_rdl.sh run_pkg_signoff.sh run_signoff_phase2.sh; do
   f="${ROOT}/learn/scripts/${s}"
   [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
 done
 python3 -m py_compile "${ROOT}/learn/scripts/parse_signoff_artifacts.py" && ok "parse_signoff_artifacts.py" || bad "parse_signoff_artifacts.py"
 
-echo "== Azioni Fase 2 in run.ts =="
+echo "== Phase 2 actions in run.ts =="
 for action in thermal_signoff pkg_bump pkg_rdl pkg_signoff signoff_phase2; do
   rg -q "\"${action}\"" "${ROOT}/studio/src/lib/run.ts" \
-    && ok "action ${action}" || bad "run.ts senza ${action}"
+    && ok "action ${action}" || bad "run.ts missing ${action}"
 done
 
-echo "== Script signoff =="
+echo "== Signoff scripts =="
 for s in run_sta_signoff.sh run_drc_signoff.sh run_klayout_lvs.sh run_power_signoff.sh run_signoff_all.sh; do
   f="${ROOT}/learn/scripts/${s}"
   [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
 done
 rg -q 'SIGNOFF_INCLUDE_PHASE2' "${ROOT}/learn/scripts/run_signoff_all.sh" \
-  && ok "signoff_all phase2 opt-in" || bad "run_signoff_all.sh senza SIGNOFF_INCLUDE_PHASE2"
+  && ok "signoff_all phase2 opt-in" || bad "run_signoff_all.sh missing SIGNOFF_INCLUDE_PHASE2"
 python3 -m py_compile "${ROOT}/learn/scripts/signoff_eval.py" && ok "signoff_eval.py" || bad "signoff_eval.py"
 [[ -f "${ROOT}/learn/signoff/golden-gcd.json" ]] && ok "golden-gcd.json" || bad "golden-gcd.json"
 [[ -f "${ROOT}/learn/reference/signoff-matrix.md" ]] && ok "signoff-matrix.md" || bad "signoff-matrix.md"
 rg -q 'SIGNOFF_PILLARS' "${ROOT}/studio/src/lib/signoff.ts" && ok "signoff.ts registry" || bad "signoff.ts"
 
-echo "== Azioni signoff in run.ts =="
+echo "== Signoff actions in run.ts =="
 for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all; do
   rg -q "\"${action}\"" "${ROOT}/studio/src/lib/run.ts" \
-    && ok "action ${action}" || bad "run.ts senza ${action}"
+    && ok "action ${action}" || bad "run.ts missing ${action}"
 done
 
 echo "== STAGE_DEPS signoff =="
-python3 - <<PY || bad "STAGE_DEPS signoff incompleti"
+python3 - <<PY || bad "STAGE_DEPS signoff incomplete"
 import re
 text = open("${ROOT}/studio/src/lib/jobs.ts").read()
 for a in ["sta_signoff", "drc_signoff", "klayout_lvs", "power_signoff", "signoff_all"]:
@@ -81,7 +81,7 @@ print("signoff deps ok")
 PY
 ok "STAGE_DEPS signoff"
 
-echo "== Script catena power =="
+echo "== Power chain scripts =="
 for s in run_rtl_sim.sh run_activity_power.sh run_vectorless.sh run_chip_pdn_ir.sh run_system_pdn.sh \
   run_power_chain.sh export_spice_lab.sh run_gridcheck.sh run_yosys_equiv.sh run_formal_gcd.sh \
   run_openrcx_report.sh run_layout_tools_probe.sh run_spice_engines.sh run_tool_matrix.sh \
@@ -96,20 +96,20 @@ python3 -m py_compile "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic.
 
 echo "== powerChainLessons signoff hooks =="
 rg -q 'drc_signoff' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
-  && ok "L06 drc_signoff" || bad "powerChain L06 senza drc_signoff"
+  && ok "L06 drc_signoff" || bad "powerChain L06 missing drc_signoff"
 rg -q 'signoff_all' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
-  && ok "L07 signoff_all" || bad "powerChain L07 senza signoff_all"
+  && ok "L07 signoff_all" || bad "powerChain L07 missing signoff_all"
 rg -q 'signoff-matrix' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
-  && ok "powerChain signoff-matrix doc" || bad "powerChain senza signoff-matrix link"
+  && ok "powerChain signoff-matrix doc" || bad "powerChain missing signoff-matrix link"
 
 echo "== LiveRunConsole signoff chips =="
 for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2 vectorless yosys_equiv formal_gcd vyges_em_ir dynamic_ir; do
   rg -q "id: \"${action}\"" "${ROOT}/studio/src/components/LiveRunConsole.tsx" \
-    && ok "LiveRunConsole ${action}" || bad "LiveRunConsole senza ${action}"
+    && ok "LiveRunConsole ${action}" || bad "LiveRunConsole missing ${action}"
 done
 
 echo "== STAGE_DEPS power =="
-python3 - <<PY || bad "STAGE_DEPS power incompleti"
+python3 - <<PY || bad "STAGE_DEPS power incomplete"
 import re, sys
 text = open("${ROOT}/studio/src/lib/jobs.ts").read()
 need = ["gridcheck", "system_pdn", "chip_pdn_ir", "vyges_em_ir", "dynamic_ir", "power_chain", "activity_power", "export_spice_lab", "vectorless"]
@@ -121,11 +121,11 @@ print("deps ok")
 PY
 ok "STAGE_DEPS power chain"
 
-echo "== Artefatti flowlab (se presenti) =="
+echo "== FlowLab artifacts (if present) =="
 RES="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab"
 if [[ -f "${RES}/6_final.odb" ]]; then
   for stamp in .gridcheck_pdn.ok .system_pdn.ok .chip_pdn_ir.ok .vyges_em_ir.ok .dynamic_ir.ok; do
-    [[ -f "${RES}/${stamp}" ]] && ok "stamp ${stamp}" || bad "manca ${stamp} (esegui signoff)"
+    [[ -f "${RES}/${stamp}" ]] && ok "stamp ${stamp}" || bad "missing ${stamp} (run signoff)"
   done
   if [[ -f "${ROOT}/learn/sim/reports/vyges_em_ir_flowlab.json" ]]; then
     python3 - <<PY && ok "vyges_em_ir report parse" || bad "vyges_em_ir report"
@@ -136,7 +136,7 @@ assert r["vyges"]["worst_ir"]["drop"] < 0.05
 print(r["summary"][:100])
 PY
   else
-    bad "manca vyges_em_ir_flowlab.json"
+    bad "missing vyges_em_ir_flowlab.json"
   fi
   if [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json" ]]; then
     python3 - <<PY && ok "dynamic_ir report parse" || bad "dynamic_ir report"
@@ -160,37 +160,37 @@ assert d is None or d.get("ok") is True
 assert (r.get("ngspice_gold") or {}).get("ok") is not False or r.get("ngspice_gold") is None
 print(r["summary"][:120])
 PY
-    [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.svg" ]] && ok "dynamic_ir svg" || bad "manca dynamic_ir svg"
+    [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.svg" ]] && ok "dynamic_ir svg" || bad "missing dynamic_ir svg"
   else
-    bad "manca dynamic_ir_flowlab.json"
+    bad "missing dynamic_ir_flowlab.json"
   fi
   [[ -f "${ROOT}/learn/sim/reports/power_chain_flowlab.log" ]] \
     && rg -q 'POWER_CHAIN_DONE' "${ROOT}/learn/sim/reports/power_chain_flowlab.log" \
-    && ok "power_chain log complete" || bad "power_chain non completata"
-  [[ -f "${ROOT}/learn/sim/spice/mesh_stats_flowlab.json" ]] && ok "mesh_stats export" || bad "mesh_stats assente"
-  [[ -f "${ROOT}/learn/sim/reports/sta_signoff_flowlab.json" ]] && ok "sta_signoff report" || ok "skip sta_signoff (non eseguito)"
+    && ok "power_chain log complete" || bad "power_chain not completed"
+  [[ -f "${ROOT}/learn/sim/spice/mesh_stats_flowlab.json" ]] && ok "mesh_stats export" || bad "mesh_stats missing"
+  [[ -f "${ROOT}/learn/sim/reports/sta_signoff_flowlab.json" ]] && ok "sta_signoff report" || ok "skip sta_signoff (not run)"
 else
-  ok "skip flowlab artifacts (finish non eseguito)"
+  ok "skip flowlab artifacts (finish not run)"
 fi
 
-echo "== Signoff variant learn (se finish presente) =="
+echo "== Learn signoff variant (if finish present) =="
 RES_LEARN="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn"
 if [[ -f "${RES_LEARN}/6_final.odb" ]]; then
   [[ -f "${ROOT}/learn/sim/reports/sta_signoff_learn.json" ]] \
     && python3 -c "import json; r=json.load(open('${ROOT}/learn/sim/reports/sta_signoff_learn.json')); assert 'ok' in r" \
-    && ok "sta_signoff_learn.json" || ok "skip sta_signoff learn (non eseguito — FLOW_VARIANT=learn ./learn/scripts/run_signoff_all.sh)"
+    && ok "sta_signoff_learn.json" || ok "skip sta_signoff learn (not run — FLOW_VARIANT=learn ./learn/scripts/run_signoff_all.sh)"
   [[ -f "${ROOT}/learn/sim/reports/signoff_all_learn.json" ]] \
     && python3 -c "import json; r=json.load(open('${ROOT}/learn/sim/reports/signoff_all_learn.json')); p=r.get('pillars',{}); assert all(p[k].get('ok') for k in ('timing','geometry','equivalence','power') if k in p)" \
     && ok "signoff_all_learn phase1 ok" || ok "skip signoff_all learn phase1"
 else
-  ok "skip learn signoff (6_final.odb assente)"
+  ok "skip learn signoff (6_final.odb missing)"
 fi
 
 if curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:43217/ 2>/dev/null | rg -q 200; then
-  echo "== Studio API (delegato a test_studio_api.sh) =="
+  echo "== Studio API (delegated to test_studio_api.sh) =="
   "${ROOT}/scripts/test_studio_api.sh"
 else
-  ok "skip Studio API (server non in ascolto su :43217)"
+  ok "skip Studio API (server not listening on :43217)"
 fi
 
 if [[ "${FAIL}" -ne 0 ]]; then

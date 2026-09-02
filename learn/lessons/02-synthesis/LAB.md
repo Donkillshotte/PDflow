@@ -1,32 +1,32 @@
-# LAB 02 — Synthesis (75–100 minuti)
+# LAB 02 — Synthesis (75–100 minutes)
 
-Yosys maps logic. OpenROAD **does not** place anything yet. Se in GUI cerchi un chip, stai in the lesson sbagliata (see atlas, black canvas).
+Yosys maps logic. OpenROAD **does not** place anything yet. If in the GUI you look for a chip, you are in the wrong lesson (see atlas, black canvas).
 
 ## Measurable objectives
 
 - [ ] Compared RTL vs netlist with numbers (modules, DFF, AND)
 - [ ] Read `synth_stat` / Yosys log and noted area
 - [ ] Explained canonicalize → synth → synth_odb
-- [ ] Opened `gui_1_synth.odb` (o studiato `gui-shots/win_synth.png`)
-- [ ] Eseguito STA liberty-only e capito because WNS ≠ signoff
+- [ ] Opened `gui_1_synth.odb` (or studied `gui-shots/win_synth.png`)
+- [ ] Ran liberty-only STA and understood why WNS ≠ signoff
 
 ---
 
 ## Part 1 — RTL by hand (20 min)
 
-Files: `tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v`
+File: `tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v`
 
-Rispondi nel notebook:
+Answer in the notebook:
 
-| Domanda | Your answer |
+| Question | Your answer |
 |---|---|
-| Nome del modulo top | |
+| Top module name | |
 | Clock/reset ports | |
 | How many `always @(posedge` | |
-| C’is un `always @*` incompleto? (rischio latch) | |
+| Is there an incomplete `always @*`? (latch risk) | |
 | What `req_val` / `resp_rdy` do (handshake) | |
 
-You do not need capire l’algoritmo di Euclide in dettaglio. You need to understand: **is synchronous, has a clock, has I/O**. L’SDC of the lesson 01 parla di that ports.
+You do not need to understand Euclid's algorithm in detail. You need to understand: **it is synchronous, has a clock, has I/O**. The lesson 01 SDC talks about those ports.
 
 ---
 
@@ -38,13 +38,13 @@ Open **in parallel**:
 - `flow/scripts/synth.tcl`
 - `flow/scripts/synth_odb.tcl`
 
-Mark on walkthrough (o notebook) tre punti:
+Mark on the walkthrough (or notebook) three points:
 
-1. Why esiste `1_1_yosys_canonicalize.rtlil`
+1. Why `1_1_yosys_canonicalize.rtlil` exists
 2. What `synth -flatten` does to GCD
 3. What `load_design` does in `synth_odb.tcl` (LEF + Verilog + SDC)
 
-**Domanda d’esame:** who produces `1_2_yosys.v` e chi `1_synth.odb`?
+**Exam question:** who produces `1_2_yosys.v` and who `1_synth.odb`?
 
 ---
 
@@ -64,7 +64,7 @@ ls -lh results/nangate45/gcd/learn/1_1_yosys_canonicalize.rtlil \
        results/nangate45/gcd/learn/1_synth.odb
 ```
 
-All e tre devono esistere. If missing RTLIL, canonicalize is not partito (log `1_1`).
+All three must exist. If RTLIL is missing, canonicalize did not run (check log `1_1`).
 
 ---
 
@@ -92,14 +92,14 @@ Fill in:
 | AND/NAND/NOR… (top 5) | |
 | BUF/INV | |
 
-Compare con:
+Compare with:
 
 ```bash
 rg -n 'Chip area|Number of cells|Printing statistics' \
   tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/learn/1_2_yosys.log
 ```
 
-**Latch:** `rg DLATCH` sul netlist. If you find something, il RTL ha un always combinatorio pieno di holes.
+**Latch:** `rg DLATCH` on the netlist. If you find something, the RTL has a combinational always full of holes.
 
 ---
 
@@ -115,10 +115,10 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 Checklist atlas (`gui-atlas.md` §5.1):
 
 - [ ] Black canvas or blob at (0,0) — **not** a die
-- [ ] Display Control still shows metal1–metal10 (la tech LEF is caricata)
+- [ ] Display Control still shows metal1–metal10 (tech LEF is loaded)
 - [ ] Find `DFF` / Inspect master
 
-Se non you can aprire the GUI: studia `learn/reference/gui-shots/win_synth.png` e describe because is vuoto.
+If you cannot open the GUI: study `learn/reference/gui-shots/win_synth.png` and describe why it is empty.
 
 ---
 
@@ -137,13 +137,13 @@ exit
 EOF
 ```
 
-Note worst slack. **Non** confrontarlo col finish come se fosse la stessa metric: here wires are ~0 (liberty only).
+Note worst slack. **Do not** compare it with finish as if it were the same metric: here wires are ~0 (liberty only).
 
 ---
 
 ## Pass criteria
 
-- [ ] Table famiglie celle
-- [ ] Yosys vs `synth_odb` differencand explained in 4 lines
+- [ ] Cell family table
+- [ ] Yosys vs `synth_odb` difference explained in 4 lines
 - [ ] STA run
-- [ ] GUI or PNG synth annotato nel notebook
+- [ ] GUI or synth PNG annotated in the notebook

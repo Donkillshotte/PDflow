@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Simulazione RTL del GCD con Icarus Verilog (+ VCD opzionale).
-# RTL_FILE può puntare a learn/flowlab/gcd.v (FlowLab).
+# RTL simulation of GCD with Icarus Verilog (+ optional VCD).
+# RTL_FILE can point to learn/flowlab/gcd.v (FlowLab).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RTL="${RTL_FILE:-${ROOT}/tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v}"
@@ -10,10 +10,10 @@ mkdir -p "${OUTDIR}"
 cd "${ROOT}"
 
 if ! command -v iverilog >/dev/null; then
-  echo "FAIL iverilog non installato (apt install iverilog)"
+  echo "FAIL iverilog not installed (apt install iverilog)"
   exit 1
 fi
-[[ -f "${RTL}" ]] || { echo "FAIL manca ${RTL}"; exit 1; }
+[[ -f "${RTL}" ]] || { echo "FAIL missing ${RTL}"; exit 1; }
 
 echo "== Compile GCD RTL + TB =="
 echo "RTL=${RTL}"
@@ -22,5 +22,5 @@ echo "== Run =="
 cd "${ROOT}"
 vvp "${OUTDIR}/gcd.vvp" | tee "${OUTDIR}/sim.log"
 rg -q 'RTL_SIM_PASS' "${OUTDIR}/sim.log"
-echo "OK VCD=${OUTDIR}/gcd.vcd (se prodotto)"
+echo "OK VCD=${OUTDIR}/gcd.vcd (if produced)"
 ls -la "${OUTDIR}/gcd.vcd" 2>/dev/null || true

@@ -21,7 +21,7 @@ lesson_main() {
   ui_pause
 
   ui_section "Exercise 0-C — Tcl script map"
-  ui_note "ORFS Tcl scripts per macro-stage:"
+  ui_note "ORFS Tcl scripts for each macro-stage:"
   for f in synth.tcl floorplan.tcl global_place.tcl cts.tcl global_route.tcl detail_route.tcl final_report.tcl; do
     [[ -f "${FLOW}/scripts/${f}" ]] && echo "  • ${FLOW}/scripts/${f}"
   done
