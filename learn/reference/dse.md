@@ -53,7 +53,7 @@ RTL
  → F3 net-local: `BUF_X2` on the hops of the worst path (same module)
  → F3 port-net: `BUF_X2` on port net to parent (ctrl↔dpath hop; not mixed with intra-module hops)
  → F0 surrogate (SSK-GP, residual F1→F2, GNN HPWL; F1→F4 only if coupled)
- → Pareto per level
+ → Pareto at each level
  → next candidate / extract
 ```
 
