@@ -1,6 +1,6 @@
-# Annotated walkthrough — global_place.tcl e detail_place.tcl
+# Annotated walkthrough — global_place.tcl and detail_place.tcl
 
-Files: `flow/scripts/global_place.tcl` e `flow/scripts/detail_place.tcl`  
+Files: `flow/scripts/global_place.tcl` and `flow/scripts/detail_place.tcl`  
 ODB: `3_2_place_iop.odb` → `3_3_place_gp.odb` → (resizer) `3_4` → `3_5_place_dp.odb`
 
 Read this text **with the script open beside you**. Line numbers are from ORFS **26Q2**.
@@ -29,7 +29,7 @@ load_design 3_2_place_iop.odb 2_floorplan.sdc
 source_step_tcl PRE GLOBAL_PLACE
 ```
 
-- Input **IOP already done**: edge pins **pull** the cells. If you compare `3_1_place_gp_skip_io` e `3_3`, internal cells move.
+- Input **IOP already done**: edge pins **pull** the cells. If you compare `3_1_place_gp_skip_io` and `3_3`, internal cells move.
 - SDC still `2_floorplan.sdc`: the clock is the same; parasitics not.
 
 Hook `PRE GLOBAL_PLACE`: you can inject Tcl (course: not needed).
@@ -45,7 +45,7 @@ if { $::env(GPL_TIMING_DRIVEN) } {
 }
 ```
 
-`DONT_USE_CELLS` (platform): forbidden cells (es. excessive drive, latch).  
+`DONT_USE_CELLS` (platform): forbidden cells (e.g. excessive drive, latch).  
 If GP is timing-driven, ORFS **removes** prior buffers so GP does not optimize an already “polluted” netlist; GP starts clean, RSZ will reinsert.
 
 ---
@@ -88,7 +88,7 @@ lappend global_placement_args -max_phi_coef $::env(MAX_PLACE_STEP_COEF)
 
 ---
 
-## do_placement (righe 52–61)
+## do_placement (lines 52–61)
 
 ```tcl
 proc do_placement { global_placement_args } {
@@ -106,7 +106,7 @@ proc do_placement { global_placement_args } {
 
 If `global_placement` throws: writes `3_3_place_gp-failed.odb` (lines 63–67). Open in GUI: debug.
 
-Poi `estimate_parasitics -placement` e `report_metrics 3 "global place"`.
+Then `estimate_parasitics -placement` and `report_metrics 3 "global place"`.
 
 Output: `3_3_place_gp.odb`.
 
@@ -130,7 +130,7 @@ optimize_mirroring
 utl::info FLW 12 "Placement violations [check_placement -verbose]."
 ```
 
-| Comando | Role |
+| Command | Role |
 |---|---|
 | `detailed_placement` | legalizes on sites |
 | `improve_placement` | DPO: micro-optimizes legal wirelength |
@@ -143,9 +143,9 @@ Output: `3_5_place_dp.odb` then ORFS copies/aligns to `3_place.odb`.
 
 ---
 
-## Cosa guardare in GUI (pixel)
+## What to look for in GUI (pixels)
 
-1. `gui_3_3_place_gp.odb` — celle “a nuvola”, visual overlap possible.
+1. `gui_3_3_place_gp.odb` — cells in a “cloud”, visual overlap possible.
 2. `gui_3_5_place_dp.odb` — same cells on blue lines.
 3. Inspector on an `AND2_X1`: coordinates change between GP and DP (often fractions of µm).
 
@@ -155,7 +155,7 @@ Also see canvas `save_image`: `gui-shots/04_place_gp.png` and `05_place_dp.png`.
 
 ## Checkpoint
 
-1. Why `load_design` di GP use `3_2_place_iop.odb` e non `2_floorplan.odb`?
+1. Why does GP `load_design` use `3_2_place_iop.odb` and not `2_floorplan.odb`?
 2. What measures overflow?
-3. `improve_placement` can create overlap? (no: stays legal)
-4. Relazione `PLACE_DENSITY_LB_ADDON` ↔ DPL-0038 althe lesson 05?
+3. Can `improve_placement` create overlap? (no: stays legal)
+4. Relationship `PLACE_DENSITY_LB_ADDON` ↔ DPL-0038 in lesson 05?

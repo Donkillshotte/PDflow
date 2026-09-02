@@ -2,7 +2,7 @@
 
 From routed layout to **deliverable**. Script: `density_fill.tcl`, `final_report.tcl`, merge KLayout.
 
-Numeri `learn`: WNS **−0.04**, TNS **−0.60**, `period_min=0.50` ns (fmax ~2011 MHz), setup skew ~0, IR drop heatmap ~0–5 mV.
+`learn` numbers: WNS **−0.04**, TNS **−0.60**, `period_min=0.50` ns (fmax ~2011 MHz), setup skew ~0, IR drop heatmap ~0–5 mV.
 
 ---
 
@@ -48,17 +48,17 @@ if { RCX_RULES && ! SKIP_DETAILED_ROUTE } {
   extract_parasitics -ext_model_file $::env(RCX_RULES)
   write_spef .../6_final.spef
   read_spef .../6_final.spef
-  # IR drop se PWR_NETS_VOLTAGES / GND_NETS_VOLTAGES
+  # IR drop if PWR_NETS_VOLTAGES / GND_NETS_VOLTAGES
 } else {
   estimate_parasitics -global_routing   ;# fallback
 }
 ```
 
-Nangate45 in the course **has** RCX: expects SPEF. `head` di `6_final.spef`: `*D_NET`.
+Nangate45 in the course **has** RCX: expects SPEF. `head` of `6_final.spef`: `*D_NET`.
 
 IR: `analyze_power_grid` → heatmap `orfs_final_ir_drop.png`. On GCD few mV: M1–M4–M7 PDN is enough. On a mm² die, no.
 
-Poi `report_cell_usage`, `report_metrics 6 "finish"` → `6_finish.rpt`.
+Then `report_cell_usage`, `report_metrics 6 "finish"` → `6_finish.rpt`.
 
 ```tcl
 if { [ord::openroad_gui_compiled] } {
@@ -66,9 +66,9 @@ if { [ord::openroad_gui_compiled] } {
 }
 ```
 
-Headless may fail; the images in `reports/*.webp.png` if there are golden educational (worst path, clocks, congestion). Copiate in `gui-shots/orfs_*.png`.
+Headless may fail; the images in `reports/*.webp.png` if there are golden educational (worst path, clocks, congestion). Copied to `gui-shots/orfs_*.png`.
 
-Crash `STA-2204 get_property default`: ORFS **master** vs OpenROAD 26Q2. Tag pinnato 26Q2.
+Crash `STA-2204 get_property default`: ORFS **master** vs OpenROAD 26Q2. Tag pinned to 26Q2.
 
 ---
 
@@ -82,7 +82,7 @@ KLayout stream-out, not OpenROAD. Warning UNITS/DBU: informational if GDS file h
 
 ---
 
-## Come leggere `6_finish.rpt`
+## How to read `6_finish.rpt`
 
 | Section | What to copy into the project |
 |---|---|
@@ -92,7 +92,7 @@ KLayout stream-out, not OpenROAD. Warning UNITS/DBU: informational if GDS file h
 | `setup_violation_count` | 38 |
 | worst path | start/end FF |
 
-Overlay path: `orfs_final_worst_path.png` (launch cyan, signal rosso).
+Overlay path: `orfs_final_worst_path.png` (launch cyan, signal red).
 
 ---
 

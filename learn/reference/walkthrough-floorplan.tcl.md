@@ -1,13 +1,13 @@
 # Annotated walkthrough — floorplan.tcl (ORFS)
 
 This document explains **line by line** (in blocks) the script ORFS runs in floorplan.
-Leggilo **mentre** open the file originale in parallelo.
+Read it **while** you open the original file in parallel.
 
-Files originale: `tools/OpenROAD-flow-scripts/flow/scripts/floorplan.tcl`
+Original file: `tools/OpenROAD-flow-scripts/flow/scripts/floorplan.tcl`
 
 ---
 
-## Blocco 1 — Setup stage (righe 1–5)
+## Block 1 — Setup stage (lines 1–5)
 
 ```tcl
 utl::set_metrics_stage "floorplan__{}"
@@ -17,19 +17,19 @@ load_design 1_synth.odb 1_synth.sdc
 source_step_tcl PRE FLOORPLAN
 ```
 
-| Riga | Meaning |
+| Line | Meaning |
 |---|---|
 | `set_metrics_stage` | Tag for QoR metrics (area, util, timing) in the report |
-| `load.tcl` | Carica helper comuni ORFS |
-| `erase_non_stage_variables` | Pulisce env vars di fasi precedenti (evita side effect) |
+| `load.tcl` | Loads common ORFS helpers |
+| `erase_non_stage_variables` | Clears env vars from prior stages (avoids side effects) |
 | `load_design` | **Input:** netlist already in DB from synth + consistent SDC |
-| `PRE FLOORPLAN` | Hook utente: you can injectare Tcl custom via variable env |
+| `PRE FLOORPLAN` | User hook: you can inject custom Tcl via env variable |
 
-**Exam question:** because input is `1_synth.odb` and not raw Verilog?
+**Exam question:** why is input `1_synth.odb` and not raw Verilog?
 
 ---
 
-## Blocco 2 — Sanity checks (righe 7–43)
+## Block 2 — Sanity checks (lines 7–43)
 
 - `report_unused_masters` — unused LIB cells (library debug)
 - `eliminate_dead_logic` — removes dead logic post-synth
@@ -43,9 +43,9 @@ source_step_tcl PRE FLOORPLAN
 
 ## Block 3 — Floorplan method choice (lines 51–64)
 
-ORFS accetta **esattamente uno** di:
+ORFS accepts **exactly one** of:
 
-1. `FLOORPLAN_DEF` — import DEF esistente
+1. `FLOORPLAN_DEF` — import existing DEF
 2. `FOOTPRINT` — ICeWall (chiplet style)
 3. `DIE_AREA` + `CORE_AREA` — explicit coordinates
 4. `CORE_UTILIZATION` — **what we use in the course**
@@ -59,29 +59,29 @@ if { $methods_defined > 1 } {
 }
 ```
 
-**Nel course:** `CORE_UTILIZATION=35` in config.mk → initialize_floorplan calcola die/core.
+**In the course:** `CORE_UTILIZATION=35` in config.mk → `initialize_floorplan` computes die/core.
 
 **Experiment:** also add `DIE_AREA` and observe mutual exclusion error.
 
 ---
 
-## Blocco 4 — initialize_floorplan (metodo utilization)
+## Block 4 — initialize_floorplan (utilization method)
 
-Tipico comando generato (see log):
+Typical generated command (see log):
 
 ```tcl
 initialize_floorplan -utilization 35 -aspect_ratio 1.0 \
   -core_space 1.0 -site FreePDK45_38x28_10R_NP_162NW_34O
 ```
 
-| Parayardstick | Effetto educational |
+| Parameter | Educational effect |
 |---|---|
 | `-utilization 35` | Core uses ~35% of die; rest margins + routing track |
-| `-aspect_ratio 1.0` | Core quadrato |
-| `-core_space 1.0` | Margine tra die edge e core (µm) |
+| `-aspect_ratio 1.0` | Square core |
+| `-core_space 1.0` | Margin between die edge and core (µm) |
 | `-site` | Site type for rows (from PDK) |
 
-**In GUI (`gui_2_1_floorplan.odb`):** zoom out → rettangolo core dentro die.
+**In GUI (`gui_2_1_floorplan.odb`):** zoom out → core rectangle inside die.
 
 Log often shows **IFP-0028**: origin is **snapped** to site grid
 (`(1.000, 1.000)` → `(1.140, 1.400)` on the gold run). This is not a bug: without snapping
@@ -89,9 +89,9 @@ rows do not align to LEF sites. Note both points in notebook (LAB 03).
 
 ---
 
-## Blocco 5 — Pin placement, macro, tapcell (altri script)
+## Block 5 — Pin placement, macro, tapcell (other scripts)
 
-Floorplan ORFS is **multi-step**:
+ORFS floorplan is **multi-step**:
 
 | Step | Script | Output |
 |---|---|---|
@@ -100,12 +100,12 @@ Floorplan ORFS is **multi-step**:
 | 2_3 | tapcell.tcl | tap/endcap |
 | 2_4 | pdn.tcl + PDN_TCL | power grid |
 
-**PDN_TCL nostro:** `grid_strategy-M1-M4-M7.tcl`
+**Our PDN_TCL:** `grid_strategy-M1-M4-M7.tcl`
 
-Concetti PDN:
-- `add_pdn_stripe` — strisce VDD/VSS su metal4/metal7
+PDN concepts:
+- `add_pdn_stripe` — VDD/VSS stripes on metal4/metal7
 - `add_pdn_connect` — via stacks connect layers
-- `define_pdn_grid` — dominio CORE
+- `define_pdn_grid` — CORE domain
 
 **GUI:** `gui_2_4_floorplan_pdn.odb` → layer metal4/metal7, net VDD/VSS.
 
@@ -113,22 +113,22 @@ Concetti PDN:
 
 ## What to modify to learn (only one at a time)
 
-| Parayardstick | Files | Effetto atteso |
+| Parameter | Files | Expected effect |
 |---|---|---|
 | CORE_UTILIZATION 25→55 | config.mk | smaller/larger core |
-| aspect_ratio | env o Tcl | core rettangolare |
-| PDN_TCL alternativo | config.mk | different power strategy |
-| core_space | platform/tcl | margine IO |
+| aspect_ratio | env or Tcl | rectangular core |
+| alternate PDN_TCL | config.mk | different power strategy |
+| core_space | platform/tcl | IO margin |
 
 ---
 
-## Checkpoint comprensione
+## Comprehension checkpoint
 
-Before di passare a Lesson 04, you must saper respondsre:
+Before moving to Lesson 04, you must be able to answer:
 
 1. Four floorplan init methods — which do we use?
-2. Cosa conkeeps `2_1_floorplan.odb` vs `2_4_floorplan_pdn.odb`?
-3. Where in the log trovi core area in µm²?
+2. What distinguishes `2_1_floorplan.odb` vs `2_4_floorplan_pdn.odb`?
+3. Where in the log do you find core area in µm²?
 4. Why does low utilization help CTS?
 
 If you cannot answer → reread this file + LAB lesson 03.
