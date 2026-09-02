@@ -9,7 +9,7 @@ studio/node_modules/
 studio/.next/
 studio/out/
 
-# Artefatti temporanei
+# Temporary artifacts
 *.log
 terminals/
 
@@ -20,13 +20,13 @@ engine/build/
 __pycache__/
 *.py[cod]
 
-# Demo transient output (non riproducibile, non parte del repo)
+# Demo transient output (not reproducible, not part of the repo)
 tran_demo_out/
 
-# Tuner locale
+# Local tuner DB
 learn/sim/dse/tpe_*.db
 
-# Leftover di cottura: non committare
+# Cook leftovers: do not commit
 learn/sim/dse/memory_flowlab_nl.jsonl
 learn/sim/dse/memory_flowlab_nl.index.json
 learn/sim/dse/memory_camp_spi_dse.index.json
