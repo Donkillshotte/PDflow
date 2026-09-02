@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Product loop: pick recipes from circuit state, or cover the catalog.
+"""Product DSE coordinator: review finishes, pick the next physical cooks.
 
-No design name in the picker. Skips a recipe already tried (same id or knobs).
+RTL stays fixed. Default is --auto: cover holes, then improve slots with
+no win, then deepen winning axes. No design name in the picker.
 
 Usage:
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --dry-run
-    PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --max-cooks 4
+    PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --max-cooks 2
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --cover-all --dry-run
-    PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --cover-all --max-cooks 4
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --improve --dry-run
 """
 from __future__ import annotations
@@ -30,6 +30,8 @@ from dse.recipe_select import (  # noqa: E402
     already_tried,
     combo_already_tried,
     floorplan_locked,
+    inferred_recipe_ids,
+    propose_deepen,
     propose_improve,
     recipes_still_open,
     select_recipes,
@@ -173,6 +175,101 @@ def improve_queue(log: ExperimentLog, designs: list[str]) -> list[dict]:
     return jobs
 
 
+def deepen_queue(log: ExperimentLog, designs: list[str]) -> list[dict]:
+    """Pair winning physical axes that have not been cooked together."""
+    jobs = []
+    for d in designs:
+        clock = float(DESIGN_CATALOG[d]["clk_ns"])
+        base = _base(log, d, clock)
+        if base is None:
+            continue
+        cfg = config_mk_for(d)
+        defaults = parse_config_defaults(cfg)
+        locked = floorplan_locked(cfg)
+        rows = _same_slot(log, d, clock)
+        win_ids: list[str] = []
+        already: list[list[str]] = []
+        for e in rows:
+            if e.role == "base":
+                continue
+            parts = inferred_recipe_ids(e, defaults)
+            if len(parts) >= 2:
+                already.append(list(parts))
+            if e.status != "done" or e.finish_wns_ns is None:
+                continue
+            if verdict(e, base) != "win":
+                continue
+            for rid in parts:
+                if rid not in win_ids:
+                    win_ids.append(rid)
+        for parts in propose_deepen(win_ids, locked_floorplan=locked, already_parts=already):
+            if combo_already_tried(rows, parts):
+                continue
+            jobs.append(
+                {
+                    "design": d,
+                    "recipes": parts,
+                    "id": "_".join(parts),
+                    "mode": "deepen",
+                }
+            )
+    return jobs
+
+
+def coordinate(log: ExperimentLog, designs: list[str]) -> dict:
+    """Review the registry and choose the next direction. One policy."""
+    review = []
+    for d in designs:
+        clock = float(DESIGN_CATALOG[d]["clk_ns"])
+        base = _base(log, d, clock)
+        cfg = config_mk_for(d)
+        defaults = parse_config_defaults(cfg)
+        locked = floorplan_locked(cfg)
+        rows = _same_slot(log, d, clock) if base else []
+        holes = recipes_still_open(rows, defaults, locked_floorplan=locked) if base else []
+        wins = _product_wins(rows, base)
+        review.append(
+            {
+                "design": d,
+                "base": None if base is None else base.variant,
+                "wns_ns": None if base is None else base.finish_wns_ns,
+                "holes": holes,
+                "product_wins": wins,
+                "locked_floorplan": locked,
+            }
+        )
+    cover = cover_queue(log, designs)
+    if cover:
+        return {
+            "decision": "cover",
+            "why": "Mancano misure di catalogo. Prima i buchi, dal finish più economico.",
+            "review": review,
+            "jobs": cover,
+        }
+    improve = improve_queue(log, designs)
+    if improve:
+        return {
+            "decision": "improve",
+            "why": "Catalogo coperto. Slot senza win: prova knob/combo nuovi.",
+            "review": review,
+            "jobs": improve,
+        }
+    deepen = deepen_queue(log, designs)
+    if deepen:
+        return {
+            "decision": "deepen",
+            "why": "Catalogo coperto e gli slot vuoti sono esauriti. Combina assi che hanno già vinto.",
+            "review": review,
+            "jobs": deepen,
+        }
+    return {
+        "decision": "stop",
+        "why": "Niente da cucinare: catalogo coperto, slot senza win esauriti, combo dei win già provate o assenti.",
+        "review": review,
+        "jobs": [],
+    }
+
+
 def _cook_one(design: str, recipes: list[str], phase: str) -> int:
     cook = _LEARN / "scripts" / "cook_recipe.py"
     cmd = [
@@ -209,6 +306,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="On slots with no product win, cook combos of independent axes.",
     )
+    p.add_argument(
+        "--select-only",
+        action="store_true",
+        help="Old selector only: cook if circuit state asks, ignore cover/improve/deepen.",
+    )
     args = p.parse_args(argv)
 
     log = ExperimentLog()
@@ -219,13 +321,17 @@ def main(argv: list[str] | None = None) -> int:
     elif args.improve:
         jobs = improve_queue(log, args.designs)
         print(json.dumps({"mode": "improve", "jobs": jobs, "dry_run": args.dry_run}, indent=2, default=str))
-    else:
+    elif args.select_only:
         plans = [plan_for(d, log) for d in args.designs]
-        print(json.dumps({"plans": plans, "dry_run": args.dry_run}, indent=2, default=str))
+        print(json.dumps({"mode": "select", "plans": plans, "dry_run": args.dry_run}, indent=2, default=str))
         jobs = []
         for pl in plans:
             for rid in pl.get("pick") or []:
                 jobs.append({"design": pl["design"], "recipes": [rid], "id": rid, "mode": "select"})
+    else:
+        coord = coordinate(log, args.designs)
+        print(json.dumps({**coord, "dry_run": args.dry_run}, indent=2, default=str))
+        jobs = list(coord.get("jobs") or [])
 
     if args.dry_run:
         return 0

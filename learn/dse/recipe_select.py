@@ -38,6 +38,15 @@ CLOSED_IMPROVE: tuple[str, ...] = (
     "cts_sparser",
     "repair_skip",
 )
+# Opposite knobs: never combine. No design name.
+_OPPOSITE = frozenset(
+    {
+        frozenset({"core_tighter", "core_looser"}),
+        frozenset({"place_denser", "place_sparser"}),
+        frozenset({"cts_closer_bufs", "cts_sparser"}),
+    }
+)
+MAX_DEEPEN = 3
 
 
 def floorplan_locked(config_mk: Path | str | None) -> bool:
@@ -254,6 +263,60 @@ def propose_improve(
         seen.add(key)
         out.append(list(parts))
     return out
+
+
+def inferred_recipe_ids(exp: Any, defaults: dict[str, float] | None = None) -> list[str]:
+    """Catalog ids realized by this row (explicit recipe_ids or matching knobs)."""
+    extra = getattr(exp, "extra", None) or {}
+    rids = extra.get("recipe_ids") or ([extra["recipe_id"]] if extra.get("recipe_id") else [])
+    out: list[str] = []
+    for rid in rids:
+        if rid not in out:
+            out.append(rid)
+    defaults = defaults or {}
+    for rec in RECIPES:
+        rid = rec["id"]
+        if rid in SKIP_COVER or rid in out:
+            continue
+        if already_tried([exp], rid, defaults):
+            out.append(rid)
+    return out
+
+
+def propose_deepen(
+    win_ids: list[str],
+    *,
+    locked_floorplan: bool = False,
+    already_parts: list[list[str]] | None = None,
+    max_pick: int = MAX_DEEPEN,
+) -> list[list[str]]:
+    """Combine two winning physical axes that have not been cooked together.
+
+    Skips synth (keep the official netlist) and opposite knobs. Floorplan
+    parts drop when the die is locked. No design name.
+    """
+    ids: list[str] = []
+    for rid in win_ids:
+        try:
+            rec = by_id(rid)
+        except KeyError:
+            continue
+        if rec.get("stage") == "synth":
+            continue
+        if locked_floorplan and rec.get("stage") == "floorplan":
+            continue
+        if rid not in ids:
+            ids.append(rid)
+    seen = {frozenset(p) for p in (already_parts or []) if p}
+    out: list[list[str]] = []
+    for i, a in enumerate(ids):
+        for b in ids[i + 1 :]:
+            pair = frozenset({a, b})
+            if pair in _OPPOSITE or pair in seen:
+                continue
+            seen.add(pair)
+            out.append([a, b])
+    return out[: max(0, int(max_pick))]
 
 
 def catalog_ids() -> list[str]:

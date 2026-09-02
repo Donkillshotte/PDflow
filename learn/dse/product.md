@@ -29,23 +29,19 @@ prodotto da qui in poi.
 
 ## Ciclo
 
-Due modi, entrambi senza `if design == …`.
+Un coordinatore, senza `if design == …`. RTL fisso: esplora dalla
+sintesi in poi. Review del registro → decide la prossima mossa:
 
-1. **Selettore.** Stato del circuito (slack, TNS, densità, IR, buffer,
-   die bloccato) → quali ricette possono servire → place → stop o
-   finish. Si cucina solo se lo stato lo chiede.
-2. **Cover-all.** Ogni ricetta del catalogo su ogni design di campagna,
-   dal finish più economico. Salta solo `synth_area` (già la netlist
-   ufficiale) e le ricette floorplan su un die bloccato
-   (`FLOORPLAN_DEF`). Un finish ABC-speed conta come `synth_delay`.
+1. **Cover.** Se manca una ricetta del catalogo, cucinala (dal finish
+   più economico). Salta `synth_area` e floorplan su die bloccato.
+2. **Improve.** Se uno slot non ha win, inventa: combo su die aperto,
+   knob nuovi su die già chiuso.
+3. **Deepen.** Se ci sono win, combina due assi che hanno già vinto
+   (stessa netlist ufficiale). Niente coppie opposte (core stretto+largo).
+4. **Stop.** Catalogo coperto, slot senza win esauriti, combo dei win
+   già provate.
 
-Dopo ogni batch: regola win prodotto. Se uno slot non ha win, il ciclo
-inventa il prossimo esperimento: combo di assi indipendenti se il die
-è ancora aperto; su un die già chiuso salta i repair no-op e prova
-knob nuovi (place senza timing-driven, margine hold, CTS più radi,
-repair spento).
+`--cover-all` / `--improve` restano override. Il default è il review.
 
-**spi @ 1 ns è esaurito.** Catalogo + 4 knob nuovi: 0 win prodotto.
-Die già chiuso (+612 ps), 238 celle, IR 0.98 mV. Non esiste un
-lever 10% su area/potenza/IR senza una classe nuova (PDN o clock).
-Il ciclo si ferma su questo slot. Non si riscrive il Verilog.
+**spi @ 1 ns è esaurito** come slot senza win. Gli altri slot hanno
+win: il coordinatore approfondisce le combo. Non si riscrive il Verilog.

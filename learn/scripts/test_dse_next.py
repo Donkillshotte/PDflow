@@ -602,7 +602,9 @@ def check_next_level(check, root: Path) -> None:
         already_tried,
         combo_already_tried,
         floorplan_locked,
+        inferred_recipe_ids,
         is_synth_delay_run,
+        propose_deepen,
         propose_improve,
         recipes_still_open,
         select_recipes,
@@ -635,6 +637,8 @@ def check_next_level(check, root: Path) -> None:
     loop_src = (root / "learn/scripts/run_recipe_loop.py").read_text()
     check("--cover-all" in loop_src, "loop has --cover-all")
     check("--improve" in loop_src, "loop has --improve")
+    check("def coordinate" in loop_src, "loop has a coordinator")
+    check("propose_deepen" in loop_src, "coordinator can deepen winning axes")
     check(CHEAP_FIRST[0] == "gcd" and CHEAP_FIRST[-1] == "dynamic_node", f"cheap-first order {CHEAP_FIRST}")
     abc = _E(status="done", role="abc_speed", variant="camp_spi_abcspeed", extra={})
     check(is_synth_delay_run(abc), "abc_speed is a synth_delay run")
@@ -674,6 +678,18 @@ def check_next_level(check, root: Path) -> None:
         extra={"recipe_ids": ["place_denser", "repair_setup_margin"]},
     )
     check(combo_already_tried([combo_row], ["place_denser", "repair_setup_margin"]), "combo already tried")
+    win_ids = inferred_recipe_ids(
+        _E(status="done", role="knob", variant="camp_x_aspect_wide", extra={"recipe_ids": ["aspect_wide"]}),
+        {},
+    )
+    check(win_ids == ["aspect_wide"], f"inferred explicit recipe_ids {win_ids}")
+    deep = propose_deepen(["aspect_wide", "place_denser", "cell_pad_plus", "core_tighter", "core_looser"])
+    check(any(set(c) == {"aspect_wide", "place_denser"} for c in deep), f"deepen pairs two wins {deep}")
+    check(all(not ({"core_tighter", "core_looser"} <= set(c)) for c in deep), f"deepen skips opposite cores {deep}")
+    locked_deep = propose_deepen(["aspect_wide", "place_denser", "repair_setup_margin"], locked_floorplan=True)
+    check(all("aspect_wide" not in c for c in locked_deep), f"deepen drops locked floorplan {locked_deep}")
+    check(propose_deepen(["aspect_wide", "place_denser"], already_parts=[["aspect_wide", "place_denser"]]) == [], "deepen skips a combo already cooked")
+    check("if design" not in (root / "learn/scripts/run_recipe_loop.py").read_text(), "coordinator has no design name branch")
 
 
 if __name__ == "__main__":
