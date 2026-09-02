@@ -1208,6 +1208,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("ProductStory" in flowlab, "FlowLab mounts ProductStory")
     check((root / "learn/scripts/sta_ir_aware.py").is_file(), "sta_ir_aware.py exists")
     check((root / "learn/scripts/run_sta_ir_aware.sh").is_file(), "run_sta_ir_aware.sh exists")
+    check((root / "learn/scripts/test_sta_ir_aware.py").is_file(), "test_sta_ir_aware.py exists")
     check("staIr" in story_txt, "story snapshot includes STA IR-aware")
     check("sta_ir_aware" in (root / "studio/src/lib/signoff.ts").read_text(), "signoff registry lists sta_ir_aware")
     check("sta_ir_aware" in (root / "studio/src/lib/run.ts").read_text(), "run.ts allows sta_ir_aware")
