@@ -1,40 +1,40 @@
-# Matrice signoff GCD Nangate45
+# GCD Nangate45 signoff matrix
 
-Single source of truth per i **4 pilastri** del signoff enterprise on the GCD educativo:
+Single source of truth for the **four pillars** of enterprise signoff on the educational GCD:
 timing (STA), geometry (DRC), equivalence (LVS), power/PKG integrity.
 
-Registry TypeScript: `studio/src/lib/signoff.ts`  
-Soglie numeriche: `learn/signoff/golden-gcd.json` (derivato da [golden-metrics.md](./golden-metrics.md))  
-Valutazione batch: `learn/scripts/signoff_eval.py`  
-API Studio: `GET /api/signoff?variant=flowlab`
+TypeScript registry: `studio/src/lib/signoff.ts`  
+Numeric thresholds: `learn/signoff/golden-gcd.json` (derived from [golden-metrics.md](./golden-metrics.md))  
+Batch evaluation: `learn/scripts/signoff_eval.py`  
+Studio API: `GET /api/signoff?variant=flowlab`
 
 ---
 
-## Legenda gate
+## Gate legend
 
-| Esito | Meaning |
+| Result | Meaning |
 |---|---|
-| **PASS** | Metrics in the report JSON rispettano golden ± tolleranza |
-| **FAIL** | Soglia superata — interpretare the report, non solo il badge |
-| **Assente** | Script non eseguito after `finish` |
+| **PASS** | Metrics in the report JSON meet golden ± tolerance |
+| **FAIL** | Threshold exceeded — interpret the report, not just the badge |
+| **Missing** | Script not run after `finish` |
 
-Su FreePDK45 educativo, **LVS may FAIL** even with correct flow: the educational value is the process e l’interpretazione del `.lvsdb`, do not pretend tapeout-clean.
+On educational FreePDK45, **LVS may FAIL** even with a correct flow: the educational value is the process and interpreting `.lvsdb`; do not pretend tapeout-clean.
 
 ---
 
-## Matrice lesson ↔ pillar ↔ tool ↔ artefatto
+## Lesson ↔ pillar ↔ tool ↔ artifact matrix
 
-| Pillar | Lesson | Studio action | Script | Report JSON | Gate principale |
+| Pillar | Lesson | Studio action | Script | Report JSON | Main gate |
 |---|---|---|---|---|---|
 | **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden |
 | **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
 | **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | LVS clean (educational) |
 | **Power / PKG** | 03–07, PKG hub | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | IR/droop/Zmax vs golden |
-| **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | all e 4 i pilastri (+ opz. Fase 2 con `SIGNOFF_INCLUDE_PHASE2=1`) |
+| **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | all 4 pillars (+ optional Phase 2 with `SIGNOFF_INCLUDE_PHASE2=1`) |
 
-Sub-check power (dentro pillar `power`):
+Power sub-checks (inside `power` pillar):
 
-| Check | Action | Artefatto |
+| Check | Action | Artifact |
 |---|---|---|
 | Activity → power | `activity_power` | `activity_power_{v}.log` |
 | Vectorless / dynamic | `vectorless` | `vectorless_{v}.json` |
@@ -46,11 +46,11 @@ Sub-check power (dentro pillar `power`):
 
 ---
 
-## Dipendenze (preflight)
+## Dependencies (preflight)
 
-Tutte le azioni signoff richiedono **`finish`** completato:
+All signoff actions require **`finish`** completed:
 
-| Action | Files minimo |
+| Action | Minimum files |
 |---|---|
 | `sta_signoff` | `6_final.v` |
 | `drc_signoff`, `klayout_lvs` | `6_final.gds` |
@@ -68,20 +68,20 @@ Tutte le azioni signoff richiedono **`finish`** completato:
 | Timing | period_min | ≥ 0.50 ns |
 | Geometry | Route DRC lines | 0 |
 | Geometry | GDS DRC items | 0 |
-| Equivalence | LVS | clean (interpretare report) |
+| Equivalence | LVS | clean (interpret report) |
 | Power | Chip static IR | ≤ 15 mV |
 | Power | Chip transient droop | ≤ 120 mV |
 | Power | System droop | ≤ 20 mV |
 | Power | System Zmax | ≤ 15000 mΩ |
 
-Tolleranza: timing ±15%, power ±25%.
+Tolerance: timing ±15%, power ±25%.
 
 ---
 
-## CLI rapida
+## Quick CLI
 
 ```bash
-export FLOW_VARIANT=learn   # o flowlab
+export FLOW_VARIANT=learn   # or flowlab
 
 ./learn/scripts/run_sta_signoff.sh
 ./learn/scripts/run_drc_signoff.sh
@@ -89,57 +89,57 @@ export FLOW_VARIANT=learn   # o flowlab
 ./learn/scripts/run_power_signoff.sh
 ./learn/scripts/run_signoff_all.sh
 
-# Optional Fase 2 (thermal + PKG) incluse nell'orchestrator:
+# Optional Phase 2 (thermal + PKG) included in orchestrator:
 SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
 ```
 
 ---
 
-## Definition of Done (deliverable enterprise)
+## Definition of Done (enterprise deliverable)
 
-Every pillar signoff is **completo** quando esistono all e cinque gli artefatti:
+Every pillar signoff is **complete** when all five artifacts exist:
 
-| Artefatto | Esempio |
+| Artifact | Example |
 |---|---|
 | **Script** | `learn/scripts/run_*_signoff.sh` |
 | **Report JSON** | `learn/sim/reports/*_signoff_{variant}.json` |
-| **Gate golden** | valutazione in report (`evaluation.checks` vs `signoff/golden-gcd.json`) |
+| **Golden gate** | evaluation in report (`evaluation.checks` vs `signoff/golden-gcd.json`) |
 | **Test** | `scripts/test_all_phases.sh` · `scripts/test_studio_api.sh` |
-| **Doc** | this matrice · lesson 07 LAB Part 7 · FlowLab finish/PKG |
+| **Doc** | this matrix · lesson 07 LAB Part 7 · FlowLab finish/PKG |
 
-Checklist rapida post-`finish`:
+Quick post-`finish` checklist:
 
 - [ ] `sta_signoff` → WNS/TNS/viol vs golden
 - [ ] `drc_signoff` → route DRC + GDS items = 0
-- [ ] `klayout_lvs` → report `.lvsdb` interpretato (educational)
+- [ ] `klayout_lvs` → `.lvsdb` report interpreted (educational)
 - [ ] `power_signoff` → IR/droop/system vs golden
-- [ ] `signoff_all` → aggregato 4 pilastri ok
-- [ ] (opz.) Fase 2: `thermal_signoff`, `pkg_signoff`, `signoff_phase2`
-- [ ] UI: matrice visibile su FlowLab **finish** e hub **/pkg**
-- [ ] Zero drift: `signoff.ts` ↔ `actions.ts` ↔ `run.ts` ↔ `jobs.ts` ↔ script bash
+- [ ] `signoff_all` → aggregated 4 pillars ok
+- [ ] (opt.) Phase 2: `thermal_signoff`, `pkg_signoff`, `signoff_phase2`
+- [ ] UI: matrix visible on FlowLab **finish** and **/pkg** hub
+- [ ] Zero drift: `signoff.ts` ↔ `actions.ts` ↔ `run.ts` ↔ `jobs.ts` ↔ bash scripts
 
 ---
 
-## UI Studio
+## Studio UI
 
-| Superficie | Content |
+| Surface | Content |
 |---|---|
-| FlowLab fase **finish** | Matrice 4 pilastri + azioni STA/DRC/LVS |
-| FlowLab fase **PKG** / [`/pkg`](/pkg) | Matrice completa + catena power |
-| `/api/signoff` | JSON matrice + `evaluateSignoffGates()` |
+| FlowLab phase **finish** | 4-pillar matrix + STA/DRC/LVS actions |
+| FlowLab phase **PKG** / [`/pkg`](/pkg) | Full matrix + power chain |
+| `/api/signoff` | JSON matrix + `evaluateSignoffGates()` |
 
 Cross-ref: [extended-flow.md](./extended-flow.md) · [spice-power-chain.md](./spice-power-chain.md)
 
 ---
 
-## Fase 2 (planned in registry)
+## Phase 2 (planned in registry)
 
-Pillars predisposti in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
+Pillars prepared in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
 
 | Pillar | Action (future) | Script | Status |
 |---|---|---|---|
 | **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | READY (educational) |
-| **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (proxy IR+droop) | proxy READY |
+| **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (IR+droop proxy) | proxy READY |
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_pkg_signoff.sh

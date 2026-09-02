@@ -1,6 +1,6 @@
-# ngspice · come leggere le simulazioni System PDN
+# ngspice · reading System PDN simulations
 
-Studio use **ngspice-42** in batch per la fase PKG. This guidand explain netlist, comandi e come interpretare i report.
+Studio uses **ngspice-42** in batch for the PKG phase. This guide explains netlists, commands, and how to read the reports.
 
 ## Installation (already in VM)
 
@@ -9,15 +9,15 @@ ngspice -v
 # ngspice-42
 ```
 
-Documentazione upstream: [ngspice.sourceforge.io](http://ngspice.sourceforge.io/docs.html)
+Upstream documentation: [ngspice.sourceforge.io](http://ngspice.sourceforge.io/docs.html)
 
 ---
 
-## Netlist System PDN (ladder)
+## System PDN netlist (ladder)
 
-Files demo: `learn/sim/spice/system_pdn_tran_demo.sp`
+Demo files: `learn/sim/spice/system_pdn_tran_demo.sp`
 
-Structure tipica:
+Typical structure:
 
 ```spice
 * VRM
@@ -40,23 +40,23 @@ quit
 .end
 ```
 
-| Elemento | Meaning fisico |
+| Element | Physical meaning |
 |---|---|
-| `V_*` | Regolatore ideale (1.1 V) |
-| `R_*`, `L_*` | ESR/ESL package, plane, VRM |
-| `C_*` | Bulk/HF decap, Cout VRM, C_die |
-| `I_DIE PULSE(...)` | Load-step al die (idle → peak) |
+| `V_*` | Ideal regulator (1.1 V) |
+| `R_*`, `L_*` | Package ESR/ESL, plane, VRM |
+| `C_*` | Bulk/HF decap, VRM Cout, C_die |
+| `I_DIE PULSE(...)` | Load-step at the die (idle → peak) |
 
 ---
 
-## Due run separati (TRAN + AC)
+## Two separate runs (TRAN + AC)
 
-`system_pdn_hier.py` genera **due netlist** (ngspice non gestisce bene alter mid-simulation):
+`system_pdn_hier.py` generates **two netlists** (ngspice does not handle `alter` mid-simulation well):
 
-1. **TRAN** — load-step → droop temporale su VRM/board/pkg/die
-2. **AC** — `I_AC n_die 0 AC 1` → \|Z(f)\| = \|V(n_die)\| con 1 A AC
+1. **TRAN** — load-step → temporal droop on VRM/board/pkg/die
+2. **AC** — `I_AC n_die 0 AC 1` → \|Z(f)\| = \|V(n_die)\| with 1 A AC
 
-Comando batch:
+Batch command:
 
 ```bash
 ngspice -b -o log.txt system_pdn_tran_demo.sp
@@ -64,45 +64,45 @@ ngspice -b -o log.txt system_pdn_tran_demo.sp
 
 ---
 
-## Interpretare il JSON report
+## Reading the JSON report
 
 `learn/sim/reports/system_pdn_flowlab.json`:
 
-| Campo | Meaning |
+| Field | Meaning |
 |---|---|
-| `transient.droop_mv` | Vdd − min(V_die) al load-step |
-| `impedance.z_max_mohm` | Picco \|Z(f)\| al die |
-| `impedance.f_at_zmax_hz` | Frequenza della risonanza ladder |
-| `i_die_avg_a` | Corrente media usata (da activity_power) |
+| `transient.droop_mv` | Vdd − min(V_die) at the load-step |
+| `impedance.z_max_mohm` | Peak \|Z(f)\| at the die |
+| `impedance.f_at_zmax_hz` | Ladder resonance frequency |
+| `i_die_avg_a` | Average current used (from activity_power) |
 
-Su GCD flowlab tipico: droop ~6 mV, Zmax ~9 Ω @ ~224 MHz (risonanza L-C package/board — **modello lumped**, non misura reale).
+Typical GCD flowlab: droop ~6 mV, Zmax ~9 Ω @ ~224 MHz (package/board L-C resonance — **lumped model**, not a real measurement).
 
-Target educativo in config: `z_target_mohm: 50`.
+Educational target in config: `z_target_mohm: 50`.
 
 ---
 
-## Celle vs ladder — due mondi SPICE
+## Cells vs ladder — two SPICE worlds
 
 | | Chip mesh (`write_pg_spice`) | System ladder (ngspice) |
 |---|---|---|
-| Nodi | Migliaia (M1 grid + ITerm) | ~15 lumped |
-| R | Da layout straps/vias | Parametri JSON |
-| Sorgenti | I per cella/instance | PULSE al die |
+| Nodes | Thousands (M1 grid + ITerm) | ~15 lumped |
+| R | From layout straps/vias | JSON parameters |
+| Sources | I per cell/instance | PULSE at die |
 | Engine | Python sparse / PDNSim | ngspice |
-| Domanda | IR on-die | VRM→board→pkg |
+| Question | On-die IR | VRM→board→pkg |
 
-Le **celle standard** non are simulate transistor-per-transistor: OpenROAD inietta **correnti DC equivalenti** sui pin ITerm. Per un inverter SPICE educational see `nangate_inverter_demo.sp`.
+Standard **cells** are not simulated transistor-by-transistor: OpenROAD injects **equivalent DC currents** on ITerm pins. For an educational SPICE inverter see `nangate_inverter_demo.sp`.
 
 ---
 
 ## Exercises
 
-1. Modify `learn/system_pdn/default.json` → raddoppia `c_bulk` → rilancia PKG → confronta Zmax e droop
-2. Apri `tran.sp` in `results/.../system_pdn/` e identifica every blocco VRM/board/pkg
-3. Run manualmente: `ngspice -b learn/sim/spice/system_pdn_tran_demo.sp`
+1. Modify `learn/system_pdn/default.json` → double `c_bulk` → rerun PKG → compare Zmax and droop
+2. Open `tran.sp` in `results/.../system_pdn/` and identify every VRM/board/pkg block
+3. Run manually: `ngspice -b learn/sim/spice/system_pdn_tran_demo.sp`
 
 ---
 
-## Link fasi
+## Phase links
 
-See [spice-power-chain.md](./spice-power-chain.md) per il flusso RTL→PKG completo.
+See [spice-power-chain.md](./spice-power-chain.md) for the full RTL→PKG flow.
