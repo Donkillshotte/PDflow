@@ -148,8 +148,17 @@ def improve_queue(log: ExperimentLog, designs: list[str]) -> list[dict]:
             rids = extra.get("recipe_ids") or []
             if len(rids) >= 2:
                 already.append(list(rids))
+        already_ids = {
+            r
+            for extra in ((e.extra or {}) for e in rows)
+            for r in (extra.get("recipe_ids") or ([extra["recipe_id"]] if extra.get("recipe_id") else []))
+        }
         for parts in propose_improve(
-            locked_floorplan=locked, already_parts=already, product_wins=wins
+            locked_floorplan=locked,
+            already_parts=already,
+            product_wins=wins,
+            wns_ns=base.finish_wns_ns,
+            already=already_ids,
         ):
             if combo_already_tried(rows, parts):
                 continue

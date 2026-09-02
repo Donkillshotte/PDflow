@@ -656,6 +656,10 @@ def check_next_level(check, root: Path) -> None:
     combos = propose_improve(product_wins=0, locked_floorplan=True)
     check(all("aspect_wide" not in c and "core_tighter" not in c for c in combos), f"locked die drops floorplan combos {combos}")
     check(any(c == ["place_denser", "repair_setup_margin"] for c in combos), f"improve proposes denser+setup {combos}")
+    closed_imp = propose_improve(product_wins=0, wns_ns=0.612)
+    check(closed_imp == [["place_notiming"], ["hold_margin"]], f"very-closed improve tries unused knobs {closed_imp}")
+    check("hold_margin" in {r["id"] for r in RECIPES} and "place_notiming" in {r["id"] for r in RECIPES}, "improve knobs are in the catalog")
+    check("HOLD_SLACK_MARGIN" in src and "GPL_TIMING_DRIVEN" in src, "wrapper passes hold margin and timing-driven")
     combo_row = _E(
         status="done",
         role="knob",

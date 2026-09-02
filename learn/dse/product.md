@@ -40,5 +40,7 @@ Due modi, entrambi senza `if design == …`.
    (`FLOORPLAN_DEF`). Un finish ABC-speed conta come `synth_delay`.
 
 Dopo ogni batch: regola win prodotto. Se uno slot non ha win, il ciclo
-inventa combo di assi indipendenti (place denso + margine setup, …) e
-le cucina. Non si riscrive il Verilog.
+inventa il prossimo esperimento: combo di assi indipendenti se il die
+è ancora aperto; su un die già chiuso (spi) salta i repair no-op e
+prova knob nuovi (place senza timing-driven, margine hold). Non si
+riscrive il Verilog.

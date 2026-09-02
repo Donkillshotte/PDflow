@@ -9,7 +9,8 @@ from .knob_catalog import RECIPES, by_id, resolve
 # Already the default, or never a product win in campaign.
 _NEVER = frozenset({"synth_area", "synth_delay"})
 # Default synth method: already the official netlist. Do not recook.
-SKIP_COVER = frozenset({"synth_area"})
+# hold_margin / place_notiming are improve-only until they take a win.
+SKIP_COVER = frozenset({"synth_area", "hold_margin", "place_notiming"})
 # Cheapest live finish first. Cover-all uses this order, not the selector.
 CHEAP_FIRST = ("gcd", "spi", "ibex", "aes", "dynamic_node")
 
@@ -29,6 +30,9 @@ IMPROVE_COMBOS: tuple[tuple[str, ...], ...] = (
     ("core_tighter", "place_denser"),
     ("place_denser", "repair_half_tns"),
 )
+# On a die already closed by a wide margin, repair combos are no-ops.
+# Try unused physical knobs that can still move area / power / IR.
+CLOSED_IMPROVE: tuple[str, ...] = ("place_notiming", "hold_margin")
 
 
 def floorplan_locked(config_mk: Path | str | None) -> bool:
@@ -214,15 +218,27 @@ def propose_improve(
     locked_floorplan: bool = False,
     already_parts: list[list[str]] | None = None,
     product_wins: int = 0,
+    wns_ns: float | None = None,
+    already: set[str] | None = None,
 ) -> list[list[str]]:
-    """If this slot has no product win, try combos of independent axes.
+    """If this slot has no product win, try the next physical experiment.
 
     No design name. Floorplan parts drop when the die is locked.
+    A very-closed die skips repair combos (measured no-ops) and tries
+    unused knobs that can still move area / power / IR.
     """
     if int(product_wins) > 0:
         return []
+    already = already or set()
     seen = {tuple(p) for p in (already_parts or [])}
     out: list[list[str]] = []
+    closed = wns_ns is not None and float(wns_ns) >= VERY_CLOSED_NS
+    if closed:
+        for rid in CLOSED_IMPROVE:
+            if rid in already or (rid,) in seen:
+                continue
+            out.append([rid])
+        return out
     for combo in IMPROVE_COMBOS:
         parts = [p for p in combo if not (locked_floorplan and by_id(p).get("stage") == "floorplan")]
         if len(parts) < 2:
@@ -239,6 +255,8 @@ def catalog_ids() -> list[str]:
     return [r["id"] for r in RECIPES]
 
 
-# Touch by_id so a typo in _NEVER fails import-time if we add checks later.
+# Touch by_id so a typo in _NEVER / CLOSED_IMPROVE fails import-time.
 for _rid in _NEVER:
+    by_id(_rid)
+for _rid in CLOSED_IMPROVE:
     by_id(_rid)

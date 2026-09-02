@@ -115,6 +115,22 @@ RECIPES: list[dict[str, Any]] = [
         "payoff": "Meno skew, più clock buffers / power. Misura after place, non da solo.",
         "env": {"CTS_BUF_DISTANCE": "80"},
     },
+    {
+        "id": "hold_margin",
+        "stage": "repair",
+        "title": "Margine di hold sul repair",
+        "does": "HOLD_SLACK_MARGIN=0.05 ns.",
+        "payoff": "Meno violazioni hold, più buffer. Su un die già chiuso può tagliare IR/area.",
+        "env": {"HOLD_SLACK_MARGIN": "0.05"},
+    },
+    {
+        "id": "place_notiming",
+        "stage": "place",
+        "title": "Place senza timing-driven",
+        "does": "GPL_TIMING_DRIVEN=0.",
+        "payoff": "Place per densità, non per slack. Controllo del default timing-driven.",
+        "env": {"GPL_TIMING_DRIVEN": "0"},
+    },
 ]
 
 
