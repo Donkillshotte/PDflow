@@ -1,63 +1,63 @@
-# Prodotto vs laboratorio
+# Product vs lab
 
-Scelte ferme (non si ritoccano dopo i dati).
+Fixed choices (not revised after data).
 
-## Prodotto
+## Product
 
-Cercare manopole fisiche (e metodo di sintesi ABC area) sulla **netlist
-ufficiale**. Non si riscrive il Verilog di progetto.
+Search physical knobs (and ABC area synthesis method) on the **official
+netlist**. Do not rewrite project Verilog.
 
-Il **floorplan è fisso**: stessa area totale, stessa dimensione, stessa
-forma del run ufficiale. Non si tocca `CORE_UTILIZATION`,
-`CORE_ASPECT_RATIO`, `DIE_AREA`. I cook di prodotto inchiodano
-`DIE_AREA`/`CORE_AREA` dal DEF ufficiale. I run storici che hanno
-mosso il die restano in laboratorio (`wrong_die`); non sono win di
-prodotto.
+The **floorplan is fixed**: same total area, same size, same shape as the
+official run. Do not touch `CORE_UTILIZATION`, `CORE_ASPECT_RATIO`,
+`DIE_AREA`. Product cooks lock `DIE_AREA`/`CORE_AREA` from the official
+DEF. Historical runs that moved the die remain in lab (`wrong_die`); they
+are not product wins.
 
-La DSE vecchia (e-graph, rewrite, IR F4, refine) resta **laboratorio**.
-Non è il prodotto. Non si cancella; non decide i win.
+Old DSE (e-graph, rewrite, IR F4, refine) remains **lab**. Not the
+product. Not deleted; does not decide wins.
 
-## Vittoria (nuova, include potenza, leakage e IR)
+## Victory (new, includes power, leakage and IR)
 
-Confronta un challenger col base dello stesso design e stesso clock.
+Compare a challenger with the base of the same design and same clock.
 
-- **Vince** se il timing non è peggio di 5 ps **e** almeno uno tra area,
-  potenza, leakage, IR worst è meglio del 10% **e** nessuno dei quattro
-  è peggio del 10%.
-- **Vince** anche se il timing è meglio di 5 ps **e** nessuno dei
-  quattro è peggio del 10%.
-- **Vince** se chiude (WNS≥0) e il base no, senza peggiorare
-  area/potenza/leakage/IR del 10%.
-- **wrong_die** (laboratorio, non un win) se ha mosso area totale,
-  dimensione o shape del floorplan ufficiale.
-- **Perde** se il timing è peggio di 5 ps, **oppure** area o potenza o
-  leakage o IR è peggio del 10%.
-- Altrimenti **pareggio**.
+- **Wins** if timing is not worse than 5 ps **and** at least one of area,
+  power, leakage, IR worst is better than 10% **and** none of the four
+  is worse than 10%.
+- **Wins** also if timing is better than 5 ps **and** none of the four
+  is worse than 10%.
+- **Wins** if it closes (WNS≥0) and base does not, without worsening
+  area/power/leakage/IR by 10%.
+- **wrong_die** (lab, not a win) if it moved total area, size or shape
+  of the official floorplan.
+- **Loses** if timing is worse than 5 ps, **or** area or power or
+  leakage or IR is worse than 10%.
+- Otherwise **tie**.
 
-La regola H1–H6 della campagna P0–P7 non si riscrive. Questa vale per il
-prodotto da qui in poi.
+The H1–H6 rule from P0–P7 campaign is not rewritten. This applies to the
+product from here on.
 
-## Ciclo
+## Cycle
 
-Un coordinatore, senza `if design == …`. RTL fisso: esplora dalla
-sintesi in poi. Review del registro → decide la prossima mossa:
+One coordinator, no `if design == …`. Fixed RTL: explore from synthesis
+onward. Registry review → decides next move:
 
-1. **Cover.** Se manca una ricetta del catalogo, cucinala (dal finish
-   più economico). Salta `synth_area` e **tutte** le ricette floorplan.
-2. **Improve.** Se uno slot non ha win, inventa: combo su die aperto,
-   knob nuovi su die già chiuso.
-3. **Tune.** TPE sullo stesso die, stesso forno (CTS/route/finish).
-   Sostituisce deepen nel default. Piano congelato: `tpe_plan.md`.
-   `--deepen` resta override (griglia 2 assi, non TPE).
-4. **Stop.** Catalogo coperto, slot senza win esauriti, budget TPE
-   finito o slot non ammissibile (es. spi già chiuso e senza win).
+1. **Cover.** If a catalog recipe is missing, cook it (from cheapest
+   finish). Skip `synth_area` and **all** floorplan recipes.
+2. **Improve.** If a slot has no win, invent: combos on open die, new
+   knobs on already-closed die.
+3. **Tune.** TPE on same die, same oven (CTS/route/finish). Replaces
+   deepen in default. Frozen plan: `tpe_plan.md`. `--deepen` remains
+   override (2-axis grid, not TPE).
+4. **Stop.** Catalog covered, slots without wins exhausted, TPE budget
+   finished or slot not admissible (e.g. spi already closed and without
+   win).
 
-`--cover-all` / `--improve` restano override. Il default è il review.
+`--cover-all` / `--improve` remain overrides. Default is review.
 
-**spi @ 1 ns è esaurito** come slot senza win. Non si lancia TPE lì.
-Non si riscrive il Verilog.
+**spi @ 1 ns is exhausted** as slot without win. Do not launch TPE there.
+Do not rewrite Verilog.
 
-Nessun trial TPE cambia queste scelte: spazio, score, pin del die e
-`cook_one` seguono `tpe_plan.md`.
+No TPE trial changes these choices: space, score, die pin and `cook_one`
+follow `tpe_plan.md`.
 
-Indice di lettura: `docs/README.md`. Dopo TPE v1: `arch_review.md`.
+Reading index: `docs/README.md`. After TPE v1: `arch_review.md`.
