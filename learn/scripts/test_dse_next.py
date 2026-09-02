@@ -613,9 +613,13 @@ def check_next_level(check, root: Path) -> None:
     def _E(**kw):
         return type("E", (), kw)()
 
-    base = _E(finish_wns_ns=-0.037, stdcell_um2=940.0, power_w=0.0039, ir_drop_v=0.00667)
-    gcd_win = _E(finish_wns_ns=-0.0384, stdcell_um2=842.0, power_w=0.00343, ir_drop_v=0.00615)
-    check(prod_verdict(gcd_win, base) == "win", f"gcd-like area/power win {prod_verdict(gcd_win, base)}")
+    base = _E(finish_wns_ns=-0.037, stdcell_um2=940.0, power_w=0.0039, leakage_w=2.56e-5, ir_drop_v=0.00667)
+    gcd_win = _E(finish_wns_ns=-0.0384, stdcell_um2=842.0, power_w=0.00343, leakage_w=2.20e-5, ir_drop_v=0.00615)
+    check(prod_verdict(gcd_win, base) == "win", f"gcd-like area/power/leak win {prod_verdict(gcd_win, base)}")
+    leak_win = _E(finish_wns_ns=-0.037, stdcell_um2=940.0, power_w=0.0039, leakage_w=2.20e-5, ir_drop_v=0.00667)
+    check(prod_verdict(leak_win, base) == "win", f"leak −14% is a product win {prod_verdict(leak_win, base)}")
+    leak_lose = _E(finish_wns_ns=-0.037, stdcell_um2=842.0, power_w=0.00343, leakage_w=3.00e-5, ir_drop_v=0.00615)
+    check(prod_verdict(leak_lose, base) == "lose", f"leak +17% is a product lose {prod_verdict(leak_lose, base)}")
     ir_worse = _E(finish_wns_ns=0.615, stdcell_um2=261.0, power_w=0.00030, ir_drop_v=0.00209)
     spi_base = _E(finish_wns_ns=0.612, stdcell_um2=268.0, power_w=0.00030, ir_drop_v=0.00098)
     check(prod_verdict(ir_worse, spi_base) == "lose", f"IR +100% is a product lose {prod_verdict(ir_worse, spi_base)}")

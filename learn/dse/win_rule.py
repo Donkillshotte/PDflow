@@ -1,7 +1,7 @@
-"""Product win rule: slack plus area, power, and IR.
+"""Product win rule: slack plus area, power, leakage, and IR.
 
 Historical P0–P7 §5 stays in eval_campaign.py. This module is the product
-rule going forward (power and IR can win or lose).
+rule going forward (power, leakage, and IR can win or lose).
 """
 from __future__ import annotations
 
@@ -29,6 +29,15 @@ def _bad(imp: float | None) -> bool:
     return imp is not None and imp <= -METRIC_FRAC * 100.0
 
 
+def _axes(cand: Any, base: Any) -> tuple[float | None, float | None, float | None, float | None]:
+    return (
+        _imp(getattr(cand, "stdcell_um2", None), getattr(base, "stdcell_um2", None)),
+        _imp(getattr(cand, "power_w", None), getattr(base, "power_w", None)),
+        _imp(getattr(cand, "leakage_w", None), getattr(base, "leakage_w", None)),
+        _imp(getattr(cand, "ir_drop_v", None), getattr(base, "ir_drop_v", None)),
+    )
+
+
 def verdict(cand: Any, base: Any) -> str:
     """Return win / tie / lose / incomplete."""
     cw = getattr(cand, "finish_wns_ns", None)
@@ -38,11 +47,9 @@ def verdict(cand: Any, base: Any) -> str:
     dw_ps = (float(cw) - float(bw)) * 1000.0
     c_closed = float(cw) >= 0.0
     b_closed = float(bw) >= 0.0
-    area = _imp(getattr(cand, "stdcell_um2", None), getattr(base, "stdcell_um2", None))
-    power = _imp(getattr(cand, "power_w", None), getattr(base, "power_w", None))
-    ir = _imp(getattr(cand, "ir_drop_v", None), getattr(base, "ir_drop_v", None))
-    worse = _bad(area) or _bad(power) or _bad(ir)
-    better = _good(area) or _good(power) or _good(ir)
+    area, power, leak, ir = _axes(cand, base)
+    worse = _bad(area) or _bad(power) or _bad(leak) or _bad(ir)
+    better = _good(area) or _good(power) or _good(leak) or _good(ir)
     slack_ok = dw_ps >= -SLACK_PS
     slack_win = dw_ps > SLACK_PS
     if c_closed and not b_closed and not worse:

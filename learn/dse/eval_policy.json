@@ -295,7 +295,7 @@
     "n_references": 12,
     "n_with_ir": 75,
     "n_with_grt_wl": 75,
-    "n_section5_wins": 21,
+    "n_section5_wins": 22,
     "references": [
       {
         "design": "aes",
@@ -2170,7 +2170,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "tie",
+        "section5": "win",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -5649,7 +5649,7 @@
         "d_density_pct": -31.405213045727066
       }
     ],
-    "verdict": "QoR vs base: 12 reference slots, 75 challengers, 75 with IR, 75 with GRT WL, 21 product wins"
+    "verdict": "QoR vs base: 12 reference slots, 75 challengers, 75 with IR, 75 with GRT WL, 22 product wins"
   },
   "synth_method": {
     "abc": "area",

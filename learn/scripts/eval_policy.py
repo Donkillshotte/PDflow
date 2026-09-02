@@ -761,7 +761,7 @@ def render_md(payload: dict[str, Any]) -> str:
         f"Plan sha: `{payload['plan_sha']}`",
         f"Experiments: {payload['n_experiments']} ({payload['n_done']} done)",
         "",
-        "I1–I5 bars stay frozen (historical). Product win is `dse.win_rule` (slack + area/power/IR).",
+        "I1–I5 bars stay frozen (historical). Product win is `dse.win_rule` (slack + area/power/leak/IR).",
         "Readable reference+challenger sheets: `learn/dse/qor_compare.md`.",
         "",
     ]
