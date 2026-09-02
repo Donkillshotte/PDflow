@@ -108,7 +108,7 @@ per-design; do not use −50 ps as a universal finish substitute.
 ## Product verdict
 
 On this design set and these clocks, **the ORFS base recipe is the product
-winner.** DSE/abc_speed never took a frozen §5 win. Pareggio is a valid
+winner.** DSE/abc_speed never took a frozen §5 win. Tie is a valid
 answer (ibex abc_speed is a ±2 ps tie without a 10% area cut). The Next
 Level funnel is not a product: it correctly refused the GCD DSE netlists
 that lose at finish.

@@ -1,36 +1,36 @@
-# Piano: ricetta congiunta (sintesi + stadi fisici), design-agnostic
+# Joint recipe plan (synthesis + physical stages), design-agnostic
 
-Solo piano. Nessun finish parte da questo commit. §5 resta frozen.
+Plan only. No finish starts from this commit. §5 remains frozen.
 
-## Cosa abbiamo imparato (non si riscrive)
+## What we learned (not rewritten)
 
-- I win §5 arrivano dalla **netlist ufficiale** (ABC area) + knob fisici.
-- ABC delay e i rewrite DSE: 0 win. Il Verilog di progetto non si tocca.
-- Si aggiorna il **metodo di sintesi** dei *nuovi* challenger: ABC area,
-  non ABC speed, salvo controllo esplicito.
-- I knob sono **offset dal default di config**, uguali su ogni design.
-  Non esiste un ramo `if design == gcd`.
+- §5 wins come from the **official netlist** (ABC area) + physical knobs.
+- ABC delay and DSE rewrites: 0 wins. Project Verilog is not touched.
+- Update the **synthesis method** of *new* challengers: ABC area,
+  not ABC speed, unless explicitly a control.
+- Knobs are **offsets from config default**, equal on every design.
+  There is no `if design == gcd` branch.
 
-## Spazio (catalogo)
+## Space (catalog)
 
-`learn/dse/knob_catalog.py`, stadi: synth, floorplan, place, repair, CTS.
-Ogni ricetta ha `title` / `does` / `payoff`. L'id filesystem è
-`camp_<design>_<recipe_id>` (leggibile). Combinare al più 2 assi per
-cottura; place-first, finish solo se la policy dice EVALUATE.
+`learn/dse/knob_catalog.py`, stages: synth, floorplan, place, repair, CTS.
+Each recipe has `title` / `does` / `payoff`. Filesystem id is
+`camp_<design>_<recipe_id>` (readable). Combine at most 2 axes per
+cook; place-first, finish only if policy says EVALUATE.
 
-## Metriche da riportare sempre (non nel verdetto §5)
+## Metrics to always report (not in §5 verdict)
 
-WNS, TNS, area, power, leak, **IR worst**, **IR mean** (tutto il die),
-cell density (util%), congestion come **WL/core** (i JSON ORFS non hanno
+WNS, TNS, area, power, leak, **IR worst**, **IR mean** (whole die),
+cell density (util%), congestion as **WL/core** (ORFS JSON has no
 overflow fraction), GRT WL, fmax, setup viol, repair buffers.
 
-## Nomi
+## Names
 
-Mai solo `d25u35`. In tabella si legge il `title`. Il payoff sta in
-`qor_compare.md` § Ricette.
+Never just `d25u35`. Tables show `title`. Payoff lives in
+`qor_compare.md` § Recipes.
 
-## Successo
+## Success
 
-Un win §5 su un design *non* usato per scegliere i knob (transfer
-design-agnostic), oppure la misura onesta che un asse nuovo (aspect, CTS,
-repair) non muove il finish. Pareggio è una risposta.
+A §5 win on a design *not* used to choose knobs (design-agnostic
+transfer), or an honest measurement that a new axis (aspect, CTS,
+repair) does not move finish. Tie is a valid answer.

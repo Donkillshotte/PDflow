@@ -95,15 +95,21 @@
         "clock_buffer": 7,
         "power_w": 0.00393245,
         "leakage_w": 2.56439e-05,
+        "internal_power_w": 0.00212568,
+        "switching_power_w": 0.00178113,
         "util": 0.549084,
         "psm_vdd_drop_v": 0.00666716,
+        "psm_vdd_avg": 1.09736,
+        "psm_vdd_worst_voltage": 1.09333,
+        "psm_vss_avg_drop_v": 0.00250859,
         "fmax_hz": 2011400000.0,
         "die_um2": 1970.03,
         "core_um2": 1712.51,
         "setup_violation_count": 38,
         "errors": 0,
         "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/6_report.json",
-        "sha256": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
+        "sha256": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543",
+        "psm_vdd_mean_drop_v": 0.0026371599999999162
       },
       "place": {
         "place_wns_ns": 0.0123135,
@@ -236,15 +242,21 @@
         "clock_buffer": 7,
         "power_w": 0.00393245,
         "leakage_w": 2.56439e-05,
+        "internal_power_w": 0.00212568,
+        "switching_power_w": 0.00178113,
         "util": 0.549084,
         "psm_vdd_drop_v": 0.00666716,
+        "psm_vdd_avg": 1.09736,
+        "psm_vdd_worst_voltage": 1.09333,
+        "psm_vss_avg_drop_v": 0.00250859,
         "fmax_hz": 2011400000.0,
         "die_um2": 1970.03,
         "core_um2": 1712.51,
         "setup_violation_count": 38,
         "errors": 0,
         "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_ainj/6_report.json",
-        "sha256": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
+        "sha256": "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543",
+        "psm_vdd_mean_drop_v": 0.0026371599999999162
       },
       "place": {
         "place_wns_ns": 0.0123135,
@@ -377,15 +389,21 @@
         "clock_buffer": 7,
         "power_w": 0.00242781,
         "leakage_w": 1.45257e-05,
+        "internal_power_w": 0.00153198,
+        "switching_power_w": 0.000881295,
         "util": 0.536751,
         "psm_vdd_drop_v": 0.00332845,
+        "psm_vdd_avg": 1.09863,
+        "psm_vdd_worst_voltage": 1.09667,
+        "psm_vss_avg_drop_v": 0.00187312,
         "fmax_hz": 1252660000.0,
         "die_um2": 1304.65,
         "core_um2": 1136.35,
         "setup_violation_count": 46,
         "errors": 0,
         "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_small/6_report.json",
-        "sha256": "617d0c9a4b28e639168782d3438bb343080e063ae1d376e54374c152e8640829"
+        "sha256": "617d0c9a4b28e639168782d3438bb343080e063ae1d376e54374c152e8640829",
+        "psm_vdd_mean_drop_v": 0.0013684499999999655
       },
       "place": {
         "place_wns_ns": -0.313564,
@@ -518,15 +536,21 @@
         "clock_buffer": 7,
         "power_w": 0.00253901,
         "leakage_w": 1.51453e-05,
+        "internal_power_w": 0.00158402,
+        "switching_power_w": 0.00093985,
         "util": 0.371078,
         "psm_vdd_drop_v": 0.00470149,
+        "psm_vdd_avg": 1.09837,
+        "psm_vdd_worst_voltage": 1.0953,
+        "psm_vss_avg_drop_v": 0.00168892,
         "fmax_hz": 1235350000.0,
         "die_um2": 1970.03,
         "core_um2": 1712.51,
         "setup_violation_count": 46,
         "errors": 0,
         "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_fixedb/6_report.json",
-        "sha256": "cfd445f85314069cda36efc01111e5c0efa80d2ca45ddd9f85253f3bac181906"
+        "sha256": "cfd445f85314069cda36efc01111e5c0efa80d2ca45ddd9f85253f3bac181906",
+        "psm_vdd_mean_drop_v": 0.0016314899999998467
       },
       "place": {
         "place_wns_ns": -0.317536,
@@ -659,15 +683,21 @@
         "clock_buffer": 7,
         "power_w": 0.00552729,
         "leakage_w": 2.50236e-05,
+        "internal_power_w": 0.00313392,
+        "switching_power_w": 0.00236835,
         "util": 0.567712,
         "psm_vdd_drop_v": 0.00825686,
+        "psm_vdd_avg": 1.09686,
+        "psm_vdd_worst_voltage": 1.09174,
+        "psm_vss_avg_drop_v": 0.00360235,
         "fmax_hz": 1545860000.0,
         "die_um2": 1940.84,
         "core_um2": 1697.08,
         "setup_violation_count": 46,
         "errors": 0,
         "path": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab_dse_fast/6_report.json",
-        "sha256": "f0235b2043d28c8588339965d55f053f9da16afd054e4fb1bc0fa70416b62f76"
+        "sha256": "f0235b2043d28c8588339965d55f053f9da16afd054e4fb1bc0fa70416b62f76",
+        "psm_vdd_mean_drop_v": 0.003136859999999908
       },
       "place": {
         "place_wns_ns": -0.116708,
@@ -851,6 +881,6 @@
     ],
     "A_dominates_B": true,
     "A_dominates_C": true,
-    "summary": "A resta. Nessuna cottura DSE batte il WNS finish ORFS. A-injected \u00e8 bit-identical. B sul die di A \u00e8 ancora in ritardo. Nessuno \u00e8 timing-closed a 0.46 ns."
+    "summary": "A stays. No DSE cook beats ORFS finish WNS. A-injected is bit-identical. B on A's die is still late. Nobody is timing-closed at 0.46 ns."
   }
 }

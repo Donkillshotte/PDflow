@@ -112,9 +112,9 @@ cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 | HSpice | ngspice **oracle** on small RC; Solver A on GCD mesh |
 | VCS | Icarus VCD — **non** mappa pin gate |
 
-## Sei livelli (prodotto futuro vs slice attuale)
+## Six layers (future product vs current slice)
 
-| Livello | Prodotto “RedHawk-like” | Cosa gira **oggi** on the GCD |
+| Level | “RedHawk-like” product | What runs **today** on the GCD |
 |---|---|---|
 | 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` VDD+VSS + tech LEF; SPEF PG C from PG `*D_NET` (GCD OpenRCX = GAP); Grover on-die L+M estimated (descriptor `--on-die-l`); dual-rail Sink-for pair |
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM); interpolatori CCS+ECSM su `.lib` sintetico |

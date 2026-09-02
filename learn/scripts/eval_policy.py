@@ -611,22 +611,22 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
     refs = list(block.get("references") or [])
     rows = list(block.get("rows") or [])
     lines = [
-        "I nomi in tabella dicono **cosa fa** la ricetta e (nella § Ricette) "
-        "qual è il vantaggio o lo svantaggio. L'id `camp_*` resta solo il path ORFS.",
+        "Table names say **what the recipe does** and (in § Recipes) "
+        "what advantage or downside we saw. The `camp_*` id is only the ORFS path.",
         "",
-        "IR worst = drop VDD massimo. **IR mean** = drop medio sul die "
-        "(VDD_nom − V_avg; la chiave ORFS `drop__average` su VDD è in realtà una tensione). "
-        "**Density** = utilizzazione stdcell sul core. **Congestion** = GRT WL / area core "
-        "(i JSON non hanno overflow fraction; `congestion_*_s` sono runtime).",
+        "IR worst = max VDD drop. **IR mean** = average drop on the die "
+        "(VDD_nom − V_avg; the ORFS `drop__average` key on VDD is actually a voltage). "
+        "**Density** = stdcell utilization on the core. **Congestion** = GRT WL / core area "
+        "(JSON has no overflow fraction; `congestion_*_s` are runtimes).",
         "",
-        "Vittoria prodotto: floorplan fisso (stessa area, dimensione, shape). "
-        "Timing ±5 ps e (area o potenza o leakage o IR −10%), senza peggiorare nessuno del 10%. "
-        "Oppure timing +5 ps senza peggiorare i quattro. Un die mosso è `wrong_die` (laboratorio). "
-        "Vedi `product.md`.",
+        "Product win: fixed floorplan (same area, size, shape). "
+        "Timing ±5 ps and (area or power or leakage or IR −10%), without worsening any by 10%. "
+        "Or timing +5 ps without worsening the four. A moved die is `wrong_die` (lab). "
+        "See `product.md`.",
         "",
-        "### Ricette (cosa fanno, che vantaggio hanno)",
+        "### Recipes (what they do, what we learned)",
         "",
-        "| Ricetta | Cosa fa | Vantaggio / esito |",
+        "| Recipe | What it does | Advantage / outcome |",
         "|---|---|---|",
     ]
     seen: set[str] = set()
@@ -642,7 +642,7 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "",
         "### Reference flow (absolute, one row per design@clock)",
         "",
-        "| Design | Clock ns | Ricetta | WNS ps | TNS ns | Area µm² | "
+        "| Design | Clock ns | Recipe | WNS ps | TNS ns | Area µm² | "
         "Power mW | Leak µW | IR worst | IR mean | Density % | Cong. WL/core | GRT WL | fmax MHz | setup viol |",
         "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
@@ -656,7 +656,7 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "",
         "### All flows (reference + challengers, absolute values)",
         "",
-        "| Design | Clock ns | Ricetta | Role | Prodotto | WNS ps | TNS ns | Area µm² | "
+        "| Design | Clock ns | Recipe | Role | Product | WNS ps | TNS ns | Area µm² | "
         "Power mW | Leak µW | IR worst | IR mean | Density % | Cong. | GRT WL | fmax | setup |",
         "|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
@@ -683,7 +683,7 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "ΔWNS = cand − reference (ps; + better). Percent columns = "
         "100·(cand−reference)/reference (− better for area/power/leak/IR/WL).",
         "",
-        "| Design | Clock | Ricetta | Prodotto | ΔWNS | Δarea % | Δpower % | Δleak % | "
+        "| Design | Clock | Recipe | Product | ΔWNS | Δarea % | Δpower % | Δleak % | "
         "ΔIR worst % | ΔIR mean % | ΔWL % | Δcong % | Δdens % |",
         "|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
@@ -786,7 +786,7 @@ def render_md(payload: dict[str, Any]) -> str:
         lines.append(f"## {key}")
         lines.append("")
         if key == "synth_method":
-            lines.append(f"**Metodo di sintesi (nuovi challenger):** ABC `{block.get('abc')}` — {block.get('why')}")
+            lines.append(f"**Synthesis method (new challengers):** ABC `{block.get('abc')}` — {block.get('why')}")
             lines.append("")
             lines.append("```json")
             lines.append(json.dumps(block, indent=2))

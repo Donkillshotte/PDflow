@@ -271,10 +271,10 @@ def evaluate(root: Path | None = None) -> dict[str, Any]:
         "A_dominates_B": a_dom_b,
         "A_dominates_C": a_dom_c,
         "summary": (
-            "A resta. Nessuna cottura DSE batte il WNS finish ORFS. A-injected è bit-identical. "
-            "B sul die di A è ancora in ritardo. Nessuno è timing-closed a 0.46 ns."
+            "A stays. No DSE cook beats ORFS finish WNS. A-injected is bit-identical. "
+            "B on A's die is still late. Nobody is timing-closed at 0.46 ns."
             if not any_beats
-            else "A non resta — una cottura batte il finish ORFS."
+            else "A does not stay — one cook beats ORFS finish."
         ),
     }
     return {
@@ -305,22 +305,22 @@ def render_md(report: dict[str, Any]) -> str:
     v = report["verdict"]
     order = ["A", "Ainj", "B", "Bfix", "C"]
     lines = [
-        "# Valutazione vs flow base ORFS (GCD `flowlab`)",
+        "# Evaluation vs ORFS base flow (GCD `flowlab`)",
         "",
-        "Stesso esame: ORFS `make finish`, SDC 0.46 ns, tutorial nangate45.",
-        "A = baseline **non rilanciato**. Ainj / B / Bfix / C sono variant isolate.",
-        "Proxy DSE (F3, mapped area) **non** sono finish. Nessun overwrite di `flowlab`.",
+        "Same exam: ORFS `make finish`, SDC 0.46 ns, tutorial nangate45.",
+        "A = baseline **not relaunched**. Ainj / B / Bfix / C are isolated variants.",
+        "DSE proxies (F3, mapped area) are **not** finishes. No overwrite of `flowlab`.",
         "",
-        "## Verdetto",
+        "## Verdict",
         "",
         v["summary"],
         "",
-        f"- A resta: **{v['A_stays']}**",
-        f"- A-injected riproduce A (WNS + sha): **{v['ainj_reproduces_A']}**",
-        f"- Qualcuno timing-closed (WNS≥0 a finish): **{v['any_timing_closed']}**",
-        f"- Qualcuno feasible Next Level: **{v['any_feasible']}**",
-        f"- Funnel avrebbe saltato B/C/Bfix: **{v['funnel_would_skip_B_C_Bfix']}**",
-        f"- Freeze A intatto: **{v['baseline_untouched']}**",
+        f"- A stays: **{v['A_stays']}**",
+        f"- A-injected reproduces A (WNS + sha): **{v['ainj_reproduces_A']}**",
+        f"- Anyone timing-closed (WNS≥0 at finish): **{v['any_timing_closed']}**",
+        f"- Anyone feasible Next Level: **{v['any_feasible']}**",
+        f"- Funnel would have skipped B/C/Bfix: **{v['funnel_would_skip_B_C_Bfix']}**",
+        f"- Freeze A intact: **{v['baseline_untouched']}**",
         f"- A constraint-dominates B: **{v['A_dominates_B']}**; C: **{v['A_dominates_C']}**",
         f"- Pareto feasibility-first: `{v['pareto_front']}`",
         "",
@@ -376,9 +376,9 @@ def render_md(report: dict[str, Any]) -> str:
     bl = proxy.get("best_logic") or {}
     lines += [
         "",
-        "## Cosa la DSE *credeva* (proxy, non finish)",
+        "## What DSE *believed* (proxy, not finish)",
         "",
-        f"Memoria `memory_flowlab.jsonl`: {proxy['n_rows']} righe, {proxy['n_ok']} ok.",
+        f"Memory `memory_flowlab.jsonl`: {proxy['n_rows']} rows, {proxy['n_ok']} ok.",
         "",
     ]
     for name, blob in (proxy.get("cooks") or {}).items():
@@ -393,22 +393,22 @@ def render_md(report: dict[str, Any]) -> str:
         )
     lines += [
         "",
-        "Quei numeri **non** battono A. Mapped 407 µm² ≠ finish 610/940. Ideal STA ≠ 6_report.",
+        "Those numbers **do not** beat A. Mapped 407 µm² ≠ finish 610/940. Ideal STA ≠ 6_report.",
         "",
-        "## Lettura onesta",
+        "## Honest read",
         "",
-        "1. **Il flow base vince il chip.** WNS −37 ps. Nessun netlist DSE è più in orario.",
-        "2. **A-injected è il controllo del forno.** Stesso netlist Yosys di A, cottura isolata, "
-        "WNS e sha identici → il confronto B/C non è rumore di tool.",
-        "3. **B è più piccolo e più lento**, anche sul die di A (−349 ps). Il die piccolo non era la causa.",
-        "4. **C “fast” è più lento e più grasso** (−187 ps, 963 µm², 198 repair vs 132).",
-        "5. **Place predice il finish.** A era meeting a DP (+12 ps). B/C/Bfix no. "
-        "Il funnel Next Level avrebbe evitato di pagare finish su B e C.",
-        "6. **Nessuno è timing-closed** a 0.46 ns (2.17 GHz). A è il migliore tra gli aperti, "
-        "non un chip verde.",
-        "7. **PSM IR non è DirectLU** e non è confrontabile tra die diversi. "
-        "Il win PDN onesto resta 6.075 → 4.156 mV sullo stesso extract di A.",
-        "8. **Gold 45.298 unrestampato.** AES Krylov rifiutato. `flowlab/` non toccato.",
+        "1. **The base flow wins the chip.** WNS −37 ps. No DSE netlist is more on time.",
+        "2. **A-injected is the oven control.** Same Yosys netlist as A, isolated cook, "
+        "identical WNS and sha → B/C comparison is not tool noise.",
+        "3. **B is smaller and slower**, even on A's die (−349 ps). The small die was not the cause.",
+        "4. **C “fast” is slower and fatter** (−187 ps, 963 µm², 198 repair vs 132).",
+        "5. **Place predicts finish.** A was meeting at DP (+12 ps). B/C/Bfix were not. "
+        "The Next Level funnel would have avoided paying finish on B and C.",
+        "6. **Nobody is timing-closed** at 0.46 ns (2.17 GHz). A is the best among the open ones, "
+        "not a green chip.",
+        "7. **PSM IR is not DirectLU** and is not comparable across different dies. "
+        "The honest PDN win remains 6.075 → 4.156 mV on the same extract as A.",
+        "8. **Gold 45.298 unrestamped.** AES Krylov refused. `flowlab/` not touched.",
         "",
     ]
     return "\n".join(lines) + "\n"

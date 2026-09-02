@@ -12,7 +12,7 @@
     "abc_speed",
     "dse_rtl_rewrite"
   ],
-  "why": "Q1\u2013Q4: 4 win \u00a75 sulla netlist ufficiale (ABC area) + knob fisici. ABC delay e i rewrite DSE non hanno mai vinto \u00a75 (H1: il proxy inverte).",
+  "why": "Q1\u2013Q4: 4 \u00a75 wins on official netlist (ABC area) + physical knobs. ABC delay and DSE rewrites never won \u00a75 (H1: proxy inverts).",
   "next_synth_axes": [
     "SYNTH_HIERARCHICAL",
     "TNS_END_PERCENT after map"

@@ -1,139 +1,138 @@
-# Piano: cottura completa dei winner DSE vs finish standard
+# Plan: full cook of DSE winners vs standard finish
 
-Obiettivo: dopo la ricerca DSE, **cucinare il piatto per intero** con le
-ricette scelte e confrontarlo col finish ORFS di oggi. Stesso esame,
-stesso forno. Non è un nuovo giro di DSE.
+Objective: after DSE search, **cook the full dish** with the
+chosen recipes and compare to today's ORFS finish. Same exam,
+same oven. Not another DSE round.
 
-Lingua del piano: cosa facciamo, in che ordine, come decidiamo se ha
-vinto. I dettagli di file stanno in fondo.
+Plan language: what we do, in what order, how we decide if it
+won. File details are at the end.
 
-## Perché
+## Why
 
-Oggi confrontiamo assaggi (DSE) con un piatto servito (`make finish`).
-Quella è la domanda sbagliata per “siamo meglio?”. La domanda giusta è:
-**stesso flusso completo, solo il netlist cambia**.
+Today we compare tastings (DSE) with a served dish (`make finish`).
+That is the wrong question for “are we better?”. The right question is:
+**same full flow, only the netlist changes**.
 
-## Cosa *non* è questo piano
+## What this plan is NOT
 
-- Non lanciare `make finish` da dentro il controller DSE a ogni prova.
-- Non toccare il finish `flowlab` già su disco (oro 45.298, current-run 6.075).
-- Non AES, non Krylov, non restampare l’oro.
-- Non cucire in v1 le modifiche “solo su un pezzo” (ABC di cono): non è un
-  file che ORFS ingoia da solo.
-- Non dichiarare win su mesh di alimentazione diverse.
+- Do not launch `make finish` from inside the DSE controller on every try.
+- Do not touch the `flowlab` finish already on disk (gold 45.298, current-run 6.075).
+- No AES, no Krylov, no restamping gold.
+- Do not stitch v1 “piece-only” changes (cone ABC): not a file ORFS
+  ingests on its own.
+- Do not declare win on different power meshes.
 
-## Tre cotture, non venti
+## Three cooks, not twenty
 
-Una sola cosa cambia: **il netlist in ingresso**. Orologio, utilizzazione,
-densità, strategia PDN: **identici** al baseline. Altrimenti stiamo
-confrontando il piano del chip, non la ricetta DSE.
+Only one thing changes: **the input netlist**. Clock, utilization,
+density, PDN strategy: **identical** to baseline. Otherwise we compare
+chip floorplan, not the DSE recipe.
 
-| Cottura | Chi | Netlist DSE (id) | Cosa testa |
+| Cook | Who | DSE netlist (id) | What it tests |
 |---|---|---|---|
-| A — baseline | Finish `flowlab` già fatto | Yosys+ABC standard ORFS | Il piatto di oggi. Non si rilancia. |
-| B — piccolo | Nuova variant ORFS | `54142494d890` `sub_twos_complement` (~407 µm² mapped, 257 celle) | La forma più piccola. |
-| C — veloce | Nuova variant ORFS | `52e0ecacb19b` `orfs_abc_speed` (~619 µm² mapped, 408 celle) | La logica più veloce sulla carta. |
+| A — baseline | Finish `flowlab` already done | standard ORFS Yosys+ABC | Today's dish. Do not relaunch. |
+| B — small | New ORFS variant | `54142494d890` `sub_twos_complement` (~407 µm² mapped, 257 cells) | The smallest shape. |
+| C — fast | New ORFS variant | `52e0ecacb19b` `orfs_abc_speed` (~619 µm² mapped, 408 cells) | The fastest logic on paper. |
 
-Condensatori sull’alimentazione: **non** sono una quarta cottura di
-place/route. Sul baseline è già misurato (6.075 → 4.156 mV, stesso grafo).
-Dopo B e C, se i finish nuovi nascono, si può ripetere **solo** quella
-misura sui nuovi extract. Fase 2, non bloccante.
+Decoupling caps on the supply: **not** a fourth place/route
+cook. On baseline it is already measured (6.075 → 4.156 mV, same graph).
+After B and C, if new finishes exist, repeat **only** that
+measurement on the new extracts. Phase 2, non-blocking.
 
-## Come si decide se ha vinto
+## How we decide if it won
 
-Prima delle cotture, i criteri (stesso file `6_report.json`):
+Before cooks, criteria (same `6_report.json` file):
 
-1. **In orario** — WNS e TNS finish. “Meglio” = meno ritardo, o stessi
-   tempi con **meno pezzi di riparazione**.
-2. **Quanto è grande** — area stdcell finish e conteggio istanze. “Meglio”
-   = più piccolo a tempi non peggiori.
-3. **Alimentazione** — calo di tensione sullo **stesso tipo** di extract
-   (DirectLU, non un’altra rete). Fase 2.
-4. **Costo** — quanti buffer di riparazione ha inserito ORFS.
+1. **On time** — finish WNS and TNS. “Better” = less delay, or same
+   timing with **fewer repair instances**.
+2. **How big** — finish stdcell area and instance count. “Better”
+   = smaller at non-worse timing.
+3. **Power delivery** — voltage drop on the **same type** of extract
+   (DirectLU, not another mesh). Phase 2.
+4. **Cost** — how many repair buffers ORFS inserted.
 
-Esito possibile, tutti onesti:
+Possible outcomes, all honest:
 
-- **Win di prodotto:** B o C batte A su tempi *o* su area a tempi pari.
-- **Pareggio:** ORFS reinserisce gli stessi buffer, i tre piatti si
-  assomigliano. La ricerca era utile, il piatto no.
-- **Regressione:** B o C peggiora i tempi o l’area. Si tiene A.
+- **Product win:** B or C beats A on timing *or* on area at equal timing.
+- **Tie:** ORFS reinserts the same buffers, the three dishes look
+  alike. Search was useful, the dish was not.
+- **Regression:** B or C worsens timing or area. Keep A.
 
-GCD è piccolo: i delta possono essere minimi. Un pareggio **non** è un
-fallimento del piano, è una risposta.
+GCD is small: deltas can be tiny. A tie **is not**
+plan failure; it is an answer.
 
-## Fasi
+## Phases
 
-### 0 — Freeze del baseline
+### 0 — Baseline freeze
 
-Copiare da parte (non nel tree `flowlab/` vivo) i numeri A:
-WNS, TNS, area, conteggio repair, potenza, util, IR DirectLU.
+Copy aside (not in live `flowlab/` tree) A numbers:
+WNS, TNS, area, repair count, power, util, DirectLU IR.
 
-Non rilanciare A. Non sovrascrivere `results/.../gcd/flowlab/`.
+Do not relaunch A. Do not overwrite `results/.../gcd/flowlab/`.
 
-### 1 — Scegliere i file, non i slogan
+### 1 — Pick files, not slogans
 
-Verificare su disco che i due `.v` DSE esistano, siano `module gcd`,
-passino un equiv rapido vs RTL (B) / vs flatten (C se ha senso).
+Verify on disk that both DSE `.v` exist, are `module gcd`,
+pass quick equiv vs RTL (B) / vs flatten (C if applicable).
 
-Se un file manca (netlist è gitignorato): **rigenerare solo quel F1**,
-non una campagna.
+If a file is missing (netlist is gitignored): **regenerate only that F1**,
+not a campaign.
 
-### 2 — Forno isolato
+### 2 — Isolated oven
 
-Nuove `FLOW_VARIANT` ORFS, es. `flowlab_dse_small` e `flowlab_dse_fast`.
-Log/results separati da `flowlab`.
+New ORFS `FLOW_VARIANT`s, e.g. `flowlab_dse_small` and `flowlab_dse_fast`.
+Logs/results separate from `flowlab`.
 
-Trucco: saltare Yosys. Il netlist DSE **è già** gate-level. Si piazza
-come `1_2_yosys.v` (o equivalente ORFS) e si parte da floorplan.
-Stesso `constraint.sdc`, stesso `CORE_UTILIZATION` del baseline
-(finish vivo ≈ 55%, non il 35% delle prove DSE GPL).
+Trick: skip Yosys. The DSE netlist **is already** gate-level. Place it
+as `1_2_yosys.v` (or ORFS equivalent) and start from floorplan.
+Same `constraint.sdc`, same `CORE_UTILIZATION` as baseline
+(live finish ≈ 55%, not 35% from DSE GPL trials).
 
-Un job pesante alla volta. Tetto memoria come il resto della VM.
+One heavy job at a time. Memory cap as for the rest of the VM.
 
-### 3 — Cottura B, poi C
+### 3 — Cook B, then C
 
-Seriali. Per ognuna: `make finish` → stesso `6_report.json`.
+Serial. For each: `make finish` → same `6_report.json`.
 
-Se una cottura crasha (legalize, antenna, DRT): si registra il fallimento.
-Non si “aggiusta la ricetta” in silenzio: quello sarebbe di nuovo DSE.
+If a cook crashes (legalize, antenna, DRT): record failure.
+Do not “fix the recipe” silently: that would be DSE again.
 
-### 4 — Tabella unica
+### 4 — Single table
 
-Stesse colonne per A, B, C:
+Same columns for A, B, C:
 
 - WNS / TNS setup
-- area stdcell e n. istanze
-- n. buffer di riparazione e clock buffer
-- potenza / leakage
+- stdcell area and n. instances
+- n. repair buffers and clock buffers
+- power / leakage
 - util
-- (fase 2) IR DirectLU sullo extract di *quel* finish
+- (phase 2) DirectLU IR on *that* finish extract
 
-Niente mapped 407 vs finish 940. Niente F5-lite vs finish.
+No mapped 407 vs finish 940. No F5-lite vs finish.
 
-### 5 — Decisione e stop
+### 5 — Decision and stop
 
-Scrivere tre righe: ha vinto B, C, nessuno, o A resta il piatto.
-Solo allora si discute se vale la pena cucire i coni ABC o mettere
-il handoff nel controller.
+Write three lines: B won, C won, nobody, or A stays the dish.
+Only then discuss whether cone ABC stitching or handoff in the
+controller is worth it.
 
-## Fuori da v1 (esplicito)
+## Out of v1 (explicit)
 
-| Richiesta | Perché dopo |
+| Request | Why later |
 |---|---|
-| ABC solo sul percorso dati (`boils_balance`) | Va ricucito nel chip; non è un drop-in. |
-| Cell size-up / net buffer DSE | ORFS repair lo rifà; confonderebbe il segnale. |
-| Catalog IR 1.705 / leftover 3.94 | Altra rete. |
-| AES | Fuori tetto VM; non è questo confronto. |
-| `make finish` nel loop DSE | Costa e rimescola le categorie. |
+| ABC only on data path (`boils_balance`) | Must be stitched into chip; not drop-in. |
+| Cell size-up / net buffer DSE | ORFS repair redoes it; would confuse signal. |
+| Catalog IR 1.705 / leftover 3.94 | Different mesh. |
+| AES | Out of VM budget; not this comparison. |
+| `make finish` in DSE loop | Costs and mixes categories. |
 
-## Ordine di lavoro (quando si implementa)
+## Work order (when implementing)
 
-1. Script/variant isolata + test secco: “questo `.v` entra in floorplan”. **fatto**
-2. Finish B. **fatto** (`flowlab_dse_small`, WNS −338 ps)
-3. Finish C. **fatto** (`flowlab_dse_fast`, WNS −187 ps)
-4. Tabella e verdetto nel write-up accanto a `flow_vs_orfs_gcd.md`. **fatto**
-   (`handoff_finish_bakeoff.md`: A resta)
-5. Fase 2 IR solo se B/C sono nati. **saltata** (die diversi; PSM ≠ DirectLU)
+1. Isolated script/variant + dry test: “this `.v` enters floorplan”. **done**
+2. Finish B. **done** (`flowlab_dse_small`, WNS −338 ps)
+3. Finish C. **done** (`flowlab_dse_fast`, WNS −187 ps)
+4. Table and verdict in write-up next to `flow_vs_orfs_gcd.md`. **done**
+   (`handoff_finish_bakeoff.md`: A stays)
+5. Phase 2 IR only if B/C were born. **skipped** (different dies; PSM ≠ DirectLU)
 
-Niente codice nel controller: il verdetto GCD non giustifica il loop.
-
+No controller code: the GCD verdict does not justify the loop.

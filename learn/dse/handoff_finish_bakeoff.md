@@ -1,24 +1,24 @@
 # Bake-off: DSE winners through the same `make finish`
 
-Eseguito il piano in `handoff_finish_plan.md`. Stesso forno del finish
-`flowlab` (SDC 0.46 ns, `CORE_UTILIZATION=35`, tutorial config). Solo il
-netlist gate-level cambia. Yosys saltato (`SYNTH_NETLIST_FILES`).
-Variant isolate: `flowlab_dse_small`, `flowlab_dse_fast`. Il tree
-`flowlab/` non è stato toccato (sha 6_report / 6_final.odb identici al freeze).
+Executed the plan in `handoff_finish_plan.md`. Same oven as finish
+`flowlab` (SDC 0.46 ns, `CORE_UTILIZATION=35`, tutorial config). Only the
+gate-level netlist changes. Yosys skipped (`SYNTH_NETLIST_FILES`).
+Isolated variants: `flowlab_dse_small`, `flowlab_dse_fast`. The
+`flowlab/` tree was not touched (6_report / 6_final.odb sha identical to freeze).
 
-## Verdetto in tre righe
+## Verdict in three lines
 
-1. **A resta il piatto.** WNS finish −37 ps contro B −338 ps e C −187 ps.
-2. **B è più piccolo** (610 vs 940 µm²) ma non in orario — non è un win di prodotto.
-3. **C**, la ricetta “veloce” sulla carta, finisce più lenta e con **più**
-   buffer di riparazione (198 vs 132). Area 963 µm², non più piccola.
+1. **A stays the dish.** Finish WNS −37 ps vs B −338 ps and C −187 ps.
+2. **B is smaller** (610 vs 940 µm²) but not on time — not a product win.
+3. **C**, the “fast” recipe on paper, finishes slower with **more**
+   repair buffers (198 vs 132). Area 963 µm², not smaller.
 
-Pareggio/regressione sul prodotto. La ricerca DSE resta utile come
-laboratorio; su GCD **non** batte la ricetta ORFS una volta cotta per intero.
+Tie/regression on product. DSE search remains useful as a
+lab; on GCD it **does not** beat the ORFS recipe once cooked end-to-end.
 
-## Tabella (stesso `6_report.json`)
+## Table (same `6_report.json`)
 
-| Asse | A flowlab | B small (`sub_twos_complement`) | C fast (`abc_speed`) |
+| Axis | A flowlab | B small (`sub_twos_complement`) | C fast (`abc_speed`) |
 |---|---|---|---|
 | WNS setup | **−37.2 ps** | −338 ps | −187 ps |
 | TNS setup | **−0.595 ns** | −13.09 ns | −5.98 ns |
@@ -31,23 +31,23 @@ laboratorio; su GCD **non** batte la ricetta ORFS una volta cotta per intero.
 | Place WNS | **+12 ps** | −314 ps | −117 ps |
 | PSM VDD drop | 6.67 mV | 3.33 mV | 8.26 mV |
 
-Place già dice il risultato: A era meeting dopo DP. B e C arrivano al
-piazzamento già in ritardo; i buffer di fine flusso non recuperano fino ad A.
+Place already tells the result: A was meeting after DP. B and C arrive at
+placement already late; end-of-flow buffers do not recover to A.
 
-PSM IR **non** è il confronto DirectLU. Die diversi → reti diverse. Fase 2
-DirectLU saltata (non bloccante). Oro 45.298 unrestampato.
+PSM IR **is not** the DirectLU comparison. Different dies → different meshes. Phase 2
+DirectLU skipped (non-blocking). Gold 45.298 unrestamped.
 
-Il 55% di A è util **dopo** i repair, non il knob. Il knob comune è 35%.
+A's 55% is util **after** repairs, not the knob. The common knob is 35%.
 
-## Cosa non è successo
+## What did not happen
 
-- Nessun `make finish` dal controller DSE.
-- Nessun AES / Krylov.
-- Nessuna cucitura di ABC di cono.
-- Crash: nessuno. Entrambe le cotture `errors=0`.
+- No `make finish` from the DSE controller.
+- No AES / Krylov.
+- No cone ABC stitching.
+- Crashes: none. Both cooks `errors=0`.
 
-## Dopo
+## After
 
-Cucire i coni ABC o mettere il handoff nel loop DSE **non** è giustificato
-da questo GCD. Se si ripete, il candidato da cucinare è uno che a *place*
-sia già meeting, non solo più piccolo sulla carta.
+Stitching cone ABC or putting handoff in the DSE loop **is not** justified
+by this GCD. If repeated, the candidate to cook is one that at *place*
+is already meeting, not only smaller on paper.

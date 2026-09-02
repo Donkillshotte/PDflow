@@ -18,41 +18,41 @@ Also §5 wins on ibex: `d15u50` (+36 ps) and `d25u50` (+40 ps).
 
 ## I1–I5
 
-| ID | Esito |
+| ID | Outcome |
 |---|---|
-| I1 | **supportata** (4 win §5; gcd range 8.4 ps, ibex 26.2 ps) |
-| I2 | **supportata** (13/13 Q* holdout dentro ±2σ per-design) |
-| I3 | **supportata** (STOP precision 100% su 11 reject già pagati) |
-| I4 | **non supportata** (Q4 a 0.55 ns chiude ma area ≈ base) |
-| I5 | **supportata** (place Spearman 0.968 ≥ 0.6) |
+| I1 | **supported** (4 §5 wins; gcd range 8.4 ps, ibex 26.2 ps) |
+| I2 | **supported** (13/13 Q* holdout within ±2σ per-design) |
+| I3 | **supported** (STOP precision 100% on 11 already-paid rejects) |
+| I4 | **not supported** (Q4 at 0.55 ns closes but area ≈ base) |
+| I5 | **supported** (place Spearman 0.968 ≥ 0.6) |
 
 ## Q0
 
-Zero-cost sul registry P0–P7. Place→finish Spearman 0.978 già prima di Q1.
-Il gate place-DP è un segnale economico; F1 resta invertito su gcd (H1).
+Zero-cost on P0–P7 registry. Place→finish Spearman 0.978 already before Q1.
+The place-DP gate is an economical signal; F1 remains inverted on gcd (H1).
 
 ## Q1 knob grid
 
-Offsets dai default di config (LB 0.20, gcd util 35, ibex util 50).
+Offsets from config defaults (LB 0.20, gcd util 35, ibex util 50).
 
-GCD 8 punti (centro già noto). Range WNS 8.4 ps. Unico win: LB=0.25 / util=35.
+GCD 8 points (center already known). WNS range 8.4 ps. Only win: LB=0.25 / util=35.
 
-Ibex 4 punti. Tre battono il WNS del base; util 40 è l'unico peggioramento
+Ibex 4 points. Three beat base WNS; util 40 is the only regression
 (−6 ps). Range 26.2 ps.
 
 ## Q2 policy
 
-`learn/dse/fidelity_policy.py`: STOP se `place + residuo_per_design` è
-peggio del base di >2σ e fuori dalla banda ±5 ps. Collegata allo
-scheduler Next Level. I3 è un replay sui DSE B/C già pagati in P0/P1:
-11/11 STOP corretti. I Q1 knob (place ~+10–15 ps) restano EVALUATE,
-correttamente: uno di loro è un win.
+`learn/dse/fidelity_policy.py`: STOP if `place + per_design_residual` is
+worse than base by >2σ and outside the ±5 ps band. Wired to the
+Next Level scheduler. I3 is a replay on DSE B/C already paid in P0/P1:
+11/11 STOP correct. Q1 knobs (place ~+10–15 ps) remain EVALUATE,
+correctly: one of them is a win.
 
-`Candidate.delta` esisteva già (`qor_delta` vs parent). Nessun DesignState.
+`Candidate.delta` already existed (`qor_delta` vs parent). No DesignState.
 
 ## Q3 schema
 
-Niente secondo stato. Consumato ciò che c'era:
+No second state. Consumed what was there:
 
 - `SolveResult` + `CurrentScenario` (`REAL/PARTIAL/SYNTHETIC/ABSENT`)
 - `Candidate.pred` / `Candidate.delta`
@@ -60,25 +60,25 @@ Niente secondo stato. Consumato ciò che c'era:
 
 ## Q4 area-regime
 
-`camp_gcd_q4_d25u35_c055` al clock dove A chiude (0.55 ns): WNS +13.02 vs
-base +13.36 (tie), area 698 vs 697. **I4 falsa** su questo punto: il
-vantaggio area di Q1 a 0.46 ns non sopravvive quando entrambi chiudono
-allo stesso util.
+`camp_gcd_q4_d25u35_c055` at the clock where A closes (0.55 ns): WNS +13.02 vs
+base +13.36 (tie), area 698 vs 697. **I4 false** on this point: the
+Q1 area advantage at 0.46 ns does not survive when both close
+at the same util.
 
-## Successo della fase
+## Phase success
 
-Entrambi i rami del criterio frozen:
+Both branches of the frozen criterion:
 
-1. Win §5 reali (gcd area, ibex WNS).
-2. Policy STOP ≥80% (100% su 11) + I2/I5 misurate.
+1. Real §5 wins (gcd area, ibex WNS).
+2. Policy STOP ≥80% (100% on 11) + I2/I5 measured.
 
-Oro 45.298 unrestampato. `febe6804241c` intatta. Nessun overwrite
-`flowlab`. Nessun Krylov AES. Nessun proposer AI.
+Gold 45.298 unrestamped. `febe6804241c` untouched. No overwrite
+`flowlab`. No AES Krylov. No AI proposer.
 
-## QoR multi-asse (finish `6_report`, non solo slack)
+## Multi-axis QoR (finish `6_report`, not slack only)
 
-§5 resta WNS / area-tie / first-to-close. Power e leakage sono assi extra
-letti da `finish__power__*` — prima il registro non li copiava.
+§5 remains WNS / area-tie / first-to-close. Power and leakage are extra axes
+read from `finish__power__*` — the registry did not copy them before.
 
 | Variant | §5 | ΔWNS | Δarea | Δpower | Δleak |
 |---|---|---:|---:|---:|---:|
@@ -87,72 +87,72 @@ letti da `finish__power__*` — prima il registro non li copiava.
 | ibex `d25u50` | win | +17 ps | −0.1% | ~0% | ~0% |
 | ibex `d15u50` | win | +14 ps | ~0% | ~0% | ~0% |
 
-Su gcd il win area è anche un win power/leakage (stesso netlist, die
-invariato, meno buffering). Su ibex il win è quasi solo slack: potenza
-totale ~108 mW, invariata.
+On gcd the area win is also a power/leakage win (same netlist, die
+unchanged, less buffering). On ibex the win is almost slack-only: total
+power ~108 mW, unchanged.
 
-IR (worst VDD drop) e GRT wirelength sono assi extra letti da
-`6_report` / `5_1_grt.json`. Non c'è overflow fraction in questi JSON
-ORFS (`congestion_*_s` sono runtime). Tabella con **valori assoluti del
-reference flow** + challenger + Δ: `learn/dse/qor_compare.md`.
+IR (worst VDD drop) and GRT wirelength are extra axes read from
+`6_report` / `5_1_grt.json`. There is no overflow fraction in these ORFS JSON
+(`congestion_*_s` are runtimes). Table with **reference flow absolute values**
++ challenger + Δ: `learn/dse/qor_compare.md`.
 
 | Variant | §5 | IR ref → cand | ΔIR | GRT WL ref → cand | ΔWL |
 |---|---|---|---:|---|---:|
 | gcd `d25u35` | win | 6.67 → 6.15 mV | **−7.7%** | 7589 → 6971 | **−8.1%** |
 | ibex `d20u60` | win | 123.8 → 86.2 mV | **−30.3%** | 438851 → 420930 | **−4.1%** |
 
-Su ibex il win slack è anche un calo IR/WL; power resta ~iso. §5 non
-usa IR/WL. 12 reference slot, 31 challenger (incluso J1 spi), tutti
-con IR e GRT WL. I due cook J1 non sono win §5.
+On ibex the slack win is also lower IR/WL; power stays ~flat. §5 does not
+use IR/WL. 12 reference slots, 31 challengers (including J1 spi), all
+with IR and GRT WL. The two J1 cooks are not §5 wins.
 
-## Direzione successiva (non design-based)
+## Next direction (not design-based)
 
-Non si aggiorna il Verilog. Si aggiorna il **metodo di sintesi** dei
-nuovi challenger: ABC area (`learn/dse/synth_method.json`), perché i win
-sono tutti sulla netlist ufficiale. Catalogo knob design-agnostic
+Do not update the Verilog. Update the **synthesis method** of
+new challengers: ABC area (`learn/dse/synth_method.json`), because the wins
+are all on the official netlist. Design-agnostic knob catalog
 (synth / floorplan / place / repair / CTS): `learn/dse/knob_catalog.py`.
-Nomi leggibili (cosa fa + vantaggio) in `qor_compare.md` § Ricette.
-Piano: `learn/dse/joint_recipe_plan.md`. Metriche extra: IR mean, cell
+Readable names (what it does + payoff) in `qor_compare.md` § Recipes.
+Plan: `learn/dse/joint_recipe_plan.md`. Extra metrics: IR mean, cell
 density, congestion = WL/core.
 
-## J1 transfer (spi, non usato per scegliere i knob)
+## J1 transfer (spi, not used to choose knobs)
 
-Due ricette del catalogo, stessa netlist `camp_spi_base`, place-first,
-finish solo perché la policy ha detto EVALUATE. Nomi = cosa fanno.
+Two catalog recipes, same netlist `camp_spi_base`, place-first,
+finish only because policy said EVALUATE. Names = what they do.
 
-| Ricetta | Knob | §5 | WNS | Area | Buffer | IR mean | GRT WL |
+| Recipe | Knob | §5 | WNS | Area | Buffer | IR mean | GRT WL |
 |---|---|---|---:|---:|---:|---:|---:|
 | ORFS default | util 8, LB 0.20, TNS 100 | — | +612.2 ps | 267.6 | 22 | 0.53 mV | 2257 |
-| Place più denso | LB 0.20→0.25 | tie | +610.7 ps (−1.5) | 268.1 (+0.2%) | 22 | 0.56 mV | 2205 |
-| Repair TNS a metà | TNS 100→50 | no-op | +612.2 ps | 267.6 | 22 | 0.53 mV | 2257 |
+| Denser placement | LB 0.20→0.25 | tie | +610.7 ps (−1.5) | 268.1 (+0.2%) | 22 | 0.56 mV | 2205 |
+| Half TNS repair | TNS 100→50 | no-op | +612.2 ps | 267.6 | 22 | 0.53 mV | 2257 |
 
-Nessun win §5. spi è già chiuso di 612 ps su un die sparso (density 9.4%,
-util default 8 per PDN-0185). Il lever «più denso → meno buffer» di gcd
-non ha materiale su cui agire; dimezzare il TNS repair è un no-op se
-TNS è già 0 (`6_report.json` byte-identical al default, sha
-`b8826a8ee5356ac0`, inode diverso). Catalogo, policy e nomi funzionano:
-il transfer è design-sensibile anche se i knob sono design-agnostic.
+No §5 win. spi is already closed by 612 ps on a sparse die (density 9.4%,
+util default 8 for PDN-0185). The gcd lever “denser → fewer buffers”
+has nothing to act on; halving TNS repair is a no-op when
+TNS is already 0 (`6_report.json` byte-identical to default, sha
+`b8826a8ee5356ac0`, different inode). Catalog, policy, and names work:
+transfer is design-sensitive even though knobs are design-agnostic.
 
-Non si è cotto il combo (sarebbe un no-op) né aes/ibex/dynamic_node.
+Did not cook the combo (would be a no-op) nor aes/ibex/dynamic_node.
 
-## Catalogo completo su spi (J2)
+## Full catalog on spi (J2)
 
-Le altre 8 ricette sono girate. Nessuna batte il default abbastanza
-da contare come win.
+The other 8 recipes were run. None beat default enough
+to count as a win.
 
-| Ricetta | Cosa cambia | Risultato su spi |
+| Recipe | What changes | Result on spi |
 |---|---|---|
-| Place più sparso | celle più larghe | quasi uguale; fili +3% |
-| Padding celle +1 | spazio extra tra celle | quasi uguale; fili +5% |
-| Margine di setup | chiede 50 ps in più | identico (già in orario) |
-| Buffer di clock più fitti | clock ogni 80 µm | identico |
-| Floorplan più largo | rettangolo 2:1 | peggio: area +3%, IR su |
-| Core più stretto | die più piccolo (util 18) | area −2.6%, fili −18%, slack +3 ps, IR peggiore. Non è un win |
-| Core più largo | die più grande (util 5) | area +2%, slack uguale |
-| Sintesi gerarchica | Yosys senza flatten | identico (Verilog già piatto) |
+| Sparser placement | wider cells | almost the same; wires +3% |
+| Cell padding +1 | extra space between cells | almost the same; wires +5% |
+| Setup margin | asks for 50 ps more | identical (already on time) |
+| Denser clock buffers | clock every 80 µm | identical |
+| Wider floorplan | 2:1 rectangle | worse: area +3%, IR up |
+| Tighter core | smaller die (util 18) | area −2.6%, wires −18%, slack +3 ps, worse IR. Not a win |
+| Looser core | larger die (util 5) | area +2%, slack unchanged |
+| Hierarchical synthesis | Yosys without flatten | identical (Verilog already flat) |
 
-Il più vicino è **Core più stretto**. Non basta: per vincere serve slack
-meglio di 5 ps, oppure slack uguale e area −10%.
+Closest is **Tighter core**. Not enough: to win you need slack
+better than 5 ps, or equal slack and area −10%.
 
-Le ricette ora sono tutte girate, non solo scritte. Su spi (già in
-orario, die vuoto) quasi tutte non fanno nulla. I win restano gcd e ibex.
+All recipes are now run, not just written. On spi (already on
+time, empty die) almost all do nothing. Wins remain gcd and ibex.
