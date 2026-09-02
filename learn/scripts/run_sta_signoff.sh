@@ -13,7 +13,7 @@ V="${RES}/6_final.v"
 SPEF="${RES}/6_final.spef"
 FINISH_RPT="${REPORTS}/6_finish.rpt"
 
-[[ -f "${V}" ]] || { echo "FAIL manca ${V}"; exit 1; }
+[[ -f "${V}" ]] || { echo "FAIL missing ${V}"; exit 1; }
 
 OUT="${ROOT}/learn/sim/reports/sta_signoff_${VARIANT}.json"
 mkdir -p "$(dirname "${OUT}")"

@@ -10,7 +10,7 @@
 #   2. learn/scripts/pdn_transient.py — backward-Euler dynamic IR on that
 #      SPICE mesh (VoltSpot-style). Real vyges-em-ir: run_vyges_em_ir.sh
 #
-# Uso: run_chip_pdn_ir.sh
+# Usage: run_chip_pdn_ir.sh
 # Env:
 #   FLOW_VARIANT=learn|flowlab
 #   PKG_R=0.05          # package series resistance proxy (ohm)
@@ -34,9 +34,9 @@ LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 ODB="${RES}/6_final.odb"
 SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
 
-[[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB} — esegui finish (variant=${VARIANT})"; exit 1; }
-[[ -f "${LIB}" ]] || { echo "FAIL manca liberty"; exit 1; }
-[[ -f "${SDC}" ]] || { echo "FAIL manca SDC"; exit 1; }
+[[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run finish first (variant=${VARIANT})"; exit 1; }
+[[ -f "${LIB}" ]] || { echo "FAIL missing liberty"; exit 1; }
+[[ -f "${SDC}" ]] || { echo "FAIL missing SDC"; exit 1; }
 
 OUT_DIR="${ROOT}/learn/sim/reports"
 mkdir -p "${OUT_DIR}" "${RES}/pdn"
@@ -80,7 +80,7 @@ EOF
 
 rg -q 'CHIP_PDN_STATIC_DONE' "${LOG}"
 rg -q 'Worstcase IR drop' "${LOG}"
-[[ -f "${SPICE_BUMPS}" ]] || { echo "FAIL manca spice ${SPICE_BUMPS}"; exit 1; }
+[[ -f "${SPICE_BUMPS}" ]] || { echo "FAIL missing spice ${SPICE_BUMPS}"; exit 1; }
 
 echo "=== TRANSIENT IR (pdn_transient.py · on-die mesh) ===" | tee -a "${LOG}"
 export PYTHONPATH="/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
@@ -96,7 +96,7 @@ python3 "${ROOT}/learn/scripts/pdn_transient.py" \
   2>&1 | tee -a "${LOG}"
 
 rg -q 'PDN_TRANSIENT_DONE' "${LOG}"
-[[ -f "${TRANSIENT_JSON}" ]] || { echo "FAIL manca ${TRANSIENT_JSON}"; exit 1; }
+[[ -f "${TRANSIENT_JSON}" ]] || { echo "FAIL missing ${TRANSIENT_JSON}"; exit 1; }
 cp -f "${TRANSIENT_JSON}" "${LEGACY_JSON}"
 
 python3 - <<PY | tee -a "${LOG}"

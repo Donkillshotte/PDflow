@@ -21,7 +21,7 @@ SPICE="${RES}/pdn/pg_vdd_bumps.sp"
 INSTS="${RES}/pdn/inst_power_map.json"
 mkdir -p "${OUT_DIR}" "${RES}/pdn"
 
-[[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB}"; exit 1; }
+[[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB}"; exit 1; }
 
 openroad -python -no_init -exit \
   "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}"

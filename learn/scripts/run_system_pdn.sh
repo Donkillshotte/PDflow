@@ -4,7 +4,7 @@
 # This is NOT chip PDNSim. For on-die IR (OpenROAD + write_pg_spice +
 # pdn_transient.py) use: learn/scripts/run_chip_pdn_ir.sh
 #
-# Uso: run_system_pdn.sh
+# Usage: run_system_pdn.sh
 # Env:
 #   FLOW_VARIANT=learn|flowlab
 #   SYSTEM_PDN_CONFIG=learn/system_pdn/default.json
@@ -26,13 +26,13 @@ STAMP="${RES}/.system_pdn.ok"
 mkdir -p "${OUT_DIR}" "${WORK}"
 : > "${LOG}"
 
-[[ -f "${CFG}" ]] || { echo "FAIL manca config ${CFG}"; exit 1; }
+[[ -f "${CFG}" ]] || { echo "FAIL missing config ${CFG}"; exit 1; }
 
 # Prefer finished design if present (for current estimate); not strictly required
 if [[ -f "${RES}/6_final.odb" ]]; then
   echo "=== System PDN · finish ODB presente (${VARIANT}) ===" | tee -a "${LOG}"
 else
-  echo "=== System PDN · ODB assente — uso I_DIE default/config ===" | tee -a "${LOG}"
+  echo "=== System PDN · ODB missing — uso I_DIE default/config ===" | tee -a "${LOG}"
 fi
 
 echo "=== Hierarchical System PDN (ngspice) · VRM→board→pkg→die ===" | tee -a "${LOG}"
@@ -51,7 +51,7 @@ python3 "${ROOT}/learn/scripts/system_pdn_hier.py" \
   2>&1 | tee -a "${LOG}"
 
 rg -q 'SYSTEM_PDN_HIER_DONE' "${LOG}"
-[[ -f "${REPORT}" ]] || { echo "FAIL manca ${REPORT}"; exit 1; }
+[[ -f "${REPORT}" ]] || { echo "FAIL missing ${REPORT}"; exit 1; }
 
 python3 - <<PY | tee -a "${LOG}"
 import json

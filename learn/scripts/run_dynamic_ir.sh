@@ -15,7 +15,7 @@
 # Path STA delay from OpenSTA report_checks (NLDM typical-V × (Vdd/V)^α).
 # Ranking of extra I(t) stays Solver A (synthetic). vyges-em-ir is bootstrap.
 #
-# Uso: FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
+# Usage: FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 # Env:
 #   DYNAMIC_IR_MODE=clock|spatial|simultaneous
 #   PEAK_FACTOR=8  C_DECAP=50e-15  PKG_R=0.05  PKG_L=2e-10
@@ -55,7 +55,7 @@ STA_JSON="${OUT_DIR}/sta_arrivals_${VARIANT}.json"
 VCD="${ROOT}/learn/sim/gcd/gcd.vcd"
 STAMP="${RES}/.dynamic_ir.ok"
 
-[[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB} — esegui finish (variant=${VARIANT})"; exit 1; }
+[[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run finish first (variant=${VARIANT})"; exit 1; }
 mkdir -p "${OUT_DIR}" "${RES}/pdn"
 : > "${LOG}"
 
@@ -103,7 +103,7 @@ EOF
 if [[ ! -f "${SPICE}" ]]; then
   write_pg_net VDD "${SPICE}"
 fi
-[[ -f "${SPICE}" ]] || { echo "FAIL manca ${SPICE}"; exit 1; }
+[[ -f "${SPICE}" ]] || { echo "FAIL missing ${SPICE}"; exit 1; }
 
 if [[ ! -f "${SPICE_VSS}" ]]; then
   write_pg_net VSS "${SPICE_VSS}"
@@ -117,7 +117,7 @@ echo "=== OpenSTA report_arrival → ${STA_JSON} ===" | tee -a "${LOG}"
 unset STA_OUT
 STA_LIB="${LIB}" STA_V="${RES}/6_final.v" STA_SDC="${SDC}" FLOW_VARIANT="${VARIANT}" \
   python3 "${ROOT}/learn/scripts/export_sta_arrivals.py" 2>&1 | tee -a "${LOG}"
-[[ -f "${STA_JSON}" ]] || { echo "FAIL manca ${STA_JSON}"; exit 1; }
+[[ -f "${STA_JSON}" ]] || { echo "FAIL missing ${STA_JSON}"; exit 1; }
 rg -q 'STA_ARRIVALS_JSON' "${LOG}"
 
 echo "=== pdn_dynamic.py mode=${MODE} ===" | tee -a "${LOG}"
@@ -173,7 +173,7 @@ python3 "${ROOT}/learn/scripts/pdn_dynamic.py" \
   2>&1 | tee -a "${LOG}"
 
 rg -q 'DYNAMIC_IR_DONE' "${LOG}"
-[[ -f "${JSON}" ]] || { echo "FAIL manca ${JSON}"; exit 1; }
+[[ -f "${JSON}" ]] || { echo "FAIL missing ${JSON}"; exit 1; }
 date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
 echo "OK dynamic IR ${VARIANT} mode=${MODE}"
 echo "  report: ${JSON}"

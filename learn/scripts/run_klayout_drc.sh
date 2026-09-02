@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 GDS="${FLOW}/results/nangate45/gcd/learn/6_final.gds"
-[[ -f "${GDS}" ]] || { echo "FAIL manca GDS — esegui finish"; exit 1; }
+[[ -f "${GDS}" ]] || { echo "FAIL missing GDS — run finish first"; exit 1; }
 
 cd "${FLOW}"
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
@@ -15,5 +15,5 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      drc | tee /tmp/klayout-drc.log
 
 RPT="${FLOW}/reports/nangate45/gcd/learn/6_drc.lyrdb"
-[[ -f "${RPT}" ]] && echo "OK DRC report ${RPT}" || echo "WARN report assente — vedi log"
+[[ -f "${RPT}" ]] && echo "OK DRC report ${RPT}" || echo "WARN report missing — see log"
 ls -la "${FLOW}/reports/nangate45/gcd/learn/"*drc* 2>/dev/null || true

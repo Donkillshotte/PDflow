@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # check_power_grid su ODB PDN / final (grid connectivity).
-# Uso: run_gridcheck.sh [pdn|final]
+# Usage: run_gridcheck.sh [pdn|final]
 # Env: FLOW_VARIANT=learn|flowlab (default learn)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -12,7 +12,7 @@ case "${STAGE}" in
   final) ODB="${RES}/6_final.odb" ;;
   *) echo "uso: FLOW_VARIANT=learn|flowlab $0 [pdn|final]"; exit 2 ;;
 esac
-[[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB} — esegui floorplan/finish (variant=${VARIANT})"; exit 1; }
+[[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run floorplan/finish (variant=${VARIANT})"; exit 1; }
 
 OUT_DIR="${ROOT}/learn/sim/reports"
 mkdir -p "${OUT_DIR}"

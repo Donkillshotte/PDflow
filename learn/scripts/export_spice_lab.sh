@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Export SPICE netlists + stats into learn/sim/spice/ for study.
 #
-# Uso: export_spice_lab.sh
+# Usage: export_spice_lab.sh
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -50,7 +50,7 @@ print("stats →", p)
 PY
   echo "OK chip mesh ${NR} R · ${NI} I → ${OUT}"
 else
-  echo "WARN mesh assente — esegui run_chip_pdn_ir.sh dopo finish"
+  echo "WARN mesh missing — run run_chip_pdn_ir.sh after finish"
 fi
 
 # Config reference
@@ -59,13 +59,13 @@ cp "${ROOT}/learn/system_pdn/default.json" "${OUT}/system_pdn_config.json"
 cat > "${OUT}/INDEX_${VARIANT}.md" <<MD
 # SPICE lab · ${VARIANT}
 
-| File | Descrizione |
+| File | Description |
 |---|---|
 | system_pdn_tran_${VARIANT}.sp | Ladder TRAN ngspice |
 | system_pdn_ac_${VARIANT}.sp | Ladder AC Z(f) |
-| pg_vdd_bumps_${VARIANT}.sp | Mesh chip (se export) |
-| pg_vdd_header_${VARIANT}.sp | Prime righe mesh annotate |
-| mesh_stats_${VARIANT}.json | Conteggi R/I/V |
+| pg_vdd_bumps_${VARIANT}.sp | Chip mesh (if exported) |
+| pg_vdd_header_${VARIANT}.sp | First annotated mesh lines |
+| mesh_stats_${VARIANT}.json | Counts R/I/V |
 
 Docs: learn/reference/spice-power-chain.md
 MD

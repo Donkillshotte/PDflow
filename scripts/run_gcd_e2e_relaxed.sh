@@ -13,7 +13,7 @@ TUTORIAL_SRC="${ROOT}/learn/designs/nangate45/gcd-tutorial"
 TUTORIAL_ORFS="${FLOW}/designs/nangate45/gcd-tutorial"
 
 if [[ ! -d "${FLOW}" ]]; then
-  echo "FAIL manca ORFS in ${FLOW} — esegui prima lo setup core" >&2
+  echo "FAIL missing ORFS in ${FLOW} — run prima lo setup core" >&2
   exit 1
 fi
 
@@ -21,7 +21,7 @@ mkdir -p "$(dirname "${TUTORIAL_ORFS}")"
 ln -sfn "${TUTORIAL_SRC}" "${TUTORIAL_ORFS}"
 
 SDC="${TUTORIAL_SRC}/constraint_relaxed.sdc"
-[[ -f "${SDC}" ]] || { echo "FAIL manca ${SDC}" >&2; exit 1; }
+[[ -f "${SDC}" ]] || { echo "FAIL missing ${SDC}" >&2; exit 1; }
 
 echo "== GCD E2E relaxed  target=${TARGET}  variant=${VARIANT}  sdc=2.0ns =="
 cd "${FLOW}"
@@ -38,12 +38,12 @@ make \
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
 case "${TARGET}" in
   synth)
-    [[ -f "${RES}/1_synth.odb" ]] || { echo "FAIL manca 1_synth.odb" >&2; exit 1; }
+    [[ -f "${RES}/1_synth.odb" ]] || { echo "FAIL missing 1_synth.odb" >&2; exit 1; }
     echo "OK synth ${RES}/1_synth.odb"
     ;;
   finish)
-    [[ -f "${RES}/6_final.odb" ]] || { echo "FAIL manca 6_final.odb" >&2; exit 1; }
-    [[ -f "${RES}/6_final.gds" ]] || { echo "FAIL manca 6_final.gds" >&2; exit 1; }
+    [[ -f "${RES}/6_final.odb" ]] || { echo "FAIL missing 6_final.odb" >&2; exit 1; }
+    [[ -f "${RES}/6_final.gds" ]] || { echo "FAIL missing 6_final.gds" >&2; exit 1; }
     echo "OK finish ${RES}/6_final.gds"
     ;;
 esac

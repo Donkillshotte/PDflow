@@ -35,7 +35,7 @@ TUTORIAL_ORFS="${FLOW}/designs/nangate45/gcd-tutorial"
 mkdir -p "$(dirname "${TUTORIAL_ORFS}")"
 ln -sfn "${TUTORIAL_SRC}" "${TUTORIAL_ORFS}"
 SDC="${TUTORIAL_SRC}/constraint.sdc"
-[[ -f "${SDC}" ]] || { echo "FAIL manca ${SDC}" >&2; exit 1; }
+[[ -f "${SDC}" ]] || { echo "FAIL missing ${SDC}" >&2; exit 1; }
 
 AS_BYTES="${PDN_AS_BYTES:-8589934592}"
 CPU_S="${PDN_CPU_S:-900}"

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Full power integrity chain: activity → chip IR → System PDN → SPICE lab export.
 #
-# Richiede finish (6_final.odb). Collega tutte le analisi SPICE post-PD.
+# Requires finish (6_final.odb). Chains all post-PD SPICE analyses.
 #
-# Uso: run_power_chain.sh
+# Usage: run_power_chain.sh
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

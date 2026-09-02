@@ -13,13 +13,13 @@ LOG="${FLOW}/logs/nangate45/gcd/${VARIANT}/6_lvs.log"
 STAMP="${RES}/.lvs.ok"
 OUT="${ROOT}/learn/sim/reports/lvs_signoff_${VARIANT}.json"
 
-[[ -f "${GDS}" ]] || { echo "FAIL manca ${GDS} — esegui finish"; exit 1; }
+[[ -f "${GDS}" ]] || { echo "FAIL missing ${GDS} — run finish first"; exit 1; }
 mkdir -p "$(dirname "${OUT}")"
 
 LYLVS="${ROOT}/learn/platforms/nangate45/lvs/FreePDK45.lylvs"
 ORFS_LVS="${FLOW}/platforms/nangate45/lvs/FreePDK45.lylvs"
 if [[ ! -f "${LYLVS}" ]]; then
-  echo "FAIL manca ${LYLVS} — see learn/reference/oss-integrations.md"
+  echo "FAIL missing ${LYLVS} — see learn/reference/oss-integrations.md"
   python3 - <<PY
 import json
 from pathlib import Path

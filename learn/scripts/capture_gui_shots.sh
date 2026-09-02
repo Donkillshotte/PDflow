@@ -24,6 +24,6 @@ capture 07_grt "${RESULTS}/5_1_grt.odb"
 capture 08_route "${RESULTS}/5_2_route.odb"
 capture 09_final "${RESULTS}/6_final.odb"
 
-# Non cancellare 03_pdn.png: il glob *_pdn.png è troppo largo.
+# Do not delete 03_pdn.png: the glob *_pdn.png is too broad.
 ls -lh "${SHOT_DIR}"/*.png
 echo CAPTURE_ALL_DONE

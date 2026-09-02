@@ -6,7 +6,7 @@ VARIANT="${FLOW_VARIANT:-flowlab}"
 SPEF="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/6_final.spef"
 RULES="${ROOT}/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/rcx_patterns.rules"
 JSON="${ROOT}/learn/sim/reports/openrcx_${VARIANT}.json"
-[[ -f "${SPEF}" ]] || { echo "FAIL manca ${SPEF} — esegui finish"; exit 1; }
+[[ -f "${SPEF}" ]] || { echo "FAIL missing ${SPEF} — run finish first"; exit 1; }
 
 python3 - <<PY
 import json

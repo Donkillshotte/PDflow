@@ -12,7 +12,7 @@ ROUTE_DRC="${REPORTS}/5_route_drc.rpt"
 OUT="${ROOT}/learn/sim/reports/drc_signoff_${VARIANT}.json"
 LOG="${ROOT}/learn/sim/reports/drc_signoff_${VARIANT}.log"
 
-[[ -f "${GDS}" ]] || { echo "FAIL manca ${GDS} — esegui finish"; exit 1; }
+[[ -f "${GDS}" ]] || { echo "FAIL missing ${GDS} — run finish first"; exit 1; }
 mkdir -p "$(dirname "${OUT}")"
 : > "${LOG}"
 
@@ -21,7 +21,7 @@ if [[ -f "${ROUTE_DRC}" ]]; then
   ROUTE_LINES="$(wc -l < "${ROUTE_DRC}" | tr -d ' ')"
   echo "Route DRC lines: ${ROUTE_LINES}" | tee -a "${LOG}"
 else
-  echo "WARN route DRC report assente" | tee -a "${LOG}"
+  echo "WARN route DRC report missing" | tee -a "${LOG}"
 fi
 
 echo "--- KLayout GDS DRC ---" | tee -a "${LOG}"
@@ -41,7 +41,7 @@ if [[ -f "${LYRDB}" ]]; then
   GDS_VIOL="$(python3 "${ROOT}/learn/scripts/parse_signoff_artifacts.py" --kind drc --path "${LYRDB}" 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("items",0))' || echo 0)"
   echo "GDS DRC violations (items): ${GDS_VIOL}" | tee -a "${LOG}"
 else
-  echo "WARN lyrdb assente" | tee -a "${LOG}"
+  echo "WARN lyrdb missing" | tee -a "${LOG}"
 fi
 
 METRICS="${ROOT}/learn/sim/reports/.drc_metrics_${VARIANT}.json"

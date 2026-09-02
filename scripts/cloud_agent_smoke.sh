@@ -11,7 +11,7 @@ need_cmd() {
   if command -v "${c}" >/dev/null 2>&1; then
     ok "${c}: $(${c} -version 2>/dev/null | head -1 || ${c} -V 2>/dev/null | head -1 || echo present)"
   else
-    bad "manca ${c}"
+    bad "missing ${c}"
   fi
 }
 
@@ -29,7 +29,7 @@ fi
 if [[ -d "${ROOT}/tools/OpenROAD-flow-scripts/flow" ]]; then
   ok "ORFS flow dir"
 else
-  bad "manca tools/OpenROAD-flow-scripts/flow"
+  bad "missing tools/OpenROAD-flow-scripts/flow"
 fi
 
 if [[ -d "${ROOT}/studio/node_modules" ]]; then

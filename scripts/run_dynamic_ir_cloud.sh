@@ -32,7 +32,7 @@ LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 LEF="${FLOW}/platforms/nangate45/lef/NangateOpenCellLibrary.tech.lef"
 SPEF="${RES}/6_final.spef"
 SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
-[[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB} — esegui ./scripts/run_gcd_finish_cloud.sh" >&2; exit 1; }
+[[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run ./scripts/run_gcd_finish_cloud.sh" >&2; exit 1; }
 
 SKIP=(--no-scenarios --no-electrothermal --skip-ngspice --no-vrm)
 case "${SOLVER}" in
@@ -57,7 +57,7 @@ if [[ ! -f "${INSTS}" ]]; then
       "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}" \
       2>&1 | tee -a "${LOG}"
 fi
-[[ -f "${INSTS}" ]] || { echo "FAIL manca ${INSTS}" >&2; exit 1; }
+[[ -f "${INSTS}" ]] || { echo "FAIL missing ${INSTS}" >&2; exit 1; }
 
 if [[ ! -f "${SPICE}" ]]; then
   echo "=== write_pg_spice -net VDD ===" | tee -a "${LOG}"
@@ -77,7 +77,7 @@ write_pg_spice -net VDD -source_type BUMPS ${SPICE}
 puts DYNAMIC_IR_SPICE_VDD_DONE
 EOF
 fi
-[[ -f "${SPICE}" ]] || { echo "FAIL manca ${SPICE}" >&2; exit 1; }
+[[ -f "${SPICE}" ]] || { echo "FAIL missing ${SPICE}" >&2; exit 1; }
 n_r="$(grep -cE '^[Rr]' "${SPICE}" || true)"
 n_r="${n_r:-0}"
 echo "spice n_r=${n_r}" | tee -a "${LOG}"
@@ -118,6 +118,6 @@ prlimit --as="${AS_BYTES}" --cpu="${CPU_S}" \
     2>&1 | tee -a "${LOG}"
 rc=${PIPESTATUS[0]}
 set -e
-[[ -f "${OUT}" ]] || { echo "FAIL manca ${OUT}" >&2; exit 1; }
+[[ -f "${OUT}" ]] || { echo "FAIL missing ${OUT}" >&2; exit 1; }
 echo "OK dynamic IR ${VARIANT} solver=${SOLVER} rc=${rc} report=${OUT}"
 exit "${rc}"

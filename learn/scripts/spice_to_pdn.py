@@ -47,11 +47,11 @@ def convert(
 ) -> tuple[str, dict]:
     resistors, currents, voltages = parse_spice(spice)
     if not voltages:
-        raise SystemExit("SPICE senza sorgenti V (pad)")
+        raise SystemExit("SPICE has no V sources (pads)")
     vdd = vdd_override or next(iter(voltages.values()))
     pads = sorted({sanitize(n) for n in voltages if n != "0"})
     if not pads:
-        raise SystemExit("nessun pad (nodo V)")
+        raise SystemExit("no pad nodes (V sources)")
 
     lines: list[str] = [
         f"# vyges-em-ir PDN from {spice}",
@@ -166,7 +166,7 @@ def main() -> int:
     args = ap.parse_args()
 
     if not args.spice.is_file():
-        print(f"FAIL manca spice {args.spice}", file=sys.stderr)
+        print(f"FAIL missing spice {args.spice}", file=sys.stderr)
         return 1
 
     text, stats = convert(

@@ -6,7 +6,7 @@
 #   static: CG + Jacobi  G·V = I
 #   dynamic: backward Euler, simultaneous switch at one t50 (engine limit)
 #
-# Uso: FLOW_VARIANT=flowlab ./learn/scripts/run_vyges_em_ir.sh
+# Usage: FLOW_VARIANT=flowlab ./learn/scripts/run_vyges_em_ir.sh
 # Env:
 #   C_DECAP=50e-15  PEAK_FACTOR=8  SWITCH_T_NS=1.0  SWITCH_DUR_NS=0.08
 #   IR_LIMIT_PCT=5.0
@@ -37,10 +37,10 @@ ENGINE_JSON="${WORK}/vyges_engine.json"
 LOG="${OUT_DIR}/vyges_em_ir_${VARIANT}.log"
 STAMP="${RES}/.vyges_em_ir.ok"
 
-[[ -f "${ODB}" ]] || { echo "FAIL manca ${ODB} — esegui finish (variant=${VARIANT})"; exit 1; }
+[[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run finish first (variant=${VARIANT})"; exit 1; }
 
 BIN="$("${ROOT}/learn/scripts/ensure_vyges_em_ir.sh")"
-[[ -x "${BIN}" ]] || { echo "FAIL vyges-em-ir non eseguibile: ${BIN}"; exit 1; }
+[[ -x "${BIN}" ]] || { echo "FAIL vyges-em-ir not executable: ${BIN}"; exit 1; }
 
 mkdir -p "${OUT_DIR}" "${WORK}" "${RES}/pdn"
 : > "${LOG}"
@@ -50,8 +50,8 @@ mkdir -p "${OUT_DIR}" "${WORK}" "${RES}/pdn"
 } | tee -a "${LOG}"
 
 if [[ ! -f "${SPICE}" ]]; then
-  echo "=== write_pg_spice (mesh assente) ===" | tee -a "${LOG}"
-  [[ -f "${LIB}" && -f "${SDC}" ]] || { echo "FAIL manca liberty/SDC"; exit 1; }
+  echo "=== write_pg_spice (mesh missing) ===" | tee -a "${LOG}"
+  [[ -f "${LIB}" && -f "${SDC}" ]] || { echo "FAIL missing liberty/SDC"; exit 1; }
   ACTIVITY_TCL="$(power_activity_tcl "${ROOT}")"
   cd "${FLOW}"
   openroad -no_init -no_splash -exit <<EOF | tee -a "${LOG}"
@@ -67,7 +67,7 @@ puts "VYGES_SPICE_EXPORT_DONE"
 EOF
   rg -q 'VYGES_SPICE_EXPORT_DONE' "${LOG}"
 fi
-[[ -f "${SPICE}" ]] || { echo "FAIL manca ${SPICE}"; exit 1; }
+[[ -f "${SPICE}" ]] || { echo "FAIL missing ${SPICE}"; exit 1; }
 
 DYN_FLAG=(--dynamic)
 if [[ "${VYGES_STATIC_ONLY:-0}" == "1" ]]; then
@@ -88,7 +88,7 @@ python3 "${ROOT}/learn/scripts/spice_to_pdn.py" \
   2>&1 | tee -a "${LOG}"
 
 JOB="${WORK}/gcd_${VARIANT}.emir"
-[[ -f "${JOB}" ]] || { echo "FAIL manca job ${JOB}"; exit 1; }
+[[ -f "${JOB}" ]] || { echo "FAIL missing job ${JOB}"; exit 1; }
 
 echo "=== vyges-em-ir check ===" | tee -a "${LOG}"
 "${BIN}" check "${JOB}" 2>&1 | tee -a "${LOG}"
@@ -106,7 +106,7 @@ if [[ "${rc}" -ne 0 ]]; then
   echo "FAIL vyges-em-ir exit ${rc}" | tee -a "${LOG}"
   exit "${rc}"
 fi
-[[ -f "${ENGINE_JSON}" ]] || { echo "FAIL manca ${ENGINE_JSON}"; exit 1; }
+[[ -f "${ENGINE_JSON}" ]] || { echo "FAIL missing ${ENGINE_JSON}"; exit 1; }
 
 python3 - <<PY | tee -a "${LOG}"
 import json, shutil

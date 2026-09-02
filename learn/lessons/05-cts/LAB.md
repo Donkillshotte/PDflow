@@ -26,7 +26,7 @@ In notebook:
 | Squares at bottom | sinks (FF CK) | ~0.07 |
 | Vertical leaf spread | **skew** | small if aligned |
 
-Compare con README: fanout ~4 al secondo livello. If your tree differs, that is not an error: clustering depends on sinks.
+Compare with README: fanout ~4 at the second level. If your tree differs, that is not an error: clustering depends on sinks.
 
 Reread `cts.tcl` blocchi `clock_tree_synthesis` e `detailed_placement` (walkthrough).
 

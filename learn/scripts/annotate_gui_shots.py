@@ -69,11 +69,11 @@ def annotate_pdn_canvas() -> None:
     d = ImageDraw.Draw(overlay)
     f = font(22)
     notes = [
-        (12, 12, "DIE (bordo blu) — 2_4_floorplan_pdn.odb"),
-        (12, 48, "Linee blu sottili = rail M1 sulle rows (followpin)"),
-        (12, 84, "Barre verdi verticali = strap power (metal alto)"),
-        (12, 120, "Barre rosa orizzontali = strap power (metal alto)"),
-        (12, h - 40, "Nessuna cella logica: il PDN esiste prima del placement"),
+        (12, 12, "DIE (blue border) — 2_4_floorplan_pdn.odb"),
+        (12, 48, "Thin blue lines = M1 rails on rows (followpin)"),
+        (12, 84, "Green vertical bars = power straps (upper metal)"),
+        (12, 120, "Pink horizontal bars = power straps (upper metal)"),
+        (12, h - 40, "No logic cells yet: PDN exists before placement"),
     ]
     for x, y, text in notes:
         tw = d.textlength(text, font=f)
@@ -93,9 +93,9 @@ def annotate_place() -> None:
     d = ImageDraw.Draw(overlay)
     f = font(22)
     notes = [
-        (12, 12, "Global placement — celle sparse nel core (non ancora 'piastrellate')"),
-        (12, 48, "Triangoli ciano/rossi sul bordo = pin I/O"),
-        (12, 84, "Strap PDN ancora visibili sotto/sopra le celle"),
+        (12, 12, "Global placement — sparse cells in core (not yet 'tiled')"),
+        (12, 48, "Cyan/red triangles on border = I/O pins"),
+        (12, 84, "PDN straps still visible under/over cells"),
     ]
     for x, y, text in notes:
         tw = d.textlength(text, font=f)
@@ -115,9 +115,9 @@ def annotate_route() -> None:
     d = ImageDraw.Draw(overlay)
     f = font(22)
     notes = [
-        (12, 12, "Detailed route — spaghetti colorati = wire su layer diversi"),
-        (12, 48, "Rosso ≈ metal2   verde ≈ metal3   (vedi Display Control)"),
-        (12, 84, "Confronto: 07_grt.png ha guide, non questi wire fini"),
+        (12, 12, "Detailed route — colored spaghetti = wires on different layers"),
+        (12, 48, "Red ≈ metal2   green ≈ metal3   (see Display Control)"),
+        (12, 84, "Compare: 07_grt.png has guides, not these fine wires"),
     ]
     for x, y, text in notes:
         tw = d.textlength(text, font=f)
