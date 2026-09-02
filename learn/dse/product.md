@@ -46,12 +46,16 @@ sintesi in poi. Review del registro → decide la prossima mossa:
    più economico). Salta `synth_area` e **tutte** le ricette floorplan.
 2. **Improve.** Se uno slot non ha win, inventa: combo su die aperto,
    knob nuovi su die già chiuso.
-3. **Deepen.** Se ci sono win, combina due assi che hanno già vinto
-   (stessa netlist ufficiale, stesso die). Niente ricette floorplan.
-4. **Stop.** Catalogo coperto, slot senza win esauriti, combo dei win
-   già provate.
+3. **Tune.** TPE sullo stesso die, stesso forno (CTS/route/finish).
+   Sostituisce deepen nel default. Piano congelato: `tpe_plan.md`.
+   `--deepen` resta override (griglia 2 assi, non TPE).
+4. **Stop.** Catalogo coperto, slot senza win esauriti, budget TPE
+   finito o slot non ammissibile (es. spi già chiuso e senza win).
 
 `--cover-all` / `--improve` restano override. Il default è il review.
 
-**spi @ 1 ns è esaurito** come slot senza win. Gli altri slot hanno
-win: il coordinatore approfondisce le combo. Non si riscrive il Verilog.
+**spi @ 1 ns è esaurito** come slot senza win. Non si lancia TPE lì.
+Non si riscrive il Verilog.
+
+Nessun trial TPE parte finché `tpe_plan.md` è solo piano: spazio, score
+e `cook_one` si implementano dopo, senza ritoccare queste scelte.
