@@ -146,7 +146,8 @@ if [[ -n "${SWAP_ARITH_OPERATORS:-}" ]]; then
   MAKE_EXTRA+=( SWAP_ARITH_OPERATORS="${SWAP_ARITH_OPERATORS}" )
 fi
 if [[ -n "${DIE_AREA:-}" && -n "${CORE_AREA:-}" ]]; then
-  MAKE_EXTRA+=( DIE_AREA="${DIE_AREA}" CORE_AREA="${CORE_AREA}" CORE_UTILIZATION= )
+  # DIE_AREA and FLOORPLAN_DEF are mutually exclusive in OpenROAD.
+  MAKE_EXTRA+=( DIE_AREA="${DIE_AREA}" CORE_AREA="${CORE_AREA}" CORE_UTILIZATION= FLOORPLAN_DEF= )
   echo "campaign ${TARGET}: design=${DESIGN} variant=${VARIANT} locked DIE_AREA sdc=${SDC_NS}ns"
 elif [[ -n "${CORE_UTILIZATION:-}" ]]; then
   MAKE_EXTRA+=( CORE_UTILIZATION="${CORE_UTILIZATION}" )

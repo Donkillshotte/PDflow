@@ -120,16 +120,22 @@ def to_env(params: dict[str, Any], defaults: dict[str, float]) -> dict[str, str]
 
 
 def pin(design: str, env: dict[str, str]) -> dict[str, str]:
-    """Inject official DIE/CORE and ABC area. Strip floorplan knobs."""
+    """Pin the official die. Strip util/aspect. Never DIE_AREA + FLOORPLAN_DEF."""
+    from .floorplan import uses_floorplan_def
+
     out = {k: str(v) for k, v in env.items() if k not in FORBIDDEN}
+    synth = synth_method_from_exploration()
+    out["ABC_AREA"] = str(synth["ABC_AREA"])
+    out["ABC_SPEED"] = str(synth["ABC_SPEED"])
+    if uses_floorplan_def(design):
+        out.pop("DIE_AREA", None)
+        out.pop("CORE_AREA", None)
+        return out
     box = official_box(design)
     if box is None:
         raise FileNotFoundError(f"no official DEF box for {design}")
     out["DIE_AREA"] = box["DIE_AREA"]
     out["CORE_AREA"] = box["CORE_AREA"]
-    synth = synth_method_from_exploration()
-    out["ABC_AREA"] = str(synth["ABC_AREA"])
-    out["ABC_SPEED"] = str(synth["ABC_SPEED"])
     return out
 
 

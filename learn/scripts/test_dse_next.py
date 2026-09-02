@@ -780,6 +780,14 @@ def check_next_level(check, root: Path) -> None:
     pinned = pin("gcd", {"CORE_UTILIZATION": "45", "PLACE_DENSITY_LB_ADDON": "0.30"})
     check("DIE_AREA" in pinned and "CORE_AREA" in pinned, f"pin adds official box {pinned}")
     check("CORE_UTILIZATION" not in pinned and "CORE_ASPECT_RATIO" not in pinned, f"pin strips util {pinned}")
+    from dse.floorplan import uses_floorplan_def
+
+    check(uses_floorplan_def("aes") and not uses_floorplan_def("gcd") and not uses_floorplan_def("ibex"), "FLOORPLAN_DEF is read from config, not a design-name branch")
+    aes_pin = pin("aes", {"CORE_UTILIZATION": "40", "PLACE_DENSITY_LB_ADDON": "0.30", "DIE_AREA": "0 0 1 1"})
+    check("DIE_AREA" not in aes_pin and "CORE_AREA" not in aes_pin, f"aes pin keeps the official DEF, no DIE_AREA {aes_pin}")
+    check("CORE_UTILIZATION" not in aes_pin, f"aes pin still strips util {aes_pin}")
+    wrap_src = (root / "scripts/run_design_finish.sh").read_text()
+    check("FLOORPLAN_DEF=" in wrap_src, "wrapper clears FLOORPLAN_DEF when DIE_AREA is set")
     omitted = to_env(
         {
             "PLACE_DENSITY_LB_ADDON": gcd_def.get("PLACE_DENSITY_LB_ADDON", 0.20),

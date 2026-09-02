@@ -40,6 +40,26 @@ def official_box(design: str) -> dict[str, str] | None:
     return {"DIE_AREA": str(die), "CORE_AREA": str(core)}
 
 
+def uses_floorplan_def(design: str) -> bool:
+    """True when config.mk initializes the die from FLOORPLAN_DEF.
+
+    DIE_AREA + FLOORPLAN_DEF are mutually exclusive in OpenROAD. The DEF
+    is the official pin (including IO). No design-name branch.
+    """
+    from .knob_catalog import config_mk_for
+
+    p = config_mk_for(design)
+    if not p.is_file():
+        return False
+    for line in p.read_text().splitlines():
+        s = line.strip()
+        if s.startswith("#"):
+            continue
+        if s.startswith("export FLOORPLAN_DEF") and "=" in s:
+            return True
+    return False
+
+
 def is_floorplan_recipe(recipe_id: str) -> bool:
     return recipe_id in FLOORPLAN_RECIPES
 

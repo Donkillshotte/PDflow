@@ -252,7 +252,7 @@ def run_tpe(
     for e in rows:
         extra = e.extra or {}
         fp = extra.get("fingerprint")
-        if fp:
+        if fp and getattr(e, "status", None) in ("done", "stopped_by_policy"):
             seen.add(str(fp))
 
     plateau = 0

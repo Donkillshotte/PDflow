@@ -12,7 +12,7 @@ from typing import Any
 from .experiments import DESIGN_CATALOG, Experiment, ExperimentLog, fill_from_logs
 from .f6_finish import parse_place_dp
 from .fidelity_policy import decide
-from .floorplan import FLOORPLAN_RECIPES, official_box
+from .floorplan import FLOORPLAN_RECIPES, official_box, uses_floorplan_def
 from .knob_catalog import by_id, config_mk_for, parse_config_defaults, resolve_many, titles_of
 from .recipe_labels import synth_method_from_exploration
 from .tune_space import fingerprint, project_knobs, title_of_params, variant_name
@@ -86,21 +86,37 @@ def _place_wns(design: str, variant: str) -> float | None:
 
 def pin_knobs(design: str, knobs: dict[str, str]) -> dict[str, str]:
     out = dict(knobs)
-    box = official_box(design)
-    if box is not None:
-        out["DIE_AREA"] = box["DIE_AREA"]
-        out["CORE_AREA"] = box["CORE_AREA"]
-        out.pop("CORE_UTILIZATION", None)
-        out.pop("CORE_ASPECT_RATIO", None)
+    out.pop("CORE_UTILIZATION", None)
+    out.pop("CORE_ASPECT_RATIO", None)
+    if uses_floorplan_def(design):
+        # Official DEF already pins the die. DIE_AREA + DEF is illegal.
+        out.pop("DIE_AREA", None)
+        out.pop("CORE_AREA", None)
     else:
-        defaults = parse_config_defaults(config_mk_for(design))
-        if "CORE_UTILIZATION" not in out and "CORE_UTILIZATION" in defaults:
-            out["CORE_UTILIZATION"] = str(defaults["CORE_UTILIZATION"])
+        box = official_box(design)
+        if box is not None:
+            out["DIE_AREA"] = box["DIE_AREA"]
+            out["CORE_AREA"] = box["CORE_AREA"]
+        else:
+            defaults = parse_config_defaults(config_mk_for(design))
+            if "CORE_UTILIZATION" not in out and "CORE_UTILIZATION" in defaults:
+                out["CORE_UTILIZATION"] = str(defaults["CORE_UTILIZATION"])
     synth = synth_method_from_exploration()
     if "ABC_SPEED" not in out and "ABC_AREA" not in out:
         out["ABC_AREA"] = str(synth["ABC_AREA"])
         out["ABC_SPEED"] = str(synth["ABC_SPEED"])
     return out
+
+
+_KEPT = frozenset({"done", "stopped_by_policy"})
+
+
+def _variant_kept(log: ExperimentLog, variant: str, phase: str | None = None) -> bool:
+    """True if this FLOW_VARIANT already has a usable row. Failed cooks may retry."""
+    return any(
+        e.variant == variant and (phase is None or e.phase == phase) and e.status in _KEPT
+        for e in log.all()
+    )
 
 
 def cook_one(
@@ -145,9 +161,9 @@ def cook_one(
         fresh = False
         fp = fingerprint(projected, defaults)
     env = pin_knobs(design, resolved)
-    if skip_if_variant and log.has(var):
+    if skip_if_variant and _variant_kept(log, var):
         return {"ok": True, "skipped": True, "variant": var, "phase": phase, "exit_code": 0}
-    if log.has(var, phase):
+    if _variant_kept(log, var, phase):
         return {"ok": True, "skipped": True, "variant": var, "phase": phase, "exit_code": 0}
 
     net = None if fresh else base_netlist(design)
