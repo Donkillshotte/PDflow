@@ -1,285 +1,285 @@
-# PLAN — Fase 2: scenario guida I(t), fronte gated onesto, coda IR dichiarativa
+# PLAN — Phase 2: I(t) guiding scenario, honest gated front, declarative IR queue
 
-Navigazione repo: [`docs/README.md`](docs/README.md). Questo piano è
-**laboratorio Fase 2** (controller IR), non il prodotto knob/finish.
+Repo navigation: [`docs/README.md`](docs/README.md). This plan is
+**Phase 2 lab** (IR controller), not the knob/finish product.
 Lab: [`docs/laboratorio.md`](docs/laboratorio.md).
 
-Stato: passo A ✅, E ✅, B ✅, C1 ✅, C2 ✅, C3 ✅, C4 ✅, C5 ✅, C6 ✅, C7 ✅, D.1 ✅, D.2 ✅, D.3 ✅, D.4 ✅, D.5 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
-solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
-tipo `DesignState` parallelo: si irrigidisce ciò che esiste.
+Status: step A ✅, E ✅, B ✅, C1 ✅, C2 ✅, C3 ✅, C4 ✅, C5 ✅, C6 ✅, C7 ✅, D.1 ✅, D.2 ✅, D.3 ✅, D.4 ✅, D.5 ✅. Steps run **in order**; each step closes
+only with the indicated green tests and a dedicated commit. No step introduces a
+parallel `DesignState` type: tighten what exists.
 
-Fase 1 (schema → slice dichiarative) è **chiusa** su `ca47126`
-(passi 0–6). Questo documento la sostituisce come piano eseguibile.
-Riferimenti: `learn/dse/README.md`, `.cursor/SETUP_LOG.md`, PR #2.
+Phase 1 (schema → declarative slices) is **closed** at `ca47126`
+(steps 0–6). This document replaces it as the executable plan.
+References: `learn/dse/README.md`, `.cursor/SETUP_LOG.md`, PR #2.
 
 ---
 
-## Diagnosi (stato dopo Fase 2 D.5 + cleanup, 2026-08-31)
+## Diagnosis (state after Phase 2 D.5 + cleanup, 2026-08-31)
 
-Misurato sul tree corrente, non a memoria. La foto Fase 1 (`ca47126`:
-controller 4920, coda IR inlined, `test_dse` 4925) è archivio.
+Measured on the current tree, not from memory. Phase 1 snapshot (`ca47126`:
+controller 4920, inlined IR queue, `test_dse` 4925) is archive.
 
-| File | Righe | Ruolo |
+| File | Lines | Role |
 |---|---:|---|
-| `learn/dse/controller.py` | 3062 | Ingest/F1 teacher inlined → `STAGES_*` C1–C6 → `run_next_refine` → `STAGES_IR_SOLVERS` → report. Import solo nomi usati |
-| `learn/dse/acquire.py` | 3146 | **66** `should_pay_*` restano (stage + test). Non cancellati |
-| `learn/dse/stages.py` | 2264 | Slice C1–C7: steer-gap / IR_STEER / IR_CELL / IR_CHAMP / inspect / region-cell / IR_SOLVERS |
+| `learn/dse/controller.py` | 3062 | Ingest/F1 teacher inlined → `STAGES_*` C1–C6 → `run_next_refine` → `STAGES_IR_SOLVERS` → report. Import only names in use |
+| `learn/dse/acquire.py` | 3146 | **66** `should_pay_*` remain (stage + test). Not deleted |
+| `learn/dse/stages.py` | 2264 | Slices C1–C7: steer-gap / IR_STEER / IR_CELL / IR_CHAMP / inspect / region-cell / IR_SOLVERS |
 | `learn/scripts/test_dse.py` | 51 | Runner: D.1 metrics → D.2 memory → D.3 planner → D.4 steer → D.5 live F4 |
 | `learn/scripts/test_dse_metrics.py` | 43 | D.1 dominates / gated / HV / EHVI |
-| `learn/scripts/test_dse_memory.py` | 172 | D.2 JSONL / BOiLS / e-graph / cataloghi |
+| `learn/scripts/test_dse_memory.py` | 172 | D.2 JSONL / BOiLS / e-graph / catalogs |
 | `learn/scripts/test_dse_planner.py` | 1320 | D.3 attribution / `plan_search` / F1 |
 | `learn/scripts/test_dse_steer.py` | 3279 | D.4 residual / F5 / IR leftover / champ / static |
-| `learn/scripts/test_dse_live_f4.py` | 166 | D.5 live F4, importato per ultimo; un processo, un job |
-| `learn/dse/current_scenario.py` | 204 | `source` guida I(t) (passo A) |
-| `learn/scripts/dse_f4_worker.py` | 368 | `plan_events` rispetta `source`; triangolo non ruba STA |
-| `learn/dse/planner.py` | 812 | `prefer_gated` + `pareto_gated` (passo B). Parent F1 resta F1-only |
-| `studio/.../DsePanel.tsx` | — | Legge `pareto_gated`. Heatmap/suite dicono `current_run`, non “A gold” |
+| `learn/scripts/test_dse_live_f4.py` | 166 | D.5 live F4, imported last; one process, one job |
+| `learn/dse/current_scenario.py` | 204 | `source` guides I(t) (step A) |
+| `learn/scripts/dse_f4_worker.py` | 368 | `plan_events` respects `source`; triangle does not steal STA |
+| `learn/dse/planner.py` | 812 | `prefer_gated` + `pareto_gated` (step B). Parent F1 remains F1-only |
+| `studio/.../DsePanel.tsx` | — | Reads `pareto_gated`. Heatmap/suite say `current_run`, not “A gold” |
 
-**Cosa è già vero (non rifare).**
+**What is already true (do not redo).**
 
-- `STAGES_LOGIC_TRANSFORM` / `STAGES_PLACE_ROUTE` / `STAGES_F4_HEAD` girano
-  come tabelle. GRT sta fra STA e SDF **per dati**, non per commento.
-- `STAGE_F5_PORT` e `STAGE_PHYSICAL_CATALOG` restano singoli perché
-  residual/port/f2_region li spezzano.
-- Refine depth ≥ 1 è già generico: `dispatch.run_next_refine` + `actions.py`
-  + `frame.py`. Non è un blocco controller da “tabellizzare”.
-- `f1_pareto_parents` = area-best + WNS-best **solo F1**. È corretto per
+- `STAGES_LOGIC_TRANSFORM` / `STAGES_PLACE_ROUTE` / `STAGES_F4_HEAD` run
+  as tables. GRT sits between STA and SDF **by data**, not by comment.
+- `STAGE_F5_PORT` and `STAGE_PHYSICAL_CATALOG` remain singletons because
+  residual/port/f2_region split them.
+- Refine depth ≥ 1 is already generic: `dispatch.run_next_refine` +
+  `actions.py` + `frame.py`. It is not a controller block to “tabulate”.
+- `f1_pareto_parents` = area-best + WNS-best **F1 only**. Correct for
   F1→F2.
 - GCD finish live: DirectLU **6.075 mV**, `current_scenario.source=sta_t50`,
-  `n_r` worker **5816**. Gold **45.298** intatto. AES `febe6804241c` intatto.
-- `leftover_cone_region_next` / `winning_ir_region_next` sono già inspector
-  closed-loop (`kind ∈ {extract, pdn}`), non one-shot.
-- Buco 1 (scenario francobollo) chiuso in A: `source` decide STA/VCD/SAIF.
-- Buco 2 (Pareto gated) chiuso in B: Studio legge `pareto_gated`.
-- Buco 3 (coda IR fotocopia) chiuso in C1–C7: coda in `STAGES_*`.
-- Buco 4 (due numeri IR) chiuso in E: `current_run` vs `reference_run`.
-- Buco 5 (`test_dse` monolite) chiuso in D.1–D.5: runner + cinque moduli.
+  `n_r` worker **5816**. Gold **45.298** intact. AES `febe6804241c` intact.
+- `leftover_cone_region_next` / `winning_ir_region_next` are already inspector
+  closed-loop (`kind ∈ {extract, pdn}`), not one-shot.
+- Gap 1 (stamp scenario) closed in A: `source` decides STA/VCD/SAIF.
+- Gap 2 (Pareto gated) closed in B: Studio reads `pareto_gated`.
+- Gap 3 (photocopied IR queue) closed in C1–C7: queue in `STAGES_*`.
+- Gap 4 (two IR numbers) closed in E: `current_run` vs `reference_run`.
+- Gap 5 (`test_dse` monolith) closed in D.1–D.5: runner + five modules.
 
-**Cosa resta fuori (non è una mancanza di Fase 2).**
+**What remains outside (not a Phase 2 gap).**
 
-AES come secondo GCD (coni, e-graph, F5-CTS, Krylov, DSE controller pieno),
-ibex slang, CUDA, CCS su Nangate45, closed-loop synth↔PD libero, DesignState,
-LLM/GNN come centro del controller, ristampare il gold.
+AES as second GCD (cones, e-graph, F5-CTS, Krylov, full DSE controller),
+ibex slang, CUDA, CCS on Nangate45, free closed-loop synth↔PD, DesignState,
+LLM/GNN as controller center, restamp the gold.
 
 ---
 
-## Vincoli permanenti (valgono per ogni passo)
+## Permanent constraints (apply to every step)
 
-- VM cloud ~15 GiB / 4 CPU / swap 0. Un solo job pesante; `prlimit --as=8GiB`.
-- **Mai** Krylov/MOR su mesh AES ~50–70k R. `admit_solve` deve rifiutare.
-- **Mai** sovrascrivere `memory_aes.jsonl` riga `febe6804241c`
+- Cloud VM ~15 GiB / 4 CPU / swap 0. One heavy job only; `prlimit --as=8GiB`.
+- **Never** Krylov/MOR on AES mesh ~50–70k R. `admit_solve` must refuse.
+- **Never** overwrite `memory_aes.jsonl` row `febe6804241c`
   (`n_r=73139`, static **6.954 mV**).
-- **Mai** ristampare il gold GCD 45.298 mV
+- **Never** restamp GCD gold 45.298 mV
   (`learn/sim/reports/dynamic_ir_flowlab.json`).
-- Finish FlowLab corrente = **6.075 mV** su `n_r=5816`: è `current_run`,
-  non `reference_run`. I test non li confondono. `n_r_from_spice` (~5821)
-  ≠ `n_r` worker: non pinare 5816 sulla riga spice.
-- AES SDC 0.82 ns, `top=aes_cipher_top`; F5 AES rifiuta path `/gcd/`.
-- Test solo sintetici o GCD-scale. `pkill -f` vietato (kill per PID).
-- DirectLU = reference numerico. B/C/D = accelerator + errore vs A.
-- **Non** `mem.touch` su hit F4 in cache (rompe
+- Current FlowLab finish = **6.075 mV** on `n_r=5816`: it is `current_run`,
+  not `reference_run`. Tests do not confuse them. `n_r_from_spice` (~5821)
+  ≠ worker `n_r`: do not pin 5816 on the spice row.
+- AES SDC 0.82 ns, `top=aes_cipher_top`; F5 AES refuses path `/gcd/`.
+- Tests synthetic or GCD-scale only. `pkill -f` forbidden (kill by PID).
+- DirectLU = numerical reference. B/C/D = accelerator + error vs A.
+- **Do not** `mem.touch` on cached F4 hit (breaks
   “live memory is not restamped, got 113”).
-- **Non** cancellare `should_pay_*` che stage o test chiamano ancora.
-  `test_dse.py` asserisce frammenti `why` (`"not bumps"`, `"not gold"`).
-- **Non** sostituire `f1_pareto_parents` per F2-fast. F1-only è corretto.
-- **Non** usare un F5 come host del *primo* `cell_size_up`:
-  `evaluate_cell_size` vuole `mapped_v` di un netlist F1.
-- Un solo `test_dse.py` alla volta (~5 min). La suite veloce non lancia F4.
+- **Do not** delete `should_pay_*` that stages or tests still call.
+  `test_dse.py` asserts `why` fragments (`"not bumps"`, `"not gold"`).
+- **Do not** replace `f1_pareto_parents` for F2-fast. F1-only is correct.
+- **Do not** use an F5 as host of the *first* `cell_size_up`:
+  `evaluate_cell_size` wants `mapped_v` from an F1 netlist.
+- One `test_dse.py` at a time (~5 min). Fast suite does not launch F4.
 
-Test di regressione da tenere verdi a ogni passo:
+Regression tests to keep green at every step:
 
 ```bash
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_candidate_schema.py
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_heavy_analysis.py
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_designs.py
-PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_dse.py        # ~5 min con F4
+PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_dse.py        # ~5 min with F4
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_frame.py
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_dispatch.py
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_actions.py
 ```
 
-Passi A / B / E (niente mesh nuova): schema + designs + head di `test_dse`
-bastano in locale; `test_dse` live resta il gate prima del commit se si
-tocca worker / `solve_f4` / report IR.
+Steps A / B / E (no new mesh): schema + designs + head of `test_dse`
+suffice locally; `test_dse` live remains the gate before commit if you
+touch worker / `solve_f4` / IR report.
 
 ---
 
-## Passo A — Lo scenario guida I(t) (piccolo, alto onestà)
+## Step A — I(t) guiding scenario (small, high honesty)
 
-**Problema.** `CurrentScenario` è serializzato su argv e su
-`SolveResult.activity_via`, ma `plan_events` in
-`learn/scripts/dse_f4_worker.py` (circa 165–181) carica STA/VCD/SAIF dai
-flag file. `build_worker_cmd` (`learn/dse/f4_oracle.py` 175–201) aggiunge
-`--sta` se il path esiste, anche quando `source=ideal_triangle`.
+**Problem.** `CurrentScenario` is serialized on argv and on
+`SolveResult.activity_via`, but `plan_events` in
+`learn/scripts/dse_f4_worker.py` (around 165–181) loads STA/VCD/SAIF from
+file flags. `build_worker_cmd` (`learn/dse/f4_oracle.py` 175–201) adds
+`--sta` if the path exists, even when `source=ideal_triangle`.
 
-**Non cambiare.** Infer default GCD finish (`kind=="finish"`, `design_id=="gcd"`,
-STA su disco, nessuno `source` esplicito) resta `sta_t50`. È il path 6.075.
-`liberty_ccs` resta GAP. Waveform assente resta ABSENT, mai inventata.
-`pdn_activity.plan_events` non cambia firma: il worker decide *cosa* passarle.
+**Do not change.** Infer default GCD finish (`kind=="finish"`, `design_id=="gcd"`,
+STA on disk, no explicit `source`) stays `sta_t50`. That is the 6.075 path.
+`liberty_ccs` stays GAP. Missing waveform stays ABSENT, never invented.
+`pdn_activity.plan_events` signature unchanged: the worker decides *what* to pass.
 
-**Modifiche.**
+**Changes.**
 
-1. `dse_f4_worker.py` dopo il parse di `--scenario`:
-   - `ideal_triangle` → non caricare STA/VCD/SAIF anche se i file ci sono;
+1. `dse_f4_worker.py` after parsing `--scenario`:
+   - `ideal_triangle` → do not load STA/VCD/SAIF even if files exist;
      `plan_events(..., sta_arrivals=None, vcd=None, saif=None)`.
-   - `sta_t50` + `activity_status=ABSENT` → non applicare STA; status GAP/ABSENT
-     già coperto da infer.
-   - `sta_t50` + REAL → caricare solo `--sta` (come oggi per 6.075).
-   - `vcd`/`saif` + ABSENT → non passare file (già vero in `build_worker_cmd`).
-   - `vcd`/`saif` + REAL → waveform; non promuovere STA a source.
-   - `liberty_ccs` → invariato (exit 0 + GAP).
+   - `sta_t50` + `activity_status=ABSENT` → do not apply STA; GAP/ABSENT
+     status already covered by infer.
+   - `sta_t50` + REAL → load only `--sta` (as today for 6.075).
+   - `vcd`/`saif` + ABSENT → do not pass files (already true in `build_worker_cmd`).
+   - `vcd`/`saif` + REAL → waveform; do not promote STA to source.
+   - `liberty_ccs` → unchanged (exit 0 + GAP).
 2. `build_worker_cmd`:
-   - `source=ideal_triangle` → `--no-sta`, niente `--sta`, niente activity flags.
-   - `source=sta_t50` e STA file → `--sta` (GCD 6.075 invariato).
-   - `source=sta_t50` e STA mancante → `--no-sta`, scenario ABSENT.
-3. Nessun nuovo campo su `CurrentScenario`. Il fingerprint già include `source`.
+   - `source=ideal_triangle` → `--no-sta`, no `--sta`, no activity flags.
+   - `source=sta_t50` and STA file → `--sta` (GCD 6.075 unchanged).
+   - `source=sta_t50` and STA missing → `--no-sta`, scenario ABSENT.
+3. No new field on `CurrentScenario`. Fingerprint already includes `source`.
 
-**Accettazione.**
+**Acceptance.**
 
-- `test_candidate_schema.py`: cmd GCD default contiene `--scenario` + `sta_t50`
-  e `--sta` (o path STA). Cmd esplicito `ideal_triangle` ha `--no-sta` e
-  **non** ha `--sta`, anche se lo STA GCD è su disco.
-- `test_designs.py`: AES waveform-free resta senza `--vcd`/`--saif`.
+- `test_candidate_schema.py`: default GCD cmd contains `--scenario` + `sta_t50`
+  and `--sta` (or STA path). Explicit `ideal_triangle` cmd has `--no-sta` and
+  **not** `--sta`, even if GCD STA is on disk.
+- `test_designs.py`: AES waveform-free stays without `--vcd`/`--saif`.
 - `test_dse.py` live A: DirectLU **6.075** ± 0.05, `source=sta_t50`,
   `activity_via.scenario.source=sta_t50`, ≠ 45.298.
-- Triangolo esplicito sulla stessa mesh: `activity_status=SYNTHETIC`.
-  **Non** pinare il droop a 6.075 (può differire). Un unit test di argv
-  basta; non lanciare un secondo F4 live nel passo A se il primo è già
+- Explicit triangle on same mesh: `activity_status=SYNTHETIC`.
+  **Do not** pin droop to 6.075 (may differ). An argv unit test
+  suffices; do not launch a second live F4 in step A if the first is already
   `sta_t50`.
-- Gold unrestampato. Nessun AES Krylov.
+- Gold unrestamped. No AES Krylov.
 
 ---
 
-## Passo B — Fronte gated come preferenza, non come F1→F2 (piccolo)
+## Step B — Gated front as preference, not as F1→F2 (small)
 
-**Problema.** Il passo 5 ha scritto il contratto (`dominates_with_fidelity`,
-`pareto_front_gated`, `next_candidate_ids`) e lo stampa. I parent reali
-restano F1 winners. Studio (`DsePanel.tsx` ~191–192, ~630) badge-a
+**Problem.** Step 5 wrote the contract (`dominates_with_fidelity`,
+`pareto_front_gated`, `next_candidate_ids`) and prints it. Real parents
+remain F1 winners. Studio (`DsePanel.tsx` ~191–192, ~630) badges
 `report.pareto`.
 
-**Non fare.**
+**Do not.**
 
-- Non sostituire `f1_pareto_parents` / `f1_area_winner` / `f1_wns_winner`
-  per F2-fast, cell *first shot*, net *first shot*, F4 extract host.
-  Quegli host devono essere netlist mappati F1 (`mapped_pick` + `mapped_v`).
-- Non far pickare residual/port/IR dallo gated front: lo host è il
-  residual (`steer_from_*`), non un WNS.
-- Non cambiare `pareto_front` (report storici).
-- I check `test_dse.py` “area winner is liberty_default” / “WNS winner is
-  the delay-improved sequence” restano verdi senza toccare i valori.
+- Replace `f1_pareto_parents` / `f1_area_winner` / `f1_wns_winner`
+  for F2-fast, cell *first shot*, net *first shot*, F4 extract host.
+  Those hosts must be mapped F1 netlists (`mapped_pick` + `mapped_v`).
+- Let residual/port/IR pick from the gated front: host is
+  residual (`steer_from_*`), not a WNS.
+- Change `pareto_front` (historical reports).
+- `test_dse.py` checks “area winner is liberty_default” / “WNS winner is
+  the delay-improved sequence” stay green without touching values.
 
-**Modifiche.**
+**Changes.**
 
-1. `learn/dse/planner.py` (o `metrics.py`): helper
+1. `learn/dse/planner.py` (or `metrics.py`): helper
    `prefer_gated(mem, level, cands, *, pred=None) -> list`.
-   Filtra/ordina `cands` tenendo chi sta sul fronte gated di quel livello;
-   se il fronte è vuoto, restituisce `cands` invariato. Non inventa host.
-2. Un consumer reale, non un helper morto:
-   - Studio `DsePanel.tsx`: badge e conteggio usano `pareto_gated` se
-     presente, fallback a `pareto`. Tipo TS: aggiungere `pareto_gated?`.
-   - Opzionale e solo se un lotto C introduce una lista mista allo stesso
-     livello (es. più extract F4 già misurati): `prefer_gated` su *quella*
-     lista. Non anticipare.
-3. Unit in `test_dse.py` (blocco metriche in testa, già c’è il gated):
-   F1 WNS migliore + F5 WNS peggiore restano entrambi sul gated front;
-   un picker “solo WNS” terrebbe solo F1 — documentare che `prefer_gated`
-   non fa quella riduzione.
+   Filter/sort `cands` keeping those on the gated front at that level;
+   if the front is empty, return `cands` unchanged. Does not invent hosts.
+2. One real consumer, not a dead helper:
+   - Studio `DsePanel.tsx`: badge and count use `pareto_gated` if
+     present, fallback to `pareto`. TS type: add `pareto_gated?`.
+   - Optional and only if a C batch introduces a mixed list at the same
+     level (e.g. multiple measured F4 extracts): `prefer_gated` on *that*
+     list. Do not anticipate.
+3. Unit in `test_dse.py` (metrics block at top, gated already there):
+   better F1 WNS + worse F5 WNS both stay on the gated front;
+   a “WNS-only” picker would keep only F1 — document that `prefer_gated`
+   does not do that reduction.
 
-**Accettazione.**
+**Acceptance.**
 
-- `test_dse.py` verde senza cambiare valori attesi dei winner F1.
-- `test_candidate_schema.py` / `test_frame.py` verdi.
-- Studio: il tipo accetta `pareto_gated`; nessun cambio di layout obbligatorio
-  oltre a leggere la chiave giusta. Verifica a mano sulla pagina DSE solo
-  se il passo tocca CSS/markup visibile.
+- `test_dse.py` green without changing expected F1 winner values.
+- `test_candidate_schema.py` / `test_frame.py` green.
+- Studio: type accepts `pareto_gated`; no mandatory layout change
+  beyond reading the right key. Manual check on DSE page only
+  if the step touches visible CSS/markup.
 
 ---
 
-## Passo E — Due numeri IR etichettati (piccolo, dopo A)
+## Step E — Two labeled IR numbers (small, after A)
 
-**Problema.** I test sanno che 6.075 ≠ 45.298. Studio e copy dicono ancora
-“Solver A golden” sul finish corrente (`DynamicIrHeatmap.tsx` ~295, ~594;
+**Problem.** Tests know 6.075 ≠ 45.298. Studio and copy still say
+“Solver A golden” on current finish (`DynamicIrHeatmap.tsx` ~295, ~594;
 `suite.ts` “Solver A gold”).
 
-**Modifiche.**
+**Changes.**
 
-- Report F4 / DSE: campi espliciti `current_run_mv` (finish vivo) e
-  `reference_run_mv` (45.298, solo lettura del gold JSON, mai restamp).
-  Se il gold file manca, `reference_run_mv=null` — non inventare.
-- Copy Studio: “A = DirectLU current_run” vs “reference_run 45.298
-  (historical gold, unrestamped)”. Non rinominare `solver_kind=direct`.
-- `test_candidate_schema.py` o head `test_dse`: le chiavi esistono e
-  `current_run_mv` non è 45.298 sul path finish GCD.
+- F4 / DSE report: explicit fields `current_run_mv` (live finish) and
+  `reference_run_mv` (45.298, read-only from gold JSON, never restamp).
+  If gold file missing, `reference_run_mv=null` — do not invent.
+- Studio copy: “A = DirectLU current_run” vs “reference_run 45.298
+  (historical gold, unrestamped)”. Do not rename `solver_kind=direct`.
+- `test_candidate_schema.py` or head `test_dse`: keys exist and
+  `current_run_mv` is not 45.298 on GCD finish path.
 
-**Non fare.** Ristampare gold, cambiare soglie signoff, toccare
-`febe6804241c`, fondere i due JSON `dynamic_ir_flowlab.json` e
+**Do not.** Restamp gold, change signoff thresholds, touch
+`febe6804241c`, merge the two JSONs `dynamic_ir_flowlab.json` and
 `dynamic_ir_flowlab_direct.json`.
 
-**Accettazione.** Gold file byte-uguale. Live A resta 6.075. UI non
-presenta 6.075 come gold.
+**Acceptance.** Gold file byte-identical. Live A stays 6.075. UI does not
+present 6.075 as gold.
 
 ---
 
-## Passo C — Strangler della coda (stessa regola di 3a–3e)
+## Step C — Strangler of the queue (same rule as 3a–3e)
 
-Ordine dei lotti **sacro** (dipendenze di `via` / residual / extract_id).
-Un lotto = un commit. `why` / `step` / `via` / `fidelity` identici al
-blocco inlined. `test_dse.py` verde **senza** cambiare valori attesi.
-Misurare `wc -l learn/dse/controller.py` prima/dopo. Domain `should_pay_*`
-restano in `acquire.py`; le stage le chiamano.
+Batch order **sacred** (`via` / residual / extract_id dependencies).
+One batch = one commit. `why` / `step` / `via` / `fidelity` identical to
+the inlined block. `test_dse.py` green **without** changing expected values.
+Measure `wc -l learn/dse/controller.py` before/after. Domain `should_pay_*`
+stay in `acquire.py`; stages call them.
 
-Pattern già provato: `Stage` + `run_*` + `_pay_and_maybe_eval`.
-Loop closed-loop (`leftover_*_next`): **non** un `Stage` one-shot —
-helper `run_inspect_loop` che chiama l’inspector, paga extract o PDN,
-ripete fino a `None` / wall / cap già nei test (4 iter leftover-cone-region).
+Pattern already proven: `Stage` + `run_*` + `_pay_and_maybe_eval`.
+Closed-loop loops (`leftover_*_next`): **not** a one-shot `Stage` —
+helper `run_inspect_loop` calls the inspector, pays extract or PDN,
+repeats until `None` / wall / cap already in tests (4 iter leftover-cone-region).
 
-F4 restano `needs_admit=True` e passano da `ctx["admit_paid_f4"]` +
-wrapper `evaluate_f4_*` del controller (stamp SolveResult, no restamp
-JSONL live).
+F4 remain `needs_admit=True` and go through `ctx["admit_paid_f4"]` +
+controller `evaluate_f4_*` wrapper (stamp SolveResult, no restamp
+live JSONL).
 
-Teacher F1 (BOiLS while + ctrl-cone, ~751–890) **resta inlined**. Non è
-fotocopia IR; è acquisition SSK-GP/EHVI.
+F1 teacher (BOiLS while + ctrl-cone, ~751–890) **stays inlined**. Not
+photocopied IR; it is SSK-GP/EHVI acquisition.
 
 ### C1 — residual_steer + port_steer + f2_region
 
-Siedono **fra** `STAGES_PLACE_ROUTE` e `STAGES_F4_HEAD` (controller ~939–1070).
+Sit **between** `STAGES_PLACE_ROUTE` and `STAGES_F4_HEAD` (controller ~939–1070).
 
-| Blocco | `should_pay_*` | `fidelity` acquire | evaluate |
+| Block | `should_pay_*` | `fidelity` acquire | evaluate |
 |---|---|---|---|
-| residual_steer | `should_pay_residual_steer` | `RESIDUAL_STEER` | `evaluate_f5_local` / `evaluate_cell_size` / `evaluate_net_buffer` su `steer["level"]` |
+| residual_steer | `should_pay_residual_steer` | `RESIDUAL_STEER` | `evaluate_f5_local` / `evaluate_cell_size` / `evaluate_net_buffer` on `steer["level"]` |
 | port_steer | `should_pay_port_steer` | `PORT_STEER` | `evaluate_net_buffer(..., source="net_buffer_spef")` |
 | f2_region | `should_pay_f2_region` | `F2_REGION` | `evaluate_f2_gpl` + `extra_knobs` region; parent = `_mapped_pick(F1 winners)` |
 
-Dopo C1 si può unire `STAGE_F5_PORT` / `STAGE_PHYSICAL_CATALOG` nelle slice
-vicine **solo se** l’ordine runtime resta identico (port dopo residual,
-catalog prima di f2_region, f2_region prima di F4_HEAD). Se unire le slice
-rompe il commento/ordine, lasciare i due stage singoli.
+After C1 you may merge `STAGE_F5_PORT` / `STAGE_PHYSICAL_CATALOG` into nearby slices
+**only if** runtime order stays identical (port after residual,
+catalog before f2_region, f2_region before F4_HEAD). If merging slices
+breaks comment/order, leave the two singleton stages.
 
-**Accettazione.** Check planner “schedules residual-steered / port / f2_region”
-invariati. Nessun valore QoR nuovo. Linee controller ↓.
+**Acceptance.** Planner checks “schedules residual-steered / port / f2_region”
+unchanged. No new QoR values. Controller lines ↓.
 
 ### C2 — ir_steer + host_ir_steer + f4_scale_win
 
-`while planned_*` (~1074–1232). Cap loop già in `should_pay_ir_steer`
+`while planned_*` (~1074–1232). Loop cap already in `should_pay_ir_steer`
 (“IR-steer loop caps at region family + unused catalog”).
 
-| Blocco | pay | via child |
+| Block | pay | via child |
 |---|---|---|
 | ir_steer | `should_pay_ir_steer` + `steer_from_ir_residual` | `active_f4_ir` |
 | host_ir_steer | `should_pay_host_ir_steer` + `steer_from_host_ir_residual` | `active_f4_host_ir` |
 | f4_scale_win | `should_pay_f4_scale_win` | `f4_iscale_win`; host `iscale_parent` + `winning_host_pdn` |
 
-Loop = `run_inspect_loop` o `Stage` con `max_shots` allineato al cap
-esistente. Non alzare il cap.
+Loop = `run_inspect_loop` or `Stage` with `max_shots` aligned to existing cap.
+Do not raise the cap.
 
-**Accettazione.** Blocco `test_dse` su `steer_from_ir_residual` /
-`should_pay_ir_steer` (decap_200f → pkg_l_100p, n_steer cap) invariato.
+**Acceptance.** `test_dse` block on `steer_from_ir_residual` /
+`should_pay_ir_steer` (decap_200f → pkg_l_100p, n_steer cap) unchanged.
 
-### C3 — famiglia ir_cell (depth 0, non refine)
+### C3 — ir_cell family (depth 0, not refine)
 
-~1234–1474. Ordine: size → extract → PDN → region → region PDN.
+~1234–1474. Order: size → extract → PDN → region → region PDN.
 
-| level planner | pay | via / source |
+| planner level | pay | via / source |
 |---|---|---|
 | `ir_cell` | `should_pay_ir_cell` | `cell_size_ir` / `active_f4_ir_cell` |
 | `ir_cell_extract` | `should_pay_ir_cell_extract` | `f4_ir_cell_extract` |
@@ -287,9 +287,9 @@ esistente. Non alzare il cap.
 | `ir_cell_region` | `should_pay_ir_cell_region` | region density cap |
 | `ir_cell_region_pdn` | `should_pay_ir_cell_region_pdn` | restamp PDN |
 
-Host: `iscale_parent` / `ir_cell_host` (attribution, non Pareto).
+Host: `iscale_parent` / `ir_cell_host` (attribution, not Pareto).
 
-### C4 — winning_ir catalog + iscale_champ + famiglia ir_cell_champ
+### C4 — winning_ir catalog + iscale_champ + ir_cell_champ family
 
 ~1476–1927.
 
@@ -297,37 +297,37 @@ Host: `iscale_parent` / `ir_cell_host` (attribution, non Pareto).
 |---|---|
 | `winning_ir_pdn` | `should_pay_winning_ir_catalog` / steer unused Dynamic IR |
 | `f4_scale_champ` | `should_pay_f4_scale_champ` |
-| `ir_cell_champ` | size-up sul champ |
+| `ir_cell_champ` | size-up on champ |
 | `ir_cell_champ_extract` / `_pdn` | mesh + restamp |
-| `ir_cell_champ_cone` / `_extract` / `_pdn` | cone dpath/ctrl; leftover modules già in `acquire` |
+| `ir_cell_champ_cone` / `_extract` / `_pdn` | cone dpath/ctrl; leftover modules already in `acquire` |
 
-`via` champ (`active_f4_ir_cell_champ_*`) sono stringhe pinate nei test.
-Copiarle.
+Champ `via` (`active_f4_ir_cell_champ_*`) are strings pinned in tests.
+Copy them.
 
-### C5 — loop inspector leftover-cone-region e winning_ir_region
+### C5 — inspector loops leftover-cone-region and winning_ir_region
 
-~1929–2150. Già `leftover_cone_region_next` / `winning_ir_region_next`.
+~1929–2150. Already `leftover_cone_region_next` / `winning_ir_region_next`.
 
-Estrarre `run_inspect_loop(ctx, next_fn, handlers)` nel controller o in
-`stages.py`. Il `for _ in range(4)` leftover-cone-region e il loop
-winning-IR-region restano cap/why identici, incluso il primo acquire
-negato `"no leftover-cone-region extract or |Δ| PDN"`.
+Extract `run_inspect_loop(ctx, next_fn, handlers)` in controller or
+`stages.py`. The `for _ in range(4)` leftover-cone-region and the
+winning-IR-region loop stay cap/why identical, including the first denied
+acquire `"no leftover-cone-region extract or |Δ| PDN"`.
 
-**Non** convertire questi loop in un solo `Stage(max_shots=1)`.
+**Do not** convert these loops into a single `Stage(max_shots=1)`.
 
 ### C6 — winning_ir_region_cell depth 0 (size / extract / PDN)
 
-~2175–2316. Depth ≥ 1 è già `run_next_refine` **subito dopo** (~2333).
-Non fondere depth 0 nel dispatch in questo lotto: `frame.py` tratta
-suffix vuoto come depth 0, ma il controller attuale paga depth 0
-inlined e poi entra nel while refine. Cambiare quel confine è un
-refactor a parte, fuori C6.
+~2175–2316. Depth ≥ 1 is already `run_next_refine` **right after** (~2333).
+Do not merge depth 0 into dispatch in this batch: `frame.py` treats
+empty suffix as depth 0, but the current controller pays depth 0
+inlined then enters the refine while. Changing that boundary is a
+separate refactor, outside C6.
 
 Pay: `should_pay_winning_ir_region_cell` / `_extract` / `_pdn`.
 
-### C7 — champ AMG/RAS/Krylov + static IR/mesh/straps + EM (ultimo)
+### C7 — champ AMG/RAS/Krylov + static IR/mesh/straps + EM (last)
 
-~2361–2782. Steer-special, ultimi perché leggono champ/static già scritti.
+~2361–2782. Steer-special, last because they read champ/static already written.
 
 | acquire fidelity | pay | solver / catalog |
 |---|---|---|
@@ -339,99 +339,99 @@ Pay: `should_pay_winning_ir_region_cell` / `_extract` / `_pdn`.
 | `F4_STATIC_STRAPS` | `should_pay_static_straps` | pitch catalog (`"not bumps"` / `"not gold"`) |
 | `F4_EM_STRAPS` | `should_pay_em_straps` | width catalog |
 
-Krylov **solo** sul champ GCD già ammesso. `admit_paid_f4` resta.
-Niente AES.
+Krylov **only** on admitted GCD champ. `admit_paid_f4` stays.
+No AES.
 
-Dopo C7 il controller `run_controller` dovrebbe essere: ingest/teacher F1
-→ slice logic → slice place-route → C1 stages → slice F4 head → C2–C7
-stages/loop → `run_next_refine` while → report. La coda fotocopiata
-sparisce; F1 teacher no.
+After C7 controller `run_controller` should be: ingest/teacher F1
+→ logic slice → place-route slice → C1 stages → F4 head slice → C2–C7
+stages/loops → `run_next_refine` while → report. Photocopied queue
+gone; F1 teacher no.
 
-**Accettazione per ogni lotto C.** Suite veloce + `test_dse.py` ALL PASSED.
-Droop live 6.075 / `sta_t50`. Gold unrestampato. SETUP_LOG con Δ linee
-controller. Un commit.
+**Acceptance for each C batch.** Fast suite + `test_dse.py` ALL PASSED.
+Live droop 6.075 / `sta_t50`. Gold unrestamped. SETUP_LOG with Δ controller
+lines. One commit.
 
 ---
 
-## Passo D — Spacchettare `test_dse.py` (dopo C, un modulo per commit)
+## Step D — Split `test_dse.py` (after C, one module per commit)
 
-**Problema.** 4925 righe, un `main()`. Fase 1 aveva detto “stage per stage
-durante il 3”: non fatto. Farlo **adesso** in un colpo rompe il gate da 5 min.
+**Problem.** 4925 lines, one `main()`. Phase 1 said “stage by stage
+during 3”: not done. Doing it **now** in one shot breaks the 5 min gate.
 
-**Regola.** Un file estratto per commit. Stesso `check()`. `test_dse.py`
-resta l’entrypoint che importa e chiama i pezzi, così CI/docs restano
+**Rule.** One extracted file per commit. Same `check()`. `test_dse.py`
+remains the entrypoint that imports and calls pieces, so CI/docs stay
 
 `PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_dse.py`.
 
-Tagli naturali (ordine):
+Natural cuts (order):
 
-1. `test_dse_metrics.py` — dominates / gated / HV / EHVI (testa attuale ~50–220).
-2. `test_dse_memory.py` — JSONL / BOiLS / e-graph / cataloghi.
+1. `test_dse_metrics.py` — dominates / gated / HV / EHVI (current head ~50–220).
+2. `test_dse_memory.py` — JSONL / BOiLS / e-graph / catalogs.
 3. `test_dse_planner.py` — attribution, `plan_search`, f1 winners.
 4. `test_dse_steer.py` — residual / F5 / IR leftover / champ / static (bulk).
-5. Live F4 A/B/D/C **resta** in `test_dse.py` (o `test_dse_live_f4.py`
-   importato per ultimo). Un solo processo, un solo job pesante.
+5. Live F4 A/B/D/C **stays** in `test_dse.py` (or `test_dse_live_f4.py`
+   imported last). One process, one heavy job.
 
-**Non fare.** Due `test_dse` paralleli, pin di `n_r` spice=5816, split del
-blocco live in quattro process.
+**Do not.** Two parallel `test_dse`, pin `n_r` spice=5816, split the
+live block into four processes.
 
-**Accettazione.** Stesso numero di `ok` / stessi messaggi. `test_dse.py`
-ALL PASSED ~5 min. Nessun valore atteso nuovo.
+**Acceptance.** Same number of `ok` / same messages. `test_dse.py`
+ALL PASSED ~5 min. No new expected values.
 
 ---
 
-## Esplicitamente NON in piano
+## Explicitly NOT in plan
 
-- Tipo `DesignState` parallelo a `Candidate`.
-- LLM / GNN / e-graph / RL come centro del controller.
-- Closed-loop synthesis↔PD libero (resta: parameter-DSE, poi structural;
-  refine chain è già la ricerca IR).
+- Parallel `DesignState` type to `Candidate`.
+- LLM / GNN / e-graph / RL as controller center.
+- Free closed-loop synthesis↔PD (stays: parameter-DSE, then structural;
+  refine chain is already IR search).
 - Restamp gold 45.298; F5-CTS AES; Krylov AES; full AES DSE; ibex slang; CUDA.
-- Flatten delle knob across livelli.
-- Cancellare i 66 `should_pay_*` “perché c’è generic”.
-- Usare il gated front per promuovere F1 a F2 o per il first cell size-up.
-- Fondere depth-0 winning_ir_region_cell in `run_next_refine` dentro C6.
-- Flatten del teacher F1 BOiLS.
+- Flatten knobs across levels.
+- Delete the 66 `should_pay_*` “because generic exists”.
+- Use gated front to promote F1 to F2 or for first cell size-up.
+- Merge depth-0 winning_ir_region_cell into `run_next_refine` inside C6.
+- Flatten F1 BOiLS teacher.
 
 ---
 
-## Ordine dei commit
+## Commit order
 
 ```
-1  scenario guida I(t)                         (passo A)
-2  etichette current_run vs reference_run      (passo E)
-3  prefer_gated + Studio legge pareto_gated    (passo B)
+1  I(t) guiding scenario                         (step A)
+2  current_run vs reference_run labels          (step E)
+3  prefer_gated + Studio reads pareto_gated    (step B)
 4  C1 residual / port / f2_region
 5  C2 ir_steer / host_ir / iscale_win
-6  C3 famiglia ir_cell
+6  C3 ir_cell family
 7  C4 winning_ir + champ family
 8  C5 inspect loops leftover / winning_ir_region
 9  C6 winning_ir_region_cell depth 0
 10 C7 champ solvers + static/EM
-11 (opt) test_dse_metrics.py estratto          (passo D.1)
-12 (opt) test_dse_memory.py estratto           (passo D.2)
-13 (opt) test_dse_planner.py estratto          (passo D.3)
-14 (opt) test_dse_steer.py estratto            (passo D.4)
-15 (opt) test_dse_live_f4.py estratto          (passo D.5)
+11 (opt) test_dse_metrics.py extracted          (step D.1)
+12 (opt) test_dse_memory.py extracted           (step D.2)
+13 (opt) test_dse_planner.py extracted          (step D.3)
+14 (opt) test_dse_steer.py extracted            (step D.4)
+15 (opt) test_dse_live_f4.py extracted          (step D.5)
 ```
 
-Ogni commit: test verdi del lotto, riga in `.cursor/SETUP_LOG.md`,
-push, aggiornamento PR #2. Un `test_dse` alla volta.
+Each commit: green tests for the batch, line in `.cursor/SETUP_LOG.md`,
+push, update PR #2. One `test_dse` at a time.
 
 ---
 
-## Come si misura il successo di Fase 2
+## How Phase 2 success is measured
 
-- Worker: `source` decide STA/VCD/SAIF; triangolo esplicito non “ruba” STA.
-- GCD live A resta **6.075 mV** + `sta_t50`. Gold 45.298 e AES
-  `febe6804241c` intatti.
-- Studio non badge-a un fronte ungated come se fosse gated; non chiama
+- Worker: `source` decides STA/VCD/SAIF; explicit triangle does not “steal” STA.
+- GCD live A stays **6.075 mV** + `sta_t50`. Gold 45.298 and AES
+  `febe6804241c` intact.
+- Studio does not badge an ungated front as gated; does not call
   6.075 “gold”.
-- `run_controller` dopo C7 non ha più i blocchi fotocopia IR_STEER…EM;
-  F1 teacher e `run_next_refine` restano i due loop non-tabella, per
-  ragioni diverse (acquisition vs refine generico).
-- `test_dse.py` può diventare un runner; il live F4 resta un job.
+- `run_controller` after C7 no longer has photocopied IR_STEER…EM blocks;
+  F1 teacher and `run_next_refine` remain the two non-table loops, for
+  different reasons (acquisition vs generic refine).
+- `test_dse.py` can become a runner; live F4 stays one job.
 
-Fase 1 archivio (git, non rieseguire): 0 `3bd9479` · 1 `4c4bcc7` ·
+Phase 1 archive (git, do not re-run): 0 `3bd9479` · 1 `4c4bcc7` ·
 2 `9e1bab4` · 3a `74e1173` · 4 `aed3a6d` · 3b `c5f1d4a` · 3c `d4d2548`
 · 3d `b2b96c9` · 3e `d94df2f` · 5 `9785bca` · 6 `14b6e47` / `ca47126`.

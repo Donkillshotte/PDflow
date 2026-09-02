@@ -1,77 +1,77 @@
-# OpenROAD + OpenSTA — ambiente locale di physical design
+# OpenROAD + OpenSTA — local physical design environment
 
-Tre superfici nello stesso albero. Non mescolarle.
+Three surfaces in the same tree. Do not mix them.
 
-| Superficie | Cosa | Ingresso |
+| Surface | What | Entry |
 |---|---|---|
-| **Prodotto** | Knob fisici, netlist ufficiale, die fisso, finish vero | [docs/README.md](docs/README.md) |
-| **Laboratorio** | e-graph, rewrite, IR F4, refine | [learn/dse/README.md](learn/dse/README.md) |
-| **Corso / Studio** | Lezioni RTL→GDS, FlowLab | [learn/README.md](learn/README.md) |
+| **Product** | Physical knobs, official netlist, fixed die, real finish | [docs/README.md](docs/README.md) |
+| **Lab** | e-graph, rewrite, IR F4, refine | [learn/dse/README.md](learn/dse/README.md) |
+| **Course / Studio** | RTL→GDS lessons, FlowLab | [learn/README.md](learn/README.md) |
 
-Vittoria di prodotto (slack ±5 ps, area/potenza/leakage/IR ±10%):
+Product win (slack ±5 ps, area/power/leakage/IR ±10%):
 [`learn/dse/win_rule.py`](learn/dse/win_rule.py).
-Come cuocere e testare: [`docs/operazioni.md`](docs/operazioni.md).
-Risultati onesti: [`docs/risultati.md`](docs/risultati.md).
-Regole agente: [`AGENTS.md`](AGENTS.md).
-Albero e ownership: [`docs/architettura.md`](docs/architettura.md).
-Come contribuire: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+How to cook and test: [`docs/operazioni.md`](docs/operazioni.md).
+Honest results: [`docs/risultati.md`](docs/risultati.md).
+Agent rules: [`AGENTS.md`](AGENTS.md).
+Tree and ownership: [`docs/architettura.md`](docs/architettura.md).
+How to contribute: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-Ambiente locale completo per il physical design digitale (RTL → GDSII) basato su:
+Complete local environment for digital physical design (RTL → GDSII) based on:
 
-| Tool | Versione | Provenienza |
+| Tool | Version | Source |
 | --- | --- | --- |
-| [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) | 26Q2 (binari Precision Innovations) | pacchetto `.deb` da [VaultLink](https://vaultlink.precisioninno.com/) |
-| [OpenSTA](https://github.com/parallaxsw/OpenSTA) | 3.1.0 | compilato dai sorgenti (con CUDD) |
-| [OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) (ORFS) | 26Q2 | tag corrispondente a OpenROAD |
-| [yosys](https://github.com/YosysHQ/yosys) | submodule pinnato da ORFS | compilato dai sorgenti (CMake) |
-| [KLayout](https://www.klayout.de/) | 0.30.11 | pacchetto `.deb` ufficiale |
+| [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) | 26Q2 (Precision Innovations binaries) | `.deb` package from [VaultLink](https://vaultlink.precisioninno.com/) |
+| [OpenSTA](https://github.com/parallaxsw/OpenSTA) | 3.1.0 | built from source (with CUDD) |
+| [OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) (ORFS) | 26Q2 | tag matching OpenROAD |
+| [yosys](https://github.com/YosysHQ/yosys) | submodule pinned from ORFS | built from source (CMake) |
+| [KLayout](https://www.klayout.de/) | 0.30.11 | official `.deb` package |
 
-**Yosys** (0.63, ORFS) · **KLayout** (0.30.11) · OpenSTA · ngspice · **vyges-em-ir** (v0.1.33) · **dynamic IR I(t)**. Matrice OSS (Magic/Netgen/EQY/sby/Xyce/OpenRCX/FasterCap/Raphael/StarRC/open_pdks): [learn/reference/oss-integrations.md](learn/reference/oss-integrations.md). Vectorless/dynamic: [learn/reference/vectorless-power.md](learn/reference/vectorless-power.md). IR engine: [learn/reference/vyges-em-ir.md](learn/reference/vyges-em-ir.md). Heatmap I(t): [learn/reference/dynamic-ir.md](learn/reference/dynamic-ir.md).
+**Yosys** (0.63, ORFS) · **KLayout** (0.30.11) · OpenSTA · ngspice · **vyges-em-ir** (v0.1.33) · **dynamic IR I(t)**. OSS matrix (Magic/Netgen/EQY/sby/Xyce/OpenRCX/FasterCap/Raphael/StarRC/open_pdks): [learn/reference/oss-integrations.md](learn/reference/oss-integrations.md). Vectorless/dynamic: [learn/reference/vectorless-power.md](learn/reference/vectorless-power.md). IR engine: [learn/reference/vyges-em-ir.md](learn/reference/vyges-em-ir.md). Heatmap I(t): [learn/reference/dynamic-ir.md](learn/reference/dynamic-ir.md).
 
-Testato su **Ubuntu 24.04** (funziona anche su 22.04).
+Tested on **Ubuntu 24.04** (also works on 22.04).
 
-## Installazione
+## Installation
 
-Cloud Agent (default **core**, senza OpenSTA standalone né DSE/AES/Krylov):
+Cloud Agent (default **core**, without standalone OpenSTA or DSE/AES/Krylov):
 
 ```bash
 PD_FLOW_PROFILE=core EDA_JOBS=2 bash scripts/cloud_agent_install.sh
-./scripts/cloud_agent_smoke.sh          # versioni only
-./scripts/test_cloud_bootstrap.sh       # check statici
+./scripts/cloud_agent_smoke.sh          # versions only
+./scripts/test_cloud_bootstrap.sh       # static checks
 ```
 
-Profili: `core` (RTL→GDS + Studio) · `analysis` (+ `libdpn` / `dpn_test` sintetico) · `full` (+ OpenSTA da sorgenti).
-AES, mesh PDN con più di 20k R e Krylov richiedono `ALLOW_HEAVY_ANALYSIS=1`.
-Log crash-resiliente: [`.cursor/SETUP_LOG.md`](.cursor/SETUP_LOG.md).
+Profiles: `core` (RTL→GDS + Studio) · `analysis` (+ `libdpn` / synthetic `dpn_test`) · `full` (+ OpenSTA from source).
+AES, PDN mesh with more than 20k R, and Krylov require `ALLOW_HEAVY_ANALYSIS=1`.
+Crash-resilient log: [`.cursor/SETUP_LOG.md`](.cursor/SETUP_LOG.md).
 
-In locale gli script vanno eseguiti in ordine (richiedono `sudo` per i pacchetti apt):
+Locally, run scripts in order (they require `sudo` for apt packages):
 
 ```bash
-./scripts/01_install_openroad.sh   # OpenROAD dai binari precompilati
-./scripts/02_install_opensta.sh    # CUDD + OpenSTA dai sorgenti
-./scripts/03_install_klayout.sh    # KLayout (per il GDS finale)
-./scripts/04_setup_orfs.sh         # clone ORFS + build di yosys
+./scripts/01_install_openroad.sh   # OpenROAD from prebuilt binaries
+./scripts/02_install_opensta.sh    # CUDD + OpenSTA from source
+./scripts/03_install_klayout.sh    # KLayout (for final GDS)
+./scripts/04_setup_orfs.sh         # clone ORFS + build yosys
 ```
 
-Lo script ORFS ricava automaticamente il tag trimestrale dalla versione di
-OpenROAD installata (per esempio `26Q2-...` → `26Q2`), così tool e flow restano
-allineati. Il tag può essere sovrascritto con `ORFS_TAG=...`.
+The ORFS script derives the quarterly tag automatically from the installed
+OpenROAD version (for example `26Q2-...` → `26Q2`), so tools and flow stay
+aligned. The tag can be overridden with `ORFS_TAG=...`.
 
-Tutto ciò che viene compilato o clonato finisce in `tools/` (ignorato da git):
+Everything built or cloned ends up in `tools/` (ignored by git):
 
 ```
 tools/
-├── OpenROAD-flow-scripts/   # ORFS: flusso, PDK (nangate45, sky130, asap7...), design di esempio
-├── src/                     # sorgenti di OpenSTA e CUDD
-├── cudd/                    # install di CUDD (libreria BDD)
-├── opensta/                 # install di OpenSTA  → symlink /usr/local/bin/sta
-├── yosys/                   # install di yosys    → symlink /usr/local/bin/yosys
-└── vyges-em-ir/             # binario Apache-2.0 (fetch da GitHub Releases, v0.1.33)
+├── OpenROAD-flow-scripts/   # ORFS: flow, PDK (nangate45, sky130, asap7...), example designs
+├── src/                     # OpenSTA and CUDD sources
+├── cudd/                    # CUDD install (BDD library)
+├── opensta/                 # OpenSTA install  → symlink /usr/local/bin/sta
+├── yosys/                   # yosys install    → symlink /usr/local/bin/yosys
+└── vyges-em-ir/             # Apache-2.0 binary (fetch from GitHub Releases, v0.1.33)
 ```
 
-`openroad` e `klayout` sono installati a livello di sistema dai `.deb`.
+`openroad` and `klayout` are installed system-wide from `.deb` packages.
 
-## Verifica rapida
+## Quick verification
 
 ```bash
 openroad -version        # 26Q2-1164-g08f67ee5ec
@@ -79,127 +79,127 @@ sta -version             # 3.1.0
 yosys -V
 klayout -v
 
-# Smoke test OpenSTA: timing min/max su un piccolo design Nangate45
+# OpenSTA smoke test: min/max timing on a small Nangate45 design
 ./scripts/run_opensta_example.sh
 ```
 
-## Corso hands-on Physical Design (consigliato per imparare)
+## Hands-on Physical Design course (recommended for learning)
 
-Percorso guidato **fase per fase** (constraints → synth → floorplan → place → CTS → route → GDS)
-con teoria, LAB da 60–120 min, walkthrough Tcl, workbook e GUI.
-Studio attivo stimato: **20–28 ore** (il wrapper `--auto` non sostituisce lo studio).
+Guided path **phase by phase** (constraints → synth → floorplan → place → CTS → route → GDS)
+with theory, 60–120 min LABs, Tcl walkthroughs, workbook, and GUI.
+Estimated active study time: **20–28 hours** (the `--auto` wrapper does not replace study).
 
-### UI grafica (Studio)
+### Graphical UI (Studio)
 
 ```bash
 ./scripts/run_studio.sh
-# apri http://127.0.0.1:43217
+# open http://127.0.0.1:43217
 ```
 
-Interfaccia web enterprise: lezioni con gate di completamento, console SSE
+Enterprise web UI: lessons with completion gates, SSE console
 (confirm/cancel/retry/export), ops dashboard, **suite hub** (`/api/suite`),
-**FlowLab** (`/flusso`: RTL editabile → parametri → GDSII),
-**Ctrl+K** (dashboard / run / OpenROAD Qt / web viewer), materiali.
-Azioni analisi OSS: `vectorless`, `vyges_em_ir`, `dynamic_ir`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `tool_matrix`.
-Solver nativi: `engine/` (`libdpn.so`, LU + SA-AMG). Build: `./learn/scripts/build_dpn_engine.sh`.
-Dettagli: [studio/README.md](studio/README.md) (FlowLab, API, troubleshooting).
-Smoke: `./scripts/test_all_phases.sh` (esaustivo), `./scripts/test_studio_api.sh`, `./scripts/test_course.sh`.
+**FlowLab** (`/flusso`: editable RTL → parameters → GDSII),
+**Ctrl+K** (dashboard / run / OpenROAD Qt / web viewer), materials.
+OSS analysis actions: `vectorless`, `vyges_em_ir`, `dynamic_ir`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `tool_matrix`.
+Native solvers: `engine/` (`libdpn.so`, LU + SA-AMG). Build: `./learn/scripts/build_dpn_engine.sh`.
+Details: [studio/README.md](studio/README.md) (FlowLab, API, troubleshooting).
+Smoke: `./scripts/test_all_phases.sh` (exhaustive), `./scripts/test_studio_api.sh`, `./scripts/test_course.sh`.
 
-### FlowLab — laboratorio RTL → GDSII
+### FlowLab — RTL → GDSII lab
 
-Workbench interattivo su **http://127.0.0.1:43217/flusso**:
+Interactive workbench at **http://127.0.0.1:43217/flusso**:
 
-- Editor Verilog (Monaco), parametri ORFS live, pipeline visiva 7 fasi
-- Variante isolata `flowlab` (non sovrascrive il corso `learn`)
+- Verilog editor (Monaco), live ORFS parameters, visual 7-phase pipeline
+- Isolated `flowlab` variant (does not overwrite course `learn`)
 - Signoff finish: gridcheck, activity, DRC · download VCD post sim
 
 Screenshot: `studio/docs/images/flowlab/`
 
-DSE fisico-aware (architettura → ABC chip/cono dpath → F2-fast/GPL/GRT+SDF → STA F3 → extract PDN → IR statico/dinamico/EM F4):
+Physical-aware DSE (architecture → ABC chip/cone dpath → F2-fast/GPL/GRT+SDF → STA F3 → extract PDN → static/dynamic/EM IR F4):
 `FLOW_VARIANT=flowlab ./learn/scripts/run_dse.sh` · [learn/reference/dse.md](learn/reference/dse.md).
-Il gold Dynamic IR del GCD resta **45.298 mV** (Solver A); il DSE lo ingestisce, non lo ristampa.
-L’extract candidato è `write_pg_spice` dopo place legalizzato — non è la mesh finish.
-F1 chip è flatten-first (teacher 409.108 µm²); con focus IR su `dpath` ABC è cone-local. GRT annota SDF, non SPEF.
+GCD Dynamic IR gold stays **45.298 mV** (Solver A); DSE ingests it, does not restamp it.
+Candidate extract is `write_pg_spice` after legalized place — not the finish mesh.
+F1 chip is flatten-first (teacher 409.108 µm²); with IR focus on `dpath`, ABC is cone-local. GRT annotates SDF, not SPEF.
 
-### CLI (invariato)
+### CLI (unchanged)
 
 ```bash
-./scripts/learn_physical_design.sh --check    # verifica prerequisiti
-./scripts/learn_physical_design.sh --list     # indice 8 lezioni
+./scripts/learn_physical_design.sh --check    # verify prerequisites
+./scripts/learn_physical_design.sh --list     # index of 8 lessons
 ./scripts/learn_physical_design.sh --deep --lesson 01-constraints
-./scripts/learn_physical_design.sh --resume   # riprendi progresso
-./scripts/test_course.sh                     # smoke test struttura + lezione 00
+./scripts/learn_physical_design.sh --resume   # resume progress
+./scripts/test_course.sh                     # smoke test structure + lesson 00
 ```
 
-Documentazione: [learn/README.md](learn/README.md) e [learn/CURRICULUM.md](learn/CURRICULUM.md).
-Flusso esteso (RTL sim, activity, DRC, gridcheck, bump/RDL, thermal):
+Documentation: [learn/README.md](learn/README.md) and [learn/CURRICULUM.md](learn/CURRICULUM.md).
+Extended flow (RTL sim, activity, DRC, gridcheck, bump/RDL, thermal):
 [learn/reference/extended-flow.md](learn/reference/extended-flow.md).
-Atlante GUI (screenshot Qt): [learn/reference/gui-atlas.md](learn/reference/gui-atlas.md).
-Metriche del run tutorial: [learn/reference/golden-metrics.md](learn/reference/golden-metrics.md).
-Verifica pipeline: [learn/EVIDENCE.md](learn/EVIDENCE.md). Audit requisiti: [learn/AUDIT.md](learn/AUDIT.md).
+GUI atlas (Qt screenshots): [learn/reference/gui-atlas.md](learn/reference/gui-atlas.md).
+Tutorial run metrics: [learn/reference/golden-metrics.md](learn/reference/golden-metrics.md).
+Pipeline verification: [learn/EVIDENCE.md](learn/EVIDENCE.md). Requirements audit: [learn/AUDIT.md](learn/AUDIT.md).
 
-Per la GUI usa il pulsante **Desktop** su [cursor.com/agents](https://cursor.com/agents) (non le card Preview).
+For the GUI, use the **Desktop** button on [cursor.com/agents](https://cursor.com/agents) (not Preview cards).
 
-## Flusso completo RTL → GDS (design di esempio `gcd`)
+## Full RTL → GDS flow (example design `gcd`)
 
 ```bash
 ./scripts/run_gcd_flow.sh
 ```
 
-Esegue con ORFS il flusso completo sul design `gcd` con il PDK open **Nangate45**:
-sintesi (yosys) → floorplan → placement → clock tree synthesis → routing →
+Runs the full ORFS flow on design `gcd` with open PDK **Nangate45**:
+synthesis (yosys) → floorplan → placement → clock tree synthesis → routing →
 finishing (GDSII via KLayout). Output in
 `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/`:
 
-Il launcher usa una core utilization del 35% per lasciare spazio al repair
-timing richiesto dal vincolo aggressivo di 0,46 ns dell'esempio 26Q2. È possibile
-sovrascriverla, per esempio con `CORE_UTILIZATION=45`.
+The launcher uses 35% core utilization to leave room for timing repair
+required by the aggressive 0.46 ns constraint in the 26Q2 example. Override with
+`CORE_UTILIZATION=45`, for example.
 
-- `6_final.gds` — layout finale
-- `6_final.odb` / `6_final.def` — database e DEF finali
-- report di timing/area/potenza in `flow/reports/nangate45/gcd/`
+- `6_final.gds` — final layout
+- `6_final.odb` / `6_final.def` — final database and DEF
+- timing/area/power reports in `flow/reports/nangate45/gcd/`
 
-Per altri design o PDK:
+For other designs or PDKs:
 
 ```bash
 DESIGN_CONFIG=./designs/sky130hd/gcd/config.mk ./scripts/run_gcd_flow.sh
 ```
 
-Per aprire il risultato nella GUI di OpenROAD (serve un display/X11):
+To open the result in the OpenROAD GUI (requires display/X11):
 
 ```bash
 ./scripts/run_gcd_flow.sh gui_final
 ```
 
-## Uso interattivo
+## Interactive use
 
 ```bash
-# Shell Tcl di OpenROAD
+# OpenROAD Tcl shell
 openroad
 
-# Shell di OpenSTA
+# OpenSTA shell
 sta
 ```
 
-## Note
+## Notes
 
-- I binari OpenROAD di Precision Innovations includono già OpenSTA al loro
-  interno (comandi `report_checks`, `report_wns`, ecc.); l'installazione
-  standalone di OpenSTA serve per usare lo STA da solo, fuori dal flusso.
-- Il launcher `run_gcd_flow.sh` passa a ORFS i percorsi di `openroad`, `sta` e
-  `yosys` trovati nel `PATH`. ORFS, fuori da un ambiente Nix, cerca altrimenti
-  i binari nella propria directory `tools/install`.
-- Lo script di setup installa `tcl-dev`: l'integrazione Tcl di yosys è
-  necessaria perché ORFS esegue gli script di sintesi con l'opzione `-c`.
-- La GUI di OpenROAD (`openroad -gui`) richiede Qt/X11: in ambiente headless
-  usare `Xvfb` oppure lavorare da riga di comando.
+- Precision Innovations OpenROAD binaries already include OpenSTA internally
+  (`report_checks`, `report_wns`, etc.); standalone OpenSTA install is for using
+  STA alone, outside the flow.
+- Launcher `run_gcd_flow.sh` passes `openroad`, `sta`, and `yosys` paths found in
+  `PATH` to ORFS. Outside a Nix environment, ORFS otherwise looks for binaries in
+  its own `tools/install` directory.
+- Setup script installs `tcl-dev`: yosys Tcl integration is
+  required because ORFS runs synthesis scripts with the `-c` option.
+- OpenROAD GUI (`openroad -gui`) requires Qt/X11: in headless environments
+  use `Xvfb` or work from the command line.
 
-## Troubleshooting ORFS
+## ORFS troubleshooting
 
-| Problema | Fix |
+| Problem | Fix |
 |---|---|
-| `1_synth.odb` mancante | `make synth` o FlowLab fase Sintesi |
-| Floorplan 412 in Studio | Esegui synth prima; verifica `results/.../learn/` |
-| Timing fail @ 0.46 ns | Normale su GCD tutorial aggressivo; usa SDC relaxed in FlowLab |
-| Lock `.studio-run.lock` | `./scripts/test_studio_api.sh` lo pulisce; o rimuovi manualmente se stale |
-| ORFS tag mismatch | `ORFS_TAG` allineato a `openroad -version` (26Q2) |
+| Missing `1_synth.odb` | `make synth` or FlowLab Synthesis phase |
+| Floorplan 412 in Studio | Run synth first; verify `results/.../learn/` |
+| Timing fail @ 0.46 ns | Normal on aggressive GCD tutorial; use relaxed SDC in FlowLab |
+| Lock `.studio-run.lock` | `./scripts/test_studio_api.sh` cleans it; or remove manually if stale |
+| ORFS tag mismatch | `ORFS_TAG` aligned to `openroad -version` (26Q2) |
