@@ -584,12 +584,15 @@ def check_next_level(check, root: Path) -> None:
     check("laboratorio" in dn_loose.payoff.lower(), f"C1 dn looser is lab {dn_loose.payoff}")
     dn_hier = label_for("camp_dynamic_node_synth_hier")
     check("stop" in dn_hier.payoff.lower() or "non finito" in dn_hier.payoff.lower(), f"C1 dn hier payoff {dn_hier.payoff}")
-    cook_src = (root / "learn/scripts/cook_recipe.py").read_text()
+    cook_src = (root / "learn/dse/cook.py").read_text()
+    cook_cli = (root / "learn/scripts/cook_recipe.py").read_text()
     check((root / "learn/scripts/cook_recipe.py").is_file(), "cook_recipe.py exists")
-    check("_needs_fresh_synth" in cook_src, "cook_recipe reruns Yosys for synth knobs")
+    check("needs_fresh_synth" in cook_src, "cook reruns Yosys for synth knobs")
     check("synth_hier" in cook_src or "stage" in cook_src, "fresh synth looks at recipe stage")
     check("official_box" in cook_src and "DIE_AREA" in cook_src, "cook pins DIE_AREA from the official DEF")
     check("FLOORPLAN_RECIPES" in cook_src and "refuse" in cook_src, "cook refuses floorplan recipes")
+    check("--knobs" in cook_cli, "cook CLI accepts free knobs")
+    check("tuner" in cook_cli and "tpe" in cook_cli, "knob cooks stamp extra.tuner=tpe")
     loose = resolve("core_looser", {"CORE_UTILIZATION": 8.0})
     check(abs(float(loose["CORE_UTILIZATION"]) - 5.0) < 1e-9, f"core_looser clamps spi 8-10 to 5, got {loose}")
     tight = resolve("core_tighter", {"CORE_UTILIZATION": 8.0})
@@ -645,7 +648,9 @@ def check_next_level(check, root: Path) -> None:
     check("--improve" in loop_src, "loop has --improve")
     check("def coordinate" in loop_src, "loop has a coordinator")
     check("propose_deepen" in loop_src, "coordinator can deepen winning axes")
+    check("--deepen" in loop_src, "deepen stays an override")
     check("locked = True" in loop_src, "coordinator always pins the product floorplan")
+    check('decision": "tune"' in loop_src, "coordinator default can decide tune")
     tpe_plan = (root / "learn/dse/tpe_plan.md").read_text()
     check("Solo piano" in tpe_plan, "TPE plan is frozen before cooks")
     check("CORE_UTILIZATION" in tpe_plan and "Mai nello spazio" in tpe_plan, "TPE plan keeps util out of the search space")
@@ -753,6 +758,180 @@ def check_next_level(check, root: Path) -> None:
     check(not moves_floorplan(same_die, base_die), "same-die denser does not move floorplan")
     unlocked_pick = select_recipes(aes_state, locked_floorplan=False)
     check("core_tighter" not in unlocked_pick and "aspect_wide" not in unlocked_pick, f"selector never picks floorplan {unlocked_pick}")
+
+    from dse.cook import cook_one as real_cook
+    from dse.experiments import ExperimentLog
+    from dse.tune_score import evaluate as tpe_eval
+    from dse.tune_space import bounds as tpe_bounds
+    from dse.tune_space import clamp_params, defaults_for, fingerprint, pin, to_env
+    from dse.tune_warm import preview_tune, warm_params
+    import run_recipe_loop
+
+    space_src = (root / "learn/dse/tune_space.py").read_text()
+    score_src = (root / "learn/dse/tune_score.py").read_text()
+    tpe_src = (root / "learn/scripts/run_tpe.py").read_text()
+    check("import optuna" not in space_src and "import optuna" not in score_src, "space/score do not import Optuna")
+    check("if design ==" not in tpe_src, "TPE has no design-name branch")
+    check("if design ==" not in (root / "learn/dse/tune_warm.py").read_text(), "warm-start has no design-name branch")
+    gcd_def = defaults_for("gcd")
+    bnds = tpe_bounds(gcd_def)
+    check("CORE_UTILIZATION" not in bnds and "CORE_ASPECT_RATIO" not in bnds, f"space has no floorplan keys {bnds.keys()}")
+    check("DIE_AREA" not in bnds and "ABC_SPEED" not in bnds, "space does not sample die or ABC")
+    pinned = pin("gcd", {"CORE_UTILIZATION": "45", "PLACE_DENSITY_LB_ADDON": "0.30"})
+    check("DIE_AREA" in pinned and "CORE_AREA" in pinned, f"pin adds official box {pinned}")
+    check("CORE_UTILIZATION" not in pinned and "CORE_ASPECT_RATIO" not in pinned, f"pin strips util {pinned}")
+    omitted = to_env(
+        {
+            "PLACE_DENSITY_LB_ADDON": gcd_def.get("PLACE_DENSITY_LB_ADDON", 0.20),
+            "cell_pad": 0,
+            "TNS_END_PERCENT": 100,
+            "SETUP_SLACK_MARGIN": 0.0,
+            "HOLD_SLACK_MARGIN": 0.0,
+            "CTS_BUF_DISTANCE": 100.0,
+            "GPL_TIMING_DRIVEN": 1,
+        },
+        gcd_def,
+    )
+    check("HOLD_SLACK_MARGIN" not in omitted, f"omit HOLD at 0 {omitted}")
+    check("SETUP_SLACK_MARGIN" not in omitted, f"omit SETUP at 0 {omitted}")
+    check("GPL_TIMING_DRIVEN" not in omitted, f"omit GPL when default 1 {omitted}")
+    forced = to_env({"CTS_BUF_DISTANCE": 80.0, "cell_pad": 2, "TNS_END_PERCENT": 0}, gcd_def)
+    check(forced.get("CTS_BUF_DISTANCE") == "80.0" or forced.get("CTS_BUF_DISTANCE") == "80", f"CTS 80 is not the omit sentinel {forced}")
+    check(forced.get("TNS_END_PERCENT") == "0", f"TNS 0 is explicit {forced}")
+    p_a = clamp_params({"cell_pad": 2, "PLACE_DENSITY_LB_ADDON": 0.30}, gcd_def)
+    p_b = clamp_params({"cell_pad": 2, "PLACE_DENSITY_LB_ADDON": 0.30}, gcd_def)
+    check(fingerprint(p_a, gcd_def) == fingerprint(p_b, gcd_def), "fingerprint is stable")
+    check(len(fingerprint(p_a, gcd_def)) == 12, "fingerprint is 12 hex")
+    win_e = _E(
+        status="done",
+        finish_wns_ns=-0.0384,
+        stdcell_um2=842.0,
+        power_w=0.00343,
+        leakage_w=2.20e-5,
+        ir_drop_v=0.00615,
+        extra={},
+        die_um2=1970.0,
+    )
+    tie_e = _E(
+        status="done",
+        finish_wns_ns=-0.037,
+        stdcell_um2=940.0,
+        power_w=0.0039,
+        leakage_w=2.56e-5,
+        ir_drop_v=0.00667,
+        extra={},
+        die_um2=1970.0,
+    )
+    lose_e = _E(
+        status="done",
+        finish_wns_ns=-0.080,
+        stdcell_um2=940.0,
+        power_w=0.0039,
+        leakage_w=2.56e-5,
+        ir_drop_v=0.00667,
+        extra={},
+        die_um2=1970.0,
+    )
+    stop_e = _E(
+        status="stopped_by_policy",
+        finish_wns_ns=None,
+        extra={"policy": {"pred_finish_ns": -0.10}},
+        ir_drop_v=None,
+    )
+    base_e = _E(
+        status="done",
+        role="base",
+        finish_wns_ns=-0.037,
+        stdcell_um2=940.0,
+        power_w=0.0039,
+        leakage_w=2.56e-5,
+        ir_drop_v=0.00667,
+        extra={},
+        die_um2=1970.0,
+    )
+    tw = tpe_eval(win_e, base_e)
+    tt = tpe_eval(tie_e, base_e)
+    tl = tpe_eval(lose_e, base_e)
+    ts = tpe_eval(stop_e, base_e)
+    tdie = tpe_eval(wide, base_die)
+    check(tw.score < tt.score, f"score(win) < score(tie) {tw.score} {tt.score}")
+    check(any(c > 0 for c in tl.constraints), f"lose has a constraint > 0 {tl.constraints}")
+    check(any(c > 0 for c in tdie.constraints), f"wrong_die has a constraint > 0 {tdie.constraints}")
+    check(ts.constraints[4] == 0.0, f"STOP does not invent IR {ts.constraints}")
+    check(ts.constraints[-1] == 1.0, f"STOP is c_done=1 {ts.constraints}")
+    check(tw.feasible and not tl.feasible and not tdie.feasible, "win feasible, lose/wrong_die not")
+    refused = real_cook("gcd", recipes=["aspect_wide"])
+    check(refused.get("refuse"), f"cook refuses floorplan recipes {refused}")
+    xor = real_cook("gcd", recipes=["place_denser"], knobs={"PLACE_DENSITY_LB_ADDON": "0.3"})
+    check(xor.get("refuse"), f"cook refuses recipes XOR knobs {xor}")
+    wrong_row = _E(
+        status="done",
+        role="knob",
+        finish_wns_ns=-0.038,
+        extra={"recipe_ids": ["aspect_wide"], "knobs": {"CORE_ASPECT_RATIO": "2"}},
+        die_um2=1000.0,
+    )
+    fresh_row = _E(
+        status="done",
+        role="knob",
+        finish_wns_ns=-0.038,
+        extra={"fresh_synth": True, "knobs": {"PLACE_DENSITY_LB_ADDON": "0.30"}},
+        die_um2=1970.0,
+    )
+    check(warm_params(wrong_row, gcd_def, base_die) is None, "warm-start skips wrong_die")
+    check(warm_params(fresh_row, gcd_def, base_e) is None, "warm-start skips fresh_synth")
+    g_prev = preview_tune("gcd")
+    s_prev = preview_tune("spi")
+    check(g_prev.get("admissible"), f"gcd is tune-admissible {g_prev}")
+    check(not s_prev.get("admissible"), f"spi is not tune-admissible {s_prev}")
+    coord = run_recipe_loop.coordinate(ExperimentLog(), list(CHEAP_FIRST))
+    check(coord["decision"] == "tune", f"after cover+improve default is tune {coord.get('decision')} {coord.get('why')}")
+    check(coord.get("design") == "gcd", f"cheap-first tune slot is gcd {coord.get('design')}")
+    check(coord.get("jobs") == [], f"tune does not dump a recipe job list {coord.get('jobs')}")
+    deep_coord = run_recipe_loop.coordinate(ExperimentLog(), list(CHEAP_FIRST), deepen=True)
+    check(deep_coord["decision"] in ("deepen", "stop"), f"--deepen override stays grid {deep_coord['decision']}")
+    try:
+        import optuna  # noqa: F401
+        from optuna.distributions import CategoricalDistribution, FloatDistribution, IntDistribution
+        from optuna.samplers import TPESampler
+
+        def _cf(trial):
+            return trial.user_attrs.get("constraints", (1.0,))
+
+        sampler = TPESampler(constraints_func=_cf, n_startup_trials=1, seed=0)
+        study = optuna.create_study(direction="minimize", sampler=sampler)
+        dists = {
+            "PLACE_DENSITY_LB_ADDON": FloatDistribution(0.10, 0.30),
+            "cell_pad": IntDistribution(0, 2),
+            "TNS_END_PERCENT": IntDistribution(0, 100),
+            "SETUP_SLACK_MARGIN": FloatDistribution(0.0, 0.08),
+            "HOLD_SLACK_MARGIN": FloatDistribution(0.0, 0.05),
+            "CTS_BUF_DISTANCE": FloatDistribution(80.0, 200.0),
+            "GPL_TIMING_DRIVEN": CategoricalDistribution([0, 1]),
+        }
+        lose_params = {
+            "PLACE_DENSITY_LB_ADDON": 0.10,
+            "cell_pad": 0,
+            "TNS_END_PERCENT": 0,
+            "SETUP_SLACK_MARGIN": 0.0,
+            "HOLD_SLACK_MARGIN": 0.0,
+            "CTS_BUF_DISTANCE": 80.0,
+            "GPL_TIMING_DRIVEN": 0,
+        }
+        study.add_trial(
+            optuna.trial.create_trial(
+                params=lose_params,
+                distributions=dists,
+                value=1.0,
+                user_attrs={"constraints": (1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)},
+                system_attrs={"constraints": (1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)},
+            )
+        )
+        nxt = study.ask(fixed_distributions=dists)
+        check(dict(nxt.params) != lose_params, f"TPE second point leaves the lose corner {nxt.params}")
+        study.tell(nxt, 0.0)
+    except ImportError:
+        print("skip optuna fake TPE (not installed)")
 
 
 if __name__ == "__main__":

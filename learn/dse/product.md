@@ -57,5 +57,5 @@ sintesi in poi. Review del registro → decide la prossima mossa:
 **spi @ 1 ns è esaurito** come slot senza win. Non si lancia TPE lì.
 Non si riscrive il Verilog.
 
-Nessun trial TPE parte finché `tpe_plan.md` è solo piano: spazio, score
-e `cook_one` si implementano dopo, senza ritoccare queste scelte.
+Nessun trial TPE cambia queste scelte: spazio, score, pin del die e
+`cook_one` seguono `tpe_plan.md`.

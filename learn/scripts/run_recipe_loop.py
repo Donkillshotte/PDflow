@@ -2,13 +2,14 @@
 """Product DSE coordinator: review finishes, pick the next physical cooks.
 
 RTL stays fixed. Default is --auto: cover holes, then improve slots with
-no win, then deepen winning axes. No design name in the picker.
+no win, then TPE tune. --deepen keeps the old two-axis grid.
 
 Usage:
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --dry-run
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --max-cooks 2
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --cover-all --dry-run
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --improve --dry-run
+    PYTHONPATH=learn:learn/scripts python3 learn/scripts/run_recipe_loop.py --deepen --dry-run
 """
 from __future__ import annotations
 
@@ -214,8 +215,12 @@ def deepen_queue(log: ExperimentLog, designs: list[str]) -> list[dict]:
     return jobs
 
 
-def coordinate(log: ExperimentLog, designs: list[str]) -> dict:
-    """Review the registry and choose the next direction. One policy."""
+def coordinate(log: ExperimentLog, designs: list[str], deepen: bool = False) -> dict:
+    """Review the registry and choose the next direction. One policy.
+
+    Default after cover+improve is TPE tune. `--deepen` keeps the old
+    two-axis grid as an override.
+    """
     review = []
     for d in designs:
         clock = float(DESIGN_CATALOG[d]["clk_ns"])
@@ -252,17 +257,41 @@ def coordinate(log: ExperimentLog, designs: list[str]) -> dict:
             "review": review,
             "jobs": improve,
         }
-    deepen = deepen_queue(log, designs)
     if deepen:
+        deep = deepen_queue(log, designs)
+        if deep:
+            return {
+                "decision": "deepen",
+                "why": "Override --deepen: combina assi che hanno già vinto (griglia, non TPE).",
+                "review": review,
+                "jobs": deep,
+            }
         return {
-            "decision": "deepen",
-            "why": "Catalogo coperto e gli slot vuoti sono esauriti. Combina assi che hanno già vinto.",
+            "decision": "stop",
+            "why": "Niente da cucinare: catalogo coperto, slot senza win esauriti, combo dei win già provate o assenti.",
             "review": review,
-            "jobs": deepen,
+            "jobs": [],
+        }
+    from dse.tune_warm import preview_tune
+
+    for d in designs:
+        prev = preview_tune(d, log)
+        if not prev.get("admissible"):
+            continue
+        return {
+            "decision": "tune",
+            "why": "Catalogo coperto e improve esaurito. TPE sullo stesso die, un finish alla volta.",
+            "design": d,
+            "warm": prev.get("warm"),
+            "queue": prev.get("queue"),
+            "next_fp": prev.get("next_fp"),
+            "next_title": prev.get("next_title"),
+            "review": review,
+            "jobs": [],
         }
     return {
         "decision": "stop",
-        "why": "Niente da cucinare: catalogo coperto, slot senza win esauriti, combo dei win già provate o assenti.",
+        "why": "Niente da cucinare: catalogo coperto, improve esaurito, nessun slot ammissibile al tune.",
         "review": review,
         "jobs": [],
     }
@@ -305,9 +334,14 @@ def main(argv: list[str] | None = None) -> int:
         help="On slots with no product win, cook combos of independent axes.",
     )
     p.add_argument(
+        "--deepen",
+        action="store_true",
+        help="Override: pair winning catalog axes instead of TPE tune.",
+    )
+    p.add_argument(
         "--select-only",
         action="store_true",
-        help="Old selector only: cook if circuit state asks, ignore cover/improve/deepen.",
+        help="Old selector only: cook if circuit state asks, ignore cover/improve/tune.",
     )
     args = p.parse_args(argv)
 
@@ -327,8 +361,22 @@ def main(argv: list[str] | None = None) -> int:
             for rid in pl.get("pick") or []:
                 jobs.append({"design": pl["design"], "recipes": [rid], "id": rid, "mode": "select"})
     else:
-        coord = coordinate(log, args.designs)
+        coord = coordinate(log, args.designs, deepen=args.deepen)
         print(json.dumps({**coord, "dry_run": args.dry_run}, indent=2, default=str))
+        if coord.get("decision") == "tune":
+            if args.dry_run:
+                return 0
+            tpe = _LEARN / "scripts" / "run_tpe.py"
+            cmd = [
+                sys.executable,
+                str(tpe),
+                "--design",
+                str(coord["design"]),
+                "--max-cooks",
+                str(args.max_cooks),
+            ]
+            print(json.dumps({"tune": True, "design": coord["design"], "max_cooks": args.max_cooks}))
+            return subprocess.run(cmd, cwd=str(_ROOT), check=False).returncode
         jobs = list(coord.get("jobs") or [])
 
     if args.dry_run:

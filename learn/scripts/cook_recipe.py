@@ -1,223 +1,61 @@
 #!/usr/bin/env python3
-"""Cook one design-agnostic catalog recipe. Place first, finish only if EVALUATE.
+"""Cook one design-agnostic catalog recipe or a free knob vector.
 
 Does not rewrite Verilog. Reuses the official Yosys netlist of the same-clock
-base. Pins DIE_AREA/CORE_AREA from the official DEF (same die area, size,
-shape). Floorplan catalog recipes are refused. Variant names are
-camp_<design>_<recipe_id> (readable).
+base. Pins DIE_AREA/CORE_AREA from the official DEF. Floorplan catalog
+recipes are refused.
 
 Usage:
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/cook_recipe.py \
         --design spi --recipes place_denser --phase J1
+    PYTHONPATH=learn:learn/scripts python3 learn/scripts/cook_recipe.py \
+        --design gcd --knobs '{"PLACE_DENSITY_LB_ADDON":"0.22"}' --phase T1
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
 import sys
-import time
 from pathlib import Path
 
 _LEARN = Path(__file__).resolve().parents[1]
-_ROOT = _LEARN.parent
 if str(_LEARN) not in sys.path:
     sys.path.insert(0, str(_LEARN))
 
-from dse.experiments import DESIGN_CATALOG, ExperimentLog, fill_from_logs, Experiment  # noqa: E402
-from dse.f6_finish import parse_place_dp  # noqa: E402
-from dse.fidelity_policy import decide  # noqa: E402
-from dse.knob_catalog import (  # noqa: E402
-    by_id,
-    config_mk_for,
-    parse_config_defaults,
-    resolve_many,
-    titles_of,
-)
-from dse.floorplan import FLOORPLAN_RECIPES, official_box  # noqa: E402
-from dse.recipe_labels import synth_method_from_exploration  # noqa: E402
-
-
-def _base_netlist(design: str) -> Path:
-    orfs = DESIGN_CATALOG.get(design, {}).get("orfs_design") or design
-    # Prefer the campaign base yosys; never flowlab for non-gcd.
-    cand = [
-        _ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45" / orfs / f"camp_{design}_base" / "1_2_yosys.v",
-        _ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45" / orfs / "flowlab" / "1_2_yosys.v",
-    ]
-    for p in cand:
-        if p.is_file():
-            return p
-    raise FileNotFoundError(f"no official yosys netlist for {design}")
-
-
-def _base_finish_ns(design: str, clock_ns: float) -> float | None:
-    log = ExperimentLog()
-    clk = f"{float(clock_ns):.3f}"
-    for e in log.all():
-        if e.design != design or e.role != "base" or e.finish_wns_ns is None:
-            continue
-        if f"{float(e.clock_ns):.3f}" == clk:
-            return float(e.finish_wns_ns)
-    return None
-
-
-def _needs_fresh_synth(recipe_ids: list[str]) -> bool:
-    """Reuse the official netlist unless a recipe actually changes Yosys/ABC."""
-    for rid in recipe_ids:
-        rec = by_id(rid)
-        if rec["stage"] == "synth" and rid != "synth_area":
-            return True
-    return False
-
-
-def _run_wrapper(design: str, variant: str, clock_ns: float, target: str, env_knobs: dict[str, str], net: Path | None) -> tuple[int, float]:
-    env = os.environ.copy()
-    env.update(
-        {
-            "DESIGN": design,
-            "FLOW_VARIANT": variant,
-            "SDC_NS": str(clock_ns),
-            **env_knobs,
-        }
-    )
-    if net is not None:
-        env["SYNTH_NETLIST_FILES"] = str(net)
-    t0 = time.time()
-    proc = subprocess.run(
-        ["bash", str(_ROOT / "scripts/run_design_finish.sh"), target],
-        cwd=str(_ROOT),
-        env=env,
-        check=False,
-    )
-    return proc.returncode, time.time() - t0
-
-
-def _place_wns(design: str, variant: str) -> float | None:
-    orfs = DESIGN_CATALOG.get(design, {}).get("orfs_design") or design
-    path = _ROOT / "tools/OpenROAD-flow-scripts/flow/logs/nangate45" / orfs / variant / "3_5_place_dp.json"
-    if not path.is_file():
-        return None
-    blob = parse_place_dp(path)
-    v = blob.get("place_wns_ns")
-    return float(v) if v is not None else None
+from dse.cook import cook_one  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--design", required=True)
-    p.add_argument("--recipes", nargs="+", required=True)
-    p.add_argument("--phase", default="J1")
+    p.add_argument("--recipes", nargs="+", default=None)
+    p.add_argument("--knobs", default=None, help="JSON object of ORFS env knobs")
+    p.add_argument("--phase", default=None, help="Registry phase. Default J1 for recipes, T1 for knobs.")
     p.add_argument("--clock", type=float, default=None)
     p.add_argument("--variant", default=None, help="override FLOW_VARIANT")
     args = p.parse_args(argv)
-
-    design = args.design
-    rids = list(args.recipes)
-    if any(rid in FLOORPLAN_RECIPES for rid in rids):
-        print(
-            "refuse: floorplan recipes are lab-only. "
-            "Product keeps DIE_AREA / CORE_AREA / shape pinned to the official DEF.",
-            file=sys.stderr,
-        )
-        return 2
-    clock = float(args.clock if args.clock is not None else DESIGN_CATALOG[design]["clk_ns"])
-    variant = args.variant or f"camp_{design}_{'_'.join(rids)}"
-    title = titles_of(rids)
-    if ExperimentLog().has(variant, args.phase):
-        print(json.dumps({"skipped": True, "variant": variant, "phase": args.phase}))
+    knobs = json.loads(args.knobs) if args.knobs else None
+    extra = {"tuner": "tpe"} if knobs is not None else None
+    phase = args.phase
+    if phase is None:
+        phase = "T1" if knobs is not None else "J1"
+    out = cook_one(
+        args.design,
+        recipes=args.recipes,
+        knobs=knobs,
+        phase=phase,
+        variant=args.variant,
+        clock_ns=args.clock,
+        extra=extra,
+        skip_if_variant=knobs is not None,
+    )
+    if out.get("refuse"):
+        print(f"refuse: {out['refuse']}", file=sys.stderr)
+        return int(out.get("exit_code") or 2)
+    if out.get("skipped"):
+        print(json.dumps({"skipped": True, "variant": out.get("variant"), "phase": phase}))
         return 0
-
-    defaults = parse_config_defaults(config_mk_for(design))
-    knobs = resolve_many(rids, defaults)
-    box = official_box(design)
-    if box is not None:
-        knobs["DIE_AREA"] = box["DIE_AREA"]
-        knobs["CORE_AREA"] = box["CORE_AREA"]
-        knobs.pop("CORE_UTILIZATION", None)
-        knobs.pop("CORE_ASPECT_RATIO", None)
-    elif "CORE_UTILIZATION" not in knobs and "CORE_UTILIZATION" in defaults:
-        knobs["CORE_UTILIZATION"] = str(defaults["CORE_UTILIZATION"])
-    synth = synth_method_from_exploration()
-    if "ABC_SPEED" not in knobs and "ABC_AREA" not in knobs:
-        knobs["ABC_AREA"] = str(synth["ABC_AREA"])
-        knobs["ABC_SPEED"] = str(synth["ABC_SPEED"])
-    net = None if _needs_fresh_synth(rids) else _base_netlist(design)
-    base_ns = _base_finish_ns(design, clock)
-
-    print(json.dumps({
-        "start": True,
-        "variant": variant,
-        "title": title,
-        "knobs": knobs,
-        "netlist": str(net) if net else None,
-        "fresh_synth": net is None,
-    }, indent=2))
-    ec_p, t_p = _run_wrapper(design, variant, clock, "place", knobs, net)
-    place_ns = _place_wns(design, variant)
-    dec = decide(design=design, place_wns_ns=place_ns, baseline_finish_ns=base_ns)
-    print(json.dumps({"place_exit": ec_p, "place_s": round(t_p, 2), "place_wns_ns": place_ns, "policy": dec.to_dict()}, indent=2))
-
-    extra = {
-        "recipe_ids": rids,
-        "recipe_id": rids[0] if len(rids) == 1 else None,
-        "title": title,
-        "knobs": knobs,
-        "policy": dec.to_dict(),
-        "transfer_design": True,
-        "fresh_synth": net is None,
-    }
-    how = "Fresh Yosys (synth knob)." if net is None else "Official yosys netlist."
-    rec_cmd = [
-        sys.executable,
-        str(_LEARN / "scripts/record_experiment.py"),
-        "--phase",
-        args.phase,
-        "--design",
-        design,
-        "--variant",
-        variant,
-        "--role",
-        "knob",
-        "--clock",
-        str(clock),
-        "--extra",
-        json.dumps(extra),
-        "--notes",
-        f"{title}. Transfer cook. {how} Policy {dec.action}.",
-    ]
-    if net is not None:
-        rec_cmd += ["--netlist", str(net)]
-
-    if ec_p != 0 or place_ns is None:
-        rec_cmd += ["--exit-code", str(ec_p or 1), "--status", "failed", "--runtime-s", str(t_p)]
-        return subprocess.run(rec_cmd, check=False).returncode or 1
-
-    if dec.action == "STOP":
-        rec_cmd += ["--exit-code", "0", "--status", "stopped_by_policy", "--runtime-s", str(t_p)]
-        subprocess.run(rec_cmd, check=False)
-        print(json.dumps({"ok": True, "variant": variant, "title": title, "stopped": True}))
-        return 0
-
-    ec_f, t_f = _run_wrapper(design, variant, clock, "finish", knobs, net)
-    rec_cmd += ["--exit-code", str(ec_f), "--runtime-s", str(t_p + t_f)]
-    if ec_f != 0:
-        rec_cmd += ["--status", "failed"]
-    rc = subprocess.run(rec_cmd, check=False).returncode
-    # Confirm finish landed.
-    exp = Experiment(id="tmp", phase=args.phase, design=design, clock_ns=clock, variant=variant, role="knob")
-    fill_from_logs(exp, root=_ROOT)
-    print(json.dumps({
-        "ok": exp.finish_wns_ns is not None and ec_f == 0,
-        "variant": variant,
-        "title": title,
-        "finish_wns_ns": exp.finish_wns_ns,
-        "area": exp.stdcell_um2,
-        "ir_mean_v": exp.ir_mean_v,
-        "record_rc": rc,
-    }, default=str))
-    return 0 if exp.finish_wns_ns is not None and ec_f == 0 else 1
+    return 0 if out.get("ok") else int(out.get("exit_code") or 1)
 
 
 if __name__ == "__main__":

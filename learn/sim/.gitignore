@@ -6,6 +6,7 @@ reports/*
 previews/
 dse/netlists/
 dse/extracts/
+dse/tpe_*.db
 dse/arrivals/
 dse/sdf/
 dse/spef/
