@@ -2,7 +2,9 @@
 """Cook one design-agnostic catalog recipe. Place first, finish only if EVALUATE.
 
 Does not rewrite Verilog. Reuses the official Yosys netlist of the same-clock
-base. Variant names are camp_<design>_<recipe_id> (readable).
+base. Pins DIE_AREA/CORE_AREA from the official DEF (same die area, size,
+shape). Floorplan catalog recipes are refused. Variant names are
+camp_<design>_<recipe_id> (readable).
 
 Usage:
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/cook_recipe.py \
@@ -33,6 +35,7 @@ from dse.knob_catalog import (  # noqa: E402
     resolve_many,
     titles_of,
 )
+from dse.floorplan import FLOORPLAN_RECIPES, official_box  # noqa: E402
 from dse.recipe_labels import synth_method_from_exploration  # noqa: E402
 
 
@@ -112,6 +115,13 @@ def main(argv: list[str] | None = None) -> int:
 
     design = args.design
     rids = list(args.recipes)
+    if any(rid in FLOORPLAN_RECIPES for rid in rids):
+        print(
+            "refuse: floorplan recipes are lab-only. "
+            "Product keeps DIE_AREA / CORE_AREA / shape pinned to the official DEF.",
+            file=sys.stderr,
+        )
+        return 2
     clock = float(args.clock if args.clock is not None else DESIGN_CATALOG[design]["clk_ns"])
     variant = args.variant or f"camp_{design}_{'_'.join(rids)}"
     title = titles_of(rids)
@@ -121,8 +131,13 @@ def main(argv: list[str] | None = None) -> int:
 
     defaults = parse_config_defaults(config_mk_for(design))
     knobs = resolve_many(rids, defaults)
-    # Pin floorplan util unless a recipe moved it — same die as the official config.
-    if "CORE_UTILIZATION" not in knobs and "CORE_UTILIZATION" in defaults:
+    box = official_box(design)
+    if box is not None:
+        knobs["DIE_AREA"] = box["DIE_AREA"]
+        knobs["CORE_AREA"] = box["CORE_AREA"]
+        knobs.pop("CORE_UTILIZATION", None)
+        knobs.pop("CORE_ASPECT_RATIO", None)
+    elif "CORE_UTILIZATION" not in knobs and "CORE_UTILIZATION" in defaults:
         knobs["CORE_UTILIZATION"] = str(defaults["CORE_UTILIZATION"])
     synth = synth_method_from_exploration()
     if "ABC_SPEED" not in knobs and "ABC_AREA" not in knobs:

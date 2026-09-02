@@ -29,7 +29,6 @@ from dse.recipe_select import (  # noqa: E402
     CHEAP_FIRST,
     already_tried,
     combo_already_tried,
-    floorplan_locked,
     inferred_recipe_ids,
     propose_deepen,
     propose_improve,
@@ -84,7 +83,7 @@ def plan_for(design: str, log: ExperimentLog) -> dict:
         return {"design": design, "clock_ns": clock, "skip": "no_base", "pick": []}
     cfg = config_mk_for(design)
     defaults = parse_config_defaults(cfg)
-    locked = floorplan_locked(cfg)
+    locked = True
     rows = _same_slot(log, design, clock)
     already = {r["id"] for r in RECIPES if already_tried(rows, r["id"], defaults)}
     pick = select_recipes(state_from_exp(base), locked_floorplan=locked, already=already)
@@ -107,7 +106,7 @@ def cover_plan_for(design: str, log: ExperimentLog) -> dict:
     base = _base(log, design, clock)
     cfg = config_mk_for(design)
     defaults = parse_config_defaults(cfg)
-    locked = floorplan_locked(cfg)
+    locked = True
     rows = _same_slot(log, design, clock)
     pick = recipes_still_open(rows, defaults, locked_floorplan=locked) if base else []
     return {
@@ -140,8 +139,7 @@ def improve_queue(log: ExperimentLog, designs: list[str]) -> list[dict]:
         base = _base(log, d, clock)
         if base is None:
             continue
-        cfg = config_mk_for(d)
-        locked = floorplan_locked(cfg)
+        locked = True
         rows = _same_slot(log, d, clock)
         wins = _product_wins(rows, base)
         already = []
@@ -185,7 +183,7 @@ def deepen_queue(log: ExperimentLog, designs: list[str]) -> list[dict]:
             continue
         cfg = config_mk_for(d)
         defaults = parse_config_defaults(cfg)
-        locked = floorplan_locked(cfg)
+        locked = True
         rows = _same_slot(log, d, clock)
         win_ids: list[str] = []
         already: list[list[str]] = []
@@ -224,7 +222,7 @@ def coordinate(log: ExperimentLog, designs: list[str]) -> dict:
         base = _base(log, d, clock)
         cfg = config_mk_for(d)
         defaults = parse_config_defaults(cfg)
-        locked = floorplan_locked(cfg)
+        locked = True
         rows = _same_slot(log, d, clock) if base else []
         holes = recipes_still_open(rows, defaults, locked_floorplan=locked) if base else []
         wins = _product_wins(rows, base)

@@ -523,17 +523,20 @@ def _qor_vs_base(exps: list[Experiment]) -> dict[str, Any]:
     n_ir = sum(1 for r in rows if r["base"]["ir_mv"] is not None)
     n_wl = sum(1 for r in rows if r["base"]["grt_wl"] is not None)
     wins = [r for r in rows if r["section5"] == "win"]
+    wrong = [r for r in rows if r["section5"] == "wrong_die"]
     return {
         "n_compared": len(rows),
         "n_references": len(refs),
         "n_with_ir": n_ir,
         "n_with_grt_wl": n_wl,
         "n_section5_wins": len(wins),
+        "n_wrong_die": len(wrong),
         "references": refs,
         "rows": rows,
         "verdict": (
             f"QoR vs base: {len(refs)} reference slots, {len(rows)} challengers, "
-            f"{n_ir} with IR, {n_wl} with GRT WL, {len(wins)} product wins"
+            f"{n_ir} with IR, {n_wl} with GRT WL, {len(wins)} product wins "
+            f"(same die), {len(wrong)} wrong_die (moved floorplan)"
         ),
     }
 
@@ -616,7 +619,10 @@ def render_qor_tables(block: dict[str, Any]) -> list[str]:
         "**Density** = utilizzazione stdcell sul core. **Congestion** = GRT WL / area core "
         "(i JSON non hanno overflow fraction; `congestion_*_s` sono runtime).",
         "",
-        "Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorare nessuno del 10%. Oppure timing +5 ps senza peggiorare area/potenza/IR. Vedi `product.md`.",
+        "Vittoria prodotto: floorplan fisso (stessa area, dimensione, shape). "
+        "Timing ±5 ps e (area o potenza o leakage o IR −10%), senza peggiorare nessuno del 10%. "
+        "Oppure timing +5 ps senza peggiorare i quattro. Un die mosso è `wrong_die` (laboratorio). "
+        "Vedi `product.md`.",
         "",
         "### Ricette (cosa fanno, che vantaggio hanno)",
         "",
@@ -761,7 +767,8 @@ def render_md(payload: dict[str, Any]) -> str:
         f"Plan sha: `{payload['plan_sha']}`",
         f"Experiments: {payload['n_experiments']} ({payload['n_done']} done)",
         "",
-        "I1–I5 bars stay frozen (historical). Product win is `dse.win_rule` (slack + area/power/leak/IR).",
+        "I1–I5 bars stay frozen (historical). Product win is `dse.win_rule` "
+        "(slack + area/power/leak/IR on a pinned floorplan).",
         "Readable reference+challenger sheets: `learn/dse/qor_compare.md`.",
         "",
     ]

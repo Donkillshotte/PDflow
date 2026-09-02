@@ -37,7 +37,7 @@ _EXPLICIT: dict[str, RecipeLabel] = {
     "camp_ibex_q1_d20u60": RecipeLabel(
         "Core più stretto — die più piccolo, fili più corti",
         "Stessa netlist e stesso density addon 0.20. CORE_UTILIZATION 50→60.",
-        "§5 win: WNS +42 vs +22 ps; IR −30%; WL −4%; power ~iso.",
+        "Laboratorio (die più piccolo, util 50→60). Slack/IR meglio, ma ha mosso il floorplan. Non è un win di prodotto.",
     ),
     "camp_ibex_q1_d25u50": RecipeLabel(
         "Place più denso, stesso die",
@@ -142,7 +142,7 @@ _EXPLICIT: dict[str, RecipeLabel] = {
     "camp_gcd_aspect_wide": RecipeLabel(
         "Floorplan più largo che alto",
         "Rettangolo 2:1 invece di un quadrato.",
-        "Su gcd: slack uguale, IR −61%. Win su IR.",
+        "Laboratorio (shape 2:1). IR −61% ma ha mosso il floorplan. Non è un win di prodotto.",
     ),
     "camp_gcd_synth_hier": RecipeLabel(
         "Sintesi gerarchica",
@@ -172,7 +172,7 @@ _EXPLICIT: dict[str, RecipeLabel] = {
     "camp_ibex_aspect_wide": RecipeLabel(
         "Floorplan più largo che alto",
         "Rettangolo 2:1 invece di un quadrato.",
-        "Su ibex: win. IR −31%. Slack +2.5 ps.",
+        "Laboratorio (shape 2:1). IR −31% ma ha mosso il floorplan. Non è un win di prodotto.",
     ),
     "camp_ibex_cell_pad_plus": RecipeLabel(
         "Padding celle +1 site",
@@ -237,17 +237,17 @@ _EXPLICIT: dict[str, RecipeLabel] = {
     "camp_dynamic_node_core_tighter": RecipeLabel(
         "Core più stretto",
         "CORE_UTILIZATION +10 rispetto al default.",
-        "Su dynamic_node: win. Slack +66 ps. IR −9% (sotto la soglia di lose).",
+        "Laboratorio (die più piccolo). Slack +66 ps ma ha mosso il floorplan. Non è un win di prodotto.",
     ),
     "camp_dynamic_node_core_looser": RecipeLabel(
         "Core più largo",
         "CORE_UTILIZATION −10 rispetto al default.",
-        "Su dynamic_node: win. Slack +101 ps, IR −14%.",
+        "Laboratorio (die più grande). Slack +101 ps, IR −14% ma ha mosso il floorplan. Non è un win di prodotto.",
     ),
     "camp_dynamic_node_aspect_wide": RecipeLabel(
         "Floorplan più largo che alto",
         "Rettangolo 2:1 invece di un quadrato.",
-        "Su dynamic_node: win. Slack +56 ps. IR −10% quasi.",
+        "Laboratorio (shape 2:1). Slack +56 ps ma ha mosso il floorplan. Non è un win di prodotto.",
     ),
     "camp_dynamic_node_place_denser": RecipeLabel(
         "Place più denso",
@@ -307,7 +307,7 @@ _EXPLICIT: dict[str, RecipeLabel] = {
     "camp_gcd_core_looser_cell_pad_plus": RecipeLabel(
         "Core più largo + padding celle",
         "Util −10 e un site extra tra le celle. Stessa netlist.",
-        "Su gcd: win. IR −48%. Slack −4 ps (dentro 5 ps). Area/potenza un filo meglio.",
+        "Laboratorio (die più grande + pad). IR −48% ma ha mosso il floorplan. Non è un win di prodotto.",
     ),
 }
 

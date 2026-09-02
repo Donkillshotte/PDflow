@@ -5,12 +5,16 @@ from pathlib import Path
 from typing import Any
 
 from .knob_catalog import RECIPES, by_id, resolve
+from .floorplan import FLOORPLAN_RECIPES
 
 # Already the default, or never a product win in campaign.
 _NEVER = frozenset({"synth_area", "synth_delay"})
 # Default synth method: already the official netlist. Do not recook.
 # hold_margin / place_notiming are improve-only until they take a win.
-SKIP_COVER = frozenset({"synth_area", "hold_margin", "place_notiming", "cts_sparser", "repair_skip"})
+SKIP_COVER = frozenset(
+    {"synth_area", "hold_margin", "place_notiming", "cts_sparser", "repair_skip"}
+    | FLOORPLAN_RECIPES
+)
 # Cheapest live finish first. Cover-all uses this order, not the selector.
 CHEAP_FIRST = ("gcd", "spi", "ibex", "aes", "dynamic_node")
 
@@ -22,13 +26,12 @@ DENSE = 0.55
 MANY_BUFFERS = 30
 MAX_PICK = 2
 
-# Combos of independent win axes. Used after a slot has no product win.
-# Floorplan parts are dropped when the die is locked — no design name.
+# Combos of independent win axes on the *pinned* die. No floorplan recipes.
 IMPROVE_COMBOS: tuple[tuple[str, ...], ...] = (
     ("place_denser", "repair_setup_margin"),
-    ("aspect_wide", "place_denser"),
-    ("core_tighter", "place_denser"),
     ("place_denser", "repair_half_tns"),
+    ("place_denser", "cell_pad_plus"),
+    ("place_sparser", "repair_setup_margin"),
 )
 # On a die already closed by a wide margin, repair combos are no-ops.
 # Try unused physical knobs that can still move area / power / IR.
@@ -120,12 +123,10 @@ def select_recipes(
     ranked: list[str] = []
 
     def add(rid: str) -> None:
-        if rid in _NEVER or rid in already or rid in ranked:
+        if rid in _NEVER or rid in FLOORPLAN_RECIPES or rid in already or rid in ranked:
             return
         ranked.append(rid)
 
-    if (late or (high_ir and dens is not None and SPARSE <= dens <= 0.75)) and not locked_floorplan:
-        add("core_tighter")
     if (late or many_buf) and not sparse:
         add("place_denser")
     if late and not closed:
@@ -133,8 +134,6 @@ def select_recipes(
     if late and dense:
         add("place_sparser")
         add("cell_pad_plus")
-    if late and not locked_floorplan:
-        add("aspect_wide")
     if late and cells is not None and int(cells) >= 2000:
         add("synth_hier")
 
@@ -204,7 +203,7 @@ def recipes_still_open(
         rid = rec["id"]
         if rid in SKIP_COVER:
             continue
-        if locked_floorplan and rec.get("stage") == "floorplan":
+        if rec.get("stage") == "floorplan" or rid in FLOORPLAN_RECIPES:
             continue
         if already_tried(rows, rid, defaults):
             continue
@@ -301,7 +300,7 @@ def propose_deepen(
             rec = by_id(rid)
         except KeyError:
             continue
-        if rec.get("stage") == "synth":
+        if rec.get("stage") == "synth" or rec.get("stage") == "floorplan" or rid in FLOORPLAN_RECIPES:
             continue
         if locked_floorplan and rec.get("stage") == "floorplan":
             continue

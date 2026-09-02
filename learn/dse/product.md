@@ -7,6 +7,13 @@ Scelte ferme (non si ritoccano dopo i dati).
 Cercare manopole fisiche (e metodo di sintesi ABC area) sulla **netlist
 ufficiale**. Non si riscrive il Verilog di progetto.
 
+Il **floorplan è fisso**: stessa area totale, stessa dimensione, stessa
+forma del run ufficiale. Non si tocca `CORE_UTILIZATION`,
+`CORE_ASPECT_RATIO`, `DIE_AREA`. I cook di prodotto inchiodano
+`DIE_AREA`/`CORE_AREA` dal DEF ufficiale. I run storici che hanno
+mosso il die restano in laboratorio (`wrong_die`); non sono win di
+prodotto.
+
 La DSE vecchia (e-graph, rewrite, IR F4, refine) resta **laboratorio**.
 Non è il prodotto. Non si cancella; non decide i win.
 
@@ -21,6 +28,8 @@ Confronta un challenger col base dello stesso design e stesso clock.
   quattro è peggio del 10%.
 - **Vince** se chiude (WNS≥0) e il base no, senza peggiorare
   area/potenza/leakage/IR del 10%.
+- **wrong_die** (laboratorio, non un win) se ha mosso area totale,
+  dimensione o shape del floorplan ufficiale.
 - **Perde** se il timing è peggio di 5 ps, **oppure** area o potenza o
   leakage o IR è peggio del 10%.
 - Altrimenti **pareggio**.
@@ -34,11 +43,11 @@ Un coordinatore, senza `if design == …`. RTL fisso: esplora dalla
 sintesi in poi. Review del registro → decide la prossima mossa:
 
 1. **Cover.** Se manca una ricetta del catalogo, cucinala (dal finish
-   più economico). Salta `synth_area` e floorplan su die bloccato.
+   più economico). Salta `synth_area` e **tutte** le ricette floorplan.
 2. **Improve.** Se uno slot non ha win, inventa: combo su die aperto,
    knob nuovi su die già chiuso.
 3. **Deepen.** Se ci sono win, combina due assi che hanno già vinto
-   (stessa netlist ufficiale). Niente coppie opposte (core stretto+largo).
+   (stessa netlist ufficiale, stesso die). Niente ricette floorplan.
 4. **Stop.** Catalogo coperto, slot senza win esauriti, combo dei win
    già provate.
 

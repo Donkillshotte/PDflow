@@ -575,19 +575,21 @@ def check_next_level(check, root: Path) -> None:
     ibex_setup = label_for("camp_ibex_repair_setup_margin")
     check("win" in ibex_setup.payoff.lower() and "41" in ibex_setup.payoff, f"C1 ibex setup payoff {ibex_setup.payoff}")
     ibex_wide = label_for("camp_ibex_aspect_wide")
-    check("win" in ibex_wide.payoff.lower() and "ir" in ibex_wide.payoff.lower(), f"C1 ibex wide payoff {ibex_wide.payoff}")
+    check("laboratorio" in ibex_wide.payoff.lower(), f"C1 ibex wide is lab {ibex_wide.payoff}")
     aes_cts = label_for("camp_aes_cts_closer_bufs")
     check("win" in aes_cts.payoff.lower(), f"C1 aes cts payoff {aes_cts.payoff}")
     aes_sp = label_for("camp_aes_place_sparser")
     check("win" in aes_sp.payoff.lower() and "ir" in aes_sp.payoff.lower(), f"C1 aes sparse payoff {aes_sp.payoff}")
     dn_loose = label_for("camp_dynamic_node_core_looser")
-    check("win" in dn_loose.payoff.lower() and "ir" in dn_loose.payoff.lower(), f"C1 dn looser payoff {dn_loose.payoff}")
+    check("laboratorio" in dn_loose.payoff.lower(), f"C1 dn looser is lab {dn_loose.payoff}")
     dn_hier = label_for("camp_dynamic_node_synth_hier")
     check("stop" in dn_hier.payoff.lower() or "non finito" in dn_hier.payoff.lower(), f"C1 dn hier payoff {dn_hier.payoff}")
     cook_src = (root / "learn/scripts/cook_recipe.py").read_text()
     check((root / "learn/scripts/cook_recipe.py").is_file(), "cook_recipe.py exists")
     check("_needs_fresh_synth" in cook_src, "cook_recipe reruns Yosys for synth knobs")
     check("synth_hier" in cook_src or "stage" in cook_src, "fresh synth looks at recipe stage")
+    check("official_box" in cook_src and "DIE_AREA" in cook_src, "cook pins DIE_AREA from the official DEF")
+    check("FLOORPLAN_RECIPES" in cook_src and "refuse" in cook_src, "cook refuses floorplan recipes")
     loose = resolve("core_looser", {"CORE_UTILIZATION": 8.0})
     check(abs(float(loose["CORE_UTILIZATION"]) - 5.0) < 1e-9, f"core_looser clamps spi 8-10 to 5, got {loose}")
     tight = resolve("core_tighter", {"CORE_UTILIZATION": 8.0})
@@ -643,6 +645,7 @@ def check_next_level(check, root: Path) -> None:
     check("--improve" in loop_src, "loop has --improve")
     check("def coordinate" in loop_src, "loop has a coordinator")
     check("propose_deepen" in loop_src, "coordinator can deepen winning axes")
+    check("locked = True" in loop_src, "coordinator always pins the product floorplan")
     check(CHEAP_FIRST[0] == "gcd" and CHEAP_FIRST[-1] == "dynamic_node", f"cheap-first order {CHEAP_FIRST}")
     abc = _E(status="done", role="abc_speed", variant="camp_spi_abcspeed", extra={})
     check(is_synth_delay_run(abc), "abc_speed is a synth_delay run")
@@ -660,6 +663,12 @@ def check_next_level(check, root: Path) -> None:
     check("synth_delay" not in open_ids, "cover skips already-measured synth_delay")
     check("cell_pad_plus" not in open_ids, "cover skips already-measured cell_pad_plus")
     check("core_tighter" not in open_ids, f"cover skips locked floorplan {open_ids}")
+    open_unlocked = recipes_still_open(
+        [abc, pad],
+        {"CORE_UTILIZATION": 8.0, "PLACE_DENSITY_LB_ADDON": 0.20},
+        locked_floorplan=False,
+    )
+    check("aspect_wide" not in open_unlocked and "core_tighter" not in open_unlocked, f"cover never offers floorplan {open_unlocked}")
     check("place_denser" in open_ids, f"cover still wants unmeasured place {open_ids}")
     check(propose_improve(product_wins=2) == [], "improve is silent when the slot already has a win")
     combos = propose_improve(product_wins=0, locked_floorplan=True)
@@ -675,7 +684,7 @@ def check_next_level(check, root: Path) -> None:
     spi_sk = label_for("camp_spi_repair_skip")
     check("no-op" in spi_sk.payoff.lower() or "identico" in spi_sk.payoff.lower(), f"I1 skip-repair payoff {spi_sk.payoff}")
     gcd_deep = label_for("camp_gcd_core_looser_cell_pad_plus")
-    check("win" in gcd_deep.payoff.lower() and "ir" in gcd_deep.payoff.lower(), f"D1 looser+pad payoff {gcd_deep.payoff}")
+    check("laboratorio" in gcd_deep.payoff.lower(), f"D1 looser+pad is lab {gcd_deep.payoff}")
     check("HOLD_SLACK_MARGIN" in src and "GPL_TIMING_DRIVEN" in src, "wrapper passes hold margin and timing-driven")
     combo_row = _E(
         status="done",
@@ -690,12 +699,55 @@ def check_next_level(check, root: Path) -> None:
     )
     check(win_ids == ["aspect_wide"], f"inferred explicit recipe_ids {win_ids}")
     deep = propose_deepen(["aspect_wide", "place_denser", "cell_pad_plus", "core_tighter", "core_looser"])
-    check(any(set(c) == {"aspect_wide", "place_denser"} for c in deep), f"deepen pairs two wins {deep}")
-    check(all(not ({"core_tighter", "core_looser"} <= set(c)) for c in deep), f"deepen skips opposite cores {deep}")
+    check(any(set(c) == {"place_denser", "cell_pad_plus"} for c in deep), f"deepen pairs same-die wins {deep}")
+    check(all("aspect_wide" not in c and "core_tighter" not in c and "core_looser" not in c for c in deep), f"deepen never pairs floorplan {deep}")
     locked_deep = propose_deepen(["aspect_wide", "place_denser", "repair_setup_margin"], locked_floorplan=True)
     check(all("aspect_wide" not in c for c in locked_deep), f"deepen drops locked floorplan {locked_deep}")
     check(propose_deepen(["aspect_wide", "place_denser"], already_parts=[["aspect_wide", "place_denser"]]) == [], "deepen skips a combo already cooked")
     check("if design" not in (root / "learn/scripts/run_recipe_loop.py").read_text(), "coordinator has no design name branch")
+
+    from dse.floorplan import FLOORPLAN_RECIPES, official_box, moves_floorplan
+
+    check(FLOORPLAN_RECIPES == {"core_tighter", "core_looser", "aspect_wide"}, f"floorplan recipes {FLOORPLAN_RECIPES}")
+    box = official_box("gcd")
+    check(box is not None and "DIE_AREA" in box and "CORE_AREA" in box, f"official gcd box {box}")
+    wide = _E(
+        finish_wns_ns=-0.038,
+        stdcell_um2=900.0,
+        power_w=0.0035,
+        leakage_w=2.2e-5,
+        ir_drop_v=0.0026,
+        extra={"recipe_ids": ["aspect_wide"], "knobs": {"CORE_ASPECT_RATIO": "2"}},
+        variant="camp_gcd_aspect_wide",
+        die_um2=1970.0,
+    )
+    check(prod_verdict(wide, base) == "wrong_die", f"aspect_wide is wrong_die {prod_verdict(wide, base)}")
+    util_shift = _E(
+        finish_wns_ns=-0.038,
+        stdcell_um2=860.0,
+        power_w=0.0035,
+        leakage_w=2.2e-5,
+        ir_drop_v=0.006,
+        extra={"core_utilization": 45},
+        variant="camp_gcd_q1_d25u45",
+        die_um2=1550.0,
+    )
+    base_die = _E(finish_wns_ns=-0.037, stdcell_um2=940.0, power_w=0.0039, leakage_w=2.56e-5, ir_drop_v=0.00667, extra={"core_utilization": 35}, die_um2=1970.0)
+    check(prod_verdict(util_shift, base_die) == "wrong_die", f"util shift is wrong_die {prod_verdict(util_shift, base_die)}")
+    same_die = _E(
+        finish_wns_ns=-0.0384,
+        stdcell_um2=842.0,
+        power_w=0.00343,
+        leakage_w=2.20e-5,
+        ir_drop_v=0.00615,
+        extra={"core_utilization": 35, "recipe_ids": ["place_denser"]},
+        die_um2=1970.0,
+    )
+    check(prod_verdict(same_die, base_die) == "win", f"same-die denser still wins {prod_verdict(same_die, base_die)}")
+    check(moves_floorplan(wide, base_die), "moves_floorplan sees aspect_wide")
+    check(not moves_floorplan(same_die, base_die), "same-die denser does not move floorplan")
+    unlocked_pick = select_recipes(aes_state, locked_floorplan=False)
+    check("core_tighter" not in unlocked_pick and "aspect_wide" not in unlocked_pick, f"selector never picks floorplan {unlocked_pick}")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,15 @@
 """Product win rule: slack plus area, power, leakage, and IR.
 
-Historical P0–P7 §5 stays in eval_campaign.py. This module is the product
-rule going forward (power, leakage, and IR can win or lose).
+The floorplan is pinned (die area, size, shape). A challenger that
+moved the die is not a product result.
+
+Historical P0–P7 §5 stays in eval_campaign.py.
 """
 from __future__ import annotations
 
 from typing import Any
+
+from .floorplan import moves_floorplan
 
 SLACK_PS = 5.0
 METRIC_FRAC = 0.10  # 10%
@@ -39,11 +43,13 @@ def _axes(cand: Any, base: Any) -> tuple[float | None, float | None, float | Non
 
 
 def verdict(cand: Any, base: Any) -> str:
-    """Return win / tie / lose / incomplete."""
+    """Return win / tie / lose / incomplete / wrong_die."""
     cw = getattr(cand, "finish_wns_ns", None)
     bw = getattr(base, "finish_wns_ns", None)
     if cw is None or bw is None:
         return "incomplete"
+    if moves_floorplan(cand, base):
+        return "wrong_die"
     dw_ps = (float(cw) - float(bw)) * 1000.0
     c_closed = float(cw) >= 0.0
     b_closed = float(bw) >= 0.0

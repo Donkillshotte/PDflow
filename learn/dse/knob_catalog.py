@@ -45,7 +45,7 @@ RECIPES: list[dict[str, Any]] = [
         "stage": "floorplan",
         "title": "Core più stretto",
         "does": "CORE_UTILIZATION += 10 rispetto al default di config.",
-        "payoff": "Die più piccolo, WL e IR spesso meglio (win ibex). Rischio congestion.",
+        "payoff": "Laboratorio: muove il die. Non è un knob di prodotto (floorplan fisso).",
         "offset": {"CORE_UTILIZATION": 10},
     },
     {
@@ -53,7 +53,7 @@ RECIPES: list[dict[str, Any]] = [
         "stage": "floorplan",
         "title": "Core più largo",
         "does": "CORE_UTILIZATION −= 10 rispetto al default di config.",
-        "payoff": "Più spazio al place/route. Su ibex ha perso slack e allungato i fili.",
+        "payoff": "Laboratorio: muove il die. Non è un knob di prodotto (floorplan fisso).",
         "offset": {"CORE_UTILIZATION": -10},
     },
     {
@@ -61,7 +61,7 @@ RECIPES: list[dict[str, Any]] = [
         "stage": "floorplan",
         "title": "Floorplan più largo che alto",
         "does": "CORE_ASPECT_RATIO=2 (default ORFS è 1).",
-        "payoff": "Cambia lunghezza dei path e forma della PDN. Stadio floorplan, non netlist.",
+        "payoff": "Laboratorio: cambia la shape. Non è un knob di prodotto (floorplan fisso).",
         "env": {"CORE_ASPECT_RATIO": "2"},
     },
     {

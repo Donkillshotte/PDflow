@@ -1,8 +1,9 @@
 # Hardware DSE
 
 **Product** (what we ship decisions on): physical knobs on the official
-netlist. Win rule includes slack, area, power, and IR — see
-`learn/dse/product.md`. Loop: `learn/scripts/run_recipe_loop.py`.
+netlist, with the official floorplan pinned (area, size, shape). Win rule
+includes slack, area, power, leakage, and IR — see `learn/dse/product.md`.
+Loop: `learn/scripts/run_recipe_loop.py`.
 
 **Lab** (not the product): the older controller — e-graph / RTL rewrite /
 F4 IR / refine. It stays in the tree. It does not decide product wins.
