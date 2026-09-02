@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
 OWNER="${GITHUB_OWNER:-Donkillshotte}"
-REPO="${GITHUB_REPO:-pd-flow}"
+REPO="${GITHUB_REPO:-PDflow}"
 VISIBILITY="${GITHUB_VISIBILITY:-public}"
 BRANCH="${GITHUB_BRANCH:-main}"
 REMOTE="${GITHUB_REMOTE:-github}"
