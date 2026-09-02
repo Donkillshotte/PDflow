@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Avvia OpenROAD Physical Design Studio (UI web).
+# Start OpenROAD Physical Design Studio (web UI).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}/studio"
