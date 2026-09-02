@@ -1,8 +1,8 @@
-# Atlas GUI OpenROAD — guide pixel-level (Qt 26Q2)
+# OpenROAD GUI atlas — pixel-level guide (Qt 26Q2)
 
-These are not invented icons: every PNG in `gui-shots/` is a **real capture** of the OpenROAD Qt GUI (`26Q2-1164-g08f67ee5ec`) on the tutorial design `nangate45/gcd` variante `learn`, or a `save_image` of the canvas from the same ODB.
+These are not invented icons: every PNG in `gui-shots/` is a **real capture** of the OpenROAD Qt GUI (`26Q2-1164-g08f67ee5ec`) on the tutorial design `nangate45/gcd` variant `learn`, or a `save_image` of the canvas from the same ODB.
 
-**How to open the GUI:** **Desktop** button su [cursor.com/agents](https://cursor.com/agents) (not Preview chat). Then:
+**How to open the GUI:** **Desktop** button on [cursor.com/agents](https://cursor.com/agents) (not Preview chat). Then:
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -10,7 +10,7 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn gui_final
 ```
 
-Expected title: `OpenROAD - gcd` (o `OpenROAD - nangate45/gcd/learn - 6_final`).
+Expected title: `OpenROAD - gcd` (or `OpenROAD - nangate45/gcd/learn - 6_final`).
 
 Menu/panel reference in prose: [gui-openroad.md](./gui-openroad.md). This atlas is the **visual map**.
 
@@ -18,56 +18,56 @@ Menu/panel reference in prose: [gui-openroad.md](./gui-openroad.md). This atlas 
 
 ---
 
-## 1. Anatomia of the window (learn these 7 rectangles)
+## 1. Window anatomy (learn these 7 rectangles)
 
-Reference window: **1680×1000** pixel (maximize yours to a similar size).
+Reference window: **1680×1000** pixels (maximize yours to a similar size).
 
 ![Labeled anatomy](./gui-shots/win_anatomy_labeled.png)
 
-| Zona | Where cliccare (1680×1000) | What it does |
+| Zone | Where to click (1680×1000) | What it does |
 |---|---|---|
-| **A Menu** | `y ≈ 8–24`, `Files` a `x≈30`, `View` a `x≈80`, `Tools` a `x≈150` | Files→Load ODB, View→fit/heatmap, Tools→ruler |
+| **A Menu** | `y ≈ 8–24`, `Files` at `x≈30`, `View` at `x≈80`, `Tools` at `x≈150` | Files→Load ODB, View→fit/heatmap, Tools→ruler |
 | **B Toolbar** | `y ≈ 32–52`: **Fit** `x≈40`, **Find** `x≈95`, **Inspect** `x≈155`, **Timing** `x≈230` | Shortcuts; Fit ≡ `F` key ≡ `gui::fit` |
-| **C Display Control** | colonna sinistra `x=0–268`, `y=56–760` | Eye = visible; pointer = selectable |
+| **C Display Control** | left column `x=0–268`, `y=56–760` | Eye = visible; pointer = selectable |
 | **D Canvas** | `x=268–1390`, `y=56–760` | Layout; scroll wheel zoom, middle button pan, click selects |
-| **E Inspector** | colonna destra `x=1390–1680` | Property dell'oggetto selezionato |
-| **F Console** | `y≈760–972` | Log + campo **TCL commands** in basso |
-| **G Status** | ultima riga `Idle` | If not Idle, wait before clicking |
+| **E Inspector** | right column `x=1390–1680` | Properties of the selected object |
+| **F Console** | `y≈760–972` | Log + **TCL commands** field at bottom |
+| **G Status** | last line `Idle` | If not Idle, wait before clicking |
 
-**90-second exercise:** open `gui_final`, identifica A–G **without** rereading the table. Then compare with the screenshot.
+**90-second exercise:** open `gui_final`, identify A–G **without** rereading the table. Then compare with the screenshot.
 
 ![Full window on 6_final.odb](./gui-shots/win_anatomy.png)
 
 ---
 
-## 2. Display Control — colors layer Nangate45
+## 2. Display Control — Nangate45 layer colors
 
-Crop of left panel on the same sessione:
+Crop of left panel in the same session:
 
 ![Display Control](./gui-shots/win_display_control_crop.png)
 
-Nella build 26Q2 i **swatch** (quadratini colore) match the canvas:
+In the 26Q2 build the **swatches** (color squares) match the canvas:
 
-| Layer | Colore in GUI | What it usually represents su GCD |
+| Layer | Color in GUI | What it usually represents on GCD |
 |---|---|---|
-| `metal1` | blu | VDD/VSS rails on **rows** (followpin) + local pins |
-| `metal2` | rosso | signal routing orizzontale/verticale |
-| `metal3` | green | signal routing (opposite direction a M2) |
-| `metal4` | giallo/green chiaro | vertical PDN straps (griglia M1–M4–M7) |
-| `metal5` | magenta/rosa | horizontal PDN straps |
-| `via1`… | viola/vari | cuts between adjacent metals |
+| `metal1` | blue | VDD/VSS rails on **rows** (followpin) + local pins |
+| `metal2` | red | horizontal/vertical signal routing |
+| `metal3` | green | signal routing (opposite direction to M2) |
+| `metal4` | yellow/light green | vertical PDN straps (M1–M4–M7 grid) |
+| `metal5` | magenta/pink | horizontal PDN straps |
+| `via1`… | purple/varied | cuts between adjacent metals |
 
 Two checkboxes per row:
 
-1. **Occhio** — visible in canvas
-2. **Puntatore** — clickable/selectable
+1. **Eye** — visible in canvas
+2. **Pointer** — clickable/selectable
 
 ### Click path: turn everything off, re-enable only M2+M3
 
 1. In **C**, scroll the list `Layers`.
-2. Togli l'occhio a `metal1`, `metal4`–`metal10` e on the vias you do not need.
-3. Leave `metal2` (rosso) e `metal3` (green) accesi.
-4. Toolbar **Fit** (o `F`).
+2. Turn off the eye on `metal1`, `metal4`–`metal10` and on the vias you do not need.
+3. Leave `metal2` (red) and `metal3` (green) on.
+4. Toolbar **Fit** (or `F`).
 
 Equivalent Tcl (paste in **TCL commands** field, Enter after each line):
 
@@ -79,7 +79,7 @@ gui::set_display_controls "Layers/metal5" visible false
 gui::fit
 ```
 
-Expected result (wire rossi + verdi, PDN pink/green off):
+Expected result (red + green wires, PDN pink/green off):
 
 ![Only metal2 and metal3](./gui-shots/win_layers_m2m3.png)
 
@@ -96,7 +96,7 @@ Clock filter attempt (layers still ON → canvas stays full; console confirms co
 
 ![Nets/Clock filter with layers still visible](./gui-shots/win_clock_filter.png)
 
-**Lesson:** se vuoi “solo clock”, combina `select -name "clk" -type Net` (highlight giallo) *or* spegni i metal di segnale.
+**Lesson:** if you want “clock only”, combine `select -name "clk" -type Net` (yellow highlight) *or* turn off signal metals.
 
 ---
 
@@ -112,7 +112,7 @@ Commands verified on this GUI:
 |---|---|
 | `gui::fit` | die fills **D** |
 | `select -name "clk" -type Net` | clock net highlighted; Inspector populates |
-| `select -name "clkbuf*" -type Inst` | buffer CTS |
+| `select -name "clkbuf*" -type Inst` | CTS buffers |
 | `gui::clear_selections` | removes highlight |
 | `gui::set_display_controls "Layers/metal2" visible false` | turns off M2 |
 
@@ -194,7 +194,7 @@ First physical cell geometries (well tap) on rows.
 
 ### 5.4 PDN — `2_4_floorplan_pdn.odb`
 
-Before vista “da chip”: rail M1 + strap.
+Before the “chip view”: M1 rail + strap.
 
 ![GUI PDN](./gui-shots/win_pdn.png)
 
@@ -231,7 +231,7 @@ Sparse cells (blobs), I/O pins as triangles on edge, PDN still underneath.
 
 ### 5.6 Detailed placement — `3_5_place_dp.odb`
 
-Stesso contenuto “legalizzato” sulle rows: i rettangoli allineati alle piastrelle, overlap sparito.
+Same content “legalized” on the rows: rectangles aligned to sites, overlap gone.
 
 ![GUI detailed place](./gui-shots/win_place_dp.png)
 
@@ -241,7 +241,7 @@ Open **on the same desktop** GP and DP (two windows, or Files→Load in sequence
 
 ### 5.7 CTS — `4_cts.odb`
 
-More cells (`CLKBUF*`). Filtra clock come in sezione 2. Canvas:
+More cells (`CLKBUF*`). Filter clock as in section 2. Canvas:
 
 ![Canvas CTS](./gui-shots/06_cts.png)
 
@@ -295,7 +295,7 @@ Time yourself. For each step: 1 mental screenshot + 1 notebook line.
 
 | Min | ODB | Pixel action | Write in notebook |
 |---|---|---|---|
-| 0–5 | `1_synth` | constata black canvas | “no die” |
+| 0–5 | `1_synth` | note black canvas | “no die” |
 | 5–10 | `2_1_floorplan` | identify two rectangles | die vs core |
 | 10–18 | `2_4_pdn` | turn off metal2–3, keep M1+strap | rail/strap colors |
 | 18–26 | `3_3` vs `3_5` | Fit on both | GP blob vs DP aligned |
@@ -340,7 +340,7 @@ gcell grid: green = empty, red = full. Hot center, cold edges: same blob as plac
 
 ### IR drop (`orfs_final_ir_drop.png`)
 
-Scala **mV** (on the GCD ~0–5 mV). If it were hundreds of mV, lesson 03 PDN is insufficient.
+Scale in **mV** (on the GCD ~0–5 mV). If it were hundreds of mV, lesson 03 PDN is insufficient.
 
 These four images close the 45-minute session: after `gui_final`, compare ORFS PNGs with the canvas.
 

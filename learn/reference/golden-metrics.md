@@ -1,15 +1,15 @@
-# Metrics d’oro — run di riferimento `learn`
+# Golden metrics — reference `learn` run
 
-Un flusso **completo** sul tutorial (`CORE_UTILIZATION=35`, `constraint.sdc` 0.46 ns,
+A **complete** flow on the tutorial (`CORE_UTILIZATION=35`, `constraint.sdc` 0.46 ns,
 OpenROAD **26Q2**, ORFS **26Q2**).
 
-I tuoi numeri posare differire di qualche percento (thread, seed). Se divergono di
-**un ordine di grandezza**, you used wrong variant, SDC or PDK.
+Your numbers may differ by a few percent (threads, seed). If they diverge by
+**an order of magnitude**, you used the wrong variant, SDC, or PDK.
 
-## Comando unico (dalla cartella `flow/`)
+## Single command (from the `flow/` folder)
 
-Copia **intero**. Never `make ...` con puntini: senza `DESIGN_CONFIG` e `FLOW_VARIANT=learn`
-ORFS ricade on the GCD upstream (different util, cartella `base`).
+Copy **in full**. Never `make ...` with ellipsis: without `DESIGN_CONFIG` and `FLOW_VARIANT=learn`
+ORFS falls back to upstream GCD (different util, `base` folder).
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -19,50 +19,50 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 
 `<target>`: `synth` | `floorplan` | `place` | `cts` | `route` | `finish` | `gui_<stem>.odb`
 
-Pulizia di una fase: `clean_synth` … `clean_finish` o `clean_all` (non `make clean`:
-in this ORFS is disabilitato).
+Clean one phase: `clean_synth` … `clean_finish` or `clean_all` (not `make clean`:
+in this ORFS it is disabled).
 
 ---
 
-## Table maestra
+## Master table
 
-| Stadio | Files | Cosa note | Valore riferimento |
+| Stage | Files | What to note | Reference value |
 |---|---|---|---|
-| Synth | `synth_stat.txt` | celle / area / DFF_X1 | **496** / **628.824** / **35** |
+| Synth | `synth_stat.txt` | cells / area / DFF_X1 | **496** / **628.824** / **35** |
 | Floorplan | `2_1_floorplan.log` | Core area / eff. util | **1712.5 µm²** / **0.367** |
 | Floorplan | same log | Design area | **629 µm² ~37%** |
 | Place resize | `3_4_place_resized.log` | Design area | **684 µm² 40%** |
 | Place | `3_resizer.rpt` | worst slack max | **+0.01 ns** (0 viol setup) |
-| Place | stesso | `period_min` / fmax | **0.45 ns** / ~**2240 MHz** |
+| Place | same | `period_min` / fmax | **0.45 ns** / ~**2240 MHz** |
 | CTS DPL | `4_1_cts.log` `DPL-0006` | util pre-repair | **40.5%** (693 / 1712 µm²) |
 | CTS RSZ | same log | buffer / warning | **Inserted 45**, **RSZ-0062** |
-| CTS DPL | stesso | util post-repair | **48.3%** (828 µm²) |
+| CTS DPL | same | util post-repair | **48.3%** (828 µm²) |
 | CTS | `4_cts_final.rpt` | WNS / viol / skew | **−0.04** / **32** / ~**0.00** |
 | GRT | `5_global_route.rpt` | WNS / viol | **−0.05** / **43** |
 | DRC | `5_route_drc.rpt` | `wc -l` | **0** (clean) |
 | Finish | `6_finish.rpt` | WNS / TNS / viol | **−0.04** / **−0.60** / **38** |
-| Finish | stesso | `period_min` / fmax | **0.50 ns** / ~**2011 MHz** |
-| Finish | stesso | setup skew | ~**0.00** |
-| IR drop | `orfs_final_ir_drop.png` | scala | ~**0–5.2 mV** |
+| Finish | same | `period_min` / fmax | **0.50 ns** / ~**2011 MHz** |
+| Finish | same | setup skew | ~**0.00** |
+| IR drop | `orfs_final_ir_drop.png` | scale | ~**0–5.2 mV** |
 
-Lettura required: **fmax finish (2.01 GHz) < 1/0.46 (2.17 GHz)**.
-`make finish` green ≠ timing closed al SDC period.
+Required reading: **fmax finish (2.01 GHz) < 1/0.46 (2.17 GHz)**.
+`make finish` green ≠ timing closed at the SDC period.
 
 `period_min` is the smallest period for which STA does **not** see negative WNS
-(con quel modello RC). fmax ≈ `1000 / period_min` in MHz se `period_min` is in ns.
+(with that RC model). fmax ≈ `1000 / period_min` in MHz if `period_min` is in ns.
 
-Clock **ideale** a place (`period_min` 0.45) vs clock **propagato** + SPEF a finish (0.50):
+**Ideal** clock at place (`period_min` 0.45) vs **propagated** clock + SPEF at finish (0.50):
 the extra 0.05 ns is wires + tree, not a bug.
 
-**RSZ-0062** su this run is atteso: il resizer CTS non chiude all le setup.
-Il placement resta legale (util 48%, non 100%). **DPL-0038** is un altro errore
-(LAB 05 parte 4).
+**RSZ-0062** on this run is expected: the CTS resizer does not close all setup.
+Placement stays legal (util 48%, not 100%). **DPL-0038** is a different error
+(LAB 05 part 4).
 
 ---
 
-## Come estrarre i campi (copia-incolla)
+## How to extract fields (copy-paste)
 
-Da `tools/OpenROAD-flow-scripts/flow`:
+From `tools/OpenROAD-flow-scripts/flow`:
 
 ```bash
 rg -n 'Number of cells|Chip area|DFF_X1' reports/nangate45/gcd/learn/synth_stat.txt
@@ -80,22 +80,22 @@ rg -n 'wns max|tns max|period_min|setup violation' reports/nangate45/gcd/learn/6
 
 PNG: `gui-shots/orfs_cts_clock_tree.png`
 
-- Latency leaves ~ **0.07 ns**
-- Secondo livello ~ **fanout 4**
-- Foglie aligned in Y → skew piccolo (consistent with report ~0)
+- Leaf latency ~ **0.07 ns**
+- Second level ~ **fanout 4**
+- Leaves aligned in Y → small skew (consistent with report ~0)
 
 ---
 
-## Cosa is not “d’oro”
+## What is not “golden”
 
-- Run `FLOW_VARIANT=base` o `designs/nangate45/gcd` **senza** `-tutorial`
-- SDC tight 0.25 ns + util 55 → **DPL-0038** (exercise LAB 05, non this tabella)
-- Yosys senza Tcl / ORFS master vs OpenROAD 26Q2 (`STA-2204`)
+- Run `FLOW_VARIANT=base` or `designs/nangate45/gcd` **without** `-tutorial`
+- Tight SDC 0.25 ns + util 55 → **DPL-0038** (LAB 05 exercise, not this table)
+- Yosys without Tcl / ORFS master vs OpenROAD 26Q2 (`STA-2204`)
 
 ---
 
 ## How to use it in the notebook
 
-Per every lesson: copia the row of the table, metti **your valore** accanto,
-percent delta. If delta > 20% su area/celle, stop and open the playbook.
-Il final project uses the same grid in `workbook/progetto-finale-template.md`.
+For every lesson: copy the table row, put **your value** next to it,
+percent delta. If delta > 20% on area/cells, stop and open the playbook.
+The final project uses the same grid in `workbook/progetto-finale-template.md`.

@@ -1,110 +1,110 @@
-# Playbook di debug — Physical Design con OpenROAD
+# Debug playbook — Physical Design with OpenROAD
 
-Guide operativa quando qualcosa va storto. Leggila **prima** di panic, **durante** every lesson.
+Operational guide for when something goes wrong. Read it **before** you panic, **during** every lesson.
 
 ---
 
-## Metodologia generale (sempre uguale)
+## General methodology (always the same)
 
 ```
-1. Identifica la FASE (synth? floorplan? cts?)
-2. Apri il LOG della fase (logs/.../learn/<step>.log)
-3. Search for ERROR, WARNING critici, codici (DPL-0038, RSZ-0062, STA-2204)
-4. Apri l'ODB di errore se esiste (gui_<step>_error.odb)
-5. Compare con l'ODB of the step precedente
-6. Modify UN parayardstick alla volta (SDC o config.mk)
+1. Identify the PHASE (synth? floorplan? cts?)
+2. Open the phase LOG (logs/.../learn/<step>.log)
+3. Search for ERROR, critical WARNINGs, codes (DPL-0038, RSZ-0062, STA-2204)
+4. Open the error ODB if it exists (gui_<step>_error.odb)
+5. Compare with the ODB from the previous step
+6. Change ONE variable at a time (SDC or config.mk)
 7. clean_<stage> and rerun only from there
 ```
 
-Non cambiare cinque variabili insieme: non capirai never quale ha causato l'effetto.
+Do not change five variables at once: you will never know which one caused the effect.
 
 ---
 
-## Errori per fase
+## Errors by phase
 
 ### Synthesis (step 1_x)
 
-| Sintomo | Cause probabile | Fix |
+| Symptom | Probable cause | Fix |
 |---|---|---|
-| `No such command: source` | yosys senza Tcl | reinstall yosys con `tcl-dev`, see script 04 |
-| `Error parsing options: Option 'c'` | yosys 0.68+ vs ORFS vecchio | allinea tag ORFS a OpenROAD (26Q2) |
-| Celle unmapped | libreria mancante | verifica LIB_FILES in platform config |
-| Latch inferiti | RTL senza reset | controlla always block in gcd.v |
+| `No such command: source` | yosys without Tcl | reinstall yosys with `tcl-dev`, see script 04 |
+| `Error parsing options: Option 'c'` | yosys 0.68+ vs old ORFS | align ORFS tag to OpenROAD (26Q2) |
+| Unmapped cells | missing library | verify LIB_FILES in platform config |
+| Inferred latches | RTL without reset | check always blocks in gcd.v |
 
-**Files da aprire:** `logs/.../1_2_yosys.log`, `reports/.../synth_stat.txt`
+**Files to open:** `logs/.../1_2_yosys.log`, `reports/.../synth_stat.txt`
 
 ---
 
 ### Floorplan (step 2_x)
 
-| Sintomo | Cause probabile | Fix |
+| Symptom | Probable cause | Fix |
 |---|---|---|
-| Core area troppo piccola | CORE_UTILIZATION alta | abbassa a 25–35% |
-| `Floorplan methods mutually exclusive` | DIE_AREA + UTILIZATION insieme | use solo uno in config.mk |
-| PDN non visibile in GUI | layer PDN disabilitati | Display Control → PDN → visible |
-| IO pin fuori core | vincoli IO | controlla `3_2_place_iop` (fase successiva) |
+| Core area too small | high CORE_UTILIZATION | lower to 25–35% |
+| `Floorplan methods mutually exclusive` | DIE_AREA + UTILIZATION together | use only one in config.mk |
+| PDN not visible in GUI | PDN layers disabled | Display Control → PDN → visible |
+| IO pin outside core | IO constraints | check `3_2_place_iop` (next phase) |
 
 **Files:** `logs/2_1_floorplan.log` — search for `Core area`, `Effective utilization`
 
-**Exercise debug:** confronta utilization 25 vs 55 e note area core nel notebook.
+**Debug exercise:** compare utilization 25 vs 55 and note core area in the notebook.
 
 ---
 
 ### Placement (step 3_x)
 
-| Sintomo | Cause probabile | Fix |
+| Symptom | Probable cause | Fix |
 |---|---|---|
 | High overflow post-GP | excessive density | PLACE_DENSITY, CORE_UTILIZATION |
-| RSZ inserisce centinaia di buffer | clock troppo stretto | rilassa SDC |
-| WNS molto negativo pre-CTS | normale su design stretti | osserva se migliora post-route |
-| `place_density` error | config incoerente | leggi variables.mk del platform |
+| RSZ inserts hundreds of buffers | clock too tight | relax SDC |
+| Very negative WNS pre-CTS | normal on tight designs | observe whether it improves post-route |
+| `place_density` error | inconsistent config | read variables.mk of the platform |
 
 **Files:** `reports/3_global_place.rpt`, `reports/3_resizer.rpt`, `logs/3_4_place_resized.log`
 
-**GUI:** confronta `gui_3_3_place_gp` vs `gui_3_5_place_dp` — see legalizzazione.
+**GUI:** compare `gui_3_3_place_gp` vs `gui_3_5_place_dp` — see legalization.
 
 ---
 
 ### CTS (step 4_x) — the most educational
 
-| Sintomo | Cause probabile | Fix |
+| Symptom | Probable cause | Fix |
 |---|---|---|
-| **`DPL-0038 Utilization > 100%`** | area celle > area core | ↓ utilization, ↑ clock period |
-| `RSZ-0062 Unable to repair all setup` | timing irrealistico | constraint_relaxed.sdc |
-| `Detailed placement failed in CTS` | idem | gui_4_1_error.odb |
-| Clock tree vuoto in viewer | clock non propagated | verifica create_clock in SDC |
+| **`DPL-0038 Utilization > 100%`** | cell area > core area | ↓ utilization, ↑ clock period |
+| `RSZ-0062 Unable to repair all setup` | unrealistic timing | constraint_relaxed.sdc |
+| `Detailed placement failed in CTS` | same as above | gui_4_1_error.odb |
+| Empty clock tree in viewer | clock not propagated | verify create_clock in SDC |
 
-**Sequenza tipica del nostro course con clock 0.25 ns + util 55%:**
+**Typical sequence in our course with clock 0.25 ns + util 55%:**
 1. Placement OK
-2. Resizer inflates area del ~30%
-3. CTS detailed placement fallisce al 100.2% utilization
+2. Resizer inflates area by ~30%
+3. CTS detailed placement fails at 100.2% utilization
 
-**Fix educational (scegli uno):**
+**Educational fix (pick one):**
 - `CORE_UTILIZATION=30`
 - `constraint_relaxed.sdc` (2.0 ns)
-- Entrambi per comparison
+- Both for comparison
 
 ---
 
 ### Routing (step 5_x)
 
-| Sintomo | Cause probabile | Fix |
+| Symptom | Probable cause | Fix |
 |---|---|---|
-| GRT overflow | congestione | abbassa density, ripeti place |
-| DRC non zero | spacing/width | `reports/5_route_drc.rpt` riga per riga |
-| Antenna violations | routing su gate | diodi antenna (step finishing) |
-| Route non completa | guide mancanti | verifica `route.guide` size > 0 |
+| GRT overflow | congestion | lower density, rerun place |
+| DRC non-zero | spacing/width | `reports/5_route_drc.rpt` line by line |
+| Antenna violations | routing on gate | antenna diodes (finishing step) |
+| Route incomplete | missing guides | verify `route.guide` size > 0 |
 
 ### GUI
 
-| Sintomo | Cause probabile | Fix |
+| Symptom | Probable cause | Fix |
 |---|---|---|
-| Preview Cursor nera / “non disponibile” | Preview ≠ VNC | **Desktop** su cursor.com/agents |
-| Canvas nero su `1_synth` | nessun die | normale; vai a floorplan |
-| `GUI-0013` su `"Rows"` | nome controllo inesistente | non usare quella stringa; see atlas §5.2 |
-| `sta_error 563` su `report_checks -path_delay max` | flag non valido in this STA | `report_checks -max_paths 3` |
-| Layer accesi ma “non vedo the clock” | i fili are geometria layer | `select -name "clk" -type Net` |
-| `save_image` GUI-0078 su `2_1_floorplan` | poca geometria | use `2_4` PDN o the window Qt |
+| Black Preview / “not available” | Preview ≠ VNC | **Desktop** on cursor.com/agents |
+| Black canvas on `1_synth` | no die | normal; go to floorplan |
+| `GUI-0013` on `"Rows"` | control name does not exist | do not use that string; see atlas §5.2 |
+| `sta_error 563` on `report_checks -path_delay max` | invalid flag in this STA | `report_checks -max_paths 3` |
+| Layers on but “cannot see the clock” | wires are layer geometry | `select -name "clk" -type Net` |
+| `save_image` GUI-0078 on `2_1_floorplan` | little geometry | use `2_4` PDN or the Qt window |
 
 See `gui-atlas.md`.
 
@@ -112,30 +112,30 @@ See `gui-atlas.md`.
 
 ### Finish (step 6_x)
 
-| Sintomo | Cause probabile | Fix |
+| Symptom | Probable cause | Fix |
 |---|---|---|
-| `STA-2204 get_property default` | mismatch ORFS/OpenROAD version | allinea tag 26Q2 |
-| GUI save_images fallisce | headless / no display | normale in batch; GDS ok comunque |
-| GDS vuoto | merge failed | `logs/6_1_merge.log`, klayout installato? |
-| Slack peggiora post-route | parasitics reali | normale; confronta pre/post SPEF |
+| `STA-2204 get_property default` | ORFS/OpenROAD version mismatch | align tag 26Q2 |
+| GUI save_images fails | headless / no display | normal in batch; GDS ok anyway |
+| Empty GDS | merge failed | `logs/6_1_merge.log`, klayout installed? |
+| Slack worsens post-route | real parasitics | normal; compare pre/post SPEF |
 
 ---
 
-## Checklist pre-run (copia-incolla)
+## Pre-run checklist (copy-paste)
 
-Before di every sessione di studio:
+Before every study session:
 
 - [ ] `./scripts/learn_physical_design.sh --check` green
-- [ ] `FLOW_VARIANT=learn` (non sovrascrivere base)
-- [ ] SDC backup se fai esperimenti (`cp constraint.sdc constraint.sdc.bak`)
-- [ ] Desktop Cursor aperto se you need GUI
-- [ ] Notebook / file note aperto (`learn/workbook/notes-template.md`)
+- [ ] `FLOW_VARIANT=learn` (do not overwrite base)
+- [ ] SDC backup if you run experiments (`cp constraint.sdc constraint.sdc.bak`)
+- [ ] Cursor Desktop open if you need GUI
+- [ ] Notebook / notes file open (`learn/workbook/notes-template.md`)
 
 ---
 
-## Comandi di emergenza
+## Emergency commands
 
-Da `tools/OpenROAD-flow-scripts/flow` il comando **canonico** (never puntini):
+From `tools/OpenROAD-flow-scripts/flow` the **canonical** command (never ellipsis):
 
 ```bash
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
@@ -145,18 +145,18 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 `<target>`: `synth` `floorplan` `place` `cts` `route` `finish` `clean_<stage>` `gui_<stem>.odb`
 
 ```bash
-# Status artefatti
+# Artifact status
 ls -lh tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn/
 
-# Ultimo errore in log
+# Latest error in log
 rg -n 'ERROR|Error:' tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/learn/
 
-# GUI ultimo snapshot
+# GUI latest snapshot
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_4_1_error.odb
 
-# Reset solo una fase (copia intero — never «make ...»)
+# Reset only one phase (copy entire command — never «make ...»)
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 clean_cts
@@ -166,21 +166,21 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 
 ---
 
-## Diario di debug (template)
+## Debug diary (template)
 
-Quando qualcosa fallisce, scrivi:
+When something fails, write:
 
 ```
-Data:
-Fase:
-Comando eseguito:
-Errore (copia-incolla 3 righe dal log):
+Date:
+Phase:
+Command run:
+Error (copy-paste 3 lines from log):
 CORE_UTILIZATION:
 clk_period SDC:
 Hypothesis:
-Fix provato:
-Risultato:
-Lesson appresa:
+Fix tried:
+Result:
+Lesson learned:
 ```
 
-Salva in `learn/workbook/mio-debug-log.md`.
+Save in `learn/workbook/mio-debug-log.md`.

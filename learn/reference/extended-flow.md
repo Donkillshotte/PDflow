@@ -1,18 +1,18 @@
-# Flusso esteso: RTL → sim → synth → PD → power/DRC → packaging (mappa)
+# Extended flow: RTL → sim → synth → PD → power/DRC → packaging (map)
 
 Review of **tool hooks** and how to bring into the treatment (and where already
-in the run) the topics: RTL, sim RTL, synthesis, vector activity, DRC, gridcheck,
+in the run) the topics: RTL, RTL sim, synthesis, vector activity, DRC, gridcheck,
 PDN, bump/RDL/system PDN, thermal.
 
-Legenda stato:
+Status legend:
 
 | Status | Meaning |
 |---|---|
-| **READY** | Nel flusso ORFS/`learn` e usabile ora |
-| **PARTIAL** | API/tool presenti; course o wiring incompleto |
-| **MISSING** | You need tool/processo fuori scope Nangate45 digitale flat |
+| **READY** | In the ORFS/`learn` flow and usable now |
+| **PARTIAL** | APIs/tools present; course or wiring incomplete |
+| **MISSING** | You need a tool/process outside flat digital Nangate45 scope |
 
-Comando ORFS canonico del course:
+Canonical ORFS command for the course:
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -22,21 +22,21 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 
 ---
 
-## 1. RTL iniziale — READY
+## 1. Initial RTL — READY
 
-| Where | Dettaglio |
+| Where | Detail |
 |---|---|
-| Sorgente | `tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v` |
-| Config course | `learn/designs/nangate45/gcd-tutorial/config.mk` → `VERILOG_FILES` |
-| Trattazione | Lesson 00 (find RTL), 02 (netlist vs RTL) |
+| Source | `tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v` |
+| Course config | `learn/designs/nangate45/gcd-tutorial/config.mk` → `VERILOG_FILES` |
+| Treatment | Lesson 00 (find RTL), 02 (netlist vs RTL) |
 
-**Studio:** file via materiali / path; you do not need un viewer dedicato.
+**Study:** file via materials / path; you do not need a dedicated viewer.
 
 ---
 
-## 2. Simulazione RTL — READY (slice nuovo)
+## 2. RTL simulation — READY (new slice)
 
-| Componente | Path |
+| Component | Path |
 |---|---|
 | Testbench | `learn/sim/gcd/tb_gcd.v` |
 | Runner | `learn/scripts/run_rtl_sim.sh` |
@@ -45,11 +45,11 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 
 ```bash
 ./learn/scripts/run_rtl_sim.sh
-# aspetta RTL_SIM_PASS + VCD
+# wait for RTL_SIM_PASS + VCD
 ```
 
-**Studio:** azione `rtl_sim` (console Strumenti).  
-**Prossimo passo educational:** wave con GTKWave sul Desktop; Verilator se you need perf.
+**Study:** action `rtl_sim` (Tools console).  
+**Next educational step:** waves with GTKWave on Desktop; Verilator if you need performance.
 
 ---
 
@@ -67,13 +67,13 @@ make … synth
 
 ---
 
-## 4. Vector activity e vectorless — READY
+## 4. Vector activity and vectorless — READY
 
 | Layer | Status |
 |---|---|
 | OpenSTA | `set_power_activity`, **`read_vcd -scope tb_gcd/dut`**, `report_power` |
-| Dynamic | VCD Icarus su nomi che matchano il gate netlist (port) |
-| Vectorless | global activity 0.5 + envelope Kouroussis (DAC 2003) + Najm \(P_{01}\) |
+| Dynamic | Icarus VCD on names that match the gate netlist (port) |
+| Vectorless | global activity 0.5 + Kouroussis envelope (DAC 2003) + Najm \(P_{01}\) |
 | Demo | `learn/scripts/run_activity_power.sh` · `run_vectorless.sh` |
 
 ```bash
@@ -81,41 +81,41 @@ make … synth
 FLOW_VARIANT=flowlab ./learn/scripts/run_vectorless.sh
 ```
 
-**Studio:** azioni `activity_power` e `vectorless`. Docs: [vectorless-power.md](./vectorless-power.md).
+**Study:** actions `activity_power` and `vectorless`. Docs: [vectorless-power.md](./vectorless-power.md).
 
-Non usare `read_power_activities` (deprecato, arity rotta in OpenSTA 26Q2).
+Do not use `read_power_activities` (deprecated, broken arity in OpenSTA 26Q2).
 
 ---
 
-## 5. DRC — READY (route + signoff unificato)
+## 5. DRC — READY (unified route + signoff)
 
-| Tipo | Come |
+| Type | How |
 |---|---|
 | Detailed-route DRC | `make … route` → `reports/.../5_route_drc.rpt` (L06) |
 | **DRC signoff** | `learn/scripts/run_drc_signoff.sh` → route lines + `make drc` → `drc_signoff_{v}.json` |
 | KLayout GDS DRC (legacy) | `learn/scripts/run_klayout_drc.sh` → `6_drc.lyrdb` |
-| Magic | tech presente, **non** nel path course |
+| Magic | tech present, **not** in the course path |
 
 ```bash
-# after finish — signoff unificato (preferito)
+# after finish — unified signoff (preferred)
 FLOW_VARIANT=learn ./learn/scripts/run_drc_signoff.sh
 ```
 
-**Studio:** azione `drc_signoff` · matrice in FlowLab finish / [`/pkg`](/pkg).  
+**Study:** action `drc_signoff` · matrix in FlowLab finish / [`/pkg`](/pkg).  
 See [signoff-matrix.md](./signoff-matrix.md).
 
 ---
 
 ## 5b. STA signoff — READY
 
-| Componente | Path |
+| Component | Path |
 |---|---|
 | Finish report | `reports/.../6_finish.rpt` |
 | OpenSTA + SPEF | `run_sta_signoff.sh` |
 | Report | `learn/sim/reports/sta_signoff_{v}.json` |
 | Gate | vs `learn/signoff/golden-gcd.json` |
 
-**Studio:** azione `sta_signoff` · `GET /api/signoff`.
+**Study:** action `sta_signoff` · `GET /api/signoff`.
 
 ---
 
@@ -123,23 +123,23 @@ See [signoff-matrix.md](./signoff-matrix.md).
 
 ORFS: `make lvs` → CDL concat + KLayout LVS → `6_lvs.lvsdb`.
 
-| Componente | Path |
+| Component | Path |
 |---|---|
-| LVS runset | `platforms/nangate45/lvs/FreePDK45.lylvs` (da [FreePDK45_for_KLayout](https://github.com/laurentc2/FreePDK45_for_KLayout)) |
+| LVS runset | `platforms/nangate45/lvs/FreePDK45.lylvs` (from [FreePDK45_for_KLayout](https://github.com/laurentc2/FreePDK45_for_KLayout)) |
 | Wrapper | `learn/scripts/run_klayout_lvs.sh` |
 | Parser UI | `learn/scripts/parse_signoff_artifacts.py` |
 | Report | `learn/sim/reports/lvs_signoff_{v}.json` |
 
-**Honest note:** on GCD FreePDK45, LVS may not be tapeout-clean; interpretare the report.
+**Honest note:** on GCD FreePDK45, LVS may not be tapeout-clean; interpret the report.
 
-**Studio:** azione `klayout_lvs` · matrice artefatti in FlowLab finish.
+**Study:** action `klayout_lvs` · artifact matrix in FlowLab finish.
 
 ---
 
-## 6. Gridcheck (connectivity power grid) — READY (slice)
+## 6. Gridcheck (power grid connectivity) — READY (slice)
 
-ORFS lascia `check_power_grid` **commentato** in `pdn.tcl` (CI). On the GCD Nangate
-servono spesso `-dont_require_terminals`.
+ORFS leaves `check_power_grid` **commented** in `pdn.tcl` (CI). On Nangate GCD
+`-dont_require_terminals` is often needed.
 
 ```bash
 ./learn/scripts/run_gridcheck.sh pdn     # 2_4_floorplan_pdn.odb
@@ -148,7 +148,7 @@ servono spesso `-dont_require_terminals`.
 
 Expected: `PSM-0040 All shapes on net VDD/VSS are connected`.
 
-**Studio:** azione `gridcheck` + sezione inspect.
+**Study:** action `gridcheck` + inspect section.
 
 **IR drop** (different from gridcheck): already in `make … finish` → `analyze_power_grid`
 + heatmap `final_ir_drop` (L07).
@@ -162,75 +162,74 @@ Expected: `PSM-0040 All shapes on net VDD/VSS are connected`.
 | Script | `flow/scripts/pdn.tcl` (`pdngen`) |
 | Strategy | `…/gcd/grid_strategy-M1-M4-M7.tcl` |
 | Lesson | 03-floorplan |
-| GUI | `gui_2_4_floorplan_pdn.odb` / Studio Apri GUI |
+| GUI | `gui_2_4_floorplan_pdn.odb` / Studio Open GUI |
 
 ---
 
-## 8. Bump · RDL · system PDN — PARTIAL (demo Studio)
+## 8. Bump · RDL · system PDN — PARTIAL (Studio demo)
 
-OpenROAD espone:
+OpenROAD exposes:
 
 - `assign_io_bump`, `make_io_bump_array`
 - `rdl_route`
 - `analyze_power_grid -source_type BUMPS|STRAPS|FULL`
 
-**Studio (READY demo):**
+**Study (READY demo):**
 
 | Piece | Where |
 |---|---|
-| Chip PDN gridcheck | FlowLab fase **PDN** · `FLOW_VARIANT=… ./learn/scripts/run_gridcheck.sh` |
-| System PDN (VRM→board→pkg→die) | FlowLab fase **PKG** · `system_pdn` · `run_system_pdn.sh` · ngspice |
+| Chip PDN gridcheck | FlowLab **PDN** phase · `FLOW_VARIANT=… ./learn/scripts/run_gridcheck.sh` |
+| System PDN (VRM→board→pkg→die) | FlowLab **PKG** phase · `system_pdn` · `run_system_pdn.sh` · ngspice |
 | Chip IR static+transient (optional) | `run_chip_pdn_ir.sh` · PDNSim + `pdn_transient.py` |
 | vyges-em-ir (engine) | `run_vyges_em_ir.sh` · CG + backward Euler |
 | Dynamic IR I(t) | `run_dynamic_ir.sh` · PWL per pin + heatmap |
-| Hub packaging | [`/pkg`](/pkg) · [spice-power-chain.md](./spice-power-chain.md) · `system-pdn.md` + `pkg-design-package.md` |
+| Packaging hub | [`/pkg`](/pkg) · [spice-power-chain.md](./spice-power-chain.md) · `system-pdn.md` + `pkg-design-package.md` |
 
-**Guide esaustiva catena fasi:** [spice-power-chain.md](./spice-power-chain.md) — mappa lezioni 00–07 ↔ FlowLab ↔ SPICE.
+**Exhaustive phase-chain guide:** [spice-power-chain.md](./spice-power-chain.md) — maps lessons 00–07 ↔ FlowLab ↔ SPICE.
 
-**Limite onesto:** System PDN is un ladder *lumped* educativo; Nangate45 GCD does not LEF/tech di packaging. Chip IR `BUMPS` use un
-pattern sintetico OpenROAD (PSM-0073), non un package tapeout-ready.
+**Honest limit:** System PDN is an educational *lumped* ladder; Nangate45 GCD has no packaging LEF/tech. Chip IR `BUMPS` uses a synthetic OpenROAD pattern (PSM-0073), not a tapeout-ready package.
 
-**Estensioni future:**
+**Future extensions:**
 
-1. Lab su design ORFS con bump LEF reale
-2. Board SI/PI models fuori OpenROAD
-3. Thermal (HotSpot / 3D-ICE) — ancora MISSING
+1. Lab on an ORFS design with real bump LEF
+2. Board SI/PI models outside OpenROAD
+3. Thermal (HotSpot / 3D-ICE) — still MISSING
 
 ---
 
 ## 9. Thermal analysis — PARTIAL (proxy READY)
 
-Nessun comando thermal nativo in OpenROAD 26Q2; nessun target ORFS HotSpot.
+No native thermal command in OpenROAD 26Q2; no HotSpot ORFS target.
 
-**Slice course (proxy READY):**
+**Course slice (proxy READY):**
 
-| Componente | Path |
+| Component | Path |
 |---|---|
 | Script | `learn/scripts/run_thermal_signoff.sh` |
 | Report | `learn/sim/reports/thermal_signoff_{v}.json` |
-| Input | chip IR JSON + heatmap ORFS `orfs_final_ir_drop.png` |
-| Studio | azione `thermal_signoff` · matrice Fase 2 su `/pkg` |
+| Input | chip IR JSON + ORFS heatmap `orfs_final_ir_drop.png` |
+| Studio | action `thermal_signoff` · Phase 2 matrix on `/pkg` |
 
-Il proxy somma IR statico + droop transient come stima educativa hotspot; soglia 50 mV in the report.
+The proxy sums static IR + transient droop as an educational hotspot estimate; 50 mV threshold in the report.
 
-**Opzioni open esterne (non installate):** HotSpot, 3D-ICE.  
+**External open options (not installed):** HotSpot, 3D-ICE.  
 **Honest treatment:** “reliability / thermal” chapter with proxy + power map, without pretending tapeout thermal closed-loop.
 
-Power map proxy already available: heatmap IR + `report_power` (activity script).
+Power map proxy already available: IR heatmap + `report_power` (activity script).
 
 ---
 
-## Agganci Studio (console / API)
+## Studio hooks (console / API)
 
-| Azione / API | Topic |
+| Action / API | Topic |
 |---|---|
-| `rtl_sim` | Sim RTL Icarus |
+| `rtl_sim` | Icarus RTL sim |
 | `gridcheck` | `check_power_grid` |
 | `system_pdn` | ngspice System PDN · VRM→board→pkg→die |
 | `chip_pdn_ir` | PDNSim + write_pg_spice + pdn_transient |
-| `vyges_em_ir` | vyges-em-ir binario su `.pdn` dalla stessa mesh |
+| `vyges_em_ir` | vyges-em-ir binary on `.pdn` from the same mesh |
 | `dynamic_ir` | PWL per ITerm + A LU + B SA-AMG + C Krylov MOR + D RAS |
-| `power_chain` | activity → chip IR → system → export lab |
+| `power_chain` | activity → chip IR → system → lab export |
 | `activity_power` | `read_vcd` / `set_power_activity` + `report_power` |
 | `vectorless` | Vectorless vs dynamic IR (Najm + Kouroussis) |
 | `yosys_equiv` | Yosys equiv RTL↔synth (EQY-class) |
@@ -238,38 +237,38 @@ Power map proxy already available: heatmap IR + `report_power` (activity script)
 | `openrcx_report` | OpenRCX SPEF counts |
 | `analytical_pex` | Sakurai–Tamaru + FDM 2D (FasterCap-class) |
 | `layout_tools` | Magic / Netgen / KLayout probe |
-| `tool_matrix` | Orchestrator OSS |
-| `klayout_drc` | GDS DRC (legacy, solo GDS) |
+| `tool_matrix` | OSS orchestrator |
+| `klayout_drc` | GDS DRC (legacy, GDS only) |
 | `sta_signoff` | STA vs golden-metrics |
-| `drc_signoff` | Route DRC + KLayout GDS unificato |
+| `drc_signoff` | Route DRC + unified KLayout GDS |
 | `klayout_lvs` | LVS GDS vs CDL |
-| `power_signoff` | Catena power + gate golden |
-| `signoff_all` | Orchestrator 4 pilastri (+ opz. Fase 2: `SIGNOFF_INCLUDE_PHASE2=1`) |
+| `power_signoff` | Power chain + golden gate |
+| `signoff_all` | Four-pillar orchestrator (+ optional Phase 2: `SIGNOFF_INCLUDE_PHASE2=1`) |
 | `signoff_phase2` | Thermal proxy + PKG orchestrator |
-| `thermal_signoff` | Proxy IR+droop hotspot |
-| `pkg_signoff` | Bump + RDL edu + system PDN |
-| `/api/signoff` | Matrice signoff + gate |
-| `/api/inspect` | ODB / STA / Yosys (+ note hook) |
+| `thermal_signoff` | IR+droop hotspot proxy |
+| `pkg_signoff` | Bump + educational RDL + system PDN |
+| `/api/signoff` | Signoff matrix + gate |
+| `/api/inspect` | ODB / STA / Yosys (+ hook notes) |
 | `/api/viewer` | OpenROAD `-web` |
 | `/api/open` | Qt GUI / KLayout |
-| fasi `synth`…`finish` | PD classico |
+| phases `synth`…`finish` | classic PD |
 
-Documentazione hook di basso livello: [tool-hooks.md](./tool-hooks.md).
+Low-level hook documentation: [tool-hooks.md](./tool-hooks.md).
 
 ---
 
-## Piano educational suggerito (estensione)
+## Suggested educational plan (extension)
 
-| Modulo | Quando | Ore stimate (studio) |
+| Module | When | Estimated study hours |
 |---|---|---|
-| RTL + sim + VCD | tra L00 e L02 | 1–2 h |
-| Yosys approfondito | L02 | already covered |
+| RTL + sim + VCD | between L00 and L02 | 1–2 h |
+| Yosys deep dive | L02 | already covered |
 | Activity → power | after L07 | 1 h |
 | Vectorless / dynamic IR | after L07 + VCD | 1 h |
 | Gridcheck + IR | L03 + L07 | 0.5–1 h |
 | KLayout DRC | after finish | 0.5–1 h |
-| Bump/RDL/system PDN | elettivo avanzato | 2–3 h teoria |
-| Thermal | elettivo / lettura | 1 h teoria |
+| Bump/RDL/system PDN | advanced elective | 2–3 h theory |
+| Thermal | elective / reading | 1 h theory |
 
-Non allungare il percourse required 00–07: i nuovi script are **modules
-opzionali** callsti da Studio e da this mappa.
+Do not lengthen the required 00–07 course: the new scripts are **optional
+modules** callable from Studio and from this map.
