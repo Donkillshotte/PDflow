@@ -267,7 +267,7 @@ def coordinate(log: ExperimentLog, designs: list[str], deepen: bool = False) -> 
     if cover:
         return {
             "decision": "cover",
-            "why": "Mancano misure di catalogo. Prima i buchi, dal finish più economico.",
+            "why": "Missing catalog measurements. Fill holes first, cheapest finish.",
             "review": review,
             "jobs": cover,
         }
@@ -275,7 +275,7 @@ def coordinate(log: ExperimentLog, designs: list[str], deepen: bool = False) -> 
     if improve:
         return {
             "decision": "improve",
-            "why": "Catalogo coperto. Slot senza win: prova knob/combo nuovi.",
+            "why": "Catalog covered. Slots with no wins: try new knobs/combos.",
             "review": review,
             "jobs": improve,
         }
@@ -284,13 +284,13 @@ def coordinate(log: ExperimentLog, designs: list[str], deepen: bool = False) -> 
         if deep:
             return {
                 "decision": "deepen",
-                "why": "Override --deepen: combina assi che hanno già vinto (griglia, non TPE).",
+                "why": "Override --deepen: combine axes that already won (grid, not TPE).",
                 "review": review,
                 "jobs": deep,
             }
         return {
             "decision": "stop",
-            "why": "Niente da cucinare: catalogo coperto, slot senza win esauriti, combo dei win già provate o assenti.",
+            "why": "Nothing to cook: catalog covered, improve exhausted, winning combos already tried or absent.",
             "review": review,
             "jobs": [],
         }
@@ -302,7 +302,7 @@ def coordinate(log: ExperimentLog, designs: list[str], deepen: bool = False) -> 
             continue
         return {
             "decision": "tune",
-            "why": "Catalogo coperto e improve esaurito. TPE sullo stesso die, un finish alla volta.",
+            "why": "Catalog covered and improve exhausted. TPE on the same die, one finish at a time.",
             "design": d,
             "warm": prev.get("warm"),
             "queue": prev.get("queue"),
@@ -313,7 +313,7 @@ def coordinate(log: ExperimentLog, designs: list[str], deepen: bool = False) -> 
         }
     return {
         "decision": "stop",
-        "why": "Niente da cucinare: catalogo coperto, improve esaurito, nessun slot ammissibile al tune.",
+        "why": "Nothing to cook: catalog covered, improve exhausted, no slot admissible for tune.",
         "review": review,
         "jobs": [],
     }

@@ -536,11 +536,11 @@ def check_next_level(check, root: Path) -> None:
     check("IR worst" in qor_md and "GRT WL" in qor_md, "QoR sheet includes IR and GRT WL")
     check("6.67" in qor_md and "7589" in qor_md, f"QoR sheet shows reference IR/WL absolutes")
     check("Side-by-side sheets" in qor_md, "QoR sheet has side-by-side reference columns")
-    check("Ricette" in qor_md, "QoR sheet has a human recipe legend")
+    check("Recipes" in qor_md, "QoR sheet has a human recipe legend")
     check("IR mean" in qor_md and "Density" in qor_md, "QoR sheet has mean IR and density")
 
     win = label_for(type("E", (), {"variant": "camp_gcd_q1_d25u35", "role": "knob", "extra": {}})())
-    check("denso" in win.title.lower() or "buffer" in win.title.lower(), f"win title is readable: {win.title}")
+    check("denser" in win.title.lower() or "buffer" in win.title.lower(), f"win title is readable: {win.title}")
     check("d25u35" not in win.title, "win title is not the coded variant id")
     sm = synth_method_from_exploration()
     check(sm["abc"] == "area" and sm["ABC_SPEED"] == 0, f"explored synth method is ABC area {sm}")
@@ -556,35 +556,40 @@ def check_next_level(check, root: Path) -> None:
     both = resolve_many(["place_denser", "repair_half_tns"], spi_def)
     check(abs(float(both["PLACE_DENSITY_LB_ADDON"]) - 0.25) < 1e-9, "combo keeps place_denser offset")
     check(both["TNS_END_PERCENT"] == "50", f"combo sets TNS 50 {both}")
-    check("Place" in titles_of(["place_denser"]), f"titles_of {titles_of(['place_denser'])}")
+    check("denser" in titles_of(["place_denser"]).lower(), f"titles_of {titles_of(['place_denser'])}")
     tagged = label_for(type("E", (), {"variant": "camp_spi_place_denser", "role": "knob", "extra": {"recipe_ids": ["place_denser"]}})())
-    check("denso" in tagged.title.lower(), f"catalog title on extra.recipe_ids: {tagged.title}")
+    check("denser" in tagged.title.lower(), f"catalog title on extra.recipe_ids: {tagged.title}")
     spi_pd = label_for("camp_spi_place_denser")
-    check("denso" in spi_pd.title.lower() and "d25u35" not in spi_pd.title, f"J1 place title {spi_pd.title}")
+    check("denser" in spi_pd.title.lower() and "d25u35" not in spi_pd.title, f"J1 place title {spi_pd.title}")
     check("transfer" in spi_pd.payoff.lower(), f"J1 place payoff is a transfer result: {spi_pd.payoff}")
     spi_rt = label_for("camp_spi_repair_half_tns")
     check("tns" in spi_rt.title.lower() or "repair" in spi_rt.title.lower(), f"J1 repair title {spi_rt.title}")
-    check("non cambia" in spi_rt.payoff.lower() or "orario" in spi_rt.payoff.lower() or "no-op" in spi_rt.payoff.lower(), f"J1 repair payoff is honest: {spi_rt.payoff}")
+    check(
+        "changes nothing" in spi_rt.payoff.lower()
+        or "already met" in spi_rt.payoff.lower()
+        or "no-op" in spi_rt.payoff.lower(),
+        f"J1 repair payoff is honest: {spi_rt.payoff}",
+    )
     spi_ct = label_for("camp_spi_core_tighter")
-    check("stretto" in spi_ct.title.lower(), f"J2 core title {spi_ct.title}")
-    check("win" not in spi_ct.payoff.lower() or "non basta" in spi_ct.payoff.lower(), f"J2 core payoff honest {spi_ct.payoff}")
+    check("tighter" in spi_ct.title.lower(), f"J2 core title {spi_ct.title}")
+    check("win" not in spi_ct.payoff.lower() or "not enough" in spi_ct.payoff.lower(), f"J2 core payoff honest {spi_ct.payoff}")
     gcd_pad = label_for("camp_gcd_cell_pad_plus")
     check("padding" in gcd_pad.title.lower() or "site" in gcd_pad.title.lower(), f"C1 pad title {gcd_pad.title}")
     check("win" in gcd_pad.payoff.lower() and "ir" in gcd_pad.payoff.lower(), f"C1 pad payoff is a win: {gcd_pad.payoff}")
     gcd_hier = label_for("camp_gcd_synth_hier")
-    check("perde" in gcd_hier.payoff.lower() or "lose" in gcd_hier.payoff.lower(), f"C1 hier payoff is a lose: {gcd_hier.payoff}")
+    check("lose" in gcd_hier.payoff.lower(), f"C1 hier payoff is a lose: {gcd_hier.payoff}")
     ibex_setup = label_for("camp_ibex_repair_setup_margin")
     check("win" in ibex_setup.payoff.lower() and "41" in ibex_setup.payoff, f"C1 ibex setup payoff {ibex_setup.payoff}")
     ibex_wide = label_for("camp_ibex_aspect_wide")
-    check("laboratorio" in ibex_wide.payoff.lower(), f"C1 ibex wide is lab {ibex_wide.payoff}")
+    check("lab" in ibex_wide.payoff.lower(), f"C1 ibex wide is lab {ibex_wide.payoff}")
     aes_cts = label_for("camp_aes_cts_closer_bufs")
     check("win" in aes_cts.payoff.lower(), f"C1 aes cts payoff {aes_cts.payoff}")
     aes_sp = label_for("camp_aes_place_sparser")
     check("win" in aes_sp.payoff.lower() and "ir" in aes_sp.payoff.lower(), f"C1 aes sparse payoff {aes_sp.payoff}")
     dn_loose = label_for("camp_dynamic_node_core_looser")
-    check("laboratorio" in dn_loose.payoff.lower(), f"C1 dn looser is lab {dn_loose.payoff}")
+    check("lab" in dn_loose.payoff.lower(), f"C1 dn looser is lab {dn_loose.payoff}")
     dn_hier = label_for("camp_dynamic_node_synth_hier")
-    check("stop" in dn_hier.payoff.lower() or "non finito" in dn_hier.payoff.lower(), f"C1 dn hier payoff {dn_hier.payoff}")
+    check("stop" in dn_hier.payoff.lower() or "not finished" in dn_hier.payoff.lower(), f"C1 dn hier payoff {dn_hier.payoff}")
     cook_src = (root / "learn/dse/cook.py").read_text()
     cook_cli = (root / "learn/scripts/cook_recipe.py").read_text()
     check((root / "learn/scripts/cook_recipe.py").is_file(), "cook_recipe.py exists")
@@ -642,7 +647,7 @@ def check_next_level(check, root: Path) -> None:
     check("if design" not in (root / "learn/dse/recipe_select.py").read_text(), "selector has no design name branch")
     check(floorplan_locked(root / "tools/OpenROAD-flow-scripts/flow/designs/nangate45/aes/config.mk"), "aes config locks floorplan")
     check((root / "learn/scripts/run_recipe_loop.py").is_file(), "run_recipe_loop.py exists")
-    check("Prodotto" in qor_md or "product" in qor_md.lower() or "IR" in qor_md, "QoR sheet still renders")
+    check("Product" in qor_md or "product" in qor_md.lower() or "IR" in qor_md, "QoR sheet still renders")
 
     loop_src = (root / "learn/scripts/run_recipe_loop.py").read_text()
     check("--cover-all" in loop_src, "loop has --cover-all")
@@ -653,8 +658,8 @@ def check_next_level(check, root: Path) -> None:
     check("locked = True" in loop_src, "coordinator always pins the product floorplan")
     check('decision": "tune"' in loop_src, "coordinator default can decide tune")
     tpe_plan = (root / "learn/dse/tpe_plan.md").read_text()
-    check("Solo piano" in tpe_plan, "TPE plan is frozen before cooks")
-    check("CORE_UTILIZATION" in tpe_plan and "Mai nello spazio" in tpe_plan, "TPE plan keeps util out of the search space")
+    check("Plan only" in tpe_plan, "TPE plan is frozen before cooks")
+    check("CORE_UTILIZATION" in tpe_plan and "Never in space" in tpe_plan, "TPE plan keeps util out of the search space")
     check("ask → cook_one → tell" in tpe_plan or "ask → cook_one" in tpe_plan, "TPE plan is serial ask/tell")
     check("tpe_plan.md" in (root / "learn/dse/product.md").read_text(), "product cycle points at the TPE plan")
     check(CHEAP_FIRST[0] == "gcd" and CHEAP_FIRST[-1] == "dynamic_node", f"cheap-first order {CHEAP_FIRST}")
@@ -691,11 +696,11 @@ def check_next_level(check, root: Path) -> None:
     check({"hold_margin", "place_notiming", "cts_sparser", "repair_skip"} <= {r["id"] for r in RECIPES}, "improve knobs are in the catalog")
     check(propose_improve(product_wins=0, wns_ns=0.612, already=set(CLOSED_IMPROVE)) == [], "exhausted closed-die knobs propose nothing")
     spi_nt = label_for("camp_spi_place_notiming")
-    check("perde" in spi_nt.payoff.lower() and "ir" in spi_nt.payoff.lower(), f"I1 notiming payoff {spi_nt.payoff}")
+    check("lose" in spi_nt.payoff.lower() and "ir" in spi_nt.payoff.lower(), f"I1 notiming payoff {spi_nt.payoff}")
     spi_sk = label_for("camp_spi_repair_skip")
-    check("no-op" in spi_sk.payoff.lower() or "identico" in spi_sk.payoff.lower(), f"I1 skip-repair payoff {spi_sk.payoff}")
+    check("no-op" in spi_sk.payoff.lower() or "identical" in spi_sk.payoff.lower(), f"I1 skip-repair payoff {spi_sk.payoff}")
     gcd_deep = label_for("camp_gcd_core_looser_cell_pad_plus")
-    check("laboratorio" in gcd_deep.payoff.lower(), f"D1 looser+pad is lab {gcd_deep.payoff}")
+    check("lab" in gcd_deep.payoff.lower(), f"D1 looser+pad is lab {gcd_deep.payoff}")
     check("HOLD_SLACK_MARGIN" in src and "GPL_TIMING_DRIVEN" in src, "wrapper passes hold margin and timing-driven")
     combo_row = _E(
         status="done",
@@ -957,7 +962,7 @@ def check_next_level(check, root: Path) -> None:
     from dse.tune_transfer import infer_walls, mechanism_sig, params_blocked, recipes_blocked, transfer_enqueue
     check("place_sparse_setup" in {r["id"] for r in RECIPES}, "promoted combo is in the catalog")
     check(
-        titles_of(["place_sparse_setup"]) == "Place più sparso + margine di setup",
+        titles_of(["place_sparse_setup"]) == "Sparser placement + setup margin",
         f"promoted title {titles_of(['place_sparse_setup'])}",
     )
     check("if design ==" not in (root / "learn/dse/tune_transfer.py").read_text(), "transfer has no design-name branch")
@@ -1083,7 +1088,7 @@ def check_next_level(check, root: Path) -> None:
     cover_ids = [j.get("id") for j in (coord.get("jobs") or [])]
     check(
         "place_sparse_setup" in cover_ids,
-        f"cover proposes Place più sparso + margine di setup {cover_ids[:6]}",
+        f"cover proposes Sparser placement + setup margin {cover_ids[:6]}",
     )
     deep_coord = run_recipe_loop.coordinate(ExperimentLog(), list(CHEAP_FIRST), deepen=True)
     check(
@@ -1177,7 +1182,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("learn/dse/product.md" in product, "prodotto.md points at frozen product.md")
     check("win_rule.py" in product, "prodotto.md points at win_rule")
     agents = (root / "AGENTS.md").read_text()
-    check("Refuse" in agents or "Vietato" in agents, "AGENTS.md has refuse rules")
+    check("Forbidden" in agents or "Refuse" in agents, "AGENTS.md has refuse rules")
     check("test_dse_next.py" in agents, "AGENTS.md names the fast suite")
     dse = (root / "learn/dse/README.md").read_text()
     check("win_rule.py" in dse, "dse README names win_rule")
