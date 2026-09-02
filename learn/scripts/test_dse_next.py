@@ -1160,8 +1160,8 @@ def _check_enterprise_docs(check, root: Path) -> None:
     )
     for rel in required:
         path = root / rel
-        check(path.is_file(), f"docs map missing {rel}")
-        check(path.stat().st_size > 80, f"docs map too small {rel}")
+        check(path.is_file(), f"docs map has {rel}")
+        check(path.stat().st_size > 80, f"docs map sized {rel}")
     index = (root / "docs/README.md").read_text()
     for needle in (
         "docs/prodotto.md",
