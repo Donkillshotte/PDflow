@@ -19,7 +19,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["gcd.vcd", "toggle activity"],
     consumes: ["gcd.v"],
     spice: "VCD → activity_power (read_vcd) · vectorless",
-    doc: "/materiali/reference/spice-power-chain.md#lezione-00-intro",
+    doc: "/materiali/reference/spice-power-chain.md#lesson-00-intro",
     action: "rtl_sim",
   },
   {
@@ -29,7 +29,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["gate-level netlist", ".lib cells", "Yosys area"],
     consumes: ["RTL", "SDC", "liberty"],
     spice: "liberty → report_power",
-    doc: "/materiali/reference/spice-power-chain.md#lezione-02-synthesis",
+    doc: "/materiali/reference/spice-power-chain.md#lesson-02-synthesis",
     action: "synth",
   },
   {
@@ -39,7 +39,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["2_4_floorplan_pdn.odb", "straps VDD/VSS"],
     consumes: ["synth ODB", "util core"],
     spice: "pdngen (mesh R post-finish)",
-    doc: "/materiali/reference/spice-power-chain.md#lezione-03-floorplan",
+    doc: "/materiali/reference/spice-power-chain.md#lesson-03-floorplan",
     action: "floorplan",
   },
   {
@@ -59,7 +59,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["ITermNode positions", "current sinks"],
     consumes: ["floorplan ODB"],
     spice: "I per pin in mesh",
-    doc: "/materiali/reference/spice-power-chain.md#lezione-04-placement",
+    doc: "/materiali/reference/spice-power-chain.md#lesson-04-placement",
     action: "place",
   },
   {
@@ -69,7 +69,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["buffer clock", "↑ switching"],
     consumes: ["placement"],
     spice: "clock group in report_power",
-    doc: "/materiali/reference/spice-power-chain.md#lezione-05-cts",
+    doc: "/materiali/reference/spice-power-chain.md#lesson-05-cts",
     action: "cts",
   },
   {
@@ -79,7 +79,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["mesh routed", "SPEF (finish)"],
     consumes: ["CTS ODB"],
     spice: "IR su geom post-route",
-    doc: "/materiali/reference/spice-power-chain.md#lezione-06-routing",
+    doc: "/materiali/reference/spice-power-chain.md#lesson-06-routing",
     action: "route",
   },
   {
@@ -110,7 +110,7 @@ export const SPICE_ANALYSES = [
     label: "Activity → power",
     produces: ["activity_power_*.log", "I_avg"],
     spice: "liberty leak/switch/internal",
-    doc: "/materiali/reference/spice-power-chain.md#lezione-07-finish",
+    doc: "/materiali/reference/spice-power-chain.md#lesson-07-finish",
     action: "activity_power",
   },
   {

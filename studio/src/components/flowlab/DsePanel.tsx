@@ -212,7 +212,7 @@ export function DsePanel() {
       </header>
       {!report?.ok ? (
         <p className="fl-dynir-empty">
-          Report missing — run the <code>dse</code> (F5-lite, non <code>make finish</code>).
+          Report missing — run the <code>dse</code> (F5-lite, not <code>make finish</code>).
         </p>
       ) : (
         <>

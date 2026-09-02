@@ -187,7 +187,7 @@ export function digestOrfsLog(text: string): LogDigest {
     ? actionable <= 0
       ? `Flow OK · 0 ERROR · ${warnings} WARNING (all expected/ORFS noise)`
       : `Flow OK · 0 ERROR · ${warnings} WARNING (${noiseWarnings} noise, ${actionable} to review)`
-    : `${errors} ERROR · ${warnings} WARNING — fallimento reale`;
+    : `${errors} ERROR · ${warnings} WARNING — real failure`;
 
   return {
     errors,

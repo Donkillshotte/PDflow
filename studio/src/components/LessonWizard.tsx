@@ -311,7 +311,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                   <>
                     {" "}
                     · SPICE chain:{" "}
-                    <Link href="/materiali/reference/spice-power-chain.md#lezione-07-finish">
+                    <Link href="/materiali/reference/spice-power-chain.md#lesson-07-finish">
                       finish → PKG
                     </Link>
                     {" "}
@@ -326,7 +326,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                     <Link href="/flusso?phase=pdn">FlowLab PDN</Link>
                     {" "}
                     ·{" "}
-                    <Link href="/materiali/reference/spice-power-chain.md#lezione-03-floorplan">
+                    <Link href="/materiali/reference/spice-power-chain.md#lesson-03-floorplan">
                       grid → mesh
                     </Link>
                   </>

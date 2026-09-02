@@ -17,7 +17,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
   {
     lessonId: "00-intro",
     flowlabPhases: ["rtl"],
-    anchor: "lezione-00-intro",
+    anchor: "lesson-00-intro",
     title: "RTL and flow map",
     summary:
       "RTL sim produces the VCD: first link in the power chain (toggle → future activity).",
@@ -25,7 +25,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["rtl_sim"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lezione-00-intro", label: "§00 RTL" },
+      { href: "/materiali/reference/spice-power-chain.md#lesson-00-intro", label: "§00 RTL" },
       { href: "/materiali/reference/file-formats.md", label: "Formats" },
     ],
     flowlabHref: "/flusso?phase=rtl",
@@ -33,7 +33,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
   {
     lessonId: "01-constraints",
     flowlabPhases: ["synth"],
-    anchor: "lezione-01-constraints",
+    anchor: "lesson-01-constraints",
     title: "SDC and clock",
     summary:
       "Clock constraints set frequency and duty: they indirectly affect switching power.",
@@ -41,14 +41,14 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["synth"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lezione-01-constraints", label: "§01 SDC" },
+      { href: "/materiali/reference/spice-power-chain.md#lesson-01-constraints", label: "§01 SDC" },
     ],
     flowlabHref: "/flusso?phase=synth",
   },
   {
     lessonId: "02-synthesis",
     flowlabPhases: ["synth"],
-    anchor: "lezione-02-synthesis",
+    anchor: "lesson-02-synthesis",
     title: "Liberty and cells",
     summary:
       "Each .lib cell carries leakage/switching/internal power → basis for report_power and SPICE sinks.",
@@ -56,7 +56,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["synth"],
     spiceOutputs: ["learn/sim/spice/nangate_inverter_demo.sp"],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lezione-02-synthesis", label: "§02 Liberty" },
+      { href: "/materiali/reference/spice-power-chain.md#lesson-02-synthesis", label: "§02 Liberty" },
       { href: "/materiali/file/sim/spice/nangate_inverter_demo.sp", label: "Inverter SPICE demo" },
     ],
     flowlabHref: "/flusso?phase=synth",
@@ -64,7 +64,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
   {
     lessonId: "03-floorplan",
     flowlabPhases: ["floorplan", "pdn"],
-    anchor: "lezione-03-floorplan",
+    anchor: "lesson-03-floorplan",
     title: "Floorplan and PDN straps",
     summary:
       "pdngen creates the VDD/VSS grid; gridcheck verifies connectivity before place.",
@@ -72,7 +72,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["floorplan", "gridcheck"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lezione-03-floorplan", label: "§03 PDN" },
+      { href: "/materiali/reference/spice-power-chain.md#lesson-03-floorplan", label: "§03 PDN" },
       { href: "/materiali/reference/spice-chip-mesh.md", label: "Mesh SPICE (post-finish)" },
       { href: "/flusso?phase=pdn", label: "FlowLab PDN" },
     ],
@@ -81,7 +81,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
   {
     lessonId: "04-placement",
     flowlabPhases: ["place"],
-    anchor: "lezione-04-placement",
+    anchor: "lesson-04-placement",
     title: "Placement and current sinks",
     summary:
       "Cell coordinates → ITermNode_* nodes in the write_pg_spice mesh.",
@@ -89,7 +89,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["place"],
     spiceOutputs: ["pg_vdd_bumps.sp (post finish)"],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lezione-04-placement", label: "§04 Place" },
+      { href: "/materiali/reference/spice-power-chain.md#lesson-04-placement", label: "§04 Place" },
       { href: "/materiali/reference/spice-chip-mesh.md#anatomia-di-pg_vdd_bumpssp", label: "ITermNode" },
     ],
     flowlabHref: "/flusso?phase=place",
@@ -97,7 +97,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
   {
     lessonId: "05-cts",
     flowlabPhases: ["cts"],
-    anchor: "lezione-05-cts",
+    anchor: "lesson-05-cts",
     title: "CTS and clock switching",
     summary:
       "Clock buffers add capacitance and toggles → increase switching current in report_power.",
@@ -105,14 +105,14 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["cts"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lezione-05-cts", label: "§05 CTS" },
+      { href: "/materiali/reference/spice-power-chain.md#lesson-05-cts", label: "§05 CTS" },
     ],
     flowlabHref: "/flusso?phase=cts",
   },
   {
     lessonId: "06-routing",
     flowlabPhases: ["route"],
-    anchor: "lezione-06-routing",
+    anchor: "lesson-06-routing",
     title: "Routing and SPEF",
     summary:
       "Net parasitics affect timing; route DRC feeds the geometry pillar of post-finish signoff.",
@@ -120,7 +120,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["route", "drc_signoff"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lezione-06-routing", label: "§06 Route" },
+      { href: "/materiali/reference/spice-power-chain.md#lesson-06-routing", label: "§06 Route" },
       { href: "/materiali/reference/signoff-matrix.md", label: "Signoff matrix (DRC)" },
     ],
     flowlabHref: "/flusso?phase=route",
@@ -128,7 +128,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
   {
     lessonId: "07-finish",
     flowlabPhases: ["finish", "pkg"],
-    anchor: "lezione-07-finish",
+    anchor: "lesson-07-finish",
     title: "Finish, IR, and SPICE chain",
     summary:
       "report_power + analyze_power_grid → chip IR mesh + System PDN ngspice (signoff FlowLab).",
@@ -167,7 +167,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
       "learn/sim/spice/*",
     ],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lezione-07-finish", label: "§07 Finish" },
+      { href: "/materiali/reference/spice-power-chain.md#lesson-07-finish", label: "§07 Finish" },
       { href: "/materiali/reference/vectorless-power.md", label: "Vectorless / dynamic" },
       { href: "/materiali/reference/vyges-em-ir.md", label: "vyges-em-ir" },
       { href: "/materiali/reference/dynamic-ir.md", label: "Dynamic IR I(t)" },
