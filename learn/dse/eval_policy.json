@@ -295,7 +295,8 @@
     "n_references": 12,
     "n_with_ir": 75,
     "n_with_grt_wl": 75,
-    "n_section5_wins": 22,
+    "n_section5_wins": 10,
+    "n_wrong_die": 29,
     "references": [
       {
         "design": "aes",
@@ -629,7 +630,7 @@
         "clock_ns": 0.46,
         "phase": "P0",
         "base_variant": "camp_gcd_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -830,7 +831,7 @@
         "clock_ns": 0.4,
         "phase": "P1",
         "base_variant": "camp_gcd_clk040_a",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_clk040_a",
           "title": "ORFS default @ 0.4 ns",
@@ -964,7 +965,7 @@
         "clock_ns": 0.55,
         "phase": "P1",
         "base_variant": "camp_gcd_clk055_a",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_clk055_a",
           "title": "ORFS default @ 0.55 ns",
@@ -1098,7 +1099,7 @@
         "clock_ns": 0.7,
         "phase": "P1",
         "base_variant": "camp_gcd_clk070_a",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_clk070_a",
           "title": "ORFS default @ 0.7 ns",
@@ -1232,7 +1233,7 @@
         "clock_ns": 0.9,
         "phase": "P1",
         "base_variant": "camp_gcd_clk090_a",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_clk090_a",
           "title": "ORFS default @ 0.9 ns",
@@ -1366,7 +1367,7 @@
         "clock_ns": 1.0,
         "phase": "P2",
         "base_variant": "camp_spi_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_spi_base",
           "title": "ORFS default @ 1 ns",
@@ -1433,7 +1434,7 @@
         "clock_ns": 2.2,
         "phase": "P2",
         "base_variant": "camp_ibex_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_ibex_base",
           "title": "ORFS default \u2014 sintesi area, util 50, place +0.20",
@@ -1500,7 +1501,7 @@
         "clock_ns": 1.98,
         "phase": "P5",
         "base_variant": "camp_ibex_clk198_a",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_ibex_clk198_a",
           "title": "ORFS default @ 1.98 ns",
@@ -1567,7 +1568,7 @@
         "clock_ns": 2.75,
         "phase": "P5",
         "base_variant": "camp_ibex_clk275_a",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_ibex_clk275_a",
           "title": "ORFS default @ 2.75 ns",
@@ -1634,7 +1635,7 @@
         "clock_ns": 3.52,
         "phase": "P5",
         "base_variant": "camp_ibex_clk352_a",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_ibex_clk352_a",
           "title": "ORFS default @ 3.52 ns",
@@ -1701,7 +1702,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -1835,7 +1836,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -1902,7 +1903,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -1969,7 +1970,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -2036,7 +2037,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -2170,7 +2171,7 @@
         "clock_ns": 0.46,
         "phase": "Q1",
         "base_variant": "camp_gcd_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -2371,7 +2372,7 @@
         "clock_ns": 2.2,
         "phase": "Q1",
         "base_variant": "camp_ibex_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_ibex_base",
           "title": "ORFS default \u2014 sintesi area, util 50, place +0.20",
@@ -2438,7 +2439,7 @@
         "clock_ns": 2.2,
         "phase": "Q1",
         "base_variant": "camp_ibex_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_ibex_base",
           "title": "ORFS default \u2014 sintesi area, util 50, place +0.20",
@@ -2468,7 +2469,7 @@
           "variant": "camp_ibex_q1_d20u60",
           "title": "Core pi\u00f9 stretto \u2014 die pi\u00f9 piccolo, fili pi\u00f9 corti",
           "does": "Stessa netlist e stesso density addon 0.20. CORE_UTILIZATION 50\u219260.",
-          "payoff": "\u00a75 win: WNS +42 vs +22 ps; IR \u221230%; WL \u22124%; power ~iso.",
+          "payoff": "Laboratorio (die pi\u00f9 piccolo, util 50\u219260). Slack/IR meglio, ma ha mosso il floorplan. Non \u00e8 un win di prodotto.",
           "wns_ps": 42.3498,
           "tns_ns": 0.0,
           "area_um2": 30686.0,
@@ -2974,7 +2975,7 @@
         "clock_ns": 1.0,
         "phase": "J2",
         "base_variant": "camp_spi_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_spi_base",
           "title": "ORFS default @ 1 ns",
@@ -3041,7 +3042,7 @@
         "clock_ns": 1.0,
         "phase": "J2",
         "base_variant": "camp_spi_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_spi_base",
           "title": "ORFS default @ 1 ns",
@@ -3108,7 +3109,7 @@
         "clock_ns": 1.0,
         "phase": "J2",
         "base_variant": "camp_spi_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_spi_base",
           "title": "ORFS default @ 1 ns",
@@ -3309,7 +3310,7 @@
         "clock_ns": 0.46,
         "phase": "L1",
         "base_variant": "camp_gcd_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -3339,7 +3340,7 @@
           "variant": "camp_gcd_aspect_wide",
           "title": "Floorplan pi\u00f9 largo che alto",
           "does": "Rettangolo 2:1 invece di un quadrato.",
-          "payoff": "Su gcd: slack uguale, IR \u221261%. Win su IR.",
+          "payoff": "Laboratorio (shape 2:1). IR \u221261% ma ha mosso il floorplan. Non \u00e8 un win di prodotto.",
           "wns_ps": -38.081900000000005,
           "tns_ns": -0.345301,
           "area_um2": 907.592,
@@ -3510,7 +3511,7 @@
         "clock_ns": 0.46,
         "phase": "C1",
         "base_variant": "camp_gcd_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -3845,7 +3846,7 @@
         "clock_ns": 2.2,
         "phase": "C1",
         "base_variant": "camp_ibex_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_ibex_base",
           "title": "ORFS default \u2014 sintesi area, util 50, place +0.20",
@@ -3875,7 +3876,7 @@
           "variant": "camp_ibex_aspect_wide",
           "title": "Floorplan pi\u00f9 largo che alto",
           "does": "Rettangolo 2:1 invece di un quadrato.",
-          "payoff": "Su ibex: win. IR \u221231%. Slack +2.5 ps.",
+          "payoff": "Laboratorio (shape 2:1). IR \u221231% ma ha mosso il floorplan. Non \u00e8 un win di prodotto.",
           "wns_ps": 24.8951,
           "tns_ns": 0.0,
           "area_um2": 30796.4,
@@ -4649,7 +4650,7 @@
         "clock_ns": 6.0,
         "phase": "C1",
         "base_variant": "camp_dynamic_node_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_dynamic_node_base",
           "title": "ORFS default @ 6 ns",
@@ -4679,7 +4680,7 @@
           "variant": "camp_dynamic_node_core_tighter",
           "title": "Core pi\u00f9 stretto",
           "does": "CORE_UTILIZATION +10 rispetto al default.",
-          "payoff": "Su dynamic_node: win. Slack +66 ps. IR \u22129% (sotto la soglia di lose).",
+          "payoff": "Laboratorio (die pi\u00f9 piccolo). Slack +66 ps ma ha mosso il floorplan. Non \u00e8 un win di prodotto.",
           "wns_ps": 3419.93,
           "tns_ns": 0.0,
           "area_um2": 22515.6,
@@ -4716,7 +4717,7 @@
         "clock_ns": 6.0,
         "phase": "C1",
         "base_variant": "camp_dynamic_node_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_dynamic_node_base",
           "title": "ORFS default @ 6 ns",
@@ -4746,7 +4747,7 @@
           "variant": "camp_dynamic_node_core_looser",
           "title": "Core pi\u00f9 largo",
           "does": "CORE_UTILIZATION \u221210 rispetto al default.",
-          "payoff": "Su dynamic_node: win. Slack +101 ps, IR \u221214%.",
+          "payoff": "Laboratorio (die pi\u00f9 grande). Slack +101 ps, IR \u221214% ma ha mosso il floorplan. Non \u00e8 un win di prodotto.",
           "wns_ps": 3454.65,
           "tns_ns": 0.0,
           "area_um2": 22631.5,
@@ -4783,7 +4784,7 @@
         "clock_ns": 6.0,
         "phase": "C1",
         "base_variant": "camp_dynamic_node_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_dynamic_node_base",
           "title": "ORFS default @ 6 ns",
@@ -4813,7 +4814,7 @@
           "variant": "camp_dynamic_node_aspect_wide",
           "title": "Floorplan pi\u00f9 largo che alto",
           "does": "Rettangolo 2:1 invece di un quadrato.",
-          "payoff": "Su dynamic_node: win. Slack +56 ps. IR \u221210% quasi.",
+          "payoff": "Laboratorio (shape 2:1). Slack +56 ps ma ha mosso il floorplan. Non \u00e8 un win di prodotto.",
           "wns_ps": 3410.19,
           "tns_ns": 0.0,
           "area_um2": 22538.2,
@@ -5520,7 +5521,7 @@
         "clock_ns": 0.46,
         "phase": "D1",
         "base_variant": "camp_gcd_base",
-        "section5": "lose",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -5587,7 +5588,7 @@
         "clock_ns": 0.46,
         "phase": "D1",
         "base_variant": "camp_gcd_base",
-        "section5": "win",
+        "section5": "wrong_die",
         "base": {
           "variant": "camp_gcd_base",
           "title": "ORFS default \u2014 sintesi area, util 35, place +0.20",
@@ -5617,7 +5618,7 @@
           "variant": "camp_gcd_core_looser_cell_pad_plus",
           "title": "Core pi\u00f9 largo + padding celle",
           "does": "Util \u221210 e un site extra tra le celle. Stessa netlist.",
-          "payoff": "Su gcd: win. IR \u221248%. Slack \u22124 ps (dentro 5 ps). Area/potenza un filo meglio.",
+          "payoff": "Laboratorio (die pi\u00f9 grande + pad). IR \u221248% ma ha mosso il floorplan. Non \u00e8 un win di prodotto.",
           "wns_ps": -41.2528,
           "tns_ns": -0.551462,
           "area_um2": 922.222,
@@ -5649,7 +5650,7 @@
         "d_density_pct": -31.405213045727066
       }
     ],
-    "verdict": "QoR vs base: 12 reference slots, 75 challengers, 75 with IR, 75 with GRT WL, 22 product wins"
+    "verdict": "QoR vs base: 12 reference slots, 75 challengers, 75 with IR, 75 with GRT WL, 10 product wins (same die), 29 wrong_die (moved floorplan)"
   },
   "synth_method": {
     "abc": "area",
