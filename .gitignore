@@ -1,6 +1,7 @@
 # Tool installs, sources, and builds (recreate with scripts/)
 /tools/
-# Output dei run ORFS
+
+# ORFS run output
 flow-runs/
 
 # Studio (Next.js)
