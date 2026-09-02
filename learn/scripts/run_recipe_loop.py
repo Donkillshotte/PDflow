@@ -109,7 +109,18 @@ def cover_plan_for(design: str, log: ExperimentLog) -> dict:
     defaults = parse_config_defaults(cfg)
     locked = True
     rows = _same_slot(log, design, clock)
-    pick = recipes_still_open(rows, defaults, locked_floorplan=locked) if base else []
+    from dse.tune_transfer import infer_walls
+
+    pick = (
+        recipes_still_open(
+            rows,
+            defaults,
+            locked_floorplan=locked,
+            walls=infer_walls(log.all()),
+        )
+        if base
+        else []
+    )
     return {
         "design": design,
         "clock_ns": clock,
@@ -229,7 +240,18 @@ def coordinate(log: ExperimentLog, designs: list[str], deepen: bool = False) -> 
         defaults = parse_config_defaults(cfg)
         locked = True
         rows = _same_slot(log, d, clock) if base else []
-        holes = recipes_still_open(rows, defaults, locked_floorplan=locked) if base else []
+        from dse.tune_transfer import infer_walls
+
+        holes = (
+            recipes_still_open(
+                rows,
+                defaults,
+                locked_floorplan=locked,
+                walls=infer_walls(log.all()),
+            )
+            if base
+            else []
+        )
         wins = _product_wins(rows, base)
         review.append(
             {

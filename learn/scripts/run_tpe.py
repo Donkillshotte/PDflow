@@ -29,6 +29,7 @@ from dse.tune_space import (
     to_env,
     variant_name,
 )
+from dse.tune_transfer import infer_walls, params_blocked
 from dse.tune_warm import (
     already_combo_parts,
     base_of,
@@ -240,7 +241,16 @@ def run_tpe(
 
     win_ids = win_ids_from_rows(rows, base, defaults)
     already = already_combo_parts(rows, defaults)
-    queue = enqueue_params(rows, defaults, win_ids, already)
+    walls = infer_walls(log.all())
+    queue = enqueue_params(
+        rows,
+        defaults,
+        win_ids,
+        already,
+        all_rows=log.all(),
+        design=design,
+        walls=walls,
+    )
     for params in queue:
         frozen = _frozen_params(clamp_params(params, defaults), dists)
         try:
@@ -272,7 +282,7 @@ def run_tpe(
         title = title_of_params(params)
         var = variant_name(design, params, defaults)
 
-        if fp in seen:
+        if fp in seen or params_blocked(params, walls) is not None:
             try:
                 study.tell(trial, state=TrialState.PRUNED)
             except Exception:

@@ -185,6 +185,19 @@ def already_tried(exps: list[Any], recipe_id: str, defaults: dict[str, float]) -
         if recipe_id == "place_sparser" and lb is not None and "PLACE_DENSITY_LB_ADDON" in want:
             if abs(float(lb) - float(want["PLACE_DENSITY_LB_ADDON"])) < 0.011:
                 return True
+        if recipe_id == "place_sparse_setup":
+            if combo_already_tried(exps, ["place_sparser", "repair_setup_margin"]):
+                return True
+            setup = knobs.get("SETUP_SLACK_MARGIN")
+            if (
+                lb is not None
+                and setup is not None
+                and "PLACE_DENSITY_LB_ADDON" in want
+                and "SETUP_SLACK_MARGIN" in want
+                and abs(float(lb) - float(want["PLACE_DENSITY_LB_ADDON"])) < 0.011
+                and abs(float(setup) - float(want["SETUP_SLACK_MARGIN"])) < 0.005
+            ):
+                return True
         if recipe_id == "core_looser" and util is not None and "CORE_UTILIZATION" in want:
             if abs(float(util) - float(want["CORE_UTILIZATION"])) < 1.0:
                 return True
@@ -196,14 +209,19 @@ def recipes_still_open(
     defaults: dict[str, float],
     *,
     locked_floorplan: bool = False,
+    walls: list[Any] | None = None,
 ) -> list[str]:
     """Catalog ids not yet measured on these rows. Skips default synth and locked floorplan."""
+    from .tune_transfer import recipes_blocked
+
     out: list[str] = []
     for rec in RECIPES:
         rid = rec["id"]
         if rid in SKIP_COVER:
             continue
         if rec.get("stage") == "floorplan" or rid in FLOORPLAN_RECIPES:
+            continue
+        if walls and recipes_blocked([rid], walls) is not None:
             continue
         if already_tried(rows, rid, defaults):
             continue

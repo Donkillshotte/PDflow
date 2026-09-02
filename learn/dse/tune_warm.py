@@ -7,6 +7,7 @@ from .floorplan import FLOORPLAN_RECIPES, moves_floorplan, official_box
 from .knob_catalog import resolve_many
 from .recipe_select import VERY_CLOSED_NS, combo_already_tried, inferred_recipe_ids, propose_deepen, propose_improve
 from .tune_space import fingerprint, knobs_from_extra, params_from_recipes, project_knobs
+from .tune_transfer import infer_walls, params_blocked, transfer_enqueue
 from .win_rule import verdict
 
 
@@ -63,21 +64,36 @@ def enqueue_params(
     defaults: dict[str, float],
     win_ids: list[str],
     already_parts: list[list[str]],
+    *,
+    all_rows: list[Any] | None = None,
+    design: str | None = None,
+    walls: list[Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Deepen combos not yet cooked, as TPE starting points."""
+    """Deepen combos of this slot, then up to 3 cross-design win mechanisms."""
+    walls = walls if walls is not None else infer_walls(all_rows or rows)
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
     for parts in propose_deepen(win_ids, locked_floorplan=True, already_parts=already_parts):
         if combo_already_tried(rows, parts):
             continue
         params = params_from_recipes(parts, defaults)
-        if params is None:
+        if params is None or params_blocked(params, walls) is not None:
             continue
         fp = fingerprint(params, defaults)
         if fp in seen:
             continue
         seen.add(fp)
         out.append(params)
+    if all_rows and design:
+        out.extend(
+            transfer_enqueue(
+                all_rows,
+                design,
+                defaults,
+                already_fps=seen,
+                walls=walls,
+            )
+        )
     return out
 
 
@@ -186,7 +202,16 @@ def preview_tune(design: str, log: Any | None = None) -> dict[str, Any]:
     warm = collect_warm(rows, defaults, base)
     win_ids = win_ids_from_rows(rows, base, defaults)
     already = already_combo_parts(rows, defaults)
-    queue = enqueue_params(rows, defaults, win_ids, already)
+    walls = infer_walls(log.all())
+    queue = enqueue_params(
+        rows,
+        defaults,
+        win_ids,
+        already,
+        all_rows=log.all(),
+        design=design,
+        walls=walls,
+    )
     nxt = queue[0] if queue else None
     from .tune_space import fingerprint, title_of_params
 
@@ -199,4 +224,5 @@ def preview_tune(design: str, log: Any | None = None) -> dict[str, Any]:
         "next_fp": fingerprint(nxt, defaults) if nxt else None,
         "next_title": title_of_params(nxt) if nxt else None,
         "win_ids": win_ids,
+        "walls": [f"{w.kind}:{w.value}" for w in walls],
     }

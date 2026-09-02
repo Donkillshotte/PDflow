@@ -1,7 +1,10 @@
 # Revisione architettura dopo TPE v1 (gcd, ibex, aes)
 
-Solo analisi e piano. Nessuna implementazione parte da questo commit.
-Le scelte in §4–§6 sono pre-registrate e non si ritoccano dopo i dati.
+Solo analisi e piano. Le scelte in §4–§6 sono pre-registrate e non si
+ritoccano dopo i dati.
+
+Stato: §4.1–§4.3 implementati (`tune_transfer.py`, ricetta
+`place_sparse_setup`). §4.4 (ordine slot cost-aware) resta fuori.
 
 Vincoli fermi che questa revisione NON tocca: die fisso, finish veri,
 un job pesante, win rule invariata (`win_rule.py`), niente proposer

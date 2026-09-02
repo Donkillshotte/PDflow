@@ -16,6 +16,7 @@ from .floorplan import FLOORPLAN_RECIPES, official_box, uses_floorplan_def
 from .knob_catalog import by_id, config_mk_for, parse_config_defaults, resolve_many, titles_of
 from .recipe_labels import synth_method_from_exploration
 from .tune_space import fingerprint, project_knobs, title_of_params, variant_name
+from .tune_transfer import infer_walls, params_blocked, recipes_blocked
 
 REPO = Path(__file__).resolve().parents[2]
 LEARN = Path(__file__).resolve().parents[1]
@@ -144,6 +145,14 @@ def cook_one(
         }
     clock = float(clock_ns if clock_ns is not None else DESIGN_CATALOG[design]["clk_ns"])
     log = log or ExperimentLog()
+    walls = infer_walls(log.all())
+    blocked_rec = recipes_blocked(rids, walls)
+    if blocked_rec is not None:
+        return {
+            "ok": False,
+            "refuse": f"walled recipe {blocked_rec.value}",
+            "exit_code": 2,
+        }
     defaults = parse_config_defaults(config_mk_for(design))
     if rids:
         resolved = resolve_many(rids, defaults)
@@ -155,6 +164,13 @@ def cook_one(
         projected = project_knobs(raw_knobs, defaults)
         if projected is None:
             return {"ok": False, "refuse": "knobs move the floorplan", "exit_code": 2}
+        blocked = params_blocked(projected, walls)
+        if blocked is not None:
+            return {
+                "ok": False,
+                "refuse": f"walled {blocked.kind}={blocked.value}",
+                "exit_code": 2,
+            }
         resolved = dict(raw_knobs)
         title = (extra or {}).get("title") or title_of_params(projected)
         var = variant or variant_name(design, projected, defaults)

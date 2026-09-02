@@ -108,6 +108,15 @@ RECIPES: list[dict[str, Any]] = [
         "env": {"SETUP_SLACK_MARGIN": "0.05"},
     },
     {
+        "id": "place_sparse_setup",
+        "stage": "place",
+        "title": "Place più sparso + margine di setup",
+        "does": "PLACE_DENSITY_LB_ADDON −= 0.05 e SETUP_SLACK_MARGIN=0.05 ns.",
+        "payoff": "Combo vinta su aes e ibex. Slack su; area/potenza/leakage sotto +10%; IR non peggiora del 10%.",
+        "offset": {"PLACE_DENSITY_LB_ADDON": -0.05},
+        "env": {"SETUP_SLACK_MARGIN": "0.05"},
+    },
+    {
         "id": "cts_closer_bufs",
         "stage": "cts",
         "title": "Buffer di clock più fitti",

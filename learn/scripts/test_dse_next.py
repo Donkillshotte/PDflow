@@ -765,7 +765,7 @@ def check_next_level(check, root: Path) -> None:
     from dse.tune_score import evaluate as tpe_eval
     from dse.tune_space import bounds as tpe_bounds
     from dse.tune_space import clamp_params, defaults_for, fingerprint, pin, to_env
-    from dse.tune_warm import preview_tune, warm_params
+    from dse.tune_warm import enqueue_params, preview_tune, warm_params
     import run_recipe_loop
 
     space_src = (root / "learn/dse/tune_space.py").read_text()
@@ -953,16 +953,144 @@ def check_next_level(check, root: Path) -> None:
     )
     check(warm_params(wrong_row, gcd_def, base_die) is None, "warm-start skips wrong_die")
     check(warm_params(fresh_row, gcd_def, base_e) is None, "warm-start skips fresh_synth")
+    from dse.knob_catalog import titles_of
+    from dse.tune_transfer import infer_walls, mechanism_sig, params_blocked, recipes_blocked, transfer_enqueue
+    check("place_sparse_setup" in {r["id"] for r in RECIPES}, "promoted combo is in the catalog")
+    check(
+        titles_of(["place_sparse_setup"]) == "Place più sparso + margine di setup",
+        f"promoted title {titles_of(['place_sparse_setup'])}",
+    )
+    check("if design ==" not in (root / "learn/dse/tune_transfer.py").read_text(), "transfer has no design-name branch")
+    def _xfer(**kw):
+        extra = kw.pop("extra", {})
+        return type(
+            "E",
+            (),
+            {
+                "role": kw.pop("role", "knob"),
+                "status": kw.pop("status", "done"),
+                "finish_wns_ns": kw.get("finish_wns_ns"),
+                "stdcell_um2": kw.get("stdcell_um2", 1000.0),
+                "power_w": kw.get("power_w", 0.1),
+                "leakage_w": kw.get("leakage_w", 1e-4),
+                "ir_drop_v": kw.get("ir_drop_v", 0.05),
+                "die_um2": kw.get("die_um2", 1000.0),
+                "design": kw.get("design", "toy"),
+                "variant": kw.get("variant", "camp_toy_x"),
+                "extra": extra,
+            },
+        )()
+
+    b_a = _xfer(design="alpha", role="base", finish_wns_ns=-0.010, stdcell_um2=1000, power_w=0.1, leakage_w=1e-4, ir_drop_v=0.10, die_um2=1000)
+    b_b = _xfer(design="beta", role="base", finish_wns_ns=-0.010, stdcell_um2=1000, power_w=0.1, leakage_w=1e-4, ir_drop_v=0.10, die_um2=1000)
+    fail_a = _xfer(design="alpha", status="failed", finish_wns_ns=None, extra={"knobs": {"CELL_PAD_IN_SITES_GLOBAL_PLACEMENT": "2"}})
+    fail_b = _xfer(design="beta", status="failed", finish_wns_ns=None, extra={"knobs": {"CELL_PAD_IN_SITES_GLOBAL_PLACEMENT": "2"}})
+    walls = infer_walls([b_a, b_b, fail_a, fail_b])
+    check(any(w.kind == "cell_pad" and w.value == 2 for w in walls), f"pad=2 is a wall after 2 designs fail {walls}")
+    check(params_blocked({"cell_pad": 2}, walls) is not None, "pad=2 params are blocked")
+    check(params_blocked({"cell_pad": 1}, walls) is None, "pad=1 is not a wall")
+    hier_a = _xfer(design="alpha", status="done", finish_wns_ns=-0.020, extra={"recipe_ids": ["synth_hier"]})
+    hier_b = _xfer(design="beta", status="done", finish_wns_ns=-0.020, extra={"recipe_ids": ["synth_hier"]})
+    walls_h = infer_walls([b_a, b_b, hier_a, hier_b])
+    check(recipes_blocked(["synth_hier"], walls_h) is not None, f"synth_hier is a wall after 2 loses {walls_h}")
+    check(
+        "synth_hier" not in recipes_still_open([], gcd_def, walls=walls_h),
+        "cover skips a walled synth_hier",
+    )
+    win_knobs = {
+        "PLACE_DENSITY_LB_ADDON": "0.15",
+        "SETUP_SLACK_MARGIN": "0.05",
+        "ABC_AREA": "1",
+        "ABC_SPEED": "0",
+    }
+    win_a = _xfer(
+        design="alpha",
+        finish_wns_ns=0.020,
+        ir_drop_v=0.09,
+        die_um2=1000.0,
+        extra={"knobs": win_knobs},
+    )
+    win_b = _xfer(
+        design="beta",
+        finish_wns_ns=0.020,
+        ir_drop_v=0.09,
+        die_um2=1000.0,
+        extra={"knobs": win_knobs},
+    )
+    gamma_def = {"PLACE_DENSITY_LB_ADDON": 0.20, "TNS_END_PERCENT": 100.0, "CTS_BUF_DISTANCE": 100.0}
+    xfer = transfer_enqueue(
+        [b_a, b_b, win_a, win_b],
+        "gamma",
+        gamma_def,
+        walls=infer_walls([fail_a, fail_b]),
+    )
+    check(xfer, f"cross-design enqueue is non-empty {xfer}")
+    check(all(params_blocked(p, infer_walls([fail_a, fail_b])) is None for p in xfer), "transfer skips pad=2")
+    check(any(mechanism_sig(p, gamma_def) == "sparse+setup" for p in xfer), f"transfer offers sparse+setup { [mechanism_sig(p, gamma_def) for p in xfer] }")
+    replay_rows = [b_a, b_b, fail_a, fail_b, win_a, win_b]
+    replay_walls = infer_walls([fail_a, fail_b])
+    replay_ibex = enqueue_params(
+        [],
+        gamma_def,
+        [],
+        [],
+        all_rows=replay_rows,
+        design="gamma",
+        walls=replay_walls,
+    )
+    check(bool(replay_ibex), f"enqueue_params returns transfer vectors {replay_ibex}")
+    check(
+        replay_ibex == transfer_enqueue(replay_rows, "gamma", gamma_def, walls=replay_walls),
+        f"enqueue_params appends the same transfer vectors {replay_ibex}",
+    )
+    check(all(int(p.get("cell_pad", 0)) != 2 for p in replay_ibex), f"replay does not enqueue pad=2 {replay_ibex}")
+    tpe_combo = _E(
+        status="done",
+        role="knob",
+        variant="camp_aes_tpe_deadbeef",
+        extra={"knobs": {"PLACE_DENSITY_LB_ADDON": "0.15", "SETUP_SLACK_MARGIN": "0.05"}},
+    )
+    check(
+        already_tried([tpe_combo], "place_sparse_setup", {"PLACE_DENSITY_LB_ADDON": 0.20}),
+        "already_tried sees TPE sparse+setup knobs as the promoted recipe",
+    )
+    live_walls = infer_walls(ExperimentLog().all())
+    check(any(w.kind == "cell_pad" and w.value == 2 for w in live_walls), f"live registry has the pad=2 wall {live_walls}")
+    dn_prev = preview_tune("dynamic_node")
+    check(
+        int(dn_prev.get("queue") or 0) >= 1,
+        f"dynamic_node gets a cross-design enqueue after slot-base fix {dn_prev}",
+    )
+    wall_cook = real_cook(
+        "gcd",
+        knobs={
+            "CELL_PAD_IN_SITES_GLOBAL_PLACEMENT": "2",
+            "CELL_PAD_IN_SITES_DETAIL_PLACEMENT": "2",
+            "ABC_AREA": "1",
+            "ABC_SPEED": "0",
+        },
+    )
+    check(wall_cook.get("refuse") and "wall" in str(wall_cook.get("refuse")), f"cook refuses pad=2 wall {wall_cook}")
     g_prev = preview_tune("gcd")
     s_prev = preview_tune("spi")
     check(g_prev.get("admissible"), f"gcd is tune-admissible {g_prev}")
     check(not s_prev.get("admissible"), f"spi is not tune-admissible {s_prev}")
     coord = run_recipe_loop.coordinate(ExperimentLog(), list(CHEAP_FIRST))
-    check(coord["decision"] == "tune", f"after cover+improve default is tune {coord.get('decision')} {coord.get('why')}")
-    check(coord.get("design") == "gcd", f"cheap-first tune slot is gcd {coord.get('design')}")
-    check(coord.get("jobs") == [], f"tune does not dump a recipe job list {coord.get('jobs')}")
+    check(
+        coord["decision"] == "cover",
+        f"promoted combo is a catalog hole {coord.get('decision')} {coord.get('why')}",
+    )
+    cover_ids = [j.get("id") for j in (coord.get("jobs") or [])]
+    check(
+        "place_sparse_setup" in cover_ids,
+        f"cover proposes Place più sparso + margine di setup {cover_ids[:6]}",
+    )
     deep_coord = run_recipe_loop.coordinate(ExperimentLog(), list(CHEAP_FIRST), deepen=True)
-    check(deep_coord["decision"] in ("deepen", "stop"), f"--deepen override stays grid {deep_coord['decision']}")
+    check(
+        deep_coord["decision"] == "cover",
+        f"cover still outranks --deepen while the promoted combo is open {deep_coord['decision']}",
+    )
+    check("--deepen" in loop_src, "deepen stays an override")
     try:
         import optuna  # noqa: F401
         from optuna.distributions import CategoricalDistribution, FloatDistribution, IntDistribution
