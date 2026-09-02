@@ -96,7 +96,7 @@ const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "gridcheck",
     label: "Gridcheck PDN",
-    hint: "check_power_grid su floorplan PDN",
+    hint: "check_power_grid on floorplan PDN",
     icon: Grid3X3,
     long: false,
   },
@@ -250,8 +250,8 @@ export function FlowLabSignoff({
             <strong>Signoff actions timing / geometry / LVS</strong>
             <p>
               Docs{" "}
-              <a href="/materiali/reference/signoff-matrix.md">signoff-matrix</a> ·{" "}
-              <a href="/materiali/reference/golden-metrics.md">golden-metrics</a>
+              <a href="/materials/reference/signoff-matrix.md">signoff-matrix</a> ·{" "}
+              <a href="/materials/reference/golden-metrics.md">golden-metrics</a>
             </p>
           </div>
           <ActionGrid
@@ -270,13 +270,13 @@ export function FlowLabSignoff({
             <p>
               Chain: VCD/activity → <strong>vectorless</strong> → chip mesh → vyges-em-ir →{" "}
               <strong>dynamic IR I(t)</strong> → System PDN. Docs{" "}
-              <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>
+              <a href="/materials/reference/spice-power-chain.md">spice-power-chain</a>
               {" · "}
-              <a href="/materiali/reference/vectorless-power.md">vectorless-power</a>
+              <a href="/materials/reference/vectorless-power.md">vectorless-power</a>
               {" · "}
-              <a href="/materiali/reference/vyges-em-ir.md">vyges-em-ir</a>
+              <a href="/materials/reference/vyges-em-ir.md">vyges-em-ir</a>
               {" · "}
-              <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>.
+              <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>.
             </p>
           </div>
           <DynamicIrHeatmap />
@@ -292,7 +292,7 @@ export function FlowLabSignoff({
                 <strong>Phase 2 · PKG &amp; thermal</strong>
                 <p>
                   Proxy educativi ·{" "}
-                  <a href="/materiali/reference/pkg-design-package.md">pkg-design-package</a>
+                  <a href="/materials/reference/pkg-design-package.md">pkg-design-package</a>
                 </p>
               </div>
               <ActionGrid

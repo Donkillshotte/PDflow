@@ -138,7 +138,7 @@ Compare slack with the post-place report. Why do they differ? (hint: parasitics,
 
 ## Part 6 — Written reflection (10 min)
 
-Answer in `learn/workbook/mio-quaderno.md`:
+Answer in `learn/workbook/my-notebook.md`:
 
 1. What is the tradeoff between clock period and area?
 2. Why does input_delay use a percentage of the period?

@@ -6,11 +6,11 @@ import clsx from "clsx";
 
 const LINKS = [
   { href: "/", label: "Studio" },
-  { href: "/flusso", label: "Flow" },
+  { href: "/flow", label: "Flow" },
   { href: "/pkg", label: "PKG" },
-  { href: "/lezioni", label: "Lessons" },
-  { href: "/strumenti", label: "Tools" },
-  { href: "/materiali", label: "Materials" },
+  { href: "/lessons", label: "Lessons" },
+  { href: "/tools", label: "Tools" },
+  { href: "/materials", label: "Materials" },
 ];
 
 export function SiteNav() {

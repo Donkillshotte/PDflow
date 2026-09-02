@@ -1,6 +1,6 @@
 # Template final project (lesson 07)
 
-Copy to `mio-progetto-finale.md`. Without this file completed the course **is not finished**,
+Copy to `my-final-project.md`. Without this file completed the course **is not finished**,
 even if `make finish` is green.
 
 Compare every number with [golden-metrics.md](../reference/golden-metrics.md)

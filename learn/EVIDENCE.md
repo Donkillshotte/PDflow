@@ -64,7 +64,7 @@ Automatic smoke: `./scripts/test_all_phases.sh` (includes signoff hook in `test_
 
 ## Visual lab (FlowLab)
 
-The canvas **above the fold** on `/flusso` is a lab viewport (wheel zoom, drag pan, Fit/`0`, Full/`F`), not a static `<img>`:
+The canvas **above the fold** on `/flow` is a lab viewport (wheel zoom, drag pan, Fit/`0`, Full/`F`), not a static `<img>`:
 
 | Stage | What you see |
 |---|---|
@@ -110,5 +110,5 @@ See [AUDIT.md](./AUDIT.md).
 
 ## What remains for the student (not a repo gap)
 
-- Compile `mio-quaderno.md` and `mio-progetto-finale.md`
+- Compile `my-notebook.md` and `my-final-project.md`
 - sky130 track: post-course extension in CURRICULUM

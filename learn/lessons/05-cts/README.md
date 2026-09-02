@@ -102,7 +102,7 @@ CTS inserisce buffer clock → increases **Clock group** in `report_power`. See 
 
 | Link | Where |
 |---|---|
-| FlowLab | [cts](/flusso?phase=cts) |
+| FlowLab | [cts](/flow?phase=cts) |
 
 ## Duration
 

@@ -7,7 +7,7 @@ Finish is the **contract** with STA, LVS, and (in a company) the foundry. A gree
 - [ ] Listed deliverables and who they are for
 - [ ] Compared WNS across at least 3 estimates (place / CTS / finish)
 - [ ] Opened GDS in KLayout (or described from file size + layers if KLayout is missing)
-- [ ] Completed `mio-progetto-finale.md` (not empty)
+- [ ] Completed `my-final-project.md` (not empty)
 
 ---
 
@@ -118,7 +118,7 @@ F = fit. Turn off all layers, turn one back on. Compare colors with OpenROAD Dis
 Copy:
 
 ```bash
-cp learn/workbook/progetto-finale-template.md learn/workbook/mio-progetto-finale.md
+cp learn/workbook/final-project-template.md learn/workbook/my-final-project.md
 ```
 
 Fill in **all** sections of the template. Without this file the course is not finished.
@@ -144,7 +144,7 @@ FLOW_VARIANT=learn ./learn/scripts/run_power_chain.sh
 
 - [ ] Compare heatmap `orfs_final_ir_drop.png` with `pdn_chip_ir_*.json` (chip mesh)
 - [ ] Open `learn/sim/spice/` and count R/I in `mesh_stats_*.json`
-- [ ] FlowLab [PKG](/flusso?phase=pkg) phase: droop and Zmax System PDN
+- [ ] FlowLab [PKG](/flow?phase=pkg) phase: droop and Zmax System PDN
 
 Optional checklist — does not block lesson completion if skipped.
 

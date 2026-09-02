@@ -2,7 +2,7 @@
 
 Repo navigation: [`docs/README.md`](docs/README.md). This plan is
 **Phase 2 lab** (IR controller), not the knob/finish product.
-Lab: [`docs/laboratorio.md`](docs/laboratorio.md).
+Lab: [`docs/lab.md`](docs/lab.md).
 
 Status: step A ✅, E ✅, B ✅, C1 ✅, C2 ✅, C3 ✅, C4 ✅, C5 ✅, C6 ✅, C7 ✅, D.1 ✅, D.2 ✅, D.3 ✅, D.4 ✅, D.5 ✅. Steps run **in order**; each step closes
 only with the indicated green tests and a dedicated commit. No step introduces a

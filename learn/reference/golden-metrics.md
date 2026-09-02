@@ -98,4 +98,4 @@ PNG: `gui-shots/orfs_cts_clock_tree.png`
 
 For every lesson: copy the table row, put **your value** next to it,
 percent delta. If delta > 20% on area/cells, stop and open the playbook.
-The final project uses the same grid in `workbook/progetto-finale-template.md`.
+The final project uses the same grid in `workbook/final-project-template.md`.

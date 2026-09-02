@@ -46,9 +46,9 @@ Live F4 last. Do not launch AES finish “just to see”.
 
 ## Documentation
 
-- Index: `docs/README.md`. Tree: `docs/architettura.md`.
-  Lab: `docs/laboratorio.md`. Course: `docs/corso.md`.
-  Scripts: `docs/script.md`. Plans: `docs/piani.md`.
+- Index: `docs/README.md`. Tree: `docs/architecture.md`.
+  Lab: `docs/lab.md`. Course: `docs/course.md`.
+  Scripts: `docs/script.md`. Plans: `docs/plans.md`.
 - Frozen plans are not rewritten after data (`tpe_plan.md`,
   `product.md`, `arch_review.md` §4–§6, I1–I5, §5 P0–P7).
 - Human recipe titles, not `camp_*_tpe_*` hashes.

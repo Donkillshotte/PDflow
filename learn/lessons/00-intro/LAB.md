@@ -6,7 +6,7 @@ This is not a “hello world”. At the end of this LAB you know **where** every
 
 - [ ] `--check` all green
 - [ ] Can name the 6 macro-stages RTL→GDS aloud
-- [ ] Created `learn/workbook/mio-quaderno.md`
+- [ ] Created `learn/workbook/my-notebook.md`
 - [ ] Can open Desktop (not Preview) and explain the difference
 - [ ] Found `gcd.v`, `constraint.sdc`, `floorplan.tcl` without using this file as a map
 

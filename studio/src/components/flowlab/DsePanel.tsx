@@ -207,7 +207,7 @@ export function DsePanel() {
         <strong>DSE · level search</strong>
         <p>
           Planner IR+WNS · EHVI · F2/F5-lite SPEF · extract PDN · STA F3 · IR/EM F4 ·{" "}
-          <Link href="/materiali/reference/dse.md">dse.md</Link>
+          <Link href="/materials/reference/dse.md">dse.md</Link>
         </p>
       </header>
       {!report?.ok ? (

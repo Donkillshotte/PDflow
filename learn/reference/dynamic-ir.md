@@ -82,7 +82,7 @@ On GCD Nangate45 LU is faster than AMG and RAS (4k nodes). AMG/RAS are paths tha
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
-# Studio: dynamic_ir action  ·  /strumenti?tab=run&action=dynamic_ir
+# Studio: dynamic_ir action  ·  /tools?tab=run&action=dynamic_ir
 # Env: DYNAMIC_IR_MODE=clock|spatial|simultaneousus
 ```
 

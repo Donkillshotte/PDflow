@@ -133,7 +133,7 @@ SDC and `config.mk` define **frequency and margin** → affect switching power a
 
 | Link | Where |
 |---|---|
-| FlowLab | [synth](/flusso?phase=synth) (SDC preset) |
+| FlowLab | [synth](/flow?phase=synth) (SDC preset) |
 | Downstream | `report_power` at lesson 07 |
 
 ## Estimated duration

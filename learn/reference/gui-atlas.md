@@ -14,7 +14,7 @@ Expected title: `OpenROAD - gcd` (or `OpenROAD - nangate45/gcd/learn - 6_final`)
 
 Menu/panel reference in prose: [gui-openroad.md](./gui-openroad.md). This atlas is the **visual map**.
 
-**FlowLab / lessons (browser):** on `/flusso` and in wizard **Results** step, the central canvas shows the same layouts via ORFS PNG + **OpenROAD Web Viewer** embedded (`POST /api/viewer`). You do not need to open Qt for a first inspection — use Desktop for pixel-level analysis as in this atlas.
+**FlowLab / lessons (browser):** on `/flow` and in wizard **Results** step, the central canvas shows the same layouts via ORFS PNG + **OpenROAD Web Viewer** embedded (`POST /api/viewer`). You do not need to open Qt for a first inspection — use Desktop for pixel-level analysis as in this atlas.
 
 ---
 

@@ -103,7 +103,7 @@ Synthesis instantiates **.lib cells** with leakage/switching/internal models →
 
 | Link | Where |
 |---|---|
-| FlowLab | [synth](/flusso?phase=synth) |
+| FlowLab | [synth](/flow?phase=synth) |
 | Liberty | `platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib` |
 
 ## Estimated duration

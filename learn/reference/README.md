@@ -27,7 +27,7 @@ Estimated time **reference only**: 3–4 hours of active reading (not skimming).
 - [../workbook/solutions.md](../workbook/solutions.md) — solutions (after trying)
 - [../workbook/quiz.md](../workbook/quiz.md) — self-assessment per lesson
 - [../workbook/notes-template.md](../workbook/notes-template.md) — notebook
-- [../workbook/progetto-finale-template.md](../workbook/progetto-finale-template.md) — lesson 07 deliverable
+- [../workbook/final-project-template.md](../workbook/final-project-template.md) — lesson 07 deliverable
 
 ## Tutorial run metrics
 

@@ -22,7 +22,7 @@ sim/reports/vyges_em_ir_<variant>.json
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_vyges_em_ir.sh
-# Studio: vyges_em_ir action  ·  /strumenti?tab=run&action=vyges_em_ir
+# Studio: vyges_em_ir action  ·  /tools?tab=run&action=vyges_em_ir
 ```
 
 Binary is not in git (`tools/` is ignored). `ensure_vyges_em_ir.sh` fetches the release `x86_64` / `aarch64` Linux, verifies sha256, and if download fails tries `cargo build --release` from tag `v0.1.33`.

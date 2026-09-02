@@ -162,7 +162,7 @@ export const PHASE_LAYERS: Partial<Record<LayoutPhaseId, LayerSwatch[]>> = {
     { id: "die", name: "Die", color: "#6e7681", role: "Chip outline" },
     { id: "rows", name: "Rows", color: "#3d4a5c", role: "Siti standard-cell" },
     { id: "m1", name: "Metal1", color: "#4b8bff", role: "Rail VDD/VSS followpin" },
-    { id: "pdn", name: "PDN straps", color: "#e6c84a", role: "VDD/VSS su M4/M7" },
+    { id: "pdn", name: "PDN straps", color: "#e6c84a", role: "VDD/VSS on M4/M7" },
   ],
   pdn: [
     { id: "m1", name: "Metal1", color: "#4b8bff", role: "Followpin on rows" },

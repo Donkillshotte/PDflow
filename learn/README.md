@@ -1,7 +1,7 @@
 # Physical Design Course — OpenROAD + ORFS
 
 This is the **course**. The product (knobs, fixed die, finish, `win_rule`)
-lives in [`docs/README.md`](../docs/README.md). Study guide: [`docs/corso.md`](../docs/corso.md).
+lives in [`docs/README.md`](../docs/README.md). Study guide: [`docs/course.md`](../docs/course.md).
 
 A **complete hands-on path** to learn every stage of digital physical design.
 This is not a 10-minute tutorial: it is structured for **20–28 hours of active study**
@@ -83,7 +83,7 @@ learn/
 **Recommended** module (not required to complete the course):
 
 1. Read [`reference/spice-power-chain.md`](reference/spice-power-chain.md) — exhaustive map lessons ↔ FlowLab ↔ netlists
-2. Open FlowLab [RTL → PKG](http://127.0.0.1:43217/flusso) and the chain below the pipeline
+2. Open FlowLab [RTL → PKG](http://127.0.0.1:43217/flow) and the chain below the pipeline
 3. Post-`make finish`: `./learn/scripts/run_power_chain.sh` (`learn` or `flowlab` variant)
 4. Explore netlists in `learn/sim/spice/` · hub [/pkg](http://127.0.0.1:43217/pkg)
 

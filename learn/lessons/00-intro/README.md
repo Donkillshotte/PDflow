@@ -117,7 +117,7 @@ This lesson is the **first link** in the power integrity chain documented in [`s
 
 | Link | Where |
 |---|---|
-| FlowLab | [RTL stage](/flusso?phase=rtl) · `rtl_sim` action |
+| FlowLab | [RTL stage](/flow?phase=rtl) · `rtl_sim` action |
 | Output | `learn/sim/gcd/gcd.vcd` (toggles → future activity) |
 | Next power lesson | 02 synthesis (liberty) → 07 finish (`report_power`, [`signoff-matrix`](../../reference/signoff-matrix.md)) |
 

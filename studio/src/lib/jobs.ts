@@ -265,7 +265,7 @@ export function evaluateLessonGates(input: {
   checklistSize: number;
 }): { ok: boolean; gates: CompletionGate[] } {
   const { makeTarget, steps, checks, checklistSize } = input;
-  const theoryOk = steps.includes("teoria");
+  const theoryOk = steps.includes("theory");
   const labNeed =
     checklistSize === 0 ? 0 : Math.max(1, Math.ceil(checklistSize * 0.5));
   const labOk = checklistSize === 0 || checks.length >= labNeed;
@@ -280,12 +280,12 @@ export function evaluateLessonGates(input: {
     (j) => j.action === makeTarget && j.status === "ok",
   );
   const runGateOk = Boolean(lastOkJob) || (runOk && artifactsOk);
-  const inspectOk = steps.includes("risultati");
+  const inspectOk = steps.includes("results");
 
   const gates: CompletionGate[] = [
     {
-      id: "teoria",
-      label: "Theory consultata",
+      id: "theory",
+      label: "Theory reviewed",
       ok: theoryOk,
       detail: theoryOk
         ? "Theory step completed"
@@ -299,7 +299,7 @@ export function evaluateLessonGates(input: {
     },
     {
       id: "run",
-      label: `Run ${makeTarget} riuscito`,
+      label: `Run ${makeTarget} succeeded`,
       ok: runGateOk,
       detail: lastOkJob
         ? `job ${lastOkJob.id.slice(0, 8)}… ok`
@@ -311,12 +311,12 @@ export function evaluateLessonGates(input: {
     },
     {
       id: "artifacts",
-      label: "Artifacts presenti",
+      label: "Artifacts present",
       ok: artifactsOk,
       detail: `${results.artifacts.filter((a) => a.exists).length}/${results.artifacts.length}`,
     },
     {
-      id: "risultati",
+      id: "results",
       label: "Results inspected",
       ok: inspectOk,
       detail: inspectOk

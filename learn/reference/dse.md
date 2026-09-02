@@ -151,7 +151,7 @@ python3 learn/scripts/test_dse.py
 
 Report: `learn/sim/reports/dse_flowlab.json` · memory: `learn/sim/dse/memory_flowlab.jsonl`.
 
-Studio: action `dse` · `/strumenti?tab=run&action=dse` · panel on `/pkg` and FlowLab signoff.
+Studio: action `dse` · `/tools?tab=run&action=dse` · panel on `/pkg` and FlowLab signoff.
 
 References (not forks): BOiLS DATE’22 / HEBO ActionSimple, DRiLLS, AutoDMP ISPD’23,
 ROVER/ASPEN/SmoothE as form (ROVER/ASPEN are not OSS), MAVIREC, EMSim split A/B,

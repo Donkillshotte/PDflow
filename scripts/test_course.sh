@@ -160,14 +160,14 @@ else
 fi
 
 echo "== Workbook =="
-for f in README.md notes-template.md quiz.md progetto-finale-template.md solutions.md; do
+for f in README.md notes-template.md quiz.md final-project-template.md solutions.md; do
   [[ -f "${ROOT}/learn/workbook/${f}" ]] && ok "workbook/${f}" || bad "missing workbook/${f}"
 done
 min_lines "${ROOT}/learn/workbook/quiz.md" 70
 min_lines "${ROOT}/learn/workbook/solutions.md" 80
-min_lines "${ROOT}/learn/workbook/progetto-finale-template.md" 50
+min_lines "${ROOT}/learn/workbook/final-project-template.md" 50
 rg -q 'Quiz GUI' "${ROOT}/learn/workbook/quiz.md" && ok "quiz GUI" || bad "quiz without GUI"
-rg -q 'golden-metrics.md' "${ROOT}/learn/workbook/progetto-finale-template.md" && ok "project cites golden-metrics" || bad "project without golden-metrics"
+rg -q 'golden-metrics.md' "${ROOT}/learn/workbook/final-project-template.md" && ok "project cites golden-metrics" || bad "project without golden-metrics"
 rg -q 'solutions.md' "${ROOT}/learn/workbook/README.md" && ok "workbook README cites solutions.md" || bad "workbook README without solutions.md"
 
 echo "== Course meta =="
@@ -178,8 +178,8 @@ echo "== Studio UI =="
 [[ -f "${ROOT}/studio/package.json" ]] && ok "studio/package.json" || bad "missing studio"
 [[ -f "${ROOT}/scripts/run_studio.sh" ]] && ok "run_studio.sh" || bad "missing run_studio.sh"
 [[ -f "${ROOT}/studio/src/app/page.tsx" ]] && ok "studio home" || bad "missing studio home"
-[[ -f "${ROOT}/studio/src/app/lezioni/page.tsx" ]] && ok "studio lezioni" || bad "missing lezioni"
-[[ -f "${ROOT}/studio/src/app/strumenti/page.tsx" ]] && ok "studio strumenti" || bad "missing strumenti"
+[[ -f "${ROOT}/studio/src/app/lessons/page.tsx" ]] && ok "studio lezioni" || bad "missing lezioni"
+[[ -f "${ROOT}/studio/src/app/tools/page.tsx" ]] && ok "studio strumenti" || bad "missing strumenti"
 [[ -f "${ROOT}/studio/src/app/api/run/route.ts" ]] && ok "studio api/run" || bad "missing api/run"
 [[ -f "${ROOT}/studio/src/app/api/run/stream/route.ts" ]] && ok "studio api/run/stream" || bad "missing stream"
 [[ -f "${ROOT}/studio/src/components/LessonWizard.tsx" ]] && ok "LessonWizard" || bad "missing LessonWizard"
@@ -413,7 +413,7 @@ rg -q 'vectorless' "${ROOT}/studio/src/lib/run.ts" && ok "studio vectorless acti
 [[ -f "${ROOT}/learn/lib/power_vcd.sh" ]] && ok "power_vcd.sh shared" || bad "missing power_vcd.sh"
 [[ -f "${ROOT}/studio/src/lib/actions.ts" ]] && ok "actions.ts single source" || bad "missing actions.ts"
 [[ -f "${ROOT}/studio/src/lib/materials-data.ts" ]] && ok "materials-data.ts" || bad "missing materials-data"
-[[ -f "${ROOT}/studio/src/app/materiali/file/[...slug]/page.tsx" ]] && ok "spice file viewer" || bad "missing file viewer"
+[[ -f "${ROOT}/studio/src/app/materials/file/[...slug]/page.tsx" ]] && ok "spice file viewer" || bad "missing file viewer"
 rg -q 'PkgHubPanel' "${ROOT}/studio/src/app/pkg/page.tsx" && ok "pkg hub live panel" || bad "pkg static only"
 [[ -f "${ROOT}/learn/scripts/export_spice_lab.sh" ]] && ok "export_spice_lab.sh" || bad "missing export_spice_lab"
 [[ -f "${ROOT}/learn/scripts/run_power_chain.sh" ]] && ok "run_power_chain.sh" || bad "missing power_chain"
@@ -484,7 +484,7 @@ if [[ -f "${ROOT}/learn/sim/reports/formal_gcd_flowlab.json" ]]; then
     && ok "formal gcd report" || bad "formal gcd report"
 fi
 rg -q 'Sim RTL|Gridcheck|Activity' "${ROOT}/studio/src/components/LiveRunConsole.tsx" && ok "console extended chips" || bad "console without extended chips"
-rg -q 'OpsDashboard' "${ROOT}/studio/src/app/strumenti/strumenti-client.tsx" && ok "OpsDashboard wired" || bad "OpsDashboard not wired"
+rg -q 'OpsDashboard' "${ROOT}/studio/src/app/tools/tools-client.tsx" && ok "OpsDashboard wired" || bad "OpsDashboard not wired"
 rg -q 'ToastProvider' "${ROOT}/studio/src/app/layout.tsx" && ok "ToastProvider wired" || bad "ToastProvider not wired"
 rg -q 'ConfirmDialog' "${ROOT}/studio/src/components/LiveRunConsole.tsx" && ok "ConfirmDialog wired" || bad "ConfirmDialog not wired"
 if [[ -d "${ROOT}/studio/node_modules" ]]; then

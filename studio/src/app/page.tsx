@@ -42,19 +42,19 @@ export default function HomePage() {
             live log → artifact inspection → close-out.
           </p>
           <div className="cta-row">
-            <Link href="/flusso" className="btn-primary">
+            <Link href="/flow" className="btn-primary">
               Open interactive FlowLab
             </Link>
             {next ? (
-              <Link href={`/lezioni/${next.id}`} className="btn-ghost">
+              <Link href={`/lessons/${next.id}`} className="btn-ghost">
                 Course · {next.title}
               </Link>
             ) : (
-              <Link href="/lezioni" className="btn-ghost">
+              <Link href="/lessons" className="btn-ghost">
                 Open lessons
               </Link>
             )}
-            <Link href="/strumenti" className="btn-ghost">
+            <Link href="/tools" className="btn-ghost">
               Console live
             </Link>
           </div>
@@ -62,7 +62,7 @@ export default function HomePage() {
             {lessons.map((l) => (
               <Link
                 key={l.id}
-                href={`/lezioni/${l.id}`}
+                href={`/lessons/${l.id}`}
                 className={`progress-dot${l.completed ? " on" : ""}`}
                 title={l.title}
               />
@@ -78,13 +78,13 @@ export default function HomePage() {
       <section className="home-rail">
         <div className="home-rail-head">
           <h2 className="section-title">Interactive flow</h2>
-          <Link href="/flusso" className="home-rail-cta">
+          <Link href="/flow" className="home-rail-cta">
             FlowLab · RTL → PKG →
           </Link>
         </div>
         <p className="footer-note" style={{ marginTop: "0.5rem" }}>
           Power &amp; SPICE chain:{" "}
-          <Link href="/materiali/reference/spice-power-chain.md">full guide</Link>
+          <Link href="/materials/reference/spice-power-chain.md">full guide</Link>
           {" · "}
           <Link href="/pkg">hub PKG</Link>
         </p>
@@ -100,7 +100,7 @@ export default function HomePage() {
             { n: "GDS", t: "Finish", d: "IR · power", ph: "finish" },
             { n: "PKG", t: "System", d: "ngspice", ph: "pkg" },
           ].map((s) => (
-            <Link key={s.n} href={`/flusso?phase=${s.ph}`} className="flow-step flow-step-link">
+            <Link key={s.n} href={`/flow?phase=${s.ph}`} className="flow-step flow-step-link">
               <span>{s.n}</span>
               <strong>{s.t}</strong>
               <em>{s.d}</em>

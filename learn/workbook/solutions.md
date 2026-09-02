@@ -131,7 +131,7 @@ Colors **≠** Display Control Qt.
 
 ## E3 — Final project
 
-Template: `progetto-finale-template.md`. Must compare `period_min`
+Template: `final-project-template.md`. Must compare `period_min`
 finish (**0.50 ns** ~ **2011 MHz**) with SDC 0.46 ns (~2174 MHz):
 `make finish` green **does not** close 2.17 GHz.
 

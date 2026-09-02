@@ -36,7 +36,7 @@ export default async function LabFilePage({
         </p>
       </header>
       <div className="lesson-actions">
-        <Link href="/materiali" className="btn-ghost">
+        <Link href="/materials" className="btn-ghost">
           ← Materials
         </Link>
         <Link href="/pkg" className="btn-ghost">

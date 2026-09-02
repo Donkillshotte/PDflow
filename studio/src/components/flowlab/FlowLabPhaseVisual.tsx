@@ -443,12 +443,12 @@ export function FlowLabPhaseVisual({
           {meshStats ? (
             <p className="fl-vis-meta">
               Mesh export · <code>learn/sim/spice/</code> ·{" "}
-              <Link href="/materiali/reference/spice-chip-mesh.md">docs mesh</Link>
+              <Link href="/materials/reference/spice-chip-mesh.md">docs mesh</Link>
             </p>
           ) : (
             <p className="fl-vis-meta">
               Dopo finish: chip IR → <code>write_pg_spice</code> ·{" "}
-              <Link href="/materiali/reference/spice-chip-mesh.md">mesh SPICE</Link>
+              <Link href="/materials/reference/spice-chip-mesh.md">mesh SPICE</Link>
             </p>
           )}
         </div>

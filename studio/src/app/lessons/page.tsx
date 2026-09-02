@@ -20,7 +20,7 @@ export default function LessonsPage() {
         {LESSONS.map((l, i) => (
           <Link
             key={l.id}
-            href={`/lezioni/${l.id}`}
+            href={`/lessons/${l.id}`}
             className={`lesson-item${done.has(l.id) ? " done" : ""}`}
             style={{ animationDelay: `${i * 40}ms` }}
           >

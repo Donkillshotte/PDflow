@@ -36,7 +36,7 @@ export default function PkgPage() {
             Gridcheck after floorplan. SPICE mesh post-finish:{" "}
             <code>write_pg_spice</code> + <code>pdn_transient.py</code>.
           </p>
-          <Link className="btn-primary" href="/flusso?phase=pdn">
+          <Link className="btn-primary" href="/flow?phase=pdn">
             PDN phase
           </Link>
         </article>
@@ -46,7 +46,7 @@ export default function PkgPage() {
             ngspice ladder: Z(f) e load-step. Config{" "}
             <code>learn/system_pdn/default.json</code>.
           </p>
-          <Link className="btn-primary" href="/flusso?phase=pkg">
+          <Link className="btn-primary" href="/flow?phase=pkg">
             PKG phase
           </Link>
         </article>
@@ -54,25 +54,25 @@ export default function PkgPage() {
           <h2>3. SPICE chain</h2>
           <ul>
             <li>
-              <Link href="/materiali/reference/spice-power-chain.md">
+              <Link href="/materials/reference/spice-power-chain.md">
                 RTL → PKG · phase links
               </Link>
             </li>
             <li>
-              <Link href="/materiali/reference/spice-chip-mesh.md">
+              <Link href="/materials/reference/spice-chip-mesh.md">
                 Chip mesh · cells and ITerm
               </Link>
             </li>
             <li>
-              <Link href="/materiali/reference/spice-ngspice-primer.md">
+              <Link href="/materials/reference/spice-ngspice-primer.md">
                 ngspice · TRAN/AC
               </Link>
             </li>
             <li>
-              <Link href="/materiali/sim/spice/README.md">Lab netlist</Link>
+              <Link href="/materials/sim/spice/README.md">Lab netlist</Link>
             </li>
             <li>
-              <Link href="/materiali/file/sim/spice/nangate_inverter_demo.sp">
+              <Link href="/materials/file/sim/spice/nangate_inverter_demo.sp">
                 Demo inverter SPICE
               </Link>
             </li>

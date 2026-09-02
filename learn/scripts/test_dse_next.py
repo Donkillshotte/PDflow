@@ -1146,14 +1146,14 @@ def _check_enterprise_docs(check, root: Path) -> None:
     """The repo docs map covers product, lab, and course — and stays linked."""
     required = (
         "docs/README.md",
-        "docs/prodotto.md",
-        "docs/operazioni.md",
-        "docs/risultati.md",
-        "docs/architettura.md",
-        "docs/laboratorio.md",
-        "docs/corso.md",
+        "docs/product.md",
+        "docs/operations.md",
+        "docs/results.md",
+        "docs/architecture.md",
+        "docs/lab.md",
+        "docs/course.md",
         "docs/script.md",
-        "docs/piani.md",
+        "docs/plans.md",
         "AGENTS.md",
         "CONTRIBUTING.md",
         "scripts/README.md",
@@ -1169,18 +1169,18 @@ def _check_enterprise_docs(check, root: Path) -> None:
         check(path.stat().st_size > 80, f"docs map sized {rel}")
     index = (root / "docs/README.md").read_text()
     for needle in (
-        "docs/prodotto.md",
-        "architettura.md",
-        "laboratorio.md",
-        "corso.md",
+        "docs/product.md",
+        "architecture.md",
+        "lab.md",
+        "course.md",
         "script.md",
-        "piani.md",
+        "plans.md",
         "win_rule.py",
     ):
         check(needle in index or needle.replace("docs/", "") in index, f"docs index cites {needle}")
-    product = (root / "docs/prodotto.md").read_text()
-    check("learn/dse/product.md" in product, "prodotto.md points at frozen product.md")
-    check("win_rule.py" in product, "prodotto.md points at win_rule")
+    product = (root / "docs/product.md").read_text()
+    check("learn/dse/product.md" in product, "product.md points at frozen product.md")
+    check("win_rule.py" in product, "product.md points at win_rule")
     agents = (root / "AGENTS.md").read_text()
     check("Forbidden" in agents or "Refuse" in agents, "AGENTS.md has refuse rules")
     check("test_dse_next.py" in agents, "AGENTS.md names the fast suite")
@@ -1193,8 +1193,8 @@ def _check_enterprise_docs(check, root: Path) -> None:
     contrib = (root / "CONTRIBUTING.md").read_text()
     check("test_dse_next.py" in contrib, "CONTRIBUTING names the fast suite")
     check("45.298" in contrib, "CONTRIBUTING protects GCD IR gold")
-    arch = (root / "docs/architettura.md").read_text()
-    check("camp_{design}" in arch or "camp_" in arch, "architettura names camp variants")
+    arch = (root / "docs/architecture.md").read_text()
+    check("camp_{design}" in arch or "camp_" in arch, "architecture names camp variants")
     check("if design ==" in (root / "AGENTS.md").read_text(), "AGENTS forbids design-name branches")
 
 

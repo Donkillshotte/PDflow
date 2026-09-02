@@ -168,7 +168,7 @@ export function FlowLab() {
   useEffect(() => {
     if (!urlReady.current) return;
     if (search.get("phase") === phaseId) return;
-    router.replace(`/flusso?phase=${phaseId}`, { scroll: false });
+    router.replace(`/flow?phase=${phaseId}`, { scroll: false });
   }, [phaseId, router, search]);
 
   useEffect(() => {
@@ -683,16 +683,16 @@ export function FlowLab() {
                     <p>
                       Theory:{" "}
                       <a href="/pkg">PKG hub</a> ·{" "}
-                      <a href="/materiali/reference/spice-power-chain.md">SPICE chain</a> ·{" "}
-                      <a href="/materiali/reference/spice-ngspice-primer.md">ngspice</a> ·{" "}
-                      <a href="/materiali/sim/spice/README.md">Lab netlist</a>
+                      <a href="/materials/reference/spice-power-chain.md">SPICE chain</a> ·{" "}
+                      <a href="/materials/reference/spice-ngspice-primer.md">ngspice</a> ·{" "}
+                      <a href="/materials/sim/spice/README.md">Lab netlist</a>
                     </p>
                   )}
                   {phase.id === "pdn" && (
                     <p>
                       Docs:{" "}
-                      <a href="/materiali/reference/spice-chip-mesh.md">Mesh SPICE</a> ·{" "}
-                      <a href="/materiali/reference/spice-power-chain.md">Phase chain</a> ·{" "}
+                      <a href="/materials/reference/spice-chip-mesh.md">Mesh SPICE</a> ·{" "}
+                      <a href="/materials/reference/spice-power-chain.md">Phase chain</a> ·{" "}
                       chip IR post-finish in signoff
                     </p>
                   )}

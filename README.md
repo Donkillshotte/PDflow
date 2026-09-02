@@ -10,10 +10,10 @@ Three surfaces in the same tree. Do not mix them.
 
 Product win (slack ±5 ps, area/power/leakage/IR ±10%):
 [`learn/dse/win_rule.py`](learn/dse/win_rule.py).
-How to cook and test: [`docs/operazioni.md`](docs/operazioni.md).
-Honest results: [`docs/risultati.md`](docs/risultati.md).
+How to cook and test: [`docs/operations.md`](docs/operations.md).
+Honest results: [`docs/results.md`](docs/results.md).
 Agent rules: [`AGENTS.md`](AGENTS.md).
-Tree and ownership: [`docs/architettura.md`](docs/architettura.md).
+Tree and ownership: [`docs/architecture.md`](docs/architecture.md).
 How to contribute: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Complete local environment for digital physical design (RTL → GDSII) based on:
@@ -98,7 +98,7 @@ Estimated active study time: **20–28 hours** (the `--auto` wrapper does not re
 
 Enterprise web UI: lessons with completion gates, SSE console
 (confirm/cancel/retry/export), ops dashboard, **suite hub** (`/api/suite`),
-**FlowLab** (`/flusso`: editable RTL → parameters → GDSII),
+**FlowLab** (`/flow`: editable RTL → parameters → GDSII),
 **Ctrl+K** (dashboard / run / OpenROAD Qt / web viewer), materials.
 OSS analysis actions: `vectorless`, `vyges_em_ir`, `dynamic_ir`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `tool_matrix`.
 Native solvers: `engine/` (`libdpn.so`, LU + SA-AMG). Build: `./learn/scripts/build_dpn_engine.sh`.
@@ -107,7 +107,7 @@ Smoke: `./scripts/test_all_phases.sh` (exhaustive), `./scripts/test_studio_api.s
 
 ### FlowLab — RTL → GDSII lab
 
-Interactive workbench at **http://127.0.0.1:43217/flusso**:
+Interactive workbench at **http://127.0.0.1:43217/flow**:
 
 - Verilog editor (Monaco), live ORFS parameters, visual 7-phase pipeline
 - Isolated `flowlab` variant (does not overwrite course `learn`)

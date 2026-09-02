@@ -295,9 +295,9 @@ export function DynamicIrHeatmap({
           Piattaforma ibrida: OpenROAD frontend · A = DirectLU current_run ·
           B = SA-AMG · C = Krylov MOR · D = RAS · reference_run 45.298 mV
           unrestamped · vyges = bootstrap ·{" "}
-          <a href="/materiali/reference/dynamic-ir.md">dynamic-ir</a>
+          <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>
           {" · "}
-          <a href="/materiali/reference/dynamic-ir-landscape.md">landscape</a>
+          <a href="/materials/reference/dynamic-ir-landscape.md">landscape</a>
         </p>
       </header>
       {missing || !report?.ok ? (

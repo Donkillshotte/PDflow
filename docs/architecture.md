@@ -53,7 +53,7 @@ is `current_run`. Do not confuse them. AES row `febe6804241c` stays intact.
 - `tools/OpenROAD-flow-scripts/` (ORFS checkout)
 - `results/.../gcd/flowlab/` (baseline A)
 - Product modules in `learn/dse/{win_rule,knob_catalog,tune_*,cook,floorplan}.py`
-- Frozen plans listed in [piani.md](piani.md)
+- Frozen plans listed in [plans.md](plans.md)
 
 ## Official slots (product)
 

@@ -27,10 +27,10 @@ type CheckItem = { id: string; label: string };
 type Gate = { id: string; label: string; ok: boolean; detail?: string };
 
 const STEPS = [
-  { id: "teoria", label: "1 · Theory", short: "Theory" },
+  { id: "theory", label: "1 · Theory", short: "Theory" },
   { id: "lab", label: "2 · LAB", short: "LAB" },
   { id: "run", label: "3 · Run", short: "Run" },
-  { id: "risultati", label: "4 · Results", short: "Results" },
+  { id: "results", label: "4 · Results", short: "Results" },
   { id: "chiudi", label: "5 · Close", short: "Close" },
 ] as const;
 
@@ -59,7 +59,7 @@ function extractChecks(lab: string): CheckItem[] {
 
 export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
   const { push } = useToast();
-  const [step, setStep] = useState<StepId>("teoria");
+  const [step, setStep] = useState<StepId>("theory");
   const [doneSteps, setDoneSteps] = useState<string[]>([]);
   const [checks, setChecks] = useState<string[]>([]);
   const [completed, setCompleted] = useState(false);
@@ -213,7 +213,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
       <LessonPowerChainPanel lessonId={lesson.id} />
 
       <div className="wizard-body panel">
-        {step === "teoria" && (
+        {step === "theory" && (
           <div className="wizard-pane">
             <header className="wizard-pane-head">
               <h2>Read the theory</h2>
@@ -298,35 +298,35 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
           </div>
         )}
 
-        {step === "risultati" && (
+        {step === "results" && (
           <div className="wizard-pane">
             <header className="wizard-pane-head">
               <h2>Inspect the results</h2>
               <p>
                 Compare artifacts and metrics with{" "}
-                <Link href="/materiali/reference/golden-metrics.md">
+                <Link href="/materials/reference/golden-metrics.md">
                   golden-metrics
                 </Link>
                 {lesson.id === "07-finish" && (
                   <>
                     {" "}
                     · SPICE chain:{" "}
-                    <Link href="/materiali/reference/spice-power-chain.md#lesson-07-finish">
+                    <Link href="/materials/reference/spice-power-chain.md#lesson-07-finish">
                       finish → PKG
                     </Link>
                     {" "}
                     ·{" "}
-                    <Link href="/flusso?phase=pkg">FlowLab PKG</Link>
+                    <Link href="/flow?phase=pkg">FlowLab PKG</Link>
                   </>
                 )}
                 {lesson.id === "03-floorplan" && (
                   <>
                     {" "}
                     ·{" "}
-                    <Link href="/flusso?phase=pdn">FlowLab PDN</Link>
+                    <Link href="/flow?phase=pdn">FlowLab PDN</Link>
                     {" "}
                     ·{" "}
-                    <Link href="/materiali/reference/spice-power-chain.md#lesson-03-floorplan">
+                    <Link href="/materials/reference/spice-power-chain.md#lesson-03-floorplan">
                       grid → mesh
                     </Link>
                   </>
@@ -343,7 +343,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
             <div className="lesson-actions" style={{ marginTop: "1rem" }}>
               <a
                 className="btn-ghost"
-                href={`/strumenti?stage=${lesson.makeTarget}&tab=results`}
+                href={`/tools?stage=${lesson.makeTarget}&tab=results`}
               >
                 Open dashboard · {lesson.makeTarget}
               </a>
@@ -462,7 +462,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
               Next
             </button>
           ) : (
-            <Link href="/lezioni" className="btn-ghost">
+            <Link href="/lessons" className="btn-ghost">
               Back to lessons
             </Link>
           )}

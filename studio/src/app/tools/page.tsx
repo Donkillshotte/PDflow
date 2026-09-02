@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import StrumentiClient from "./strumenti-client";
+import ToolsClient from "./tools-client";
 
-export default function StrumentiPage() {
+export default function ToolsPage() {
   return (
     <Suspense
       fallback={
@@ -13,7 +13,7 @@ export default function StrumentiPage() {
         </main>
       }
     >
-      <StrumentiClient />
+      <ToolsClient />
     </Suspense>
   );
 }

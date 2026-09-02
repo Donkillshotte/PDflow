@@ -29,7 +29,7 @@ export default async function MaterialDetailPage({
         <p>Course document · path learn/{rel}</p>
       </header>
       <div className="lesson-actions">
-        <Link href="/materiali" className="btn-ghost">
+        <Link href="/materials" className="btn-ghost">
           ← Materials
         </Link>
       </div>

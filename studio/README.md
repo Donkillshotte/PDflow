@@ -3,7 +3,7 @@
 **Enterprise** web interface for the course in `learn/`.
 It does not replace the scripts: it **orchestrates** them with locks, dependencies, job history, and completion gates.
 
-Repo index: [`docs/README.md`](../docs/README.md) · course: [`docs/corso.md`](../docs/corso.md).
+Repo index: [`docs/README.md`](../docs/README.md) · course: [`docs/course.md`](../docs/course.md).
 The `learn` and `flowlab` variants are locked for the product.
 
 ## Getting started
@@ -40,12 +40,12 @@ Production:
 - **Cancel / retry / export log** from the console and history
 - **Job history**: `GET /api/jobs` → `learn/.studio-jobs.json`
 - **Lesson completion**: `POST /api/progress` → **422** if gates fail
-- **Open GUI / dashboard**: palette **Ctrl+K**, deep-link `/strumenti?stage=cts&tab=results`,
+- **Open GUI / dashboard**: palette **Ctrl+K**, deep-link `/tools?stage=cts&tab=results`,
   `POST /api/open` launches OpenROAD/KLayout on Desktop (`DISPLAY`) or copies the command;
   kind `run` → console; kind `webviewer` → `POST /api/viewer`
 - **Tool inspection**: `GET /api/inspect` (ODB via `-python`, OpenSTA JSON, Yosys `stat`)
 - **Web Viewer**: `POST /api/viewer` → OpenROAD `-web` on port `43190`
-- **Suite hub**: `GET /api/suite` → hook matrix (environment → signoff) on `/` and `/strumenti#suite`
+- **Suite hub**: `GET /api/suite` → hook matrix (environment → signoff) on `/` and `/tools#suite`
 - **Extended actions**: `rtl_sim`, `gridcheck`, `activity_power`, `vectorless`, `vyges_em_ir`, `dynamic_ir`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `klayout_drc` (+ artifact preflight)
 
 ## Useful APIs
@@ -73,17 +73,17 @@ Production:
 
 Useful deep links:
 
-- `/flusso` — RTL → GDSII lab
-- `/strumenti?stage=place&tab=results`
-- `/strumenti?stage=cts&tab=results#inspect`
-- `/strumenti?tab=run&action=rtl_sim`
-- `/strumenti?tab=run&action=gridcheck`
-- `/strumenti#suite`
-- `/strumenti?stage=finish&tab=run`
-- `/materiali?tab=gallery`
-- `/materiali/reference/tool-hooks.md`
-- `/materiali/reference/extended-flow.md`
-- `/materiali/reference/gui-atlas.md`
+- `/flow` — RTL → GDSII lab
+- `/tools?stage=place&tab=results`
+- `/tools?stage=cts&tab=results#inspect`
+- `/tools?tab=run&action=rtl_sim`
+- `/tools?tab=run&action=gridcheck`
+- `/tools#suite`
+- `/tools?stage=finish&tab=run`
+- `/materials?tab=gallery`
+- `/materials/reference/tool-hooks.md`
+- `/materials/reference/extended-flow.md`
+- `/materials/reference/gui-atlas.md`
 
 
 API smoke tests (server already running):
@@ -98,7 +98,7 @@ cd studio && npm run build
 
 The course CLI is unchanged.
 
-## FlowLab (`/flusso`)
+## FlowLab (`/flow`)
 
 **RTL → GDSII** workbench with isolated variant `results/nangate45/gcd/flowlab`:
 

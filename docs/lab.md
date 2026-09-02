@@ -1,7 +1,7 @@
 # Lab
 
 Does not decide product wins. Stays in the tree as the IR / e-graph /
-refine stack. Product index: [prodotto.md](prodotto.md).
+refine stack. Product index: [product.md](product.md).
 
 ## What it is
 

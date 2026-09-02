@@ -163,7 +163,7 @@ export function SignoffMatrixPanel({
         <strong>Matrice signoff GCD</strong>
         <p>
           4 pilastri attivi vs{" "}
-          <a href="/materiali/reference/signoff-matrix.md">golden-gcd.json</a>
+          <a href="/materials/reference/signoff-matrix.md">golden-gcd.json</a>
           {data && (
             <>
               {" "}

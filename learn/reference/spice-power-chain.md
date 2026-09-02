@@ -53,7 +53,7 @@
 
 ## Lesson 00-intro {#lesson-00-intro}
 
-**Course:** `learn/lessons/00-intro/` · **FlowLab:** [RTL phase](/flusso?phase=rtl)
+**Course:** `learn/lessons/00-intro/` · **FlowLab:** [RTL phase](/flow?phase=rtl)
 
 | Produces | Consumes |
 |---|---|
@@ -74,7 +74,7 @@ Studio uses **`read_vcd`** (not `read_power_activities`) when `run_rtl_sim.sh` p
 
 ## Lesson 01-constraints {#lesson-01-constraints}
 
-**Course:** `learn/lessons/01-constraints/` · **FlowLab:** synth prep ([SDC preset](/flusso?phase=synth))
+**Course:** `learn/lessons/01-constraints/` · **FlowLab:** synth prep ([SDC preset](/flow?phase=synth))
 
 | Power impact | Detail |
 |---|---|
@@ -88,7 +88,7 @@ Does not generate SPICE netlist; prepares timing context where `report_power` wi
 
 ## Lesson 02-synthesis {#lesson-02-synthesis}
 
-**Course:** `learn/lessons/02-synthesis/` · **FlowLab:** [synth](/flusso?phase=synth)
+**Course:** `learn/lessons/02-synthesis/` · **FlowLab:** [synth](/flow?phase=synth)
 
 | Artifact | Role in power chain |
 |---|---|
@@ -120,7 +120,7 @@ ngspice -b learn/sim/spice/nangate_inverter_demo.sp
 
 ## Lesson 03-floorplan {#lesson-03-floorplan}
 
-**Course:** `learn/lessons/03-floorplan/` · **FlowLab:** [floorplan](/flusso?phase=floorplan) + [PDN](/flusso?phase=pdn)
+**Course:** `learn/lessons/03-floorplan/` · **FlowLab:** [floorplan](/flow?phase=floorplan) + [PDN](/flow?phase=pdn)
 
 | ORFS step | Output | Power chain |
 |---|---|---|
@@ -138,7 +138,7 @@ L07 IR heatmap (`orfs_final_ir_drop.png`) is **blind** if 2_4 PDN is missing.
 
 ## Lesson 04-placement {#lesson-04-placement}
 
-**Course:** `learn/lessons/04-placement/` · **FlowLab:** [place](/flusso?phase=place)
+**Course:** `learn/lessons/04-placement/` · **FlowLab:** [place](/flow?phase=place)
 
 Every placed cell gets coordinates → VDD pins on `ITermNode_metal*_*` nodes in `pg_vdd_bumps.sp`.
 
@@ -149,13 +149,13 @@ I0 ITermNode_metal1_2470_5345 0 DC 1.23e-05
 
 PDNSim distributes current from `report_power` on pins based on activity and cell type.
 
-See [spice-chip-mesh.md § anatomy](./spice-chip-mesh.md#anatomia-di-pg_vdd_bumpssp).
+See [spice-chip-mesh.md § anatomy](./spice-chip-mesh.md#anatomy-of-pg_vdd_bumpssp).
 
 ---
 
 ## Lesson 05-cts {#lesson-05-cts}
 
-**Course:** `learn/lessons/05-cts/` · **FlowLab:** [cts](/flusso?phase=cts)
+**Course:** `learn/lessons/05-cts/` · **FlowLab:** [cts](/flow?phase=cts)
 
 | Effect | Power chain |
 |---|---|
@@ -168,7 +168,7 @@ See [spice-chip-mesh.md § anatomy](./spice-chip-mesh.md#anatomia-di-pg_vdd_bump
 
 ## Lesson 06-routing {#lesson-06-routing}
 
-**Course:** `learn/lessons/06-routing/` · **FlowLab:** [route](/flusso?phase=route)
+**Course:** `learn/lessons/06-routing/` · **FlowLab:** [route](/flow?phase=route)
 
 | Output | Use |
 |---|---|
@@ -182,7 +182,7 @@ Static IR drop uses **post-route/finish** geometry, not placement alone.
 
 ## Lesson 07-finish {#lesson-07-finish}
 
-**Course:** `learn/lessons/07-finish/` · **FlowLab:** [finish](/flusso?phase=finish) + signoff + [PKG](/flusso?phase=pkg)
+**Course:** `learn/lessons/07-finish/` · **FlowLab:** [finish](/flow?phase=finish) + signoff + [PKG](/flow?phase=pkg)
 
 ### ORFS deliverables
 

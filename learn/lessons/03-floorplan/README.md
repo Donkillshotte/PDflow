@@ -106,11 +106,11 @@ Prediction: 50% → core ≈ half of 25% (not exact: snapping, margins, aspect).
 
 ## Power & SPICE chain
 
-The floorplan generates the **PDN grid** (`2_4_floorplan_pdn.odb`); FlowLab verifies with [gridcheck](/flusso?phase=pdn). The SPICE netlist is born post-finish — see [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-03-floorplan), [`spice-chip-mesh.md`](../../reference/spice-chip-mesh.md) and the pillar **power** in [`signoff-matrix.md`](../../reference/signoff-matrix.md).
+The floorplan generates the **PDN grid** (`2_4_floorplan_pdn.odb`); FlowLab verifies with [gridcheck](/flow?phase=pdn). The SPICE netlist is born post-finish — see [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-03-floorplan), [`spice-chip-mesh.md`](../../reference/spice-chip-mesh.md) and the pillar **power** in [`signoff-matrix.md`](../../reference/signoff-matrix.md).
 
 | Link | Where |
 |---|---|
-| FlowLab | [floorplan](/flusso?phase=floorplan) · [PDN](/flusso?phase=pdn) |
+| FlowLab | [floorplan](/flow?phase=floorplan) · [PDN](/flow?phase=pdn) |
 | Script | `run_gridcheck.sh` |
 
 ## Duration

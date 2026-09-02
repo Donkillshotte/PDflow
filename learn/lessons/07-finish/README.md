@@ -79,7 +79,7 @@ Fill does **not** change function. It changes CMP density and parasitics slightl
 
 ## Final project
 
-Without `learn/workbook/mio-progetto-finale.md` the course **is not finished**, even if `make finish` is green.
+Without `learn/workbook/my-final-project.md` the course **is not finished**, even if `make finish` is green.
 
 ## Signoff 4 pillars (Phase 1)
 
@@ -106,7 +106,7 @@ Finish produces `6_final.odb`, IR heatmap, and enables the full **SPICE chain**:
 5. `system_pdn` → ngspice ladder  
 6. `power_chain` → all steps + lab export  
 
-Master guide: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-07-finish) · Hub [PKG](/pkg) · FlowLab [finish](/flusso?phase=finish) · [PKG phase](/flusso?phase=pkg).
+Master guide: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-07-finish) · Hub [PKG](/pkg) · FlowLab [finish](/flow?phase=finish) · [PKG phase](/flow?phase=pkg).
 
 ```bash
 FLOW_VARIANT=learn ./learn/scripts/run_power_chain.sh   # after make finish

@@ -85,7 +85,7 @@ export function MarkdownView({
             if (href?.endsWith(".md")) {
               const path = href.replace(/^\.\//, "");
               return (
-                <a href={`/materiali/${basePath ? basePath + "/" : ""}${path}`}>
+                <a href={`/materials/${basePath ? basePath + "/" : ""}${path}`}>
                   {children}
                 </a>
               );
@@ -93,7 +93,7 @@ export function MarkdownView({
             if (href?.endsWith(".sp") && !href.startsWith("http")) {
               const cleaned = href.replace(/^\.\//, "").replace(/^learn\//, "");
               return (
-                <a href={`/materiali/file/${cleaned}`}>{children}</a>
+                <a href={`/materials/file/${cleaned}`}>{children}</a>
               );
             }
             return (

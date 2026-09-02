@@ -85,7 +85,7 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
           <button type="button" className="btn-ghost" onClick={load}>
             Refresh
           </button>
-          <Link href="/materiali/reference/extended-flow.md" className="btn-ghost">
+          <Link href="/materials/reference/extended-flow.md" className="btn-ghost">
             Flow map
           </Link>
         </div>
@@ -114,7 +114,7 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
                     )}
                     {h.action && (
                       <Link
-                        href={`/strumenti?tab=run&action=${h.action}`}
+                        href={`/tools?tab=run&action=${h.action}`}
                         className="btn-ghost btn-tiny"
                       >
                         Run

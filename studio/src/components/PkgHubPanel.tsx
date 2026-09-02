@@ -115,7 +115,7 @@ export function PkgHubPanel() {
         <h2>Power chain status</h2>
         <p>
           Hook live da suite · report flowlab · signoff rapido.{" "}
-          <Link href="/flusso?phase=pkg">FlowLab PKG →</Link>
+          <Link href="/flow?phase=pkg">FlowLab PKG →</Link>
         </p>
       </header>
 

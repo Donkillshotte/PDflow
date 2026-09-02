@@ -42,7 +42,7 @@ as the product suite.
 - Overwriting `results/.../gcd/flowlab/` or `memory_aes.jsonl` row `febe6804241c`
 - TPE on spi @ 1 ns
 - Moving ORFS or product modules for “cleanup”
-- Rewriting frozen plans ([docs/piani.md](docs/piani.md))
+- Rewriting frozen plans ([docs/plans.md](docs/plans.md))
 - `pkill -f` (kill by PID)
 
 ## Documentation

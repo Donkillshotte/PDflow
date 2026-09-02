@@ -1,6 +1,6 @@
 # Personal notebook template
 
-Copy this file to `mio-quaderno.md` and fill in during the course.
+Copy this file to `my-notebook.md` and fill in during the course.
 
 ---
 

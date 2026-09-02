@@ -125,7 +125,7 @@ export function ResultsPanel({
       <div className="results-head">
         <h3>Results · {stage}</h3>
         <div className="lesson-actions">
-          <a className="btn-ghost btn-tiny" href={`/strumenti?stage=${stage}&tab=results`}>
+          <a className="btn-ghost btn-tiny" href={`/tools?stage=${stage}&tab=results`}>
             Permalink
           </a>
           <button type="button" className="btn-ghost" onClick={load}>
@@ -216,7 +216,7 @@ export function ResultsPanel({
         <div className="metric-block golden">
           <h4>
             Golden reference{" "}
-            <a href="/materiali/reference/golden-metrics.md">open table</a>
+            <a href="/materials/reference/golden-metrics.md">open table</a>
           </h4>
           <ul className="metric-list">
             {data.goldenHints.map((g) => (

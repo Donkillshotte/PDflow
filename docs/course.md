@@ -37,7 +37,7 @@ Next.js UI. Orchestrates scripts with lock, phase dependencies, job history.
 
 Details: [`studio/README.md`](../studio/README.md).
 One ORFS job at a time (`learn/.studio-run.lock`).
-FlowLab lives at `/flusso`, `flowlab` variant isolated from the course.
+FlowLab lives at `/flow`, `flowlab` variant isolated from the course.
 
 OpenROAD Qt GUI: Desktop button on Cursor, not HTTP Preview cards.
 

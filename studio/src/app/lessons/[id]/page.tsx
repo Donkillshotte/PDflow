@@ -45,7 +45,7 @@ export default function LessonDetailPage() {
         <header className="page-head">
           <h1>Error</h1>
           <p>{error}</p>
-          <Link href="/lezioni" className="btn-ghost">
+          <Link href="/lessons" className="btn-ghost">
             ← Lessons
           </Link>
         </header>
@@ -78,7 +78,7 @@ export default function LessonDetailPage() {
         </p>
       </header>
       <div className="lesson-actions">
-        <Link href="/lezioni" className="btn-ghost">
+        <Link href="/lessons" className="btn-ghost">
           ← All lessons
         </Link>
       </div>

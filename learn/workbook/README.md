@@ -9,7 +9,7 @@ Master table: [golden-metrics.md](../reference/golden-metrics.md).
 
 ## How to use this workbook
 
-1. Create `learn/workbook/mio-quaderno.md` (copy `notes-template.md`)
+1. Create `learn/workbook/my-notebook.md` (copy `notes-template.md`)
 2. For each exercise: write hypothesis → run → note results
 3. Compare with `solutions.md` **only after**
 
@@ -130,7 +130,7 @@ Search for lines `Inserted N buffers` in the log `3_4_place_resized.log` or summ
 **Assignment:** open GDS in KLayout, count top cells and layers.
 
 ### E3 — Final project
-**Assignment:** document `mio-progetto-finale.md` with:
+**Assignment:** document `my-final-project.md` with:
 - Chosen parameters (SDC, util)
 - Final WNS/TNS/area
 - GUI screenshot or description

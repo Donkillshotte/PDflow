@@ -81,7 +81,7 @@ export async function getSuiteStatus() {
       group: "Ambiente",
       ok: tools.tools.filter((t) => ["openroad", "yosys", "sta", "klayout"].includes(t.name)).every((t) => t.ok) && tools.orfs,
       detail: tools.tools.map((t) => `${t.name}:${t.ok ? "ok" : "no"}`).join(" · "),
-      href: "/strumenti",
+      href: "/tools",
     },
     {
       id: "magic_netgen",
@@ -89,7 +89,7 @@ export async function getSuiteStatus() {
       group: "Ambiente",
       ok: which("magic") && (which("netgen") || which("netgen-lvs")),
       detail: which("magic")
-        ? "presenti · LVS Nangate resta KLayout (no FreePDK45 .tech)"
+        ? "present · LVS Nangate resta KLayout (no FreePDK45 .tech)"
         : "apt install magic netgen-lvs",
       action: "layout_tools",
     },
@@ -133,7 +133,7 @@ export async function getSuiteStatus() {
       ok: which("iverilog") && fs.existsSync(path.join(LEARN_ROOT, "sim/gcd/tb_gcd.v")),
       detail: "run_rtl_sim.sh · rtl_sim action",
       action: "rtl_sim",
-      href: "/strumenti?tab=run&action=rtl_sim",
+      href: "/tools?tab=run&action=rtl_sim",
     },
     {
       id: "synth",
@@ -142,7 +142,7 @@ export async function getSuiteStatus() {
       ok: has("1_synth.odb"),
       detail: has("1_synth.odb") ? "1_synth.odb ok" : "run synth",
       action: "synth",
-      href: "/strumenti?stage=synth&tab=results",
+      href: "/tools?stage=synth&tab=results",
     },
     {
       id: "pdn",
@@ -150,7 +150,7 @@ export async function getSuiteStatus() {
       group: "PD",
       ok: has("2_4_floorplan_pdn.odb"),
       detail: has("2_4_floorplan_pdn.odb") ? "2_4_floorplan_pdn.odb" : "run floorplan",
-      href: "/strumenti?stage=floorplan&tab=results",
+      href: "/tools?stage=floorplan&tab=results",
     },
     {
       id: "gridcheck",
@@ -162,7 +162,7 @@ export async function getSuiteStatus() {
         has("2_4_floorplan_pdn.odb"),
       detail: "check_power_grid · gridcheck action / PDN phase",
       action: "gridcheck",
-      href: "/flusso?phase=pdn",
+      href: "/flow?phase=pdn",
     },
     {
       id: "system_pdn",
@@ -173,16 +173,16 @@ export async function getSuiteStatus() {
         fs.existsSync(path.join(resultsDir("learn"), ".system_pdn.ok")),
       detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · PKG phase",
       action: "system_pdn",
-      href: "/flusso?phase=pkg",
+      href: "/flow?phase=pkg",
     },
     {
       id: "finish",
       label: "Finish GDS/SPEF",
       group: "PD",
       ok: has("6_final.gds") && has("6_final.odb"),
-      detail: has("6_final.gds") ? "6_final.* presenti" : "run finish",
+      detail: has("6_final.gds") ? "6_final.* present" : "run finish",
       action: "finish",
-      href: "/strumenti?stage=finish&tab=results",
+      href: "/tools?stage=finish&tab=results",
     },
     {
       id: "activity",
@@ -193,7 +193,7 @@ export async function getSuiteStatus() {
         powerReportOk("learn", "activity_power"),
       detail: "VCD se rtl_sim · report_power → I_avg System PDN",
       action: "activity_power",
-      href: "/strumenti?tab=run&action=activity_power",
+      href: "/tools?tab=run&action=activity_power",
     },
     {
       id: "vectorless",
@@ -204,7 +204,7 @@ export async function getSuiteStatus() {
         signoffReportPass("learn", "vectorless"),
       detail: "Najm P01 + Kouroussis envelope · VCD vs global 0.5",
       action: "vectorless",
-      href: "/strumenti?tab=run&action=vectorless",
+      href: "/tools?tab=run&action=vectorless",
     },
     {
       id: "chip_pdn_ir",
@@ -215,7 +215,7 @@ export async function getSuiteStatus() {
         fs.existsSync(path.join(resultsDir("learn"), ".chip_pdn_ir.ok")),
       detail: "write_pg_spice · pdn_transient",
       action: "chip_pdn_ir",
-      href: "/strumenti?tab=run&action=chip_pdn_ir",
+      href: "/tools?tab=run&action=chip_pdn_ir",
     },
     {
       id: "vyges_em_ir",
@@ -226,7 +226,7 @@ export async function getSuiteStatus() {
         signoffReportPass("learn", "vyges_em_ir"),
       detail: "Apache-2.0 binary · CG + backward Euler on PDNSim mesh",
       action: "vyges_em_ir",
-      href: "/strumenti?tab=run&action=vyges_em_ir",
+      href: "/tools?tab=run&action=vyges_em_ir",
     },
     {
       id: "dynamic_ir",
@@ -237,7 +237,7 @@ export async function getSuiteStatus() {
         signoffReportPass("learn", "dynamic_ir"),
       detail: "A DirectLU current_run + B SA-AMG · not reference_run 45.298",
       action: "dynamic_ir",
-      href: "/strumenti?tab=run&action=dynamic_ir",
+      href: "/tools?tab=run&action=dynamic_ir",
     },
     {
       id: "dse",
@@ -247,7 +247,7 @@ export async function getSuiteStatus() {
         signoffReportPass("flowlab", "dse") || signoffReportPass("learn", "dse"),
       detail: "E-graph dpath + BOiLS SSK-GP + IR F4 oracle · Pareto by level",
       action: "dse",
-      href: "/strumenti?tab=run&action=dse",
+      href: "/tools?tab=run&action=dse",
     },
     {
       id: "power_chain",
@@ -256,7 +256,7 @@ export async function getSuiteStatus() {
       ok: powerChainOk(),
       detail: "activity → chip IR → system → export",
       action: "power_chain",
-      href: "/strumenti?tab=run&action=power_chain",
+      href: "/tools?tab=run&action=power_chain",
     },
     {
       id: "spice_lab",
@@ -265,7 +265,7 @@ export async function getSuiteStatus() {
       ok: fs.existsSync(path.join(LEARN_ROOT, "sim/spice/INDEX_flowlab.md")),
       detail: "export_spice_lab · mesh_stats + netlist",
       action: "export_spice_lab",
-      href: "/strumenti?tab=run&action=export_spice_lab",
+      href: "/tools?tab=run&action=export_spice_lab",
     },
     {
       id: "klayout_drc",
@@ -274,7 +274,7 @@ export async function getSuiteStatus() {
       ok: has("6_final.gds"),
       detail: "run_klayout_drc.sh",
       action: "klayout_drc",
-      href: "/strumenti?tab=run&action=klayout_drc",
+      href: "/tools?tab=run&action=klayout_drc",
     },
     {
       id: "sta_signoff",
@@ -283,7 +283,7 @@ export async function getSuiteStatus() {
       ok: signoffReportPass("flowlab", "sta_signoff") || signoffReportPass("learn", "sta_signoff"),
       detail: "WNS/TNS vs golden-gcd · run_sta_signoff.sh",
       action: "sta_signoff",
-      href: "/flusso?phase=finish",
+      href: "/flow?phase=finish",
     },
     {
       id: "drc_signoff",
@@ -292,7 +292,7 @@ export async function getSuiteStatus() {
       ok: signoffReportPass("flowlab", "drc_signoff") || signoffReportPass("learn", "drc_signoff"),
       detail: "Route DRC + KLayout GDS · run_drc_signoff.sh",
       action: "drc_signoff",
-      href: "/flusso?phase=finish",
+      href: "/flow?phase=finish",
     },
     {
       id: "lvs_signoff",
@@ -304,7 +304,7 @@ export async function getSuiteStatus() {
         fs.existsSync(path.join(resultsDir("flowlab"), ".lvs.ok")),
       detail: "ORFS make lvs · educational PASS optional",
       action: "klayout_lvs",
-      href: "/flusso?phase=finish",
+      href: "/flow?phase=finish",
     },
     {
       id: "power_signoff",
@@ -357,7 +357,7 @@ export async function getSuiteStatus() {
       group: "GUI",
       ok: true,
       detail: viewer.running ? `live ${viewer.url}` : "POST /api/viewer",
-      href: "/strumenti?stage=cts&tab=results#inspect",
+      href: "/tools?stage=cts&tab=results#inspect",
     },
     {
       id: "or-gui",
@@ -375,7 +375,7 @@ export async function getSuiteStatus() {
         signoffReportPass("learn", "yosys_equiv"),
       detail: "RTL ↔ generic synth · equiv_induct",
       action: "yosys_equiv",
-      href: "/strumenti?tab=run&action=yosys_equiv",
+      href: "/tools?tab=run&action=yosys_equiv",
     },
     {
       id: "formal_gcd",
@@ -386,7 +386,7 @@ export async function getSuiteStatus() {
         signoffReportPass("learn", "formal_gcd"),
       detail: "reset |-> !resp_val · yosys sat tempinduct",
       action: "formal_gcd",
-      href: "/strumenti?tab=run&action=formal_gcd",
+      href: "/tools?tab=run&action=formal_gcd",
     },
     {
       id: "openrcx",
@@ -397,7 +397,7 @@ export async function getSuiteStatus() {
         signoffReportPass("learn", "openrcx"),
       detail: "StarRC-class extract · 6_final.spef",
       action: "openrcx_report",
-      href: "/strumenti?tab=run&action=openrcx_report",
+      href: "/tools?tab=run&action=openrcx_report",
     },
     {
       id: "analytical_pex",
@@ -408,7 +408,7 @@ export async function getSuiteStatus() {
         signoffReportPass("learn", "analytical_pex"),
       detail: "Sakurai–Tamaru + FDM 2D · Raphael GAP",
       action: "analytical_pex",
-      href: "/strumenti?tab=run&action=analytical_pex",
+      href: "/tools?tab=run&action=analytical_pex",
     },
     {
       id: "inspect",
@@ -416,7 +416,7 @@ export async function getSuiteStatus() {
       group: "Analisi",
       ok: has("1_synth.odb"),
       detail: "GET /api/inspect",
-      href: "/strumenti?stage=synth&tab=results#inspect",
+      href: "/tools?stage=synth&tab=results#inspect",
     },
     {
       id: "docs",
@@ -424,7 +424,7 @@ export async function getSuiteStatus() {
       group: "Course",
       ok: fs.existsSync(path.join(LEARN_ROOT, "reference/extended-flow.md")),
       detail: "tool-hooks + extended-flow",
-      href: "/materiali/reference/extended-flow.md",
+      href: "/materials/reference/extended-flow.md",
     },
   ];
 

@@ -11,7 +11,7 @@ export function LessonPowerChainPanel({ lessonId }: { lessonId: string }) {
     <aside className="lesson-power-chain" aria-label="Power and SPICE chain">
       <div className="lesson-power-chain-head">
         <strong>Power chain · {link.title}</strong>
-        <Link href={`/materiali/reference/spice-power-chain.md#${link.anchor}`}>
+        <Link href={`/materials/reference/spice-power-chain.md#${link.anchor}`}>
           Full guide
         </Link>
       </div>
@@ -22,7 +22,7 @@ export function LessonPowerChainPanel({ lessonId }: { lessonId: string }) {
           <ul>
             {link.flowlabPhases.map((p) => (
               <li key={p}>
-                <Link href={`/flusso?phase=${p}`}>{p}</Link>
+                <Link href={`/flow?phase=${p}`}>{p}</Link>
               </li>
             ))}
           </ul>
@@ -43,7 +43,7 @@ export function LessonPowerChainPanel({ lessonId }: { lessonId: string }) {
             <ul>
               {link.studioActions.map((a) => (
                 <li key={a}>
-                  <Link href={`/strumenti?tab=run&action=${a}`}>{a}</Link>
+                  <Link href={`/tools?tab=run&action=${a}`}>{a}</Link>
                 </li>
               ))}
             </ul>

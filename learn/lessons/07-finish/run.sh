@@ -60,7 +60,7 @@ EOF
   1. Modify constraint.sdc (clock ±30%)
   2. clean_all && full path
   3. Compare WNS, area, cell count in 6_finish.rpt
-  4. Document in learn/workbook/mio-progetto-finale.md (not notes/)
+  4. Document in learn/workbook/my-final-project.md (not notes/)
 EOF
   ui_pause
 

@@ -25,10 +25,10 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["rtl_sim"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lesson-00-intro", label: "§00 RTL" },
-      { href: "/materiali/reference/file-formats.md", label: "Formats" },
+      { href: "/materials/reference/spice-power-chain.md#lesson-00-intro", label: "§00 RTL" },
+      { href: "/materials/reference/file-formats.md", label: "Formats" },
     ],
-    flowlabHref: "/flusso?phase=rtl",
+    flowlabHref: "/flow?phase=rtl",
   },
   {
     lessonId: "01-constraints",
@@ -41,9 +41,9 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["synth"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lesson-01-constraints", label: "§01 SDC" },
+      { href: "/materials/reference/spice-power-chain.md#lesson-01-constraints", label: "§01 SDC" },
     ],
-    flowlabHref: "/flusso?phase=synth",
+    flowlabHref: "/flow?phase=synth",
   },
   {
     lessonId: "02-synthesis",
@@ -56,10 +56,10 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["synth"],
     spiceOutputs: ["learn/sim/spice/nangate_inverter_demo.sp"],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lesson-02-synthesis", label: "§02 Liberty" },
-      { href: "/materiali/file/sim/spice/nangate_inverter_demo.sp", label: "Inverter SPICE demo" },
+      { href: "/materials/reference/spice-power-chain.md#lesson-02-synthesis", label: "§02 Liberty" },
+      { href: "/materials/file/sim/spice/nangate_inverter_demo.sp", label: "Inverter SPICE demo" },
     ],
-    flowlabHref: "/flusso?phase=synth",
+    flowlabHref: "/flow?phase=synth",
   },
   {
     lessonId: "03-floorplan",
@@ -72,11 +72,11 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["floorplan", "gridcheck"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lesson-03-floorplan", label: "§03 PDN" },
-      { href: "/materiali/reference/spice-chip-mesh.md", label: "Mesh SPICE (post-finish)" },
-      { href: "/flusso?phase=pdn", label: "FlowLab PDN" },
+      { href: "/materials/reference/spice-power-chain.md#lesson-03-floorplan", label: "§03 PDN" },
+      { href: "/materials/reference/spice-chip-mesh.md", label: "Mesh SPICE (post-finish)" },
+      { href: "/flow?phase=pdn", label: "FlowLab PDN" },
     ],
-    flowlabHref: "/flusso?phase=floorplan",
+    flowlabHref: "/flow?phase=floorplan",
   },
   {
     lessonId: "04-placement",
@@ -89,10 +89,10 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["place"],
     spiceOutputs: ["pg_vdd_bumps.sp (post finish)"],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lesson-04-placement", label: "§04 Place" },
-      { href: "/materiali/reference/spice-chip-mesh.md#anatomia-di-pg_vdd_bumpssp", label: "ITermNode" },
+      { href: "/materials/reference/spice-power-chain.md#lesson-04-placement", label: "§04 Place" },
+      { href: "/materials/reference/spice-chip-mesh.md#anatomy-of-pg_vdd_bumpssp", label: "ITermNode" },
     ],
-    flowlabHref: "/flusso?phase=place",
+    flowlabHref: "/flow?phase=place",
   },
   {
     lessonId: "05-cts",
@@ -105,9 +105,9 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["cts"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lesson-05-cts", label: "§05 CTS" },
+      { href: "/materials/reference/spice-power-chain.md#lesson-05-cts", label: "§05 CTS" },
     ],
-    flowlabHref: "/flusso?phase=cts",
+    flowlabHref: "/flow?phase=cts",
   },
   {
     lessonId: "06-routing",
@@ -120,10 +120,10 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: ["route", "drc_signoff"],
     spiceOutputs: [],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lesson-06-routing", label: "§06 Route" },
-      { href: "/materiali/reference/signoff-matrix.md", label: "Signoff matrix (DRC)" },
+      { href: "/materials/reference/spice-power-chain.md#lesson-06-routing", label: "§06 Route" },
+      { href: "/materials/reference/signoff-matrix.md", label: "Signoff matrix (DRC)" },
     ],
-    flowlabHref: "/flusso?phase=route",
+    flowlabHref: "/flow?phase=route",
   },
   {
     lessonId: "07-finish",
@@ -167,17 +167,17 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
       "learn/sim/spice/*",
     ],
     docs: [
-      { href: "/materiali/reference/spice-power-chain.md#lesson-07-finish", label: "§07 Finish" },
-      { href: "/materiali/reference/vectorless-power.md", label: "Vectorless / dynamic" },
-      { href: "/materiali/reference/vyges-em-ir.md", label: "vyges-em-ir" },
-      { href: "/materiali/reference/dynamic-ir.md", label: "Dynamic IR I(t)" },
-      { href: "/materiali/reference/oss-integrations.md", label: "OSS matrix" },
-      { href: "/materiali/reference/signoff-matrix.md", label: "Signoff matrix 4 pillars" },
-      { href: "/materiali/reference/spice-ngspice-primer.md", label: "ngspice" },
+      { href: "/materials/reference/spice-power-chain.md#lesson-07-finish", label: "§07 Finish" },
+      { href: "/materials/reference/vectorless-power.md", label: "Vectorless / dynamic" },
+      { href: "/materials/reference/vyges-em-ir.md", label: "vyges-em-ir" },
+      { href: "/materials/reference/dynamic-ir.md", label: "Dynamic IR I(t)" },
+      { href: "/materials/reference/oss-integrations.md", label: "OSS matrix" },
+      { href: "/materials/reference/signoff-matrix.md", label: "Signoff matrix 4 pillars" },
+      { href: "/materials/reference/spice-ngspice-primer.md", label: "ngspice" },
       { href: "/pkg", label: "Hub PKG" },
-      { href: "/flusso?phase=pkg", label: "FlowLab PKG" },
+      { href: "/flow?phase=pkg", label: "FlowLab PKG" },
     ],
-    flowlabHref: "/flusso?phase=finish",
+    flowlabHref: "/flow?phase=finish",
   },
 ];
 

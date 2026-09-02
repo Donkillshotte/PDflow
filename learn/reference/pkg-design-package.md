@@ -55,7 +55,7 @@ A typical **design package** for review includes:
 - GDS/OAS + layer manifest
 - Package BOM / bump map (if tapeout)
 
-Course template: [progetto-finale-template.md](../workbook/progetto-finale-template.md).
+Course template: [final-project-template.md](../workbook/final-project-template.md).
 
 ## Honest limits on Nangate45 GCD
 

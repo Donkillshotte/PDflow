@@ -19,7 +19,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["gcd.vcd", "toggle activity"],
     consumes: ["gcd.v"],
     spice: "VCD → activity_power (read_vcd) · vectorless",
-    doc: "/materiali/reference/spice-power-chain.md#lesson-00-intro",
+    doc: "/materials/reference/spice-power-chain.md#lesson-00-intro",
     action: "rtl_sim",
   },
   {
@@ -29,7 +29,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["gate-level netlist", ".lib cells", "Yosys area"],
     consumes: ["RTL", "SDC", "liberty"],
     spice: "liberty → report_power",
-    doc: "/materiali/reference/spice-power-chain.md#lesson-02-synthesis",
+    doc: "/materials/reference/spice-power-chain.md#lesson-02-synthesis",
     action: "synth",
   },
   {
@@ -39,7 +39,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["2_4_floorplan_pdn.odb", "straps VDD/VSS"],
     consumes: ["synth ODB", "util core"],
     spice: "pdngen (mesh R post-finish)",
-    doc: "/materiali/reference/spice-power-chain.md#lesson-03-floorplan",
+    doc: "/materials/reference/spice-power-chain.md#lesson-03-floorplan",
     action: "floorplan",
   },
   {
@@ -49,7 +49,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: [".gridcheck_pdn.ok", "PSM-0040"],
     consumes: ["2_4_floorplan_pdn.odb"],
     spice: "write_pg_spice (post finish)",
-    doc: "/materiali/reference/spice-chip-mesh.md",
+    doc: "/materials/reference/spice-chip-mesh.md",
     action: "gridcheck",
   },
   {
@@ -59,7 +59,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["ITermNode positions", "current sinks"],
     consumes: ["floorplan ODB"],
     spice: "I per pin in mesh",
-    doc: "/materiali/reference/spice-power-chain.md#lesson-04-placement",
+    doc: "/materials/reference/spice-power-chain.md#lesson-04-placement",
     action: "place",
   },
   {
@@ -69,7 +69,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["buffer clock", "↑ switching"],
     consumes: ["placement"],
     spice: "clock group in report_power",
-    doc: "/materiali/reference/spice-power-chain.md#lesson-05-cts",
+    doc: "/materials/reference/spice-power-chain.md#lesson-05-cts",
     action: "cts",
   },
   {
@@ -78,8 +78,8 @@ export const POWER_CHAIN: ChainNode[] = [
     lessonIds: ["06-routing"],
     produces: ["mesh routed", "SPEF (finish)"],
     consumes: ["CTS ODB"],
-    spice: "IR su geom post-route",
-    doc: "/materiali/reference/spice-power-chain.md#lesson-06-routing",
+    spice: "IR on post-route geometry",
+    doc: "/materials/reference/spice-power-chain.md#lesson-06-routing",
     action: "route",
   },
   {
@@ -89,7 +89,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["6_final.odb", "report_power", "IR heatmap", "sta/drc/lvs signoff JSON"],
     consumes: ["routed design"],
     spice: "PDNSim + signoff_all",
-    doc: "/materiali/reference/signoff-matrix.md",
+    doc: "/materials/reference/signoff-matrix.md",
     action: "signoff_all",
   },
   {
@@ -99,7 +99,7 @@ export const POWER_CHAIN: ChainNode[] = [
     produces: ["system_pdn_*.json", "Z(f)", "die droop", "power_signoff JSON"],
     consumes: ["I_die activity/chip IR", "default.json"],
     spice: "ngspice AC+TRAN · pkg_signoff · thermal_signoff",
-    doc: "/materiali/reference/spice-ngspice-primer.md",
+    doc: "/materials/reference/spice-ngspice-primer.md",
     action: "power_signoff",
   },
 ];
@@ -110,7 +110,7 @@ export const SPICE_ANALYSES = [
     label: "Activity → power",
     produces: ["activity_power_*.log", "I_avg"],
     spice: "liberty leak/switch/internal",
-    doc: "/materiali/reference/spice-power-chain.md#lesson-07-finish",
+    doc: "/materials/reference/spice-power-chain.md#lesson-07-finish",
     action: "activity_power",
   },
   {
@@ -118,7 +118,7 @@ export const SPICE_ANALYSES = [
     label: "Vectorless / dynamic IR",
     produces: ["vectorless_*.json", "inst_power_map.json"],
     spice: "Najm P01 + Kouroussis envelope + PDNSim",
-    doc: "/materiali/reference/vectorless-power.md",
+    doc: "/materials/reference/vectorless-power.md",
     action: "vectorless",
   },
   {
@@ -126,7 +126,7 @@ export const SPICE_ANALYSES = [
     label: "Chip IR mesh",
     produces: ["pg_vdd_bumps.sp", "pdn_chip_ir_*.json"],
     spice: "write_pg_spice + pdn_transient",
-    doc: "/materiali/reference/spice-chip-mesh.md",
+    doc: "/materials/reference/spice-chip-mesh.md",
     action: "chip_pdn_ir",
   },
   {
@@ -134,7 +134,7 @@ export const SPICE_ANALYSES = [
     label: "vyges-em-ir",
     produces: ["vyges_em_ir_*.json", "gcd_*.pdn"],
     spice: "CG binary + backward Euler on the same mesh",
-    doc: "/materiali/reference/vyges-em-ir.md",
+    doc: "/materials/reference/vyges-em-ir.md",
     action: "vyges_em_ir",
   },
   {
@@ -142,7 +142,7 @@ export const SPICE_ANALYSES = [
     label: "Dynamic IR I(t)",
     produces: ["dynamic_ir_*.json", "dynamic_ir_*.svg"],
     spice: "per-ITerm PWL + Solver A LU + Solver B SA-AMG + heatmap",
-    doc: "/materiali/reference/dynamic-ir.md",
+    doc: "/materials/reference/dynamic-ir.md",
     action: "dynamic_ir",
   },
   {
@@ -150,7 +150,7 @@ export const SPICE_ANALYSES = [
     label: "System PDN",
     produces: ["system_pdn_*.json", "Z(f)", "droop"],
     spice: "ngspice ladder",
-    doc: "/materiali/reference/spice-ngspice-primer.md",
+    doc: "/materials/reference/spice-ngspice-primer.md",
     action: "system_pdn",
   },
   {
@@ -158,7 +158,7 @@ export const SPICE_ANALYSES = [
     label: "Export SPICE lab",
     produces: ["sim/spice/*", "mesh_stats_*.json"],
     spice: "netlist + stats bundle",
-    doc: "/materiali/sim/spice/README.md",
+    doc: "/materials/sim/spice/README.md",
     action: "export_spice_lab",
   },
   {
@@ -166,7 +166,7 @@ export const SPICE_ANALYSES = [
     label: "Full chain",
     produces: ["all reports", "sim/spice/"],
     spice: "ngspice + mesh + export",
-    doc: "/materiali/reference/spice-power-chain.md",
+    doc: "/materials/reference/spice-power-chain.md",
     action: "power_chain",
   },
   {
@@ -174,7 +174,7 @@ export const SPICE_ANALYSES = [
     label: "Power signoff",
     produces: ["power_signoff_*.json"],
     spice: "gate golden IR/droop/Zmax",
-    doc: "/materiali/reference/signoff-matrix.md",
+    doc: "/materials/reference/signoff-matrix.md",
     action: "power_signoff",
   },
   {
@@ -182,7 +182,7 @@ export const SPICE_ANALYSES = [
     label: "Thermal proxy",
     produces: ["thermal_signoff_*.json"],
     spice: "IR+droop hotspot proxy",
-    doc: "/materiali/reference/signoff-matrix.md#fase-2-planned-in-registry",
+    doc: "/materials/reference/signoff-matrix.md#fase-2-planned-in-registry",
     action: "thermal_signoff",
   },
   {
@@ -190,7 +190,7 @@ export const SPICE_ANALYSES = [
     label: "PKG signoff",
     produces: ["pkg_bump_*.json", "pkg_rdl_*.json", "pkg_signoff_*.json"],
     spice: "bump config + system PDN",
-    doc: "/materiali/reference/pkg-design-package.md",
+    doc: "/materials/reference/pkg-design-package.md",
     action: "pkg_signoff",
   },
 ] as const;

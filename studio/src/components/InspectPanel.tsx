@@ -265,7 +265,7 @@ export function InspectPanel({
           </ul>
           <p className="muted">
             Guide:{" "}
-            <a href="/materiali/reference/tool-hooks.md">tool-hooks.md</a>
+            <a href="/materials/reference/tool-hooks.md">tool-hooks.md</a>
           </p>
         </details>
       )}

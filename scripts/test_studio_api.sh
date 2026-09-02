@@ -64,8 +64,8 @@ code="$(curl -s -o /tmp/studio-bad.json -w '%{http_code}' \
 [[ "${code}" == "400" ]] && ok "forbidden action → 400" || bad "forbidden → ${code}"
 
 # Key pages + deep-link
-for path in /lezioni /strumenti /materiali /lezioni/00-intro \
-  '/strumenti?stage=cts&tab=results' '/materiali?tab=gallery'; do
+for path in /lessons /tools /materials /lessons/00-intro \
+  '/tools?stage=cts&tab=results' '/materials?tab=gallery'; do
   c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}${path}")"
   [[ "${c}" == "200" ]] && ok "GET ${path}" || bad "GET ${path} → ${c}"
 done
@@ -112,9 +112,9 @@ curl -s -X POST -H 'Content-Type: application/json' \
   -d '{"action":"stop"}' "${BASE}/api/viewer" >/dev/null
 ok "viewer stop"
 
-code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/tool-hooks.md")"
+code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/tool-hooks.md")"
 [[ "${code}" == "200" ]] && ok "tool-hooks.md page" || bad "tool-hooks page → ${code}"
-code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/extended-flow.md")"
+code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/extended-flow.md")"
 [[ "${code}" == "200" ]] && ok "extended-flow.md page" || bad "extended-flow page → ${code}"
 
 # Extended actions (short)
@@ -160,7 +160,7 @@ code="$(curl -s -o /tmp/studio-open-run.json -w '%{http_code}' \
 [[ "${code}" == "200" ]] && ok "POST open run-gridcheck" || bad "open run → ${code}"
 rg -q 'tab=run&action=gridcheck' /tmp/studio-open-run.json && ok "run navigate deep-link" || bad "run navigate incorrect"
 
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/strumenti?tab=run&action=rtl_sim")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/tools?tab=run&action=rtl_sim")"
 [[ "${c}" == "200" ]] && ok "GET strumenti action deep-link" || bad "strumenti action → ${c}"
 
 # FlowLab API + page
@@ -169,8 +169,8 @@ code="$(curl -s -o /tmp/studio-flowlab.json -w '%{http_code}' "${BASE}/api/flowl
 rg -q '"rtl"' /tmp/studio-flowlab.json && ok "flowlab.rtl" || bad "flowlab missing rtl"
 rg -q '"params"' /tmp/studio-flowlab.json && ok "flowlab.params" || bad "flowlab missing params"
 rg -q '"coreUtilization"' /tmp/studio-flowlab.json && ok "flowlab.params.coreUtilization" || bad "params incomplete"
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/flusso")"
-[[ "${c}" == "200" ]] && ok "GET /flusso" || bad "flusso → ${c}"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/flow")"
+[[ "${c}" == "200" ]] && ok "GET /flow" || bad "flusso → ${c}"
 rg -q '"sim"' /tmp/studio-flowlab.json && ok "flowlab.sim" || bad "flowlab missing sim"
 rg -q '"phaseHistory"' /tmp/studio-flowlab.json && ok "flowlab.phaseHistory" || bad "flowlab missing phaseHistory"
 code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/api/flowlab/download?kind=vcd")"
@@ -181,9 +181,9 @@ rg -q '"id":"run-system-pdn"' /tmp/studio-open.json && ok "open run-system-pdn" 
 
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/pkg")"
 [[ "${c}" == "200" ]] && ok "GET /pkg" || bad "pkg → ${c}"
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/system-pdn.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/system-pdn.md")"
 [[ "${c}" == "200" ]] && ok "system-pdn.md page" || bad "system-pdn page → ${c}"
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/pkg-design-package.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/pkg-design-package.md")"
 [[ "${c}" == "200" ]] && ok "pkg-design-package.md page" || bad "pkg doc page → ${c}"
 
 # ORFS log digest (wrapper must classify WARN vs ERROR, not treat Failure:0 as error)
@@ -246,7 +246,7 @@ assert r["engine"] == "vyges-em-ir"
 assert r["vyges"]["worst_ir"]["drop"] > 0
 print(r["summary"][:120])
 PY
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/vyges-em-ir.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/vyges-em-ir.md")"
 [[ "${c}" == "200" ]] && ok "vyges-em-ir.md page" || bad "vyges-em-ir page → ${c}"
 
 code="$(curl -s --max-time 60 -o /tmp/studio-dynir.sse -w '%{http_code}' \
@@ -296,9 +296,9 @@ code="$(curl -s -o /tmp/studio-dynir.svg -w '%{http_code}' \
   "${BASE}/api/content?path=sim/reports/dynamic_ir_flowlab.svg")"
 [[ "${code}" == "200" ]] && ok "content dynamic_ir svg → 200" || bad "content svg → ${code}"
 rg -q '<svg' /tmp/studio-dynir.svg && ok "content svg payload" || bad "content svg empty"
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/dynamic-ir.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/dynamic-ir.md")"
 [[ "${c}" == "200" ]] && ok "dynamic-ir.md page" || bad "dynamic-ir page → ${c}"
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/dynamic-ir-landscape.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/dynamic-ir-landscape.md")"
 [[ "${c}" == "200" ]] && ok "dynamic-ir-landscape.md page" || bad "landscape page → ${c}"
 
 code="$(curl -s --max-time 180 -o /tmp/studio-vectorless.sse -w '%{http_code}' \
@@ -315,15 +315,15 @@ assert "vcd" in r["dynamic"]["source"]
 print(r["summary"][:100])
 PY
 
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/vectorless-power.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/vectorless-power.md")"
 [[ "${c}" == "200" ]] && ok "vectorless-power.md page" || bad "vectorless-power page → ${c}"
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/oss-integrations.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/oss-integrations.md")"
 [[ "${c}" == "200" ]] && ok "oss-integrations.md page" || bad "oss-integrations page → ${c}"
 
 # SPICE lab viewer + download
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/file/sim/spice/nangate_inverter_demo.sp")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/file/sim/spice/nangate_inverter_demo.sp")"
 [[ "${c}" == "200" ]] && ok "spice file viewer page" || bad "spice viewer → ${c}"
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/spice-power-chain.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/spice-power-chain.md")"
 [[ "${c}" == "200" ]] && ok "spice-power-chain.md page" || bad "spice-power-chain → ${c}"
 code="$(curl -s -o /tmp/studio-spice-dl.sp -w '%{http_code}' \
   "${BASE}/api/flowlab/download?kind=spice&path=sim/spice/nangate_inverter_demo.sp")"
@@ -415,7 +415,7 @@ code="$(curl -s -o /tmp/studio-signoff.json -w '%{http_code}' "${BASE}/api/signo
 [[ "${code}" == "200" ]] && ok "GET /api/signoff → 200" || bad "signoff API → ${code}"
 rg -q '"pillars"' /tmp/studio-signoff.json && ok "signoff.pillars" || bad "signoff missing pillars"
 rg -q '"evaluation"' /tmp/studio-signoff.json && ok "signoff.evaluation" || bad "signoff missing evaluation"
-c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materiali/reference/signoff-matrix.md")"
+c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/signoff-matrix.md")"
 [[ "${c}" == "200" ]] && ok "signoff-matrix.md page" || bad "signoff-matrix page → ${c}"
 
 code="$(curl -s --max-time 120 -o /tmp/studio-sta.sse -w '%{http_code}' \

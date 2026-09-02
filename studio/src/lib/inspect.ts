@@ -269,7 +269,7 @@ export function inspectStage(
     {
       id: "vyges-em-ir",
       label: "vyges-em-ir (engine)",
-      detail: "run_vyges_em_ir.sh · CG + backward Euler su write_pg_spice",
+      detail: "run_vyges_em_ir.sh · CG + backward Euler on write_pg_spice",
     },
     {
       id: "dynamic-ir",

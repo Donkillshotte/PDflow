@@ -125,16 +125,16 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | `/api/results` | ORFS results/reports/logs files |
 | `/api/run/stream` | ORFS make + `rtl_sim` / `vectorless` / `vyges_em_ir` / `dynamic_ir` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `klayout_drc` |
 | Ctrl+K | dashboard, run extended, Qt GUI, web viewer |
-| Suite hub (`/` · `/strumenti#suite`) | live hook status + Open/Run |
+| Suite hub (`/` · `/tools#suite`) | live hook status + Open/Run |
 
 Useful deep-links:
 
-- `/strumenti?stage=cts&tab=results#inspect`
-- `/strumenti?tab=run&action=rtl_sim`
-- `/strumenti?tab=run&action=gridcheck`
-- `/strumenti?tab=run&action=chip_pdn_ir`
-- `/strumenti?tab=run&action=vyges_em_ir`
-- `/strumenti?tab=run&action=dynamic_ir`
-- `/strumenti?tab=run&action=system_pdn`
-- `/strumenti?tab=run&action=power_chain`
-- `/strumenti#suite`
+- `/tools?stage=cts&tab=results#inspect`
+- `/tools?tab=run&action=rtl_sim`
+- `/tools?tab=run&action=gridcheck`
+- `/tools?tab=run&action=chip_pdn_ir`
+- `/tools?tab=run&action=vyges_em_ir`
+- `/tools?tab=run&action=dynamic_ir`
+- `/tools?tab=run&action=system_pdn`
+- `/tools?tab=run&action=power_chain`
+- `/tools#suite`

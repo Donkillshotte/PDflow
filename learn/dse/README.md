@@ -8,9 +8,9 @@ Two stacks in the same package. **Product decides. Lab remains.**
 | **Lab** | `run_dse.py` / controller | does not decide |
 
 Repo index: [`docs/README.md`](../../docs/README.md).
-Lab: [`docs/laboratorio.md`](../../docs/laboratorio.md).
-Course: [`docs/corso.md`](../../docs/corso.md).
-Tree: [`docs/architettura.md`](../../docs/architettura.md).
+Lab: [`docs/lab.md`](../../docs/lab.md).
+Course: [`docs/course.md`](../../docs/course.md).
+Tree: [`docs/architecture.md`](../../docs/architecture.md).
 
 ## Product
 
@@ -41,8 +41,8 @@ test_dse_next.py            fast suite
 | `f6_finish.py` | Parse `6_report` / GRT / place |
 
 Plans: [`tpe_plan.md`](tpe_plan.md) (frozen), [`arch_review.md`](arch_review.md)
-(walls + transfer). Operations: [`docs/operazioni.md`](../../docs/operazioni.md).
-Results: [`docs/risultati.md`](../../docs/risultati.md).
+(walls + transfer). Operations: [`docs/operations.md`](../../docs/operations.md).
+Results: [`docs/results.md`](../../docs/results.md).
 
 ```bash
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_dse_next.py

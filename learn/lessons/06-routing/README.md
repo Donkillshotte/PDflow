@@ -88,7 +88,7 @@ Routing completes geometry for IR/SPEF. PDNSim uses the **post-route/finish** de
 
 | Link | Where |
 |---|---|
-| FlowLab | [route](/flusso?phase=route) |
+| FlowLab | [route](/flow?phase=route) |
 
 ## Duration
 

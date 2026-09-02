@@ -131,7 +131,7 @@ export function OpsDashboard({
               )}
               onClick={() => {
                 if (onOpenStage) onOpenStage(row.stage);
-                else window.location.href = `/strumenti?stage=${row.stage}&tab=results`;
+                else window.location.href = `/tools?stage=${row.stage}&tab=results`;
               }}
               title={`Open ${row.stage} dashboard`}
             >

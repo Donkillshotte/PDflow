@@ -119,7 +119,7 @@ Placement fixes **where** each cell feeds the mesh (`ITermNode_*` in `write_pg_s
 
 | Link | Where |
 |---|---|
-| FlowLab | [place](/flusso?phase=place) |
+| FlowLab | [place](/flow?phase=place) |
 | Mesh (post L07) | `pdn/pg_vdd_bumps.sp` |
 
 ## Estimated duration

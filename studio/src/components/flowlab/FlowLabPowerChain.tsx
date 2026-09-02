@@ -23,7 +23,7 @@ export function FlowLabPowerChain({
     >
       <div className="fl-power-chain-head">
         <strong>RTL → PKG chain</strong>
-        <Link href="/materiali/reference/spice-power-chain.md">
+        <Link href="/materials/reference/spice-power-chain.md">
           Full SPICE guide
         </Link>
       </div>
@@ -77,7 +77,7 @@ export function FlowLabPowerChain({
               {current.lessonIds.map((id, i) => (
                 <span key={id}>
                   {i > 0 && ", "}
-                  <Link href={`/lezioni/${id}`}>{id}</Link>
+                  <Link href={`/lessons/${id}`}>{id}</Link>
                 </span>
               ))}
             </p>
@@ -99,7 +99,7 @@ export function FlowLabPowerChain({
             {SPICE_ANALYSES.map((a) => (
               <li key={a.id}>
                 <strong>
-                  <Link href={`/strumenti?tab=run&action=${a.action}`}>{a.label}</Link>
+                  <Link href={`/tools?tab=run&action=${a.action}`}>{a.label}</Link>
                 </strong>
                 <span>{a.spice}</span>
                 {"doc" in a && a.doc ? (

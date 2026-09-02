@@ -157,7 +157,7 @@ export function listOpenTargets(): {
       id: `dash-${stage}`,
       label: `Results dashboard · ${stage}`,
       kind: "dashboard",
-      href: `/strumenti?stage=${stage}&tab=results`,
+      href: `/tools?stage=${stage}&tab=results`,
       exists: true,
       stage,
     });
@@ -165,7 +165,7 @@ export function listOpenTargets(): {
       id: `run-${stage}`,
       label: `Run console · ${stage}`,
       kind: "dashboard",
-      href: `/strumenti?stage=${stage}&tab=run&action=${stage}`,
+      href: `/tools?stage=${stage}&tab=run&action=${stage}`,
       exists: true,
       stage,
     });
@@ -175,28 +175,28 @@ export function listOpenTargets(): {
     id: "dash-ops",
     label: "Ops · pipeline & job",
     kind: "dashboard",
-    href: "/strumenti?tab=ops",
+    href: "/tools?tab=ops",
     exists: true,
   });
   targets.push({
     id: "dash-inspect",
     label: "Tool inspection (STA / ODB / Yosys)",
     kind: "dashboard",
-    href: "/strumenti?stage=synth&tab=results#inspect",
+    href: "/tools?stage=synth&tab=results#inspect",
     exists: true,
   });
   targets.push({
     id: "dash-suite",
     label: "Collaborative suite · hook status",
     kind: "dashboard",
-    href: "/strumenti#suite",
+    href: "/tools#suite",
     exists: true,
   });
   targets.push({
     id: "dash-flowlab",
     label: "FlowLab · RTL → GDSII",
     kind: "dashboard",
-    href: "/flusso",
+    href: "/flow",
     exists: true,
   });
   targets.push({
@@ -266,7 +266,7 @@ export function listOpenTargets(): {
       id: r.id,
       label: r.label,
       kind: "run",
-      href: `/strumenti?tab=run&action=${r.action}`,
+      href: `/tools?tab=run&action=${r.action}`,
       exists: true,
       action: r.action,
     });
@@ -281,7 +281,7 @@ export function listOpenTargets(): {
       id: `web-${stage}`,
       label: `OpenROAD Web Viewer · ${stage}`,
       kind: "webviewer",
-      href: `/strumenti?stage=${stage}&tab=results#inspect`,
+      href: `/tools?stage=${stage}&tab=results#inspect`,
       exists,
       stage,
       artifact: primary?.artifact,
@@ -291,49 +291,49 @@ export function listOpenTargets(): {
     id: "gallery",
     label: "GUI gallery (screenshot)",
     kind: "gallery",
-    href: "/materiali?tab=gallery",
+    href: "/materials?tab=gallery",
     exists: true,
   });
   targets.push({
     id: "golden",
     label: "Golden metrics",
     kind: "doc",
-    href: "/materiali/reference/golden-metrics.md",
+    href: "/materials/reference/golden-metrics.md",
     exists: true,
   });
   targets.push({
     id: "atlas",
     label: "Atlante GUI",
     kind: "doc",
-    href: "/materiali/reference/gui-atlas.md",
+    href: "/materials/reference/gui-atlas.md",
     exists: true,
   });
   targets.push({
     id: "hooks",
     label: "Tool hooks (OpenROAD/STA/Yosys)",
     kind: "doc",
-    href: "/materiali/reference/tool-hooks.md",
+    href: "/materials/reference/tool-hooks.md",
     exists: true,
   });
   targets.push({
     id: "oss-integrations",
     label: "Matrice integrazioni OSS",
     kind: "doc",
-    href: "/materiali/reference/oss-integrations.md",
+    href: "/materials/reference/oss-integrations.md",
     exists: true,
   });
   targets.push({
     id: "vectorless-power",
     label: "Vectorless / dynamic power",
     kind: "doc",
-    href: "/materiali/reference/vectorless-power.md",
+    href: "/materials/reference/vectorless-power.md",
     exists: true,
   });
   targets.push({
     id: "extended-flow",
     label: "Extended flow map",
     kind: "doc",
-    href: "/materiali/reference/extended-flow.md",
+    href: "/materials/reference/extended-flow.md",
     exists: true,
   });
 
@@ -353,7 +353,7 @@ export function listOpenTargets(): {
       id: `lesson-${id}`,
       label: `Lesson ${id}`,
       kind: "lesson",
-      href: `/lezioni/${id}`,
+      href: `/lessons/${id}`,
       exists: true,
     });
   }

@@ -1,5 +1,6 @@
-# Tool installs, sorgenti e build (ricreabili con gli script in scripts/)
+# Tool installs, sources, and builds (recreate with scripts/)
 tools/
+!studio/src/app/tools/
 
 # Output dei run ORFS
 flow-runs/
