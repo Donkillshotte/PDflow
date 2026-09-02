@@ -19,6 +19,30 @@ fi
 
 export GH_TOKEN="${TOKEN}"
 
+# Preflight: token must be able to write repository contents (git push).
+if ! gh api "repos/${OWNER}/${REPO}/contents/README.md" >/dev/null 2>&1; then
+  if ! gh api "repos/${OWNER}/${REPO}" >/dev/null 2>&1; then
+    echo "FAIL: ${OWNER}/${REPO} does not exist. Create an empty repo on GitHub first," >&2
+    echo "      or grant the token Administration (read/write) to create repositories." >&2
+    exit 1
+  fi
+fi
+
+probe_path=".github/publish-probe-$$"
+probe_b64="$(printf 'ok' | base64 -w0 2>/dev/null || printf 'ok' | base64)"
+if ! gh api -X PUT "repos/${OWNER}/${REPO}/contents/${probe_path}" \
+  -f message="publish probe" \
+  -f content="${probe_b64}" >/dev/null 2>&1; then
+  echo "FAIL: token cannot write Contents to ${OWNER}/${REPO}." >&2
+  echo "      Fine-grained PAT needs Contents: Read and write on this repository." >&2
+  echo "      Classic PAT needs the repo scope." >&2
+  exit 1
+fi
+sha="$(gh api "repos/${OWNER}/${REPO}/contents/${probe_path}" --jq .sha)"
+gh api -X DELETE "repos/${OWNER}/${REPO}/contents/${probe_path}" \
+  -f message="remove publish probe" \
+  -f sha="${sha}" >/dev/null 2>&1 || true
+
 if ! git rev-parse --verify "${BRANCH}" >/dev/null 2>&1; then
   echo "FAIL: branch ${BRANCH} not found in ${ROOT}" >&2
   exit 1
