@@ -1,49 +1,47 @@
-# Documentazione
+# Documentation
 
-Ingresso unico del repository. I piani congelati restano nei file originali;
-qui si naviga. Non si riscrivono I1–I5 né §5 P0–P7.
+Single entry point. Frozen plans stay in their original files (`learn/dse/*.md`);
+this tree is for navigation. Do not rewrite I1–I5 or §5 P0–P7.
 
-## Tre superfici
+## Three surfaces
 
-| Superficie | Cosa è | Vittoria | Ingresso |
-|---|---|---|---|
-| **Prodotto** | Knob fisici sulla netlist ufficiale, die fisso, finish vero | [`win_rule.py`](../learn/dse/win_rule.py) | [prodotto.md](prodotto.md) |
-| **Laboratorio** | e-graph, rewrite, IR F4, refine, GNN, solver PDN | non decide i win | [laboratorio.md](laboratorio.md) |
-| **Corso / Studio** | Lezioni RTL→GDS, FlowLab, GUI | smoke corso, non QoR prodotto | [corso.md](corso.md) |
+| Surface | What it is | Where wins are decided |
+|---|---|---|
+| **Product** | Physical knobs on the official netlist, fixed die, real finish | [`prodotto.md`](prodotto.md) · [`learn/dse/product.md`](../learn/dse/product.md) |
+| **Lab** | e-graph, Verilog rewrite, F4 IR, refine, GNN | [`learn/dse/README.md`](../learn/dse/README.md) (Lab section) |
+| **Course / Studio** | RTL→GDS lessons, FlowLab, GUI | [`learn/README.md`](../learn/README.md) · [`studio/README.md`](../studio/README.md) |
 
-Non mescolarle. Un risultato lab non è un win di prodotto.
+## Reading order
 
-## Leggere in ordine
+### Product
 
-### Prodotto
+1. [`prodotto.md`](prodotto.md) — constraints, win rule, cycle
+2. [`operazioni.md`](operazioni.md) — commands, tests, refuse rules
+3. [`risultati.md`](risultati.md) — honest results
+4. [`../learn/dse/tpe_plan.md`](../learn/dse/tpe_plan.md) — tuner (frozen before trials)
+5. [`../learn/dse/arch_review.md`](../learn/dse/arch_review.md) — after gcd/ibex/aes: walls and transfer
 
-1. [prodotto.md](prodotto.md) — vincoli, vittoria, ciclo, catalogo
-2. [operazioni.md](operazioni.md) — comandi, test, refuse
-3. [risultati.md](risultati.md) — cosa ha vinto, onesto (area / potenza / leakage / IR)
-4. [../learn/dse/tpe_plan.md](../learn/dse/tpe_plan.md) — tuner (congelato prima dei trial)
-5. [../learn/dse/arch_review.md](../learn/dse/arch_review.md) — muri e transfer dopo gcd/ibex/aes
+### Lab
 
-### Laboratorio
+1. [`laboratorio.md`](laboratorio.md)
+2. [`../PLAN.md`](../PLAN.md) — Phase 2 IR controller (closed)
+3. [`../learn/reference/dse.md`](../learn/reference/dse.md) — F0–F6 stack
+4. [`../engine/README.md`](../engine/README.md) — native solvers
 
-1. [laboratorio.md](laboratorio.md)
-2. [../PLAN.md](../PLAN.md) — Fase 2 controller IR (chiusa)
-3. [../learn/reference/dse.md](../learn/reference/dse.md) — stack F0–F6
-4. [../engine/README.md](../engine/README.md) — solver nativi
+### Course / Studio
 
-### Corso / Studio
+1. [`corso.md`](corso.md)
+2. [`../learn/README.md`](../learn/README.md) · [`../learn/CURRICULUM.md`](../learn/CURRICULUM.md)
+3. [`../studio/README.md`](../studio/README.md)
 
-1. [corso.md](corso.md)
-2. [../learn/README.md](../learn/README.md) · [../learn/CURRICULUM.md](../learn/CURRICULUM.md)
-3. [../studio/README.md](../studio/README.md)
+## Repository map
 
-## Mappa del tree
+- [`architettura.md`](architettura.md) — directories, ownership, what not to move
+- [`script.md`](script.md) — wrappers in `scripts/` and `learn/scripts/`
+- [`piani.md`](piani.md) — frozen plan index
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — how to contribute
+- [`../AGENTS.md`](../AGENTS.md) — operational rules for agents
 
-- [architettura.md](architettura.md) — directory, ownership, cosa non si sposta
-- [script.md](script.md) — wrapper in `scripts/` e `learn/scripts/`
-- [piani.md](piani.md) — indici dei piani congelati
-- [../CONTRIBUTING.md](../CONTRIBUTING.md) — come toccare il repo
-- [../AGENTS.md](../AGENTS.md) — regole operative per agenti
+## Product code
 
-## Codice prodotto
-
-Mappa moduli: [`learn/dse/README.md`](../learn/dse/README.md).
+Module map: [`learn/dse/README.md`](../learn/dse/README.md).

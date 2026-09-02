@@ -1,66 +1,66 @@
 # AGENTS
 
-Regole operative per chi tocca questo repo. La legge del prodotto sta in
-[`learn/dse/product.md`](learn/dse/product.md). Indice: [`docs/README.md`](docs/README.md).
+Operational rules for anyone touching this repo. Product law lives in
+[`learn/dse/product.md`](learn/dse/product.md). Index: [`docs/README.md`](docs/README.md).
 
-## Tre superfici
+## Three surfaces
 
-1. **Prodotto** — knob fisici, netlist ufficiale, die fisso, finish vero.
-   Win = `learn/dse/win_rule.py`. Ciclo: cover → improve → tune.
-2. **Laboratorio** — e-graph, rewrite, F4, refine, GNN. Non decide i win.
-3. **Corso / Studio / FlowLab** — didattica. `FLOW_VARIANT=learn` e
-   `flowlab` sono **locked**.
+1. **Product** — physical knobs, official netlist, fixed die, real finish.
+   Win = `learn/dse/win_rule.py`. Cycle: cover → improve → tune.
+2. **Lab** — e-graph, rewrite, F4, refine, GNN. Does not decide wins.
+3. **Course / Studio / FlowLab** — teaching. `FLOW_VARIANT=learn` and
+   `flowlab` are **locked**.
 
-Non mescolare le tre. Non promuovere un risultato lab a win di prodotto.
+Do not mix the three. Do not promote a lab result to a product win.
 
-## Vietato
+## Forbidden
 
-- `if design ==` nel tuner, nello spazio, nello score, nel coordinatore,
-  nel transfer. I range sono offset sui default di `config.mk`.
-- `FLOW_VARIANT` in `{flowlab, learn, base}`. Il wrapper deve rifiutare.
-- Krylov / MOR su AES (~50–70k-R).
-- Restampare l’oro GCD Dynamic IR **45.298 mV**.
-- Sovrascrivere `results/.../gcd/flowlab/` o `learn/sim/dse/memory_aes.jsonl`
-  riga `febe6804241c`.
-- TPE su spi @ 1 ns.
-- Surrogato bayesiano del finish sotto ~40 finish per-design
+- `if design ==` in tuner, space, score, coordinator, or transfer. Ranges are
+  offsets on `config.mk` defaults.
+- `FLOW_VARIANT` in `{flowlab, learn, base}`. The wrapper must refuse.
+- Krylov / MOR on AES (~50–70k-R).
+- Restamping gold GCD Dynamic IR **45.298 mV**.
+- Overwriting `results/.../gcd/flowlab/` or `learn/sim/dse/memory_aes.jsonl`
+  row `febe6804241c`.
+- TPE on spi @ 1 ns.
+- Bayesian finish surrogate below ~40 per-design finishes
   (`next_iteration_plan.md` §7).
-- Proposer nuovi (LLM / RL / GNN / white-box) come prodotto.
-- `pkill -f`. Uccidere solo per PID.
-- Committare leftover: `memory_flowlab_nl.jsonl`,
+- New proposers (LLM / RL / GNN / white-box) as product.
+- `pkill -f`. Kill by PID only.
+- Committing leftovers: `memory_flowlab_nl.jsonl`,
   `memory_camp_spi_dse.index.json`, `dse_camp_spi_dse.json`.
 
-## Un job
+## One job
 
-Una cottura pesante alla volta. Wrapper con `prlimit --as`.
-TPE è ask → `cook_one` → tell, seriale. Non precomputare 4 trial.
+One heavy cook at a time. Wrapper uses `prlimit --as`.
+TPE is ask → `cook_one` → tell, serial. Do not precompute 4 trials.
 
-## Test
+## Tests
 
 ```bash
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_dse_next.py
 ```
 
-Suite veloce: sintetico o gcd-scale. Un `test_dse.py` alla volta.
-Live F4 per ultimo. Non lanciare AES finish “per vedere”.
+Fast suite: synthetic or gcd-scale. One `test_dse.py` at a time.
+Live F4 last. Do not launch AES finish “just to see”.
 
-## Documentazione
+## Documentation
 
-- Indice: `docs/README.md`. Tree: `docs/architettura.md`.
-  Lab: `docs/laboratorio.md`. Corso: `docs/corso.md`.
-  Script: `docs/script.md`. Piani: `docs/piani.md`.
-- Piani congelati non si riscrivono dopo i dati (`tpe_plan.md`,
+- Index: `docs/README.md`. Tree: `docs/architettura.md`.
+  Lab: `docs/laboratorio.md`. Course: `docs/corso.md`.
+  Scripts: `docs/script.md`. Plans: `docs/piani.md`.
+- Frozen plans are not rewritten after data (`tpe_plan.md`,
   `product.md`, `arch_review.md` §4–§6, I1–I5, §5 P0–P7).
-- Titoli di ricetta per gli umani, non gli hash `camp_*_tpe_*`.
-- Sempre area, potenza, leakage, IR insieme. Win/lose onesti.
-- Contribuire: `CONTRIBUTING.md`.
+- Human recipe titles, not `camp_*_tpe_*` hashes.
+- Always report area, power, leakage, IR together. Honest win/lose.
+- Contributing: `CONTRIBUTING.md`.
 
 ## Branch
 
-Prefisso `cursor/`, suffisso assegnato dall’agente. Non lasciare `main`
-per lavoro prodotto. Non force-push. Non mergiare da soli.
+`cursor/` prefix, agent-assigned suffix. Do not leave product work on `main`.
+No force-push. Do not merge on your own.
 
 ## Origin
 
-Repo Origin: usare `origin` (non `gh`) dove serve il forge CLI.
-Le PR si creano/aggiornano con lo strumento PR dell’agente.
+Origin repo: use `origin` (not `gh`) for forge CLI.
+Create/update PRs with the agent PR tool.
