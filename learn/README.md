@@ -1,5 +1,8 @@
 # Corso Physical Design — OpenROAD + ORFS
 
+Questo è il **corso**. Il prodotto (knob, die fisso, finish, `win_rule`)
+sta in [`docs/README.md`](../docs/README.md). Studio: [`docs/corso.md`](../docs/corso.md).
+
 Percorso **hands-on completo** per imparare ogni fase del physical design digitale.
 Non è un tutorial da 10 minuti: è strutturato per **20–28 ore di studio attivo**
 (LAB + reference + workbook + GUI), con materiali da leggere, esercizi da eseguire,

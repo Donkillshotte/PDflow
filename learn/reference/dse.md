@@ -1,5 +1,9 @@
 # DSE fisico-aware
 
+Questo documento è il **laboratorio** (e-graph, F4, refine). I win di
+prodotto stanno in [`win_rule.py`](../dse/win_rule.py). Indice:
+[`docs/README.md`](../../docs/README.md) · lab: [`docs/laboratorio.md`](../../docs/laboratorio.md).
+
 Non è un loop cieco synth→P&R. Il controller cerca **un livello per volta**, tiene
 una memoria di esperimenti e usa Dynamic IR come **oracolo F4**, non come penalità
 scalare.

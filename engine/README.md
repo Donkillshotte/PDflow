@@ -1,5 +1,8 @@
 # DPN engine (native)
 
+Repo map: [`docs/README.md`](../docs/README.md). Lab: [`docs/laboratorio.md`](../docs/laboratorio.md).
+Never Krylov / MOR on AES (~50–70k-R). DirectLU is the numerical reference.
+
 Sparse PDN solvers for the Dynamic Power Integrity stack.
 
 Python (`learn/scripts/pdn_dynamic.py`) owns OpenROAD frontend, I(t), reporting.

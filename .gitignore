@@ -22,3 +22,11 @@ __pycache__/
 
 # Demo transient output (non riproducibile, non parte del repo)
 tran_demo_out/
+
+# Tuner locale
+learn/sim/dse/tpe_*.db
+
+# Leftover di cottura: non committare
+learn/sim/dse/memory_flowlab_nl.jsonl
+learn/sim/dse/memory_flowlab_nl.index.json
+learn/sim/dse/memory_camp_spi_dse.index.json

@@ -3,6 +3,9 @@
 Interfaccia web **enterprise** per il corso in `learn/`.
 Non sostituisce gli script: li **orchestra** con lock, dipendenze, storico job e gate di completamento.
 
+Indice repo: [`docs/README.md`](../docs/README.md) · corso: [`docs/corso.md`](../docs/corso.md).
+Le varianti `learn` e `flowlab` sono locked per il prodotto.
+
 ## Avvio
 
 Dalla root del repository:

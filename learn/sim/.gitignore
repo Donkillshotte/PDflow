@@ -3,6 +3,7 @@
 sim.log
 reports/*
 !reports/dse_*.json
+reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/
 dse/extracts/

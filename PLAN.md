@@ -1,5 +1,9 @@
 # PLAN — Fase 2: scenario guida I(t), fronte gated onesto, coda IR dichiarativa
 
+Navigazione repo: [`docs/README.md`](docs/README.md). Questo piano è
+**laboratorio Fase 2** (controller IR), non il prodotto knob/finish.
+Lab: [`docs/laboratorio.md`](docs/laboratorio.md).
+
 Stato: passo A ✅, E ✅, B ✅, C1 ✅, C2 ✅, C3 ✅, C4 ✅, C5 ✅, C6 ✅, C7 ✅, D.1 ✅, D.2 ✅, D.3 ✅, D.4 ✅, D.5 ✅. I passi si eseguono **in ordine**; ogni passo si chiude
 solo con i test verdi indicati e con commit dedicato. Nessun passo introduce un
 tipo `DesignState` parallelo: si irrigidisce ciò che esiste.

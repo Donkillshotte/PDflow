@@ -59,3 +59,5 @@ Non si riscrive il Verilog.
 
 Nessun trial TPE cambia queste scelte: spazio, score, pin del die e
 `cook_one` seguono `tpe_plan.md`.
+
+Indice di lettura: `docs/README.md`. Dopo TPE v1: `arch_review.md`.

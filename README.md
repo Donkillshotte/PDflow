@@ -1,5 +1,21 @@
 # OpenROAD + OpenSTA — ambiente locale di physical design
 
+Tre superfici nello stesso albero. Non mescolarle.
+
+| Superficie | Cosa | Ingresso |
+|---|---|---|
+| **Prodotto** | Knob fisici, netlist ufficiale, die fisso, finish vero | [docs/README.md](docs/README.md) |
+| **Laboratorio** | e-graph, rewrite, IR F4, refine | [learn/dse/README.md](learn/dse/README.md) |
+| **Corso / Studio** | Lezioni RTL→GDS, FlowLab | [learn/README.md](learn/README.md) |
+
+Vittoria di prodotto (slack ±5 ps, area/potenza/leakage/IR ±10%):
+[`learn/dse/win_rule.py`](learn/dse/win_rule.py).
+Come cuocere e testare: [`docs/operazioni.md`](docs/operazioni.md).
+Risultati onesti: [`docs/risultati.md`](docs/risultati.md).
+Regole agente: [`AGENTS.md`](AGENTS.md).
+Albero e ownership: [`docs/architettura.md`](docs/architettura.md).
+Come contribuire: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 Ambiente locale completo per il physical design digitale (RTL → GDSII) basato su:
 
 | Tool | Versione | Provenienza |

@@ -1134,6 +1134,64 @@ def check_next_level(check, root: Path) -> None:
     except ImportError:
         print("skip optuna fake TPE (not installed)")
 
+    _check_enterprise_docs(check, root)
+
+
+def _check_enterprise_docs(check, root: Path) -> None:
+    """The repo docs map covers product, lab, and course — and stays linked."""
+    required = (
+        "docs/README.md",
+        "docs/prodotto.md",
+        "docs/operazioni.md",
+        "docs/risultati.md",
+        "docs/architettura.md",
+        "docs/laboratorio.md",
+        "docs/corso.md",
+        "docs/script.md",
+        "docs/piani.md",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "scripts/README.md",
+        "learn/dse/README.md",
+        "learn/dse/product.md",
+        "learn/dse/arch_review.md",
+        "learn/dse/tpe_plan.md",
+        "learn/dse/win_rule.py",
+    )
+    for rel in required:
+        path = root / rel
+        check(path.is_file(), f"docs map missing {rel}")
+        check(path.stat().st_size > 80, f"docs map too small {rel}")
+    index = (root / "docs/README.md").read_text()
+    for needle in (
+        "docs/prodotto.md",
+        "architettura.md",
+        "laboratorio.md",
+        "corso.md",
+        "script.md",
+        "piani.md",
+        "win_rule.py",
+    ):
+        check(needle in index or needle.replace("docs/", "") in index, f"docs index cites {needle}")
+    product = (root / "docs/prodotto.md").read_text()
+    check("learn/dse/product.md" in product, "prodotto.md points at frozen product.md")
+    check("win_rule.py" in product, "prodotto.md points at win_rule")
+    agents = (root / "AGENTS.md").read_text()
+    check("Refuse" in agents or "Vietato" in agents, "AGENTS.md has refuse rules")
+    check("test_dse_next.py" in agents, "AGENTS.md names the fast suite")
+    dse = (root / "learn/dse/README.md").read_text()
+    check("win_rule.py" in dse, "dse README names win_rule")
+    check("tune_transfer.py" in dse, "dse README names transfer")
+    root_readme = (root / "README.md").read_text()
+    check("docs/README.md" in root_readme, "root README points at docs index")
+    check("win_rule.py" in root_readme, "root README names win_rule")
+    contrib = (root / "CONTRIBUTING.md").read_text()
+    check("test_dse_next.py" in contrib, "CONTRIBUTING names the fast suite")
+    check("45.298" in contrib, "CONTRIBUTING protects GCD IR gold")
+    arch = (root / "docs/architettura.md").read_text()
+    check("camp_{design}" in arch or "camp_" in arch, "architettura names camp variants")
+    check("if design ==" in (root / "AGENTS.md").read_text(), "AGENTS forbids design-name branches")
+
 
 if __name__ == "__main__":
     def _check(ok: bool, msg: str) -> None:
