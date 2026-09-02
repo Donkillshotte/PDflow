@@ -36,6 +36,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   export_spice_lab: "finish",
   klayout_drc: "finish",
   sta_signoff: "finish",
+  sta_ir_aware: "finish",
   drc_signoff: "finish",
   klayout_lvs: "finish",
   power_signoff: "finish",
@@ -393,6 +394,10 @@ export function preflightAction(
     sta_signoff: {
       rel: "6_final.v",
       hint: "run finish first (netlist SPEF)",
+    },
+    sta_ir_aware: {
+      rel: "6_final.v",
+      hint: "run finish + dynamic_ir first (STA arrivals × ITerm V)",
     },
     drc_signoff: {
       rel: "6_final.gds",

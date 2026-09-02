@@ -84,7 +84,7 @@ export const PHASES: Phase[] = [
     title: "Finish and signoff",
     action: "finish",
     hint: "GDS · SPEF",
-    help: "Generates GDSII, SPEF, final netlist, and reports. After finish: signoff matrix (STA/DRC/LVS/power) vs golden-gcd.json — actions sta_signoff … signoff_all.",
+    help: "Generates GDSII, SPEF, final netlist, and reports. After finish: signoff matrix (STA/DRC/LVS/power) vs golden-gcd.json — actions sta_signoff, sta_ir_aware … signoff_all.",
     tool: "OpenROAD finish + KLayout",
     icon: "layers",
     estTime: "1–3 min",

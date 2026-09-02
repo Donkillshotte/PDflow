@@ -731,6 +731,7 @@ def path_ir_timing(
         "gate_delay_ns": gate_nom,
         "gate_delay_ir_ns": gate_ir,
         "via": path.get("via"),
+        "stages": stages_out,
         "note": (
             "NLDM typical-V OpenSTA delays scaled by (Vdd/V_inst)^alpha on joined gates; "
             "not a second liberty at Vmin / CCS voltage-dependent delay"

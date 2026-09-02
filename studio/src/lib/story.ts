@@ -91,6 +91,14 @@ export type ProductStory = {
     currentPresent: boolean;
     detail: string;
   };
+  staIr: {
+    ready: boolean;
+    slackNs: number | null;
+    slackIrNs: number | null;
+    nJoined: number | null;
+    nGates: number | null;
+    detail: string;
+  };
   product: {
     slots: StorySlot[];
     wins: number;
@@ -242,6 +250,27 @@ export function getProductStory(): ProductStory {
   const pillars = gates.gates.filter((g) => pillarIds.includes(g.id));
   const signoffPassed = pillars.filter((g) => g.ok).length;
 
+  const staIrReport = readReport("sta_ir_aware");
+  const staBlock = (staIrReport?.sta ?? null) as
+    | {
+        slack_ns?: number;
+        slack_ir_ns?: number;
+        n_joined?: number;
+        n_gates?: number;
+      }
+    | null;
+  const staIrReady = staIrReport?.ok === true && staBlock?.slack_ir_ns != null;
+  const staIr = {
+    ready: staIrReady,
+    slackNs: num(staBlock?.slack_ns),
+    slackIrNs: num(staBlock?.slack_ir_ns),
+    nJoined: num(staBlock?.n_joined),
+    nGates: num(staBlock?.n_gates),
+    detail: staIrReady
+      ? `slack ${Number(staBlock?.slack_ns).toFixed(4)} ns → IR ${Number(staBlock?.slack_ir_ns).toFixed(4)} ns · ${staBlock?.n_joined}/${staBlock?.n_gates} gates joined`
+      : "Educational NLDM × ITerm V — run sta_ir_aware after dynamic_ir",
+  };
+
   const gold = readReport("dynamic_ir");
   const goldPresent =
     Boolean(gold?.gold) && Math.abs(Number(gold?.worst_droop_mv) - IR_GOLD_MV) < 0.02;
@@ -280,6 +309,13 @@ export function getProductStory(): ProductStory {
         pillars.length === 0
           ? "Four pillars: STA · DRC · LVS · power"
           : `${signoffPassed}/${pillars.length} pillars pass`,
+    },
+    {
+      id: "sta-ir",
+      label: "STA IR-aware",
+      href: "/flow?phase=finish#sta-ir",
+      ready: staIr.ready,
+      detail: staIr.detail,
     },
     {
       id: "ir",
@@ -351,6 +387,7 @@ export function getProductStory(): ProductStory {
       currentPresent,
       detail: `reference_run ${IR_GOLD_MV} mV · current_run ${IR_CURRENT_MV} mV · do not mix`,
     },
+    staIr,
     product,
     course: {
       done: doneLessons,

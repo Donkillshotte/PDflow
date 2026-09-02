@@ -43,6 +43,7 @@ export function PkgHubPanel() {
         "spice_lab",
         "ngspice",
         "sta_signoff",
+        "sta_ir_aware",
         "drc_signoff",
         "lvs_signoff",
         "power_signoff",

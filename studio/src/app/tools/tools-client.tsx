@@ -37,6 +37,7 @@ const RUN_ACTIONS = new Set([
   "vectorless",
   "klayout_drc",
   "sta_signoff",
+  "sta_ir_aware",
   "drc_signoff",
   "klayout_lvs",
   "yosys_equiv",

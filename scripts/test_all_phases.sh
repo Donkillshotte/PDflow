@@ -53,7 +53,7 @@ for action in thermal_signoff pkg_bump pkg_rdl pkg_signoff signoff_phase2; do
 done
 
 echo "== Signoff scripts =="
-for s in run_sta_signoff.sh run_drc_signoff.sh run_klayout_lvs.sh run_power_signoff.sh run_signoff_all.sh; do
+for s in run_sta_signoff.sh run_sta_ir_aware.sh run_drc_signoff.sh run_klayout_lvs.sh run_power_signoff.sh run_signoff_all.sh; do
   f="${ROOT}/learn/scripts/${s}"
   [[ -f "${f}" ]] && bash -n "${f}" && ok "${s}" || bad "script ${s}"
 done
@@ -65,7 +65,7 @@ python3 -m py_compile "${ROOT}/learn/scripts/signoff_eval.py" && ok "signoff_eva
 rg -q 'SIGNOFF_PILLARS' "${ROOT}/studio/src/lib/signoff.ts" && ok "signoff.ts registry" || bad "signoff.ts"
 
 echo "== Signoff actions in run.ts =="
-for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all; do
+for action in sta_signoff sta_ir_aware drc_signoff klayout_lvs power_signoff signoff_all; do
   rg -q "\"${action}\"" "${ROOT}/studio/src/lib/run.ts" \
     && ok "action ${action}" || bad "run.ts missing ${action}"
 done
@@ -74,7 +74,7 @@ echo "== STAGE_DEPS signoff =="
 python3 - <<PY || bad "STAGE_DEPS signoff incomplete"
 import re
 text = open("${ROOT}/studio/src/lib/jobs.ts").read()
-for a in ["sta_signoff", "drc_signoff", "klayout_lvs", "power_signoff", "signoff_all"]:
+for a in ["sta_signoff", "sta_ir_aware", "drc_signoff", "klayout_lvs", "power_signoff", "signoff_all"]:
     m = re.search(rf'{a}:\s*"(\w+)"', text)
     assert m and m.group(1) == "finish", f"{a} dep {m.group(1) if m else 'missing'}"
 print("signoff deps ok")
@@ -103,7 +103,7 @@ rg -q 'signoff-matrix' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
   && ok "powerChain signoff-matrix doc" || bad "powerChain missing signoff-matrix link"
 
 echo "== LiveRunConsole signoff chips =="
-for action in sta_signoff drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2 vectorless yosys_equiv formal_gcd vyges_em_ir dynamic_ir; do
+for action in sta_signoff sta_ir_aware drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2 vectorless yosys_equiv formal_gcd vyges_em_ir dynamic_ir; do
   rg -q "id: \"${action}\"" "${ROOT}/studio/src/components/LiveRunConsole.tsx" \
     && ok "LiveRunConsole ${action}" || bad "LiveRunConsole missing ${action}"
 done

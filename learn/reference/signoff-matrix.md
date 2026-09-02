@@ -27,6 +27,7 @@ On educational FreePDK45, **LVS may FAIL** even with a correct flow: the educati
 | Pillar | Lesson | Studio action | Script | Report JSON | Main gate |
 |---|---|---|---|---|---|
 | **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden |
+| **Timing (STA IR-aware)** | 07-finish | `sta_ir_aware` | `run_sta_ir_aware.sh` | `sim/reports/sta_ir_aware_{v}.json` | Educational NLDM × ITerm V (does not change WNS) |
 | **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
 | **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | LVS clean (educational) |
 | **Power / PKG** | 03–07, PKG hub | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | IR/droop/Zmax vs golden |
@@ -53,6 +54,7 @@ All signoff actions require **`finish`** completed:
 | Action | Minimum files |
 |---|---|
 | `sta_signoff` | `6_final.v` |
+| `sta_ir_aware` | `6_final.v` + `sta_arrivals_{v}.json` + Dynamic IR `map.csv` |
 | `drc_signoff`, `klayout_lvs` | `6_final.gds` |
 | `power_signoff`, `signoff_all` | `6_final.odb` |
 
@@ -84,6 +86,7 @@ Tolerance: timing ±15%, power ±25%.
 export FLOW_VARIANT=learn   # or flowlab
 
 ./learn/scripts/run_sta_signoff.sh
+./learn/scripts/run_sta_ir_aware.sh   # optional overlay; needs dynamic_ir current_run
 ./learn/scripts/run_drc_signoff.sh
 ./learn/scripts/run_klayout_lvs.sh
 ./learn/scripts/run_power_signoff.sh
@@ -110,6 +113,7 @@ Every pillar signoff is **complete** when all five artifacts exist:
 Quick post-`finish` checklist:
 
 - [ ] `sta_signoff` → WNS/TNS/viol vs golden
+- [ ] (opt.) `sta_ir_aware` → slack vs slack_ir on the worst path (educational; not Tempus)
 - [ ] `drc_signoff` → route DRC + GDS items = 0
 - [ ] `klayout_lvs` → `.lvsdb` report interpreted (educational)
 - [ ] `power_signoff` → IR/droop/system vs golden

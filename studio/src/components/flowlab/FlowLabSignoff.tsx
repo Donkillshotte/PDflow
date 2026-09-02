@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
+import { StaIrAwarePanel } from "./StaIrAwarePanel";
 import { DynamicIrHeatmap } from "./DynamicIrHeatmap";
 
 type SignoffAction = {
@@ -107,6 +108,13 @@ const FINISH_ACTIONS: SignoffAction[] = [
     id: "sta_signoff",
     label: "STA signoff",
     hint: "WNS/TNS vs golden-metrics",
+    icon: Clock,
+    long: false,
+  },
+  {
+    id: "sta_ir_aware",
+    label: "STA IR-aware",
+    hint: "NLDM path × per-cell ITerm V",
     icon: Clock,
     long: false,
   },
@@ -247,6 +255,7 @@ export function FlowLabSignoff({
         <>
           <div id="signoff">
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
+          <StaIrAwarePanel busy={busy} onRun={onRun} />
           <div className="fl-signoff-head">
             <strong>Signoff actions timing / geometry / LVS</strong>
             <p>

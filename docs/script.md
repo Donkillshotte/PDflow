@@ -56,7 +56,7 @@ Optuna **only** in `run_tpe.py`.
 |---|---|
 | Lab DSE | `run_dse.py`, `test_dse.py`, `dse_f4_worker.py` |
 | PDN / IR | `pdn_dynamic.py`, `pdn_extract.py`, `pdn_solvers.py`, `run_dynamic_ir.sh` |
-| Signoff | `run_signoff_all.sh`, `run_sta_signoff.sh`, `run_drc_signoff.sh` |
+| Signoff | `run_signoff_all.sh`, `run_sta_signoff.sh`, `run_sta_ir_aware.sh`, `run_drc_signoff.sh` |
 | Engine | `build_dpn_engine.sh` |
 
 One heavy job. `pkill -f` forbidden: kill by PID.

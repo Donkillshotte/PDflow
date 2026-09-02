@@ -31,7 +31,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   {
     id: "timing",
     label: "Timing (STA)",
-    description: "WNS/TNS/period_min vs golden-metrics post-SPEF",
+    description: "WNS/TNS/period_min vs golden-metrics post-SPEF; optional educational IR-aware overlay",
     status: "active",
     orchestratorAction: "sta_signoff",
     checks: [
@@ -42,6 +42,14 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         script: "learn/scripts/run_sta_signoff.sh",
         reportRel: "sim/reports/sta_signoff_{variant}.json",
         suiteHookId: "sta_signoff",
+      },
+      {
+        id: "sta_ir",
+        label: "STA IR-aware",
+        action: "sta_ir_aware",
+        script: "learn/scripts/run_sta_ir_aware.sh",
+        reportRel: "sim/reports/sta_ir_aware_{variant}.json",
+        suiteHookId: "sta_ir_aware",
       },
     ],
   },
@@ -293,6 +301,41 @@ export function readPillarReportEval(
   };
 }
 
+export type StaIrAwareSummary = {
+  ok?: boolean;
+  slack_ns?: number | null;
+  slack_ir_ns?: number | null;
+  n_joined?: number | null;
+  n_gates?: number | null;
+  degradation_ps?: number | null;
+  worst_cell_ir_mv?: number | null;
+  path_gates?: Record<string, unknown>[];
+  hottest_cells?: Record<string, unknown>[];
+  note?: string;
+  report?: string;
+};
+
+export function readStaIrAware(variant = "flowlab"): StaIrAwareSummary | null {
+  const abs = path.join(LEARN_ROOT, `sim/reports/sta_ir_aware_${variant}.json`);
+  const report = readJsonReport(abs);
+  if (!report) return null;
+  const sta = (report.sta ?? {}) as Record<string, unknown>;
+  const ir = (report.ir ?? {}) as Record<string, unknown>;
+  return {
+    ok: report.ok as boolean | undefined,
+    slack_ns: (sta.slack_ns as number | null | undefined) ?? null,
+    slack_ir_ns: (sta.slack_ir_ns as number | null | undefined) ?? null,
+    n_joined: (sta.n_joined as number | null | undefined) ?? null,
+    n_gates: (sta.n_gates as number | null | undefined) ?? null,
+    degradation_ps: (sta.degradation_ps as number | null | undefined) ?? null,
+    worst_cell_ir_mv: (ir.worst_cell_ir_mv as number | null | undefined) ?? null,
+    path_gates: (report.path_gates as Record<string, unknown>[] | undefined) ?? [],
+    hottest_cells: (report.hottest_cells as Record<string, unknown>[] | undefined) ?? [],
+    note: (report.note as string | undefined) ?? undefined,
+    report: `sim/reports/sta_ir_aware_${variant}.json`,
+  };
+}
+
 function readJsonReport(abs: string): Record<string, unknown> | null {
   try {
     if (!fs.existsSync(abs)) return null;
@@ -440,6 +483,7 @@ export function signoffMatrixForUi(variant = "flowlab") {
       ),
     },
     evaluation: evaluateSignoffGates(variant),
+    staIr: readStaIrAware(variant),
   };
 }
 

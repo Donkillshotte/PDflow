@@ -2519,6 +2519,41 @@ button.pipeline-node {
   color: var(--fl-muted);
 }
 .sig-planned ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+.sta-ir-panel {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(88, 166, 255, 0.35);
+  background: rgba(88, 166, 255, 0.06);
+  display: grid;
+  gap: 0.55rem;
+}
+.sta-ir-head p { margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--fl-muted); }
+.sta-ir-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.45rem;
+  margin: 0;
+}
+.sta-ir-metrics div {
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  background: var(--fl-surface);
+  border: 1px solid var(--fl-border);
+}
+.sta-ir-metrics dt { font-size: 0.68rem; color: var(--fl-muted); }
+.sta-ir-metrics dd { margin: 0.1rem 0 0; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.sta-ir-table {
+  width: 100%;
+  font-size: 0.72rem;
+  border-collapse: collapse;
+}
+.sta-ir-table th,
+.sta-ir-table td { padding: 0.2rem 0.35rem; text-align: left; border-bottom: 1px solid var(--fl-border); }
+.sta-ir-table tr.is-gap { opacity: 0.65; }
+.sta-ir-table small { color: var(--fl-muted); }
+.sta-ir-hot, .sta-ir-empty { margin: 0; font-size: 0.75rem; color: var(--fl-muted); }
+.sta-ir-hot code { font-size: 0.72rem; }
+
 .sig-planned-badge {
   font-size: 0.65rem;
   text-transform: uppercase;

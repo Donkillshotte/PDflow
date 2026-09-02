@@ -40,6 +40,7 @@ const POST_FINISH_CHIPS = [
   { id: "power_chain", label: "SPICE chain", hint: "activity→IR→system" },
   { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },
   { id: "sta_signoff", label: "STA signoff", hint: "timing vs golden" },
+  { id: "sta_ir_aware", label: "STA IR-aware", hint: "NLDM × ITerm V" },
   { id: "drc_signoff", label: "DRC signoff", hint: "route + GDS DRC" },
   { id: "klayout_lvs", label: "LVS signoff", hint: "GDS vs netlist" },
   { id: "power_signoff", label: "Power signoff", hint: "IR/droop/Zmax" },
@@ -50,7 +51,7 @@ const POST_FINISH_CHIPS = [
   { id: "yosys_equiv", label: "Yosys equiv", hint: "EQY-class RTL↔synth" },
   { id: "formal_gcd", label: "Formal SAT", hint: "sby-class tempinduct" },
   { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },
-  { id: "analytical_pex", label: "PEX analitico", hint: "FasterCap-class FDM" },
+  { id: "analytical_pex", label: "Analytical PEX", hint: "FasterCap-class FDM" },
   { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
   { id: "tool_matrix", label: "Tool matrix", hint: "all OSS checks" },
 ] as const;

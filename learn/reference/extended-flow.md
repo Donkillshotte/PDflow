@@ -114,8 +114,9 @@ See [signoff-matrix.md](./signoff-matrix.md).
 | OpenSTA + SPEF | `run_sta_signoff.sh` |
 | Report | `learn/sim/reports/sta_signoff_{v}.json` |
 | Gate | vs `learn/signoff/golden-gcd.json` |
+| IR-aware overlay | `run_sta_ir_aware.sh` → `sta_ir_aware_{v}.json` (NLDM × ITerm V; does not change WNS) |
 
-**Study:** action `sta_signoff` · `GET /api/signoff`.
+**Study:** action `sta_signoff` · `sta_ir_aware` · `GET /api/signoff`.
 
 ---
 
@@ -240,6 +241,7 @@ Power map proxy already available: IR heatmap + `report_power` (activity script)
 | `tool_matrix` | OSS orchestrator |
 | `klayout_drc` | GDS DRC (legacy, GDS only) |
 | `sta_signoff` | STA vs golden-metrics |
+| `sta_ir_aware` | Educational IR-aware STA (NLDM × ITerm V) |
 | `drc_signoff` | Route DRC + unified KLayout GDS |
 | `klayout_lvs` | LVS GDS vs CDL |
 | `power_signoff` | Power chain + golden gate |

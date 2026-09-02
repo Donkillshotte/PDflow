@@ -141,6 +141,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     studioActions: [
       "finish",
       "sta_signoff",
+      "sta_ir_aware",
       "drc_signoff",
       "klayout_lvs",
       "power_signoff",

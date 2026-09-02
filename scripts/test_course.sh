@@ -61,10 +61,10 @@ rg -q 'run_rtl_sim|gridcheck|activity_power|bump|thermal|signoff|FreePDK45.lylvs
   && ok "FreePDK45.lylvs vendored" || bad "missing LVS runset"
 [[ -f "${ROOT}/studio/src/lib/signoff.ts" ]] && rg -q 'SIGNOFF_PILLARS' "${ROOT}/studio/src/lib/signoff.ts" \
   && ok "signoff.ts registry" || bad "signoff.ts incomplete"
-for s in run_sta_signoff.sh run_signoff_phase2.sh parse_signoff_artifacts.py; do
+for s in run_sta_signoff.sh run_sta_ir_aware.sh run_signoff_phase2.sh parse_signoff_artifacts.py; do
   [[ -f "${ROOT}/learn/scripts/${s}" ]] && ok "script ${s}" || bad "missing ${s}"
 done
-rg -q 'sta_signoff|signoff_phase2|thermal_signoff' "${ROOT}/studio/src/lib/run.ts" \
+rg -q 'sta_signoff|sta_ir_aware|signoff_phase2|thermal_signoff' "${ROOT}/studio/src/lib/run.ts" \
   && ok "studio signoff actions" || bad "run.ts signoff incomplete"
 rg -q 'signoff-matrix|Part 7' "${ROOT}/learn/lessons/07-finish/LAB.md" \
   && ok "L07 signoff LAB" || bad "L07 LAB without signoff"

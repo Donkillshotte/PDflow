@@ -98,4 +98,38 @@ print("STA_SIGNOFF_JSON", "${OUT}")
 print(out["summary"])
 PY
 
+# Best-effort educational IR-aware overlay. Never fails nominal STA / WNS.
+IR_SCRIPT="${ROOT}/learn/scripts/run_sta_ir_aware.sh"
+if [[ -x "${IR_SCRIPT}" || -f "${IR_SCRIPT}" ]]; then
+  if FLOW_VARIANT="${VARIANT}" "${IR_SCRIPT}"; then
+    python3 - <<PY
+import json
+from pathlib import Path
+out_p = Path("${OUT}")
+ir_p = Path("${ROOT}/learn/sim/reports/sta_ir_aware_${VARIANT}.json")
+blob = json.loads(out_p.read_text())
+if ir_p.is_file():
+    ir = json.loads(ir_p.read_text())
+    sta = ir.get("sta") or {}
+    blob["ir_aware"] = {
+        "report": str(ir_p),
+        "ok": ir.get("ok"),
+        "slack_ns": sta.get("slack_ns"),
+        "slack_ir_ns": sta.get("slack_ir_ns"),
+        "n_joined": sta.get("n_joined"),
+        "n_gates": sta.get("n_gates"),
+        "degradation_ps": sta.get("degradation_ps"),
+        "note": "educational NLDM × ITerm V; does not change nominal WNS",
+    }
+    out_p.write_text(json.dumps(blob, indent=2) + "\\n")
+    print(
+        f"STA_IR_AWARE slack={sta.get('slack_ns')} slack_ir={sta.get('slack_ir_ns')} "
+        f"joined={sta.get('n_joined')}/{sta.get('n_gates')}"
+    )
+PY
+  else
+    echo "STA_IR_AWARE_SKIP (nominal STA unchanged)"
+  fi
+fi
+
 echo "STA_SIGNOFF_DONE ${VARIANT}"

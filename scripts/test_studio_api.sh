@@ -140,6 +140,7 @@ rg -q '"surfaces"' /tmp/studio-story.json && ok "story.surfaces" || bad "story m
 rg -q '"path"' /tmp/studio-story.json && ok "story.path" || bad "story missing path"
 rg -q '"product"' /tmp/studio-story.json && ok "story.product" || bad "story missing product"
 rg -q '45.298' /tmp/studio-story.json && ok "story cites IR gold" || bad "story missing IR gold"
+rg -q '"staIr"' /tmp/studio-story.json && ok "story.staIr" || bad "story missing staIr"
 python3 - <<'PY'
 import json
 d=json.load(open("/tmp/studio-story.json"))
@@ -430,6 +431,7 @@ code="$(curl -s -o /tmp/studio-signoff.json -w '%{http_code}' "${BASE}/api/signo
 [[ "${code}" == "200" ]] && ok "GET /api/signoff → 200" || bad "signoff API → ${code}"
 rg -q '"pillars"' /tmp/studio-signoff.json && ok "signoff.pillars" || bad "signoff missing pillars"
 rg -q '"evaluation"' /tmp/studio-signoff.json && ok "signoff.evaluation" || bad "signoff missing evaluation"
+rg -q '"staIr"' /tmp/studio-signoff.json && ok "signoff.staIr" || bad "signoff missing staIr"
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/signoff-matrix.md")"
 [[ "${c}" == "200" ]] && ok "signoff-matrix.md page" || bad "signoff-matrix page → ${c}"
 
@@ -454,7 +456,7 @@ if python3 - <<'PY'
 import json, sys
 d = json.load(open("/tmp/studio-suite.json"))
 ids = {h["id"] for h in d["hooks"]}
-need = {"sta_signoff", "drc_signoff", "lvs_signoff", "power_signoff", "signoff_all", "thermal_signoff", "pkg_signoff", "signoff_phase2"}
+need = {"sta_signoff", "sta_ir_aware", "drc_signoff", "lvs_signoff", "power_signoff", "signoff_all", "thermal_signoff", "pkg_signoff", "signoff_phase2"}
 miss = sorted(need - ids)
 if miss:
     print("missing", miss)

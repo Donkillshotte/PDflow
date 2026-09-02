@@ -49,6 +49,7 @@ Expected reports in `learn/sim/reports/`:
 | Report | Pillar |
 |---|---|
 | `sta_signoff_{v}.json` | Timing |
+| `sta_ir_aware_{v}.json` | Educational IR-aware STA (NLDM × ITerm V; not gold) |
 | `drc_signoff_{v}.json` | Geometry |
 | `lvs_signoff_{v}.json` | Equivalence |
 | `power_signoff_{v}.json` | Power / PKG |

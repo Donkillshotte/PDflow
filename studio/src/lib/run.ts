@@ -81,6 +81,7 @@ const ALLOWED_ACTIONS = new Set([
   "export_spice_lab",
   "klayout_drc",
   "sta_signoff",
+  "sta_ir_aware",
   "drc_signoff",
   "klayout_lvs",
   "power_signoff",
@@ -118,7 +119,7 @@ export function isAllowedAction(action: string) {
 
 function truncate(s: string, max = 12000) {
   if (s.length <= max) return s;
-  return s.slice(0, max) + "\n…[troncato]…\n";
+  return s.slice(0, max) + "\n…[truncated]…\n";
 }
 
 function ensureTutorialSymlink() {
@@ -297,6 +298,7 @@ function resolveCommand(
   }
   const signoffScripts: Record<string, string> = {
     sta_signoff: "run_sta_signoff.sh",
+    sta_ir_aware: "run_sta_ir_aware.sh",
     drc_signoff: "run_drc_signoff.sh",
     klayout_lvs: "run_klayout_lvs.sh",
     power_signoff: "run_power_signoff.sh",
@@ -311,7 +313,7 @@ function resolveCommand(
     const cmd = path.join(LEARN_ROOT, "scripts", signoffScripts[action]!);
     const variant = flowlab ? FLOWLAB_VARIANT : "learn";
     const env: Record<string, string> = { FLOW_VARIANT: variant };
-    if (action === "power_signoff" || action === "signoff_all") {
+    if (action === "power_signoff" || action === "signoff_all" || action === "sta_ir_aware") {
       env.PYTHONPATH = `/usr/lib/python3/dist-packages${
         process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ""
       }`;

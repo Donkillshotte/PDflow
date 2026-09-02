@@ -286,6 +286,15 @@ export async function getSuiteStatus() {
       href: "/flow?phase=finish",
     },
     {
+      id: "sta_ir_aware",
+      label: "STA IR-aware",
+      group: "Signoff",
+      ok: signoffReportPass("flowlab", "sta_ir_aware") || signoffReportPass("learn", "sta_ir_aware"),
+      detail: "NLDM path × per-cell ITerm V · educational, not Tempus",
+      action: "sta_ir_aware",
+      href: "/flow?phase=finish#sta-ir",
+    },
+    {
       id: "drc_signoff",
       label: "DRC signoff",
       group: "Signoff",

@@ -44,12 +44,22 @@ type PillarRow = {
   } | null;
 };
 
+type StaIr = {
+  ok?: boolean;
+  slack_ns?: number | null;
+  slack_ir_ns?: number | null;
+  n_joined?: number | null;
+  n_gates?: number | null;
+  degradation_ps?: number | null;
+};
+
 type SignoffApi = {
   variant: string;
   evaluation: { ok: boolean; gates: Gate[] };
   pillars: PillarRow[];
   plannedPillars?: PillarRow[];
   orchestrator: { action: string; label: string; reportExists: boolean };
+  staIr?: StaIr | null;
 };
 
 function StatusIcon({ ok, pending }: { ok: boolean; pending?: boolean }) {
@@ -68,9 +78,9 @@ function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: Artifa
       <div className="sig-artifact">
         <strong>DRC .lyrdb</strong>
         <p>
-          Violazioni: {parse.items ?? 0}
+          Violations: {parse.items ?? 0}
           {parse.categories && parse.categories.length > 0 && (
-            <> · categorie: {parse.categories.slice(0, 4).join(", ")}</>
+            <> · categories: {parse.categories.slice(0, 4).join(", ")}</>
           )}
         </p>
         {parse.samples && parse.samples.length > 0 && (
@@ -93,7 +103,7 @@ function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: Artifa
         <strong>LVS report</strong>
         <p>
           {lvs.exists ? (
-            <>Errori: {lvs.errors ?? 0}</>
+            <>Errors: {lvs.errors ?? 0}</>
           ) : (
             <>Missing .lvsdb file</>
           )}
@@ -162,7 +172,7 @@ export function SignoffMatrixPanel({
       <div className="sig-matrix-head">
         <strong>GCD signoff matrix</strong>
         <p>
-          4 pilastri attivi vs{" "}
+          4 active pillars vs{" "}
           <a href="/materials/reference/signoff-matrix.md">golden-gcd.json</a>
           {data && (
             <>
@@ -190,6 +200,15 @@ export function SignoffMatrixPanel({
               <div className="sig-row-body">
                 <strong>{g.label}</strong>
                 <small>{g.detail}</small>
+                {g.id === "timing" && data?.staIr && (
+                  <small>
+                    IR-aware slack {data.staIr.slack_ns?.toFixed(4) ?? "—"} →{" "}
+                    {data.staIr.slack_ir_ns?.toFixed(4) ?? "—"} ns
+                    {data.staIr.n_joined != null && data.staIr.n_gates != null
+                      ? ` · ${data.staIr.n_joined}/${data.staIr.n_gates} gates`
+                      : ""}
+                  </small>
+                )}
                 {(checks.length > 0 || pillar?.reportEval?.artifactParse) && (
                   <button
                     type="button"

@@ -531,8 +531,36 @@ STA_PATH_END
     expect_deg_ps = (d_ff + d_g2 - 0.15) * 1e3
     check(abs(tir["degradation_ps"] - expect_deg_ps) < 1e-9, f"gate delay scaled at V=0.9 ({tir['degradation_ps']})")
     check(abs(tir["path"]["slack_ir_ns"] - (0.0235 - (d_ff + d_g2 - 0.15))) < 1e-12, "IR slack = STA slack − extra gate delay")
+    ir_stages = tir["path"].get("stages") or []
+    check(len(ir_stages) == len(wp["stages"]), "IR stages attached to path")
+    ff1_st = next(s for s in ir_stages if s.get("kind") == "gate" and s.get("inst") == "ff1")
+    check(ff1_st["joined"] is True and abs(ff1_st["v_inst"] - 0.9) < 1e-12, "ff1 gate carries ITerm V")
     tap_only = path_ir_timing(None, ev_path, Vw_p, vdd_p, 0.46)
     check(tap_only["status"] == "PARTIAL" and tap_only["path"]["status"] == "GAP", "no path → tap-scale PARTIAL")
+
+    from sta_ir_aware import build_report as build_sta_ir
+
+    with tempfile.TemporaryDirectory() as td:
+        tdir = Path(td)
+        sta_p = tdir / "sta.json"
+        spice_p = tdir / "pg.sp"
+        map_p = tdir / "map.csv"
+        sta_p.write_text(json.dumps({
+            "worst_path": wp,
+            "pins": [
+                {"inst": "ff1", "inst_key": "ff1", "cell": "DFF_X1", "pin": "Q", "rise_ns": 0.1},
+                {"inst": "g2", "inst_key": "g2", "cell": "INV_X1", "pin": "ZN", "rise_ns": 0.15},
+            ],
+        }))
+        spice_p.write_text("* Sink for ff1/VDD\nI1 n1 0 DC 1e-6\n")
+        map_p.write_text("node,x_dbu,y_dbu,v,ir_mv,seq\nn1,0,0,0.9,200,0\n")
+        ir_rep = build_sta_ir(sta_json=sta_p, spice=spice_p, map_csv=map_p, vdd=1.1, alpha=1.3, period_ns=0.46)
+        check(ir_rep["ok"] is True, "sta_ir_aware READY on fixture")
+        check(ir_rep["sta"]["n_joined"] == 1, "sta_ir_aware joins ff1 only")
+        check(abs(ir_rep["sta"]["slack_ir_ns"] - tir["path"]["slack_ir_ns"]) < 1e-12, "sta_ir_aware slack_ir matches path_ir_timing")
+        gates = ir_rep["path_gates"]
+        check(len(gates) == 2, "sta_ir_aware emits per-gate V/delay")
+        check(any(g["inst"] == "ff1" and g["joined"] for g in gates), "path gate table includes joined ff1")
 
     saif_txt = """(SAIFILE
 (SAIFVERSION "2.0")

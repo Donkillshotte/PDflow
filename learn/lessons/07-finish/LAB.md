@@ -156,6 +156,7 @@ After `finish`, run enterprise signoff (matrix in Studio **finish** phase or [`/
 
 - [ ] Read [`signoff-matrix.md`](../../reference/signoff-matrix.md) and [`golden-gcd.json`](../../signoff/golden-gcd.json)
 - [ ] **STA:** `FLOW_VARIANT=learn ./learn/scripts/run_sta_signoff.sh` — compare WNS/TNS with golden-metrics
+- [ ] **STA IR-aware (optional):** `./learn/scripts/run_sta_ir_aware.sh` — per-cell ITerm V scales NLDM gate delay; does not change nominal WNS; not PrimeTime/Tempus
 - [ ] **DRC:** `./learn/scripts/run_drc_signoff.sh` — route DRC lines + GDS violations separate in JSON
 - [ ] **LVS:** `./learn/scripts/run_klayout_lvs.sh` — interpret `.lvsdb` even if FAIL (educational FreePDK45)
 - [ ] **Power:** `./learn/scripts/run_power_signoff.sh` — activity → chip IR → system → export + IR/droop gate

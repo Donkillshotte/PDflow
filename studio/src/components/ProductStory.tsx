@@ -43,6 +43,14 @@ export type StoryPayload = {
     currentPresent: boolean;
     detail: string;
   };
+  staIr?: {
+    ready: boolean;
+    slackNs: number | null;
+    slackIrNs: number | null;
+    nJoined: number | null;
+    nGates: number | null;
+    detail: string;
+  };
   product: { slots: Slot[]; wins: number; cooks: number; detail: string };
   course: { done: number; total: number; nextId: string | null; nextTitle: string | null };
 };
@@ -139,6 +147,15 @@ export function ProductStory({
               {data.signoff.passed}/{data.signoff.total}
             </strong>
             <em>{data.signoff.detail}</em>
+          </article>
+          <article>
+            <span>STA IR-aware</span>
+            <strong>
+              {data.staIr?.ready && data.staIr.slackIrNs != null
+                ? `${data.staIr.slackIrNs.toFixed(4)} ns`
+                : "—"}
+            </strong>
+            <em>{data.staIr?.detail ?? "NLDM × ITerm V"}</em>
           </article>
           <article>
             <span>Dynamic IR</span>
