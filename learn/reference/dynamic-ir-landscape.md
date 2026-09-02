@@ -1,163 +1,163 @@
 # Landscape Dynamic IR / PDN (open-source)
 
-Domanda: *c’è un RedHawk Dynamic open-source?* Risposta onesta: **no**.
-Il “flow definitivo” **non** si costruisce intorno a un singolo progetto esistente.
-È un **sistema ibrido**: frontend fisico OpenROAD, motore di corrente dedicato,
-più solver a fedeltà diversa, screening attività, gold esterni.
+Question: *c’is un RedHawk Dynamic open-source?* Honest answer: **no**.
+Il “flow definitivo” **non** si costruisce around a single existing project.
+It is a **hybrid system**: OpenROAD physical frontend, dedicated current engine,
+more solvers at different fidelity, activity screening, external gold.
 
-Questa slice **implementa** SA-AMG (Solver B), il timestep BE nativo con companion R+L e \(i_L\), Δt adattivo, MOR rational Krylov **descriptor RLC** (Solver C, \(x=[v;i_L]\)), **RAS Schwarz** (Solver D) sull’operatore BE **e** su \(K\) descriptor (kind=2, grafo undirected), e **dual-rail VSS** (`write_pg_spice -net VSS`, pair Sink-for, TRAN return senza toccare il gold VDD).
-Interpolatore CCS su Liberty sintetica (`pdn_current`) **e** nel loop TRAN Python (lagged \(I(\mathrm{slew},V^n)\)); sul GCD Nangate resta il triangolo. kind=3 = Eigen BiCGSTAB+ILUT (CPU, unsymmetric). **Non** Ginkgo/GPU. Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
+This slice **implements** SA-AMG (Solver B), native BE timestep with companion R+L e \(i_L\), adaptive Δt, MOR rational Krylov **descriptor RLC** (Solver C, \(x=[v;i_L]\)), **RAS Schwarz** (Solver D) sull’operatore BE **e** su \(K\) descriptor (kind=2, grafo undirected), e **dual-rail VSS** (`write_pg_spice -net VSS`, pair Sink-for, TRAN return without touching gold VDD).
+Interpolatore CCS su Liberty sintetica (`pdn_current`) **and** in Python TRAN loop (lagged \(I(\mathrm{slew},V^n)\)); on the GCD Nangate remains the triangle. kind=3 = Eigen BiCGSTAB+ILUT (CPU, unsymmetric). **Non** Ginkgo/GPU. Do not fork vyges-em-ir, EMSim o OpenROAD PSM.
 
-## Verdetto (piattaforma, non un clone)
+## Verdict (platform, not a clone)
 
-| Pezzo | Ruolo | In questa slice |
+| Piece | Role | In this slice |
 |---|---|---|
 | OpenROAD / ODB / `write_pg_spice` | frontend fisico | READY |
-| Liberty CCS/ECSM + VCD/FSDB + STA | domanda di corrente vera | STA t50 READY (OpenSTA `report_arrival`); CCS **e** ECSM interpolator READY su `.lib` sintetico; Nangate NLDM = triangolo; VCD RTL = GAP name-join |
-| Scenario / window engine | non simulare 100k cicli | L3 READY/PARTIAL — BE sulle finestre `I_tot` (restart isolato solo se L=0; con pkg L si taglia il trailing idle) |
+| Liberty CCS/ECSM + VCD/FSDB + STA | domanda di corrente vera | STA t50 READY (OpenSTA `report_arrival`); CCS **e** ECSM interpolator READY su `.lib` sintetico; Nangate NLDM = triangle; VCD RTL = GAP name-join |
+| Scenario / window engine | does not simulate 100k cicli | L3 READY/PARTIAL — BE on `I_tot` windows (isolated restart only if L=0; with pkg L cuts trailing idle) |
 | **Solver A** direct BE + LU | gold di validazione | READY (~4k nodi GCD) |
 | **Solver B** SA-AMG + CG (`libdpn` C++) | workhorse | **READY** (5 livelli, \|A−B\| ≪ 1 mV; setup ~0.4 s nativo vs ~3 s Python) |
-| **Solver C** rational Krylov MOR | riuso tra scenari | **READY** · m=96 · \|A−C\| 0.401 mV sul GCD clock STA (descriptor RLC); ranking scenari = Solver A |
-| **Solver D** RAS Schwarz | decomposizione di dominio | **READY** · ndom=8 · \|A−D\| 0.013 mV sul GCD clock STA (grafo undirected, non stripe). kind=2 su \(K\) descriptor = 32-nodo R+L, **non** il default GCD |
-| Dual-rail VSS | return path | **READY** extract+TRAN (Sink-for inst pair, MNA block-diagonal). Non sostituisce il gold VDD |
-| kind=3 BiCGSTAB | Krylov CPU su \(A\) non simmetrica | **READY** (Eigen ILUT; non Ginkgo). Non è il gold N3 GCD |
-| libdpn Index | mesh n/nnz | **READY** int64 (C API + Eigen StorageIndex); SciPy fallback può restare int32 |
-| Ginkgo | backend sparso CPU/GPU | **GAP** |
-| Xyce | gold parallelo medio | **GAP** in VM (deck R/L/C/K/PWL/.TRAN è il contratto) |
+| **Solver C** rational Krylov MOR | reuse across scenarios | **READY** · m=96 · \|A−C\| 0.401 mV on the GCD clock STA (descriptor RLC); ranking scenari = Solver A |
+| **Solver D** RAS Schwarz | domain decomposition | **READY** · ndom=8 · \|A−D\| 0.013 mV on the GCD clock STA (undirected graph, not stripe). kind=2 on \(K\) descriptor = 32-node R+L, **not** default GCD |
+| Dual-rail VSS | return path | **READY** extract+TRAN (Sink-for inst pair, MNA block-diagonal). Does not replace the gold VDD |
+| kind=3 BiCGSTAB | Krylov CPU on unsymmetric \(A\) | **READY** (Eigen ILUT; not Ginkgo). This is not gold N3 GCD |
+| libdpn Index | mesh n/nnz | **READY** int64 (C API + Eigen StorageIndex); SciPy fallback may stay int32 |
+| Ginkgo | sparse CPU/GPU backend | **GAP** |
+| Xyce | medium parallel gold | **GAP** in VM (deck R/L/C/K/PWL/.TRAN is the contract) |
 | ngspice | unit test fisico 1-nodo RC e R+L | READY |
-| MAVIREC / PowerNet / IR-Hunter | ML solo screening | **GAP** — mai dentro il physics |
-| vyges-em-ir | bootstrap + check simultaneous-switch | INTEGRATED, **non** il core |
+| MAVIREC / PowerNet / IR-Hunter | ML screening only | **GAP** — never inside the physics |
+| vyges-em-ir | bootstrap + check simultaneousus-switch | INTEGRATED, **non** the core |
 
-Killer feature **già nel codice**: modello ridotto rational Krylov (stessi G, C, L, molti `I(t)`).
-Il gold resta Solver A con \(i_L\). C riduce il descriptor \(E\dot x+Ax=u\) allineato al companion; sul GCD clock \|A−C\| ≈ 0.13 mV. Ranking extra \(I(t)\) = Solver A.
+Killer feature **already in code**: reduced rational Krylov model (same G, C, L, many `I(t)`).
+Gold remains Solver A con \(i_L\). C reduces the descriptor \(E\dot x+Ax=u\) aligned to the companion; on the GCD clock \|A−C\| ≈ 0.13 mV. Ranking extra \(I(t)\) = Solver A.
 
-## Matrice (ciò che esiste davvero)
+## Matrix (what actually exists)
 
-| Tool | Static IR | Dynamic / transient | EM | PDN da DEF | Switching | Note sul GCD Nangate45 |
+| Tool | Static IR | Dynamic / transient | EM | PDN da DEF | Switching | Notes on GCD Nangate45 |
 |---|---|---|---|---|---|---|
-| OpenROAD PSM / PDNSim | sì | **no** (docs: static IR analyzer) | current density | sì (ODB) | I_avg da liberty/activity | `analyze_power_grid` + `write_pg_spice` |
-| **vyges-em-ir** | sì (CG+Jacobi) | sì, BE, **un** `switch_t_ns` | sì (se `emlimit`) | DEF+LEF upstream; qui mesh SPICE | eventi, tutti allineati | bootstrap / validazione; no waveform |
-| **Questo corso `dynamic_ir`** | sì | A LU + B SA-AMG + C RLC MOR + D RAS + N4, I(t) per pin | \(J\) da LEF RPERSQ·L/R, TTF relativo | mesh OpenROAD + tech LEF | simultaneous / spatial / **clock** + ranking | waveform + heatmap |
-| `pdn_transient.py` | sì | load-step globale | no | mesh OpenROAD | peak_factor | laboratorio CSV |
-| ngspice | sì | sì | possibile | da costruire | PWL | **gold 1-nodo**, non full-chip |
-| Xyce | sì | sì (MPI) | — | da costruire | sì | **GAP** in questa VM |
-| [EMSim](https://github.com/jinyier/EMSim) | sì | sì (PWL → TRAN) | sì | Calibre xRC | PrimeTime PX | **VCS / Calibre / PT-PX / HSpice** — non drop-in OSS |
-| VoltSpot | arch-level | arch | — | no gate PDN | arch traces | non è cell-level |
-| IREDGe / PowerNet / MAVIREC | ML IR | screening | — | feature IR | vettori | **non** physics sign-off |
-| RedHawk / Voltus / Totem | sì | sì | sì | sì | sì | commerciale |
+| OpenROAD PSM / PDNSim | yes | **no** (docs: static IR analyzer) | current density | yes (ODB) | I_avg from liberty/activity | `analyze_power_grid` + `write_pg_spice` |
+| **vyges-em-ir** | yes (CG+Jacobi) | yes, BE, one `switch_t_ns` | yes (if `emlimit`) | DEF+LEF upstream; here mesh SPICE | events, all aligned | bootstrap / validation; no waveform |
+| **This course `dynamic_ir`** | yes | A LU + B SA-AMG + C RLC MOR + D RAS + N4, I(t) per pin | \(J\) da LEF RPERSQ·L/R, TTF relativo | mesh OpenROAD + tech LEF | simultaneousus / spatial / **clock** + ranking | waveform + heatmap |
+| `pdn_transient.py` | yes | global load-step | no | mesh OpenROAD | peak_factor | lab CSV |
+| ngspice | yes | yes | possible | to build | PWL | **gold 1-node**, not full-chip |
+| Xyce | yes | yes (MPI) | — | to build | yes | **GAP** in this VM |
+| [EMSim](https://github.com/jinyier/EMSim) | yes | yes (PWL → TRAN) | yes | Calibre xRC | PrimeTime PX | **VCS / Calibre / PT-PX / HSpice** — not drop-in OSS |
+| VoltSpot | arch-level | arch | — | no gate PDN | arch traces | is not cell-level |
+| IREDGe / PowerNet / MAVIREC | ML IR | screening | — | feature IR | vectors | **not** physics sign-off |
+| RedHawk / Voltus / Totem | yes | yes | yes | yes | yes | commercial |
 
-OpenROAD PSM resta **static IR** e il frontend. vyges-em-ir è un prototipo BE
-(switch simultaneo, timestep interno, niente waveform) — **non** la fondazione.
-Lo split da copiare è quello di EMSim *current analysis*, non il passo EM probe.
+OpenROAD PSM remains **static IR** and the frontend. vyges-em-ir is a BE prototype
+(switch simultaneous, timestep interno, no waveform) — **not** the foundation.
+The split to copy is EMSim *current analysis*, not the EM probe step.
 
-## Quattro solver (non uno)
+## Four solvers (not one)
 
-| Solver | Formulazione | Ruolo | Stato GCD |
+| Solver | Formulation | Role | GCD status |
 |---|---|---|---|
-| **A — Direct BE** | \((G + C/\Delta t) V_{n+1} = \mathrm{rhs}\) · LU sparso | gold, lento, indispensabile per validare | **READY** |
-| **B — SA-AMG** | V-cycle Jacobi + CG, LU sul coarse | workhorse (ESPSim-class) | **READY** |
-| **C — rational Krylov** | RC: \(C_r \dot z + G_r z = -V^\top I\); RLC: \(E_r \dot z + A_r z = V^\top u\), \(x=[v;i_L]\) | tante TRAN sulla stessa PDN | **READY** sul GCD (\|A−C\| 0.401 mV, m=96) |
-| **D — RAS Schwarz** | subdomain LU + RAS + GMRES su \(A\) e su \(K\) | domain decomposition, grafo \(A\cup A^\top\), non stripe | **READY** sul GCD companion (\|A−D\| 0.013 mV, ndom=8); descriptor kind=2 su catena 32 nodi |
+| **A — Direct BE** | \((G + C/\Delta t) V_{n+1} = \mathrm{rhs}\) · sparse LU | gold, slow, indispensable for validation | **READY** |
+| **B — SA-AMG** | V-cycle Jacobi + CG, LU on coarse | workhorse (ESPSim-class) | **READY** |
+| **C — rational Krylov** | RC: \(C_r \dot z + G_r z = -V^\top I\); RLC: \(E_r \dot z + A_r z = V^\top u\), \(x=[v;i_L]\) | many TRAN on same PDN | **READY** on the GCD (\|A−C\| 0.401 mV, m=96) |
+| **D — RAS Schwarz** | subdomain LU + RAS + GMRES su \(A\) e su \(K\) | domain decomposition, grafo \(A\cup A^\top\), not stripe | **READY** on the GCD companion (\|A−D\| 0.013 mV, ndom=8); descriptor kind=2 on 32-node chain |
 
-Sul GCD (~4k nodi) LU è più veloce: A è l’oracle, B è il path che scala. Non si scrive una GPU fork: un giorno `LinearSolver` → Ginkgo.
+On the GCD (~4k nodes) LU is faster: A is the oracle, B is the scaling path. No GPU fork written: one day `LinearSolver` → Ginkgo.
 
-## Livelli di rete (già nel codice, etichette oneste)
+## Network levels (already in code, honest labels)
 
-Il prototipo stampava \(L/\Delta t\) memoryless. N3 ora è un **companion BE serie R+L** con stato \(i_L\) (SPD, AMG ok). L on-die è Grover **stimata** (partial self + mutual cutoff); il TRAN descriptor resta opt-in.
+The prototype printed \(L/\Delta t\) memoryless. N3 is now **companion BE R+L series** with state \(i_L\) (SPD, AMG ok). L on-die is Grover **stimata** (partial self + mutual cutoff); the TRAN descriptor remains opt-in.
 
-| Livello | Contenuto | GCD oggi |
+| Level | Content | GCD today |
 |---|---|---|
 | **N1 R** | \(GV = I\) | READY — `solve_static` |
-| **N2 R+C** | decap lumpato sui tap | READY — `c_decap` |
-| **N3 R+C+pkg** | R/L package sui bump | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L+M on-die stimata (descriptor `--on-die-l`, sparse \(E\), non AMG) |
-| **N4 on-die + pkg + bumps + VRM** | gerarchia completa | **READY** nativo (`libdpn` descriptor BE, \|N3−N4\| ≈ 23 nV sul clock STA GCD). Il load-step µs VRM resta `system_pdn` ngspice |
+| **N2 R+C** | lumped decap on taps | READY — `c_decap` |
+| **N3 R+C+pkg** | R/L package on bumps | READY — \(g_\mathrm{eq}=1/(R+L/\Delta t)\) + \(i_L\); Grover L+M on-die estimated (descriptor `--on-die-l`, sparse \(E\), not AMG) |
+| **N4 on-die + pkg + bumps + VRM** | full hierarchy | **READY** nativo (`libdpn` descriptor BE, \|N3−N4\| ≈ 23 nV on clock STA GCD). The µs VRM load-step remains `system_pdn` ngspice |
 
-## Tre livelli di prodotto
+## Three product levels
 
-| Livello | Intento | GCD oggi |
+| Level | Intent | GCD today |
 |---|---|---|
-| **FAST** | vectorless + AMG + timestep grosso · placement/routing | **READY** — STA arrival t50 (clock) + Solver B |
-| **ACCURATE** | VCD/FSDB + waveform cella + AMG + Δt adattivo · IR closure | **GAP** |
-| **SIGNOFF** | RLC + MOR + spot-check diretti + EM + package | **GAP** |
+| **FAST** | vectorless + AMG + coarse timestep · placement/routing | **READY** — STA arrival t50 (clock) + Solver B |
+| **ACCURATE** | VCD/FSDB + cell waveform + AMG + adaptive Δt · IR closure | **GAP** |
+| **SIGNOFF** | RLC + MOR + direct spot-checks + EM + package | **GAP** |
 
-## Current engine (il salto qualitativo — GAP onesto)
+## Current engine (qualitative leap — honest GAP)
 
-Non: `toggle=1` → impulso arbitrario.
-Sì: `I_cell(t) = f(cell, arc, slew, load, state)` da Liberty CCS/ECSM quando c’è.
+Not: `toggle=1` → arbitrary impulse.
+Yes: `I_cell(t) = f(cell, arc, slew, load, state)` from Liberty CCS/ECSM when available.
 
-Nangate45 è **NLDM**. Questa slice usa triangoli da `I_avg` nel mesh GCD.
-`pdn_current.py` interpola `output_current_*` quando le tabelle ci sono (test su Liberty sintetica).
-**Non** si sintetizza CCS da NLDM. VCD pin-accurate sul netlist gate resta GAP (il VCD RTL `tb_gcd` non nomina gli ITerm). STA `report_arrival` fornisce t50 in clock mode — **non** si riscala `I_avg` con l’activity Hz di OpenSTA (sarebbe un double-count rispetto a `report_power` / spice). SAIF `TC` name-join azzera gli impulsi idle; **non** inventa t50 e **non** riscala `I_avg` da `TC`. FSDB resta GAP (binario proprietario). Path delay: OpenSTA worst max path, solo i gate (Q/ZN/…) scalati con \(V_\mathrm{inst}\) a \(t_\mathrm{worst}\); net delay resta nominal. Non è una seconda liberty a Vmin / CCS delay.
+Nangate45 is **NLDM**. This slice uses triangles da `I_avg` in the GCD mesh.
+`pdn_current.py` interpolates `output_current_*` when tables exist (test on synthetic Liberty).
+**Do not** synthesize CCS from NLDM. VCD pin-accurate on gate netlist remains GAP (RTL VCD `tb_gcd` does not name ITerms). STA `report_arrival` provides t50 in clock mode — **does not** rescale `I_avg` with OpenSTA activity Hz (would double-count vs `report_power` / spice). SAIF `TC` name-join zeros idle impulses; **does not** invent t50 and **does not** rescale `I_avg` da `TC`. FSDB remains GAP (proprietary binary). Path delay: OpenSTA worst max path, only gates (Q/ZN/…) scalati con \(V_\mathrm{inst}\) a \(t_\mathrm{worst}\); net delay remains nominal. This is not a second liberty at Vmin / CCS delay.
 
-CircuitNet (instance power + toggle + arrival windows + IR) conferma la separazione
-power + timing window + PDN — non è un dataset di sign-off dynamic.
+CircuitNet (instance power + toggle + arrival windows + IR) confirms the separation
+power + timing window + PDN — is not a dynamic sign-off dataset.
 
-## Scenario engine (non 100k cicli ciechi)
+## Scenario engine (not blind 100k cycles)
 
-Heuristics → ranking (un giorno ML) → fisica solo sulle top windows.
-MAVIREC è il riferimento filosofico (screening, non sostituto del solver).
-Qui: L3 esegue Solver A sulle finestre di `I_tot(t)` di **questo** run.
-Restart UIC isolato solo se \(L=0\) (o idle \(\gg L/R\)); con package L si conserva \(i_L\) (prefix \([0,t_\mathrm{cut}]\) o identità se la finestra copre l’orizzonte). Non è uno scan da 100k cicli.
+Heuristics → ranking (one day ML) → physics only on top windows.
+MAVIREC is the philosophical reference (screening, not a substitute for the solver).
+Here: L3 runs Solver A on windows of `I_tot(t)` of **this** run.
+Restart UIC isolated only if \(L=0\) (or idle \(\gg L/R\)); with package L preserves \(i_L\) (prefix \([0,t_\mathrm{cut}]\) or identity if the window covers the horizon). This is not a 100k-cycle scan.
 
-## Architettura di riferimento (EMSim), frontend OpenROAD
+## Reference architecture (EMSim), OpenROAD frontend
 
 ```text
 cell current (transient) → PWL → rete PDN → TRAN → V(t)/I(t)
 ```
 
-| Ruolo EMSim | Equivalente qui |
+| Role EMSim | Equivalent here |
 |---|---|
 | DEF/GDS + xRC | OpenROAD ODB + `write_pg_spice` |
 | PrimeTime PX | OpenSTA `report_power` + Liberty NLDM (non CCS I(t)) |
-| HSpice | ngspice **oracle** su RC piccolo; Solver A sul mesh GCD |
+| HSpice | ngspice **oracle** on small RC; Solver A on GCD mesh |
 | VCS | Icarus VCD — **non** mappa pin gate |
 
 ## Sei livelli (prodotto futuro vs slice attuale)
 
-| Livello | Prodotto “RedHawk-like” | Cosa gira **oggi** sul GCD |
+| Livello | Prodotto “RedHawk-like” | Cosa gira **oggi** on the GCD |
 |---|---|---|
 | 1 PDN extract | ODB → R/C/via | OpenROAD `write_pg_spice` VDD+VSS + tech LEF; SPEF PG C from PG `*D_NET` (GCD OpenRCX = GAP); Grover on-die L+M estimated (descriptor `--on-die-l`); dual-rail Sink-for pair |
 | 2 Power model | Liberty CCS/ECSM I(t) | I_avg da mesh + leak_frac (NLDM); interpolatori CCS+ECSM su `.lib` sintetico |
 | 3 Activity | VCD/SAIF/vectorless windows | STA `report_arrival` t50 in clock; SAIF TC name-join (idle-zero, no t50); extra I(t) ranking sintetico; VCD RTL name-join = GAP |
-| 4 Current engine | I_cell(t) per arco | triangolo per ITerm; CCS \(I(\mathrm{slew},V)\) o ECSM \(\|C\mathrm{d}V/\mathrm{d}t\|\) solo con tabelle |
-| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB workhorse; RAS kind=2 su \(K\) unsymmetric; Δt adattivo descriptor; MOR gen sparse-\(E\) (compact/strap, non default GCD); VSS return TRAN |
-| 6 Analysis | map, Vmin, EM, timing, thermal | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + **mesh termica strap+via+ILD/Si** + R(T) N1 + **R(T) TRAN** one-shot (non gold) + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)); 3D CFD = GAP |
+| 4 Current engine | I_cell(t) per arco | triangle per ITerm; CCS \(I(\mathrm{slew},V)\) o ECSM \(\|C\mathrm{d}V/\mathrm{d}t\|\) only with tables |
+| 5 Solver | B AMG + C Krylov MOR + D RAS + A gold + sparse-E descriptor | **A + B + C + D READY**; N4 descriptor BE nativo (sparse \(E\), \(n_\mathrm{iv}\)); kind=3 BiCGSTAB workhorse; RAS kind=2 su \(K\) unsymmetric; adaptive Δt descriptor; MOR gen sparse-\(E\) (compact/strap, non default GCD); VSS return TRAN |
+| 6 Analysis | map, Vmin, EM, timing, thermal | JSON + CSV + SVG + \(J\) da RPERSQ·L/R + TTF relativo + **thermal mesh strap+via+ILD/Si** + R(T) N1 + **R(T) TRAN** one-shot (not gold) + path STA delay (NLDM typical-V × \((V_\mathrm{dd}/V)^\alpha\)); 3D CFD = GAP |
 
-## Classifica reale
+## Real ranking
 
-| Approccio | Voto | Perché |
+| Approccio | Voto | Why |
 |---|---|---|
-| **Piattaforma ibrida** (OpenROAD + A/B/C + current engine) | ⭐⭐⭐⭐⭐ | Destinazione. Oggi solo frontend + A + I(t) triangolo |
-| **Architettura EMSim** (current → PWL → PDN TRAN) | ⭐⭐⭐⭐⭐ | Split A/B corretto. Fine dichiarato: **emanazione EM** (TIFS 2023). README: **VCS, Calibre xRC, PrimeTime PX, HSpice** |
-| **OpenROAD + Solver A I(t)+BE** | ⭐⭐⭐⭐⭐ | Unico path *eseguibile* OSS su questo GCD (`dynamic_ir`) |
-| vyges-em-ir | ⭐⭐⭐⭐ | Bootstrap BE; simultaneous `switch_t_ns`; **non** il core |
-| OpenROAD + ngspice | ⭐⭐⭐ | Unit test fisico, non il motore a 10M nodi |
+| **Hybrid platform** (OpenROAD + A/B/C + current engine) | ⭐⭐⭐⭐⭐ | Destination. Today only frontend + A + I(t) triangle |
+| **EMSim architecture** (current → PWL → PDN TRAN) | ⭐⭐⭐⭐⭐ | Correct A/B split. Declared end: **emanazione EM** (TIFS 2023). README: **VCS, Calibre xRC, PrimeTime PX, HSpice** |
+| **OpenROAD + Solver A I(t)+BE** | ⭐⭐⭐⭐⭐ | Unico path *eseguibile* OSS su this GCD (`dynamic_ir`) |
+| vyges-em-ir | ⭐⭐⭐⭐ | Bootstrap BE; simultaneousus `switch_t_ns`; **non** the core |
+| OpenROAD + ngspice | ⭐⭐⭐ | Physical unit test, not 10M-node engine |
 
-Non si parte da vyges. Non si clona EMSim (servirebbero le quattro licenze).
-Non si forka PSM. Si **sostituiscono** i pezzi commerciali uno a uno.
+Do not start from vyges. Do not clone EMSim (would require the four licenses).
+Do not fork PSM. Si **sostituiscono** i pezzi commerciali one by one.
 
-| EMSim (README) | Sostituto qui | Fedeltà |
+| EMSim (README) | Substitute here | Fidelity |
 |---|---|---|
 | Calibre xRC → DSPF power grid | OpenROAD `write_pg_spice` | R mesh PDNSim, non DSPF cell-internal |
 | VCS VCD gate-level | Icarus `tb_gcd` | **GAP** pin ITerm |
-| PrimeTime PX time-based + `logic_cell_modeling.py` | I_avg nel `.sp` + triangolo | **PARTIAL** — non waveform PT-PX |
-| `logic_cell_to_current_source.py` PWL | 601 PWL per ITerm | forma triangolo, non report PX |
+| PrimeTime PX time-based + `logic_cell_modeling.py` | I_avg in `.sp` + triangle | **PARTIAL** — non waveform PT-PX |
+| `logic_cell_to_current_source.py` PWL | 601 PWL per ITerm | triangle shape, not PX report |
 | HSpice TRAN | Solver A LU + Solver B SA-AMG; ngspice gold 1-nodo | gold ≠ full-chip |
 
 ```text
-A  Quanto assorbe la cella?     PARTIAL (triangolo da I_avg; CCS interpolator su .lib sintetico)
-B  Cosa fa la PDN?              READY   (A gold + B SA-AMG + C descriptor RLC MOR)
+A  How much does the cell draw?     PARTIAL (triangle from I_avg; CCS interpolator on synthetic .lib)
+B  What does the PDN do?              READY   (A gold + B SA-AMG + C descriptor RLC MOR)
 ```
 
-## Cosa non fare
+## What not to do
 
-- Non forkare vyges-em-ir, EMSim o OpenROAD PSM.
-- Non spacciare LU a 4k nodi come prova che AMG è inutile a full-chip.
-- Non mettere ML *dentro* il solver: solo “cosa simulare”.
-- Non scaffoldare `power-integrity/` vuoto in questo repo.
-- Non spacciare il shared-A come rational Krylov / CCS / Ginkgo GPU.
-- Non spacciare MOR RC-only (senza \(i_L\)) come gold quando \(L>0\).
-- Non fingere correlazione commerciale.
+- Do not fork vyges-em-ir, EMSim o OpenROAD PSM.
+- Do not pretend LU a 4k nodi as proof that AMG is useless a full-chip.
+- Non mettere ML *dentro* il solver: solo “what to simulate”.
+- Do not scaffold `power-integrity/` empty in this repo.
+- Do not pretend shared-A as rational Krylov / CCS / Ginkgo GPU.
+- Do not pretend MOR RC-only (without \(i_L\)) as gold when \(L>0\).
+- Do not fake commercial correlation.
 
 Riferimenti concettuali (non dipendenze): ESPSim, MATEX, Raptor, Ginkgo, Xyce.
 

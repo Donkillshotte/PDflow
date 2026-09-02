@@ -3,80 +3,80 @@ lesson_main() {
   ui_lesson_header "07" "Finish — GDS, SPEF, signoff" "60–90 min"
   learn_orfs_env
 
-  ui_section "Teoria"
-  ui_note "Leggi: learn/lessons/07-finish/README.md, walkthrough-finish.tcl.md, golden-metrics.md (Finish)."
+  ui_section "Theory"
+  ui_note "Read: learn/lessons/07-finish/README.md, walkthrough-finish.tcl.md, golden-metrics.md (Finish)."
   learn_atlas "win_final.png, orfs_final_worst_path.png, orfs_final_ir_drop.png"
   learn_make_hint finish
   ui_pause
 
-  ui_section "Esercizio 7-A — Prerequisiti route"
+  ui_section "Exercise 7-A — Route prerequisites"
   [[ -f "$(learn_artifact 5_route.odb)" ]] || learn_make route
   ui_pause
 
-  ui_section "Esercizio 7-B — Esegui finish completo"
+  ui_section "Exercise 7-B — Run full finish"
   learn_make clean_finish 2>/dev/null || true
   learn_make finish
   learn_validate_stage finish || return 1
   learn_show_tree
   ui_pause
 
-  ui_section "Esercizio 7-C — Report finale"
+  ui_section "Exercise 7-C — Final report"
   ui_print_file "Finish report" "$(learn_report 6_finish.rpt)" 50
   learn_grep_metric "$(learn_report 6_finish.rpt)" "wns max|tns max|period_min|setup violation|setup skew" || true
   learn_golden
-  ui_note "Riferimento: WNS -0.04, TNS -0.60, period_min 0.50 ns (~2.01 GHz) vs SDC 0.46 ns."
-  ui_warn "make finish verde non significa timing chiuso a 2.17 GHz."
+  ui_note "Reference: WNS -0.04, TNS -0.60, period_min 0.50 ns (~2.01 GHz) vs SDC 0.46 ns."
+  ui_warn "Green make finish does not mean timing closed at 2.17 GHz."
   ui_pause
 
-  ui_section "Esercizio 7-D — Ispeziona deliverables"
+  ui_section "Exercise 7-D — Inspect deliverables"
   for f in 6_final.gds 6_final.def 6_final.v 6_final.spef 6_final.sdc; do
     learn_require_file "$(learn_artifact "${f}")" "${f}" || true
   done
   ui_tip "GDS in KLayout: klayout results/.../6_final.gds"
   ui_pause
 
-  ui_section "Esercizio 7-E — GUI layout finale"
+  ui_section "Exercise 7-E — Final layout GUI"
   cat <<'EOF'
-  gui_final (o gui_6_final.odb):
-  • Tutti i layer visibili
+  gui_final (or gui_6_final.odb):
+  • All layers visible
   • Timing → Worst Path
-  • IR Drop heatmap (se PWR_NETS configurati)
-  • Confronta slack con report 6_finish.rpt
+  • IR Drop heatmap (if PWR_NETS configured)
+  • Compare slack with report 6_finish.rpt
 EOF
-  if ui_confirm "Aprire gui_final?"; then learn_gui final; fi
+  if ui_confirm "Open gui_final?"; then learn_gui final; fi
   ui_pause
 
-  ui_section "Esercizio 7-F — Verifica GDS"
+  ui_section "Exercise 7-F — GDS verification"
   if command -v klayout >/dev/null; then
-    ui_note "Verifica struttura GDS con KLayout batch..."
+    ui_note "Verify GDS structure with KLayout batch..."
     printf 'import pya\nl=pya.Layout();l.read(gds);print("cells",l.cells(),"layers",len(l.layer_indexes()))\n' > /tmp/learn_check_gds.py
-    klayout -b -rd gds="$(learn_artifact 6_final.gds)" -r /tmp/learn_check_gds.py 2>/dev/null | sed 's/^/  /' || ui_warn "Verifica GDS non riuscita"
+    klayout -b -rd gds="$(learn_artifact 6_final.gds)" -r /tmp/learn_check_gds.py 2>/dev/null | sed 's/^/  /' || ui_warn "GDS verification failed"
   fi
   ui_pause
 
-  ui_section "Esercizio 7-G — Progetto finale (sfida)"
+  ui_section "Exercise 7-G — Final project (challenge)"
   cat <<'EOF'
-  Sfida consigliata:
-  1. Modifica constraint.sdc (clock ±30%)
-  2. clean_all && percorso completo
-  3. Confronta WNS, area, cell count in 6_finish.rpt
-  4. Documenta in learn/workbook/mio-progetto-finale.md (non notes/)
+  Recommended challenge:
+  1. Modify constraint.sdc (clock ±30%)
+  2. clean_all && full path
+  3. Compare WNS, area, cell count in 6_finish.rpt
+  4. Document in learn/workbook/mio-progetto-finale.md (not notes/)
 EOF
   ui_pause
 
-  ui_section "Corso completato"
-  ui_banner "Complimenti — hai percorso tutte le fasi RTL→GDS"
+  ui_section "Course complete"
+  ui_banner "Congratulations — you completed all RTL→GDS stages"
   cat <<'EOF'
-  Ora sai:
-  • Leggere e modificare SDC e config.mk
-  • Eseguire ogni fase ORFS separatamente
-  • Ispezionare .odb in GUI a ogni step
-  • Interpretare report timing, area, DRC
-  • Generare GDS di signoff
+  You now know how to:
+  • Read and modify SDC and config.mk
+  • Run each ORFS stage separately
+  • Inspect .odb in GUI at every step
+  • Interpret timing, area, DRC reports
+  • Generate signoff GDS
 
-  Prossimi passi:
-  • Prova sky130hd/gcd cambiando DESIGN_CONFIG
-  • Studia flow/scripts/*.tcl modificando un parametro alla volta
-  • Porta un tuo modulo Verilog nel flusso
+  Next steps:
+  • Try sky130hd/gcd by changing DESIGN_CONFIG
+  • Study flow/scripts/*.tcl modifying one parameter at a time
+  • Bring your own Verilog module into the flow
 EOF
 }

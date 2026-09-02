@@ -1,10 +1,10 @@
 # SPICE chip mesh · write_pg_spice e analisi celle
 
-OpenROAD esporta la power grid on-die come **rete resistiva** con sorgenti di corrente per ogni pin di alimentazione cella. Questo documento spiega la netlist e come collegarla alle fasi Place/Finish.
+OpenROAD esporta la power grid on-die come **rete resistiva** con sorgenti di corrente per every pin di alimentazione cella. This documento explain the netlist e come collegarla alle fasi Place/Finish.
 
-## Da dove nasce la netlist
+## Da dove nasce the netlist
 
-Dopo **finish**, con ODB e liberty:
+After **finish**, con ODB e liberty:
 
 ```tcl
 set_power_activity -global -activity 0.2 -duty 0.5
@@ -47,18 +47,18 @@ V0 Node_bump_0 0 DC 1.100000e+00
 
 **Resistenza R:** estratta da shape metal reale (width, length, sheet R).
 
-**Corrente I:** da `report_power` ripartita sui pin (activity × capacità/leakage/switching liberty).
+**Corrente I:** from `report_power` split across pins (activity × capacitance/leakage/switching liberty).
 
 ---
 
-## Collegamento placement → correnti
+## Link placement → correnti
 
 1. **Synth** istanzia celle (`DFF_X1`, `NAND2_X1`, …)
-2. **Place** fissa coordinate → ogni ITerm ha posizione `(x,y)` nel nome nodo
+2. **Place** fissa coordinate → every ITerm ha posizione `(x,y)` nel nome nodo
 3. **Finish** `report_power` → mA totali per tipo cella
 4. PDNSim → corrente DC per ITerm proporzionale al power
 
-Non vedi il nome cella nel nodo SPICE, ma la mappa `ir_bumps.csv` + DEF collegano posizione → istanza.
+Non see il nome cella nel nodo SPICE, ma la mappa `ir_bumps.csv` + DEF collegano posizione → istanza.
 
 ---
 
@@ -74,7 +74,7 @@ Validazione GCD: static ≈ OpenROAD ±2%.
 
 Report: `pdn_chip_ir_<variant>.json`
 
-Engine reale **vyges-em-ir** (stesso `.sp`): [vyges-em-ir.md](./vyges-em-ir.md). Static IR coincide (~0.4 %); il droop dinamico no (waveform diversa).
+Engine reale **vyges-em-ir** (stesso `.sp`): [vyges-em-ir.md](./vyges-em-ir.md). Static IR coincide (~0.4 %); the droop dinamico no (waveform diversa).
 
 Engine **I(t) per pin** (waveform + heatmap): [dynamic-ir.md](./dynamic-ir.md).
 
@@ -84,16 +84,16 @@ Engine **I(t) per pin** (waveform + heatmap): [dynamic-ir.md](./dynamic-ir.md).
 
 | | Chip mesh | System ladder |
 |---|---|---|
-| File | `pg_vdd_bumps.sp` | `system_pdn/tran.sp` |
+| Files | `pg_vdd_bumps.sp` | `system_pdn/tran.sp` |
 | Nodi | ~1000+ | ~12 |
 | Package | `external_resistance` + bump pattern | RLC lumped esplicito |
 | Board/VRM | Assente | VRM + plane + decap |
 
-Il mesh risponde: *dove* sul die c'è droop. Il ladder risponde: *la catena di alimentazione esterna* regge il load-step.
+The mesh responds: *dove* sul die c'is droop. The ladder responds: *la catena di alimentazione esterna* regge il load-step.
 
 ---
 
-## Lab: esplorare la netlist
+## Lab: esplorare the netlist
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/export_spice_lab.sh
@@ -120,4 +120,4 @@ rg -c '^I' learn/sim/spice/pg_vdd_bumps.sp
 - Correnti DC, non forme d'onda per-pin da VCD
 - BUMPS sintetici su GCD (no LEF package reale)
 
-Vedi [spice-power-chain.md](./spice-power-chain.md) per l'ordine delle fasi.
+See [spice-power-chain.md](./spice-power-chain.md) per l'ordine delle fasi.

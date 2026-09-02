@@ -1,38 +1,38 @@
-# LAB 05 — CTS (sessione da 90–120 minuti)
+# LAB 05 — CTS (90–120 minute session)
 
-Porta aperti: README 05, `walkthrough-cts.tcl.md`, `gui-atlas.md` §5.7 e §9, playbook CTS.
+Bring open: README 05, `walkthrough-cts.tcl.md`, `gui-atlas.md` §5.7 and §9, CTS playbook.
 
-I numeri tra parentesi sono di un run `learn` di riferimento (util 35, 0.46 ns). I **tuoi** possono differire: annota i tuoi.
+Parenthetical numbers are from a reference `learn` run (util 35, 0.46 ns). **Your** numbers may differ: note yours.
 
-## Obiettivi misurabili
+## Measurable objectives
 
-- [ ] Skew e latency letti da `4_cts_final.rpt`
-- [ ] `CLKBUF*` contato (GUI o `rg`) pre vs post
-- [ ] Clock tree spiegato usando `orfs_cts_clock_tree.png` o Viewer
-- [ ] DPL-0038 provocato **e** risolto, documentato
+- [ ] Skew and latency read from `4_cts_final.rpt`
+- [ ] `CLKBUF*` counted (GUI or `rg`) pre vs post
+- [ ] Clock tree explained using `orfs_cts_clock_tree.png` or Viewer
+- [ ] DPL-0038 triggered **and** fixed, documented
 
 ---
 
-## Parte 1 — Teoria con il viewer (20 min)
+## Part 1 — Theory with viewer (20 min)
 
-Apri `learn/reference/gui-shots/orfs_cts_clock_tree.png`.
+Open `learn/reference/gui-shots/orfs_cts_clock_tree.png`.
 
-Nel quaderno:
+In notebook:
 
-| Elemento nel PNG | Cosa rappresenta | Valore approssimato (ns) |
+| PNG element | What it represents | Approximate value (ns) |
 |---|---|---|
 | Triangolo rosso in alto | root clock | ~0 |
-| Triangoli blu | livelli `CLKBUF` | |
-| Quadratini in basso | sink (CK dei FF) | ~0.07 |
-| Spread verticale foglie | **skew** | piccolo se allineate |
+| Blue triangles | `CLKBUF` levels | |
+| Squares at bottom | sinks (FF CK) | ~0.07 |
+| Vertical leaf spread | **skew** | small if aligned |
 
-Confronta con README: fanout ~4 al secondo livello. Se il tuo albero è diverso, non è un errore: clustering dipende dai sink.
+Compare con README: fanout ~4 al secondo livello. If your tree differs, that is not an error: clustering depends on sinks.
 
-Rileggi `cts.tcl` blocchi `clock_tree_synthesis` e `detailed_placement` (walkthrough).
+Reread `cts.tcl` blocchi `clock_tree_synthesis` e `detailed_placement` (walkthrough).
 
 ---
 
-## Parte 2 — Baseline CTS (15 min)
+## Part 2 — Baseline CTS (15 min)
 
 Prerequisito: `3_place.odb`.
 
@@ -48,7 +48,7 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 cts
 ```
 
-Se fallisce → Parte 4. Se passa:
+Se fallisce → Part 4. Se passa:
 
 ```bash
 rg -n 'DPL-0006|Inserted|RSZ-0062|worst slack' \
@@ -56,19 +56,19 @@ rg -n 'DPL-0006|Inserted|RSZ-0062|worst slack' \
   reports/nangate45/gcd/learn/4_cts_final.rpt | head -40
 ```
 
-Riferimento: util 40.5% → 48.3%, `Inserted 45 buffers`, possibile **RSZ-0062**, WNS −0.04.  
-RSZ-0062 **non** è DPL-0038: il placement è legale, il timing no.
+Riferimento: util 40.5% → 48.3%, `Inserted 45 buffers`, possible **RSZ-0062**, WNS −0.04.  
+RSZ-0062 **non** is DPL-0038: placement is legale, the timing no.
 
 ---
 
-## Parte 3 — GUI e conteggio buffer (25 min)
+## Part 3 — GUI e conteggio buffer (25 min)
 
 ```bash
 # Pre
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_place.odb
-# Post (altra shell, stesso cwd):
+# Post (another shell, stesso cwd):
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_4_cts.odb
 ```
@@ -88,19 +88,19 @@ rg -c 'CLKBUF' results/nangate45/gcd/learn/3_place.sdc
 rg -c 'CLKBUF_' results/nangate45/gcd/learn/6_final.v || true
 ```
 
-Checklist atlante:
+Checklist atlas:
 
-- [ ] `win_cts.png` vs la tua finestra
-- [ ] Inspector net `clk` dopo route: `CTS_NDR_0` (lezione 07, ma la regola nasce qui)
-- [ ] View → Clock Tree Viewer **oppure** PNG `orfs_cts_clock_tree.png`
+- [ ] `win_cts.png` vs your window
+- [ ] Inspector net `clk` after route: `CTS_NDR_0` (lesson 07, ma the rule originates here)
+- [ ] View → Clock Tree Viewer **or** PNG `orfs_cts_clock_tree.png`
 
-Annota: buffer clock in più ≈ ______.
+Note: additional clock buffers ≈ ______.
 
 ---
 
-## Parte 4 — Debug intenzionale DPL-0038 (35 min)
+## Part 4 — Intentional debug DPL-0038 (35 min)
 
-**Un parametro per volta.** Backup SDC.
+**Un parayardstick per volta.** Backup SDC.
 
 ```bash
 cp learn/designs/nangate45/gcd-tutorial/constraint.sdc \
@@ -118,68 +118,68 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=55 synth floorplan place cts
 ```
 
-Atteso: **DPL-0038** (o fail affine) in `4_1_cts.log`.
+Expected: **DPL-0038** (o fail affine) in `4_1_cts.log`.
 
 ```bash
 rg -n 'DPL-0038|DPL-0006|Utilization greater' \
   logs/nangate45/gcd/learn/4_1_cts.log
 ```
 
-Se esiste `4_1_error.odb`:
+If it exists `4_1_error.odb`:
 
 ```bash
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_4_1_error.odb
 ```
 
-**Fix (scegline UNO, documenta gli altri come ipotesi):**
+**Fix (pick ONE, document the others as hypotheses):**
 
 - A: `CORE_UTILIZATION=30` + SDC tight
 - B: SDC default 0.46 + util 55
 - C: entrambi rilassati (controllo positivo)
 
-Ripristino:
+Restore:
 
 ```bash
 cp learn/workbook/backup-sdc-default.sdc \
    learn/designs/nangate45/gcd-tutorial/constraint.sdc
 ```
 
-Workbook D1/D2. Diario: template in `debug-playbook.md`.
+Workbook D1/D2. Log: template in `debug-playbook.md`.
 
 ---
 
-## Parte 5 — Report (15 min)
+## Part 5 — Report (15 min)
 
 ```bash
 sed -n '1,40p' tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/learn/4_cts_final.rpt
 ```
 
-Compila:
+Fill in:
 
 | Campo | Valore |
 |---|---|
 | WNS | |
 | setup skew | |
-| source/target latency (prime due righe skew) | |
+| source/target latency (first two skew rows) | |
 | setup violation count | |
 
-Confronta con finish (`6_finish.rpt`): lo skew resta piccolo, le violazioni restano. Perché? (RC segnale, non solo clock)
+Compare with finish (`6_finish.rpt`): skew stays small, violations remain. Why? (signal RC, not just clock)
 
 ---
 
-## Parte 6 — Esame scritto (10 min)
+## Part 6 — Written exam (10 min)
 
-1. Perché CTS richiama `detailed_placement`?
-2. Differenza RSZ-0062 vs DPL-0038?
-3. Un parametro che riduce DPL-0038 **senza** toccare lo SDC?
-4. Cosa misura lo spread Y delle foglie nel clock tree PNG?
+1. Why CTS calls `detailed_placement`?
+2. Difference RSZ-0062 vs DPL-0038?
+3. One knob that reduces DPL-0038 **without** touching SDC?
+4. What does the Y spread of leaves in the clock tree PNG measure?
 
 ---
 
-## Superamento
+## Pass criteria
 
-- [ ] Baseline CTS eseguito
-- [ ] Tabella DPL-0006 / WNS
-- [ ] DPL-0038 documentato (o spiegato perché *non* è comparso: util già bassa)
-- [ ] Albero clock descritto
+- [ ] Baseline CTS executed
+- [ ] Table DPL-0006 / WNS
+- [ ] DPL-0038 documented (or explained because it *did not* appear: utilization already low)
+- [ ] Clock tree described

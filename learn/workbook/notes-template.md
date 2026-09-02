@@ -1,14 +1,14 @@
-# Template quaderno personale
+# Personal notebook template
 
-Copia questo file in `mio-quaderno.md` e compila durante il corso.
+Copia this file in `mio-quaderno.md` e fill in during the course.
 
 ---
 
 ## Sessione ____
 
 Data:
-Lezione:
-Durata:
+Lesson:
+Duration:
 
 ### Obiettivo sessione
 
@@ -21,7 +21,7 @@ Durata:
 
 ### Valori chiave (incolla da log/report)
 
-| Metrica | Valore |
+| Metric | Valore |
 |---|---|
 | Core area | |
 | Utilization | |
@@ -35,12 +35,12 @@ Durata:
 ### Cosa ho capito oggi
 
 
-### Domande per dopo
+### Questions for later
 
 
 ---
 
-## Tabella sweep SDC (esercizio A2)
+## Table SDC sweep (exercise A2)
 
 | SDC file | clk_period | WNS post-place | Buffer count | Note |
 |---|---|---|---|---|
@@ -50,7 +50,7 @@ Durata:
 
 ---
 
-## Tabella sweep utilization (esercizio B1)
+## Table utilization sweep (exercise B1)
 
 | CORE_UTILIZATION | Core area (µm²) | CTS OK? | Note |
 |---|---|---|---|
@@ -60,9 +60,9 @@ Durata:
 
 ---
 
-## Confronto con golden-metrics.md (ogni lezione)
+## Comparison with golden-metrics.md (every lesson)
 
-| Stadio | Metrica | Mio valore | Golden | Scarto % |
+| Stadio | Metric | Mio valore | Golden | Scarto % |
 |---|---|---|---|---|
 | Synth | celle | | 496 | |
 | Floorplan | core µm² | | 1712.5 | |
@@ -71,5 +71,5 @@ Durata:
 | Route | DRC linee | | 0 | |
 | Finish | period_min / fmax | | 0.50 ns / ~2011 MHz | |
 
-Ho chiuso il target SDC 0.46 ns (~2.17 GHz)? ______
+I closed the SDC target 0.46 ns (~2.17 GHz)? ______
 (sul run d’oro: no, fmax ~2.01 GHz)

@@ -1,9 +1,9 @@
-# Guida GUI OpenROAD — pannelli, menu, Tcl
+# OpenROAD GUI Guide — panels, menus, Tcl
 
-**Atlante con screenshot reali (obbligatorio):** [gui-atlas.md](./gui-atlas.md)  
-PNG in [gui-shots/](./gui-shots/) catturati da OpenROAD Qt 26Q2 sul GCD `learn`.
+**Atlas with real screenshots (required):** [gui-atlas.md](./gui-atlas.md)  
+PNG in [gui-shots/](./gui-shots/) captured from OpenROAD Qt 26Q2 on the GCD `learn`.
 
-OpenROAD Qt. Layout finestra dopo `gui_*.odb` (stessi rettangoli etichettati A–G nell’atlante):
+OpenROAD Qt. Layout window after `gui_*.odb` (same labeled rectangles A–G in the atlas):
 
 ```
 ┌──────────────┬────────────────────────────┬─────────────────┐
@@ -15,15 +15,15 @@ OpenROAD Qt. Layout finestra dopo `gui_*.odb` (stessi rettangoli etichettati A�
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Come aprire:** pulsante **Desktop** su cursor.com/agents (non Preview chat).
+**How to open:** **Desktop** button on cursor.com/agents (not Preview chat).
 
-**Anche da Studio:** Ctrl+K → «OpenROAD · …», oppure **Apri GUI** sui `.odb`.
-Per il **Web Viewer** (browser, senza Qt): Strumenti → **Apri Web Viewer**
-(`openroad -web`, vedi [tool-hooks.md](./tool-hooks.md)).
+**Also from Studio:** Ctrl+K → «OpenROAD · …», or **Open GUI** on `.odb` files.
+For **Web Viewer** (browser, without Qt): Tools → **Open Web Viewer**
+(`openroad -web`, see [tool-hooks.md](./tool-hooks.md)).
 
 ---
 
-## Avvio
+## Launch
 
 ```bash
 cd /workspace/tools/OpenROAD-flow-scripts/flow
@@ -31,84 +31,84 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn gui_3_place.odb
 ```
 
-Titolo atteso: `OpenROAD - nangate45/gcd/learn - 3_place`
+Expected title: `OpenROAD - nangate45/gcd/learn - 3_place`
 
-Se non vedi la finestra: Alt+Tab, o icona **OpenROAD GCD** sul desktop XFCE.
+If you do not see the window: Alt+Tab, or **OpenROAD GCD** icon on XFCE desktop.
 
 ---
 
-## Pannello Display Control (sinistra)
+## Display Control panel (left)
 
-Albero visibilità. Click sul **occhio** o checkbox:
+Visibility tree. Click the **eye** or checkbox:
 
-| Nodo | Quando usarlo |
+| Node | When to use |
 |---|---|
-| Layers / metal1 … metal10 | Routing (lezione 06–07) |
+| Layers / metal1 … metal10 | Routing (lesson 06–07) |
 | Layers / via1 … | Via stack |
-| Nets / Signal | Interconnessioni logiche |
-| Nets / Clock | Solo clock (CTS) |
+| Nets / Signal | Logic interconnections |
+| Nets / Clock | Clock only (CTS) |
 | Nets / Power, Ground | PDN |
-| Instances / StdCells | Celle logiche |
+| Instances / StdCells | Logic cells |
 | Instances / Physical / Fill | Fill (finish) |
-| Rows | Floorplan (lezione 03) |
-| Blockages | Ostacoli placement |
-| Heat Maps / Placement Density | Lezione 04 |
-| Heat Maps / Routing Congestion | Lezione 06 |
-| Heat Maps / IR Drop | Lezione 07 |
+| Rows | Floorplan (lesson 03) |
+| Blockages | Placement obstacles |
+| Heat Maps / Placement Density | Lesson 04 |
+| Heat Maps / Routing Congestion | Lesson 06 |
+| Heat Maps / IR Drop | Lesson 07 |
 
-**Esercizio standard:** tutto OFF, poi accendi solo Rows → solo Clock → solo metal4.
+**Standard exercise:** everything OFF, then enable only Rows → only Clock → only metal4.
 
 ---
 
-## Canvas (centro)
+## Canvas (center)
 
-| Azione | Come |
+| Action | How |
 |---|---|
-| Fit all | tasto **F** o View → Fit |
-| Zoom | rotella mouse |
-| Pan | tasto medio / spazio+drag |
-| Seleziona istanza | click |
-| Seleziona net | click su wire o Find |
-| Misura | Tools → Ruler (se presente) |
+| Fit all | **F** key or View → Fit |
+| Zoom | mouse scroll wheel |
+| Pan | middle button / space+drag |
+| Select instance | click |
+| Select net | click wire or Find |
+| Measure | Tools → Ruler (if present) |
 
-**Find:** Edit → Find / `select -name "clk*" -type Inst` nella console.
+**Find:** Edit → Find / `select -name "clk*" -type Inst` in the console.
 
 ---
 
-## Inspector (destra)
+## Inspector (right)
 
-Dopo click su una cella:
+After clicking a cell:
 - Master name (`DFF_X1`)
-- Coordinate
+- Coordinates
 - Pin list
 
-Dopo click su un layer via: proprietà geometria.
+After clicking a via layer: geometry properties.
 
 ---
 
 ## Charts — Endpoint Slack
 
-Dopo load con `GUI_TIMING=1` (default `open.tcl`):
-1. Pannello Charts a destra
+After load with `GUI_TIMING=1` (default `open.tcl`):
+1. Charts panel on the right
 2. Dropdown **Endpoint Slack**
-3. Click su una barra negativa → path evidenziato nel canvas
+3. Click a negative bar → path highlighted in canvas
 
-View → **Show Worst Path** se il menu Timing è visibile.
-
----
-
-## Clock Tree Viewer (lezione 05)
-
-1. View → **Clock Tree Viewer** (o widget Clock)
-2. Lista clock: `core_clock`
-3. Click clock → albero
-4. `gui::select_clockviewer_clock` dalla console se il menu è nascosto
+View → **Show Worst Path** if Timing menu is visible.
 
 ---
 
-## Console Tcl (basso)
+## Clock Tree Viewer (lesson 05)
 
-Comandi utili da copiare:
+1. View → **Clock Tree Viewer** (or Clock widget)
+2. Clock list: `core_clock`
+3. Click clock → tree
+4. `gui::select_clockviewer_clock` from console if menu is hidden
+
+---
+
+## Tcl console (bottom)
+
+Useful commands to copy:
 
 ```tcl
 report_checks -max_paths 3
@@ -118,43 +118,43 @@ select -name "CLKBUF*" -type Inst
 gui::clear_selections
 ```
 
-**Non** chiudere OpenROAD con `exit` se stai ancora ispezionando: usa `gui::hide` solo se serve.
+**Do not** close OpenROAD with `exit` if you are still inspecting: use `gui::hide` only if needed.
 
 ---
 
-## Sequenza didattica (una sessione GUI di 45 min)
+## Educational sequence (45-minute GUI session)
 
-Segui la tabella cronometrata in [gui-atlas.md](./gui-atlas.md) §6. In sintesi:
+Follow the timed table in [gui-atlas.md](./gui-atlas.md) §6. In summary:
 
-1. `gui_1_synth.odb` — canvas nero (PNG `win_synth.png`)
+1. `gui_1_synth.odb` — black canvas (PNG `win_synth.png`)
 2. `gui_2_1_floorplan.odb` — die/core (`win_floorplan.png`)
 3. `gui_2_4_floorplan_pdn.odb` — power (`03_pdn_labeled.png`)
 4. `gui_3_3_place_gp.odb` vs `gui_3_5_place_dp.odb`
 5. `gui_4_cts.odb` — `select -name "clk" -type Net`
-6. `gui_5_1_grt.odb` vs `gui_5_2_route.odb` (isola metal2 / metal3)
+6. `gui_5_1_grt.odb` vs `gui_5_2_route.odb` (isolate metal2 / metal3)
 7. `gui_final` — Inspector `CTS_NDR_0`
 
-Per ciascuno: 5 minuti, confronto con il PNG dell’atlante, una riga nel quaderno.
+For each: 5 minutes, compare with atlas PNG, one line in notebook.
 
 ---
 
-## KLayout (GDS, lezione 07)
+## KLayout (GDS, lesson 07)
 
 ```bash
 klayout results/nangate45/gcd/learn/6_final.gds
 ```
 
 - F: fit
-- Pannello Layers: accendi metal
-- Se vuoto: File → Load layer properties del PDK se disponibile
+- Layers panel: enable metal
+- If empty: Files → Load layer properties for PDK if available
 
 ---
 
-## Troubleshooting GUI
+## GUI troubleshooting
 
-| Sintomo | Fix |
+| Symptom | Fix |
 |---|---|
-| Finestra nera | Display Control: Layers ON |
-| Nessun timing chart | GUI_TIMING=0; rilancia senza skip liberty |
-| Crash save_images | ignora; GDS è indipendente |
-| Preview Cursor "non disponibile" | usa Desktop, non Preview |
+| Black window | Display Control: Layers ON |
+| No timing chart | GUI_TIMING=0; rerun without skipping liberty |
+| Crash save_images | ignore; GDS is independent |
+| Preview Cursor "not available" | use Desktop, not Preview |

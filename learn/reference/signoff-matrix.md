@@ -1,7 +1,7 @@
 # Matrice signoff GCD Nangate45
 
-Single source of truth per i **4 pilastri** del signoff enterprise sul GCD educativo:
-timing (STA), geometria (DRC), equivalenza (LVS), integrità power/PKG.
+Single source of truth per i **4 pilastri** del signoff enterprise on the GCD educativo:
+timing (STA), geometry (DRC), equivalence (LVS), power/PKG integrity.
 
 Registry TypeScript: `studio/src/lib/signoff.ts`  
 Soglie numeriche: `learn/signoff/golden-gcd.json` (derivato da [golden-metrics.md](./golden-metrics.md))  
@@ -12,27 +12,27 @@ API Studio: `GET /api/signoff?variant=flowlab`
 
 ## Legenda gate
 
-| Esito | Significato |
+| Esito | Meaning |
 |---|---|
-| **PASS** | Metriche nel report JSON rispettano golden ± tolleranza |
-| **FAIL** | Soglia superata — interpretare il report, non solo il badge |
-| **Assente** | Script non eseguito dopo `finish` |
+| **PASS** | Metrics in the report JSON rispettano golden ± tolleranza |
+| **FAIL** | Soglia superata — interpretare the report, non solo il badge |
+| **Assente** | Script non eseguito after `finish` |
 
-Su FreePDK45 educativo, **LVS può FAIL** anche con flow corretto: il valore didattico è il processo e l’interpretazione del `.lvsdb`, non fingere tapeout-clean.
+Su FreePDK45 educativo, **LVS may FAIL** even with correct flow: the educational value is the process e l’interpretazione del `.lvsdb`, do not pretend tapeout-clean.
 
 ---
 
-## Matrice lezione ↔ pilastro ↔ tool ↔ artefatto
+## Matrice lesson ↔ pillar ↔ tool ↔ artefatto
 
-| Pilastro | Lezione | Studio action | Script | Report JSON | Gate principale |
+| Pillar | Lesson | Studio action | Script | Report JSON | Gate principale |
 |---|---|---|---|---|---|
 | **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden |
-| **Geometria (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
-| **Equivalenza (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | LVS clean (educational) |
+| **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
+| **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | LVS clean (educational) |
 | **Power / PKG** | 03–07, PKG hub | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | IR/droop/Zmax vs golden |
-| **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | tutti e 4 i pilastri (+ opz. Fase 2 con `SIGNOFF_INCLUDE_PHASE2=1`) |
+| **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | all e 4 i pilastri (+ opz. Fase 2 con `SIGNOFF_INCLUDE_PHASE2=1`) |
 
-Sub-check power (dentro pilastro `power`):
+Sub-check power (dentro pillar `power`):
 
 | Check | Action | Artefatto |
 |---|---|---|
@@ -50,7 +50,7 @@ Sub-check power (dentro pilastro `power`):
 
 Tutte le azioni signoff richiedono **`finish`** completato:
 
-| Action | File minimo |
+| Action | Files minimo |
 |---|---|
 | `sta_signoff` | `6_final.v` |
 | `drc_signoff`, `klayout_lvs` | `6_final.gds` |
@@ -60,7 +60,7 @@ Tutte le azioni signoff richiedono **`finish`** completato:
 
 ## Golden thresholds (`golden-gcd.json`)
 
-| Pilastro | Metrica | Target (learn ref) |
+| Pillar | Metric | Target (learn ref) |
 |---|---|---|
 | Timing | WNS max | ≥ −0.04 ns |
 | Timing | TNS max | ≥ −0.6 |
@@ -89,7 +89,7 @@ export FLOW_VARIANT=learn   # o flowlab
 ./learn/scripts/run_power_signoff.sh
 ./learn/scripts/run_signoff_all.sh
 
-# Opzionale Fase 2 (thermal + PKG) inclusa nell'orchestrator:
+# Optional Fase 2 (thermal + PKG) incluse nell'orchestrator:
 SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
 ```
 
@@ -97,7 +97,7 @@ SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
 
 ## Definition of Done (deliverable enterprise)
 
-Ogni pilastro signoff è **completo** quando esistono tutti e cinque gli artefatti:
+Every pillar signoff is **completo** quando esistono all e cinque gli artefatti:
 
 | Artefatto | Esempio |
 |---|---|
@@ -105,7 +105,7 @@ Ogni pilastro signoff è **completo** quando esistono tutti e cinque gli artefat
 | **Report JSON** | `learn/sim/reports/*_signoff_{variant}.json` |
 | **Gate golden** | valutazione in report (`evaluation.checks` vs `signoff/golden-gcd.json`) |
 | **Test** | `scripts/test_all_phases.sh` · `scripts/test_studio_api.sh` |
-| **Doc** | questa matrice · lezione 07 LAB Parte 7 · FlowLab finish/PKG |
+| **Doc** | this matrice · lesson 07 LAB Part 7 · FlowLab finish/PKG |
 
 Checklist rapida post-`finish`:
 
@@ -122,7 +122,7 @@ Checklist rapida post-`finish`:
 
 ## UI Studio
 
-| Superficie | Contenuto |
+| Superficie | Content |
 |---|---|
 | FlowLab fase **finish** | Matrice 4 pilastri + azioni STA/DRC/LVS |
 | FlowLab fase **PKG** / [`/pkg`](/pkg) | Matrice completa + catena power |
@@ -134,9 +134,9 @@ Cross-ref: [extended-flow.md](./extended-flow.md) · [spice-power-chain.md](./sp
 
 ## Fase 2 (planned in registry)
 
-Pilastri predisposti in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
+Pillars predisposti in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
 
-| Pilastro | Action (future) | Script | Stato |
+| Pillar | Action (future) | Script | Status |
 |---|---|---|---|
 | **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | READY (educational) |
 | **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (proxy IR+droop) | proxy READY |

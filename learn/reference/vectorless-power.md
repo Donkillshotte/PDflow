@@ -1,26 +1,26 @@
 # Vectorless e dynamic power/IR (GCD Nangate45)
 
-OpenSTA/OpenROAD non hanno un “vectorless IR signoff” commerciale (PrimeTime PX vectorless, RedHawk-static). Qui il corso **implementa** i due pezzi che i paper definiscono, e li gira sul GCD routed.
+OpenSTA/OpenROAD do not have a commercial “vectorless IR signoff” (PrimeTime PX vectorless, RedHawk-static). Here the course **implements** the two pieces papers define, and runs them on the routed GCD.
 
-## Letteratura (metodo, non codice copiato)
+## Literature (method, not copied code)
 
 1. **F. Najm**, *A survey of power estimation techniques in VLSI circuits*, Proc. IEEE 1994.  
-   Probabilità di transizione \(P_{01} = p(1-p)\) con \(p=0.5\) combinazionale e \(p=0.1\) sequenziale.
+   Transition probability \(P_{01} = p(1-p)\) with \(p=0.5\) combinational and \(p=0.1\) sequential.
 2. **D. Kouroussis & F. Najm**, *A static pattern-independent technique for power grid voltage integrity verification*, DAC 2003.  
-   Correnti di istanza in \([0, I_{\max}]\), budget di chip (non tutte le porte commutano a \(I_{\max}\) insieme), stima IR **senza vettore**.
+   Instance currents in \([0, I_{\max}]\), chip budget (not all ports switch to \(I_{\max}\) together), IR estimate **without vectors**.
 
-## Due modi nello stesso ODB
+## Two modes in the same ODB
 
-| Modo | Attività | Script / TCL |
+| Mode | Activity | Script / TCL |
 |---|---|---|
 | **Vectorless** | `set_power_activity -global -activity 0.5` | `POWER_MODE=vectorless` |
-| **Dynamic** | `read_vcd -scope tb_gcd/dut learn/sim/gcd/gcd.vcd` | `POWER_MODE=dynamic` (default `auto` se il VCD c’è) |
+| **Dynamic** | `read_vcd -scope tb_gcd/dut learn/sim/gcd/gcd.vcd` | `POWER_MODE=dynamic` (default `auto` if VCD exists) |
 
-OpenSTA 26Q2: `read_power_activities` è deprecato e chiama `read_vcd` con l’arità sbagliata. Il helper è `learn/lib/power_vcd.sh`.
+OpenSTA 26Q2: `read_power_activities` is deprecated and calls `read_vcd` with the wrong arity. The helper is `learn/lib/power_vcd.sh`.
 
-Il VCD Icarus annota i **nomi che matchano** il netlist gate (in pratica i port). I pin non annotati restano sui default OpenSTA. **Non** si fa `set_power_activity -global` dopo il VCD: sovrascriverebbe l’annotazione.
+Icarus VCD notes **names that match** the gate netlist (in practice the ports). Unannotated pins stay on OpenSTA defaults. **Do not** run `set_power_activity -global` after VCD: would overwrite annotation.
 
-Attenzione **STA-1452**: il testbench usa periodo 10 ns, l’SDC 0.46 ns. I watt dynamic non sono 1:1 col vectorless — è un dato didattico, non un signoff foundry.
+Attenzione **STA-1452**: testbench uses 10 ns period, SDC 0.46 ns. Dynamic watts are not 1:1 with vectorless — educational data, not foundry sign-off.
 
 ## Envelope IR
 
@@ -30,14 +30,14 @@ Attenzione **STA-1452**: il testbench usa periodo 10 ns, l’SDC 0.46 ns. I watt
 - budget chip \(I_\mathrm{avg} \times 3\) (crest)
 - pesi area \(\times P_{01}\) \(\times\) distanza (proxy strap)
 - cap locale \(8\times\) share di area
-- fill/tap **esclusi** (non commutano)
-- se esiste `pg_vdd_bumps.sp`, DC sul mesh (`pdn_transient.py`) con correnti riscalate al budget
+- fill/tap **excluded** (do not switch)
+- if `pg_vdd_bumps.sp` exists, DC on mesh (`pdn_transient.py`) with currents scaled to budget
 
-Lo stesso mesh alimenta l’engine **vyges-em-ir** (`run_vyges_em_ir.sh`): IR statico CG confrontabile con `pdn_transient`, droop dinamico simultaneous-switch. Vedi [vyges-em-ir.md](./vyges-em-ir.md).
+The same mesh feeds **vyges-em-ir** (`run_vyges_em_ir.sh`): static IR CG comparable to `pdn_transient`, dynamic droop simultaneousus-switch. See [vyges-em-ir.md](./vyges-em-ir.md).
 
-Il path **I(t) per pin** (stagger clock, waveform, heatmap) è `dynamic_ir` — [dynamic-ir.md](./dynamic-ir.md). PDNSim resta statico.
+The **I(t) per pin** path (stagger clock, waveform, heatmap) is `dynamic_ir` — [dynamic-ir.md](./dynamic-ir.md). PDNSim remains static.
 
-PDNSim (`analyze_power_grid -source_type STRAPS`) gira in entrambi i modi: IR straps sul report.
+PDNSim (`analyze_power_grid -source_type STRAPS`) runs in both modes: IR straps on report.
 
 ## Come lanciare
 
@@ -49,6 +49,6 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_vectorless.sh
 
 Studio / FlowLab: azione **`vectorless`**. Orchestrator: **`tool_matrix`**.
 
-## Cosa non è
+## What it is not
 
-Non è RedHawk, VoltSpot commerciale, né PrimeTime PX. È un envelope statico + liberty `report_power` + mesh DC, tracciabile ai due paper, eseguibile sul GCD di questo repo.
+This is not RedHawk, VoltSpot commercial, nor PrimeTime PX. It is a static envelope + liberty `report_power` + mesh DC, traceable to the two papers, eseguibile on the GCD di this repo.

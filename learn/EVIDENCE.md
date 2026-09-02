@@ -1,114 +1,114 @@
-# Evidenza di verifica (corso)
+# Verification evidence (course)
 
-Aggiornato durante il work goal autonomo. Non sostituisce lo studio: certifica che i **materiali e la pipeline** esistono e girano.
+Updated during autonomous goal work. Does not replace studying: certifies that **materials and the pipeline** exist and run.
 
-## Struttura (test automatico)
+## Structure (automatic test)
 
 ```bash
 ./scripts/test_course.sh
 ```
 
-Esito atteso: `SMOKE PASSED`.
+Expected outcome: `SMOKE PASSED`.
 
-Copre: 8 lezioni × (README, LAB, run.sh) con profondità minima, 6 walkthrough Tcl,
-atlante GUI + PNG Qt/canvas/heatmap, `golden-metrics.md`, workbook + `solutions.md`,
-design tutorial, `--list`, `--check`, `--auto --lesson 00`, versioni tool.
+Covers: 8 lessons × (README, LAB, run.sh) with minimum depth, 6 Tcl walkthroughs,
+GUI atlas + Qt/canvas/heatmap PNGs, `golden-metrics.md`, workbook + `solutions.md`,
+tutorial design, `--list`, `--check`, `--auto --lesson 00`, tool versions.
 
-## Pipeline ORFS variante `learn`
+## ORFS pipeline `learn` variant
 
-Eseguito sul design tutorial (`FLOW_VARIANT=learn`, `CORE_UTILIZATION=35`, SDC 0.46 ns):
+Run on the tutorial design (`FLOW_VARIANT=learn`, `CORE_UTILIZATION=35`, SDC 0.46 ns):
 
 - `make synth floorplan place cts route finish` → exit 0
-- Artefatto: `flow/results/nangate45/gcd/learn/6_final.gds`
-- Numeri: [golden-metrics.md](./reference/golden-metrics.md) — finish WNS −0.04,
-  `period_min` 0.50 ns (~2.01 GHz) vs SDC 0.46 ns (~2.17 GHz). Exit 0 ≠ timing chiuso.
+- Artifact: `flow/results/nangate45/gcd/learn/6_final.gds`
+- Numbers: [golden-metrics.md](./reference/golden-metrics.md) — finish WNS −0.04,
+  `period_min` 0.50 ns (~2.01 GHz) vs SDC 0.46 ns (~2.17 GHz). Exit 0 ≠ closed timing.
 
-## GUI pixel-level
+## Pixel-level GUI
 
-Screenshot Qt in `learn/reference/gui-shots/` più heatmap ORFS (`orfs_*.png`: clock tree, worst path, congestion, IR drop).
+Qt screenshots in `learn/reference/gui-shots/` plus ORFS heatmaps (`orfs_*.png`: clock tree, worst path, congestion, IR drop).
 
-Guida: `learn/reference/gui-atlas.md` (sezioni 1–9).
+Guide: `learn/reference/gui-atlas.md` (sections 1–9).
 
-## Signoff enterprise (Fase 1 + Fase 2)
+## Enterprise signoff (Phase 1 + Phase 2)
 
-Varianti `flowlab` (FlowLab) e `learn` (corso ORFS) condividono gli script in `learn/scripts/`.
+`flowlab` (FlowLab) and `learn` (ORFS course) variants share scripts in `learn/scripts/`.
 
 ```bash
-# Dopo make finish sulla variante scelta
-export FLOW_VARIANT=learn   # o flowlab
+# After make finish on the chosen variant
+export FLOW_VARIANT=learn   # or flowlab
 
 ./learn/scripts/run_signoff_all.sh
-SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh   # include thermal + PKG
+SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh   # includes thermal + PKG
 
-# Valutazione gate vs golden-gcd.json
+# Gate evaluation vs golden-gcd.json
 python3 learn/scripts/signoff_eval.py --variant "${FLOW_VARIANT}"
 ```
 
-Report attesi in `learn/sim/reports/`:
+Expected reports in `learn/sim/reports/`:
 
-| Report | Pilastro |
+| Report | Pillar |
 |---|---|
 | `sta_signoff_{v}.json` | Timing |
-| `drc_signoff_{v}.json` | Geometria |
-| `lvs_signoff_{v}.json` | Equivalenza |
+| `drc_signoff_{v}.json` | Geometry |
+| `lvs_signoff_{v}.json` | Equivalence |
 | `power_signoff_{v}.json` | Power / PKG |
 | `signoff_all_{v}.json` | Orchestrator |
 | `thermal_signoff_{v}.json` | Thermal proxy |
 | `pkg_signoff_{v}.json` | Packaging |
-| `signoff_phase2_{v}.json` | Fase 2 |
+| `signoff_phase2_{v}.json` | Phase 2 |
 
-Matrice e DoD: [signoff-matrix.md](./reference/signoff-matrix.md).  
-UI Studio: FlowLab fase **finish**, hub [/pkg](http://127.0.0.1:43217/pkg), `GET /api/signoff?variant=flowlab`.
+Matrix and DoD: [signoff-matrix.md](./reference/signoff-matrix.md).  
+Studio UI: FlowLab **finish** stage, hub [/pkg](http://127.0.0.1:43217/pkg), `GET /api/signoff?variant=flowlab`.
 
-Smoke automatico: `./scripts/test_all_phases.sh` (include hook signoff in `test_studio_api.sh`).
+Automatic smoke: `./scripts/test_all_phases.sh` (includes signoff hook in `test_studio_api.sh`).
 
-## Laboratorio visuale (FlowLab)
+## Visual lab (FlowLab)
 
-Il canvas **sopra la piega** su `/flusso` è un viewport laboratorio (zoom rotella, pan drag, Fit/`0`, Full/`F`), non un `<img>` statico:
+The canvas **above the fold** on `/flusso` is a lab viewport (wheel zoom, drag pan, Fit/`0`, Full/`F`), not a static `<img>`:
 
-| Fase | Cosa si vede |
+| Stage | What you see |
 |---|---|
-| Floorplan / PDN | Die + strap VDD/VSS (`03_pdn*.png`) |
-| Place | Celle sulle row + PDN (`05_place_dp.png`) · confronto Place↔Route |
-| Route | Metal M2/M3 «spaghetti» (`08_route_labeled.png`) · wipe GRT↔DRT · solo M2/M3 |
-| Finish | Layout finale (`09_final.png`) |
+| Floorplan / PDN | Die + VDD/VSS straps (`03_pdn*.png`) |
+| Place | Cells on rows + PDN (`05_place_dp.png`) · Place↔Route compare |
+| Route | M2/M3 metal «spaghetti» (`08_route_labeled.png`) · GRT↔DRT wipe · M2/M3 only |
+| Finish | Final layout (`09_final.png`) |
 
-Filmstrip dei gui-shots correlati + HUD Display Control (colori Nangate45). Web Viewer OpenROAD è **opt-in**. Synth non ha die: messaggio esplicito.
+Filmstrip of related gui-shots + Display Control HUD (Nangate45 colors). OpenROAD Web Viewer is **opt-in**. Synth has no die: explicit message.
 
-### Evidenza run `learn` (2026-08-28)
+### `learn` run evidence (2026-08-28)
 
-Dopo `6_final.*` presente in `flow/results/.../gcd/learn/`:
+After `6_final.*` present in `flow/results/.../gcd/learn/`:
 
 ```bash
 FLOW_VARIANT=learn SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
 ```
 
-| Pilastro | Esito | Summary |
+| Pillar | Result | Summary |
 |---|---|---|
 | Timing | **PASS** | WNS −0.02 ns · TNS −0.14 · viol 3 |
-| Geometria | **PASS** | Route DRC 0 · GDS DRC 0 |
-| Equivalenza | **PASS** | LVS PASS · errors 0 |
+| Geometry | **PASS** | Route DRC 0 · GDS DRC 0 |
+| Equivalence | **PASS** | LVS PASS · errors 0 |
 | Power | **PASS** | Chip IR 6.34 mV · Sys droop 10.16 mV |
-| Thermal proxy | **FAIL** (educational) | 62.86 mV > soglia 50 mV — interpretare proxy |
+| Thermal proxy | **FAIL** (educational) | 62.86 mV > 50 mV threshold — interpret as proxy |
 | PKG | **PASS** | bump + RDL + system_pdn ok |
 
-Report: `learn/sim/reports/signoff_all_learn.json`. Fase 1 completa; thermal proxy segnala droop transient elevato sul run learn (valore didattico).
+Report: `learn/sim/reports/signoff_all_learn.json`. Phase 1 complete; thermal proxy flags elevated transient droop on the learn run (educational value).
 
-## Studio UI (wrapper grafico)
+## Studio UI (graphical wrapper)
 
 ```bash
 ./scripts/run_studio.sh
 # http://127.0.0.1:43217
 ```
 
-Smoke: sezione `== Studio UI ==` in `./scripts/test_course.sh` (build Next.js).
-API verificate: `/api/toolchain`, `/api/lessons`, `/api/run` action `check`.
+Smoke: `== Studio UI ==` section in `./scripts/test_course.sh` (Next.js build).
+Verified APIs: `/api/toolchain`, `/api/lessons`, `/api/run` action `check`.
 
-## Audit requisiti goal
+## Goal requirements audit
 
-Vedi [AUDIT.md](./AUDIT.md).
+See [AUDIT.md](./AUDIT.md).
 
-## Cosa resta allo studente (non è un gap del repo)
+## What remains for the student (not a repo gap)
 
-- Compilare `mio-quaderno.md` e `mio-progetto-finale.md`
-- Track sky130: estensione post-corso in CURRICULUM
+- Compile `mio-quaderno.md` and `mio-progetto-finale.md`
+- sky130 track: post-course extension in CURRICULUM

@@ -1,70 +1,70 @@
-# Lezione 03 — Floorplanning
+# Lesson 03 — Floorplanning
 
-Il floorplan è l'**immobile** del chip: muri (die), stanze (core), pavimento (rows), impianto elettrico (PDN). Le celle logiche **non** sono ancora posizionate: se in GUI cerchi porte NAND, stai nella lezione 04.
+Il floorplan is l'**building** del chip: walls (die), rooms (core), floor (rows), electrical system (PDN). Le celle logiche **non** are not yet placed: se in GUI look for NAND gates, stai in the lesson 04.
 
-Sul GCD `learn` con `CORE_UTILIZATION=35` il log `2_1_floorplan.log` dice circa:
+On the GCD `learn` con `CORE_UTILIZATION=35` the log `2_1_floorplan.log` dice circa:
 
-| Metrica | Valore tipico corso |
+| Metric | Typical course value |
 |---|---|
 | Die da utilization | 35%, aspect 1.0 |
 | Core area | **1712.5 µm²** |
 | Effective utilization | **0.367** |
-| Design area (celle) | ~629 µm² (~37% del core) |
+| Design area (celle) | ~629 µm² (~37% of core) |
 | Snapping origin | `(1.000, 1.000)` → `(1.140, 1.400)` (site grid) |
 
-Questi numeri sono il tuo **metro**. Se raddoppi utilization, il core deve restringersi.
+These numbers are your **yardstick**. If you double utilization, the core must shrink.
 
-## Obiettivi
+## Objectives
 
-- Disegnare die vs core vs row vs site e spiegare lo *snapping*
-- Usare `CORE_UTILIZATION` sapendo che è mutuamente esclusivo con `DIE_AREA`
-- Leggere `grid_strategy-M1-M4-M7.tcl` riga per riga
-- Predire perché utilization alta uccide il CTS (ponte lezione 05)
+- Draw die vs core vs row vs site and explain *snapping*
+- Use `CORE_UTILIZATION` knowing it is mutually exclusive con `DIE_AREA`
+- Read `grid_strategy-M1-M4-M7.tcl` riga per riga
+- Predict why utilization high kills CTS (bridge to lesson 05)
 
-## Letture
+## Reading
 
-- Questo README
-- `walkthrough-floorplan.tcl.md` **per intero**
+- This README
+- `walkthrough-floorplan.tcl.md` **in full**
 - LAB 03
 - `flow/designs/nangate45/gcd/grid_strategy-M1-M4-M7.tcl`
-- Atlante: `gui-atlas.md` §5.2–5.4
+- Atlas: `gui-atlas.md` §5.2–5.4
 
-## Quattro metodi, uno solo
+## Four methods, only one
 
-ORFS esce con errore se ne definisci due:
+ORFS errors if you define two:
 
-1. `FLOORPLAN_DEF` — importi un DEF già floorplannato
+1. `FLOORPLAN_DEF` — import an already floorplanned DEF
 2. `FOOTPRINT` (ICeWall) — chiplet / pad ring
-3. `DIE_AREA` + `CORE_AREA` — micrometri espliciti
-4. `CORE_UTILIZATION` ← **corso**
+3. `DIE_AREA` + `CORE_AREA` — explicit micrometers
+4. `CORE_UTILIZATION` ← **course**
 
 ```tcl
 initialize_floorplan -utilization 35 -aspect_ratio 1.0 \
   -core_space 1.0 -site FreePDK45_38x28_10R_NP_162NW_34O
 ```
 
-**Formula mentale:** a parità di area celle post-synth,
+**Mental formula:** with the same post-synth cell area,
 
 ```
-area_core ≈ area_celle / (utilization/100)
+area_core ≈ cell_area / (utilization/100)
 ```
 
-Utilization **alta** = core **piccolo**. Non “più pieno visivamente” in GUI al passo 2_1: le celle non ci sono ancora. Il pieno lo vedi al CTS.
+High utilization = **small** core. Non “more visually full” in GUI at step 2_1: the cells are not there yet. You see fullness at CTS.
 
-Lo **site** è la piastrella: larghezza/altezza della libreria. Lo snapping IFP-0028 non è un bug: allinea il core alla griglia.
+Lo **site** is la tile: larghezza/altezza della libreria. Lo snapping IFP-0028 is not un bug: aligns core to grid.
 
-## Sottofasi
+## Sub-stages
 
-| Step | Output | Cosa impari |
+| Step | Output | What you learn |
 |---|---|---|
-| 2_1 | die/core/rows/tracks | geometria vuota (`win_floorplan.png`) |
-| 2_2 | macro | GCD: no-op (nessuna SRAM) |
+| 2_1 | die/core/rows/tracks | empty geometry (`win_floorplan.png`) |
+| 2_2 | macro | GCD: no-op (no SRAM) |
 | 2_3 | tapcell | well ties (`win_tapcell.png`) |
 | 2_4 | PDN | VDD/VSS (`03_pdn_labeled.png`) |
 
-## PDN — la griglia che userai per sempre
+## PDN — the grid you will use forever
 
-File: `grid_strategy-M1-M4-M7.tcl`
+Files: `grid_strategy-M1-M4-M7.tcl`
 
 ```tcl
 set_voltage_domain -name {CORE} -power {VDD} -ground {VSS}
@@ -75,44 +75,44 @@ add_pdn_connect -layers {metal1 metal4}
 add_pdn_connect -layers {metal4 metal7}
 ```
 
-| Pezzo | Ruolo | Cosa vedi in GUI 26Q2 |
+| Piece | Role | What you see in GUI 26Q2 |
 |---|---|---|
-| `followpins` M1 | rail sulle rows, tocca ogni cella | linee blu fitte |
-| strap M4 | distribuzione verticale/orizzontale intermedia | barre verdi (~3 sul GCD) |
-| strap M7 | backbone | barre rosa spesse |
-| `add_pdn_connect` | via stack tra layer | visibili zoomando gli incroci |
+| `followpins` M1 | rails on rows, touches every cell | tight blue lines |
+| strap M4 | intermediate vertical/horizontal distribution | green bars (~3 on the GCD) |
+| strap M7 | backbone | thick pink bars |
+| `add_pdn_connect` | via stack between layers | visible when zooming crossings |
 
-Senza PDN le celle non hanno alimentazione legale. L’IR drop al finish (`orfs_final_ir_drop.png`, scala ~0–5 mV sul GCD) è cieco se la griglia non esiste.
+Without PDN the cells have no legal power. L’IR drop al finish (`orfs_final_ir_drop.png`, scale ~0–5 mV on the GCD) is blind if grid does not exist.
 
-`add_global_connection` collega pin `VDD`/`VSS` delle istanze alle net power: è il motivo per cui non “cablì” a mano VDD su ogni NAND.
+`add_global_connection` connects instance `VDD`/`VSS` pins to power nets: that is why you do not hand-wire VDD on every NAND.
 
 ## GUI
 
-- `gui_2_1_floorplan.odb`: due rettangoli. **Non** `gui::set_display_controls "Rows"` → GUI-0013.
-- `gui_2_4_floorplan_pdn.odb`: spegni metal2/3, resta M1+strap.
+- `gui_2_1_floorplan.odb`: two rectangles. **Non** `gui::set_display_controls "Rows"` → GUI-0013.
+- `gui_2_4_floorplan_pdn.odb`: turn off metal2/3, keep M1+strap.
 
-## Esperimento obbligatorio
+## Required experiment
 
-`CORE_UTILIZATION=25` vs `50`, stessa `1_synth.odb` (non rifare synth). Tabella core area dal log `2_1_floorplan.log`.
+`CORE_UTILIZATION=25` vs `50`, stessa `1_synth.odb` (non rifare synth). Table core area from log `2_1_floorplan.log`.
 
-Predizione: 50% → core ≈ metà di 25% (non esatto: snapping, margins, aspect).
+Prediction: 50% → core ≈ half of 25% (not exact: snapping, margins, aspect).
 
-## Errori comuni
+## Common mistakes
 
-- Util 55% + SDC 0.25 ns → DPL-0038 **più tardi**, non al floorplan (il floorplan “verde” ti inganna)
-- `DIE_AREA` insieme a `CORE_UTILIZATION` → exit 1 immediato
-- PDN “invisibile” = layer spenti
+- Util 55% + SDC 0.25 ns → DPL-0038 **later**, non al floorplan (floorplan “green” ti inganna)
+- `DIE_AREA` together with `CORE_UTILIZATION` → exit 1 immediate
+- PDN “invisible” = layers off
 - Confrontare core area tra run senza `clean_floorplan`
 
-## Catena power & SPICE
+## Power & SPICE chain
 
-Il floorplan genera la **griglia PDN** (`2_4_floorplan_pdn.odb`); FlowLab verifica con [gridcheck](/flusso?phase=pdn). La netlist SPICE nasce post-finish — vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-03-floorplan), [`spice-chip-mesh.md`](../../reference/spice-chip-mesh.md) e il pilastro **power** in [`signoff-matrix.md`](../../reference/signoff-matrix.md).
+The floorplan generates the **PDN grid** (`2_4_floorplan_pdn.odb`); FlowLab verifies with [gridcheck](/flusso?phase=pdn). The SPICE netlist is born post-finish — see [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-03-floorplan), [`spice-chip-mesh.md`](../../reference/spice-chip-mesh.md) and the pillar **power** in [`signoff-matrix.md`](../../reference/signoff-matrix.md).
 
-| Collegamento | Dove |
+| Link | Where |
 |---|---|
 | FlowLab | [floorplan](/flusso?phase=floorplan) · [PDN](/flusso?phase=pdn) |
 | Script | `run_gridcheck.sh` |
 
-## Durata
+## Duration
 
-README+walkthrough 50–70 min, LAB 90–120 min, **totale ~3 ore**.
+README+walkthrough 50–70 min, LAB 90–120 min, **total ~3 hours**.

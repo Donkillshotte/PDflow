@@ -1,54 +1,54 @@
 # LAB 02 — Synthesis (75–100 minuti)
 
-Yosys mappa la logica. OpenROAD **non** piazza ancora niente. Se in GUI cerchi un chip, stai nella lezione sbagliata (vedi atlante, canvas nero).
+Yosys maps logic. OpenROAD **does not** place anything yet. Se in GUI cerchi un chip, stai in the lesson sbagliata (see atlas, black canvas).
 
-## Obiettivi misurabili
+## Measurable objectives
 
-- [ ] Confrontato RTL vs netlist con numeri (moduli, DFF, AND)
-- [ ] Letto `synth_stat` / log Yosys e annotato area
-- [ ] Spiegato canonicalize → synth → synth_odb
-- [ ] Aperto `gui_1_synth.odb` (o studiato `gui-shots/win_synth.png`)
-- [ ] Eseguito STA liberty-only e capito perché WNS ≠ signoff
+- [ ] Compared RTL vs netlist with numbers (modules, DFF, AND)
+- [ ] Read `synth_stat` / Yosys log and noted area
+- [ ] Explained canonicalize → synth → synth_odb
+- [ ] Opened `gui_1_synth.odb` (o studiato `gui-shots/win_synth.png`)
+- [ ] Eseguito STA liberty-only e capito because WNS ≠ signoff
 
 ---
 
-## Parte 1 — RTL a mano (20 min)
+## Part 1 — RTL by hand (20 min)
 
-File: `tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v`
+Files: `tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v`
 
-Rispondi nel quaderno:
+Rispondi nel notebook:
 
-| Domanda | Tua risposta |
+| Domanda | Your answer |
 |---|---|
 | Nome del modulo top | |
-| Porte di clock/reset | |
-| Quanti `always @(posedge` | |
-| C’è un `always @*` incompleto? (rischio latch) | |
-| A cosa servono `req_val` / `resp_rdy` (handshake) | |
+| Clock/reset ports | |
+| How many `always @(posedge` | |
+| C’is un `always @*` incompleto? (rischio latch) | |
+| What `req_val` / `resp_rdy` do (handshake) | |
 
-Non serve capire l’algoritmo di Euclide in dettaglio. Serve capire: **è sincrono, ha un clock, ha I/O**. L’SDC della lezione 01 parla di quelle porte.
+You do not need capire l’algoritmo di Euclide in dettaglio. You need to understand: **is synchronous, has a clock, has I/O**. L’SDC of the lesson 01 parla di that ports.
 
 ---
 
-## Parte 2 — Walkthrough Tcl (20 min)
+## Part 2 — Walkthrough Tcl (20 min)
 
-Apri **in parallelo**:
+Open **in parallel**:
 
 - `learn/reference/walkthrough-synth.tcl.md`
 - `flow/scripts/synth.tcl`
 - `flow/scripts/synth_odb.tcl`
 
-Segna sul walkthrough (o quaderno) tre punti:
+Mark on walkthrough (o notebook) tre punti:
 
-1. Perché esiste `1_1_yosys_canonicalize.rtlil`
-2. Cosa fa `synth -flatten` al GCD
-3. Cosa fa `load_design` in `synth_odb.tcl` (LEF + Verilog + SDC)
+1. Why esiste `1_1_yosys_canonicalize.rtlil`
+2. What `synth -flatten` does to GCD
+3. What `load_design` does in `synth_odb.tcl` (LEF + Verilog + SDC)
 
-**Domanda d’esame:** chi produce `1_2_yosys.v` e chi `1_synth.odb`?
+**Domanda d’esame:** who produces `1_2_yosys.v` e chi `1_synth.odb`?
 
 ---
 
-## Parte 3 — Esegui synth (10 min)
+## Part 3 — Run synth (10 min)
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -56,7 +56,7 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 synth
 ```
 
-Verifica:
+Verify:
 
 ```bash
 ls -lh results/nangate45/gcd/learn/1_1_yosys_canonicalize.rtlil \
@@ -64,14 +64,14 @@ ls -lh results/nangate45/gcd/learn/1_1_yosys_canonicalize.rtlil \
        results/nangate45/gcd/learn/1_synth.odb
 ```
 
-Tutti e tre devono esistere. Se manca RTLIL, canonicalize non è partito (log `1_1`).
+All e tre devono esistere. If missing RTLIL, canonicalize is not partito (log `1_1`).
 
 ---
 
-## Parte 4 — Conteggio celle (20 min)
+## Part 4 — Cell count (20 min)
 
 ```bash
-# moduli
+# modules
 rg -c '^module ' tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v
 rg -c '^module ' tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn/1_2_yosys.v
 
@@ -84,26 +84,26 @@ rg -oE '[A-Z0-9]+_X[0-9]+' \
   | sort | uniq -c | sort -nr | head -20
 ```
 
-Compila:
+Fill in:
 
-| Famiglia | Conteggio |
+| Family | Count |
 |---|---|
 | DFF_* | |
 | AND/NAND/NOR… (top 5) | |
 | BUF/INV | |
 
-Confronta con:
+Compare con:
 
 ```bash
 rg -n 'Chip area|Number of cells|Printing statistics' \
   tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/learn/1_2_yosys.log
 ```
 
-**Latch:** `rg DLATCH` sul netlist. Se trovi qualcosa, il RTL ha un always combinatorio pieno di buchi.
+**Latch:** `rg DLATCH` sul netlist. If you find something, il RTL ha un always combinatorio pieno di holes.
 
 ---
 
-## Parte 5 — GUI synthesis (15 min)
+## Part 5 — GUI synthesis (15 min)
 
 Desktop Cursor →
 
@@ -112,17 +112,17 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_1_synth.odb
 ```
 
-Checklist atlante (`gui-atlas.md` §5.1):
+Checklist atlas (`gui-atlas.md` §5.1):
 
-- [ ] Canvas nero o blob in (0,0) — **non** un die
-- [ ] Display Control mostra comunque metal1–metal10 (la tech LEF è caricata)
+- [ ] Black canvas or blob at (0,0) — **not** a die
+- [ ] Display Control still shows metal1–metal10 (la tech LEF is caricata)
 - [ ] Find `DFF` / Inspect master
 
-Se non puoi aprire la GUI: studia `learn/reference/gui-shots/win_synth.png` e descrivi perché è vuoto.
+Se non you can aprire the GUI: studia `learn/reference/gui-shots/win_synth.png` e describe because is vuoto.
 
 ---
 
-## Parte 6 — OpenSTA pre-layout (15 min)
+## Part 6 — OpenSTA pre-layout (15 min)
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -137,13 +137,13 @@ exit
 EOF
 ```
 
-Annota worst slack. **Non** confrontarlo col finish come se fosse la stessa metrica: qui i fili valgono ~0 (solo liberty).
+Note worst slack. **Non** confrontarlo col finish come se fosse la stessa metric: here wires are ~0 (liberty only).
 
 ---
 
-## Superamento
+## Pass criteria
 
-- [ ] Tabella famiglie celle
-- [ ] Differenza Yosys vs `synth_odb` spiegata in 4 righe
-- [ ] STA eseguita
-- [ ] GUI o PNG synth annotato nel quaderno
+- [ ] Table famiglie celle
+- [ ] Yosys vs `synth_odb` differencand explained in 4 lines
+- [ ] STA run
+- [ ] GUI or PNG synth annotato nel notebook

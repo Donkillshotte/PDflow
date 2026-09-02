@@ -1,22 +1,22 @@
-# Lezione 02 — Synthesis (Yosys → OpenROAD)
+# Lesson 02 — Synthesis (Yosys → OpenROAD)
 
-La synthesis è l'unico passo in cui il design è ancora **solo logica**. Dopo, ogni trasformazione è geometrica o temporale.
+La synthesis is l'unico passo in cui il design is ancora **solo logica**. Dopo, every trasformazione is geometric o temporale.
 
-## Obiettivi
+## Objectives
 
-- Distinguere Yosys (mapping) da OpenROAD (import ODB)
-- Leggere netlist gate-level e `synth_stat.txt`
-- Capire flatten vs hierarchical
-- Aprire `1_synth.odb` e accettare che le celle siano impilate
+- Distinguish Yosys (mapping) from OpenROAD (ODB import)
+- Read gate-level netlist and `synth_stat.txt`
+- Understand flatten vs hierarchical
+- Aprire `1_synth.odb` e accettare che the cells siano impilate
 
-## Letture
+## Reading
 
-- Questo README
-- `learn/reference/walkthrough-synth.tcl.md` (obbligatorio)
+- This README
+- `learn/reference/walkthrough-synth.tcl.md` (required)
 - LAB 02
 - RTL: `flow/designs/src/gcd/gcd.v`
 
-## Pipeline reale ORFS 26Q2
+## Real ORFS 26Q2 pipeline
 
 ```
 gcd.v
@@ -25,87 +25,87 @@ gcd.v
   → synth_odb.tcl          → 1_synth.odb + 1_synth.sdc
 ```
 
-RTLIL è l'IR di Yosys. Se esiste, ORFS può evitare di riparsare Verilog.
+RTLIL is l'Yosys IR. If it exists, ORFS can avoid re-parsing Verilog.
 
-## Cosa fa Yosys (intuizione)
+## What Yosys does (intuition)
 
 1. `read_verilog` / checkpoint RTLIL
 2. `proc` — always block → netlist
 3. `opt` — dead code, const fold
-4. `synth -flatten` — coarse + fine, un solo modulo
-5. `abc` — mapping Boolean sulla liberty
+4. `synth -flatten` — coarse + fine, single module
+5. `abc` — Boolean mapping onto liberty
 6. `dfflegalize` — FF → `DFF_X1` ecc.
 
-GCD è piccolo: flatten è il default corretto. Hierarchical synth serve su design con moduli da non esplodere (memorie, analog wrappers).
+GCD is piccolo: flatten is il default corretto. Hierarchical synth you need su design con modules da non esplodere (memories, analog wrappers).
 
-## File prodotti
+## Produced files
 
-| File | Descrizione | Apri con |
+| Files | Description | Open with |
 |---|---|---|
-| `1_1_yosys_canonicalize.rtlil` | IR | editor (opaco) |
+| `1_1_yosys_canonicalize.rtlil` | IR | editor (opaque) |
 | `1_2_yosys.v` | Gate-level | editor, `sta` |
 | `1_synth.odb` | DB OpenROAD | GUI |
-| `synth_stat.txt` | Conteggio celle | editor |
-| `1_2_yosys.log` | Verità operativa | `rg Warning` |
+| `synth_stat.txt` | Cell count | editor |
+| `1_2_yosys.log` | Operational truth | `rg Warning` |
 
-## Cosa osservare nel netlist
+## What to observe in the netlist
 
 ```bash
 rg -c 'DFF_' results/nangate45/gcd/learn/1_2_yosys.v
 rg '^module ' results/nangate45/gcd/learn/1_2_yosys.v
 ```
 
-Confronta con `always @(posedge` nel RTL. Ogni registro RTL ≈ un DFF (più bit → più DFF).
+Compare con `always @(posedge` nel RTL. Every registro RTL ≈ un DFF (more bits → more DFF).
 
-**Latch:** se Yosys inferisce `DLATCH`, il RTL ha un always combinatorio incompleto. Su GCD non dovrebbe succedere.
+**Latch:** if Yosys infers `DLATCH`, il RTL ha un incomplete combinational always. Su GCD should not succedere.
 
 ## GUI
 
-`gui_1_synth.odb`: zoom out. Celle in un punto **o canvas nero** (die 0×0). PNG: `gui-shots/win_synth.png`. Display → Instances ON, Nets OFF.  
+`gui_1_synth.odb`: zoom out. Cells at one point **or black canvas** (die 0×0). PNG: `gui-shots/win_synth.png`. Display → Instances ON, Nets OFF.  
 Seleziona una `DFF_X1` → Inspector → master.
 
-Non cercare un “chip”: il floorplan non è ancora esistito. Atlante: `gui-atlas.md` §5.1.
+Do not look for a “chip”: floorplan is not ancora esistito. Atlas: `gui-atlas.md` §5.1.
 
-## Timing a questo stadio
+## Timing at this stage
 
-`sta` + liberty + netlist + SDC = delay **senza wire**. WNS ottimistico o comunque non confrontabile col finish (−0.04 ns SPEF sul run di riferimento).
+`sta` + liberty + netlist + SDC = delay **without wires**. optimistic WNS or not comparable to finish (−0.04 ns SPEF sul run di riferimento).
 
-## Un run `learn` di riferimento (`synth_stat.txt`)
+## A reference `learn` run (`synth_stat.txt`)
 
 | Voce | Valore |
 |---|---|
 | Celle | 496 |
 | Area | 628.824 |
-| `DFF_X1` | 35 (≈25% area sequenziale) |
+| `DFF_X1` | 35 (≈25% sequential area) |
 | `NAND2_X1` | 128 |
-| `CLKBUF_*` già in synth | 2 (non è CTS) |
+| `CLKBUF_*` already in synth | 2 (is not CTS) |
 
-I tuoi numeri: stessa tabella nel quaderno. Se i DFF spariscono, Yosys ha ottimizzato via registri: **bug RTL** o `current_design` sbagliato.
+I tuoi numeri: stessa tabella nel notebook. Se i DFF spariscono, Yosys ha optimizesto via registri: **bug RTL** o `current_design` sbagliato.
 
-## Come leggere `synth_stat.txt`
+## How to read `synth_stat.txt`
 
-Il file è un dump delle statistiche Yosys. Cerca:
+Il file is un Yosys statistics dump. Cerca:
 
-| Campo | Perché |
+| Campo | Why |
 |---|---|
-| `Number of cells` | 496 sul run d’oro — se è 0, synth non ha mappato |
-| `DFF_X1` | 35 — deve coincidere con `rg -c 'DFF_'` sul `.v` a meno di alias |
-| `Chip area` | 628.824 — unità liberty, non µm² del floorplan |
-| `CLKBUF_*` | 2 già in synth: **non** è l’albero CTS |
+| `Number of cells` | 496 sul run d’oro — se is 0, synth does not mappato |
+| `DFF_X1` | 35 — must match `rg -c 'DFF_'` sul `.v` except aliases |
+| `Chip area` | 628.824 — liberty units, not floorplan µm² |
+| `CLKBUF_*` | 2 already in synth: **non** is l’albero CTS |
 
-`ABC_AREA=1` in `config.mk`: ABC minimizza **area**, non delay. Il timing lo insegui
-dal placement in poi. Non sorprenderti se lo slack liberty-only di `sta` è diverso
+`ABC_AREA=1` in `config.mk`: ABC minimizes **area**, not delay. You chase timing
+dal placement in poi. Do not be surprised se slack liberty-only di `sta` is diverso
 dal finish SPEF (−0.04 ns). Tabella: `golden-metrics.md`.
 
-## Catena power & SPICE
+## Power & SPICE chain
 
-La synthesis istanzia **celle .lib** con modelli leakage/switching/internal → base di `report_power` e sink mesh SPICE. Approfondimento: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-02-synthesis) · demo [`nangate_inverter_demo.sp`](../../sim/spice/nangate_inverter_demo.sp).
+Synthesis instantiates **.lib cells** con modelli leakage/switching/internal → basis of `report_power` and SPICE mesh sinks. Deep dive: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-02-synthesis) · demo [`nangate_inverter_demo.sp`](../../sim/spice/nangate_inverter_demo.sp).
 
-| Collegamento | Dove |
+| Link | Where |
 |---|---|
 | FlowLab | [synth](/flusso?phase=synth) |
 | Liberty | `platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib` |
 
-## Durata stimata
+## Estimated duration
 
-README + walkthrough 40 min, LAB 75 min, **totale ~2 ore**.
+README + walkthrough 40 min, LAB 75 min, **total ~2 ore**.

@@ -1,50 +1,50 @@
 # LAB 04 — Placement (90–120 minuti)
 
-Qui il design **occupa spazio**. Porta aperti: atlante GUI §5.5–5.6 e `walkthrough-global_place.tcl.md`.
+Qui il design **occupies space**. Bring open: atlas GUI §5.5–5.6 e `walkthrough-global_place.tcl.md`.
 
-## Obiettivi misurabili
+## Measurable objectives
 
-- [ ] Distinguere GP e DP su screenshot o GUI (non a parole vaghe)
-- [ ] Estratto WNS/TNS/buffer da `3_resizer.rpt`
-- [ ] Trovato almeno un prefisso resizer (`rebuffer*`, `fanout*`, …)
-- [ ] Collegato clock stretto → più buffer → più area → rischio CTS
-
----
-
-## Parte 1 — Teoria operativa (15 min)
-
-Rileggi `lessons/04-placement/README.md` tabelle sottofasi.
-
-In una frase ciascuna:
-
-1. Cosa ottimizza **global placement**?
-2. Cosa vieta **detailed placement**?
-3. Perché ORFS fa GP, **poi** resizer, **poi** DP (e non DP prima del resizer)?
-
-Hint: i buffer del resizer devono essere legalizzati.
+- [ ] Distinguere GP e DP su screenshot o GUI (non in vague words)
+- [ ] Extracted WNS/TNS/buffer da `3_resizer.rpt`
+- [ ] Found almeno un prefisso resizer (`rebuffer*`, `fanout*`, …)
+- [ ] Connected tight clock → more buffer → more area → CTS risk
 
 ---
 
-## Parte 2 — Walkthrough Tcl (20 min)
+## Part 1 — Theory operativa (15 min)
+
+Reread `lessons/04-placement/README.md` tabelle sub-stages.
+
+In one sentence ciascuna:
+
+1. Cosa optimizes **global placement**?
+2. Cosa forbids **detailed placement**?
+3. Why ORFS fa GP, **poi** resizer, **poi** DP (e non DP before del resizer)?
+
+Hint: i buffer del resizer devono essere legalized.
+
+---
+
+## Part 2 — Walkthrough Tcl (20 min)
 
 Apri `flow/scripts/global_place.tcl` e il walkthrough.
 
 Segna:
 
-| Riga / blocco | Cosa fa | Se lo togli… |
+| Riga / blocco | What it does | If you remove it… |
 |---|---|---|
 | `buffer_ports` | | slew sui pin I/O |
 | `GPL_TIMING_DRIVEN` | | GP ignora slack |
-| `-density` | | overflow / buchi |
-| `estimate_parasitics -placement` | | STA cieca sui fili |
+| `-density` | | overflow / holes |
+| `estimate_parasitics -placement` | | STA blind to wires |
 
 Poi `flow/scripts/detail_place.tcl`: `detailed_placement`, `improve_placement`, `optimize_mirroring`, `check_placement`.
 
-**Domanda:** perché esiste `3_5_place_dp-failed.odb`?
+**Question:** because esiste `3_5_place_dp-failed.odb`?
 
 ---
 
-## Parte 3 — Esegui place (15 min)
+## Part 3 — Run place (15 min)
 
 ```bash
 ./scripts/learn_physical_design.sh --deep --lesson 04
@@ -63,24 +63,24 @@ ls results/nangate45/gcd/learn/3_3_place_gp.odb \
 
 ---
 
-## Parte 4 — Report (25 min)
+## Part 4 — Report (25 min)
 
-Leggi **per intero** (sono corti sul GCD):
+Leggi **in full** (are corti on the GCD):
 
 ```bash
 less tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/learn/3_global_place.rpt
 less tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/learn/3_resizer.rpt
 ```
 
-Estrai nel quaderno:
+Estrai nel notebook:
 
-| Metrica | Valore | File |
+| Metric | Valore | Files |
 |---|---|---|
 | Overflow GP | | 3_global_place / log 3_3 |
 | WNS | | 3_resizer |
 | TNS | | 3_resizer |
-| Buffer inseriti | | log `3_4_place_resized` (`Inserted`) |
-| Resize / upsize | | stesso log |
+| Buffer inserted | | log `3_4_place_resized` (`Inserted`) |
+| Resize / upsize | | same log |
 
 ```bash
 rg -n 'Inserted|Resize|WNS|TNS|overflow' \
@@ -89,56 +89,56 @@ rg -n 'Inserted|Resize|WNS|TNS|overflow' \
   | head -40
 ```
 
-Workbook **C2**: stesso numero nel quaderno.
+Workbook **C2**: stesso numero nel notebook.
 
 ---
 
-## Parte 5 — GUI confronto GP vs DP (30 min)
+## Part 5 — GUI comparison GP vs DP (30 min)
 
-Desktop. Due carichi (o due terminali):
+Desktop. Two loads (o due terminali):
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_3_place_gp.odb
-# altra shell, stesso cwd:
+# another shell, stesso cwd:
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_3_5_place_dp.odb
 ```
 
-Usa `learn/reference/gui-atlas.md`:
+Use `learn/reference/gui-atlas.md`:
 
-- GP: `win_place_gp.png` / `04_place_gp_labeled.png` — blob, possibile overlap visivo
-- DP: `win_place_dp.png` / `05_place_dp.png` — allineamento rows
+- GP: `win_place_gp.png` / `04_place_gp_labeled.png` — blob, possible visual overlap
+- DP: `win_place_dp.png` / `05_place_dp.png` — row alignment
 
 Checklist:
 
 - [ ] Fit (`F`) su entrambi
-- [ ] Triangoli I/O sul bordo (GP dopo IOP)
-- [ ] Strap PDN visibili
-- [ ] Heatmap Placement Density se c’è in View (rosso = pieno)
+- [ ] I/O triangles on edge (GP after IOP)
+- [ ] Visible PDN straps
+- [ ] Heatmap Placement Density se c’is in View (red = full)
 
-Find: `rebuffer`, `clkbuf` (pre-CTS i clkbuf sono pochi).
+Find: `rebuffer`, `clkbuf` (pre-CTS i clkbuf are pochi).
 
-Se non hai Desktop: annota le differenze **sui PNG del repo** — è accettato, ma prova la GUI almeno una volta nel corso.
+Se you have not Desktop: note le differenze **on repor PNGs** — is accepted, ma try the GUI at least once nel course.
 
 ---
 
-## Parte 6 — Ponte verso CTS (10 min)
+## Part 6 — Bridge to CTS (10 min)
 
-Scrivi la catena (lezione 01+03+04):
+Scrivi la catena (lesson 01+03+04):
 
 ```
 SDC stretto → WNS negativo → RSZ buffer → area ↑ → stesso core (util 35%)
-  → al CTS detailed_placement può fare DPL-0038
+  → al CTS detailed_placement may hit DPL-0038
 ```
 
-Predici: con `constraint_tight.sdc` i buffer in `3_4` salgono o scendono?
+Predici: con `constraint_tight.sdc` i buffer in `3_4` rise or fall?
 
 ---
 
-## Superamento
+## Pass criteria
 
-- [ ] Tabella metriche resizer
-- [ ] Una differenza GP/DP documentata (screenshot o riferimento atlante)
+- [ ] Table metrics resizer
+- [ ] Una differenza GP/DP documented (screenshot o riferimento atlas)
 - [ ] Prefisso resizer spiegato

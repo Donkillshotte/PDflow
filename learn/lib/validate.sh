@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validazioni per checkpoint del corso.
+# Validations for course checkpoints.
 
 learn_require_file() {
   local path="$1" desc="$2"
@@ -7,31 +7,31 @@ learn_require_file() {
     ui_ok "${desc}: $(basename "${path}") ($(du -h "${path}" | awk '{print $1}'))"
     return 0
   fi
-  ui_fail "${desc} mancante: ${path}"
+  ui_fail "${desc} missing: ${path}"
   return 1
 }
 
 learn_require_cmd() {
   local cmd="$1"
   if command -v "${cmd}" >/dev/null 2>&1; then
-    ui_ok "Tool disponibile: ${cmd}"
+    ui_ok "Tool available: ${cmd}"
     return 0
   fi
-  ui_fail "Tool mancante: ${cmd}"
+  ui_fail "Tool missing: ${cmd}"
   return 1
 }
 
 learn_check_prerequisites() {
   local ok=0
-  ui_section "Verifica prerequisiti"
+  ui_section "Prerequisite check"
   learn_require_cmd openroad || ok=1
   learn_require_cmd yosys || ok=1
   learn_require_cmd sta || ok=1
   learn_require_cmd klayout || ok=1
   learn_orfs_env
-  [[ -d "${FLOW}" ]] || { ui_fail "ORFS non trovato in ${FLOW}"; ok=1; }
-  [[ -f "${TUTORIAL_SRC}/config.mk" ]] || { ui_fail "Config tutorial mancante in ${TUTORIAL_SRC}"; ok=1; }
-  [[ -e "${TUTORIAL_ORFS}/config.mk" ]] || { ui_fail "Symlink ORFS tutorial mancante: ${TUTORIAL_ORFS}"; ok=1; }
+  [[ -d "${FLOW}" ]] || { ui_fail "ORFS not found in ${FLOW}"; ok=1; }
+  [[ -f "${TUTORIAL_SRC}/config.mk" ]] || { ui_fail "Tutorial config missing in ${TUTORIAL_SRC}"; ok=1; }
+  [[ -e "${TUTORIAL_ORFS}/config.mk" ]] || { ui_fail "ORFS tutorial symlink missing: ${TUTORIAL_ORFS}"; ok=1; }
   return "${ok}"
 }
 
@@ -59,11 +59,11 @@ learn_validate_stage() {
       learn_require_file "$(learn_artifact route.guide)" "Route guide"
       ;;
     finish)
-      learn_require_file "$(learn_artifact 6_final.gds)" "GDS finale" &&
-      learn_require_file "$(learn_artifact 6_final.spef)" "SPEF finale"
+      learn_require_file "$(learn_artifact 6_final.gds)" "Final GDS" &&
+      learn_require_file "$(learn_artifact 6_final.spef)" "Final SPEF"
       ;;
     *)
-      ui_fail "Stage sconosciuto: ${stage}"
+      ui_fail "Unknown stage: ${stage}"
       return 1
       ;;
   esac
@@ -72,6 +72,6 @@ learn_validate_stage() {
 learn_grep_metric() {
   local report="$1" pattern="$2"
   if [[ -f "${report}" ]]; then
-    rg -n "${pattern}" "${report}" | head -5 | sed 's/^/  /' || ui_note "Pattern non trovato in ${report}"
+    rg -n "${pattern}" "${report}" | head -5 | sed 's/^/  /' || ui_note "Pattern not found in ${report}"
   fi
 }

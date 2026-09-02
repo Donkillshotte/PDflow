@@ -1,11 +1,11 @@
-# Soluzioni workbook — confronta **dopo** aver provato
+# Workbook solutions — compare **after** trying
 
-Numeri della colonna «riferimento» = run `learn` su questa VM
+Numbers in the «reference» column = run `learn` on this VM
 (`CORE_UTILIZATION=35`, SDC 0.46 ns, OpenROAD/ORFS **26Q2**).
-Tabella maestra: [golden-metrics.md](../reference/golden-metrics.md).
+Table maestra: [golden-metrics.md](../reference/golden-metrics.md).
 
-I tuoi valori possono scostarsi di pochi percento. Se scarto > 20% su celle/area,
-hai sbagliato variant, SDC o PDK — apri il [debug-playbook](../reference/debug-playbook.md).
+Your values may differ by a few percent. If deviation > 20% on cells/area,
+you used wrong variant, SDC or PDK — open the [debug-playbook](../reference/debug-playbook.md).
 
 ---
 
@@ -15,15 +15,15 @@ hai sbagliato variant, SDC o PDK — apri il [debug-playbook](../reference/debug
 
 Nel file: `set_input_delay` / `set_output_delay` usano `[expr $clk_period * $clk_io_pct]`.
 
-## A2 — Sweep clock (fino a `place`)
+## A2 — Sweep clock (through `place`)
 
-Procedura (un SDC alla volta; **ripristina** il default alla fine):
+Procedure (one SDC at a time; **restore** default at the end):
 
 ```bash
 cp learn/designs/nangate45/gcd-tutorial/constraint.sdc \
    learn/workbook/backup-sdc-default.sdc
 cd tools/OpenROAD-flow-scripts/flow
-# per ogni file SDC:
+# for every SDC file:
 cp ../../../../learn/designs/nangate45/gcd-tutorial/constraint_relaxed.sdc \
    ../../../../learn/designs/nangate45/gcd-tutorial/constraint.sdc
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
@@ -38,13 +38,13 @@ rg -n 'worst slack|Inserted|period_min' \
 
 | SDC | Periodo | Cosa attenderti a place (qualitativo) | Default `learn` (0.46 ns) |
 |---|---|---|---|
-| relaxed | 2.0 ns | WNS largo positivo, pochi buffer RSZ | — |
-| default | 0.46 ns | worst slack **+0.01 ns**, `period_min` **0.45 ns**, area **684 µm² / 40%** | questa riga |
-| tight | 0.25 ns | più buffer/upsize; CTS può fare **DPL-0038** dopo | non è la riga d’oro |
+| relaxed | 2.0 ns | wide positive WNS, few RSZ buffers | — |
+| default | 0.46 ns | worst slack **+0.01 ns**, `period_min` **0.45 ns**, area **684 µm² / 40%** | this riga |
+| tight | 0.25 ns | more buffer/upsize; CTS may hit **DPL-0038** after | is not the row d’oro |
 
-Osservazione: clock più stretto → più lavoro RSZ → più area sullo **stesso** core.
+Observation: tighter clock → more RSZ work → more area on the **same** core.
 
-Ripristino:
+Restore:
 
 ```bash
 cp learn/workbook/backup-sdc-default.sdc \
@@ -53,12 +53,12 @@ cp learn/workbook/backup-sdc-default.sdc \
 
 ## A3 — SDC e utilization accoppiati
 
-Clock stretto → slack negativo → RSZ inserisce buffer/upsize → area celle cresce →
-`CORE_UTILIZATION` fissa il core → utilization *effettiva* sale → al CTS
-`detailed_placement` può fare **DPL-0038** (util > 100%).
+Tight clock → negative slack → RSZ inserts buffer/upsize → cell area grows →
+`CORE_UTILIZATION` fixes core → *effective* utilization rises → at CTS
+`detailed_placement` may hit **DPL-0038** (util > 100%).
 
-Nel run sano sei al **48.3%** post-CTS, non al 100%. DPL-0038 è l’esperimento LAB 05 parte 4
-(util 55 + SDC 0.25), **non** la tabella d’oro.
+On the healthy run you are at **48.3%** post-CTS, not at 100%. DPL-0038 is l’LAB 05 part 4 experiment
+(util 55 + SDC 0.25), **non** the table d’oro.
 
 ---
 
@@ -68,22 +68,22 @@ Dal log `2_1_floorplan.log`, riga `Core area`.
 
 Riferimento **util 35**: **1712.5 µm²**, effective util **0.367**.
 
-Formula mentale: `area_core ≈ area_celle / (utilization/100)`.
-A parità di 629 µm² di celle, util 50 → core ≈ metà di util 25
-(non esatto: snapping **IFP-0028**, margini, aspect 1.0).
+Mental formula: `area_core ≈ cell_area / (utilization/100)`.
+With the same 629 µm² of cells, util 50 → core ≈ half of util 25
+(not exact: snapping **IFP-0028**, margins, aspect 1.0).
 
 ## B2 — Disegno
 
-Die esterno, core interno, rows orizzontali, rail M1 sulle rows,
-strap M4/M7 a maglia. Confronta col PNG `gui-shots/03_pdn_labeled.png`.
+Outer die, inner core, horizontal rows, M1 rails on rows,
+M4/M7 mesh straps. Compare with PNG `gui-shots/03_pdn_labeled.png`.
 
 ## B3 — GUI scavenger (PDN)
 
-| Cosa | Dove |
+| Cosa | Where |
 |---|---|
-| VDD / VSS | Inspector su una strap; `Nets/Power` e `Nets/Ground` |
+| VDD / VSS | Inspector on a strap; `Nets/Power` and `Nets/Ground` |
 | Site | log `2_1`: `FreePDK45_38x28_10R_NP_162NW_34O` |
-| Tapcell | `gui_2_3_floorplan_tapcell.odb` o PNG `win_tapcell.png` |
+| Tapcell | `gui_2_3_floorplan_tapcell.odb` or PNG `win_tapcell.png` |
 
 Non usare `gui::set_display_controls "Rows"` → **GUI-0013**.
 
@@ -91,49 +91,49 @@ Non usare `gui::set_display_controls "Rows"` → **GUI-0013**.
 
 ## C1 — GP vs DP
 
-| Vista | PNG | Cosa vedi |
+| Vista | PNG | Cosa see |
 |---|---|---|
-| GP | `win_place_gp.png`, `04_place_gp_labeled.png` | blob, overlap visivo possibile, I/O a triangolo |
-| DP | `win_place_dp.png`, `05_place_dp.png` | allineamento alle rows, overlap sparito |
+| GP | `win_place_gp.png`, `04_place_gp_labeled.png` | blob, possible visual overlap, I/O triangles |
+| DP | `win_place_dp.png`, `05_place_dp.png` | aligned to rows, overlap gone |
 
 ## C2 — Buffer resizer a place
 
-Cerca `Inserted` in `logs/.../3_4_place_resized.log`.
+Search for `Inserted` in `logs/.../3_4_place_resized.log`.
 Area post-resize riferimento: **684 µm² / 40%** (era ~629 / 37% post-synth).
-I **45** buffer annotati in golden-metrics sono del **CTS**, non di questo step:
-non mescolare i due `Inserted`.
+I **45** buffer annotati in golden-metrics are del **CTS**, not from this step:
+do not mix i due `Inserted`.
 
 ---
 
-## D1 — DPL-0038 intenzionale
+## D1 — Intentionat DPL-0038
 
 `constraint_tight.sdc` (0.25 ns) + `CORE_UTILIZATION=55` → atteso **DPL-0038**
 in `4_1_cts.log`. Snapshot: `4_1_error.odb`.
 
-Non è **RSZ-0062**: 0062 = timing non riparato (il run d’oro lo ha, e **passa**);
-0038 = legalize impossibile perché area > core.
+This is not **RSZ-0062**: 0062 = timing not repaired (il run d’oro lo ha, e **passa**);
+0038 = legalize impossible because area > core.
 
 ## D2 — Fix
 
-Uno solo: `CORE_UTILIZATION=30` **oppure** SDC 0.46/2.0 ns. Poi CTS deve passare.
-Ripristina SDC e util 35 prima della lezione 06.
+Only one: `CORE_UTILIZATION=30` **or** SDC 0.46/2.0 ns. Then CTS must pass.
+Restore SDC e util 35 before of the lesson 06.
 
 ---
 
 ## E1 — DRC
 
-`wc -l reports/nangate45/gcd/learn/5_route_drc.rpt` → **0** sul GCD `learn` = nessuna violazione listata.
+`wc -l reports/nangate45/gcd/learn/5_route_drc.rpt` → **0** on the GCD `learn` = no violations listed.
 
 ## E2 — GDS
 
-`klayout results/.../6_final.gds`, tasto F. Celle top ≥ 1, layer metal visibili.
+`klayout results/.../6_final.gds`, tasto F. Top cells ≥ 1, metal layers visible.
 Colori **≠** Display Control Qt.
 
-## E3 — Progetto finale
+## E3 — Final project
 
-Template: `progetto-finale-template.md`. Obbligatorio confrontare `period_min`
-finish (**0.50 ns** ~ **2011 MHz**) con SDC 0.46 ns (~2174 MHz):
-`make finish` verde **non** chiude 2.17 GHz.
+Template: `progetto-finale-template.md`. Must compare `period_min`
+finish (**0.50 ns** ~ **2011 MHz**) with SDC 0.46 ns (~2174 MHz):
+`make finish` green **non** chiude 2.17 GHz.
 
-PNG da citare: `orfs_final_worst_path.png`, `orfs_cts_clock_tree.png`,
+PNGs to cite: `orfs_final_worst_path.png`, `orfs_cts_clock_tree.png`,
 `orfs_final_ir_drop.png`, `03_pdn_labeled.png`.

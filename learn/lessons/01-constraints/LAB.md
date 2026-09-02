@@ -1,17 +1,17 @@
 # LAB 01 — Constraints e SDC (sessione da 90–120 minuti)
 
-## Obiettivi misurabili
+## Measurable objectives
 
-Al termine devi saper:
-- Spiegare ogni riga del tuo `constraint.sdc` a voce alta
-- Predire l'effetto di ±50% sul clock period prima di lanciare il flow
+Al termine you must saper:
+- Spiegare every riga del tuo `constraint.sdc` aloud
+- Predire l'effetto di ±50% sul clock period before di lanciare il flow
 - Trovare WNS/TNS in un report senza aiuto
 
 ---
 
-## Parte 1 — Lettura guidata SDC (20 min)
+## Part 1 — Lettura guideta SDC (20 min)
 
-Apri: `learn/designs/nangate45/gcd-tutorial/constraint.sdc`
+Open: `learn/designs/nangate45/gcd-tutorial/constraint.sdc`
 
 ### Riga per riga
 
@@ -28,32 +28,32 @@ set clk_period 0.46
 ```tcl
 create_clock -name $clk_name -period $clk_period $clk_port
 ```
-→ Crea clock virtuale su porta `clk`. Tutti i FF di quel dominio ereditano il periodo.
+→ Crea clock virtuale su porta `clk`. All i FF di quel dominio ereditano the period.
 
 ```tcl
 set_input_delay [expr $clk_period * $clk_io_pct] -clock $clk_name $non_clock_inputs
 ```
 → Modello: segnali input arrivano con ritardo rispetto al clock edge. 20% del periodo = budget IO.
 
-**Scrivi nel quaderno:** input_delay = ______ ns
+**Scrivi nel notebook:** input_delay = ______ ns
 
 ---
 
-## Parte 2 — Esperimento file (30 min)
+## Part 2 — Esperimento file (30 min)
 
 ### Run 1 — Baseline
 ```bash
 cp learn/designs/nangate45/gcd-tutorial/constraint.sdc learn/workbook/backup-sdc-default.sdc
 ./scripts/learn_physical_design.sh --lesson 01
-# oppure solo:
+# or solo:
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 synth floorplan place
 ```
 
-Annota da `reports/.../learn/3_resizer.rpt`:
+Note da `reports/.../learn/3_resizer.rpt`:
 - WNS worst setup
-- Numero buffer (cerca "Inserted")
+- Numero buffer (search for "Inserted")
 
 ### Run 2 — Relaxed
 ```bash
@@ -67,39 +67,39 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 synth floorplan place
 ```
 
-**Domanda:** WNS migliorato? Area celle diminuita?
+**Question:** WNS migliorato? Area celle diminuita?
 
-### Run 3 — Tight (opzionale, può fallire dopo)
+### Run 3 — Tight (optional, may fail dopo)
 ```bash
 cp learn/designs/nangate45/gcd-tutorial/constraint_tight.sdc \
    learn/designs/nangate45/gcd-tutorial/constraint.sdc
 ```
 
-Se CTS fallisce più avanti → **successo didattico**. Apri debug-playbook.
+If CTS fails later → **educational success**. Open debug-playbook.
 
 ---
 
-## Parte 3 — config.mk (20 min)
+## Part 3 — config.mk (20 min)
 
 Apri `learn/designs/nangate45/gcd-tutorial/config.mk`
 
-| Variabile | Valore corso | Cosa succede se raddoppi |
+| Variabile | Valore course | Cosa succede se raddoppi |
 |---|---|---|
-| CORE_UTILIZATION | 35 | core più piccolo → rischio overflow |
+| CORE_UTILIZATION | 35 | smaller core → overflow risk |
 | FLOW_VARIANT | learn | risultati separati da base |
 | PLACE_DENSITY_LB_ADDON | 0.20 | margine density placement |
 
-**Esercizio:** aggiungi commento `# lezione01: mio valore util=40` e prova `CORE_UTILIZATION=40` da CLI:
+**Exercise:** aggiungi commento `# lezione01: mio valore util=40` e prova `CORE_UTILIZATION=40` da CLI:
 
 ```bash
 CORE_UTILIZATION=40 ./scripts/run_gcd_flow.sh floorplan
 ```
 
-Confronta core area nel log con util 35.
+Compare core area in the log con util 35.
 
 ---
 
-## Parte 4 — GUI timing (20 min)
+## Part 4 — GUI timing (20 min)
 
 Prerequisito: Desktop Cursor aperto.
 
@@ -115,11 +115,11 @@ Checklist GUI:
 3. [ ] View → Worst Path (path evidenziato)
 4. [ ] Identifica una `DFF_X1` sul path
 
-**Scrivi:** nome del pin di partenza e arrivo del worst path.
+**Write:** nome del pin di partenza e arrivo del worst path.
 
 ---
 
-## Parte 5 — OpenSTA standalone (15 min)
+## Part 5 — OpenSTA standalone (15 min)
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -132,28 +132,28 @@ report_checks -fields {slew cap input_pins fanout} -max_paths 5
 EOF
 ```
 
-Confronta slack con report post-place. Perché differiscono? (hint: parassiti, placement)
+Compare slack con report post-place. Why differiscono? (hint: parasitics, placement)
 
 ---
 
-## Parte 6 — Riflessione scritta (10 min)
+## Part 6 — Riflessione scritta (10 min)
 
 Rispondi in `learn/workbook/mio-quaderno.md`:
 
-1. Cos'è il tradeoff clock period vs area?
-2. Perché input_delay usa percentuale del periodo?
-3. Quando useresti `set_false_path`? (cerca esempio online o in altri design ORFS)
+1. Cos'is il tradeoff clock period vs area?
+2. Why input_delay use percentuale del periodo?
+3. Quando useresti `set_false_path`? (search for esempio online o in altri design ORFS)
 
 ---
 
-## Criteri "lezione superata"
+## Criteri "lesson superata"
 
-- [ ] Tabella sweep SDC compilata (workbook A2)
+- [ ] Table SDC sweep compilata (workbook A2)
 - [ ] Worst path identificato in GUI
-- [ ] Spiegato `create_clock` a qualcuno (o a voce alta registrata)
-- [ ] Ripristinato constraint.sdc default
+- [ ] Spiegato `create_clock` a qualcuno (o aloud registrata)
+- [ ] Restored constraint.sdc default
 
-Ripristino:
+Restore:
 ```bash
 cp learn/workbook/backup-sdc-default.sdc learn/designs/nangate45/gcd-tutorial/constraint.sdc
 ```

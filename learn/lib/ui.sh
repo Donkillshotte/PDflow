@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Funzioni di interfaccia utente per il corso di physical design.
+# User interface functions for the physical design course.
 
 if [[ -t 1 ]]; then
   C_RESET='\033[0m'
@@ -36,7 +36,7 @@ ui_step() {
 }
 
 ui_tip() {
-  echo -e "${C_YELLOW}💡 Suggerimento:${C_RESET} $1"
+  echo -e "${C_YELLOW}💡 Tip:${C_RESET} $1"
 }
 
 ui_note() {
@@ -44,7 +44,7 @@ ui_note() {
 }
 
 ui_warn() {
-  echo -e "${C_YELLOW}⚠ Attenzione:${C_RESET} $1"
+  echo -e "${C_YELLOW}⚠ Warning:${C_RESET} $1"
 }
 
 ui_ok() {
@@ -62,9 +62,9 @@ ui_code() {
 }
 
 ui_pause() {
-  local msg="${1:-Premi INVIO per continuare...}"
+  local msg="${1:-Press ENTER to continue...}"
   if [[ "${LEARN_AUTO:-0}" == "1" ]]; then
-    ui_note "(modalità automatica: pausa saltata)"
+    ui_note "(automatic mode: pause skipped)"
     return 0
   fi
   echo
@@ -77,20 +77,20 @@ learn_prompt_lab() {
   if [[ ! -f "${lab}" ]]; then
     return 0
   fi
-  ui_section "Laboratorio esteso — LAB.md"
-  ui_note "File: ${lab}"
-  ui_note "Il run.sh è una guida rapida; il LAB contiene esercizi da 60–120 min."
+  ui_section "Extended lab — LAB.md"
+  ui_note "Files: ${lab}"
+  ui_note "run.sh is a quick guide; the LAB contains 60–120 min exercises."
   if [[ "${LEARN_DEEP:-0}" == "1" ]]; then
-    ui_warn "Modalità --deep: leggi il LAB per intero prima di procedere."
-    ui_print_file "Anteprima LAB" "${lab}" 45
-    ui_pause "Premi INVIO dopo aver letto il LAB completo..."
+    ui_warn "--deep mode: read the full LAB before proceeding."
+    ui_print_file "LAB preview" "${lab}" 45
+    ui_pause "Press ENTER after reading the full LAB..."
   else
-    ui_tip "Usa --deep per forzare la lettura guidata del LAB."
+    ui_tip "Use --deep to force guided LAB reading."
   fi
 }
 
 ui_confirm() {
-  local msg="${1:-Continuare?}"
+  local msg="${1:-Continue?}"
   if [[ "${LEARN_AUTO:-0}" == "1" ]]; then
     return 0
   fi
@@ -100,9 +100,9 @@ ui_confirm() {
 
 ui_lesson_header() {
   local num="$1" title="$2" duration="$3"
-  ui_banner "Lezione ${num}: ${title}"
-  ui_note "Durata stimata: ${duration}"
-  ui_note "Design: gcd @ nangate45 | Variante flusso: learn"
+  ui_banner "Lesson ${num}: ${title}"
+  ui_note "Estimated duration: ${duration}"
+  ui_note "Design: gcd @ nangate45 | Flow variant: learn"
   echo
 }
 
@@ -110,10 +110,10 @@ ui_print_file() {
   local label="$1" path="$2" max="${3:-40}"
   ui_note "${label}: ${path}"
   if [[ -f "${path}" ]]; then
-    echo -e "${C_DIM}--- inizio file (prime ${max} righe) ---${C_RESET}"
+    echo -e "${C_DIM}--- file start (first ${max} lines) ---${C_RESET}"
     head -n "${max}" "${path}" | sed 's/^/  /'
-    echo -e "${C_DIM}--- fine estratto ---${C_RESET}"
+    echo -e "${C_DIM}--- excerpt end ---${C_RESET}"
   else
-    ui_warn "File non trovato (verrà creato durante l'esercizio)."
+    ui_warn "Files not found (will be created during the exercise)."
   fi
 }

@@ -1,23 +1,23 @@
 # System PDN & packaging analysis — tool landscape
 
-Vedi anche la **catena completa fasi**: [spice-power-chain.md](./spice-power-chain.md).
+See also the **full phase chain**: [spice-power-chain.md](./spice-power-chain.md).
 
 ## Due analisi distinte
 
-| Livello | Domanda | Cosa usa Studio |
+| Livello | Domanda | Cosa use Studio |
 |---|---|---|
-| **Chip PDN** | Griglia on-die regge IR statico / droop mesh? | OpenROAD **PDNSim** + `write_pg_spice` + `pdn_transient.py` + **vyges-em-ir** + **dynamic_ir** |
+| **Chip PDN** | On-die grid handles static IR / mesh droop? | OpenROAD **PDNSim** + `write_pg_spice` + `pdn_transient.py` + **vyges-em-ir** + **dynamic_ir** |
 | **System PDN** | Catena VRM → board → package → die: Z(f) e load-step? | **ngspice** ladder gerarchico → `run_system_pdn.sh` / FlowLab **PKG** |
 
-Non sono la stessa cosa: package R su PDNSim è ancora un modello *chip-centric*.
-System PDN simula la catena di alimentazione fuori dal die.
+They are not the same thing: package R on PDNSim is still a *chip-centric* model.
+System PDN simulates the supply chain outside the die.
 
 ## System PDN (fase PKG)
 
 `run_system_pdn.sh` / azione `system_pdn`:
 
 1. Legge `learn/system_pdn/default.json` (VRM, board plane/decap, package RLC/bumps, C_die)
-2. Stima `I_die` da `activity_power` / report, oppure `I_DIE_AVG=`
+2. Stima `I_die` da `activity_power` / report, or `I_DIE_AVG=`
 3. **ngspice TRAN** — load-step al die → droop su VRM / board / pkg / die
 4. **ngspice AC** — \|Z(f)\| visto al die (Iac=1A)
 
@@ -26,11 +26,11 @@ Work: `results/.../system_pdn/` (netlist + wrdata)
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_system_pdn.sh
-# oppure
+# or
 I_DIE_AVG=0.002 FLOW_VARIANT=flowlab ./learn/scripts/run_system_pdn.sh
 ```
 
-## Chip PDN IR (opzionale)
+## Chip PDN IR (optional)
 
 ```bash
 FLOW_VARIANT=flowlab PKG_R=0.05 PKG_L=2e-10 PEAK_FACTOR=8 \
@@ -45,14 +45,14 @@ Validazione GCD flowlab: static IR engine ≈ **4.56 mV** vs OpenROAD ≈ **4.47
 ## Tool open / academic rilevanti
 
 1. **OpenROAD PDNSim** — static IR on-die, `write_pg_spice`
-2. **ngspice** — System PDN AC/TRAN sul ladder (quello usato in PKG)
-3. **vyges-em-ir** — engine Apache-2.0 (binario) sulla stessa mesh: azione `vyges_em_ir`. `pdn_transient.py` resta il solver di laboratorio con waveform globale. Dettagli: [vyges-em-ir.md](./vyges-em-ir.md)
-4. **dynamic_ir** — I(t) per ITerm + BE + heatmap: azione `dynamic_ir`. [dynamic-ir.md](./dynamic-ir.md)
+2. **ngspice** — System PDN AC/TRAN on ladder (used in PKG)
+3. **vyges-em-ir** — engine Apache-2.0 (binario) on the same mesh: azione `vyges_em_ir`. `pdn_transient.py` remains the lab solver with global waveform. Details: [vyges-em-ir.md](./vyges-em-ir.md)
+4. **dynamic_ir** — I(t) per ITerm + BE + heatmap: `dynamic_ir` action. [dynamic-ir.md](./dynamic-ir.md)
 4. Board SI/PI full-wave — tipicamente tool commerciali (ADS, SIwave, …)
 
 ## Limiti onesti
 
-- System PDN = modello *lumped* educativo (non S-parameter board reale)
-- Chip PDN transient = worst-case simultaneous switching, non VCD-accurate
+- System PDN = educational *lumped* model (not real S-parameter board)
+- Chip PDN transient = worst-case simultaneousus switching, not VCD-accurate
 - Nessun LEF bump/RDL reale su nangate45 GCD
-- Non sostituisce Voltus / RedHawk per tapeout
+- Does not replace Voltus / RedHawk for tapeout

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Helper per invocare ORFS dal corso didattico.
+# Helper to invoke ORFS from the tutorial course.
 
 learn_orfs_env() {
   export LEARN_ROOT="${LEARN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -37,7 +37,7 @@ learn_make() {
 
 learn_gui() {
   local target="$1"
-  ui_step "GUI" "Apertura ${target} (usa il pulsante Desktop su cursor.com/agents/...)"
+  ui_step "GUI" "Opening ${target} (use the Desktop button on cursor.com/agents/...)"
   learn_make "gui_${target}" || learn_make "open_${target}" || true
 }
 
@@ -57,27 +57,27 @@ learn_report() {
 }
 
 learn_show_tree() {
-  ui_section "Albero artefatti attuale (results/${FLOW_VARIANT})"
+  ui_section "Current artifact tree (results/${FLOW_VARIANT})"
   if [[ -d "${RESULTS}" ]]; then
     ls -lh "${RESULTS}" 2>/dev/null | tail -n +2 | sed 's/^/  /' || true
   else
-    ui_note "Nessun risultato ancora — verrà creato durante gli esercizi."
+    ui_note "No results yet — will be created during exercises."
   fi
 }
 
-# One-liner che lo studente può copiare (mai "make ...").
+# One-liner the student can copy (never "make ...").
 learn_make_hint() {
   local tgt="${*:-<target>}"
-  ui_note "Comando equivalente da flow/ (copia intero — mai «make ...»):"
+  ui_note "Equivalent command from flow/ (copy entire line — never «make ...»):"
   ui_code "cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \\
      FLOW_VARIANT=learn CORE_UTILIZATION=35 ${tgt}"
 }
 
 learn_golden() {
-  ui_tip "Confronta i report con learn/reference/golden-metrics.md (util 35, SDC 0.46 ns)."
+  ui_tip "Compare reports with learn/reference/golden-metrics.md (util 35, SDC 0.46 ns)."
 }
 
 learn_atlas() {
-  ui_tip "Atlante GUI: learn/reference/gui-atlas.md — PNG: $*"
+  ui_tip "GUI atlas: learn/reference/gui-atlas.md — PNG: $*"
 }

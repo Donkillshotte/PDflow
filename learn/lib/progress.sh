@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tracciamento progresso del corso.
+# Course progress tracking.
 
 learn_progress_file() {
   echo "${LEARN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/.progress.json"
@@ -36,19 +36,19 @@ data["updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
 PY
-  ui_ok "Lezione ${lesson_id} segnata come completata."
+  ui_ok "Lesson ${lesson_id} marked complete."
 }
 
 learn_show_progress() {
   learn_progress_init
-  ui_section "Progresso corso"
+  ui_section "Course progress"
   python3 - "$(learn_progress_file)" <<'PY'
 import json, sys
 with open(sys.argv[1]) as f:
     d = json.load(f)
-print("  Iniziato:", d.get("started_at", "?"))
-print("  Ultima lezione:", d.get("last_lesson", "(nessuna)"))
-print("  Completate:", ", ".join(d.get("completed_lessons", [])) or "(nessuna)")
+print("  Started:", d.get("started_at", "?"))
+print("  Last lesson:", d.get("last_lesson", "(none)"))
+print("  Completed:", ", ".join(d.get("completed_lessons", [])) or "(none)")
 PY
 }
 

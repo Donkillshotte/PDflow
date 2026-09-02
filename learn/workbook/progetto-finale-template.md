@@ -1,25 +1,25 @@
-# Template progetto finale (lezione 07)
+# Template final project (lesson 07)
 
-Copia in `mio-progetto-finale.md`. Senza questo file compilato il corso **non è finito**,
-anche se `make finish` è verde.
+Copy to `mio-progetto-finale.md`. Senza this file compilato the course **is not finito**,
+even if `make finish` is green.
 
-Confronta ogni numero con [golden-metrics.md](../reference/golden-metrics.md)
+Compare every numero con [golden-metrics.md](../reference/golden-metrics.md)
 (util 35, SDC 0.46 ns, variant `learn`, OpenROAD/ORFS 26Q2).
 
-## 1. Parametri del *tuo* run
+## 1. Parameters of *your* run
 
-- SDC usato (periodo clock, file):
+- SDC used (clock period, file):
 - `CORE_UTILIZATION`:
 - `PLACE_DENSITY_LB_ADDON` (se diverso da 0.20):
 - Altri override Makefile:
 - Tool: `openroad -version` =
 
-## 2. Metriche vs tabella d’oro
+## 2. Metrics vs tabella d’oro
 
 Copia i **tuoi** valori dai report (`3_resizer.rpt`, `4_cts_final.rpt`, `6_finish.rpt`,
 `synth_stat.txt`, `2_1_floorplan.log`). Non inventare.
 
-| Stadio | Metrica | Tuo valore | Riferimento golden | Scarto |
+| Stadio | Metric | Tuo valore | Riferimento golden | Scarto |
 |---|---|---|---|---|
 | Synth | celle / area / DFF_X1 | | 496 / 628.824 / 35 | |
 | Floorplan | core area / eff. util | | 1712.5 µm² / 0.367 | |
@@ -32,51 +32,51 @@ Copia i **tuoi** valori dai report (`3_resizer.rpt`, `4_cts_final.rpt`, `6_finis
 | Finish | WNS / TNS / viol | | −0.04 / −0.60 / 38 | |
 | Finish | `period_min` / fmax | | 0.50 ns / ~2011 MHz | |
 
-**Domanda obbligatoria:** il periodo SDC è 0.46 ns (~2174 MHz). Il tuo `period_min` a finish
-è ______. Quindi fmax reale ≈ 1/`period_min`. Hai chiuso il target di frequenza? (**Sì/No** + una frase)
+**Domanda required:** the period SDC is 0.46 ns (~2174 MHz). Your `period_min` a finish
+is ______. So real fmax ≈ 1/`period_min`. Did you close the frequency target? (**Yes/No** + one sentence)
 
-Lettura corretta sul run d’oro: **No** — 2011 MHz < 2174 MHz. `make finish` exit 0 ≠ timing chiuso.
+Correct reading on the gold run: **No** — 2011 MHz < 2174 MHz. `make finish` exit 0 ≠ timing closed.
 
-Hai visto **RSZ-0062** nel log CTS? (Sì/No). Non è **DPL-0038**. Differenza in una frase:
+Did you see **RSZ-0062** in the log CTS? (Yes/No). This is not **DPL-0038**. Difference in one sentence:
 
-## 3. Screenshot o riferimento atlante
+## 3. Screenshot o riferimento atlas
 
-Indica il PNG in `learn/reference/gui-shots/` **o** descrivi la GUI (Desktop, non Preview).
+Point to the PNG in `learn/reference/gui-shots/` **or** describe the GUI (Desktop, not Preview).
 
-| Vista | File PNG / ODB | Cosa hai riconosciuto |
+| Vista | Files PNG / ODB | What you recognized |
 |---|---|---|
 | Anatomia A–G | `win_anatomy_labeled.png` | |
-| PDN | `03_pdn_labeled.png` | rail M1 vs strap |
+| PDN | `03_pdn_labeled.png` | M1 rail vs strap |
 | Place GP vs DP | `04_place_gp_labeled.png` / `05_place_dp.png` | |
-| Clock tree | `orfs_cts_clock_tree.png` | latency foglie ~ |
-| Route M2/M3 | `08_route_labeled.png` / `win_layers_m2m3.png` | colori |
+| Clock tree | `orfs_cts_clock_tree.png` | latency leaves ~ |
+| Route M2/M3 | `08_route_labeled.png` / `win_layers_m2m3.png` | colors |
 | Worst path | `orfs_final_worst_path.png` | start/end pin |
-| IR drop | `orfs_final_ir_drop.png` | scala mV |
+| IR drop | `orfs_final_ir_drop.png` | mV scale |
 | Congestion | `orfs_final_congestion.png` | gcell |
 
 Inspector su net `clk` (post-route): Signal type ______, Wire type ______, NDR ______.
 
-## 4. Un errore incontrato
+## 4. An error encountered
 
 - Log (3 righe):
 - Codice (`DPL-0038`, `RSZ-0062`, `STA-2204`, `GUI-0013`, `IFP-0028`, altro):
-- Ipotesi:
-- Fix (un parametro):
-- Lezione appresa:
+- Hypothesis:
+- Fix (one knob):
+- Lesson appresa:
 
-## 5. Tre cose che ora so spiegare a voce
+## 5. Three things I can now explain aloud
 
 1.
 2.
 3.
 
-## 6. Prossimo design
+## 6. Next design
 
-Cosa porteresti in ORFS dopo GCD e perché (PDK, size, vincolo clock).
+What you would bring to ORFS after GCD and why (PDK, size, vincolo clock).
 
 ## 7. Autocertificazione
 
-- [ ] Ho letto `golden-metrics.md` e compilato lo scarto
-- [ ] Ho aperto (o studiato i PNG di) atlante `gui-atlas.md`
-- [ ] `constraint.sdc` è di nuovo il default 0.46 ns
-- [ ] `FLOW_VARIANT=learn` in tutti i comandi che ho lanciato a mano
+- [ ] Ho letto `golden-metrics.md` e compilato the deviation
+- [ ] Ho aperto (o studiato i PNG di) atlas `gui-atlas.md`
+- [ ] `constraint.sdc` is default again 0.46 ns
+- [ ] `FLOW_VARIANT=learn` in all commands I ran manually

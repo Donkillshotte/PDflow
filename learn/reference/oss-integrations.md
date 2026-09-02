@@ -1,13 +1,13 @@
 # Integrazioni OSS (GCD Nangate45)
 
-Matrice onesta: ogni tool chiesto è **INTEGRATED**, **MAPPED** (equivalente OSS nel flusso studente), **PARTIAL**, o **GAP**. Il corso è pinnato **Nangate45 / FreePDK45** — non Sky130.
+Matrice onesta: every tool chiesto is **INTEGRATED**, **MAPPED** (equivalente OSS nel flusso studente), **PARTIAL**, o **GAP**. Il course is pinnato **Nangate45 / FreePDK45** — non Sky130.
 
 Legenda:
 
-| Stato | Significato |
+| Status | Meaning |
 |---|---|
 | **INTEGRATED** | Binario + script Studio + run verificato su GCD |
-| **MAPPED** | Binario dedicato assente; lo stesso ruolo è coperto da un engine OSS già nel path |
+| **MAPPED** | Dedicated binary absent; same role covered by OSS engine already in path |
 | **PARTIAL** | Binario presente, ma PDK/tech incompatibile con Nangate45 |
 | **GAP** | Commerciale o PDK sbagliato — non si finge l’integrazione |
 
@@ -21,7 +21,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 
 ## Matrice tool
 
-| Tool | Stato | Ruolo sul GCD | Evidenza | Equivalente se non INTEGRATED |
+| Tool | Status | Role on the GCD | Evidence | Equivalent if not INTEGRATED |
 |---|---|---|---|---|
 | **Yosys** | INTEGRATED | Synth ORFS + `stat` inspect + **equiv RTL↔synth** | `yosys -V` 0.63 · azione `yosys_equiv` · `sim/reports/yosys_equiv_flowlab.json` | — |
 | **KLayout** | INTEGRATED | DRC/LVS signoff + GDS viewer | `klayout -v` · `drc_signoff` / `klayout_lvs` | — |
@@ -33,19 +33,19 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 | **Xyce (Sandia)** | GAP | Non in apt / non in PATH | `spice_engines_*.json` `xyce_present: false` | **ngspice** copre AC/TRAN PDN educativo |
 | **OpenRCX** | INTEGRATED | Dentro OpenROAD (`extract_parasitics`) | `6_final.spef` + `rcx_patterns.rules` · azione `openrcx_report` | — |
 | **FasterCap** | MAPPED | Binario assente | Sakurai–Tamaru 1983 + FDM 2D Laplace · `analytical_pex` | Raphael-class 2-wire tutorial |
-| **Raphael** | GAP | Synopsys commerciale, no licenza | documentato | OpenRCX SPEF + PEX analitico |
-| **StarRC** | GAP | Synopsys commerciale, no licenza | documentato | **OpenRCX** SPEF a finish |
-| **open_pdks** | GAP | Sky130 / gf180, **altro PDK** | corso pinnato Nangate45 | Non si mescola con FreePDK45 |
-| **vyges-em-ir** | INTEGRATED | IR statico CG + transiente BE sulla mesh `write_pg_spice` | azione `vyges_em_ir` · `sim/reports/vyges_em_ir_flowlab.json` · binario v0.1.33 | — |
-| **dynamic_ir (questo corso)** | INTEGRATED | I(t) per ITerm + Solver A LU gold + **Solver B SA-AMG** + scenari su A condivisa | azione `dynamic_ir` · `sim/reports/dynamic_ir_flowlab.json` + `.svg` | — |
+| **Raphael** | GAP | Synopsys commercial, no licenza | documentato | OpenRCX SPEF + PEX analitico |
+| **StarRC** | GAP | Synopsys commercial, no licenza | documentato | **OpenRCX** SPEF a finish |
+| **open_pdks** | GAP | Sky130 / gf180, **altro PDK** | course pinnato Nangate45 | Non si mescola con FreePDK45 |
+| **vyges-em-ir** | INTEGRATED | static IR CG + transiente BE on the mesh `write_pg_spice` | azione `vyges_em_ir` · `sim/reports/vyges_em_ir_flowlab.json` · binario v0.1.33 | — |
+| **dynamic_ir (this course)** | INTEGRATED | I(t) per ITerm + Solver A LU gold + **Solver B SA-AMG** + scenari su A condivisa | azione `dynamic_ir` · `sim/reports/dynamic_ir_flowlab.json` + `.svg` | — |
 
 ---
 
 ## Formal / equiv (EQY · sby)
 
-| Check | Script | Proprietà |
+| Check | Script | Property |
 |---|---|---|
-| Equiv | `learn/scripts/run_yosys_equiv.sh` | RTL GCD ≡ `synth -top gcd` (induzione sequenziale) |
+| Equiv | `learn/scripts/run_yosys_equiv.sh` | RTL GCD ≡ `synth -top gcd` (induzione sequential) |
 | Safety | `learn/scripts/run_formal_gcd.sh` | `reset=1` ⇒ `resp_val=0` (`sat -tempinduct`) |
 | Wrapper sby | `learn/formal/gcd_safety.v` | pronto se installi `sby` |
 
@@ -53,23 +53,23 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 
 ## PEX (OpenRCX · FasterCap · Raphael · StarRC)
 
-Finish ORFS già chiama OpenRCX se `RCX_RULES` è settato (`platforms/nangate45/rcx_patterns.rules`). Il report `openrcx_*.json` conta `*D_NET` / `*CAP` / `*RES` sul SPEF reale.
+Finish ORFS already calls OpenRCX if `RCX_RULES` is set (`platforms/nangate45/rcx_patterns.rules`). Il report `openrcx_*.json` counts `*D_NET` / `*CAP` / `*RES` sul SPEF reale.
 
-FasterCap/Raphael non estraggono il full-chip: il tutorial 2-wire (`run_analytical_pex.py`) dà Cg/Cc in fF su geometria M2 FreePDK45-like, confrontabile in ordine di grandezza col SPEF.
+FasterCap/Raphael do not extract full-chip: the tutorial 2-wire (`run_analytical_pex.py`) gives Cg/Cc in fF on M2 FreePDK45-like geometry, comparable in order of magnitude to SPEF.
 
 ---
 
 ## Layout (Magic · Netgen · KLayout · open_pdks)
 
-KLayout è l’unico percorso **signoff** su questo PDK (runset vendored `learn/platforms/nangate45/lvs/FreePDK45.lylvs`). Magic/Netgen restano probe: utili su Sky130 via open_pdks, non su Nangate45.
+KLayout is l’unico percourse **signoff** su this PDK (runset vendored `learn/platforms/nangate45/lvs/FreePDK45.lylvs`). Magic/Netgen restano probe: utili su Sky130 via open_pdks, non su Nangate45.
 
 ---
 
 ## Power: vectorless + dynamic
 
-Vedi [vectorless-power.md](./vectorless-power.md). OpenSTA 26Q2: usare `read_vcd`, **non** `read_power_activities` (arity rotta).
+See [vectorless-power.md](./vectorless-power.md). OpenSTA 26Q2: usare `read_vcd`, **non** `read_power_activities` (arity rotta).
 
-Engine IR/EM Apache-2.0 sulla stessa mesh: [vyges-em-ir.md](./vyges-em-ir.md) (binario reale, non un reimplement).
+Engine IR/EM Apache-2.0 on the same mesh: [vyges-em-ir.md](./vyges-em-ir.md) (binario reale, non un reimplement).
 I(t) per pin + waveform + heatmap: [dynamic-ir.md](./dynamic-ir.md). Landscape OSS: [dynamic-ir-landscape.md](./dynamic-ir-landscape.md).
 
 ---

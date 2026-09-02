@@ -1,8 +1,8 @@
 # ngspice · come leggere le simulazioni System PDN
 
-Studio usa **ngspice-42** in batch per la fase PKG. Questa guida spiega netlist, comandi e come interpretare i report.
+Studio use **ngspice-42** in batch per la fase PKG. This guidand explain netlist, comandi e come interpretare i report.
 
-## Installazione (già in VM)
+## Installation (already in VM)
 
 ```bash
 ngspice -v
@@ -15,9 +15,9 @@ Documentazione upstream: [ngspice.sourceforge.io](http://ngspice.sourceforge.io/
 
 ## Netlist System PDN (ladder)
 
-File demo: `learn/sim/spice/system_pdn_tran_demo.sp`
+Files demo: `learn/sim/spice/system_pdn_tran_demo.sp`
 
-Struttura tipica:
+Structure tipica:
 
 ```spice
 * VRM
@@ -40,7 +40,7 @@ quit
 .end
 ```
 
-| Elemento | Significato fisico |
+| Elemento | Meaning fisico |
 |---|---|
 | `V_*` | Regolatore ideale (1.1 V) |
 | `R_*`, `L_*` | ESR/ESL package, plane, VRM |
@@ -68,7 +68,7 @@ ngspice -b -o log.txt system_pdn_tran_demo.sp
 
 `learn/sim/reports/system_pdn_flowlab.json`:
 
-| Campo | Significato |
+| Campo | Meaning |
 |---|---|
 | `transient.droop_mv` | Vdd − min(V_die) al load-step |
 | `impedance.z_max_mohm` | Picco \|Z(f)\| al die |
@@ -91,18 +91,18 @@ Target educativo in config: `z_target_mohm: 50`.
 | Engine | Python sparse / PDNSim | ngspice |
 | Domanda | IR on-die | VRM→board→pkg |
 
-Le **celle standard** non sono simulate transistor-per-transistor: OpenROAD inietta **correnti DC equivalenti** sui pin ITerm. Per un inverter SPICE didattico vedi `nangate_inverter_demo.sp`.
+Le **celle standard** non are simulate transistor-per-transistor: OpenROAD inietta **correnti DC equivalenti** sui pin ITerm. Per un inverter SPICE educational see `nangate_inverter_demo.sp`.
 
 ---
 
-## Esercizi
+## Exercises
 
-1. Modifica `learn/system_pdn/default.json` → raddoppia `c_bulk` → rilancia PKG → confronta Zmax e droop
-2. Apri `tran.sp` in `results/.../system_pdn/` e identifica ogni blocco VRM/board/pkg
-3. Esegui manualmente: `ngspice -b learn/sim/spice/system_pdn_tran_demo.sp`
+1. Modify `learn/system_pdn/default.json` → raddoppia `c_bulk` → rilancia PKG → confronta Zmax e droop
+2. Apri `tran.sp` in `results/.../system_pdn/` e identifica every blocco VRM/board/pkg
+3. Run manualmente: `ngspice -b learn/sim/spice/system_pdn_tran_demo.sp`
 
 ---
 
-## Collegamento fasi
+## Link fasi
 
-Vedi [spice-power-chain.md](./spice-power-chain.md) per il flusso RTL→PKG completo.
+See [spice-power-chain.md](./spice-power-chain.md) per il flusso RTL→PKG completo.

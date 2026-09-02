@@ -1,98 +1,98 @@
-# Lezione 00 — Introduzione al Physical Design
+# Lesson 00 — Introduction to Physical Design
 
-Benvenuto nel corso hands-on di **physical design digitale** con OpenROAD.
+Welcome to the hands-on **digital physical design** course with OpenROAD.
 
-Questa lezione non è un riassunto da scorrere. È la **mappa mentale** che userai per 6–10 ore. Se salti i paragrafi, le lezioni 03–07 sembreranno magia nera.
+This lesson is not a summary to skim. It is the **mental map** you will use for 6–10 hours. If you skip sections, lessons 03–07 will feel like black magic.
 
-## Obiettivi
+## Objectives
 
-- Capire la mappa **RTL → GDSII** come catena di *contratti* (file in, file out)
-- Orientarsi in ORFS senza perderti tra 2000 file
-- Sapere quali **file** e quali **comandi GUI** userai in ogni fase
-- Distinguere **tool** (OpenROAD, Yosys, OpenSTA, KLayout) dai **script** (ORFS)
-- Eseguire un primo smoke test della toolchain
+- Understand the **RTL → GDSII** map as a chain of *contracts* (file in, file out)
+- Orient yourself in ORFS without getting lost among 2000 files
+- Know which **files** and which **GUI commands** you use at each stage
+- Distinguish **tools** (OpenROAD, Yosys, OpenSTA, KLayout) from **scripts** (ORFS)
+- Run a first toolchain smoke test
 
-## Letture obbligatorie (prima degli esercizi)
+## Required reading (before exercises)
 
-1. Questo README (~15 min)
-2. `learn/reference/glossary.md` — sezioni C, F, P, S, T (~20 min)
+1. This README (~15 min)
+2. `learn/reference/glossary.md` — sections C, F, P, S, T (~20 min)
 3. `learn/reference/file-formats.md` (~20 min)
-4. `learn/reference/gui-openroad.md` — solo sezione Avvio (~10 min)
-5. `learn/reference/golden-metrics.md` — cos'è un run di riferimento (~10 min)
-6. `learn/lessons/00-intro/LAB.md` (~60 min di pratica)
+4. `learn/reference/gui-openroad.md` — Startup section only (~10 min)
+5. `learn/reference/golden-metrics.md` — what a reference run is (~10 min)
+6. `learn/lessons/00-intro/LAB.md` (~60 min practice)
 
-## Cosa significa “physical design”
+## What “physical design” means
 
-Il **logical design** (RTL) dice *cosa* calcola il chip.  
-Il **physical design** dice *dove* stanno transistor e fili, *quanto* ritardano, *se* la fabbrica può stamparli.
+**Logical design** (RTL) says *what* the chip computes.  
+**Physical design** says *where* transistors and wires sit, *how much* they delay, and *whether* the fab can print them.
 
-OpenROAD automatizza la seconda parte. Tu devi capire abbastanza da:
-- dare constraints realistici
-- leggere un fallimento
-- non accettare un GDS “verde” senza guardare WNS e DRC
+OpenROAD automates the second part. You must understand enough to:
+- give realistic constraints
+- read a failure
+- not accept a “green” GDS without checking WNS and DRC
 
-## Il flusso come catena di contratti
+## The flow as a contract chain
 
 ```
 Verilog + SDC
-    → Synthesis     contratto: netlist gate-level + liberty delay
-    → Floorplan     contratto: die/core/rows/PDN (ancora senza celle piazzate)
-    → Placement     contratto: ogni cella ha (x,y) legale
-    → CTS           contratto: clock distribuito con skew controllato
-    → Routing       contratto: ogni net ha geometria DRC-clean
-    → Finish        contratto: GDS + SPEF + report signoff
+    → Synthesis     contract: gate-level netlist + liberty delay
+    → Floorplan     contract: die/core/rows/PDN (still without placed cells)
+    → Placement     contract: every cell has legal (x,y)
+    → CTS           contract: clock distributed with controlled skew
+    → Routing       contract: every net has DRC-clean geometry
+    → Finish        contract: GDS + SPEF + signoff reports
 ```
 
-Ogni fase **rompe** il contratto precedente in modo controllato (aggiunge buffer, sposta celle) e ne scrive uno nuovo su disco (`.odb`).
+Each stage **breaks** the previous contract in a controlled way (adds buffers, moves cells) and writes a new one to disk (`.odb`).
 
-## Chi fa cosa (tool vs ORFS)
+## Who does what (tools vs ORFS)
 
-| Componente | Ruolo |
+| Component | Role |
 |---|---|
-| **Yosys** | Synthesis logica (RTL → gate) |
-| **OpenROAD** | Floorplan, place, CTS, route, GUI, STA integrata |
-| **OpenSTA** | Timing analysis (anche standalone `sta`) |
+| **Yosys** | Logical synthesis (RTL → gates) |
+| **OpenROAD** | Floorplan, place, CTS, route, GUI, integrated STA |
+| **OpenSTA** | Timing analysis (also standalone `sta`) |
 | **KLayout** | GDS merge/view |
-| **ORFS** | Makefile + Tcl che *orchestrano* i tool |
+| **ORFS** | Makefile + Tcl that *orchestrate* the tools |
 
-Senza ORFS dovresti scrivere 50 script Tcl. Con ORFS hai target `make floorplan`. Il corso ti fa **aprire** quegli script, non nasconderli.
+Without ORFS you would write 50 Tcl scripts. With ORFS you have targets like `make floorplan`. The course makes you **open** those scripts, not hide them.
 
-## Struttura ORFS (cartelle chiave)
+## ORFS structure (key folders)
 
-| Cartella | Contenuto |
+| Folder | Contents |
 |---|---|
-| `flow/designs/` | Config design (`config.mk`), constraints (`constraint.sdc`), RTL |
-| `flow/platforms/nangate45/` | PDK: LEF, LIB, regole tecnologiche |
-| `flow/scripts/` | Script Tcl di ogni fase (`floorplan.tcl`, `global_place.tcl`, …) |
-| `flow/results/.../learn/` | Snapshot `.odb` del corso (variante `learn`) |
-| `flow/logs/.../learn/` | Log dettagliati di ogni step |
-| `flow/reports/.../learn/` | Report timing, area, DRC |
+| `flow/designs/` | Design config (`config.mk`), constraints (`constraint.sdc`), RTL |
+| `flow/platforms/nangate45/` | PDK: LEF, LIB, technology rules |
+| `flow/scripts/` | Tcl scripts per stage (`floorplan.tcl`, `global_place.tcl`, …) |
+| `flow/results/.../learn/` | Course `.odb` snapshots (`learn` variant) |
+| `flow/logs/.../learn/` | Detailed logs per step |
+| `flow/reports/.../learn/` | Timing, area, DRC reports |
 
-**Regola d’oro:** se non capisci un risultato, apri il **log** della stessa fase prima della GUI.
+**Golden rule:** if you do not understand a result, open the **log** for that stage before the GUI.
 
-## Design didattico: GCD
+## Tutorial design: GCD
 
-Il **GCD** (Greatest Common Divisor) è un piccolo core (~250 celle) su **Nangate45** (PDK open, 45 nm educativo).
+The **GCD** (Greatest Common Divisor) is a small core (~250 cells) on **Nangate45** (open PDK, educational 45 nm).
 
-Perché GCD e non un RISC-V:
-- un run completo dura **minuti**, non ore
-- CTS e routing sono comunque reali
-- puoi fare sweep SDC/utilization nello stesso pomeriggio
+Why GCD and not a RISC-V:
+- a full run takes **minutes**, not hours
+- CTS and routing are still real
+- you can SDC sweep/utilization in the same afternoon
 
-Limite: non imparerai macro SRAM, hierarchical floorplan, o MCMM. Va bene: prima il flusso, poi la scala.
+Limit: you will not learn SRAM macros, hierarchical floorplan, or MCMM. That is fine: flow first, then scale.
 
-## Due modalità di apprendimento
+## Two learning modes
 
-1. **File / Makefile** — capisci input/output, modifichi parametri, rileggi report
-2. **GUI OpenROAD** — ispezioni visivamente layout, timing path, congestione, clock tree
+1. **Filess / Makefile** — understand input/output, change parameters, re-read reports
+2. **OpenROAD GUI** — visually inspect layout, timing paths, congestion, clock tree
 
-Entrambe sono obbligatorie. Solo file = non “vedi” congestion. Solo GUI = non sai riprodurre.
+Both are required. Filess only = you do not “see” congestion. GUI only = you cannot reproduce.
 
-> Per la GUI usa il pulsante **Desktop** su [cursor.com/agents](https://cursor.com/agents) (non le card Preview della chat). Dettagli: `learn/reference/gui-openroad.md`.
+> For the GUI use the **Desktop** button on [cursor.com/agents](https://cursor.com/agents) (not chat Preview cards). Details: `learn/reference/gui-openroad.md`.
 
-## Artefatti per fase (riferimento rapido)
+## Artifacts per stage (quick reference)
 
-| Fase | Target make | Snapshot GUI tipico | Walkthrough Tcl |
+| Stage | make target | Typical GUI snapshot | Tcl walkthrough |
 |---|---|---|---|
 | Synth | `synth` | `gui_1_synth.odb` | `reference/walkthrough-synth.tcl.md` |
 | Floorplan | `floorplan` | `gui_2_1_floorplan.odb`, `gui_2_4_floorplan_pdn.odb` | `walkthrough-floorplan.tcl.md` |
@@ -101,28 +101,28 @@ Entrambe sono obbligatorie. Solo file = non “vedi” congestion. Solo GUI = no
 | Route | `route` | `gui_5_1_grt.odb`, `gui_5_2_route.odb` | `walkthrough-route.tcl.md` |
 | Finish | `finish` | `gui_final` | `walkthrough-finish.tcl.md` |
 
-## Errori che farai (e va bene)
+## Mistakes you will make (and that is fine)
 
-- Lancio `make` senza `FLOW_VARIANT=learn` e sporchi `base`
-- Modifichi SDC e utilization insieme e non sai chi ha rotto CTS
-- Guardi solo la GUI e ignori `DPL-0038` nel log
-- Usi Preview invece di Desktop e pensi che OpenROAD sia crashato
-- Credi che `make finish` verde = 2.17 GHz chiusi (guarda `period_min` in `golden-metrics.md`)
+- Run `make` without `FLOW_VARIANT=learn` and pollute `base`
+- Change SDC and utilization together and not know who broke CTS
+- Only look at the GUI and ignore `DPL-0038` in the log
+- Use Preview instead of Desktop and think OpenROAD crashed
+- Believe green `make finish` = 2.17 GHz closed (check `period_min` in `golden-metrics.md`)
 
-Il playbook: `learn/reference/debug-playbook.md`.
+Playbook: `learn/reference/debug-playbook.md`.
 
-## Catena power & SPICE
+## Power & SPICE chain
 
-Questa lezione è il **primo anello** della catena integrità di alimentazione documentata in [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-00-intro).
+This lesson is the **first link** in the power integrity chain documented in [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-00-intro).
 
-| Collegamento | Dove |
+| Link | Where |
 |---|---|
-| FlowLab | [fase RTL](/flusso?phase=rtl) · azione `rtl_sim` |
-| Output | `learn/sim/gcd/gcd.vcd` (toggle → activity futura) |
-| Lezione seguente power | 02 synthesis (liberty) → 07 finish (`report_power`, [`signoff-matrix`](../../reference/signoff-matrix.md)) |
+| FlowLab | [RTL stage](/flusso?phase=rtl) · `rtl_sim` action |
+| Output | `learn/sim/gcd/gcd.vcd` (toggles → future activity) |
+| Next power lesson | 02 synthesis (liberty) → 07 finish (`report_power`, [`signoff-matrix`](../../reference/signoff-matrix.md)) |
 
-## Durata stimata
+## Estimated duration
 
-- README + glossario: 45–60 min
+- README + glossary: 45–60 min
 - LAB 00: 60 min
-- **Totale lezione 00: ~2 ore** se fatto bene
+- **Lesson 00 total: ~2 hours** if done properly

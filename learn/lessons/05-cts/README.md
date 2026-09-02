@@ -1,90 +1,90 @@
-# Lezione 05 — Clock Tree Synthesis (CTS)
+# Lesson 05 — Clock Tree Synthesis (CTS)
 
-CTS è dove il corso **insegna il debug**. Se tutto passa al primo colpo, provoca un fallimento (LAB parte 4).
+CTS is where the course **teaches debug**. If everything passes on the first try, trigger a failure (LAB part 4).
 
-Sul GCD `learn` (util 35, SDC 0.46 ns) un run reale ha fatto:
+On the GCD `learn` (util 35, SDC 0.46 ns) a real run produced:
 
-| Istante | Core | Area istanze | Util | Note |
+| Stage | Core | Area istanze | Util | Note |
 |---|---|---|---|---|
-| DPL pre-repair CTS | 1712.5 µm² | 693 µm² | **40.5%** | buffer clock appena inseriti |
-| Dopo `repair_timing` CTS | 1712.5 µm² | 828 µm² | **48.3%** | `Inserted 45 buffers`, **RSZ-0062** |
-| WNS CTS final | | | | **−0.04 ns**, 32 violazioni setup |
-| Setup skew | | | | ~**0.00 ns** (albero corto) |
-| Finish (confronto) | | | | WNS **−0.04 ns**, TNS −0.60, fmax ~2.01 GHz |
+| DPL pre-repair CTS | 1712.5 µm² | 693 µm² | **40.5%** | clock buffers just inserted |
+| After `repair_timing` CTS | 1712.5 µm² | 828 µm² | **48.3%** | `Inserted 45 buffers`, **RSZ-0062** |
+| WNS CTS final | | | | **−0.04 ns**, 32 setup violations |
+| Setup skew | | | | ~**0.00 ns** (short tree) |
+| Finish (comparison) | | | | WNS **−0.04 ns**, TNS −0.60, fmax ~2.01 GHz |
 
-Non è “timing chiuso”: RSZ-0062 dice che **non** ha riparato tutto. GCD è abbastanza piccolo da routare comunque. Su un design grosso qui ti fermeresti a ripensare SDC/util.
+This is not “timing closed”: RSZ-0062 says it **did not** repair everything. GCD is small enough to route anyway. On a large design here you would stop to rethink SDC/util.
 
-## Obiettivi
+## Objectives
 
-- Skew vs latency vs NDR, con numeri
-- Contare `CLKBUF*` pre/post
-- Leggere il **Clock Tree Viewer** (PNG `orfs_cts_clock_tree.png`)
-- Risolvere DPL-0038 con **un** parametro
+- Skew vs latency vs NDR, with numbers
+- Count `CLKBUF*` pre/post
+- Read the **Clock Tree Viewer** (PNG `orfs_cts_clock_tree.png`)
+- Fix DPL-0038 with **one** knob
 
-## Letture
+## Reading
 
-- Questo README
+- This README
 - `walkthrough-cts.tcl.md`
-- `debug-playbook.md` sezione CTS
+- `debug-playbook.md` CTS section
 - LAB 05
-- Atlante §5.7 e §9 (heatmap ORFS)
+- Atlas §5.7 and §9 (ORFS heatmaps)
 
-## Il problema
+## The problem
 
-N flip-flop, un pin `clk`. Stellare (un filo a tutti i CK):
+N flip-flops, one pin `clk`. Star topology (one wire to all CK pins):
 
-- slew pessimo (il clock non è uno square wave)
-- delay RC enorme
-- skew incontrollato
+- bad slew (the clock is not a square wave)
+- huge RC delay
+- uncontrolled skew
 
-CTS costruisce un albero di `CLKBUF*` / inverter con **latenza simile** verso i sink.
+CTS builds a tree of `CLKBUF*` / inverters with **similar latency** to the sinks.
 
-Nel viewer (`orfs_cts_clock_tree.png`) sul GCD vedi circa:
+In the viewer (`orfs_cts_clock_tree.png`) on the GCD see about:
 
-- root (triangolo) → 1 buffer → **fanout 4** → foglie (FF) intorno a **0.07 ns** di latency
-- foglie quasi allineate in Y → skew piccolo (coerente con report ~0)
+- root (triangle) → 1 buffer → **fanout 4** → leaves (FF) around **0.07 ns** latency
+- leaves nearly aligned in Y → small skew (consistent with report ~0)
 
-## Sequenza TritonCTS in ORFS
+## TritonCTS sequence in ORFS
 
 1. `repair_clock_inverters`
 2. `clock_tree_synthesis -sink_clustering_enable -repair_clock_nets`
 3. `estimate_parasitics -placement`
-4. `detailed_placement` ← **punto di rottura area** (DPL-0038)
-5. `repair_timing` setup/hold (qui nascono i 45 buffer e RSZ-0062)
-6. secondo `detailed_placement` + `check_placement`
+4. `detailed_placement` ← **area breaking point** (DPL-0038)
+5. `repair_timing` setup/hold (here produces 45 buffers and RSZ-0062)
+6. second `detailed_placement` + `check_placement`
 
-Se il passo 4 fallisce: `save_progress 4_1_error` → `gui_4_1_error.odb`.
+If step 4 fails: `save_progress 4_1_error` → `gui_4_1_error.odb`.
 
 ## Skew, latency, NDR
 
-- **Latency** sink: ritardo pin `clk` del blocco → `CK` del FF.
-- **Skew**: differenza di latency. Setup mangia lo skew peggiorativo; hold odia lo skew invertito.
-- **Ideal clock** (pre-CTS): STA finge latency di rete = 0.
-- **Propagated clock** (post-CTS): delay dei `CLKBUF*`. Per questo WNS può **peggiorare** da place (+0.01) a CTS (−0.04) anche senza fili di segnale.
-- **NDR** `CTS_NDR_0`: regola più larga sul clock. Inspector su net `clk` dopo il route.
+- **Latency** sink: delay from block pin `clk` → FF `CK`.
+- **Skew**: difference in latency. Setup eats worst-case skew; hold hates inverted skew.
+- **Ideal clock** (pre-CTS): STA pretends network latency = 0.
+- **Propagated clock** (post-CTS): delay of `CLKBUF*`. For this WNS can **worsen** from place (+0.01) to CTS (−0.04) even without signal wires.
+- **NDR** `CTS_NDR_0`: wider rule on the clock. Inspector on net `clk` after route.
 
-Un albero batte uno stellare perché lo stellare ha RC/slew inaccettabili già a poche decine di sink (qui 35 `DFF_X1` in synth, più bit-blast).
+A tree beats a star because the star has RC/slew unacceptable at a few dozen sinks (here 35 `DFF_X1` in synth, more bit-blast).
 
-## Relazione 01 + 03 + 04
+## Link to lessons 01 + 03 + 04
 
 ```
-clock stretto → RSZ pre-CTS gonfia area
-core piccolo (util alta) → pochi site liberi
-CTS inserisce CLKBUF + ancora RSZ
+tight clock → RSZ pre-CTS inflates area
+small core (high util) → few free sites
+CTS inserts CLKBUF + more RSZ
 detailed_placement: util > 100% → DPL-0038
 ```
 
-Nel run sano sei al **48%** post-CTS. DPL-0038 arriva quando questa colonna supera 100. Non è un bug di OpenROAD.
+On the healthy run you are at **48%** post-CTS. DPL-0038 appears when this column exceeds 100%. This is not an OpenROAD bug.
 
-## Metriche da annotare
+## Metrics to note
 
-| Metrica | File |
+| Metric | Files |
 |---|---|
 | Skew / latency | `4_cts_final.rpt` (`report_clock_skew`) |
-| WNS/TNS / viol count | stesso report |
-| Buffer inseriti | log `4_1_cts.log` `Inserted N buffers` |
+| WNS/TNS / viol count | same report |
+| Buffer inserted | log `4_1_cts.log` `Inserted N buffers` |
 | Util DPL | log `DPL-0006` |
-| Albero | `reports/.../cts_core_clock.webp.png` (copiato in `gui-shots/orfs_cts_clock_tree.png`) |
+| Albero | `reports/.../cts_core_clock.webp.png` (copied to `gui-shots/orfs_cts_clock_tree.png`) |
 
 ## GUI
 
@@ -93,17 +93,17 @@ select -name "clk" -type Net
 select -name "clkbuf*" -type Inst
 ```
 
-PNG finestra: `win_cts.png`. Viewer: `orfs_cts_clock_tree.png`.  
-View → Clock Tree Viewer se il menu risponde; altrimenti il PNG ORFS è la stessa informazione.
+PNG window: `win_cts.png`. Viewer: `orfs_cts_clock_tree.png`.  
+View → Clock Tree Viewer if the menu responds; otherwise the ORFS PNG is the same information.
 
-## Catena power & SPICE
+## Power & SPICE chain
 
-CTS inserisce buffer clock → aumenta **gruppo Clock** in `report_power`. Vedi [`spice-power-chain.md`](../../reference/spice-power-chain.md#lezione-05-cts).
+CTS inserisce buffer clock → increases **Clock group** in `report_power`. See [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-05-cts).
 
-| Collegamento | Dove |
+| Link | Where |
 |---|---|
 | FlowLab | [cts](/flusso?phase=cts) |
 
-## Durata
+## Duration
 
-README+walkthrough 50–70 min, LAB 90–120 min (include debug intenzionale), **totale ~3 ore**.
+README+walkthrough 50–70 min, LAB 90–120 min (includes intentional debug), **total ~3 hours**.

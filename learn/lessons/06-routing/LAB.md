@@ -1,34 +1,34 @@
 # LAB 06 — Routing (90–120 minuti)
 
-GRT decide **dove** possono passare i fili. DRT decide **i fili**. L’atlante §5.8–5.9 è obbligatorio: i colori M2/M3 sono quelli veri di questa GUI.
+GRT decide **dove** posare passare i fili. DRT decide **i fili**. L’atlas §5.8–5.9 is required: i colors M2/M3 are quelli veri di this GUI.
 
-## Obiettivi misurabili
+## Measurable objectives
 
-- [ ] `route.guide` non vuoto; sai dire cosa **non** è
+- [ ] `route.guide` not empty; you can say what it is **not**
 - [ ] `5_route_drc.rpt` letto (vuoto = clean su GCD)
-- [ ] Confrontato `5_1_grt` vs `5_2_route` in GUI o PNG
+- [ ] Confrontato `5_1_grt` vs `5_2_route` in GUI or PNG
 - [ ] Isolato metal2 e metal3 con Display Control / Tcl
-- [ ] Spiegato perché `detail_route.tcl` abortisce senza GRT
+- [ ] Spiegato because `detail_route.tcl` abortisce senza GRT
 
 ---
 
-## Parte 1 — Due problemi diversi (15 min)
+## Part 1 — Two different problems (15 min)
 
 Scrivi analogie tue (non copiare):
 
 | | Global route | Detailed route |
 |---|---|---|
 | Output | `route.guide` | geometria metal/via in ODB |
-| Vincolo principale | capacità gcell / overflow | width, spacing, via, antenna |
+| Main constraint | gcell capacity / overflow | width, spacing, via, antenna |
 | Accuratezza RC | stima da guide | vicina al SPEF (ancora non estratto) |
 
-Apri `learn/reference/walkthrough-route.tcl.md` e `flow/scripts/global_route.tcl`: trova `pin_access`, `global_route`, `estimate_parasitics -global_routing`, il loop incrementale con `repair_timing`.
+Apri `learn/reference/walkthrough-route.tcl.md` e `flow/scripts/global_route.tcl`: find `pin_access`, `global_route`, `estimate_parasitics -global_routing`, il loop incremental con `repair_timing`.
 
 Poi `detail_route.tcl`: guardia `grt::have_routes`, `detailed_route -output_drc`, `repair_antennas`.
 
 ---
 
-## Parte 2 — Esegui route (20 min)
+## Part 2 — Run route (20 min)
 
 Prerequisito: `4_cts.odb`.
 
@@ -44,21 +44,21 @@ ls -lh results/nangate45/gcd/learn/5_1_grt.odb \
        results/nangate45/gcd/learn/5_2_route.odb
 ```
 
-`route.guide` sul GCD è dell’ordine di **migliaia** di righe. Se è 0, GRT è fallito: apri `5_1_grt-failed.odb` e congestion report.
+`route.guide` on the GCD is dell’ordine di **migliaia** di righe. If it is 0, GRT failed: open `5_1_grt-failed.odb` e congestion report.
 
-`5_route_drc.rpt`: **0 righe** = nessuna violazione listata (il nostro GCD tipicamente è clean). Se >0, per ogni violazione annota layer e tipo.
+`5_route_drc.rpt`: **0 righe** = no violations listed (il nostro GCD tipicamente is clean). Se >0, per every violazione note layer e tipo.
 
 ---
 
-## Parte 3 — Leggere una guida (15 min)
+## Part 3 — Leggere una guide (15 min)
 
 ```bash
 head -40 tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn/route.guide
 ```
 
-Le guide sono **fasce 2D** (layer + bounding box), non polilinee mask. Nel quaderno: copia 5 righe e spiega cosa pensi che significhino. Poi confronta con il walkthrough.
+Le guide are **fasce 2D** (layer + bounding box), non polilinee mask. In notebook: copia 5 righe and explain cosa pensi che significhino. Poi compare with il walkthrough.
 
-Cerca una net che riconosci (`clk`, `req_msg`):
+Search for a net che riconosci (`clk`, `req_msg`):
 
 ```bash
 rg -n 'clk' tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn/route.guide | head
@@ -66,7 +66,7 @@ rg -n 'clk' tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn/route.g
 
 ---
 
-## Parte 4 — GUI GRT vs DRT (30 min)
+## Part 4 — GUI GRT vs DRT (30 min)
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -76,7 +76,7 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_5_2_route.odb
 ```
 
-Procedura pixel (atlante §2 e §5.9):
+Procedura pixel (atlas §2 e §5.9):
 
 1. **Fit**.
 2. Tcl:
@@ -87,9 +87,9 @@ gui::set_display_controls "Layers/metal2" visible true
 gui::fit
 ```
 
-3. Screenshot mentale: direzione dominante M2.
+3. Screenshot mental: direzione dominante M2.
 4. Spegnere M2, accendere solo `metal3`.
-5. Su `5_2_route` i fili sono **sottili e densi**; su GRT spesso vedi corridoi più “a blocchi”.
+5. On `5_2_route` wires are **thin and dense**; on GRT you often see more “blocky” corridors.
 
 PNG di riferimento nel repo:
 
@@ -101,7 +101,7 @@ Heatmap congestion: View → routing congestion se presente. Rosso = gcell satur
 
 ---
 
-## Parte 5 — Antenna e DRC (10 min)
+## Part 5 — Antenna e DRC (10 min)
 
 Nel log `5_2_route.log`:
 
@@ -110,11 +110,11 @@ rg -n 'antenna|DRC|violation|complete' \
   tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/learn/5_2_route.log | head -30
 ```
 
-Cos’è un’antenna (una frase): carica sul gate durante etch → diodi / ri-route. Non serve la fisica del plasma: serve sapere che **ORFS può ri-routare** dopo `repair_antennas`.
+Cos’is un’antenna (one sentence): charges on gate during etch → diodi / ri-route. You do not need plasma physics: you need to know **ORFS can re-route** after `repair_antennas`.
 
 ---
 
-## Parte 6 — KLayout guides (opzionale, 10 min)
+## Part 6 — KLayout guides (optional, 10 min)
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -122,13 +122,13 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 klayout_guides
 ```
 
-Se il target manca in questa ORFS, apri comunque `6_final.gds` in KLayout e spegni/accendi layer: stesso gesto mentale del Display Control.
+Se the target manca in this ORFS, apri comunque `6_final.gds` in KLayout e spegni/accendi layer: stesso gesto mental del Display Control.
 
 ---
 
-## Superamento
+## Pass criteria
 
 - [ ] `wc -l route.guide` annotato
 - [ ] DRC spiegato (anche se zero)
-- [ ] Differenza GRT/DRT articolata **e** agganciata ai PNG/GUI
+- [ ] Difference GRT/DRT articolata **e** agganciata ai PNG/GUI
 - [ ] Esperimento metal2-only / metal3-only fatto

@@ -1,224 +1,224 @@
-# Glossario Physical Design — OpenROAD / ORFS
+# Physical Design Glossary — OpenROAD / ORFS
 
-Riferimento alfabetico. Torna qui durante ogni lezione.
+Alphabetical reference. Return here during every lesson.
 
 ---
 
 ## A
 
-**ABC** — Tool di synthesis/logic optimization usato da Yosys internamente.
+**ABC** — Synthesis/logic optimization tool used internally by Yosys.
 
-**Area (core)** — Superficie rettangolare dove possono essere piazzate le celle standard.
+**Area (core)** — Rectangular area where standard cells are placed.
 
-**Artefatto** — File prodotto da una fase (`.odb`, `.def`, `.gds`, `.v`, `.sdc`, `.spef`).
+**Artifact** — File produced by a stage (`.odb`, `.def`, `.gds`, `.v`, `.sdc`, `.spef`).
 
 ---
 
 ## C
 
-**Cell** — Istanza di una master cell della libreria (es. `AND2_X1`, `DFF_X1`).
+**Cell** — Instance of a library master cell (e.g. `AND2_X1`, `DFF_X1`).
 
-**Clock domain** — Insieme di registri clockati dallo stesso clock.
+**Clock domain** — Set of registers clocked by the same clock.
 
-**Congestion** — Troppa domanda di routing in una regione del chip.
+**Congestion** — Too much routing demand in a chip region.
 
-**Constraints (SDC)** — Regole temporali: clock, I/O delay, false path, multicycle.
+**Constraints (SDC)** — Timing rules: clock, I/O delay, false path, multicycle.
 
-**Core utilization** — Percentuale del die occupata dal core logico (parametro floorplan).
+**Core utilization** — Percentage of die occupied by logic core (floorplan knob).
 
-**CTS (Clock Tree Synthesis)** — Costruzione albero di clock bilanciato verso tutti i FF.
+**CTS (Clock Tree Synthesis)** — Build balanced clock tree toward all FFs.
 
 ---
 
 ## D
 
-**DEF (Design Exchange Format)** — Descrizione testuale di placement + routing + componenti.
+**DEF (Design Exchange Format)** — Text description of placement + routing + components.
 
-**Detailed placement (DP)** — Legalizzazione: ogni cella su un site valido, senza overlap.
+**Detailed placement (DP)** — Legalization: every cell on a valid site, no overlap.
 
-**Detailed routing (DRT)** — Routing finale rispettando width/spacing/via rules.
+**Detailed routing (DRT)** — Final routing respecting width/spacing/via rules.
 
-**DRC (Design Rule Check)** — Verifica geometrica (spacing, width, enclosure).
+**DRC (Design Rule Check)** — Geometric verification (spacing, width, enclosure).
 
-**DFF / Flip-flop** — Elemento di memoria sincrono; endpoint tipico di timing path.
+**DFF / Flip-flop** — Synchronous memory element; typical timing path endpoint.
 
-**DPL-0038** — Detailed placement: utilization > 100% (area celle > area core). Fallimento legale, non “timing un po’ negativo”. LAB 05 parte 4. Non è **RSZ-0062**.
+**DPL-0038** — Detailed placement: utilization > 100% (cell area > core area). Legal failure, not “slightly negative timing”. LAB 05 part 4. This is not **RSZ-0062**.
 
 ---
 
 ## F
 
-**False path** — Percorso che STA deve ignorare (non critico temporalmente).
+**False path** — Path STA must ignore (not temporally critical).
 
-**Floorplan** — Definizione die, core, rows, power grid, pin IO.
+**Floorplan** — Definition of die, core, rows, power grid, IO pins.
 
-**Flow variant** — Sottocartella risultati ORFS (`base`, `learn`, …).
+**Flow variant** — ORFS results subdirectory (`base`, `learn`, …).
 
 ---
 
 ## G
 
-**GUI** — interfaccia Qt di OpenROAD. Non è Preview HTTP. Atlante: `gui-atlas.md`.
+**GUI** — OpenROAD Qt interface. This is not Preview HTTP. Atlas: `gui-atlas.md`.
 
-**GUI-0013** — Controllo Display Control inesistente. In 26Q2 `gui::set_display_controls "Rows"` fallisce: non esiste un controllo chiamato `Rows`.
+**GUI-0013** — Nonexistent Display Control. In 26Q2 `gui::set_display_controls "Rows"` fails: no control named `Rows`.
 
-**gcell** — Cella della griglia di **global routing**: unità di capacità (quanti fili “ci stanno” in una regione). Heatmap congestion = domanda vs capacità per gcell. PNG `orfs_final_congestion.png`.
+**gcell** — Grid cell for **global routing**: capacity unit (how many wires fit in a region). Heatmap congestion = demand vs capacity per gcell. PNG `orfs_final_congestion.png`.
 
-**Guide (GRT)** — corridoi 2D per net, non wire mask-ready. File `route.guide`.
+**Guide (GRT)** — 2D corridors per net, not wire mask-ready. Files `route.guide`.
 
-**Global placement (GP)** — Posizionamento approssimato minimizzando wirelength + density.
+**Global placement (GP)** — Approximate placement minimizing wirelength + density.
 
-**Global routing (GRT)** — Assegnazione guide di routing per regioni; non wire finali.
+**Global routing (GRT)** — Routing guide assignment per region; not final wires.
 
-**Gate-level netlist** — Verilog con celle della libreria (post-synthesis).
+**Gate-level netlist** — Verilog with library cells (post-synthesis).
 
 ---
 
 ## H
 
-**Hold time** — Tempo minimo che dati devono restare stabili dopo clock edge.
+**Hold time** — Minimum time data must remain stable after clock edge.
 
-**Heatmap (GUI)** — Visualizzazione colori di density, congestion, IR drop.
+**Heatmap (GUI)** — Color visualization of density, congestion, IR drop.
 
 ---
 
 ## I
 
-**IFP-0028** — Messaggio Init Floorplan: origine/core **snappati** alla site grid. Non è un errore; allinea il rettangolo alle piastrelle LEF. Nel log `2_1_floorplan.log` vedi `(1.000, 1.000)` → `(1.140, 1.400)` o simile.
+**IFP-0028** — Init Floorplan message: origin/core **snapped** to site grid. This is not an error; aligns rectangle to LEF tiles. In log `2_1_floorplan.log` see `(1.000, 1.000)` → `(1.140, 1.400)` or similar.
 
-**IO delay** — Budget temporale tra pad/pin del mondo esterno e registri.
+**IO delay** — Timing budget between external pad/pin and registers.
 
-**IR drop** — Caduta di tensione sulla power grid (finish stage).
+**IR drop** — Voltage drop on power grid (finish stage).
 
-**ideal clock** — STA finge latency di rete = 0 (pre-CTS). Dopo CTS il clock è **propagato** (delay dei `CLKBUF*`).
+**ideal clock** — STA pretends network latency = 0 (pre-CTS). After CTS the clock is **propagated** (delay of `CLKBUF*`).
 
 ---
 
 ## L
 
-**LEF (Library Exchange Format)** — Geometria fisica di tech + celle (layers, pins, sites).
+**LEF (Library Exchange Format)** — Physical geometry of tech + cells (layers, pins, sites).
 
-**LIB (Liberty)** — Timing/power model delle celle (.lib).
+**LIB (Liberty)** — Timing/power model of the cells (.lib).
 
-**Legalization** — Spostare celle su sites validi senza violare row alignment.
+**Legalization** — Move cells to valid sites without violating row alignment.
 
 ---
 
 ## M
 
-**Master cell** — Definizione di una cella in LEF (template).
+**Master cell** — Cell definition in LEF (template).
 
-**Multicycle path** — Percorso che può usare più cicli clock.
+**Multicycle path** — Path that can use multiple clock cycles.
 
 ---
 
 ## N
 
-**NDR (Non-Default Rule)** — Regola di routing più larga/spazio rispetto al default tech. Su GCD post-CTS/route la net `clk` in Inspector mostra `CTS_NDR_0`: il clock non è più un filo “qualsiasi”.
+**NDR (Non-Default Rule)** — Routing rule wider/more spacing than default tech. On GCD post-CTS/route net `clk` in Inspector shows `CTS_NDR_0`: the clock is no longer one generic wire.
 
-**ngspice** — Simulatore SPICE open-source per System PDN in Studio (AC + TRAN). Vedi [spice-ngspice-primer.md](./spice-ngspice-primer.md).
+**ngspice** — Open-source SPICE simulator for System PDN in Studio (AC + TRAN). See [spice-ngspice-primer.md](./spice-ngspice-primer.md).
 
 ---
 
 ## O
 
-**ODB (OpenDB)** — Database binario OpenROAD; snapshot di ogni fase.
+**ODB (OpenDB)** — OpenROAD binary database; snapshot of every stage.
 
-**OpenRCX** — Estrattore parassiti OpenROAD (`extract_parasitics` + `RCX_RULES`). Produce SPEF a finish. Senza RCX, ORFS ricade su `estimate_parasitics -global_routing`.
+**OpenRCX** — OpenROAD parasitic extractor (`extract_parasitics` + `RCX_RULES`). Produces SPEF at finish. Without RCX, ORFS falls back to `estimate_parasitics -global_routing`.
 
-**OpenSTA** — Static Timing Analyzer (parte di OpenROAD e standalone).
+**OpenSTA** — Static Timing Analyzer (part of OpenROAD and standalone).
 
 ---
 
 ## P
 
-**PDK (Process Design Kit)** — Pacchetto tech: LEF, LIB, regole (Nangate45, sky130, …).
+**PDK (Process Design Kit)** — Tech package: LEF, LIB, rules (Nangate45, sky130, …).
 
-**PDN (Power Distribution Network)** — Mesh/straps VDD/VSS nel core. In Studio: gridcheck (L03) + mesh SPICE post-finish ([spice-chip-mesh.md](./spice-chip-mesh.md)).
+**PDN (Power Distribution Network)** — VDD/VSS mesh/straps in core. In Studio: gridcheck (L03) + post-finish mesh SPICE ([spice-chip-mesh.md](./spice-chip-mesh.md)).
 
-**PDNSim** — OpenROAD `analyze_power_grid`: IR statico on-die; esporta `write_pg_spice`.
+**PDNSim** — OpenROAD `analyze_power_grid`: on-die static IR; exports `write_pg_spice`.
 
-**Power chain** — Sequenza Studio: `activity_power` → `chip_pdn_ir` → `system_pdn` → export (`run_power_chain.sh`). Guida: [spice-power-chain.md](./spice-power-chain.md).
+**Power chain** — Studio sequence: `activity_power` → `chip_pdn_ir` → `system_pdn` → export (`run_power_chain.sh`). Guide: [spice-power-chain.md](./spice-power-chain.md).
 
-**period_min** — Periodo minimo (ns) per cui lo STA, con *quel* modello RC, non vede WNS negativo. fmax ≈ `1000 / period_min` MHz. A finish sul run d’oro è **0.50 ns** (~2011 MHz) vs SDC **0.46 ns** (~2174 MHz): target non chiuso.
+**period_min** — Minimum period (ns) for which STA, with *that* RC model, sees no negative WNS. fmax ≈ `1000 / period_min` MHz. At finish on the gold run is **0.50 ns** (~2011 MHz) vs SDC **0.46 ns** (~2174 MHz): target not closed.
 
-**Placement** — Assegnazione posizione (x,y) a ogni cella.
+**Placement** — Assign position (x,y) to every cell.
 
-**Parasitics (SPEF)** — R/C estratti dal layout per STA post-route.
+**Parasitics (SPEF)** — R/C extracted from layout for post-route STA.
 
 ---
 
 ## R
 
-**Resizer (RSZ)** — Tool OpenROAD che inserisce buffer, upsize, clone per timing.
+**Resizer (RSZ)** — OpenROAD tool that inserts buffers, upsizes, clones for timing.
 
-**RSZ-0062** — Warning: il resizer **non** ha riparato tutte le setup. Sul GCD `learn` compare al CTS (`Inserted 45`) e il flow **continua**. Non è overflow di area: quello è **DPL-0038**.
+**RSZ-0062** — Warning: resizer **did not** repair all setup. On GCD `learn` appears at CTS (`Inserted 45`) and the flow **continues**. This is not area overflow: that is **DPL-0038**.
 
-**RTL** — Register Transfer Level; Verilog comportamentale pre-synthesis.
+**RTL** — Register Transfer Level; behavioral Verilog pre-synthesis.
 
-**Row** — Fila di sites dove allineare celle standard.
+**Row** — Row of sites where standard cells align.
 
 ---
 
 ## S
 
-**SDC** — Synopsys Design Constraints (file `.sdc`).
+**SDC** — Synopsys Design Constraints (`.sdc` file).
 
-**Setup time** — Tempo richiesto per dati stabili prima del clock edge.
+**Setup time** — Required time for stable data before clock edge.
 
-**SPICE** — Simulazione circuitale. In Studio: (1) mesh resistiva chip da `write_pg_spice`; (2) ladder System PDN con **ngspice**.
+**SPICE** — Circuit simulation. In Studio: (1) chip resistive mesh from `write_pg_spice`; (2) System PDN ladder with **ngspice**.
 
-**System PDN** — Catena VRM → board → package → die (ngspice). Distinta da chip PDN on-die. FlowLab fase PKG.
+**System PDN** — VRM → board → package → die chain (ngspice). Distinct from on-die chip PDN. FlowLab PKG phase.
 
-**Site** — Slot fisico minimo per una cella (es. `FreePDK45_38x28_...`).
+**Site** — Minimum physical slot for a cell (e.g. `FreePDK45_38x28_...`).
 
-**Skew** — Differenza di arrivo clock tra sink diversi.
+**Skew** — Difference in clock arrival between different sinks.
 
 **SPEF** — Standard Parasitic Exchange Format.
 
-**STA** — Static Timing Analysis: verifica setup/hold senza simulazione.
+**STA** — Static Timing Analysis: verify setup/hold without simulation.
 
-**STA-2204** — Errore tipico se ORFS **master** (26Q3) gira su OpenROAD **26Q2** (`get_property default` in save_images). Il repo pinna il tag ORFS **26Q2**.
+**STA-2204** — Typical error if ORFS **master** (26Q3) runs on OpenROAD **26Q2** (`get_property default` in save_images). The repo pins ORFS tag **26Q2**.
 
-**Synthesis** — RTL → gate-level netlist mappato alla libreria.
+**Synthesis** — RTL → gate-level netlist mapped to library.
 
 ---
 
 ## T
 
-**Tapcell** — Celle per well tie/substrate connection.
+**Tapcell** — Cells for well tie/substrate connection.
 
-**Timing closure** — Raggiungere WNS ≥ 0 e TNS ≈ 0 su tutti i corner.
+**Timing closure** — Achieve WNS ≥ 0 and TNS ≈ 0 on all corners.
 
-**TNS (Total Negative Slack)** — Somma di tutti i setup violation.
+**TNS (Total Negative Slack)** — Sum of all setup violations.
 
-**Top module** — Radice gerarchia Verilog (`gcd` nel nostro corso).
+**Top module** — Verilog hierarchy root (`gcd` in our course).
 
 ---
 
 ## E
 
-**EMSim** — Framework accademico di emanazione EM ([jinyier/EMSim](https://github.com/jinyier/EMSim), TIFS 2023). Il passo *current analysis* (PT-PX → PWL → HSpice) è lo split A/B da copiare. Prerequisiti: VCS, Calibre xRC, PrimeTime PX, HSpice — non è drop-in OSS.
+**EMSim** — Academic EM emission framework ([jinyier/EMSim](https://github.com/jinyier/EMSim), TIFS 2023). The *current analysis* step (PT-PX → PWL → HSpice) is the A/B split to copy. Prerequisites: VCS, Calibre xRC, PrimeTime PX, HSpice — not drop-in OSS.
 
 ## V
 
-**vyges-em-ir** — Engine Apache-2.0 ([vyges-tools/em-ir](https://github.com/vyges-tools/em-ir)): IR statico CG + transiente backward-Euler su un `.pdn`. Integrato sul GCD via `run_vyges_em_ir.sh`. Bootstrap e check simultaneous-switch — **non** il core della piattaforma.
+**vyges-em-ir** — Apache-2.0 engine ([vyges-tools/em-ir](https://github.com/vyges-tools/em-ir)): static IR CG + backward-Euler transient on a `.pdn`. Integrated on GCD via `run_vyges_em_ir.sh`. Bootstrap and simultaneous-switch check — **not** the platform core.
 
-**Dynamic IR (I(t))** — Engine del corso (`pdn_dynamic.py`): I(t) per pin + **Solver A** (LU gold) + **Solver B** (SA-AMG) + ranking scenari sulla stessa A. Non è CCS né VCD pin-accurate.
+**Dynamic IR (I(t))** — Course engine (`pdn_dynamic.py`): I(t) per pin + **Solver A** (LU gold) + **Solver B** (SA-AMG) + scenario ranking on same A. This is not CCS nor VCD pin-accurate.
 
 ---
 
 ## W
 
-**WNS (Worst Negative Slack)** — Peggiore violazione setup (la più critica).
+**WNS (Worst Negative Slack)** — Worst setup violation (most critical).
 
-**Wirelength** — Lunghezza totale interconnessioni (obiettivo placement/routing).
+**Wirelength** — Total interconnection length (placement/routing objective).
 
-**write_pg_spice** — Export OpenROAD PDNSim: rete R + correnti I per pin cella → input `pdn_transient.py`, `spice_to_pdn.py` (vyges-em-ir) e `pdn_dynamic.py`.
+**write_pg_spice** — OpenROAD PDNSim export: R network + I currents per cell pin → input to `pdn_transient.py`, `spice_to_pdn.py` (vyges-em-ir) and `pdn_dynamic.py`.
 
 ---
 
-## Acronimi del flusso ORFS
+## ORFS flow acronyms
 
 ```
 RTL → yosys → 1_synth.odb
@@ -231,13 +231,13 @@ RTL → yosys → 1_synth.odb
 
 ---
 
-## Domande da farsi in ogni fase
+## Questions to ask at every stage
 
-| Fase | Domanda |
+| Stage | Question |
 |---|---|
-| Synth | Quante celle? Ci sono latch? |
-| Floorplan | Core abbastanza grande per utilization target? |
-| Place | Overflow zero? Quanti buffer ha aggiunto RSZ? |
-| CTS | Skew accettabile? Area post-CTS < 100%? |
-| Route | DRC clean? Congestion residua? |
-| Finish | WNS/TNS post-SPEF? `period_min` vs SDC? GDS apre in KLayout? |
+| Synth | How many cells? Any latches? |
+| Floorplan | Core large enough for utilization target? |
+| Place | Zero overflow? How many buffers did RSZ add? |
+| CTS | Acceptable skew? Post-CTS area < 100%? |
+| Route | DRC clean? Residual congestion? |
+| Finish | WNS/TNS post-SPEF? `period_min` vs SDC? GDS opens in KLayout? |

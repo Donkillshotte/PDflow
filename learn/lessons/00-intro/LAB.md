@@ -1,20 +1,20 @@
-# LAB 00 — Primo contatto (60–90 minuti)
+# LAB 00 — First contact (60–90 minutes)
 
-Non è un “hello world”. Alla fine di questo LAB sai **dove** vive ogni file e **perché** Preview Cursor non mostra OpenROAD.
+This is not a “hello world”. At the end of this LAB you know **where** every file lives and **why** Cursor Preview does not show OpenROAD.
 
-## Obiettivi misurabili
+## Measurable objectives
 
-- [ ] `--check` tutto verde
-- [ ] Sai indicare, a voce, le 6 macro-fasi RTL→GDS
-- [ ] Hai creato `learn/workbook/mio-quaderno.md`
-- [ ] Sai aprire Desktop (non Preview) e spiegare la differenza
-- [ ] Hai trovato `gcd.v`, `constraint.sdc`, `floorplan.tcl` senza usare questo file come mappa
+- [ ] `--check` all green
+- [ ] Can name the 6 macro-stages RTL→GDS aloud
+- [ ] Created `learn/workbook/mio-quaderno.md`
+- [ ] Can open Desktop (not Preview) and explain the difference
+- [ ] Found `gcd.v`, `constraint.sdc`, `floorplan.tcl` without using this file as a map
 
-Tempo: **60 min** se già hai i tool; **90 min** se è la prima volta sul repo.
+Time: **60 min** if tools are already installed; **90 min** if this is your first time in the repo.
 
 ---
 
-## Parte 1 — Ambiente (10 min)
+## Part 1 — Environment (10 min)
 
 ```bash
 ./scripts/learn_physical_design.sh --check
@@ -24,7 +24,7 @@ sta -version
 klayout -v | head -1
 ```
 
-Scrivi nel quaderno: versione OpenROAD (attesa `26Q2-…`). Se manca un tool, **smetti** e usa `learn/reference/debug-playbook.md` sezione toolchain — non “provare a caso”.
+Write in your notebook: OpenROAD version (expected `26Q2-…`). If a tool is missing, **stop** and use `learn/reference/debug-playbook.md` toolchain section — do not “try random things”.
 
 Wrapper:
 
@@ -33,61 +33,61 @@ Wrapper:
 ./scripts/learn_physical_design.sh --status
 ```
 
-`--list` deve mostrare `00-intro` … `07-finish`. Se manca una lezione, il corso è incompleto: non sei tu.
+`--list` must show `00-intro` … `07-finish`. If a lesson is missing, the course is incomplete — not your fault.
 
 ---
 
-## Parte 2 — Scavenger hunt cartelle (20 min)
+## Part 2 — Folder scavenger hunt (20 min)
 
-Apri un file manager o `ls`. **Senza** copiare-incollare i path da qui, trova:
+Open a file manager or `ls`. **Without** copy-pasting paths from here, find:
 
-| # | Cosa | Path che hai trovato |
+| # | What | Path you found |
 |---|---|---|
-| 1 | RTL GCD | |
-| 2 | `config.mk` del **tutorial** (non `designs/nangate45/gcd/config.mk` upstream) | |
-| 3 | `constraint.sdc` del tutorial | |
+| 1 | GCD RTL | |
+| 2 | **Tutorial** `config.mk` (not upstream `designs/nangate45/gcd/config.mk`) | |
+| 3 | Tutorial `constraint.sdc` | |
 | 4 | `flow/scripts/cts.tcl` | |
 | 5 | PDK LEF (nangate45) | |
-| 6 | Cartella dove **finirà** `6_final.gds` per la variante `learn` | |
+| 6 | Folder where `6_final.gds` will land for `learn` variant | |
 
-Soluzione (guardala **dopo**):
+Solution (look **after** you try):
 
 ```
 1  tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v
 2  learn/designs/nangate45/gcd-tutorial/config.mk
-    (ORFS lo vede come flow/designs/nangate45/gcd-tutorial/ via symlink)
+    (ORFS sees it as flow/designs/nangate45/gcd-tutorial/ via symlink)
 3  learn/designs/nangate45/gcd-tutorial/constraint.sdc
 4  tools/OpenROAD-flow-scripts/flow/scripts/cts.tcl
 5  tools/OpenROAD-flow-scripts/flow/platforms/nangate45/
 6  tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/learn/
 ```
 
-**Trappola:** `designs/nangate45/gcd/` è il design **upstream** ORFS (`FLOW_VARIANT=base` se lanci male). Il corso usa **`gcd-tutorial`** + **`FLOW_VARIANT=learn`**.
+**Trap:** `designs/nangate45/gcd/` is the **upstream** ORFS design (`FLOW_VARIANT=base` if you run wrong). The course uses **`gcd-tutorial`** + **`FLOW_VARIANT=learn`**.
 
 ---
 
-## Parte 3 — Contratti di fase (10 min)
+## Part 3 — Stage contracts (10 min)
 
-Copia nel quaderno e completa a memoria:
+Copy into your notebook and complete from memory:
 
 ```
-Verilog+SDC → ______ → netlist gate-level
+Verilog+SDC → ______ → gate-level netlist
             → ______ → die/core/PDN
-            → ______ → (x,y) celle
-            → ______ → albero clock
-            → ______ → wire DRC
+            → ______ → cell (x,y)
+            → ______ → clock tree
+            → ______ → DRC wire
             → ______ → GDS+SPEF
 ```
 
-Risposte: synth, floorplan, place, CTS, route, finish.
+Answers: synth, floorplan, place, CTS, route, finish.
 
-Apri `learn/reference/file-formats.md` e per **ODB, SDC, SPEF, GDS** scrivi in una riga: tool + a cosa serve.
+Open `learn/reference/file-formats.md` and for **ODB, SDC, SPEF, GDS** write one line each: tool + purpose.
 
 ---
 
-## Parte 4 — Glossario attivo (10 min)
+## Part 4 — Active glossary (10 min)
 
-Apri `learn/reference/glossary.md`. Senza scorrere tutto, definisci **con parole tue**:
+Open `learn/reference/glossary.md`. Without reading everything, define **in your own words**:
 
 1. Core utilization  
 2. Skew  
@@ -95,17 +95,17 @@ Apri `learn/reference/glossary.md`. Senza scorrere tutto, definisci **con parole
 4. DRC  
 5. FLOW_VARIANT  
 
-Poi confronta col glossario. Se hai copiato le frasi, rifai.
+Then compare with the glossary. If you copied phrases, redo it.
 
 ---
 
-## Parte 5 — Smoke synth (15 min)
+## Part 5 — Smoke synth (15 min)
 
 ```bash
 ./scripts/learn_physical_design.sh --lesson 00
 ```
 
-Oppure:
+Or:
 
 ```bash
 cd tools/OpenROAD-flow-scripts/flow
@@ -114,38 +114,38 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 ls -lh results/nangate45/gcd/learn/1_synth.odb
 ```
 
-Se `1_synth.odb` manca: log `logs/nangate45/gcd/learn/1_2_yosys.log`. Playbook sezione synth.
+If `1_synth.odb` is missing: log `logs/nangate45/gcd/learn/1_2_yosys.log`. Playbook synth section.
 
-Apri `reports/nangate45/gcd/learn/synth_stat.txt` (o cerca `Printing statistics` nel log Yosys). Annota: numero di celle, area. Confronta con `learn/reference/golden-metrics.md` riga Synth (496 / 628.824 / 35 DFF).
-
----
-
-## Parte 6 — GUI: Desktop vs Preview (10 min)
-
-1. Nella chat Cursor, **non** usare Preview per OpenROAD.
-2. Apri **Desktop** sulla pagina agente.
-3. Confronta con `learn/reference/gui-atlas.md` sezione 1 (anatomia). Non serve lanciare la GUI in questa lezione se il desktop non è pronto; in quel caso descrivi dal PNG `win_anatomy_labeled.png` i rettangoli A–G.
-
-Domanda da scrivere: perché un iframe HTTP non può mostrare una finestra Qt/VNC?
+Open `reports/nangate45/gcd/learn/synth_stat.txt` (or search `Printing statistics` in the Yosys log). Note: cell count, area. Compare with `learn/reference/golden-metrics.md` Synth row (496 / 628.824 / 35 DFF).
 
 ---
 
-## Parte 7 — Quaderno (5 min)
+## Part 6 — GUI: Desktop vs Preview (10 min)
+
+1. In Cursor chat, **do not** use Preview for OpenROAD.
+2. Open **Desktop** on the agent page.
+3. Compare with `learn/reference/gui-atlas.md` section 1 (anatomy). You do not need to launch the GUI in this lesson if desktop is not ready; in that case describe rectangles A–G from PNG `win_anatomy_labeled.png`.
+
+Question to write: why can an HTTP iframe not show a Qt/VNC window?
+
+---
+
+## Part 7 — Notebook (5 min)
 
 ```bash
-cp learn/workbook/notes-template.md learn/workbook/mio-quaderno.md
+cp learn/workbook/notes-template.md learn/workbook/mio-notebook.md
 ```
 
-Compila la prima sessione: data, durata, 3 osservazioni.
+Fill the first session: date, duration, 3 observations.
 
 ---
 
-## Criteri di superamento
+## Pass criteria
 
-- [ ] Tabella scavenger hunt compilata
-- [ ] Sei fasi in ordine, a memoria
-- [ ] `1_synth.odb` esiste in `.../gcd/learn/`
-- [ ] Quaderno creato
-- [ ] Sai spiegare Preview vs Desktop
+- [ ] Scavenger hunt table completed
+- [ ] Six stages in order, from memory
+- [ ] `1_synth.odb` exists in `.../gcd/learn/`
+- [ ] Notebook created
+- [ ] Can explain Preview vs Desktop
 
-**Non** lanciare `--all` in auto: bruci il corso.
+**Do not** run `--all` in auto mode: it burns through the course.

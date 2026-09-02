@@ -1,231 +1,231 @@
-# Syllabus — Corso Physical Design (OpenROAD)
+# Syllabus — Physical Design Course (OpenROAD)
 
-## Filosofia del corso
+## Course philosophy
 
-Ogni lezione segue il ciclo **Spiega → Esegui → Ispeziona → Verifica → Rifletti**:
+Each lesson follows the cycle **Explain → Run → Inspect → Verify → Reflect**:
 
-1. **Spiega** — README.md con teoria e riferimenti ai file
-2. **Esegui** — `run.sh` lancia comandi ORFS reali
-3. **Ispeziona** — comandi `gui_*` e lettura log/report
-4. **Verifica** — checkpoint automatici su artefatti
-5. **Rifletti** — domande e varianti (clock, utilization)
+1. **Explain** — README.md with theory and file references
+2. **Run** — `run.sh` launches real ORFS commands
+3. **Inspect** — `gui_*` commands and reading logs/reports
+4. **Verify** — automatic checkpoints on artifacts
+5. **Reflect** — questions and variants (clock, utilization)
 
-Il corso usa il design **GCD** perché:
-- Esecuzione rapida (minuti, non ore)
-- Abbastanza complesso da avere CTS e routing reali
-- Documentato e usato upstream da ORFS
-
----
-
-## Lezione 00 — Introduzione
-
-**Obiettivi didattici**
-- Orientarsi in ORFS
-- Conoscere la mappa file per fase
-- Eseguire smoke test synth
-
-**Artefatti**
-- `1_synth.odb` (opzionale)
-
-**Competenze acquisite**
-- Sapere dove trovare scripts, results, logs, reports
-- Distinguere modalità file vs GUI
+The course uses the **GCD** design because:
+- Fast execution (minutes, not hours)
+- Complex enough for real CTS and routing
+- Documented and used upstream by ORFS
 
 ---
 
-## Lezione 01 — Constraints
+## Lesson 00 — Introduction
 
-**Obiettivi didattici**
-- Leggere/scrivere SDC
-- Capire `create_clock`, I/O delay
-- Modificare `config.mk`
-- Collegare SDC → area → CTS (catena, non silos)
+**Learning objectives**
+- Orient yourself in ORFS
+- Know the per-stage file map
+- Run a synth smoke test
 
-**Esercizi**
-- A: Analisi SDC default (0.46 ns)
-- B: Clock rilassato (2.0 ns) + place
-- C: Clock stretto (0.25 ns) + debug fallimento
+**Artifacts**
+- `1_synth.odb` (optional)
+
+**Skills gained**
+- Know where to find scripts, results, logs, reports
+- Distinguish file mode vs GUI mode
+
+---
+
+## Lesson 01 — Constraints
+
+**Learning objectives**
+- Read/write SDC
+- Understand `create_clock`, I/O delay
+- Modify `config.mk`
+- Connect SDC → area → CTS (a chain, not silos)
+
+**Exercises**
+- A: Analyze default SDC (0.46 ns)
+- B: Relaxed clock (2.0 ns) + place
+- C: Tight clock (0.25 ns) + debug failure
 - D: GUI Endpoint Slack
 
-**File manipolati**
+**Filess touched**
 - `constraint.sdc`, `constraint_relaxed.sdc`, `constraint_tight.sdc`
 - `config.mk`
 
-**Competenze**
-- Collegare constraints → area → timing closure
+**Skills**
+- Connect constraints → area → timing closure
 
 ---
 
-## Lezione 02 — Synthesis
+## Lesson 02 — Synthesis
 
-**Obiettivi**
+**Objectives**
 - RTL → gate-level
-- Leggere netlist e synth_stat
+- Read netlist and synth_stat
 
-**Esercizi**
+**Exercises**
 - A: `make synth`
-- B: Analisi `1_2_yosys.v`
-- C: Log Yosys
+- B: Analyze `1_2_yosys.v`
+- C: Yosys log
 - D: GUI `1_synth.odb`
 - E: OpenSTA pre-layout
 
-**Script Tcl**
+**Tcl scripts**
 - `synth.tcl`, `synth_stdcells.tcl`
 
 ---
 
-## Lezione 03 — Floorplan
+## Lesson 03 — Floorplan
 
-**Obiettivi**
+**Objectives**
 - Die, core, rows, sites
-- PDN e tapcells
+- PDN and tapcells
 
-**Esercizi**
+**Exercises**
 - A–B: `make floorplan`
-- C: Confronto utilization 25 vs 45
-- D: GUI `2_1` e `2_4`
-- E: Metriche da log
+- C: Compare utilization 25 vs 45
+- D: GUI `2_1` and `2_4`
+- E: Metrics from log
 
-**Script Tcl**
+**Tcl scripts**
 - `floorplan.tcl`, `pdn.tcl`
 - `grid_strategy-M1-M4-M7.tcl`
 
 ---
 
-## Lezione 04 — Placement
+## Lesson 04 — Placement
 
-**Obiettivi**
+**Objectives**
 - Global vs detailed placement
-- Resizer e timing pre-CTS
+- Resizer and pre-CTS timing
 
-**Esercizi**
+**Exercises**
 - A–B: `make place`
-- C: Report global place + resizer
+- C: Global place + resizer report
 - D: GUI gp vs dp
-- E: Log resizer
+- E: Resizer log
 
-**Script Tcl**
+**Tcl scripts**
 - `global_place.tcl`, `detail_place.tcl`, `resize.tcl`
 
 ---
 
-## Lezione 05 — CTS
+## Lesson 05 — CTS
 
-**Obiettivi**
-- Clock tree, skew, buffer clock
-- Distinguere **RSZ-0062** (timing non riparato) da **DPL-0038** (util > 100%)
-- Debug utilization overflow (LAB parte 4)
+**Objectives**
+- Clock tree, skew, clock buffers
+- Distinguish **RSZ-0062** (timing not repaired) from **DPL-0038** (util > 100%)
+- Debug utilization overflow (LAB part 4)
 
-**Esercizi**
+**Exercises**
 - A–B: `make cts`
-- C: Report CTS
+- C: CTS report
 - D: Clock Tree Viewer
 - E: Tcl `report_clock_skew`
 
-**Script Tcl**
+**Tcl scripts**
 - `cts.tcl`
 
 ---
 
-## Lezione 06 — Routing
+## Lesson 06 — Routing
 
-**Obiettivi**
+**Objectives**
 - Global route, detailed route, DRC
 - Congestion analysis
 
-**Esercizi**
+**Exercises**
 - A–B: `make route`
 - C: Guide + DRC report
 - D: GUI grt vs route
 - E: KLayout guides
 
-**Script Tcl**
+**Tcl scripts**
 - `global_route.tcl`, `detail_route.tcl`
 
 ---
 
-## Lezione 07 — Finish
+## Lesson 07 — Finish
 
-**Obiettivi**
+**Objectives**
 - GDS, SPEF (OpenRCX), signoff timing
-- Distinguere `make finish` verde da **timing chiuso**
-- Deliverables per fab / STA / LVS
+- Distinguish green `make finish` from **closed timing**
+- Deliverables for fab / STA / LVS
 
-**Esercizi**
+**Exercises**
 - A–B: `make finish`
-- C: Report `6_finish` + `period_min` vs SDC 0.46 ns
+- C: `6_finish` report + `period_min` vs SDC 0.46 ns
 - D: Deliverables checklist
-- E: GUI final + worst path (`orfs_final_worst_path.png`)
-- F: Verifica GDS
-- G: Progetto finale (confronto `golden-metrics.md`)
+- E: Final GUI + worst path (`orfs_final_worst_path.png`)
+- F: GDS verification
+- G: Final project (compare `golden-metrics.md`)
 
-**Concetto d’esame:** sul run d’oro WNS finish **−0.04**, `period_min` **0.50 ns** (~2.01 GHz).
-Il periodo SDC 0.46 ns (~2.17 GHz) **non** è chiuso. **RSZ-0062** al CTS è un warning di timing,
-non **DPL-0038**.
+**Exam concept:** on the golden run finish WNS **−0.04**, `period_min` **0.50 ns** (~2.01 GHz).
+SDC period 0.46 ns (~2.17 GHz) is **not** closed. **RSZ-0062** at CTS is a timing warning,
+not **DPL-0038**.
 
 ---
 
-## Comandi di riferimento rapido
+## Quick reference commands
 
 ```bash
-# Wrapper corso
+# Course wrapper
 ./scripts/learn_physical_design.sh --lesson NN
 
-# ORFS diretto (equivalente)
+# ORFS direct (equivalent)
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 <target>
 
-# Target utili
+# Useful targets
 synth | floorplan | place | cts | route | finish
 clean_synth | clean_floorplan | clean_place | clean_cts | clean_route | clean_finish | clean_all
-gui_<stem>   # es. gui_3_place.odb, gui_final
+gui_<stem>   # e.g. gui_3_place.odb, gui_final
 ```
 
-## Tempo totale stimato (studio attivo)
+## Estimated total time (active study)
 
-| Componente | Ore |
+| Component | Hours |
 |---|---|
-| README lezioni 00–07 | 4–5 |
-| LAB.md (8 sessioni) | 8–12 |
-| Reference + walkthrough Tcl | 3–4 |
-| Workbook + quiz + progetto finale | 3–4 |
-| GUI guidata (atlante pixel + 45 min) | 2–3 |
-| **Totale realistico** | **20–28** |
+| Lessons 00–07 README | 4–5 |
+| LAB.md (8 sessions) | 8–12 |
+| Reference + Tcl walkthroughs | 3–4 |
+| Workbook + quiz + final project | 3–4 |
+| Guided GUI (pixel atlas + 45 min) | 2–3 |
+| **Realistic total** | **20–28** |
 
-Atlante: `learn/reference/gui-atlas.md` (PNG in `gui-shots/`). Senza quella sessione le lezioni 03–07 restano astratte.
+Atlas: `learn/reference/gui-atlas.md` (PNGs in `gui-shots/`). Without that session lessons 03–07 stay abstract.
 
-Metriche misurate sul tutorial: `learn/reference/golden-metrics.md` (WNS, `period_min`, area, DRC).
-Ogni LAB chiede di copiare i **tuoi** numeri accanto a quella tabella.
+Measured tutorial metrics: `learn/reference/golden-metrics.md` (WNS, `period_min`, area, DRC).
+Each LAB asks you to copy your **own** numbers next to that table.
 
-Il wrapper `--auto` dura minuti: **non** è il corso. Il corso è LAB + quaderno + GUI.
+The `--auto` wrapper takes minutes: it is **not** the course. The course is LAB + workbook + GUI.
 
 ---
 
-## Estensioni consigliate (post-corso)
+## Recommended extensions (post-course)
 
-1. **sky130hd/gcd** — PDK più realistico (finer geometry)
-2. **Proprio RTL** — contatore, UART, piccolo RISC-V
-3. **Tcl scripting** — automatizza sweep clock/utilization
-4. **OpenSTA standalone** — timing analysis fuori dal flusso
-5. **KLayout DRC/LVS** — verifica geometrica avanzata
+1. **sky130hd/gcd** — more realistic PDK (finer geometry)
+2. **Your own RTL** — counter, UART, small RISC-V
+3. **Tcl scripting** — automate clock/utilization sweeps
+4. **OpenSTA standalone** — timing analysis outside the flow
+5. **KLayout DRC/LVS** — advanced geometric verification
 
-### Moduli opzionali già agganciati (Studio + script)
+### Optional modules already wired (Studio + scripts)
 
-Mappa completa: [`learn/reference/extended-flow.md`](./reference/extended-flow.md).
+Full map: [`learn/reference/extended-flow.md`](./reference/extended-flow.md).
 
-| Modulo | Script / azione Studio | Stato |
+| Module | Script / Studio action | Status |
 |---|---|---|
-| Sim RTL (Icarus) + VCD | `learn/scripts/run_rtl_sim.sh` · `rtl_sim` | READY |
-| Gridcheck PDN | `run_gridcheck.sh` · `gridcheck` · FlowLab fase PDN | READY |
+| RTL sim (Icarus) + VCD | `learn/scripts/run_rtl_sim.sh` · `rtl_sim` | READY |
+| PDN gridcheck | `run_gridcheck.sh` · `gridcheck` · FlowLab PDN stage | READY |
 | System PDN (hier) | `run_system_pdn.sh` · FlowLab PKG · ngspice | READY |
 | Chip IR mesh | `run_chip_pdn_ir.sh` · write_pg_spice | READY |
-| vyges-em-ir | `run_vyges_em_ir.sh` · binario CG+BE | READY |
+| vyges-em-ir | `run_vyges_em_ir.sh` · CG+BE binary | READY |
 | Dynamic IR I(t) | `run_dynamic_ir.sh` · A gold + B SA-AMG + heatmap | READY |
-| Catena SPICE | `run_power_chain.sh` · signoff FlowLab | READY |
-| Docs catena fasi | `spice-power-chain.md` + lab `sim/spice/` | READY |
+| SPICE chain | `run_power_chain.sh` · FlowLab signoff | READY |
+| Per-stage chain docs | `spice-power-chain.md` + lab `sim/spice/` | READY |
 | Activity → power | `run_activity_power.sh` · `activity_power` | READY (VCD `read_vcd`) |
 | Vectorless / dynamic IR | `run_vectorless.sh` · `vectorless` | READY (Najm + Kouroussis) |
-| KLayout GDS DRC | `run_klayout_drc.sh` · `klayout_drc` | READY (dopo finish) |
-| Bump / RDL / design package | `/pkg` · docs Packaging | PARTIAL (teoria + demo BUMPS) |
-| Thermal | nessun tool in VM | MISSING (teoria) |
+| KLayout GDS DRC | `run_klayout_drc.sh` · `klayout_drc` | READY (after finish) |
+| Bump / RDL / design package | `/pkg` · Packaging docs | PARTIAL (theory + BUMPS demo) |
+| Thermal | no tool in VM | MISSING (theory) |

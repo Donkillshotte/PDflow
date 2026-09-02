@@ -1,9 +1,9 @@
-# Walkthrough annotato — floorplan.tcl (ORFS)
+# Annotated walkthrough — floorplan.tcl (ORFS)
 
-Questo documento spiega **riga per riga** (a blocchi) lo script che ORFS esegue in floorplan.
-Leggilo **mentre** apri il file originale in parallelo.
+This document explains **line by line** (in blocks) the script ORFS runs in floorplan.
+Leggilo **mentre** open the file originale in parallelo.
 
-File originale: `tools/OpenROAD-flow-scripts/flow/scripts/floorplan.tcl`
+Files originale: `tools/OpenROAD-flow-scripts/flow/scripts/floorplan.tcl`
 
 ---
 
@@ -17,38 +17,38 @@ load_design 1_synth.odb 1_synth.sdc
 source_step_tcl PRE FLOORPLAN
 ```
 
-| Riga | Significato |
+| Riga | Meaning |
 |---|---|
-| `set_metrics_stage` | Tag per metriche QoR (area, util, timing) nel report |
+| `set_metrics_stage` | Tag for QoR metrics (area, util, timing) in the report |
 | `load.tcl` | Carica helper comuni ORFS |
 | `erase_non_stage_variables` | Pulisce env vars di fasi precedenti (evita side effect) |
-| `load_design` | **Input:** netlist già in DB da synth + SDC coerente |
-| `PRE FLOORPLAN` | Hook utente: puoi injectare Tcl custom via variable env |
+| `load_design` | **Input:** netlist already in DB from synth + consistent SDC |
+| `PRE FLOORPLAN` | Hook utente: you can injectare Tcl custom via variable env |
 
-**Domanda d'esame:** perché input è `1_synth.odb` e non il Verilog grezzo?
+**Exam question:** because input is `1_synth.odb` and not raw Verilog?
 
 ---
 
 ## Blocco 2 — Sanity checks (righe 7–43)
 
-- `report_unused_masters` — celle in LIB non usate (debug libreria)
-- `eliminate_dead_logic` — rimuove logica morta post-synth
-- `check_setup` — verifica clock, port, constraint base
+- `report_unused_masters` — unused LIB cells (library debug)
+- `eliminate_dead_logic` — removes dead logic post-synth
+- `check_setup` — checks clock, port, base constraints
 
-**Cosa impari:** floorplan non parte se setup timing/clock è rotto.
+**What you learn:** floorplan does not start if setup timing/clock is broken.
 
-**Esercizio:** cerca `check_setup` nel log `2_1_floorplan.log`. Output OK?
+**Exercise:** search for `check_setup` in the log `2_1_floorplan.log`. Output OK?
 
 ---
 
-## Blocco 3 — Scelta metodo floorplan (righe 51–64)
+## Block 3 — Floorplan method choice (lines 51–64)
 
 ORFS accetta **esattamente uno** di:
 
 1. `FLOORPLAN_DEF` — import DEF esistente
 2. `FOOTPRINT` — ICeWall (chiplet style)
-3. `DIE_AREA` + `CORE_AREA` — coordinate esplicite
-4. `CORE_UTILIZATION` — **quello che usiamo nel corso**
+3. `DIE_AREA` + `CORE_AREA` — explicit coordinates
+4. `CORE_UTILIZATION` — **what we use in the course**
 
 ```tcl
 set use_core_utilization [env_var_exists_and_non_empty CORE_UTILIZATION]
@@ -59,44 +59,44 @@ if { $methods_defined > 1 } {
 }
 ```
 
-**Nel corso:** `CORE_UTILIZATION=35` in config.mk → initialize_floorplan calcola die/core.
+**Nel course:** `CORE_UTILIZATION=35` in config.mk → initialize_floorplan calcola die/core.
 
-**Esperimento:** aggiungi anche `DIE_AREA` e osserva errore mutua esclusione.
+**Experiment:** also add `DIE_AREA` and observe mutual exclusion error.
 
 ---
 
 ## Blocco 4 — initialize_floorplan (metodo utilization)
 
-Tipico comando generato (vedi log):
+Tipico comando generato (see log):
 
 ```tcl
 initialize_floorplan -utilization 35 -aspect_ratio 1.0 \
   -core_space 1.0 -site FreePDK45_38x28_10R_NP_162NW_34O
 ```
 
-| Parametro | Effetto didattico |
+| Parayardstick | Effetto educational |
 |---|---|
-| `-utilization 35` | Core occupa ~35% del die; resto margini + routing track |
+| `-utilization 35` | Core uses ~35% of die; rest margins + routing track |
 | `-aspect_ratio 1.0` | Core quadrato |
 | `-core_space 1.0` | Margine tra die edge e core (µm) |
-| `-site` | Tipo site per rows (dal PDK) |
+| `-site` | Site type for rows (from PDK) |
 
 **In GUI (`gui_2_1_floorplan.odb`):** zoom out → rettangolo core dentro die.
 
-Nel log compare spesso **IFP-0028**: l’origine è **snappata** alla site grid
-(`(1.000, 1.000)` → `(1.140, 1.400)` sul run d’oro). Non è un bug: senza snapping
-le rows non allineano ai site LEF. Annota i due punti nel quaderno (LAB 03).
+Log often shows **IFP-0028**: origin is **snapped** to site grid
+(`(1.000, 1.000)` → `(1.140, 1.400)` on the gold run). This is not a bug: without snapping
+rows do not align to LEF sites. Note both points in notebook (LAB 03).
 
 ---
 
 ## Blocco 5 — Pin placement, macro, tapcell (altri script)
 
-Floorplan ORFS è **multi-step**:
+Floorplan ORFS is **multi-step**:
 
 | Step | Script | Output |
 |---|---|---|
 | 2_1 | floorplan.tcl | init core |
-| 2_2 | macro_place.tcl | macro (GCD non ne ha) |
+| 2_2 | macro_place.tcl | macro (GCD has none) |
 | 2_3 | tapcell.tcl | tap/endcap |
 | 2_4 | pdn.tcl + PDN_TCL | power grid |
 
@@ -104,31 +104,31 @@ Floorplan ORFS è **multi-step**:
 
 Concetti PDN:
 - `add_pdn_stripe` — strisce VDD/VSS su metal4/metal7
-- `add_pdn_connect` — via stack collegano layer
+- `add_pdn_connect` — via stacks connect layers
 - `define_pdn_grid` — dominio CORE
 
 **GUI:** `gui_2_4_floorplan_pdn.odb` → layer metal4/metal7, net VDD/VSS.
 
 ---
 
-## Cosa modificare per imparare (solo uno alla volta)
+## What to modify to learn (only one at a time)
 
-| Parametro | File | Effetto atteso |
+| Parayardstick | Files | Effetto atteso |
 |---|---|---|
-| CORE_UTILIZATION 25→55 | config.mk | core più piccolo/grande |
+| CORE_UTILIZATION 25→55 | config.mk | smaller/larger core |
 | aspect_ratio | env o Tcl | core rettangolare |
-| PDN_TCL alternativo | config.mk | strategia power diversa |
+| PDN_TCL alternativo | config.mk | different power strategy |
 | core_space | platform/tcl | margine IO |
 
 ---
 
 ## Checkpoint comprensione
 
-Prima di passare a Lezione 04, devi saper rispondere:
+Before di passare a Lesson 04, you must saper respondsre:
 
-1. Quattro metodi di floorplan init — quale usiamo?
-2. Cosa contiene `2_1_floorplan.odb` vs `2_4_floorplan_pdn.odb`?
-3. Dove nel log trovi core area in µm²?
-4. Perché utilization bassa aiuta il CTS?
+1. Four floorplan init methods — which do we use?
+2. Cosa conkeeps `2_1_floorplan.odb` vs `2_4_floorplan_pdn.odb`?
+3. Where in the log trovi core area in µm²?
+4. Why does low utilization help CTS?
 
-Se non sai rispondere → rileggi questo file + LAB lezione 03.
+If you cannot answer → reread this file + LAB lesson 03.
