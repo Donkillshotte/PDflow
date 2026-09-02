@@ -141,6 +141,10 @@ rg -q '"path"' /tmp/studio-story.json && ok "story.path" || bad "story missing p
 rg -q '"product"' /tmp/studio-story.json && ok "story.product" || bad "story missing product"
 rg -q '45.298' /tmp/studio-story.json && ok "story cites IR gold" || bad "story missing IR gold"
 rg -q '"staIr"' /tmp/studio-story.json && ok "story.staIr" || bad "story missing staIr"
+code="$(curl -s -o /tmp/studio-lab.json -w '%{http_code}' "${BASE}/api/lab")"
+[[ "${code}" == "200" ]] && ok "GET /api/lab → 200" || bad "lab → ${code}"
+rg -q '"comparisons"' /tmp/studio-lab.json && ok "lab.comparisons" || bad "lab missing comparisons"
+rg -q '"physics"' /tmp/studio-lab.json && ok "lab.physics" || bad "lab missing physics"
 python3 - <<'PY'
 import json
 d=json.load(open("/tmp/studio-story.json"))

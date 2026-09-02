@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
 import { SignoffMatrixPanel } from "@/components/flowlab/SignoffMatrixPanel";
 import { DsePanel } from "@/components/flowlab/DsePanel";
+import { LabBench } from "@/components/LabBench";
 import { useToast } from "@/components/ToastProvider";
 
 type HookRow = { id: string; label: string; ok: boolean; detail: string };
@@ -158,6 +159,7 @@ export function PkgHubPanel() {
       </div>
 
       <div id="dse">
+        <LabBench busy={busy} onRun={(a, l) => void runSignoff(a, l)} />
         <DsePanel />
       </div>
 

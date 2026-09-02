@@ -94,8 +94,11 @@ python3 -m py_compile "${ROOT}/learn/scripts/spice_to_pdn.py" && ok "spice_to_pd
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_transient.py" && ok "pdn_transient.py compile" || bad "pdn_transient.py compile"
 python3 -m py_compile "${ROOT}/learn/scripts/pdn_dynamic.py" && ok "pdn_dynamic.py compile" || bad "pdn_dynamic.py compile"
 python3 -m py_compile "${ROOT}/learn/scripts/sta_ir_aware.py" && ok "sta_ir_aware.py compile" || bad "sta_ir_aware.py compile"
+python3 -m py_compile "${ROOT}/learn/scripts/validate_lab_physics.py" && ok "validate_lab_physics.py compile" || bad "validate_lab_physics.py compile"
 PYTHONPATH="${ROOT}/learn/scripts${PYTHONPATH:+:${PYTHONPATH}}" python3 "${ROOT}/learn/scripts/test_sta_ir_aware.py" \
   && ok "test_sta_ir_aware" || bad "test_sta_ir_aware"
+PYTHONPATH="${ROOT}/learn/scripts${PYTHONPATH:+:${PYTHONPATH}}" python3 "${ROOT}/learn/scripts/test_lab_physics.py" \
+  && ok "test_lab_physics" || bad "test_lab_physics"
 
 echo "== powerChainLessons signoff hooks =="
 rg -q 'drc_signoff' "${ROOT}/studio/src/lib/powerChainLessons.ts" \

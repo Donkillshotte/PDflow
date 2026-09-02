@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
 import { StaIrAwarePanel } from "./StaIrAwarePanel";
+import { LabBench } from "@/components/LabBench";
 import { DynamicIrHeatmap } from "./DynamicIrHeatmap";
 
 type SignoffAction = {
@@ -256,6 +257,7 @@ export function FlowLabSignoff({
           <div id="signoff">
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
           <StaIrAwarePanel busy={busy} onRun={onRun} />
+          <LabBench tone="dark" busy={busy} onRun={onRun} />
           <div className="fl-signoff-head">
             <strong>Signoff actions timing / geometry / LVS</strong>
             <p>

@@ -7,6 +7,7 @@ import type { FlowlabParams } from "./types";
 import { FlowLabLayoutCanvas } from "./FlowLabLayoutCanvas";
 import { RtlWaveformVisual } from "./RtlWaveformVisual";
 import { DsePanel } from "./DsePanel";
+import { LabBench } from "@/components/LabBench";
 
 type Inspect = {
   odb: {
@@ -494,6 +495,7 @@ export function FlowLabPhaseVisual({
             </p>
           )}
           <div id="dse">
+            <LabBench tone="dark" />
             <DsePanel />
           </div>
         </div>

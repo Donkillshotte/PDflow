@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/", label: "Studio" },
   { href: "/flow", label: "Flow" },
   { href: "/pkg", label: "PKG" },
+  { href: "/lab", label: "Lab" },
   { href: "/lessons", label: "Lessons" },
   { href: "/tools", label: "Tools" },
   { href: "/materials", label: "Materials" },

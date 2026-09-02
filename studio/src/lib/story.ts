@@ -26,7 +26,7 @@ const OFFICIAL_SLOTS: { id: string; clockNs: number }[] = [
   { id: "dynamic_node", clockNs: 6.0 },
 ];
 
-type CampRow = {
+export type CampRow = {
   id?: string;
   design?: string;
   clock_ns?: number;
@@ -38,9 +38,12 @@ type CampRow = {
   power_w?: number | null;
   leakage_w?: number | null;
   ir_drop_v?: number | null;
+  ir_mean_v?: number | null;
   die_um2?: number | null;
   core_um2?: number | null;
   notes?: string;
+  created_at?: number;
+  extra?: { recipe?: string; title?: string; tag?: string };
 };
 
 export type StorySurfaceId = "course" | "lab" | "product";
