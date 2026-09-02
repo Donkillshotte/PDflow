@@ -224,6 +224,61 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "Buffer di clock ogni 80 µm. Die bloccato.",
         "Su aes: win. Slack +8 ps. Area/potenza/IR ~iso.",
     ),
+    "camp_dynamic_node_synth_delay": RecipeLabel(
+        "Sintesi ABC delay",
+        "Yosys + script ABC speed. Stesso RTL, altro mapping.",
+        "Su dynamic_node: identico al default. No-op.",
+    ),
+    "camp_dynamic_node_synth_hier": RecipeLabel(
+        "Sintesi gerarchica",
+        "Yosys senza flatten prima di ABC.",
+        "Su dynamic_node: place +3.48 ns, policy STOP (pred finish −123 ps vs base). Non finito.",
+    ),
+    "camp_dynamic_node_core_tighter": RecipeLabel(
+        "Core più stretto",
+        "CORE_UTILIZATION +10 rispetto al default.",
+        "Su dynamic_node: win. Slack +66 ps. IR −9% (sotto la soglia di lose).",
+    ),
+    "camp_dynamic_node_core_looser": RecipeLabel(
+        "Core più largo",
+        "CORE_UTILIZATION −10 rispetto al default.",
+        "Su dynamic_node: win. Slack +101 ps, IR −14%.",
+    ),
+    "camp_dynamic_node_aspect_wide": RecipeLabel(
+        "Floorplan più largo che alto",
+        "Rettangolo 2:1 invece di un quadrato.",
+        "Su dynamic_node: win. Slack +56 ps. IR −10% quasi.",
+    ),
+    "camp_dynamic_node_place_denser": RecipeLabel(
+        "Place più denso",
+        "Density addon +0.05. Stessa netlist.",
+        "Su dynamic_node: perde. IR +32%. Slack −30 ps.",
+    ),
+    "camp_dynamic_node_place_sparser": RecipeLabel(
+        "Place più sparso",
+        "Density addon −0.05. Stessa netlist.",
+        "Su dynamic_node: perde. IR +15%.",
+    ),
+    "camp_dynamic_node_cell_pad_plus": RecipeLabel(
+        "Padding celle +1 site",
+        "Un site di spazio extra tra le celle.",
+        "Su dynamic_node: perde. Slack −49 ps, IR +18%.",
+    ),
+    "camp_dynamic_node_repair_half_tns": RecipeLabel(
+        "Repair TNS a metà",
+        "TNS_END_PERCENT 100→50.",
+        "Su dynamic_node: identico al default (già chiuso di 3.3 ns). No-op.",
+    ),
+    "camp_dynamic_node_repair_setup_margin": RecipeLabel(
+        "Margine di setup sul repair",
+        "Chiede 50 ps in più al repair di timing.",
+        "Su dynamic_node: identico al default. No-op.",
+    ),
+    "camp_dynamic_node_cts_closer_bufs": RecipeLabel(
+        "Buffer di clock più fitti",
+        "Buffer di clock ogni 80 µm.",
+        "Su dynamic_node: win. Slack +23 ps. Area/potenza/IR ~iso.",
+    ),
 }
 
 

@@ -1,8 +1,8 @@
 # QoR compare — reference flow vs challengers
 
 Plan sha: `cf02fb91ed5b757ba057354b2f53cb18a75586e7cf7ccf895369767436f76c98`
-Experiments: 88 (79 done)
-**Verdict:** QoR vs base: 12 reference slots, 59 challengers, 59 with IR, 59 with GRT WL, 16 product wins
+Experiments: 99 (89 done)
+**Verdict:** QoR vs base: 12 reference slots, 69 challengers, 69 with IR, 69 with GRT WL, 20 product wins
 
 I nomi in tabella dicono **cosa fa** la ricetta e (nella § Ricette) qual è il vantaggio o lo svantaggio. L'id `camp_*` resta solo il path ORFS.
 
@@ -85,6 +85,16 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | Padding celle +1 site (`camp_aes_cell_pad_plus`) | Un site di spazio extra tra le celle. Die bloccato. | Su aes: perde. Slack −21 ps. IR meglio non basta. |
 | Repair TNS a metà (`camp_aes_repair_half_tns`) | TNS_END_PERCENT 100→50. Die bloccato. | Su aes: perde. Slack −16 ps. |
 | Buffer di clock più fitti (`camp_aes_cts_closer_bufs`) | Buffer di clock ogni 80 µm. Die bloccato. | Su aes: win. Slack +8 ps. Area/potenza/IR ~iso. |
+| Sintesi ABC delay (`camp_dynamic_node_synth_delay`) | Yosys + script ABC speed. Stesso RTL, altro mapping. | Su dynamic_node: identico al default. No-op. |
+| Core più stretto (`camp_dynamic_node_core_tighter`) | CORE_UTILIZATION +10 rispetto al default. | Su dynamic_node: win. Slack +66 ps. IR −9% (sotto la soglia di lose). |
+| Core più largo (`camp_dynamic_node_core_looser`) | CORE_UTILIZATION −10 rispetto al default. | Su dynamic_node: win. Slack +101 ps, IR −14%. |
+| Floorplan più largo che alto (`camp_dynamic_node_aspect_wide`) | Rettangolo 2:1 invece di un quadrato. | Su dynamic_node: win. Slack +56 ps. IR −10% quasi. |
+| Place più denso (`camp_dynamic_node_place_denser`) | Density addon +0.05. Stessa netlist. | Su dynamic_node: perde. IR +32%. Slack −30 ps. |
+| Place più sparso (`camp_dynamic_node_place_sparser`) | Density addon −0.05. Stessa netlist. | Su dynamic_node: perde. IR +15%. |
+| Padding celle +1 site (`camp_dynamic_node_cell_pad_plus`) | Un site di spazio extra tra le celle. | Su dynamic_node: perde. Slack −49 ps, IR +18%. |
+| Repair TNS a metà (`camp_dynamic_node_repair_half_tns`) | TNS_END_PERCENT 100→50. | Su dynamic_node: identico al default (già chiuso di 3.3 ns). No-op. |
+| Margine di setup sul repair (`camp_dynamic_node_repair_setup_margin`) | Chiede 50 ps in più al repair di timing. | Su dynamic_node: identico al default. No-op. |
+| Buffer di clock più fitti (`camp_dynamic_node_cts_closer_bufs`) | Buffer di clock ogni 80 µm. | Su dynamic_node: win. Slack +23 ps. Area/potenza/IR ~iso. |
 
 ### Reference flow (absolute, one row per design@clock)
 
@@ -117,6 +127,16 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | aes | 0.820 | Sintesi ABC delay (`camp_aes_synth_delay`) | challenger | tie | -8.9 | -0.024 | 19921.3 | 315.081 | 493.36 | 81.28 | 38.89 | 37.7 | 6.68 | 352701 | 1206.4 | 5 |
 | aes | 0.820 | Sintesi gerarchica (`camp_aes_synth_hier`) | challenger | lose | -9.1 | -0.013 | 19676.8 | 320.394 | 485.27 | 94.04 | 39.40 | 37.3 | 6.58 | 347289 | 1206.2 | 3 |
 | dynamic_node | 6.000 | ORFS default @ 6 ns (`camp_dynamic_node_base`) | reference | — | 3353.8 | 0.000 | 22540.0 | 8.765 | 429.78 | 1.78 | 1.03 | 43.6 | 5.01 | 259047 | 377.9 | 0 |
+| dynamic_node | 6.000 | Floorplan più largo che alto (`camp_dynamic_node_aspect_wide`) | challenger | win | 3410.2 | 0.000 | 22538.2 | 8.778 | 429.52 | 1.61 | 0.94 | 43.4 | 5.16 | 268210 | 386.1 | 0 |
+| dynamic_node | 6.000 | Core più largo (`camp_dynamic_node_core_looser`) | challenger | win | 3454.7 | 0.000 | 22631.5 | 8.858 | 431.55 | 1.54 | 0.78 | 32.6 | 3.96 | 274700 | 392.9 | 0 |
+| dynamic_node | 6.000 | Core più stretto (`camp_dynamic_node_core_tighter`) | challenger | win | 3419.9 | 0.000 | 22515.6 | 8.739 | 429.59 | 1.95 | 1.08 | 54.4 | 6.06 | 250896 | 387.6 | 0 |
+| dynamic_node | 6.000 | Buffer di clock più fitti (`camp_dynamic_node_cts_closer_bufs`) | challenger | win | 3377.1 | 0.000 | 22545.4 | 8.770 | 429.91 | 1.79 | 1.03 | 43.6 | 5.01 | 259270 | 381.3 | 0 |
+| dynamic_node | 6.000 | Padding celle +1 site (`camp_dynamic_node_cell_pad_plus`) | challenger | lose | 3304.8 | 0.000 | 22596.2 | 8.856 | 431.99 | 2.11 | 1.01 | 43.7 | 5.35 | 277042 | 371.0 | 0 |
+| dynamic_node | 6.000 | Place più denso (`camp_dynamic_node_place_denser`) | challenger | lose | 3323.9 | 0.000 | 22559.5 | 8.786 | 430.44 | 2.35 | 1.07 | 43.6 | 4.97 | 257144 | 373.7 | 0 |
+| dynamic_node | 6.000 | Place più sparso (`camp_dynamic_node_place_sparser`) | challenger | lose | 3391.6 | 0.000 | 22578.1 | 8.802 | 431.16 | 2.04 | 1.02 | 43.6 | 5.02 | 259900 | 383.4 | 0 |
+| dynamic_node | 6.000 | Repair TNS a metà (`camp_dynamic_node_repair_half_tns`) | challenger | tie | 3353.8 | 0.000 | 22540.0 | 8.765 | 429.78 | 1.78 | 1.03 | 43.6 | 5.01 | 259047 | 377.9 | 0 |
+| dynamic_node | 6.000 | Margine di setup sul repair (`camp_dynamic_node_repair_setup_margin`) | challenger | tie | 3353.8 | 0.000 | 22540.0 | 8.765 | 429.78 | 1.78 | 1.03 | 43.6 | 5.01 | 259047 | 377.9 | 0 |
+| dynamic_node | 6.000 | Sintesi ABC delay (`camp_dynamic_node_synth_delay`) | challenger | tie | 3353.8 | 0.000 | 22540.0 | 8.765 | 429.78 | 1.78 | 1.03 | 43.6 | 5.01 | 259047 | 377.9 | 0 |
 | gcd | 0.400 | ORFS default @ 0.4 ns (`camp_gcd_clk040_a`) | reference | — | -85.8 | -2.479 | 908.4 | 4.213 | 23.93 | 10.83 | 3.45 | 53.0 | 4.31 | 7381 | 2058.4 | 46 |
 | gcd | 0.400 | Netlist DSE / rewrite @ 0.4 ns (`camp_gcd_clk040_b`) | challenger | lose | -389.7 | -15.483 | 631.5 | 2.903 | 15.34 | 5.51 | 2.06 | 55.6 | 4.00 | 4545 | 1266.4 | 47 |
 | gcd | 0.400 | Netlist DSE / rewrite @ 0.4 ns (`camp_gcd_clk040_c`) | challenger | lose | -234.8 | -7.769 | 919.3 | 6.101 | 23.89 | 10.62 | 3.92 | 54.2 | 4.77 | 8088 | 1575.3 | 48 |
@@ -244,6 +264,16 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | aes | 0.820 | Padding celle +1 site (`camp_aes_cell_pad_plus`) | lose | -20.83 | 1.10 | 2.59 | 1.46 | -12.91 | -4.66 | 10.98 | 10.98 | 1.10 |
 | aes | 0.820 | Repair TNS a metà (`camp_aes_repair_half_tns`) | lose | -16.37 | 2.05 | 1.23 | 2.69 | -10.80 | -0.05 | 1.41 | 1.41 | 2.05 |
 | aes | 0.820 | Buffer di clock più fitti (`camp_aes_cts_closer_bufs`) | win | 7.67 | -0.02 | -0.01 | -0.04 | 0.23 | 0.04 | -0.01 | -0.01 | -0.01 |
+| dynamic_node | 6.000 | Sintesi ABC delay (`camp_dynamic_node_synth_delay`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| dynamic_node | 6.000 | Core più stretto (`camp_dynamic_node_core_tighter`) | win | 66.10 | -0.11 | -0.30 | -0.05 | 9.36 | 4.53 | -3.15 | 21.00 | 24.80 |
+| dynamic_node | 6.000 | Core più largo (`camp_dynamic_node_core_looser`) | win | 100.82 | 0.41 | 1.06 | 0.41 | -13.69 | -24.59 | 6.04 | -20.88 | -25.08 |
+| dynamic_node | 6.000 | Floorplan più largo che alto (`camp_dynamic_node_aspect_wide`) | win | 56.36 | -0.01 | 0.15 | -0.06 | -9.72 | -9.04 | 3.54 | 3.16 | -0.37 |
+| dynamic_node | 6.000 | Place più denso (`camp_dynamic_node_place_denser`) | lose | -29.90 | 0.09 | 0.23 | 0.15 | 31.70 | 3.41 | -0.73 | -0.73 | 0.09 |
+| dynamic_node | 6.000 | Place più sparso (`camp_dynamic_node_place_sparser`) | lose | 37.72 | 0.17 | 0.42 | 0.32 | 14.60 | -0.94 | 0.33 | 0.33 | 0.17 |
+| dynamic_node | 6.000 | Padding celle +1 site (`camp_dynamic_node_cell_pad_plus`) | lose | -49.05 | 0.25 | 1.03 | 0.51 | 18.19 | -2.49 | 6.95 | 6.95 | 0.25 |
+| dynamic_node | 6.000 | Repair TNS a metà (`camp_dynamic_node_repair_half_tns`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| dynamic_node | 6.000 | Margine di setup sul repair (`camp_dynamic_node_repair_setup_margin`) | tie | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| dynamic_node | 6.000 | Buffer di clock più fitti (`camp_dynamic_node_cts_closer_bufs`) | win | 23.22 | 0.02 | 0.06 | 0.03 | 0.30 | -0.45 | 0.09 | 0.09 | 0.02 |
 
 ### Side-by-side sheets (reference column + each challenger)
 
@@ -280,6 +310,57 @@ Vittoria prodotto: timing ±5 ps e (area o potenza o IR −10%), senza peggiorar
 | GRT wirelength | 352701 | 348150 | 357677 | 352701 | 347289 |
 | fmax (MHz) | 1206.4 | 1206.8 | 1183.0 | 1206.4 | 1206.2 |
 | setup violations | 5 | 3 | 12 | 5 | 3 |
+
+#### dynamic_node @ 6.000 ns — reference: ORFS default @ 6 ns (1/3)
+
+| Metric | `ORFS default @ 6 ns` | `Floorplan più largo che alto` | `Core più largo` | `Core più stretto` | `Buffer di clock più fitti` |
+|---|---|---|---|---|---|
+| WNS (ps) | 3353.8 | 3410.2 | 3454.7 | 3419.9 | 3377.1 |
+| TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| stdcell area (µm²) | 22540.0 | 22538.2 | 22631.5 | 22515.6 | 22545.4 |
+| total power (mW) | 8.765 | 8.778 | 8.858 | 8.739 | 8.770 |
+| leakage (µW) | 429.78 | 429.52 | 431.55 | 429.59 | 429.91 |
+| IR worst VDD (mV) | 1.78 | 1.61 | 1.54 | 1.95 | 1.79 |
+| IR mean VDD (mV) | 1.03 | 0.94 | 0.78 | 1.08 | 1.03 |
+| cell density (%) | 43.6 | 43.4 | 32.6 | 54.4 | 43.6 |
+| congestion WL/core | 5.01 | 5.16 | 3.96 | 6.06 | 5.01 |
+| GRT wirelength | 259047 | 268210 | 274700 | 250896 | 259270 |
+| fmax (MHz) | 377.9 | 386.1 | 392.9 | 387.6 | 381.3 |
+| setup violations | 0 | 0 | 0 | 0 | 0 |
+
+#### dynamic_node @ 6.000 ns — reference: ORFS default @ 6 ns (2/3)
+
+| Metric | `ORFS default @ 6 ns` | `Padding celle +1 site` | `Place più denso` | `Place più sparso` | `Repair TNS a metà` |
+|---|---|---|---|---|---|
+| WNS (ps) | 3353.8 | 3304.8 | 3323.9 | 3391.6 | 3353.8 |
+| TNS (ns) | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| stdcell area (µm²) | 22540.0 | 22596.2 | 22559.5 | 22578.1 | 22540.0 |
+| total power (mW) | 8.765 | 8.856 | 8.786 | 8.802 | 8.765 |
+| leakage (µW) | 429.78 | 431.99 | 430.44 | 431.16 | 429.78 |
+| IR worst VDD (mV) | 1.78 | 2.11 | 2.35 | 2.04 | 1.78 |
+| IR mean VDD (mV) | 1.03 | 1.01 | 1.07 | 1.02 | 1.03 |
+| cell density (%) | 43.6 | 43.7 | 43.6 | 43.6 | 43.6 |
+| congestion WL/core | 5.01 | 5.35 | 4.97 | 5.02 | 5.01 |
+| GRT wirelength | 259047 | 277042 | 257144 | 259900 | 259047 |
+| fmax (MHz) | 377.9 | 371.0 | 373.7 | 383.4 | 377.9 |
+| setup violations | 0 | 0 | 0 | 0 | 0 |
+
+#### dynamic_node @ 6.000 ns — reference: ORFS default @ 6 ns (3/3)
+
+| Metric | `ORFS default @ 6 ns` | `Margine di setup sul repair` | `Sintesi ABC delay` |
+|---|---|---|---|
+| WNS (ps) | 3353.8 | 3353.8 | 3353.8 |
+| TNS (ns) | 0.000 | 0.000 | 0.000 |
+| stdcell area (µm²) | 22540.0 | 22540.0 | 22540.0 |
+| total power (mW) | 8.765 | 8.765 | 8.765 |
+| leakage (µW) | 429.78 | 429.78 | 429.78 |
+| IR worst VDD (mV) | 1.78 | 1.78 | 1.78 |
+| IR mean VDD (mV) | 1.03 | 1.03 | 1.03 |
+| cell density (%) | 43.6 | 43.6 | 43.6 |
+| congestion WL/core | 5.01 | 5.01 | 5.01 |
+| GRT wirelength | 259047 | 259047 | 259047 |
+| fmax (MHz) | 377.9 | 377.9 | 377.9 |
+| setup violations | 0 | 0 | 0 |
 
 #### gcd @ 0.400 ns — reference: ORFS default @ 0.4 ns
 
