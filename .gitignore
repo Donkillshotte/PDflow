@@ -1,7 +1,5 @@
 # Tool installs, sources, and builds (recreate with scripts/)
-tools/
-!studio/src/app/tools/
-
+/tools/
 # Output dei run ORFS
 flow-runs/
 
