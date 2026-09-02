@@ -133,6 +133,21 @@ code="$(curl -s -o /tmp/studio-suite.json -w '%{http_code}' "${BASE}/api/suite")
 [[ "${code}" == "200" ]] && ok "GET /api/suite → 200" || bad "suite → ${code}"
 rg -q '"hooks"' /tmp/studio-suite.json && ok "suite.hooks" || bad "suite missing hooks"
 rg -q '"ready"' /tmp/studio-suite.json && ok "suite.ready" || bad "suite missing ready"
+
+code="$(curl -s -o /tmp/studio-story.json -w '%{http_code}' "${BASE}/api/story")"
+[[ "${code}" == "200" ]] && ok "GET /api/story → 200" || bad "story → ${code}"
+rg -q '"surfaces"' /tmp/studio-story.json && ok "story.surfaces" || bad "story missing surfaces"
+rg -q '"path"' /tmp/studio-story.json && ok "story.path" || bad "story missing path"
+rg -q '"product"' /tmp/studio-story.json && ok "story.product" || bad "story missing product"
+rg -q '45.298' /tmp/studio-story.json && ok "story cites IR gold" || bad "story missing IR gold"
+python3 - <<'PY'
+import json
+d=json.load(open("/tmp/studio-story.json"))
+ids={s["id"] for s in d.get("surfaces",[])}
+assert ids=={"course","lab","product"}, ids
+assert len(d.get("path",[]))>=5, d.get("path")
+print("ok story surface ids")
+PY
 if python3 - <<'PY'
 import json,sys
 d=json.load(open("/tmp/studio-suite.json"))

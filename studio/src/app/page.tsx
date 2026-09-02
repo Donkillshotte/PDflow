@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SuiteHub } from "@/components/SuiteHub";
+import { ProductStory } from "@/components/ProductStory";
 
 type Lesson = {
   id: string;
@@ -36,14 +37,14 @@ export default function HomePage() {
         <div className="hero-glow" aria-hidden />
         <div className="hero-copy">
           <p className="hero-brand">OpenROAD</p>
-          <h1 className="hero-title">Physical Design, interactive</h1>
+          <h1 className="hero-title">Physical design as one product</h1>
           <p className="hero-lead">
-            Guided path per lesson: theory → LAB with checklist → run with
-            live log → artifact inspection → close-out.
+            Course, lab IR, and product DSE on the same GCD: RTL → GDS →
+            signoff → I(t) gold 45.298 mV → frozen win rule.
           </p>
           <div className="cta-row">
             <Link href="/flow" className="btn-primary">
-              Open interactive FlowLab
+              Open the unified path
             </Link>
             {next ? (
               <Link href={`/lessons/${next.id}`} className="btn-ghost">
@@ -73,6 +74,10 @@ export default function HomePage() {
             {ready === null ? "…" : ready ? "ready" : "needs setup"}
           </p>
         </div>
+      </section>
+
+      <section className="home-rail" id="story">
+        <ProductStory />
       </section>
 
       <section className="home-rail">

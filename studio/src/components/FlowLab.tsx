@@ -34,6 +34,7 @@ import type {
   StreamEvent,
 } from "@/components/flowlab/types";
 import { PARAM_PRESETS } from "@/components/flowlab/types";
+import { ProductStory } from "@/components/ProductStory";
 
 function formatMs(ms: number) {
   if (ms < 1000) return `${ms} ms`;
@@ -510,11 +511,11 @@ export function FlowLab() {
       <header className="fl-hero">
         <div className="fl-hero-copy">
           <p className="fl-eyebrow">OpenROAD Studio · FlowLab</p>
-          <h1>From RTL to GDSII, phase by phase</h1>
+          <h1>From RTL to GDSII, then signoff and IR</h1>
           <p>
-            Interactive workbench with Verilog editor, live ORFS parameters, streaming log
-            and artifact inspection. Variante isolata{" "}
-            <code>results/nangate45/gcd/flowlab</code>.
+            Isolated GCD workbench at{" "}
+            <code>results/nangate45/gcd/flowlab</code>. Same finish feeds
+            signoff, dynamic IR, and the product DSE panel.
           </p>
         </div>
         <div className="fl-hero-stats">
@@ -538,6 +539,8 @@ export function FlowLab() {
           </div>
         </div>
       </header>
+
+      <ProductStory compact tone="dark" />
 
       <FlowLabPipeline
         phases={PHASES}

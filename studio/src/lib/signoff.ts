@@ -47,7 +47,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   },
   {
     id: "geometry",
-    label: "Geometria (DRC)",
+    label: "Geometry (DRC)",
     description: "Route DRC + KLayout GDS DRC",
     status: "active",
     orchestratorAction: "drc_signoff",

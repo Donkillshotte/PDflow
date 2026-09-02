@@ -26,7 +26,7 @@ Production:
 
 | Area | Content |
 |---|---|
-| Studio | Hero + progress + **Suite hub** (live hooks) + guided flow map |
+| Studio | Unified path (`/#story`, `GET /api/story`) + progress + **Suite hub** + flow map |
 | **Flow** | **FlowLab** RTL→GDSII: Monaco editor, layout viewport (zoom/pan, GRT↔DRT comparisons, filmstrip, layer HUD), finish signoff |
 | Lessons | **5-step wizard** + **layout canvas** on Results step (`learn` variant) |
 | Tools | Toolchain + Suite + Ops + console + **layout preview** + inspect/viewer |

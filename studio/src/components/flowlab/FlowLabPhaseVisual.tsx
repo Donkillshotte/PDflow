@@ -493,7 +493,9 @@ export function FlowLabPhaseVisual({
                 : "Run PKG: System PDN VRM→board→pkg→die (ngspice)"}
             </p>
           )}
-          <DsePanel />
+          <div id="dse">
+            <DsePanel />
+          </div>
         </div>
       )}
     </div>

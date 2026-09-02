@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PkgHubPanel } from "@/components/PkgHubPanel";
+import { ProductStory } from "@/components/ProductStory";
 
 export const metadata = {
   title: "PKG · Design package · OpenROAD Studio",
@@ -19,6 +20,8 @@ export default function PkgPage() {
           <strong>mesh SPICE on-die</strong> → <strong>System PDN ngspice</strong>.
         </p>
       </header>
+
+      <ProductStory compact />
 
       <PkgHubPanel />
 

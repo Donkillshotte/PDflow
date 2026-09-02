@@ -156,7 +156,9 @@ export function PkgHubPanel() {
         </article>
       </div>
 
-      <DsePanel />
+      <div id="dse">
+        <DsePanel />
+      </div>
 
       <SignoffMatrixPanel busy={busy} onRun={(a, l) => void runSignoff(a, l)} />
 

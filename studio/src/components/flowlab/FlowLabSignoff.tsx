@@ -26,7 +26,7 @@ const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "activity_power",
     label: "Activity → power",
-    hint: "VCD o synthetic · I_avg",
+    hint: "VCD or synthetic · I_avg",
     icon: Activity,
     long: false,
   },
@@ -47,7 +47,7 @@ const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "vyges_em_ir",
     label: "vyges-em-ir",
-    hint: "engine Apache-2.0 · CG + BE",
+    hint: "Apache-2.0 engine · CG + BE",
     icon: Zap,
     long: false,
   },
@@ -217,7 +217,7 @@ function ActionGrid({
           >
             <Icon size={18} aria-hidden />
             <div>
-              <strong>{busy === s.id ? "Eseguo…" : s.label}</strong>
+              <strong>{busy === s.id ? "Running…" : s.label}</strong>
               <span>{s.hint}</span>
             </div>
           </button>
@@ -245,6 +245,7 @@ export function FlowLabSignoff({
     <div className="fl-signoff">
       {isFinish && (
         <>
+          <div id="signoff">
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
           <div className="fl-signoff-head">
             <strong>Signoff actions timing / geometry / LVS</strong>
@@ -260,12 +261,13 @@ export function FlowLabSignoff({
             busy={busy}
             onRun={onRun}
           />
+          </div>
         </>
       )}
 
       {isPower && (
         <>
-          <div className="fl-signoff-head">
+          <div className="fl-signoff-head" id="ir">
             <strong>Signoff power &amp; SPICE</strong>
             <p>
               Chain: VCD/activity → <strong>vectorless</strong> → chip mesh → vyges-em-ir →{" "}
@@ -291,7 +293,7 @@ export function FlowLabSignoff({
               <div className="fl-signoff-head">
                 <strong>Phase 2 · PKG &amp; thermal</strong>
                 <p>
-                  Proxy educativi ·{" "}
+                  Educational proxies ·{" "}
                   <a href="/materials/reference/pkg-design-package.md">pkg-design-package</a>
                 </p>
               </div>

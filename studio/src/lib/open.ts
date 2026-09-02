@@ -200,6 +200,13 @@ export function listOpenTargets(): {
     exists: true,
   });
   targets.push({
+    id: "dash-story",
+    label: "Unified path · course + lab + product",
+    kind: "dashboard",
+    href: "/#story",
+    exists: true,
+  });
+  targets.push({
     id: "dash-pkg",
     label: "PKG · design package & System PDN",
     kind: "dashboard",

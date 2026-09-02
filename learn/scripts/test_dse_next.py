@@ -1196,6 +1196,16 @@ def _check_enterprise_docs(check, root: Path) -> None:
     arch = (root / "docs/architecture.md").read_text()
     check("camp_{design}" in arch or "camp_" in arch, "architecture names camp variants")
     check("if design ==" in (root / "AGENTS.md").read_text(), "AGENTS forbids design-name branches")
+    story = root / "studio/src/lib/story.ts"
+    check(story.is_file(), "studio story snapshot exists")
+    story_txt = story.read_text()
+    check("win_rule" in story_txt, "story cites win_rule")
+    check("45.298" in story_txt, "story cites IR gold")
+    check("/api/story" in (root / "docs/course.md").read_text(), "course docs name /api/story")
+    home = (root / "studio/src/app/page.tsx").read_text()
+    check("ProductStory" in home, "home mounts ProductStory")
+    flowlab = (root / "studio/src/components/FlowLab.tsx").read_text()
+    check("ProductStory" in flowlab, "FlowLab mounts ProductStory")
 
 
 if __name__ == "__main__":
