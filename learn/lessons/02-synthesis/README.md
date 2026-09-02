@@ -7,7 +7,7 @@ Synthesis is the only step where the design is still **pure logic**. After that,
 - Distinguish Yosys (mapping) from OpenROAD (ODB import)
 - Read gate-level netlist and `synth_stat.txt`
 - Understand flatten vs hierarchical
-- Open `1_synth.odb` and accept that cells are stacked
+- Open `1_synth.odb` and accept that the cells are stacked
 
 ## Reading
 
@@ -57,7 +57,7 @@ rg '^module ' results/nangate45/gcd/learn/1_2_yosys.v
 
 Compare with `always @(posedge` in the RTL. Every RTL register ≈ one DFF (more bits → more DFF).
 
-**Latch:** if Yosys infers `DLATCH`, the RTL has an incomplete combinational always. On GCD that should not happen.
+**Latch:** if Yosys infers `DLATCH`, the RTL has an incomplete combinational always. On GCD this should not happen.
 
 ## GUI
 
@@ -78,7 +78,7 @@ Do not look for a “chip”: floorplan does not exist yet. Atlas: `gui-atlas.md
 | Area | 628.824 |
 | `DFF_X1` | 35 (≈25% sequential area) |
 | `NAND2_X1` | 128 |
-| `CLKBUF_*` already in synth | 2 (this is not CTS) |
+| `CLKBUF_*` already in synth | 2 (not CTS) |
 
 Your numbers: same table in the notebook. If DFFs disappear, Yosys optimized away registers: **RTL bug** or wrong `current_design`.
 
@@ -88,13 +88,13 @@ The file is a Yosys statistics dump. Look for:
 
 | Field | Why |
 |---|---|
-| `Number of cells` | 496 on golden run — if 0, synth did not map |
+| `Number of cells` | 496 on the golden run — if 0, synth did not map |
 | `DFF_X1` | 35 — must match `rg -c 'DFF_'` on `.v` except aliases |
 | `Chip area` | 628.824 — liberty units, not floorplan µm² |
 | `CLKBUF_*` | 2 already in synth: **not** the CTS tree |
 
 `ABC_AREA=1` in `config.mk`: ABC minimizes **area**, not delay. You chase timing
-from placement onward. Do not be surprised if liberty-only `sta` slack differs
+from placement onward. Do not be surprised if liberty-only slack from `sta` differs
 from finish SPEF (−0.04 ns). Table: `golden-metrics.md`.
 
 ## Power & SPICE chain

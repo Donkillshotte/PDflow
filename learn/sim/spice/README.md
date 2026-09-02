@@ -1,57 +1,57 @@
-# SPICE lab · netlist didattiche
+# SPICE lab · teaching netlists
 
-Cartella con netlist SPICE per capire **mesh on-die** e **System PDN** ngspice.
+Folder with SPICE netlists to understand **on-die mesh** and **System PDN** with ngspice.
 
-## File sempre presenti
+## Files always present
 
-| File | Contenuto |
+| File | Content |
 |---|---|
-| `system_pdn_tran_demo.sp` | Ladder VRM→die · load-step · ~35 righe |
-| `nangate_inverter_demo.sp` | Inverter CMOS transistor-level (didattico) |
-| `system_pdn_config.json` | Copia config ladder |
+| `system_pdn_tran_demo.sp` | VRM→die ladder · load-step · ~35 lines |
+| `nangate_inverter_demo.sp` | Transistor-level CMOS inverter (teaching) |
+| `system_pdn_config.json` | Ladder config copy |
 
-## File generati (post-run)
+## Generated files (post-run)
 
-Dopo `finish` + analisi:
+After `finish` + analysis:
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh
-# oppure solo export:
+# or export only:
 FLOW_VARIANT=flowlab ./learn/scripts/export_spice_lab.sh
 ```
 
-| File | Origine |
+| File | Origin |
 |---|---|
 | `system_pdn_tran_flowlab.sp` | ngspice TRAN ladder |
 | `system_pdn_ac_flowlab.sp` | ngspice AC Z(f) |
 | `pg_vdd_bumps_flowlab.sp` | OpenROAD write_pg_spice |
-| `pg_vdd_header_flowlab.sp` | Prime 120 righe mesh |
-| `mesh_stats_flowlab.json` | Conteggio R/I/V |
-| `INDEX_flowlab.md` | Indice export |
+| `pg_vdd_header_flowlab.sp` | First 120 mesh lines |
+| `mesh_stats_flowlab.json` | R/I/V count |
+| `INDEX_flowlab.md` | Export index |
 
-## Come esplorare
+## How to explore
 
 ```bash
 # System PDN demo
 ngspice -b -o /tmp/tran.log learn/sim/spice/system_pdn_tran_demo.sp
 
-# Inverter (corrente da VDD)
+# Inverter (current from VDD)
 ngspice -b learn/sim/spice/nangate_inverter_demo.sp
 
-# Statistiche mesh chip
+# Chip mesh statistics
 cat learn/sim/spice/mesh_stats_flowlab.json
 head -40 learn/sim/spice/pg_vdd_header_flowlab.sp
 ```
 
-## Documentazione
+## Documentation
 
-- [spice-power-chain.md](../reference/spice-power-chain.md) — collegamento fasi RTL→PKG
+- [spice-power-chain.md](../reference/spice-power-chain.md) — RTL→PKG phase linkage
 - [spice-ngspice-primer.md](../reference/spice-ngspice-primer.md) — ngspice System PDN
-- [spice-chip-mesh.md](../reference/spice-chip-mesh.md) — write_pg_spice e celle
+- [spice-chip-mesh.md](../reference/spice-chip-mesh.md) — write_pg_spice and cells
 
-## Due mondi SPICE in Studio
+## Two SPICE worlds in Studio
 
-1. **Chip mesh** — migliaia di R, correnti I per pin cella (PDNSim export)
-2. **System ladder** — ~15 elementi lumped (ngspice PKG)
+1. **Chip mesh** — thousands of R, I currents per cell pin (PDNSim export)
+2. **System ladder** — ~15 lumped elements (ngspice PKG)
 
-Non confonderli: il mesh risponde *dove* sul die; il ladder *VRM→board→package*.
+Do not confuse them: the mesh answers *where* on the die; the ladder answers *VRM→board→package*.

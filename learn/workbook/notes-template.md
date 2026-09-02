@@ -1,27 +1,27 @@
 # Personal notebook template
 
-Copia this file in `mio-quaderno.md` e fill in during the course.
+Copy this file to `mio-quaderno.md` and fill in during the course.
 
 ---
 
-## Sessione ____
+## Session ____
 
-Data:
+Date:
 Lesson:
 Duration:
 
-### Obiettivo sessione
+### Session objective
 
 
-### Comandi eseguiti
+### Commands run
 
 
-### Osservazioni GUI
+### GUI observations
 
 
-### Valori chiave (incolla da log/report)
+### Key values (paste from log/report)
 
-| Metric | Valore |
+| Metric | Value |
 |---|---|
 | Core area | |
 | Utilization | |
@@ -29,10 +29,10 @@ Duration:
 | TNS | |
 | Cell count | |
 
-### Problemi / errori
+### Problems / errors
 
 
-### Cosa ho capito oggi
+### What I understood today
 
 
 ### Questions for later
@@ -40,9 +40,9 @@ Duration:
 
 ---
 
-## Table SDC sweep (exercise A2)
+## SDC sweep table (exercise A2)
 
-| SDC file | clk_period | WNS post-place | Buffer count | Note |
+| SDC file | clk_period | WNS post-place | Buffer count | Notes |
 |---|---|---|---|---|
 | relaxed | 2.0 | | | |
 | default | 0.46 | | | |
@@ -50,26 +50,26 @@ Duration:
 
 ---
 
-## Table utilization sweep (exercise B1)
+## Utilization sweep table (exercise B1)
 
-| CORE_UTILIZATION | Core area (µm²) | CTS OK? | Note |
+| CORE_UTILIZATION | Core area (µm²) | CTS OK? | Notes |
 |---|---|---|---|
 | 25 | | | |
-| 35 | | | riferimento golden: 1712.5 |
+| 35 | | | golden reference: 1712.5 |
 | 50 | | | |
 
 ---
 
 ## Comparison with golden-metrics.md (every lesson)
 
-| Stadio | Metric | Mio valore | Golden | Scarto % |
+| Stage | Metric | My value | Golden | Delta % |
 |---|---|---|---|---|
-| Synth | celle | | 496 | |
+| Synth | cells | | 496 | |
 | Floorplan | core µm² | | 1712.5 | |
 | Place | WNS / period_min | | +0.01 / 0.45 | |
 | CTS | WNS / Inserted | | −0.04 / 45 | |
-| Route | DRC linee | | 0 | |
+| Route | DRC lines | | 0 | |
 | Finish | period_min / fmax | | 0.50 ns / ~2011 MHz | |
 
-I closed the SDC target 0.46 ns (~2.17 GHz)? ______
-(sul run d’oro: no, fmax ~2.01 GHz)
+Did I close the SDC target 0.46 ns (~2.17 GHz)? ______
+(on the golden run: no, fmax ~2.01 GHz)

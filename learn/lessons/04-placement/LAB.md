@@ -1,10 +1,10 @@
 # LAB 04 — Placement (90–120 minutes)
 
-Here the design **occupies space**. Bring open: GUI atlas §5.5–5.6 and `walkthrough-global_place.tcl.md`.
+Here the design **occupies space**. Have open: GUI atlas §5.5–5.6 and `walkthrough-global_place.tcl.md`.
 
 ## Measurable objectives
 
-- [ ] Distinguish GP and DP on screenshot or GUI (not in vague words)
+- [ ] Distinguished GP and DP on screenshot or GUI (not in vague words)
 - [ ] Extracted WNS/TNS/buffer from `3_resizer.rpt`
 - [ ] Found at least one resizer prefix (`rebuffer*`, `fanout*`, …)
 - [ ] Connected tight clock → more buffer → more area → CTS risk
@@ -19,7 +19,7 @@ In one sentence each:
 
 1. What does **global placement** optimize?
 2. What does **detailed placement** forbid?
-3. Why does ORFS do GP, **then** resizer, **then** DP (and not DP before resizer)?
+3. Why does ORFS do GP, **then** resizer, **then** DP (and not DP before the resizer)?
 
 Hint: resizer buffers must be legalized.
 
@@ -72,7 +72,7 @@ less tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/learn/3_global_place
 less tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/learn/3_resizer.rpt
 ```
 
-Extract in the notebook:
+Extract into the notebook:
 
 | Metric | Value | File |
 |---|---|---|
@@ -116,11 +116,11 @@ Checklist:
 - [ ] Fit (`F`) on both
 - [ ] I/O triangles on edge (GP after IOP)
 - [ ] Visible PDN straps
-- [ ] Heatmap Placement Density if available in View (red = full)
+- [ ] Placement Density heatmap in View if available (red = full)
 
 Find: `rebuffer`, `clkbuf` (pre-CTS there are few clkbuf).
 
-If you do not have Desktop: note the differences **on PNG reports** — that is accepted, but try the GUI at least once in the course.
+If you do not have Desktop: note the differences **on the PNG reports** — that is accepted, but try the GUI at least once in the course.
 
 ---
 
@@ -129,7 +129,7 @@ If you do not have Desktop: note the differences **on PNG reports** — that is 
 Write the chain (lessons 01+03+04):
 
 ```
-Tight SDC → negative WNS → RSZ buffer → area ↑ → same core (util 35%)
+tight SDC → negative WNS → RSZ buffer → area ↑ → same core (util 35%)
   → at CTS detailed_placement may hit DPL-0038
 ```
 

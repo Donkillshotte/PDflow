@@ -3,7 +3,7 @@
 ## Measurable objectives
 
 - Draw die/core/rows on paper from the log
-- Explain the 4 ORFS floorplan init methods
+- Explain the 4 floorplan init methods in ORFS
 - Identify PDN VDD/VSS in the GUI
 - Predict the effect of utilization on core area
 
@@ -57,7 +57,7 @@ rg -n 'Core area|Die area|utilization|initialize_floorplan' \
   tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/learn/2_1_floorplan.log
 ```
 
-Fill in the notebook table:
+Fill in table in the notebook:
 
 | Metric | Value | Unit |
 |---|---|---|
@@ -85,7 +85,7 @@ Question: does core area scale linearly with 1/utilization? (approximately yes)
 Open: `flow/designs/nangate45/gcd/grid_strategy-M1-M4-M7.tcl`
 
 Identify:
-1. `set_voltage_domain` — which power/ground net?
+1. `set_voltage_domain` — which power/ground nets?
 2. `add_pdn_stripe` — which layers?
 3. `add_pdn_connect` — which via stack?
 
@@ -116,9 +116,9 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 ```
 
 Checklist (Nangate45 colors in *this* GUI):
-- [ ] Dense blue lines = M1 followpin rails
+- [ ] Dense blue lines = M1 followpin rail
 - [ ] Green vertical straps + pink horizontal straps
-- [ ] Display Control: turn off metal2/metal3 to “clean up” the signal (not there yet)
+- [ ] Display Control: turn off metal2/metal3 to “clean up” the view (no signal routing yet)
 - [ ] Tcl: `gui::set_display_controls "Nets/Power" visible true`
 - [ ] Tapcell: `gui_2_3_floorplan_tapcell.odb` or PNG `win_tapcell.png`
 
@@ -142,7 +142,7 @@ Floorplan **does not place logic cells** — it only prepares the “ground”.
 
 - [ ] Utilization vs core area table (3 rows)
 - [ ] PDN explained aloud in 60 seconds
-- [ ] PDN GUI screenshot or description
-- [ ] Read walkthrough-floorplan.tcl.md completely
+- [ ] GUI PDN screenshot or description
+- [ ] Read walkthrough-floorplan.tcl.md in full
 
 Next LAB: 04-placement (global vs detailed)

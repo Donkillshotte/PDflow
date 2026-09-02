@@ -26,14 +26,14 @@ Static Timing Analysis **does not simulate** vectors. It propagates worst-case d
 | Command | Meaning | When you will use it |
 |---|---|---|
 | `create_clock` | Period and clock pin | Always |
-| `set_input_delay` | Data arrival at pins vs clock | Almost always |
-| `set_output_delay` | Budget toward the outside world | Almost always |
+| `set_input_delay` | Data arrival from pins vs clock | Almost always |
+| `set_output_delay` | Budget toward the external world | Almost always |
 | `set_false_path` | Path to ignore | Async resets, CDC |
 | `set_multicycle_path` | Path over N cycles | Slow ALUs, rare on GCD |
 | `set_clock_uncertainty` | Extra jitter/skew margin | Signoff, not in lesson 01 |
 | `set_clock_latency` | Source/network latency | Pre-CTS vs post-CTS |
 
-The course GCD uses only clock + I/O delay. That is intentional: memorize these three commands.
+The course GCD uses only clock + I/O delay. This is intentional: memorize these three commands.
 
 ## Anatomy of our SDC
 
@@ -53,7 +53,7 @@ Setup interpretation on a register-register path:
 - Available time ≈ `clk_period - setup_lib - uncertainty` (simplified)
 - If combinational + wire > available → negative WNS
 
-I/O path: input delay **eats** part of the period before the internal logic.
+I/O path: input delay **eats** part of the period before internal logic even starts.
 
 ## Course files
 
@@ -71,7 +71,7 @@ Three SDC files = three **product hypotheses**. Not three “random numbers”.
 |---|---|---|
 | relaxed 2.0 ns | slow, easy chip | few buffers, comfortable WNS |
 | default 0.46 ns | realistic GCD ORFS 26Q2 target | some pre-route violation |
-| tight 0.25 ns | educational overclock | RSZ explodes, CTS may fail |
+| tight 0.25 ns | overclock educational | RSZ explodes, CTS may fail |
 
 ## config.mk — parameters that affect physical design
 

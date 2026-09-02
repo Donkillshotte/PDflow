@@ -14,7 +14,7 @@ Yosys maps logic. OpenROAD **does not** place anything yet. If in the GUI you lo
 
 ## Part 1 — RTL by hand (20 min)
 
-File: `tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v`
+Files: `tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v`
 
 Answer in the notebook:
 
@@ -26,7 +26,7 @@ Answer in the notebook:
 | Is there an incomplete `always @*`? (latch risk) | |
 | What `req_val` / `resp_rdy` do (handshake) | |
 
-You do not need to understand Euclid's algorithm in detail. You need to understand: **it is synchronous, has a clock, has I/O**. The lesson 01 SDC talks about those ports.
+You do not need to understand Euclid's algorithm in detail. You need to understand: **it is synchronous, has a clock, has I/O**. The SDC from lesson 01 talks about those ports.
 
 ---
 
@@ -64,7 +64,7 @@ ls -lh results/nangate45/gcd/learn/1_1_yosys_canonicalize.rtlil \
        results/nangate45/gcd/learn/1_synth.odb
 ```
 
-All three must exist. If RTLIL is missing, canonicalize did not run (check log `1_1`).
+All three must exist. If RTLIL is missing, canonicalize did not run (log `1_1`).
 
 ---
 
@@ -112,10 +112,10 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_1_synth.odb
 ```
 
-Checklist atlas (`gui-atlas.md` §5.1):
+Atlas checklist (`gui-atlas.md` §5.1):
 
 - [ ] Black canvas or blob at (0,0) — **not** a die
-- [ ] Display Control still shows metal1–metal10 (tech LEF is loaded)
+- [ ] Display Control still shows metal1–metal10 (the tech LEF is loaded)
 - [ ] Find `DFF` / Inspect master
 
 If you cannot open the GUI: study `learn/reference/gui-shots/win_synth.png` and describe why it is empty.
