@@ -131,6 +131,22 @@ RECIPES: list[dict[str, Any]] = [
         "payoff": "Place per densità, non per slack. Controllo del default timing-driven.",
         "env": {"GPL_TIMING_DRIVEN": "0"},
     },
+    {
+        "id": "cts_sparser",
+        "stage": "cts",
+        "title": "Buffer di clock più radi",
+        "does": "CTS_BUF_DISTANCE=200 (più largo del default / dei 80 µm fitti).",
+        "payoff": "Meno clock buffers, meno power. Skew può salire.",
+        "env": {"CTS_BUF_DISTANCE": "200"},
+    },
+    {
+        "id": "repair_skip",
+        "stage": "repair",
+        "title": "Nessun repair TNS",
+        "does": "TNS_END_PERCENT=0: non ripara i path violati.",
+        "payoff": "Meno buffer. Su un die già chiuso può tagliare area/potenza.",
+        "env": {"TNS_END_PERCENT": "0"},
+    },
 ]
 
 

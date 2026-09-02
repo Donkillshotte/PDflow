@@ -10,7 +10,7 @@ from .knob_catalog import RECIPES, by_id, resolve
 _NEVER = frozenset({"synth_area", "synth_delay"})
 # Default synth method: already the official netlist. Do not recook.
 # hold_margin / place_notiming are improve-only until they take a win.
-SKIP_COVER = frozenset({"synth_area", "hold_margin", "place_notiming"})
+SKIP_COVER = frozenset({"synth_area", "hold_margin", "place_notiming", "cts_sparser", "repair_skip"})
 # Cheapest live finish first. Cover-all uses this order, not the selector.
 CHEAP_FIRST = ("gcd", "spi", "ibex", "aes", "dynamic_node")
 
@@ -32,7 +32,12 @@ IMPROVE_COMBOS: tuple[tuple[str, ...], ...] = (
 )
 # On a die already closed by a wide margin, repair combos are no-ops.
 # Try unused physical knobs that can still move area / power / IR.
-CLOSED_IMPROVE: tuple[str, ...] = ("place_notiming", "hold_margin")
+CLOSED_IMPROVE: tuple[str, ...] = (
+    "place_notiming",
+    "hold_margin",
+    "cts_sparser",
+    "repair_skip",
+)
 
 
 def floorplan_locked(config_mk: Path | str | None) -> bool:

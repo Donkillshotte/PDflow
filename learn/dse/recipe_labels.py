@@ -279,6 +279,16 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "Buffer di clock ogni 80 µm.",
         "Su dynamic_node: win. Slack +23 ps. Area/potenza/IR ~iso.",
     ),
+    "camp_spi_place_notiming": RecipeLabel(
+        "Place senza timing-driven",
+        "GPL_TIMING_DRIVEN=0. Stessa netlist ufficiale.",
+        "Su spi: perde. IR +48%. Area +2%. Slack −1 ps.",
+    ),
+    "camp_spi_hold_margin": RecipeLabel(
+        "Margine di hold sul repair",
+        "HOLD_SLACK_MARGIN=0.05 ns.",
+        "Su spi: identico al default. No-op.",
+    ),
 }
 
 
