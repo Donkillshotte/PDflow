@@ -670,6 +670,8 @@ def check_next_level(check, root: Path) -> None:
     check("perde" in spi_nt.payoff.lower() and "ir" in spi_nt.payoff.lower(), f"I1 notiming payoff {spi_nt.payoff}")
     spi_sk = label_for("camp_spi_repair_skip")
     check("no-op" in spi_sk.payoff.lower() or "identico" in spi_sk.payoff.lower(), f"I1 skip-repair payoff {spi_sk.payoff}")
+    gcd_deep = label_for("camp_gcd_core_looser_cell_pad_plus")
+    check("win" in gcd_deep.payoff.lower() and "ir" in gcd_deep.payoff.lower(), f"D1 looser+pad payoff {gcd_deep.payoff}")
     check("HOLD_SLACK_MARGIN" in src and "GPL_TIMING_DRIVEN" in src, "wrapper passes hold margin and timing-driven")
     combo_row = _E(
         status="done",

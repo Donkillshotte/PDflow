@@ -299,6 +299,16 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "TNS_END_PERCENT=0.",
         "Su spi: identico al default (già in orario). No-op.",
     ),
+    "camp_gcd_core_looser_aspect_wide": RecipeLabel(
+        "Core più largo + floorplan più largo",
+        "Util −10 e rettangolo 2:1. Stessa netlist ufficiale.",
+        "Su gcd: perde. Area +12%, potenza +12%. IR meglio non basta.",
+    ),
+    "camp_gcd_core_looser_cell_pad_plus": RecipeLabel(
+        "Core più largo + padding celle",
+        "Util −10 e un site extra tra le celle. Stessa netlist.",
+        "Su gcd: win. IR −48%. Slack −4 ps (dentro 5 ps). Area/potenza un filo meglio.",
+    ),
 }
 
 
