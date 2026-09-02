@@ -28,5 +28,5 @@
   "repair_buffer": 120,
   "die_um2": 2720.14,
   "place_promoted": true,
-  "notes": "Core pi\u00f9 largo + Padding celle +1 site. Transfer cook. Official yosys netlist. Policy EVALUATE."
+  "notes": "Wider core + Cell padding +1 site. Transfer cook. Official yosys netlist. Policy EVALUATE."
 }

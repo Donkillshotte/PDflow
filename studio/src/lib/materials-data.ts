@@ -10,9 +10,9 @@ export type MaterialLink = {
 export const MATERIALS: MaterialLink[] = [
   {
     href: "/materials/reference/oss-integrations.md",
-    title: "Integrazioni OSS",
+    title: "OSS integrations",
     group: "Reference",
-    description: "Stack integrato, gap commerciali, Magic/Netgen, vectorless, vyges-em-ir, dynamic IR.",
+    description: "Integrated stack, commercial gaps, Magic/Netgen, vectorless, vyges-em-ir, dynamic IR.",
   },
   {
     href: "/materials/reference/vyges-em-ir.md",
@@ -28,7 +28,7 @@ export const MATERIALS: MaterialLink[] = [
   },
   {
     href: "/materials/reference/dse.md",
-    title: "DSE fisico-aware",
+    title: "Physically-aware DSE",
     group: "Reference",
     description: "E-graph datapath, BOiLS SSK-GP, Pareto by level, Dynamic IR oracle.",
   },
@@ -46,13 +46,13 @@ export const MATERIALS: MaterialLink[] = [
   },
   {
     href: "/materials/reference/golden-metrics.md",
-    title: "Metrics d’oro",
+    title: "Golden metrics",
     group: "Reference",
     description: "WNS, period_min, area of the reference learn run.",
   },
   {
     href: "/materials/reference/gui-atlas.md",
-    title: "Atlante GUI",
+    title: "GUI atlas",
     group: "GUI",
     description: "Qt pixel-level screenshots, anatomy A–G, layer M2/M3.",
   },
@@ -60,7 +60,7 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materials/reference/debug-playbook.md",
     title: "Debug playbook",
     group: "Reference",
-    description: "DPL-0038, RSZ-0062, STA-2204 e checklist pre-run.",
+    description: "DPL-0038, RSZ-0062, STA-2204 and pre-run checklist.",
   },
   {
     href: "/materials/reference/glossary.md",

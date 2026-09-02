@@ -447,7 +447,7 @@ export function FlowLabPhaseVisual({
             </p>
           ) : (
             <p className="fl-vis-meta">
-              Dopo finish: chip IR → <code>write_pg_spice</code> ·{" "}
+              After finish: chip IR → <code>write_pg_spice</code> ·{" "}
               <Link href="/materials/reference/spice-chip-mesh.md">mesh SPICE</Link>
             </p>
           )}

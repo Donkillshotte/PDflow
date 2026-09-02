@@ -6,7 +6,7 @@ import { MATERIALS, WALKTHROUGHS } from "@/lib/materials-client";
 
 type Shot = { name: string; href: string; label: string };
 
-export default function MaterialiPage() {
+export default function MaterialsPage() {
   const [q, setQ] = useState("");
   const [shots, setShots] = useState<Shot[]>([]);
   const [lightbox, setLightbox] = useState<Shot | null>(null);

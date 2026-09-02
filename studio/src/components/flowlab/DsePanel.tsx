@@ -202,7 +202,7 @@ export function DsePanel() {
   const frontArch = new Set(front?.architecture ?? []);
 
   return (
-    <section className="fl-dynir" aria-label="DSE fisico-aware">
+    <section className="fl-dynir" aria-label="Physically-aware DSE">
       <header className="fl-dynir-head">
         <strong>DSE · level search</strong>
         <p>

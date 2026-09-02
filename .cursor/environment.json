@@ -5,7 +5,7 @@
     {
       "name": "studio",
       "command": "cd /workspace && ./scripts/run_studio.sh",
-      "description": "OpenROAD Physical Design Studio (Next.js) at http://127.0.0.1:43217 — course UI, FlowLab RTL→GDSII, dashboard e API."
+      "description": "OpenROAD Physical Design Studio (Next.js) at http://127.0.0.1:43217 — course UI, FlowLab RTL→GDSII, dashboard and API."
     }
   ],
   "ports": [

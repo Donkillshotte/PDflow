@@ -31,7 +31,7 @@ const STEPS = [
   { id: "lab", label: "2 · LAB", short: "LAB" },
   { id: "run", label: "3 · Run", short: "Run" },
   { id: "results", label: "4 · Results", short: "Results" },
-  { id: "chiudi", label: "5 · Close", short: "Close" },
+  { id: "close", label: "5 · Close", short: "Close" },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -41,12 +41,12 @@ function extractChecks(lab: string): CheckItem[] {
   const seen = new Set<string>();
   for (const line of lab.split("\n")) {
     const check = line.match(/^- \[[ xX]\]\s+(.+)/);
-    const parte = line.match(/^##\s+(Parte\s+\d+[^\n]*)/i);
+    const parte = line.match(/^##\s+(Part\s+\d+[^\n]*)/i);
     const label = (check?.[1] || parte?.[1] || "").trim();
     if (!label || label.length < 4) continue;
     const id = label
       .toLowerCase()
-      .replace(/[^a-z0-9àèéìòù]+/gi, "-")
+      .replace(/[^a-z0-9]+/gi, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 64);
     if (seen.has(id)) continue;
@@ -161,7 +161,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
 
   async function completeLesson() {
     setCompleteError(null);
-    markStep("chiudi");
+    markStep("close");
     const res = await fetch("/api/progress", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -390,7 +390,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
           </div>
         )}
 
-        {step === "chiudi" && (
+        {step === "close" && (
           <div className="wizard-pane close-pane">
             <header className="wizard-pane-head">
               <h2>Close the lesson</h2>
@@ -457,7 +457,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
             Step {stepIndex + 1}/{STEPS.length}
             {saving ? " · saving…" : ""}
           </span>
-          {step !== "chiudi" ? (
+          {step !== "close" ? (
             <button type="button" className="btn-primary" onClick={nextStep}>
               Next
             </button>

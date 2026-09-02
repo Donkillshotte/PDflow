@@ -43,7 +43,7 @@ export default function PkgPage() {
         <article className="pkg-card">
           <h2>2. System PDN</h2>
           <p>
-            ngspice ladder: Z(f) e load-step. Config{" "}
+            ngspice ladder: Z(f) and load-step. Config{" "}
             <code>learn/system_pdn/default.json</code>.
           </p>
           <Link className="btn-primary" href="/flow?phase=pkg">

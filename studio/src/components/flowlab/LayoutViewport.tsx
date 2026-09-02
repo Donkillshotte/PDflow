@@ -264,7 +264,7 @@ export const LayoutViewport = forwardRef<LayoutViewportHandle, Props>(
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={compareSrc}
-                  alt={rightLabel ?? "Confronto"}
+                  alt={rightLabel ?? "Compare"}
                   width={nw}
                   height={nh}
                   draggable={false}
@@ -274,7 +274,7 @@ export const LayoutViewport = forwardRef<LayoutViewportHandle, Props>(
           ) : mode === "wipe" && compareSrc ? (
             <div className="fl-vp-wipe" style={{ width: nw, height: nh }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={compareSrc} alt={rightLabel ?? "Dopo"} width={nw} height={nh} draggable={false} />
+              <img src={compareSrc} alt={rightLabel ?? "After"} width={nw} height={nh} draggable={false} />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 ref={imgRef}

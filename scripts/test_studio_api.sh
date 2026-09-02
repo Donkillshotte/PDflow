@@ -161,7 +161,7 @@ code="$(curl -s -o /tmp/studio-open-run.json -w '%{http_code}' \
 rg -q 'tab=run&action=gridcheck' /tmp/studio-open-run.json && ok "run navigate deep-link" || bad "run navigate incorrect"
 
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/tools?tab=run&action=rtl_sim")"
-[[ "${c}" == "200" ]] && ok "GET strumenti action deep-link" || bad "strumenti action → ${c}"
+[[ "${c}" == "200" ]] && ok "GET tools action deep-link" || bad "tools action → ${c}"
 
 # FlowLab API + page
 code="$(curl -s -o /tmp/studio-flowlab.json -w '%{http_code}' "${BASE}/api/flowlab")"
@@ -170,7 +170,7 @@ rg -q '"rtl"' /tmp/studio-flowlab.json && ok "flowlab.rtl" || bad "flowlab missi
 rg -q '"params"' /tmp/studio-flowlab.json && ok "flowlab.params" || bad "flowlab missing params"
 rg -q '"coreUtilization"' /tmp/studio-flowlab.json && ok "flowlab.params.coreUtilization" || bad "params incomplete"
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/flow")"
-[[ "${c}" == "200" ]] && ok "GET /flow" || bad "flusso → ${c}"
+[[ "${c}" == "200" ]] && ok "GET /flow" || bad "/flow → ${c}"
 rg -q '"sim"' /tmp/studio-flowlab.json && ok "flowlab.sim" || bad "flowlab missing sim"
 rg -q '"phaseHistory"' /tmp/studio-flowlab.json && ok "flowlab.phaseHistory" || bad "flowlab missing phaseHistory"
 code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/api/flowlab/download?kind=vcd")"

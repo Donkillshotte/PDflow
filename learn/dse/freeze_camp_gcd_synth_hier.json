@@ -28,5 +28,5 @@
   "repair_buffer": 138,
   "die_um2": 2043.94,
   "place_promoted": true,
-  "notes": "Sintesi gerarchica. Transfer cook. Fresh Yosys (synth knob). Policy EVALUATE."
+  "notes": "Hierarchical synthesis. Transfer cook. Fresh Yosys (synth knob). Policy EVALUATE."
 }

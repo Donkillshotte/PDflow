@@ -35,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="it">
+    <html lang="en">
       <body className={`${display.variable} ${body.variable} ${mono.variable}`}>
         <ToastProvider>
           <div className="shell">

@@ -132,7 +132,7 @@ Cross-ref: [extended-flow.md](./extended-flow.md) · [spice-power-chain.md](./sp
 
 ---
 
-## Phase 2 (planned in registry)
+## Phase 2 (planned in registry) {#phase-2-planned-in-registry}
 
 Pillars prepared in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
 

@@ -13,7 +13,7 @@ inst_power_map.json             placement, seq vs combo (optional)
     │
     ▼
 pdn_dynamic.py
-    per-ITerm triangle I(t)     clock: STA arrival t50; spatial/simultaneousus synthetic
+    per-ITerm triangle I(t)     clock: STA arrival t50; spatial/simultaneous synthetic
     VCD/SAIF name-join only     RTL tb_gcd → GAP (no silent pin map); SAIF idle-zeros TC=0
     Path STA delay              OpenSTA worst max path, gate delays × (Vdd/V_inst)^α
     A = G + C/Δt                setup once (independent of I(t))
@@ -34,7 +34,7 @@ sim/reports/dynamic_ir_<variant>.json
 
 ## Simulation hierarchy (L0–L3)
 
-vyges-em-ir today is essentially **L1 simultaneousus** (all the cells a `switch_t_ns`). Here:
+vyges-em-ir today is essentially **L1 simultaneous** (all the cells a `switch_t_ns`). Here:
 
 | Level | Idea | GCD status |
 |---|---|---|
@@ -83,7 +83,7 @@ On GCD Nangate45 LU is faster than AMG and RAS (4k nodes). AMG/RAS are paths tha
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 # Studio: dynamic_ir action  ·  /tools?tab=run&action=dynamic_ir
-# Env: DYNAMIC_IR_MODE=clock|spatial|simultaneousus
+# Env: DYNAMIC_IR_MODE=clock|spatial|simultaneous
 ```
 
 ## What it does (and what it does not)
@@ -92,7 +92,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 |---|---|---|---|---|
 | Static IR | yes (same G) | yes (CG) | yes | yes |
 | I(t) | **per pin**, triangle leak+switch | **one** `switch_t_ns` for all | global load-step × peak_factor | I_avg DC |
-| t50 | STA arrival (clock) / spatial / simultaneousus; SAIF idle-zero | simultaneous | n/a | n/a |
+| t50 | STA arrival (clock) / spatial / simultaneous; SAIF idle-zero | simultaneous | n/a | n/a |
 | CCS Liberty / VCD pin | **no** (Nangate is NLDM); VCD name-join GAP on the GCD; SAIF READY only if names join | no | no | no |
 | Waveform | **CSV** Vmin(t) | no | CSV | no |
 | Heatmap t_worst | **SVG + CSV** | no | no | static ORFS PNG |
@@ -106,7 +106,7 @@ For every load ITerm: \(I_\mathrm{leak}=f_\mathrm{leak}\,I_\mathrm{avg}\), trian
 
 | `DYNAMIC_IR_MODE` | When it switches |
 |---|---|
-| `simultaneousus` | all at `T50_NS` — upper bound, comparable to vyges |
+| `simultaneous` | all at `T50_NS` — upper bound, comparable to vyges |
 | `spatial` | stagger on X axis |
 | `clock` (default) | flip-flop and combo: t50 = rise arrival OpenSTA (folded in period); synthetic fallback if the name does not join |
 
@@ -118,16 +118,16 @@ N3 = companion BE with history of \(i_L\) (not \(L/\Delta t\) memoryless). Droop
 | Engine | Static IR | Dynamic droop |
 |---|---|---|
 | `pdn_transient.py` | 17.52 mV | 154 mV (step ×8 + pkg R/L memoryless) |
-| vyges-em-ir 0.1.33 | 17.46 mV | 78.8 mV @ 1.016 ns (simultaneousus) |
+| vyges-em-ir 0.1.33 | 17.46 mV | 78.8 mV @ 1.016 ns (simultaneous) |
 | **this engine `clock` + STA t50 + \(i_L\)** | **17.52 mV** | **45.298 mV (4.12%) @ 0.27 ns** · I_peak 10.96 mA · STA 601/601 · native_hist |
 | Solver B SA-AMG | — | 45.298 mV · \|A−B\| ≪ 1 µV · L5 native |
 | Solver C Krylov MOR | — | 44.896 mV · m=96 · \|A−C\| **0.401 mV** · descriptor RLC |
 | Solver D RAS Schwarz | — | **45.284 mV** · ndom=8 · \|A−D\| **0.013 mV** · native_hist |
 | Dual-rail VSS return | — | **26.707 mV bounce** @ 0.21 ns · 601/601 Sink-for pairs · 3381 nodes / 12 pad (mesh VSS, not VDD) · native_hist. **Not** the gold VDD 45.298 mV |
 
-Ranking Solver A (gold): simultaneousus 67.25 mV > spatial 55.31 mV > **clock STA 45.30 mV**.
-Extra I(t) (spatial/simultaneousus) remains synthetic — the ranking is not STA-vs-stagger.
-With \(i_L\), the simultaneousus spike is the worst (I_peak 52 mA vs 11 mA clock STA).
+Ranking Solver A (gold): simultaneous 67.25 mV > spatial 55.31 mV > **clock STA 45.30 mV**.
+Extra I(t) (spatial/simultaneous) remains synthetic — the ranking is not STA-vs-stagger.
+With \(i_L\), the simultaneous spike is the worst (I_peak 52 mA vs 11 mA clock STA).
 The previous synthetic clock (59.925 mV) did not join ITerms (800 dbu radius < VDD pin offset ~1.2 µm).
 
 Gold ngspice: **1 RC node** `|V_BE−V_ng| ≈ 0.032 mV`; **1 pad–R–L–C node** ≈ 0.056 mV (`gear maxord=1`, 5 mV threshold). This is not the chip.

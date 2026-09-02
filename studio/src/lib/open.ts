@@ -216,7 +216,7 @@ export function listOpenTargets(): {
     { id: "run-chip-ir", label: "Run · chip IR mesh", action: "chip_pdn_ir" },
     { id: "run-vyges-em-ir", label: "Run · vyges-em-ir", action: "vyges_em_ir" },
     { id: "run-dynamic-ir", label: "Run · dynamic IR I(t)", action: "dynamic_ir" },
-    { id: "run-dse", label: "Run · DSE fisico-aware", action: "dse" },
+    { id: "run-dse", label: "Run · Physically-aware DSE", action: "dse" },
     { id: "run-power-chain", label: "Run · SPICE chain", action: "power_chain" },
     {
       id: "run-export-spice",
@@ -303,7 +303,7 @@ export function listOpenTargets(): {
   });
   targets.push({
     id: "atlas",
-    label: "Atlante GUI",
+    label: "GUI atlas",
     kind: "doc",
     href: "/materials/reference/gui-atlas.md",
     exists: true,
@@ -317,7 +317,7 @@ export function listOpenTargets(): {
   });
   targets.push({
     id: "oss-integrations",
-    label: "Matrice integrazioni OSS",
+    label: "OSS integrations matrix",
     kind: "doc",
     href: "/materials/reference/oss-integrations.md",
     exists: true,

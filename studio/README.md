@@ -27,10 +27,10 @@ Production:
 | Area | Content |
 |---|---|
 | Studio | Hero + progress + **Suite hub** (live hooks) + guided flow map |
-| **Flusso** | **FlowLab** RTL→GDSII: Monaco editor, layout viewport (zoom/pan, GRT↔DRT comparisons, filmstrip, layer HUD), finish signoff |
-| Lezioni | **5-step wizard** + **layout canvas** on Results step (`learn` variant) |
-| Strumenti | Toolchain + Suite + Ops + console + **layout preview** + inspect/viewer |
-| Materiali | Search, in-app documents, GUI gallery |
+| **Flow** | **FlowLab** RTL→GDSII: Monaco editor, layout viewport (zoom/pan, GRT↔DRT comparisons, filmstrip, layer HUD), finish signoff |
+| Lessons | **5-step wizard** + **layout canvas** on Results step (`learn` variant) |
+| Tools | Toolchain + Suite + Ops + console + **layout preview** + inspect/viewer |
+| Materials | Search, in-app documents, GUI gallery |
 
 ## Operational contract (enterprise)
 

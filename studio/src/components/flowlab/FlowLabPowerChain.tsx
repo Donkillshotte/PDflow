@@ -109,7 +109,7 @@ export function FlowLabPowerChain({
             ))}
           </ul>
           <p className="fl-power-chain-note">
-            Lab netlist: <code>learn/sim/spice/</code> · export con{" "}
+            Lab netlist: <code>learn/sim/spice/</code> · export with{" "}
             <code>export_spice_lab.sh</code> · chain with{" "}
             <code>run_power_chain.sh</code>
           </p>

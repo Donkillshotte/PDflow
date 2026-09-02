@@ -241,7 +241,7 @@ export async function getSuiteStatus() {
     },
     {
       id: "dse",
-      label: "DSE fisico-aware",
+      label: "Physically-aware DSE",
       group: "Power",
       ok:
         signoffReportPass("flowlab", "dse") || signoffReportPass("learn", "dse"),

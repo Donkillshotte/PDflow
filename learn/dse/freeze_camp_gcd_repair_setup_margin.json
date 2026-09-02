@@ -28,5 +28,5 @@
   "repair_buffer": 127,
   "die_um2": 1970.03,
   "place_promoted": true,
-  "notes": "Margine di setup sul repair. Transfer cook. Official yosys netlist. Policy EVALUATE."
+  "notes": "Setup margin on repair. Transfer cook. Official yosys netlist. Policy EVALUATE."
 }

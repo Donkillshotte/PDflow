@@ -48,7 +48,7 @@ const RUN_ACTIONS = new Set([
   ...STAGES,
 ]);
 
-export default function StrumentiClient() {
+export default function ToolsClient() {
   const search = useSearchParams();
   const router = useRouter();
   const { push } = useToast();
@@ -115,7 +115,7 @@ export default function StrumentiClient() {
     setRunAction(next);
     setTab(nextTab);
     router.replace(
-      `/strumenti?stage=${next}&tab=${nextTab}&action=${next}`,
+      `/tools?stage=${next}&tab=${nextTab}&action=${next}`,
       { scroll: false },
     );
   }
@@ -164,7 +164,7 @@ export default function StrumentiClient() {
             interactive lab.
           </p>
         </div>
-        <Link href="/flusso" className="btn-primary">
+        <Link href="/flow" className="btn-primary">
           Open FlowLab →
         </Link>
       </header>

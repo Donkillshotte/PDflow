@@ -103,7 +103,7 @@ export function FlowLabPipeline({
                   )}
                 </span>
                 <span className="fl-pipeline-text">
-                  <span className="fl-pipeline-index">Fase {i + 1}</span>
+                  <span className="fl-pipeline-index">Phase {i + 1}</span>
                   <strong>{p.label}</strong>
                   <em>{p.hint}</em>
                 </span>

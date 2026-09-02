@@ -33,7 +33,7 @@ Binary is not in git (`tools/` is ignored). `ensure_vyges_em_ir.sh` fetches the 
 |---|---|
 | Static | CG + Jacobi on `G·V = I` |
 | Dynamic | Backward Euler if `.pdn` has `cap` + `switch` |
-| Switch | **All** cells at the same `switch_t_ns` — upper bound simultaneousus-switch, not a VCD |
+| Switch | **All** cells at the same `switch_t_ns` — upper bound simultaneous-switch, not a VCD |
 | Timestep | Implicit `min(dur)/10`, not configurable |
 | Waveform | **Not** exported — worst droop only |
 | EM | Per-layer limits in `.pdn`; on Nangate45 we **do not** set `emlimit` (no foundry plugin) |
@@ -68,7 +68,7 @@ Switch energy (pJ) from the same envelope as `pdn_transient`:
 
 ## Classroom limits
 
-1. Global simultaneousus switch — tight upper bound, not real activity.
+1. Global simultaneous switch — tight upper bound, not real activity.
 2. No waveform, no user timestep.
 3. Ideal pads: static matches `pdn_transient` static (fixed V sources); Studio transient includes package R/L.
 4. DEF+LEF extraction exists in the engine (Sky130 `RPERSQ`); on this course the honest path is the mesh PDNSim already used by GCD.

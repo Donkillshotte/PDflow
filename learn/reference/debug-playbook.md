@@ -183,4 +183,4 @@ Result:
 Lesson learned:
 ```
 
-Save in `learn/workbook/mio-debug-log.md`.
+Save in `learn/workbook/my-debug-log.md`.

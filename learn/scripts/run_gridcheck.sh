@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check_power_grid su ODB PDN / final (grid connectivity).
+# check_power_grid on ODB PDN / final (grid connectivity).
 # Usage: run_gridcheck.sh [pdn|final]
 # Env: FLOW_VARIANT=learn|flowlab (default learn)
 set -euo pipefail

@@ -378,7 +378,7 @@ export function FlowLabLayoutCanvas({
                     type="button"
                     className="fl-layer-close"
                     onClick={() => setLayersOpen(false)}
-                    aria-label="Nascondi layer"
+                    aria-label="Hide layer"
                   >
                     ×
                   </button>
@@ -395,7 +395,7 @@ export function FlowLabLayoutCanvas({
                         onClick={() => soloLayer(layer)}
                         title={
                           layer.soloAvailable
-                            ? `Mostra ${layer.name}`
+                            ? `Show ${layer.name}`
                             : "Legend (static screenshot — Web Viewer to toggle layers)"
                         }
                       >
@@ -417,7 +417,7 @@ export function FlowLabLayoutCanvas({
                   disabled={!activeShot || activeShot === meta?.primaryShot}
                   onClick={() => selectShot(meta?.primaryShot ?? gallery[0]?.file ?? "")}
                 >
-                  Tutti i layer
+                  All layers
                 </button>
               </aside>
             )}

@@ -133,7 +133,7 @@ Question to write: why can an HTTP iframe not show a Qt/VNC window?
 ## Part 7 — Notebook (5 min)
 
 ```bash
-cp learn/workbook/notes-template.md learn/workbook/mio-notebook.md
+cp learn/workbook/notes-template.md learn/workbook/my-notebook.md
 ```
 
 Fill the first session: date, duration, 3 observations.

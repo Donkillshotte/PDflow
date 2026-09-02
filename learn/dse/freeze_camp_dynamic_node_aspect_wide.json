@@ -28,5 +28,5 @@
   "repair_buffer": 962,
   "die_um2": 57145.8,
   "place_promoted": true,
-  "notes": "Floorplan pi\u00f9 largo che alto. Transfer cook. Official yosys netlist. Policy EVALUATE."
+  "notes": "Floorplan wider than tall. Transfer cook. Official yosys netlist. Policy EVALUATE."
 }

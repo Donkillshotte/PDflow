@@ -175,7 +175,7 @@ export const PHASE_LAYERS: Partial<Record<LayoutPhaseId, LayerSwatch[]>> = {
     { id: "m1", name: "Metal1", color: "#4b8bff", role: "Pin + rail, not yet signal route" },
   ],
   cts: [
-    { id: "clk", name: "Clock", color: "#f0883e", role: "Net di clock + buffer" },
+    { id: "clk", name: "Clock", color: "#f0883e", role: "Clock net + buffers" },
     { id: "cells", name: "Cells", color: "#58a6ff", role: "Stdcell + clock inverters" },
     { id: "m2", name: "Metal2", color: "#e23d3d", role: "Spine clock (tipico)" },
   ],

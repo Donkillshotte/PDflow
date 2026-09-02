@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fase 2 signoff: thermal proxy + PKG bump/RDL/system
+# Phase 2 signoff: thermal proxy + PKG bump/RDL/system
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

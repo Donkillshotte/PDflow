@@ -28,5 +28,5 @@
   "repair_buffer": 2879,
   "die_um2": 62612.4,
   "place_promoted": false,
-  "notes": "Padding celle +1 site. Transfer cook. Official yosys netlist. Policy EVALUATE."
+  "notes": "Cell padding +1 site. Transfer cook. Official yosys netlist. Policy EVALUATE."
 }

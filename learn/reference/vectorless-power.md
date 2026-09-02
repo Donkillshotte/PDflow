@@ -1,4 +1,4 @@
-# Vectorless e dynamic power/IR (GCD Nangate45)
+# Vectorless and dynamic power/IR (GCD Nangate45)
 
 OpenSTA/OpenROAD do not have a commercial “vectorless IR signoff” (PrimeTime PX vectorless, RedHawk-static). Here the course **implements** the two pieces papers define, and runs them on the routed GCD.
 
@@ -20,7 +20,7 @@ OpenSTA 26Q2: `read_power_activities` is deprecated and calls `read_vcd` with th
 
 Icarus VCD notes **names that match** the gate netlist (in practice the ports). Unannotated pins stay on OpenSTA defaults. **Do not** run `set_power_activity -global` after VCD: would overwrite annotation.
 
-Attenzione **STA-1452**: testbench uses 10 ns period, SDC 0.46 ns. Dynamic watts are not 1:1 with vectorless — educational data, not foundry sign-off.
+**Note — STA-1452**: testbench uses 10 ns period, SDC 0.46 ns. Dynamic watts are not 1:1 with vectorless — educational data, not foundry sign-off.
 
 ## Envelope IR
 
@@ -28,18 +28,18 @@ Attenzione **STA-1452**: testbench uses 10 ns period, SDC 0.46 ns. Dynamic watts
 
 - \(I_\mathrm{avg} = P_\mathrm{vectorless} / V_{DD}\)
 - budget chip \(I_\mathrm{avg} \times 3\) (crest)
-- pesi area \(\times P_{01}\) \(\times\) distanza (proxy strap)
-- cap locale \(8\times\) share di area
+- area weights \(\times P_{01}\) \(\times\) distance (proxy strap)
+- local cap \(8\times\) area share
 - fill/tap **excluded** (do not switch)
 - if `pg_vdd_bumps.sp` exists, DC on mesh (`pdn_transient.py`) with currents scaled to budget
 
-The same mesh feeds **vyges-em-ir** (`run_vyges_em_ir.sh`): static IR CG comparable to `pdn_transient`, dynamic droop simultaneousus-switch. See [vyges-em-ir.md](./vyges-em-ir.md).
+The same mesh feeds **vyges-em-ir** (`run_vyges_em_ir.sh`): static IR CG comparable to `pdn_transient`, dynamic droop simultaneous-switch. See [vyges-em-ir.md](./vyges-em-ir.md).
 
 The **I(t) per pin** path (stagger clock, waveform, heatmap) is `dynamic_ir` — [dynamic-ir.md](./dynamic-ir.md). PDNSim remains static.
 
 PDNSim (`analyze_power_grid -source_type STRAPS`) runs in both modes: IR straps on report.
 
-## Come lanciare
+## How to run
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_rtl_sim.sh   # VCD
@@ -47,8 +47,8 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_vectorless.sh
 # report: learn/sim/reports/vectorless_flowlab.json
 ```
 
-Studio / FlowLab: azione **`vectorless`**. Orchestrator: **`tool_matrix`**.
+Studio / FlowLab: action **`vectorless`**. Orchestrator: **`tool_matrix`**.
 
 ## What it is not
 
-This is not RedHawk, VoltSpot commercial, nor PrimeTime PX. It is a static envelope + liberty `report_power` + mesh DC, traceable to the two papers, eseguibile on the GCD di this repo.
+This is not RedHawk, VoltSpot commercial, nor PrimeTime PX. It is a static envelope + liberty `report_power` + mesh DC, traceable to the two papers, runnable on this repo's GCD.

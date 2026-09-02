@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Smoke test di OpenSTA: analisi timing min/max sull'esempio Nangate45
-# incluso nei sorgenti di OpenSTA.
+# OpenSTA smoke test: min/max timing on the bundled Nangate45 example
+# included in the OpenSTA source tree.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

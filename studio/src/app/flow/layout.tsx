@@ -1,4 +1,4 @@
-export default function FlussoLayout({
+export default function FlowLayout({
   children,
 }: {
   children: React.ReactNode;

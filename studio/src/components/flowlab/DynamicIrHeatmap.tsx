@@ -748,7 +748,7 @@ export function DynamicIrHeatmap({
           <img
             className="fl-dynir-svg"
             src={svgSrc}
-            alt={`Heatmap dynamic IR ${variant} all’istante di droop massimo`}
+            alt={`Heatmap dynamic IR ${variant} at worst droop instant`}
           />
         </>
       )}

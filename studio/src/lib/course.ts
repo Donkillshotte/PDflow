@@ -147,18 +147,18 @@ export function updateLabChecks(id: string, checks: string[]) {
   return data;
 }
 
-/** Extract checklist-worthy items from LAB markdown (- [ ] lines or ## Parte headings). */
+/** Extract checklist-worthy items from LAB markdown (- [ ] lines or ## Part headings). */
 export function extractLabChecklist(labMd: string): { id: string; label: string }[] {
   const items: { id: string; label: string }[] = [];
   const seen = new Set<string>();
   for (const line of labMd.split("\n")) {
     const check = line.match(/^- \[[ xX]\]\s+(.+)/);
-    const parte = line.match(/^##\s+(Parte\s+\d+[^\n]*)/i);
+    const parte = line.match(/^##\s+(Part\s+\d+[^\n]*)/i);
     const label = (check?.[1] || parte?.[1] || "").trim();
     if (!label || label.length < 4) continue;
     const id = label
       .toLowerCase()
-      .replace(/[^a-z0-9àèéìòù]+/gi, "-")
+      .replace(/[^a-z0-9]+/gi, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 64);
     if (seen.has(id)) continue;

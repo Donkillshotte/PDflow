@@ -60,8 +60,8 @@ const POWER_ACTIONS: SignoffAction[] = [
   },
   {
     id: "dse",
-    label: "DSE fisico-aware",
-    hint: "e-graph dpath · BOiLS · oracolo IR",
+    label: "Physically-aware DSE",
+    hint: "e-graph dpath · BOiLS · IR oracle",
     icon: Layers,
     long: false,
   },

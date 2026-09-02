@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thermal signoff proxy: IR heatmap + report_power → hotspot estimate (Fase 2)
+# Thermal signoff proxy: IR heatmap + report_power → hotspot estimate (Phase 2)
 # No HotSpot yet — educational proxy from existing power artifacts.
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail

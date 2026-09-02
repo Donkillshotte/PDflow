@@ -78,7 +78,7 @@ export function FlowLabMetricsBar({
       <div className="fl-metric-card">
         <Layers size={16} aria-hidden />
         <div>
-          <span>Fase</span>
+          <span>Phase</span>
           <strong>{stage}</strong>
         </div>
       </div>

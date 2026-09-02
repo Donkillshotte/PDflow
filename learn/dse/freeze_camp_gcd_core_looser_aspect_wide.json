@@ -28,5 +28,5 @@
   "repair_buffer": 134,
   "die_um2": 2732.14,
   "place_promoted": true,
-  "notes": "Core pi\u00f9 largo + Floorplan pi\u00f9 largo che alto. Transfer cook. Official yosys netlist. Policy EVALUATE."
+  "notes": "Wider core + Floorplan wider than tall. Transfer cook. Official yosys netlist. Policy EVALUATE."
 }

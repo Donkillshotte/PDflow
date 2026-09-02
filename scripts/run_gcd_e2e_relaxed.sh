@@ -13,7 +13,7 @@ TUTORIAL_SRC="${ROOT}/learn/designs/nangate45/gcd-tutorial"
 TUTORIAL_ORFS="${FLOW}/designs/nangate45/gcd-tutorial"
 
 if [[ ! -d "${FLOW}" ]]; then
-  echo "FAIL missing ORFS in ${FLOW} — run prima lo setup core" >&2
+  echo "FAIL missing ORFS in ${FLOW} — run core setup first" >&2
   exit 1
 fi
 

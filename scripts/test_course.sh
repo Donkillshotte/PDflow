@@ -66,7 +66,7 @@ for s in run_sta_signoff.sh run_signoff_phase2.sh parse_signoff_artifacts.py; do
 done
 rg -q 'sta_signoff|signoff_phase2|thermal_signoff' "${ROOT}/studio/src/lib/run.ts" \
   && ok "studio signoff actions" || bad "run.ts signoff incomplete"
-rg -q 'signoff-matrix|Parte 7' "${ROOT}/learn/lessons/07-finish/LAB.md" \
+rg -q 'signoff-matrix|Part 7' "${ROOT}/learn/lessons/07-finish/LAB.md" \
   && ok "L07 signoff LAB" || bad "L07 LAB without signoff"
 [[ -f "${ROOT}/learn/sim/gcd/tb_gcd.v" ]] && ok "tb_gcd.v" || bad "missing tb"
 [[ -x "${ROOT}/learn/scripts/run_rtl_sim.sh" ]] || chmod +x "${ROOT}/learn/scripts/run_rtl_sim.sh"

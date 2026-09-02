@@ -219,7 +219,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh
 
 ---
 
-## FlowLab PKG phase (post L07) {#fase-pkg}
+## FlowLab PKG phase (post L07) {#pkg-phase}
 
 **Hub:** [/pkg](/pkg) · **Config:** `learn/system_pdn/default.json`
 

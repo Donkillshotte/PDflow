@@ -24,7 +24,7 @@ export const POWER_CHAIN: ChainNode[] = [
   },
   {
     phaseId: "synth",
-    label: "Sintesi",
+    label: "Synth",
     lessonIds: ["01-constraints", "02-synthesis"],
     produces: ["gate-level netlist", ".lib cells", "Yosys area"],
     consumes: ["RTL", "SDC", "liberty"],
@@ -182,7 +182,7 @@ export const SPICE_ANALYSES = [
     label: "Thermal proxy",
     produces: ["thermal_signoff_*.json"],
     spice: "IR+droop hotspot proxy",
-    doc: "/materials/reference/signoff-matrix.md#fase-2-planned-in-registry",
+    doc: "/materials/reference/signoff-matrix.md#phase-2-planned-in-registry",
     action: "thermal_signoff",
   },
   {

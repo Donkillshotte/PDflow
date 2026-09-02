@@ -28,5 +28,5 @@
   "repair_buffer": 2661,
   "die_um2": 62612.4,
   "place_promoted": true,
-  "notes": "Sintesi ABC delay. Transfer cook. Fresh Yosys (synth knob). Policy EVALUATE."
+  "notes": "ABC delay synthesis. Transfer cook. Fresh Yosys (synth knob). Policy EVALUATE."
 }

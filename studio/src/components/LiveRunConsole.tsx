@@ -16,7 +16,7 @@ type StreamEvent =
   | { type: "blocked"; code: string; message: string };
 
 const PIPELINE_ACTIONS = [
-  { id: "check", label: "Verifica toolchain", hint: "openroad · yosys · sta · klayout" },
+  { id: "check", label: "Verify toolchain", hint: "openroad · yosys · sta · klayout" },
   { id: "rtl_sim", label: "RTL sim (Icarus)", hint: "GCD + VCD" },
   { id: "status", label: "Course progress", hint: "lessons completed" },
   { id: "synth", label: "Run synth", hint: "~30s" },
@@ -35,7 +35,7 @@ const POST_FINISH_CHIPS = [
   { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
   { id: "vyges_em_ir", label: "vyges-em-ir", hint: "CG + backward Euler" },
   { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "A DirectLU current_run · B SA-AMG" },
-  { id: "dse", label: "DSE fisico-aware", hint: "e-graph · BOiLS · oracolo IR" },
+  { id: "dse", label: "Physically-aware DSE", hint: "e-graph · BOiLS · IR oracle" },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
   { id: "power_chain", label: "SPICE chain", hint: "activity→IR→system" },
   { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },

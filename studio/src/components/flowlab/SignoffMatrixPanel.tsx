@@ -160,7 +160,7 @@ export function SignoffMatrixPanel({
   return (
     <div className="sig-matrix">
       <div className="sig-matrix-head">
-        <strong>Matrice signoff GCD</strong>
+        <strong>GCD signoff matrix</strong>
         <p>
           4 pilastri attivi vs{" "}
           <a href="/materials/reference/signoff-matrix.md">golden-gcd.json</a>
@@ -249,7 +249,7 @@ export function SignoffMatrixPanel({
 
       {data?.plannedPillars && data.plannedPillars.length > 0 && (
         <div className="sig-planned">
-          <strong>Fase 2 (proxy / planned)</strong>
+          <strong>Phase 2 (proxy / planned)</strong>
           <ul className="sig-pillar-list">
             {data.plannedPillars.map((p) => {
               const eval_ = p.reportEval;
@@ -300,7 +300,7 @@ export function SignoffMatrixPanel({
             disabled={Boolean(busy)}
             onClick={() => onRun("signoff_phase2", false)}
           >
-            {busy === "signoff_phase2" ? "Fase 2…" : "Signoff Fase 2 (thermal + PKG)"}
+            {busy === "signoff_phase2" ? "Phase 2…" : "Signoff Phase 2 (thermal + PKG)"}
           </button>
         </div>
       )}

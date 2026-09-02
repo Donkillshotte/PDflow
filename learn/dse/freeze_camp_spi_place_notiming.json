@@ -28,5 +28,5 @@
   "repair_buffer": 22,
   "die_um2": 3091.36,
   "place_promoted": true,
-  "notes": "Place senza timing-driven. Transfer cook. Official yosys netlist. Policy EVALUATE."
+  "notes": "Placement without timing-driven. Transfer cook. Official yosys netlist. Policy EVALUATE."
 }

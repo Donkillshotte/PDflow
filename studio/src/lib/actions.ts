@@ -8,7 +8,7 @@ export const SIGNOFF_ACTIONS = [
   "signoff_all",
 ] as const;
 
-/** Fase 2 signoff / packaging actions (post-finish). */
+/** Phase 2 signoff / packaging actions (post-finish). */
 export const PHASE2_SIGNOFF_ACTIONS = [
   "thermal_signoff",
   "pkg_bump",

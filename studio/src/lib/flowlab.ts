@@ -41,14 +41,14 @@ export const FLOW_PHASES = [
   {
     id: "rtl",
     label: "RTL",
-    title: "Scrivi e simula RTL",
+    title: "Write and simulate RTL",
     action: "rtl_sim" as const,
     hint: "Editor Verilog · Icarus",
   },
   {
     id: "synth",
-    label: "Sintesi",
-    title: "Sintesi logica (Yosys)",
+    label: "Synth",
+    title: "Logic synthesis (Yosys)",
     action: "synth" as const,
     hint: "ABC area · SDC",
   },
@@ -57,7 +57,7 @@ export const FLOW_PHASES = [
     label: "Floorplan",
     title: "Floorplan and die",
     action: "floorplan" as const,
-    hint: "Utilizzo core",
+    hint: "Core utilization",
   },
   {
     id: "pdn",

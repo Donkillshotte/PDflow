@@ -4,7 +4,7 @@ export const PHASES: Phase[] = [
   {
     id: "rtl",
     label: "RTL",
-    title: "Scrivi e simula RTL",
+    title: "Write and simulate RTL",
     action: "rtl_sim",
     hint: "Verilog · Icarus",
     help: "Edit the Verilog design, autosave, then launch behavioral simulation. Validate logic before each physical step.",
@@ -14,8 +14,8 @@ export const PHASES: Phase[] = [
   },
   {
     id: "synth",
-    label: "Sintesi",
-    title: "Sintesi logica",
+    label: "Synth",
+    title: "Logic synthesis",
     action: "synth",
     hint: "Yosys · ABC",
     help: "Transform RTL into netlist and initial physical database. Choose SDC constraints and ABC area/delay mode.",

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KLayout DRC su 6_final.gds (FreePDK45.lydrc) via ORFS make drc.
+# KLayout DRC on 6_final.gds (FreePDK45.lydrc) via ORFS make drc.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"

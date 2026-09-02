@@ -28,5 +28,5 @@
   "repair_buffer": 957,
   "die_um2": 56867.9,
   "place_promoted": true,
-  "notes": "Repair TNS a met\u00e0. Transfer cook. Official yosys netlist. Policy EVALUATE."
+  "notes": "Repair TNS at half. Transfer cook. Official yosys netlist. Policy EVALUATE."
 }

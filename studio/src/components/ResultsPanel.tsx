@@ -197,7 +197,7 @@ export function ResultsPanel({
 
       {data.metrics.length > 0 && (
         <div className="metric-block">
-          <h4>Metrics dai tuoi report</h4>
+          <h4>Metrics from your reports</h4>
           <ul className="metric-list">
             {data.metrics.map((m, i) => (
               <li key={`${m.source}-${i}`}>

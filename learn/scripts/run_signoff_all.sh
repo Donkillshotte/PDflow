@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Full signoff: STA → DRC → LVS → Power (sequential)
-# Optional Fase 2: SIGNOFF_INCLUDE_PHASE2=1 → thermal + PKG after phase 1
+# Optional Phase 2: SIGNOFF_INCLUDE_PHASE2=1 → thermal + PKG after phase 1
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

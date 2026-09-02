@@ -28,5 +28,5 @@
   "repair_buffer": 22,
   "die_um2": 3091.36,
   "place_promoted": true,
-  "notes": "Margine di hold sul repair. Transfer cook. Official yosys netlist. Policy EVALUATE."
+  "notes": "Hold margin on repair. Transfer cook. Official yosys netlist. Policy EVALUATE."
 }
