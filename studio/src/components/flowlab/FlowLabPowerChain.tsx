@@ -62,7 +62,7 @@ export function FlowLabPowerChain({
             </ul>
           </div>
           <div className="fl-power-chain-col">
-            <span className="fl-power-chain-k">Consuma</span>
+            <span className="fl-power-chain-k">Consume</span>
             <ul>
               {current.consumes.map((c) => (
                 <li key={c}>
@@ -86,7 +86,7 @@ export function FlowLabPowerChain({
             <div className="fl-power-chain-col fl-power-chain-spice">
               <span className="fl-power-chain-k">SPICE / doc</span>
               {current.spice && <p>{current.spice}</p>}
-              {current.doc && <Link href={current.doc}>Approfondisci</Link>}
+              {current.doc && <Link href={current.doc}>Read more</Link>}
             </div>
           )}
         </div>
@@ -94,7 +94,7 @@ export function FlowLabPowerChain({
 
       {(phaseId === "finish" || phaseId === "pdn" || phaseId === "pkg") && (
         <div className="fl-power-chain-extra">
-          <span className="fl-power-chain-k">Analisi SPICE collegate</span>
+          <span className="fl-power-chain-k">Linked SPICE analyses</span>
           <ul className="fl-power-chain-analyses">
             {SPICE_ANALYSES.map((a) => (
               <li key={a.id}>

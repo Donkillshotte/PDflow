@@ -63,7 +63,7 @@ export function FlowLabParamStudio({
       <div className="fl-preset-row">
         <span className="fl-preset-label">
           <SlidersHorizontal size={16} aria-hidden />
-          Profili rapidi
+          Quick profiles
         </span>
         <div className="fl-preset-chips">
           {Object.entries(PARAM_PRESETS).map(([key, preset]) => (

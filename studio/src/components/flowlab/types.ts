@@ -41,7 +41,7 @@ export const PARAM_PRESETS: Record<
   { label: string; desc: string; params: FlowlabParams }
 > = {
   didactic: {
-    label: "Didattico",
+    label: "Didactic",
     desc: "Relaxed timing, low utilization — ideal for learning without congestion.",
     params: {
       coreUtilization: 30,
@@ -52,7 +52,7 @@ export const PARAM_PRESETS: Record<
     },
   },
   balanced: {
-    label: "Bilanciato",
+    label: "Balanced",
     desc: "Course preset: good area/timing tradeoff for GCD tutorial.",
     params: {
       coreUtilization: 35,
@@ -63,7 +63,7 @@ export const PARAM_PRESETS: Record<
     },
   },
   aggressive: {
-    label: "Aggressivo",
+    label: "Aggressive",
     desc: "Tight timing and dense core — higher DRC/congestion risk.",
     params: {
       coreUtilization: 48,
