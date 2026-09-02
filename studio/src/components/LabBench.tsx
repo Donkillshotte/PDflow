@@ -25,6 +25,33 @@ type Pair = {
   delta: { wnsPs: number | null; areaPct: number | null; powerPct: number | null; irPct: number | null };
 };
 
+type Shot = {
+  role: string;
+  variant: string;
+  designId: string;
+  createdAt: number | null;
+  nCandidates: number | null;
+  nF4: number | null;
+  winningIrMv: number | null;
+  winningStaticMv: number | null;
+  champAmgMv: number | null;
+  champWnsNs: number | null;
+  spentS: number | null;
+  summary: string;
+  compare: {
+    versus: number | null;
+    sameMesh: boolean | null;
+    note: string;
+    delta: {
+      n_candidates: number | null;
+      winning_ir_pdn_mv: number | null;
+      winning_static_mv: number | null;
+      ir_cell_champ_wns_ns: number | null;
+      spent_s: number | null;
+    } | null;
+  } | null;
+};
+
 type LabSnap = {
   title: string;
   lead: string;
@@ -36,6 +63,7 @@ type LabSnap = {
     nChecks: number;
     watch: string[];
     fail: string[];
+    gap?: string[];
     checks: Check[];
     note?: string;
   } | null;
@@ -48,6 +76,9 @@ type LabSnap = {
   };
   comparisons: Pair[];
   dse: { ok: boolean; summary: string; nCandidates: number } | null;
+  launches?: Shot[];
+  thisLaunch?: Shot | null;
+  prevLaunch?: Shot | null;
 };
 
 function fmt(v: unknown): string {
@@ -67,6 +98,51 @@ function signed(v: number | null, unit: string): string {
   if (v == null || Number.isNaN(v)) return "—";
   const s = v > 0 ? "+" : "";
   return `${s}${v.toFixed(Math.abs(v) < 10 ? 2 : 1)}${unit}`;
+}
+
+function shotWhen(ts: number | null): string {
+  if (ts == null) return "undated";
+  const d = new Date(ts * 1000);
+  if (Number.isNaN(d.getTime())) return "undated";
+  return d.toISOString().replace("T", " ").slice(0, 16);
+}
+
+function ShotFace({ shot, label }: { shot: Shot | null; label: string }) {
+  return (
+    <article className="lb-face">
+      <header>
+        <span>{label}</span>
+        <strong>{shot ? `${shot.role} · ${shot.designId}` : "no cook yet"}</strong>
+      </header>
+      <dl>
+        <div>
+          <dt>Winning IR</dt>
+          <dd>{shot?.winningIrMv != null ? `${shot.winningIrMv.toFixed(3)} mV` : "—"}</dd>
+        </div>
+        <div>
+          <dt>Static</dt>
+          <dd>{shot?.winningStaticMv != null ? `${shot.winningStaticMv.toFixed(3)} mV` : "—"}</dd>
+        </div>
+        <div>
+          <dt>AMG champ</dt>
+          <dd>{shot?.champAmgMv != null ? `${shot.champAmgMv.toFixed(3)} mV` : "—"}</dd>
+        </div>
+        <div>
+          <dt>IR-cell WNS</dt>
+          <dd>{shot?.champWnsNs != null ? `${shot.champWnsNs.toFixed(3)} ns` : "—"}</dd>
+        </div>
+        <div>
+          <dt>Candidates</dt>
+          <dd>{shot?.nCandidates ?? "—"}</dd>
+        </div>
+        <div>
+          <dt>F4</dt>
+          <dd>{shot?.nF4 ?? "—"}</dd>
+        </div>
+      </dl>
+      <p>{shot ? shotWhen(shot.createdAt) : "Launch DSE to stamp a shot."}</p>
+    </article>
+  );
 }
 
 export function LabBench({
@@ -99,12 +175,15 @@ export function LabBench({
 
   const latest = data?.comparisons.filter((p) => p.versus === "base") ?? [];
   const previous = data?.comparisons.filter((p) => p.versus === "previous") ?? [];
+  const launches = data?.launches ?? [];
+  const nGap = data?.physics?.gap?.length ?? 0;
+  const folio = `${data?.physics?.nReady ?? "–"}/${data?.physics?.nChecks ?? "–"}`;
 
   return (
     <section className={clsx("lb-bench", tone === "dark" && "lb-bench-dark")} aria-label="Lab bench">
       <header className="lb-mast">
         <div>
-          <p className="lb-kicker">Field notes · not a brochure</p>
+          <p className="lb-kicker">Bench folio {folio} · not a brochure</p>
           <h2>What the numbers are allowed to mean</h2>
           <p className="lb-lead">
             {data?.lead ?? "Rail-scale checks on real finishes. Gold 45.298 mV stays a sentinel."}
@@ -122,12 +201,56 @@ export function LabBench({
 
       {err && <p className="lb-err">{err}</p>}
 
+      <div id="dse-compare" className="lb-faces">
+        <ShotFace shot={data?.prevLaunch ?? null} label="Cook before" />
+        <ShotFace shot={data?.thisLaunch ?? null} label="This launch" />
+        <aside className="lb-delta">
+          <h3>This launch vs the one before</h3>
+          <p className="lb-sub">
+            {data?.thisLaunch?.compare?.note ??
+              "Every DSE cook appends a shot. ΔIR is not a product win across extracts."}
+          </p>
+          <ul>
+            <li>
+              <span>Δ candidates</span>
+              <b>{signed(data?.thisLaunch?.compare?.delta?.n_candidates ?? null, "")}</b>
+            </li>
+            <li>
+              <span>Δ winning IR</span>
+              <b>{signed(data?.thisLaunch?.compare?.delta?.winning_ir_pdn_mv ?? null, " mV")}</b>
+            </li>
+            <li>
+              <span>Δ static</span>
+              <b>{signed(data?.thisLaunch?.compare?.delta?.winning_static_mv ?? null, " mV")}</b>
+            </li>
+            <li>
+              <span>Δ IR-cell WNS</span>
+              <b>{signed(data?.thisLaunch?.compare?.delta?.ir_cell_champ_wns_ns ?? null, " ns")}</b>
+            </li>
+          </ul>
+          {launches.length > 0 && (
+            <ol className="lb-tape">
+              {launches
+                .slice(-6)
+                .reverse()
+                .map((s, i) => (
+                  <li key={`${s.createdAt}-${i}`}>
+                    <i>{s.role}</i>
+                    <span>{s.winningIrMv != null ? `${s.winningIrMv.toFixed(2)} mV` : "—"}</span>
+                    <em>{s.nCandidates ?? "—"} cand</em>
+                  </li>
+                ))}
+            </ol>
+          )}
+        </aside>
+      </div>
+
       <div className="lb-split">
         <div className="lb-col">
           <h3>Physics ledger</h3>
           <p className="lb-sub">
             {data?.physics
-              ? `${data.physics.nReady}/${data.physics.nChecks} ready · ${data.physics.watch.length} watch`
+              ? `${data.physics.nReady}/${data.physics.nChecks} ready · ${data.physics.watch.length} watch · ${nGap} gap`
               : "Run validate_lab_physics.py"}
           </p>
           <ol className="lb-ledger">
@@ -172,9 +295,7 @@ export function LabBench({
               </dd>
             </div>
           </dl>
-          <p className="lb-foot">
-            Extra delay is Σ(delay_ir − delay). α = 1.3. Not Tempus.
-          </p>
+          <p className="lb-foot">Extra delay is Σ(delay_ir − delay). α = 1.3. Not Tempus.</p>
 
           <h3 className="lb-h-gap">Last cook vs slot base</h3>
           <p className="lb-sub">win_rule.py · same die · ±5 ps slack band</p>
@@ -211,7 +332,7 @@ export function LabBench({
 
           {previous.length > 0 && (
             <>
-              <h3 className="lb-h-gap">This launch vs the cook before it</h3>
+              <h3 className="lb-h-gap">Latest finish vs the cook before it</h3>
               <ul className="lb-prev">
                 {previous.map((p) => (
                   <li key={`${p.design}-prev`}>
@@ -232,7 +353,7 @@ export function LabBench({
         <Link href="/lab">Open the full bench</Link>
         {onRun && (
           <button type="button" disabled={Boolean(busy)} onClick={() => onRun("dse", false)}>
-            {busy === "dse" ? "Cooking…" : "Launch DSE · then re-read the ledger"}
+            {busy === "dse" ? "Cooking…" : "Launch DSE · stamp a new shot"}
           </button>
         )}
       </footer>

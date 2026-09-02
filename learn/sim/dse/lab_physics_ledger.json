@@ -1,0 +1,403 @@
+{
+  "ok": true,
+  "kind": "lab_physics",
+  "vdd": 1.1,
+  "alpha": 1.3,
+  "gold_ir_mv": 45.298,
+  "current_ir_mv": 6.075,
+  "n_ready": 23,
+  "n_checks": 30,
+  "fail": [],
+  "watch": [
+    "orfs_ir_ibex",
+    "orfs_ir_aes"
+  ],
+  "gap": [
+    "artifact_sta_signoff",
+    "artifact_vectorless",
+    "artifact_chip_pdn",
+    "artifact_system_pdn",
+    "artifact_thermal"
+  ],
+  "slots": [
+    {
+      "design": "gcd",
+      "clock_ns": 0.46,
+      "status": "READY",
+      "orfs_ir_mv": 6.66716,
+      "finish_wns_ns": -0.037167,
+      "n_cooks": 26
+    },
+    {
+      "design": "spi",
+      "clock_ns": 1.0,
+      "status": "READY",
+      "orfs_ir_mv": 0.976139,
+      "finish_wns_ns": 0.612234,
+      "n_cooks": 17
+    },
+    {
+      "design": "ibex",
+      "clock_ns": 2.2,
+      "status": "WATCH",
+      "orfs_ir_mv": 123.77199999999999,
+      "finish_wns_ns": 0.0224143,
+      "n_cooks": 19
+    },
+    {
+      "design": "aes",
+      "clock_ns": 0.82,
+      "status": "WATCH",
+      "orfs_ir_mv": 81.2776,
+      "finish_wns_ns": -0.00892109,
+      "n_cooks": 16
+    },
+    {
+      "design": "dynamic_node",
+      "clock_ns": 6.0,
+      "status": "READY",
+      "orfs_ir_mv": 1.7828600000000001,
+      "finish_wns_ns": 3.35383,
+      "n_cooks": 12
+    }
+  ],
+  "checks": [
+    {
+      "id": "gold_sentinel",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "Dynamic IR gold (reference_run)",
+      "value": 45.298,
+      "bound": "45.298 mV frozen",
+      "note": "Historical Solver A on the reference extract. Not current_run. Do not restamp."
+    },
+    {
+      "id": "current_run_droop",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "Dynamic IR current_run (finish mesh)",
+      "value": 6.075287930804363,
+      "bound": "~6.075 mV on this extract",
+      "note": "Same GCD, different extract/activity window than gold 45.298. Do not mix."
+    },
+    {
+      "id": "gold_vs_current_split",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "|gold \u2212 current|",
+      "value": 39.22271206919564,
+      "bound": "> 20 mV so the two runs stay distinct",
+      "note": "If these collapsed, someone restamped gold or mixed extracts."
+    },
+    {
+      "id": "current_ir_vs_vdd",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "current_run IR / Vdd",
+      "value": 0.552,
+      "bound": "(0, 5)% of 1.1 V for a bumped GCD",
+      "note": "6 mV on 1.1 V is ~0.55%. Typical on-die IR for this size, not a Voltus sign-off."
+    },
+    {
+      "id": "gold_ir_vs_vdd",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "gold IR / Vdd",
+      "value": 4.118,
+      "bound": "(0, 15)% \u2014 hot educational mesh, still below rail collapse",
+      "note": "45 mV is 4.1% of Vdd. Physically a stressed PDN, not a second product number."
+    },
+    {
+      "id": "solver_a_vs_amg",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "|A DirectLU \u2212 B SA-AMG|",
+      "value": 0.0,
+      "bound": "< 0.05 mV on the same mesh",
+      "note": "Same operator, two solvers. Agreement is the physics check, not a new extract."
+    },
+    {
+      "id": "solver_a_vs_ras",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "|A DirectLU \u2212 D RAS|",
+      "value": 0.0,
+      "bound": "< 0.05 mV",
+      "note": "Schwarz residual vs gold LU on the finish mesh."
+    },
+    {
+      "id": "solver_a_vs_krylov",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "|A DirectLU \u2212 C Krylov|",
+      "value": 0.0,
+      "bound": "< 0.05 mV preferred; MOR may sit a few tens of \u00b5V off",
+      "note": "Krylov is a reduced model. A few tens of \u00b5V is residual, not a new IR story."
+    },
+    {
+      "id": "sta_ir_path",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "STA slack \u2192 slack_ir",
+      "value": {
+        "slack_ns": 0.004644,
+        "slack_ir_ns": 0.0040228722421615975,
+        "joined": "18/18"
+      },
+      "bound": "slack_ir \u2264 slack; 18/18 gates on the GCD worst max path",
+      "note": "NLDM typical-V scaled by (Vdd/V_inst)^1.3. Not Tempus, not a second liberty."
+    },
+    {
+      "id": "sta_ir_reconstruct",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "\u03a3(delay_ir \u2212 delay) vs slack \u2212 slack_ir",
+      "value": {
+        "reconstructed_ns": 0.0006211277578384595,
+        "reported_ns": 0.0006211277578384022
+      },
+      "bound": "equal to 1e-9 ns",
+      "note": "The extra delay is exactly the sum of per-gate IR scales. No hidden pad."
+    },
+    {
+      "id": "sta_ir_alpha_law",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "per-gate scale vs (Vdd/V_inst)^\u03b1",
+      "value": 1.3,
+      "bound": "\u03b1 = 1.3 on every joined gate",
+      "note": "Delay stretch tracks local voltage, not a tap-average fiction."
+    },
+    {
+      "id": "sta_ir_vs_period",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "extra delay / clock period",
+      "value": 0.135,
+      "bound": "< 1% of 0.46 ns on this GCD",
+      "note": "0.62 ps is 0.13% of the period. Slack stays MET. IR-aware STA is a perturbation, not a new timing close."
+    },
+    {
+      "id": "orfs_ir_gcd",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "ORFS analyze_power_grid IR (base finish)",
+      "value": {
+        "ir_mv": 6.66716,
+        "wns_ns": -0.037167,
+        "pct_vdd": 0.606
+      },
+      "bound": "(0, 250) mV; WATCH if > 50 mV",
+      "note": "ORFS static IR is not Dynamic IR TRAN and not STA IR. Same order as a small Nangate die with the tutorial PDN."
+    },
+    {
+      "id": "orfs_ir_spi",
+      "design": "spi",
+      "ok": true,
+      "status": "READY",
+      "quantity": "ORFS analyze_power_grid IR (base finish)",
+      "value": {
+        "ir_mv": 0.976139,
+        "wns_ns": 0.612234,
+        "pct_vdd": 0.089
+      },
+      "bound": "(0, 250) mV; WATCH if > 50 mV",
+      "note": "ORFS static IR is not Dynamic IR TRAN and not STA IR. Same order as a small Nangate die with the tutorial PDN."
+    },
+    {
+      "id": "orfs_ir_ibex",
+      "design": "ibex",
+      "ok": true,
+      "status": "WATCH",
+      "quantity": "ORFS analyze_power_grid IR (base finish)",
+      "value": {
+        "ir_mv": 123.77199999999999,
+        "wns_ns": 0.0224143,
+        "pct_vdd": 11.252
+      },
+      "bound": "(0, 250) mV; WATCH if > 50 mV",
+      "note": "ORFS static IR is not Dynamic IR TRAN and not STA IR. Large core / more current \u2014 physically a hotter grid, still not Voltus."
+    },
+    {
+      "id": "orfs_ir_aes",
+      "design": "aes",
+      "ok": true,
+      "status": "WATCH",
+      "quantity": "ORFS analyze_power_grid IR (base finish)",
+      "value": {
+        "ir_mv": 81.2776,
+        "wns_ns": -0.00892109,
+        "pct_vdd": 7.389
+      },
+      "bound": "(0, 250) mV; WATCH if > 50 mV",
+      "note": "ORFS static IR is not Dynamic IR TRAN and not STA IR. Large core / more current \u2014 physically a hotter grid, still not Voltus."
+    },
+    {
+      "id": "orfs_ir_dynamic_node",
+      "design": "dynamic_node",
+      "ok": true,
+      "status": "READY",
+      "quantity": "ORFS analyze_power_grid IR (base finish)",
+      "value": {
+        "ir_mv": 1.7828600000000001,
+        "wns_ns": 3.35383,
+        "pct_vdd": 0.162
+      },
+      "bound": "(0, 250) mV; WATCH if > 50 mV",
+      "note": "ORFS static IR is not Dynamic IR TRAN and not STA IR. Same order as a small Nangate die with the tutorial PDN."
+    },
+    {
+      "id": "gcd_orfs_vs_dynamic",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "ORFS static / Dynamic IR current_run",
+      "value": 1.097,
+      "bound": "within 3\u00d7 (same die, different engines)",
+      "note": "6.67 mV PSM vs 6.08 mV TRAN is the same physical story at different fidelity."
+    },
+    {
+      "id": "aes_f4_static",
+      "design": "aes",
+      "ok": true,
+      "status": "READY",
+      "quantity": "AES F4 static IR (febe6804241c mesh)",
+      "value": 6.954201796472992,
+      "bound": "(0, 50) mV; not gold 45.298",
+      "note": "Different extract from campaign ORFS 81 mV. Do not average them."
+    },
+    {
+      "id": "aes_transient_gt_static",
+      "design": "aes",
+      "ok": true,
+      "status": "READY",
+      "quantity": "AES cloud TRAN vs its own static",
+      "value": {
+        "static_mv": 6.954201796472992,
+        "dynamic_mv": 17.74548074404958
+      },
+      "bound": "TRAN \u2265 ~0.8\u00d7 static on a comparable mesh",
+      "note": "di/dt + package L raise droop above DC. Cloud 17.7 mV is not the 73k-R 6.95 mV extract."
+    },
+    {
+      "id": "aes_not_gold",
+      "design": "aes",
+      "ok": true,
+      "status": "READY",
+      "quantity": "AES F4 gold flag",
+      "value": false,
+      "bound": "must stay gold=false",
+      "note": "AES must never restamp GCD 45.298."
+    },
+    {
+      "id": "dse_winning_ir_not_gold",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "DSE winning_ir_pdn vs gold sentinel",
+      "value": 1.705496611966728,
+      "bound": "must not equal 45.298 mV",
+      "note": "Candidate F4 catalog mesh (decap / pkg L). A different extract from gold and from current_run TRAN."
+    },
+    {
+      "id": "dse_winning_static",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "DSE winning_static_mv",
+      "value": 0.564684304650509,
+      "bound": "(0, 50) mV on a candidate mesh",
+      "note": "Educational F4 static. Not ORFS analyze_power_grid 6.67 mV."
+    },
+    {
+      "id": "dse_amg_vs_ras",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "|DSE AMG-c \u2212 RAS-c|",
+      "value": 1.9772405934759263e-08,
+      "bound": "< 0.05 mV on the champion extract",
+      "note": "Same operator, two solvers inside the controller. Agreement is the check."
+    },
+    {
+      "id": "dse_amg_vs_krylov",
+      "design": "gcd",
+      "ok": true,
+      "status": "READY",
+      "quantity": "|DSE AMG-c \u2212 Krylov-c|",
+      "value": 0.011961823651374104,
+      "bound": "< 0.05 mV preferred",
+      "note": "Krylov MOR on the champion extract. Tens of \u00b5V is residual, not a new IR story."
+    },
+    {
+      "id": "artifact_sta_signoff",
+      "design": "gcd",
+      "ok": false,
+      "status": "GAP",
+      "quantity": "OpenSTA nominal signoff JSON",
+      "value": null,
+      "bound": "report present on disk",
+      "note": "Not materialized in this checkout. Do not invent a number."
+    },
+    {
+      "id": "artifact_vectorless",
+      "design": "gcd",
+      "ok": false,
+      "status": "GAP",
+      "quantity": "vectorless activity / IR artifact",
+      "value": null,
+      "bound": "report present on disk",
+      "note": "Not materialized in this checkout. Do not invent a number."
+    },
+    {
+      "id": "artifact_chip_pdn",
+      "design": "gcd",
+      "ok": false,
+      "status": "GAP",
+      "quantity": "chip-level PDN IR",
+      "value": null,
+      "bound": "report present on disk",
+      "note": "Not materialized in this checkout. Do not invent a number."
+    },
+    {
+      "id": "artifact_system_pdn",
+      "design": "gcd",
+      "ok": false,
+      "status": "GAP",
+      "quantity": "package + die system PDN",
+      "value": null,
+      "bound": "report present on disk",
+      "note": "Not materialized in this checkout. Do not invent a number."
+    },
+    {
+      "id": "artifact_thermal",
+      "design": "gcd",
+      "ok": false,
+      "status": "GAP",
+      "quantity": "thermal / electrothermal snapshot",
+      "value": null,
+      "bound": "report present on disk",
+      "note": "Not materialized in this checkout. Do not invent a number."
+    }
+  ],
+  "not": [
+    "PrimeTime / Tempus IR-aware STA",
+    "Voltus / RedHawk sign-off",
+    "gold 45.298 mV restamp",
+    "averaging ORFS static with Dynamic IR TRAN"
+  ],
+  "note": "Physical meaning here is internal consistency + rail-scale sanity on real Nangate finishes. It is not foundry correlation."
+}

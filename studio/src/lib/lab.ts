@@ -140,13 +140,80 @@ export function campaignComparisons(rows = readJsonl("sim/dse/campaign_experimen
   return out;
 }
 
+export type LaunchShot = {
+  role: string;
+  variant: string;
+  designId: string;
+  createdAt: number | null;
+  nCandidates: number | null;
+  nF4: number | null;
+  winningIrMv: number | null;
+  winningStaticMv: number | null;
+  champAmgMv: number | null;
+  champWnsNs: number | null;
+  spentS: number | null;
+  summary: string;
+  compare: {
+    versus: number | null;
+    sameMesh: boolean | null;
+    note: string;
+    delta: {
+      n_candidates: number | null;
+      winning_ir_pdn_mv: number | null;
+      winning_static_mv: number | null;
+      ir_cell_champ_wns_ns: number | null;
+      spent_s: number | null;
+    } | null;
+  } | null;
+};
+
+function launchOf(row: Record<string, unknown>): LaunchShot {
+  const cmp = (row.compare as Record<string, unknown>) || null;
+  const delta = (cmp?.delta as Record<string, unknown>) || null;
+  return {
+    role: String(row.role ?? "cook"),
+    variant: String(row.variant ?? "flowlab"),
+    designId: String(row.design_id ?? "gcd"),
+    createdAt: n(row.created_at),
+    nCandidates: n(row.n_candidates),
+    nF4: n(row.n_f4),
+    winningIrMv: n(row.winning_ir_pdn_mv),
+    winningStaticMv: n(row.winning_static_mv),
+    champAmgMv: n(row.ir_champ_amg_mv),
+    champWnsNs: n(row.ir_cell_champ_wns_ns),
+    spentS: n(row.spent_s),
+    summary: String(row.summary ?? ""),
+    compare: cmp
+      ? {
+          versus: n(cmp.versus),
+          sameMesh: cmp.same_mesh == null ? null : Boolean(cmp.same_mesh),
+          note: String(cmp.note ?? ""),
+          delta: delta
+            ? {
+                n_candidates: n(delta.n_candidates),
+                winning_ir_pdn_mv: n(delta.winning_ir_pdn_mv),
+                winning_static_mv: n(delta.winning_static_mv),
+                ir_cell_champ_wns_ns: n(delta.ir_cell_champ_wns_ns),
+                spent_s: n(delta.spent_s),
+              }
+            : null,
+        }
+      : null,
+  };
+}
+
 export function getLabSnapshot() {
-  const physics = readJson("sim/reports/lab_physics_flowlab.json");
+  const physics =
+    readJson("sim/dse/lab_physics_ledger.json") || readJson("sim/reports/lab_physics_flowlab.json");
   const pairs = campaignComparisons();
   const latest = pairs.filter((p) => p.versus === "base");
   const dse = readJson("sim/reports/dse_flowlab.json");
   const staIr = readJson("sim/reports/sta_ir_aware_flowlab.json");
   const sta = (staIr?.sta ?? {}) as Record<string, unknown>;
+  const rawLaunches = readJsonl("sim/dse/launch_compare.jsonl") as unknown as Record<string, unknown>[];
+  const launches = rawLaunches.map(launchOf);
+  const thisLaunch = launches.length ? launches[launches.length - 1]! : null;
+  const prevLaunch = launches.length >= 2 ? launches[launches.length - 2]! : null;
   return {
     title: "Lab bench",
     lead: "Numbers that survive a rail-scale and same-mesh check. Not foundry correlation.",
@@ -181,5 +248,8 @@ export function getLabSnapshot() {
       : null,
     comparisons: pairs,
     latestBySlot: latest,
+    launches,
+    thisLaunch,
+    prevLaunch,
   };
 }

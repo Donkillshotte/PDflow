@@ -14,6 +14,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 REPORTS = ROOT / "learn/sim/reports"
 CAMPAIGN = ROOT / "learn/sim/dse/campaign_experiments.jsonl"
+LEDGER = ROOT / "learn/sim/dse/lab_physics_ledger.json"
+MISSING_LAB = (
+    ("sta_signoff", "sta_signoff_flowlab.json", "OpenSTA nominal signoff JSON"),
+    ("vectorless", "vectorless_flowlab.json", "vectorless activity / IR artifact"),
+    ("chip_pdn", "pdn_chip_ir_flowlab.json", "chip-level PDN IR"),
+    ("system_pdn", "system_pdn_flowlab.json", "package + die system PDN"),
+    ("thermal", "thermal_signoff_flowlab.json", "thermal / electrothermal snapshot"),
+)
 
 VDD = 1.1
 ALPHA = 1.3
@@ -394,6 +402,74 @@ def validate() -> dict:
             design="aes",
         )
 
+    dse = _read(REPORTS / "dse_flowlab.json") or {}
+    win_ir = dse.get("winning_ir_pdn_mv")
+    win_st = dse.get("winning_static_mv")
+    if win_ir is not None:
+        _check(
+            checks,
+            id="dse_winning_ir_not_gold",
+            ok=abs(float(win_ir) - GOLD_MV) > 1.0,
+            status="READY" if abs(float(win_ir) - GOLD_MV) > 1.0 else "FAIL",
+            quantity="DSE winning_ir_pdn vs gold sentinel",
+            value=win_ir,
+            bound="must not equal 45.298 mV",
+            note="Candidate F4 catalog mesh (decap / pkg L). A different extract from gold and from current_run TRAN.",
+        )
+    if win_st is not None:
+        _check(
+            checks,
+            id="dse_winning_static",
+            ok=0 < float(win_st) < 50,
+            status="READY" if 0 < float(win_st) < 50 else "WATCH",
+            quantity="DSE winning_static_mv",
+            value=win_st,
+            bound="(0, 50) mV on a candidate mesh",
+            note="Educational F4 static. Not ORFS analyze_power_grid 6.67 mV.",
+        )
+    amg, ras, kry = dse.get("ir_champ_amg_mv"), dse.get("ir_champ_ras_mv"), dse.get("ir_champ_krylov_mv")
+    if amg is not None and ras is not None:
+        d_ar = abs(float(amg) - float(ras))
+        _check(
+            checks,
+            id="dse_amg_vs_ras",
+            ok=d_ar < 0.05,
+            status="READY" if d_ar < 0.05 else "FAIL",
+            quantity="|DSE AMG-c − RAS-c|",
+            value=d_ar,
+            bound="< 0.05 mV on the champion extract",
+            note="Same operator, two solvers inside the controller. Agreement is the check.",
+        )
+    if amg is not None and kry is not None:
+        d_ak = abs(float(amg) - float(kry))
+        _check(
+            checks,
+            id="dse_amg_vs_krylov",
+            ok=d_ak < 0.05,
+            status="READY" if d_ak < 0.05 else "WATCH",
+            quantity="|DSE AMG-c − Krylov-c|",
+            value=d_ak,
+            bound="< 0.05 mV preferred",
+            note="Krylov MOR on the champion extract. Tens of µV is residual, not a new IR story.",
+        )
+
+    for key, fname, label in MISSING_LAB:
+        blob = _read(REPORTS / fname)
+        _check(
+            checks,
+            id=f"artifact_{key}",
+            ok=blob is not None,
+            status="READY" if blob is not None else "GAP",
+            quantity=label,
+            value=None if blob is None else fname,
+            bound="report present on disk",
+            note=(
+                "Present — still not foundry sign-off."
+                if blob is not None
+                else "Not materialized in this checkout. Do not invent a number."
+            ),
+        )
+
     ready = sum(1 for c in checks if c["status"] == "READY" and c["ok"])
     fail = [c["id"] for c in checks if c["status"] == "FAIL" or (c["status"] != "GAP" and not c["ok"] and c["status"] != "WATCH")]
     watch = [c["id"] for c in checks if c["status"] == "WATCH"]
@@ -428,10 +504,14 @@ def validate() -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", type=Path, default=REPORTS / "lab_physics_flowlab.json")
+    ap.add_argument("--ledger", type=Path, default=LEDGER)
     args = ap.parse_args()
     report = validate()
+    text = json.dumps(report, indent=2) + "\n"
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=2) + "\n")
+    args.out.write_text(text)
+    args.ledger.parent.mkdir(parents=True, exist_ok=True)
+    args.ledger.write_text(text)
     print(
         f"LAB_PHYSICS_DONE ok={report['ok']} "
         f"ready={report['n_ready']}/{report['n_checks']} "

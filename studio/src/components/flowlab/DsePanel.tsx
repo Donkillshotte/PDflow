@@ -175,6 +175,26 @@ type DseReport = {
 
 const LEVELS = ["architecture", "logic", "synthesis", "cell", "net", "physical", "routing", "pdn"] as const;
 
+function irChips(report: DseReport): { k: string; v: string }[] {
+  const chips: { k: string; v: string }[] = [];
+  if (report.winning_ir_pdn_mv != null)
+    chips.push({ k: "winning IR", v: `${report.winning_ir_pdn_mv.toFixed(3)} mV` });
+  if (report.winning_static_mv != null)
+    chips.push({ k: "static", v: `${report.winning_static_mv.toFixed(3)} mV` });
+  if (report.ir_champ_amg_mv != null)
+    chips.push({ k: "AMG", v: `${report.ir_champ_amg_mv.toFixed(3)} mV` });
+  if (report.ir_champ_ras_mv != null)
+    chips.push({ k: "RAS", v: `${report.ir_champ_ras_mv.toFixed(3)} mV` });
+  if (report.ir_champ_krylov_mv != null)
+    chips.push({ k: "Krylov", v: `${report.ir_champ_krylov_mv.toFixed(3)} mV` });
+  if (report.ir_cell_champ_extract_mv != null)
+    chips.push({ k: "IR-cell", v: `${report.ir_cell_champ_extract_mv.toFixed(3)} mV` });
+  if (report.ir_cell_champ_wns_ns != null)
+    chips.push({ k: "IR-cell WNS", v: `${report.ir_cell_champ_wns_ns.toFixed(3)} ns` });
+  if (report.n_candidates != null) chips.push({ k: "candidates", v: String(report.n_candidates) });
+  return chips;
+}
+
 export function DsePanel() {
   const [report, setReport] = useState<DseReport | null>(null);
 
@@ -217,7 +237,19 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
+          {irChips(report).length > 0 && (
+            <ul className="lb-chips" aria-label="DSE IR highlights">
+              {irChips(report).map((c) => (
+                <li key={c.k}>
+                  <span>{c.k}</span>
+                  <b>{c.v}</b>
+                </li>
+              ))}
+            </ul>
+          )}
           {report.n_ir_cell || report.n_ir_cell_champ || report.n_ir_cell_champ_cone || report.n_f4_ir_cell_champ_extract || report.n_f4_ir_cell_champ_cone_extract || report.n_ir_cell_champ_pdn || report.n_ir_cell_champ_cone_pdn || report.n_f4_ir_cell_champ_cone_region_extract || report.n_ir_cell_champ_cone_region_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.n_static_mesh || report.n_static_straps || report.n_em_straps || report.n_winning_ir_pdn || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
+            <details className="lb-raw">
+            <summary>Raw IR-loop tape</summary>
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -508,6 +540,7 @@ export function DsePanel() {
                   ? ` · I×c ${report.n_f4_iscale_champ}`
                   : ""}
             </p>
+            </details>
           ) : null}
           <ul className="fl-dynir-levels">
             {LEVELS.map((lv) => {
@@ -522,7 +555,7 @@ export function DsePanel() {
           </ul>
           <dl className="fl-dynir-gauges">
             <div>
-              <dt>Candidati</dt>
+              <dt>Candidates</dt>
               <dd>{report.n_candidates ?? 0}</dd>
             </div>
             <div>
@@ -649,7 +682,7 @@ export function DsePanel() {
               </dd>
             </div>
             <div>
-              <dt>Cono IR</dt>
+              <dt>IR cone</dt>
               <dd>
                 {(report.attribution?.modules ?? []).join(", ") || "—"}
                 {report.focus?.scope ? ` · ${report.focus.scope}` : ""}
@@ -674,7 +707,7 @@ export function DsePanel() {
             front={frontArch}
           />
           <LevelTable
-            title="Logic · sequenze ABC"
+            title="Logic · ABC sequences"
             rows={cands.filter((c) => c.level === "logic")}
             front={frontLogic}
           />
@@ -713,7 +746,7 @@ function LevelTable({
       <table className="fl-dynir-table">
         <thead>
           <tr>
-            <th>Nome</th>
+            <th>Name</th>
             <th>F</th>
             <th>Stdcell µm²</th>
             <th>Cells</th>
@@ -762,7 +795,7 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
       <table className="fl-dynir-table">
         <thead>
           <tr>
-            <th>Fonte</th>
+            <th>Source</th>
             <th>F</th>
             <th>HPWL</th>
             <th>WNS</th>
@@ -821,7 +854,7 @@ function PdnTable({ rows }: { rows: Cand[] }) {
       <table className="fl-dynir-table">
         <thead>
           <tr>
-            <th>Fonte</th>
+            <th>Source</th>
             <th>Extract</th>
             <th>Droop</th>
             <th>EM J</th>

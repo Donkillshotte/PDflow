@@ -9,4 +9,5 @@ python3 "${ROOT}/learn/scripts/run_dse.py" \
   --variant "${VARIANT}" \
   --budget-s "${DSE_BUDGET_S:-45}" \
   --f1-max "${DSE_F1_MAX:-6}"
+python3 "${ROOT}/learn/scripts/record_dse_launch.py" --variant "${VARIANT}" --seed-ingest
 echo "OK dse ${VARIANT}"

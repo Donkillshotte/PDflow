@@ -145,6 +145,8 @@ code="$(curl -s -o /tmp/studio-lab.json -w '%{http_code}' "${BASE}/api/lab")"
 [[ "${code}" == "200" ]] && ok "GET /api/lab → 200" || bad "lab → ${code}"
 rg -q '"comparisons"' /tmp/studio-lab.json && ok "lab.comparisons" || bad "lab missing comparisons"
 rg -q '"physics"' /tmp/studio-lab.json && ok "lab.physics" || bad "lab missing physics"
+rg -q '"launches"' /tmp/studio-lab.json && ok "lab.launches" || bad "lab missing launches"
+rg -q '"thisLaunch"' /tmp/studio-lab.json && ok "lab.thisLaunch" || bad "lab missing thisLaunch"
 python3 - <<'PY'
 import json
 d=json.load(open("/tmp/studio-story.json"))

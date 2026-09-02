@@ -99,6 +99,8 @@ PYTHONPATH="${ROOT}/learn/scripts${PYTHONPATH:+:${PYTHONPATH}}" python3 "${ROOT}
   && ok "test_sta_ir_aware" || bad "test_sta_ir_aware"
 PYTHONPATH="${ROOT}/learn/scripts${PYTHONPATH:+:${PYTHONPATH}}" python3 "${ROOT}/learn/scripts/test_lab_physics.py" \
   && ok "test_lab_physics" || bad "test_lab_physics"
+PYTHONPATH="${ROOT}/learn/scripts${PYTHONPATH:+:${PYTHONPATH}}" python3 "${ROOT}/learn/scripts/test_record_dse_launch.py" \
+  && ok "test_record_dse_launch" || bad "test_record_dse_launch"
 
 echo "== powerChainLessons signoff hooks =="
 rg -q 'drc_signoff' "${ROOT}/studio/src/lib/powerChainLessons.ts" \

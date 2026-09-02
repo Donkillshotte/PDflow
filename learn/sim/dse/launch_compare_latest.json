@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "n": 2,
+  "latest": {
+    "kind": "dse_launch",
+    "role": "cook",
+    "ok": true,
+    "variant": "flowlab",
+    "design_id": "gcd",
+    "created_at": 1788389402.5515513,
+    "summary": "DSE 140 candidates \u00b7 F1 18 (arch 3) \u00b7 logic Pareto 18 \u00b7 best mapped area architecture/sub_twos_complement 407.512 \u00b5m\u00b2 \u00b7 ctrl-cone boils_rewrite_balance 474.012 \u00b5m\u00b2 \u00b7 synth abc_speed 618.982 \u00b5m\u00b2 \u00b7 cell size-up n=5 WNS=-0.119 ns \u00b7 IR-cell siz",
+    "n_candidates": 140,
+    "n_f1": 18,
+    "n_f4": 60,
+    "n_f4_solve": 53,
+    "winning_static_mv": 0.564684304650509,
+    "winning_ir_pdn_mv": 1.705496611966728,
+    "ir_champ_amg_mv": 1.7054966456535592,
+    "ir_champ_ras_mv": 1.7054966258811532,
+    "ir_champ_krylov_mv": 1.7174584693049333,
+    "ir_cell_champ_extract_mv": 10.566353409269036,
+    "ir_cell_champ_wns_ns": -0.2882,
+    "spent_s": 544.6842679977417,
+    "compare": {
+      "versus": 1788043392.6769369,
+      "same_mesh": false,
+      "delta": {
+        "n_candidates": 139.0,
+        "winning_static_mv": -16.960083161369656,
+        "winning_ir_pdn_mv": -43.59208071620801,
+        "ir_champ_amg_mv": null,
+        "ir_cell_champ_extract_mv": null,
+        "ir_cell_champ_wns_ns": -0.3282,
+        "spent_s": 544.6842679977417
+      },
+      "note": "Previous shot is the gold ingest (45.298 mV). Not the same mesh as a later F4 cook."
+    }
+  }
+}
