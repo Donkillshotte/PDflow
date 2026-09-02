@@ -17,7 +17,7 @@ H1–H6 / I1–I5 historical bars unchanged.
 
 ## 2026-09-01T21:35Z — All remaining catalog recipes cooked on spi
 
-8/8 done. No product win. Closest: Core più stretto (area −2.6%,
+8/8 done. No product win. Closest: Tighter core (area −2.6%,
 WL −18%, slack +3 ps, IR worse). aspect_wide is a small lose.
 repair/cts/synth_hier match the default. 4 §5 wins still gcd/ibex only.
 
@@ -87,12 +87,12 @@ FP=7 FN=0. I1/I2/I3/I4 wait for Q1/Q2. Wrapper now passes
 
 ## 2026-09-01T19:35Z — Pre-registered next iteration plan (no cooking)
 
-`learn/dse/next_iteration_plan.md`: generatore prima (Q1 knob fisici
-PLACE_DENSITY_LB_ADDON × CORE_UTILIZATION su gcd+ibex), policy poi (Q2
-fidelity policy con STOP verificati), schema per ultimo (Q3 delta/pred/
-EvaluationResult solo dove consumato). Ipotesi I1–I5 e barre frozen.
-Nessun proposer AI in questa iterazione. Nessun esperimento parte da
-questo commit.
+`learn/dse/next_iteration_plan.md`: generator first (Q1 physical knobs
+PLACE_DENSITY_LB_ADDON × CORE_UTILIZATION on gcd+ibex), policy next (Q2
+fidelity policy with verified STOP), schema last (Q3 delta/pred/
+EvaluationResult only where consumed). Hypotheses I1–I5 and frozen bars.
+No AI proposer in this iteration. No experiment starts from
+this commit.
 
 ## 2026-09-01T18:40Z — P5 done + P7 eval: base wins, H6 P0-only
 
@@ -106,192 +106,192 @@ unrestamped. No flowlab overwrite. Jpeg stretch not started.
 ## 2026-09-01T18:15Z — P5 ibex@1.98 ns: base still less late
 
 Tighter clock 1.98 ns: base WNS **−23 ps** (open), abc_speed **−61 ps**
-(peggio, place −118, funnel skip). A chiudeva a 2.2; nessuno chiude a 1.98.
-abc_speed non è primo a chiudere. Restano 2.75 e 3.52 × {A,S}.
+(worse, place −118, funnel skip). A closed at 2.2; neither closes at 1.98.
+abc_speed is not first to close. Remaining: 2.75 and 3.52 × {A,S}.
 
-## 2026-09-01T17:50Z — P2 abc_speed: spi/ibex cotti, dyn/aes già speed
+## 2026-09-01T17:50Z — P2 abc_speed: spi/ibex cooked, dyn/aes already speed
 
 `camp_spi_abcspeed` WNS +601 vs base +612 (Δ −11 ps), area −0.7%.
-`camp_ibex_abcspeed` WNS +20.4 vs +22.4 (Δ −2 ps, dentro ±5), area −0.5%
-(<10% → pareggio, non win). Primo `camp_spi_abc_speed` fallito (ABC_AREA
-vuoto); wrapper ora `ABC_AREA=0`. H4 **non** monotona (spi −11, gcd −150,
-ibex −2). Nessun product-win.
+`camp_ibex_abcspeed` WNS +20.4 vs +22.4 (Δ −2 ps, within ±5), area −0.5%
+(<10% → tie, not win). First `camp_spi_abc_speed` failed (ABC_AREA
+empty); wrapper now `ABC_AREA=0`. H4 **not** monotonic (spi −11, gcd −150,
+ibex −2). No product-win.
 
 ## 2026-09-01T17:30Z — P1 GCD clock sweep DONE + eval slot-correct
 
-12 cotture `camp_gcd_clk{040,055,070,090}_{a,b,c}`, util 35. A chiude a
-**0.55 ns** (+13 ps); C a 0.70 (+3 ps); B a 0.90 (+4.7 ps, area −24.1%
-< bar 25%). H3 **non supportata**. H6 resta pass (coppie stesso clock).
-H1 invertita solo a 0.46. H2: nessun product-win vs base → recall N/A.
-Eval raggruppa per (design, clock): non confrontare ainj 0.46 con clk090.
+12 cooks `camp_gcd_clk{040,055,070,090}_{a,b,c}`, util 35. A closes at
+**0.55 ns** (+13 ps); C at 0.70 (+3 ps); B at 0.90 (+4.7 ps, area −24.1%
+< bar 25%). H3 **not supported**. H6 remains pass (same-clock pairs).
+H1 inverted only at 0.46. H2: no product-win vs base → recall N/A.
+Eval groups by (design, clock): do not compare ainj 0.46 with clk090.
 
-## 2026-09-01T17:16Z — P0 COMPLETO (5/5 design, H6 5/5)
+## 2026-09-01T17:16Z — P0 COMPLETE (5/5 design, H6 5/5)
 
 AES ainj bit-identical (sha `4e2c65002b05…`, WNS −8.921 ps). P0: gcd
-(registrato) + spi + dynamic_node + ibex + aes, ciascuno base+ainj.
-H6 **pass su tutti**. H5 fail frozen. Prossima fase **P1** clock sweep
+(registered) + spi + dynamic_node + ibex + aes, each base+ainj.
+H6 **pass on all**. H5 fail frozen. Next phase **P1** clock sweep
 GCD {0.40,0.55,0.70,0.90}×{A,B,C}, util 35, variant `camp_gcd_clk*`.
-Mai `flowlab`.
+Never `flowlab`.
 
 ## 2026-09-01T17:08Z — P0 aes base DONE (barely open)
 
 `camp_aes_base` 408s, peak 1.4 GiB. WNS **−8.9 ps**, place +3.1 ps,
 15960 inst, area 19921, die 62612 (FLOORPLAN_DEF), repair 2661.
-Place-promoted. Niente Krylov. Prossima: ainj.
+Place-promoted. No Krylov. Next: ainj.
 
 ## 2026-09-01T17:00Z — P0 ibex ainj H6 PASS
 
-Sha identico (`dc42f9418f2d…`), WNS +22.4143 ps identico. H6 su 4 design
-(gcd, spi, dynamic_node, ibex). Prossima: `camp_aes_base` (FLOORPLAN_DEF
-fisso, niente Krylov).
+Sha identical (`dc42f9418f2d…`), WNS +22.4143 ps identical. H6 on 4 design
+(gcd, spi, dynamic_node, ibex). Next: `camp_aes_base` (fixed FLOORPLAN_DEF,
+no Krylov).
 
 ## 2026-09-01T16:52Z — P0 ibex base DONE (barely closed)
 
 `camp_ibex_base` Verilog overlay, 453s, peak 1.6 GiB. WNS **+22.4 ps**,
 place +261 ps, 23434 inst, area 30735, die 62991, repair 777, sha
-`dc42f9418f2d…`. Clock 2.2 ns è il più stretto dei medi (P5 candidate).
-Prossima: ainj.
+`dc42f9418f2d…`. Clock 2.2 ns is the tightest of the medium clocks (P5 candidate).
+Next: ainj.
 
 ## 2026-09-01T16:43Z — P0 dynamic_node ainj H6 PASS
 
-Sha `6_report` identico (`fe663d2db2de…`), WNS +3.35383 ns identico.
-H6 su gcd+spi+dynamic_node. H5 **non supportata**: residual dyn −250 ps
-esce da gcd ±2σ (criterio frozen, non ritoccare). Prossima: ibex Verilog.
+Sha `6_report` identical (`fe663d2db2de…`), WNS +3.35383 ns identical.
+H6 on gcd+spi+dynamic_node. H5 **not supported**: residual dyn −250 ps
+outside gcd ±2σ (frozen criterion, do not tweak). Next: ibex Verilog.
 
 ## 2026-09-01T16:38Z — P0 dynamic_node base DONE (closed)
 
 `camp_dynamic_node_base` 242s, peak ~1.3 GiB. WNS **+3.354 ns**, place +3.604,
 11146 inst, area 22540, die 56868, repair 957, sha `fe663d2db2de…`.
-Clock 6.0 ns è larghissimo. SWAP_ARITH=1 (ricetta ORFS). Prossima: ainj.
+Clock 6.0 ns is very loose. SWAP_ARITH=1 (ORFS recipe). Next: ainj.
 
 ## 2026-09-01T16:32Z — P0 spi ainj H6 PASS
 
-`camp_spi_ainj` 26s, sha `6_report` **identico** a base (`b8826a8ee535…`),
-WNS +612.234 ps identico. Forno deterministico su spi. H6 supportata su
-gcd+spi. H5 tentativo-ok (1/5 residuali fuori gcd ±2σ). Prossima:
-`camp_dyn_base` (dynamic_node, ricetta ORFS, SWAP_ARITH=1).
+`camp_spi_ainj` 26s, sha `6_report` **identical** to base (`b8826a8ee535…`),
+WNS +612.234 ps identical. Deterministic oven on spi. H6 supported on
+gcd+spi. H5 trial-ok (1/5 residuals outside gcd ±2σ). Next:
+`camp_dyn_base` (dynamic_node, ORFS recipe, SWAP_ARITH=1).
 
 ## 2026-09-01T16:31Z — P0 spi base DONE (timing-closed)
 
 `camp_spi_base` finish 26s. WNS **+612 ps**, place +582 ps, area 268 µm²,
-238 inst, die 3091, repair 22, sha `b8826a8ee535…`. Clock 1.0 ns è largo
-(H3: spi già chiuso al T_base). Prossima: `camp_spi_ainj` sullo stesso
-`1_2_yosys.v`. `flowlab/` non toccato.
+238 inst, die 3091, repair 22, sha `b8826a8ee535…`. Clock 1.0 ns is loose
+(H3: spi already closed at T_base). Next: `camp_spi_ainj` on the same
+`1_2_yosys.v`. `flowlab/` not touched.
 
 ## 2026-09-01T16:30Z — P0 spi base: PDN-0185, util 8
 
-`camp_spi_base` synth+FP ok (139 inst, 230 µm²) poi PDN fail: core 23.75 µm < straps
-metal4 28.5 µm. Config spi `CORE_UTILIZATION` 40→8 (die più largo, stessa ricetta
-ABC_AREA). Variant da ricuocere; `flowlab/` non toccato.
+`camp_spi_base` synth+FP ok (139 inst, 230 µm²) then PDN fail: core 23.75 µm < straps
+metal4 28.5 µm. Config spi `CORE_UTILIZATION` 40→8 (wider die, same recipe
+ABC_AREA). Variant to re-cook; `flowlab/` not touched.
 
-## 2026-09-01T16:25Z — Campagna: esecuzione partita (infra P0)
+## 2026-09-01T16:25Z — Campaign: execution started (infra P0)
 
-`/goal` sul piano `experiment_campaign_plan.md`. Infra: `scripts/run_design_finish.sh`
-(rifiuta flowlab/learn/base/krylov; DESIGN gcd/spi/aes/ibex/dynamic_node; SDC generato
+`/goal` on plan `experiment_campaign_plan.md`. Infra: `scripts/run_design_finish.sh`
+(rejects flowlab/learn/base/krylov; DESIGN gcd/spi/aes/ibex/dynamic_node; SDC generated
 in `learn/sim/dse/sdc/`), `learn/dse/experiments.py` JSONL append-only,
-`learn/scripts/eval_campaign.py` H1–H6 criteri §5 frozen, `record_experiment.py`.
-Ibex: slang assente → overlay Verilog `learn/designs/nangate45/ibex-verilog`
-(chameleon/ibex). dynamic_node P0: ricetta ORFS (SWAP_ARITH=1). GCD A/Ainj/B/C/Bfix
-registrati come `camp_gcd_*` (orfs_variant=flowlab*), **non** rilanciati.
-Prossima cottura: `DESIGN=spi FLOW_VARIANT=camp_spi_base`. Un job, prlimit 8 GiB.
+`learn/scripts/eval_campaign.py` H1–H6 frozen §5 criteria, `record_experiment.py`.
+Ibex: slang absent → Verilog overlay `learn/designs/nangate45/ibex-verilog`
+(chameleon/ibex). dynamic_node P0: ORFS recipe (SWAP_ARITH=1). GCD A/Ainj/B/C/Bfix
+registered as `camp_gcd_*` (orfs_variant=flowlab*), **not** re-launched.
+Next cook: `DESIGN=spi FLOW_VARIANT=camp_spi_base`. One job, prlimit 8 GiB.
 
-## 2026-09-01T16:20Z — Piano campagna multi-design (solo piano)
+## 2026-09-01T16:20Z — Multi-design campaign plan (plan only)
 
-`learn/dse/experiment_campaign_plan.md`. Ipotesi pre-registrate H1–H6
-(proxy invertono?, gate P2 predice?, B vince a clock rilassato?, DSE
-scala con la taglia?, residual trasferibile?, forno deterministico?).
+`learn/dse/experiment_campaign_plan.md`. Pre-registered hypotheses H1–H6
+(do proxies invert?, does P2 gate predict?, does B win at relaxed clock?, does DSE
+scale with size?, is residual transferable?, deterministic oven?).
 Design v1: gcd, riscv32i/spi, dynamic_node, ibex, aes (no F4 Krylov).
-~40–45 finish, ~10–18 h wall in fasi P0–P7, ogni esperimento freezato
-e committato. Criteri decisionali scritti PRIMA di cuocere. Nessun
-esperimento lanciato da questo commit.
+~40–45 finish, ~10–18 h wall in phases P0–P7, each experiment frozen
+and committed. Decision criteria written BEFORE cooking. No
+experiment launched from this commit.
 
-## 2026-09-01T15:45Z — Eval esaustiva vs flow base A
+## 2026-09-01T15:45Z — Exhaustive eval vs base flow A
 
-`eval_vs_base_flow.py` su 5 cotture. A resta. Ainj bit-identical (ΔWNS 0,
-sha 6_report identico). B −301 ps vs A; Bfix −312 ps (stesso die);
-C −150 ps e +23 µm². Funnel skip B/C/Bfix. Nessuno timing-closed.
+`eval_vs_base_flow.py` on 5 cooks. A remains. Ainj bit-identical (ΔWNS 0,
+identical sha 6_report). B −301 ps vs A; Bfix −312 ps (same die);
+C −150 ps and +23 µm². Funnel skip B/C/Bfix. None timing-closed.
 Pareto F6: A+Ainj. `test_dse.py` ALL PASSED **1193** ok (eval vs-base
-incluso; F4 DirectLU 6.075; gold 45.298 unrestamp; AES Krylov REFUSED).
-Freeze `5cba9a7a…` / `f691539f…` intatto. Write-up
+included; F4 DirectLU 6.075; gold 45.298 unrestamp; AES Krylov REFUSED).
+Freeze `5cba9a7a…` / `f691539f…` intact. Write-up
 `learn/dse/eval_vs_base_flow.md`.
 
-## 2026-09-01T14:46Z — Next Level DSE implementato e controllato
+## 2026-09-01T14:46Z — Next Level DSE implemented and verified
 
-Finish-or-nothing: contratti, funnel R1→P2→F6, scheduler event-driven,
-F6 ingest, HV `--stop-metric f6`, `--next-level` su `*_nl.jsonl`.
-GNN/bandit isolati (`DSE_ENABLE_FOLKLORE=1` per il report GNN).
+Finish-or-nothing: contracts, funnel R1→P2→F6, scheduler event-driven,
+F6 ingest, HV `--stop-metric f6`, `--next-level` on `*_nl.jsonl`.
+GNN/bandit isolated (`DSE_ENABLE_FOLKLORE=1` for GNN report).
 `test_dse.py` ALL PASSED (**1182** ok, F4 DirectLU 6.075, gold 45.298
 unrestamp, AES Krylov REFUSED). Equiv Yosys identity + `sub_twos` +
 `eqz_or_reduce` **pass** vs `learn/flowlab/gcd.v`.
 A-injected `flowlab_dse_ainj`: WNS **−37.167 ps**, Δ **0 ps**,
-`6_report` sha **identico** ad A (`5cba9a7a…`). Forno deterministico.
-Floorplan B su die di A (`flowlab_dse_fixedb`): die **1970.03**,
+`6_report` sha **identical** to A (`5cba9a7a…`). Deterministic oven.
+Floorplan B on A's die (`flowlab_dse_fixedb`): die **1970.03**,
 core **1712.51**. Finish B locked-die WNS **−349 ps** (place −318 ps) —
-il die grande non salva B. Place B/C restano fuori F6. Wrapper rifiuta
-`flowlab`/`learn`/AES. Oro 45.298 unrestamp. AES `febe6804241c` non
-toccato. Nessun Krylov.
+the large die does not save B. Place B/C remain outside F6. Wrapper rejects
+`flowlab`/`learn`/AES. Gold 45.298 unrestamp. AES `febe6804241c` not
+touched. No Krylov.
 
-## 2026-09-01T12:52Z — Handoff finish B+C eseguito; A resta
+## 2026-09-01T12:52Z — Handoff finish B+C executed; A remains
 
-Stesso forno: SDC 0.46, CORE_UTILIZATION=35, SYNTH_NETLIST_FILES, variant
-isolate. Wrapper rifiuta `flowlab`. Floorplan B 257 inst die 1305.
+Same oven: SDC 0.46, CORE_UTILIZATION=35, SYNTH_NETLIST_FILES, isolated
+variants. Wrapper rejects `flowlab`. Floorplan B 257 inst die 1305.
 Finish B `flowlab_dse_small` WNS **−338 ps**, area 610, repair 126.
 Finish C `flowlab_dse_fast` WNS **−187 ps**, area 963, repair 198.
 A: WNS **−37 ps**, area 940, repair 132. Place A +12 ps; B −314; C −117.
-Sha flowlab 6_report `5cba9a7a…` e 6_final.odb `f691539f…` invariati.
-Oro 45.298 unrestamp. Fase 2 DirectLU saltata (die diversi). Verdetto:
-`learn/dse/handoff_finish_bakeoff.md`. Nessun finish nel controller.
+Flowlab sha 6_report `5cba9a7a…` and 6_final.odb `f691539f…` unchanged.
+Gold 45.298 unrestamp. Phase 2 DirectLU skipped (different dies). Verdict:
+`learn/dse/handoff_finish_bakeoff.md`. No finish in the controller.
 
-## 2026-09-01T12:45Z — Piano handoff DSE → make finish
+## 2026-09-01T12:45Z — Handoff plan DSE → make finish
 
-Piano (non eseguito): `learn/dse/handoff_finish_plan.md`. Tre cotture,
-stesso forno, solo il netlist cambia. A = finish `flowlab` già su disco
-(non toccare). B = arch `sub_twos_complement` (`54142494d890`). C =
-`orfs_abc_speed` (`52e0ecacb19b`). Variant ORFS nuove, util/SDC del
-baseline (≈55%), Yosys saltato. Niente finish nel controller, niente
-cono ABC in v1, niente AES/oro. Criterio: WNS/TNS/area/n. repair sullo
-stesso `6_report.json`. Pareggio è una risposta valida.
+Plan (not executed): `learn/dse/handoff_finish_plan.md`. Three cooks,
+same oven, only the netlist changes. A = finish `flowlab` already on disk
+(do not touch). B = arch `sub_twos_complement` (`54142494d890`). C =
+`orfs_abc_speed` (`52e0ecacb19b`). New ORFS variants, baseline util/SDC
+(≈55%), Yosys skipped. No finish in the controller, no
+ABC cone in v1, no AES/gold. Criterion: WNS/TNS/area/n. repair on the
+same `6_report.json`. Tie is a valid answer.
 
-## 2026-09-01T11:30Z — Confronto ORFS finish vs DSE (GCD)
+## 2026-09-01T11:30Z — ORFS finish vs DSE comparison (GCD)
 
-Onesto, non marketing. Fonte finish: `6_report.json` + `3_5_place_dp.json`.
-Fonte DSE: `memory_flowlab.jsonl` 140/137 ok (campagna live, prima solo in
+Honest, not marketing. Finish source: `6_report.json` + `3_5_place_dp.json`.
+DSE source: `memory_flowlab.jsonl` 140/137 ok (live campaign, previously only in
 WT). Write-up: `learn/sim/reports/flow_vs_dse_gcd.md`.
 
-ORFS vince il chip: WNS **−37 ps**, 132 repair buf, stdcell finish 940 µm².
-Place era già meeting (**+12 ps**, 684 µm²) — finish peggiora col CTS.
-DSE non chiude: F5-lite **−641 ps** (no repair), ideal ABC **−114 ps**.
-Mapped 407.5 ≠ finish 940 (categorie diverse).
+ORFS wins the chip: WNS **−37 ps**, 132 repair buf, stdcell finish 940 µm².
+Place was already meeting (**+12 ps**, 684 µm²) — finish worsens with CTS.
+DSE does not close: F5-lite **−641 ps** (no repair), ideal ABC **−114 ps**.
+Mapped 407.5 ≠ finish 940 (different categories).
 
-DSE vince la ricerca: 140 candidati vs 1 ricetta; ABC cono `boils_balance`
-wns_cost **0.2088**; PDN **stesso** extract finish (`n_r=5816`) DirectLU
-**6.075 → decap 4.156 mV**. Non usare catalog 1.705 né leftover 3.942 vs
-finish. Gold 45.298 unrestamp. AES sha intatto. Nessun Krylov AES.
+DSE wins the search: 140 candidates vs 1 recipe; ABC cone `boils_balance`
+wns_cost **0.2088**; PDN **same** extract finish (`n_r=5816`) DirectLU
+**6.075 → decap 4.156 mV**. Do not use catalog 1.705 or leftover 3.942 vs
+finish. Gold 45.298 unrestamp. AES sha intact. No AES Krylov.
 
-## 2026-09-01T10:50Z — Campagna live GCD (resume JSONL)
+## 2026-09-01T10:50Z — Live GCD campaign (resume JSONL)
 
 `run_dse.py --campaign --wall-s 180`. Resume `memory_flowlab.jsonl` (no
-`--fresh`, no AES). `start_inner=1` (tetti inner 0 già spesi).
-`stop=hv_eps` dopo 2 inner (~151 s). HV 257.090 → 257.787 (ref congelato).
-+27 candidati (26 ok): 5 F1 cone ABC, 1 GPL, 2 GRT, 2 F5-lite, 2 CTS,
+`--fresh`, no AES). `start_inner=1` (inner-0 caps already spent).
+`stop=hv_eps` after 2 inner (~151 s). HV 257.090 → 257.787 (frozen ref).
++27 candidates (26 ok): 5 F1 cone ABC, 1 GPL, 2 GRT, 2 F5-lite, 2 CTS,
 2 cell size-up. Best logic `wns_cost` 0.2106 → **0.2088** (`boils_balance`
-553.28 µm², prima senza STA). Size-up sull’arch winner: 425.6 µm² WNS
-−0.405 ns. Corone invariate: area arch **407.512**, synth WNS **−0.114**,
+553.28 µm², previously without STA). Size-up on the arch winner: 425.6 µm² WNS
+−0.405 ns. Crowns unchanged: area arch **407.512**, synth WNS **−0.114**,
 DirectLU **6.075**, decap **4.156**. Gold **45.298** unrestamp; AES
-`febe6804241c` sha `9e89f6e88b61` intatto. `prlimit --as=8GiB`. Fix
-UnboundLocalError wrapper F4 in `run_controller` (prima chiamata live).
+`febe6804241c` sha `9e89f6e88b61` intact. `prlimit --as=8GiB`. Fix
+UnboundLocalError wrapper F4 in `run_controller` (first live call).
 
-## 2026-09-01T08:20Z — Campagna DSE (HV gated, JSONL condiviso)
+## 2026-09-01T08:20Z — DSE campaign (HV gated, shared JSONL)
 
-`dse.campaign.run_campaign` rilancia `run_controller` sulla stessa JSONL.
-Stop: HV relativo < eps (front gated logic area vs `wns_cost`, ref congelato),
-wall, zero nuovi `ok`, max_inner. Tetti lifetime: inner 0 = default di oggi
-(GPL/F5/CTS/cell/net = 1, F3=8, F2-fast=4). Inner successivi `v+i`.
-`f1_max = 6×(inner+1)`. Skip parent già coperti; `pred` solo tie-break.
+`dse.campaign.run_campaign` re-launches `run_controller` on the same JSONL.
+Stop: HV relative < eps (front gated logic area vs `wns_cost`, frozen ref),
+wall, zero new `ok`, max_inner. Lifetime caps: inner 0 = today's default
+(GPL/F5/CTS/cell/net = 1, F3=8, F2-fast=4). Subsequent inners `v+i`.
+`f1_max = 6×(inner+1)`. Skip parents already covered; `pred` tie-break only.
 CLI `--campaign` opt-in. `test_dse_campaign.py` fake runner (no OpenROAD/AES/F4).
-`test_dse` ALL PASSED **1120** `ok` (~291 s): 1086 + 34 campagna. DirectLU
+`test_dse` ALL PASSED **1120** `ok` (~291 s): 1086 + 34 campaign. DirectLU
 6.075 + `sta_t50`; gold 45.298 unrestamp; AES `febe6804241c` sha `9e89f6e88b61`
-static 6.954 intatto. Gate AES Krylov resta REFUSED. Nessun DesignState.
+static 6.954 intact. AES Krylov gate remains REFUSED. No DesignState.
 
 ## 2026-09-01T07:45Z — PD QoR axes (leakage, TNS, HPWL, stdcell)
 
@@ -302,93 +302,93 @@ static 6.954 intatto. Gate AES Krylov resta REFUSED. Nessun DesignState.
 TIMING_POWER gated includes TNS+leakage. `test_dse` ALL PASSED **1086**
 `ok` (~294 s). Live GCD F3: WNS −0.522 ns TNS −16.719 ns P 1.26 mW leak
 8.56 µW. DirectLU 6.075 + `sta_t50`; gold 45.298 unrestamp; AES
-`febe6804241c` sha `9e89f6e88b61` static 6.954 intatto. Studio
+`febe6804241c` sha `9e89f6e88b61` static 6.954 intact. Studio
 `DsePanel` columns: stdcell, cells, TNS, leak, P tot, HPWL µm.
 
 ## 2026-08-31T22:25Z — E2E no-skip (extract + gold + F5 GCD)
 
-I skip della run 994 non erano OpenROAD assente: `extract_available`
-True, ma i fixture gitignore `4628a15dbc9a.v` / `ab9f115d5a67.v` e
-`dynamic_ir_flowlab.json` mancavano. Piantati da F1 liberty-default
-(409.108 µm², 248 celle) + sentinel gold **45.298** (non restamp 6.075).
+Run 994 skips were not absent OpenROAD: `extract_available`
+True, but gitignored fixtures `4628a15dbc9a.v` / `ab9f115d5a67.v` and
+`dynamic_ir_flowlab.json` were missing. Seeded from F1 liberty-default
+(409.108 µm², 248 cells) + sentinel gold **45.298** (not restamped 6.075).
 `check_live_f4` 49 `ok`: DirectLU 6.075 + `sta_t50`; extract `n_r=1939`
-droop 18.760; region r32; gold unrestampato. GPL/GRT/F5-lite/F5-CTS GCD
-ok. Soglia CTS vs lite: ΔWNS ≠ 0 (su GCD 3–7 ps). `test_dse` ALL PASSED
-**1069** `ok` (~289 s). AES `febe6804241c` sha `9e89f6e88b61…` intatto.
-Mai Krylov AES. Un job, `prlimit --as=8GiB`.
+droop 18.760; region r32; gold unrestamped. GPL/GRT/F5-lite/F5-CTS GCD
+ok. CTS vs lite threshold: ΔWNS ≠ 0 (on GCD 3–7 ps). `test_dse` ALL PASSED
+**1069** `ok` (~289 s). AES `febe6804241c` sha `9e89f6e88b61…` intact.
+Never Krylov AES. One job, `prlimit --as=8GiB`.
 
-## 2026-08-31T21:36Z — PLAN Fase 2 D.2–D.5 + cleanup
+## 2026-08-31T21:36Z — PLAN Phase 2 D.2–D.5 + cleanup
 
-`test_dse` runner: metrics → memory → planner → steer → live F4 (ultimo).
+`test_dse` runner: metrics → memory → planner → steer → live F4 (last).
 D.2 `test_dse_memory.py` · D.3 `test_dse_planner.py` · D.4 `test_dse_steer.py`
-(558 `ok` smoke) · D.5 `test_dse_live_f4.py`. Stesso entrypoint.
+(558 `ok` smoke) · D.5 `test_dse_live_f4.py`. Same entrypoint.
 `test_dse.py` ALL PASSED (~262 s); **994** `ok`; DirectLU 6.075 + `sta_t50`;
-AMG/RAS 6.075; Krylov 6.092. Gold file assente su disco (check unrestamp
-skipped); `GOLD_MV` 45.298 non ristampato. AES `febe6804241c` n_r=73139
-static 6.954 intatto (sha `9e89f6e88b61…`). Suite veloce verde.
+AMG/RAS 6.075; Krylov 6.092. Gold file absent on disk (unrestamp check
+skipped); `GOLD_MV` 45.298 not restamped. AES `febe6804241c` n_r=73139
+static 6.954 intact (sha `9e89f6e88b61…`). Fast suite green.
 `controller.py` 3115 → 3062: drop import unused post C4–C7; 66 `should_pay_*`
-restano in `acquire.py`. `PLAN.md` Diagnosi aggiornata (buchi 1–5 chiusi).
-Nessun `DesignState`.
+remain in `acquire.py`. `PLAN.md` Diagnosis updated (gaps 1–5 closed).
+No `DesignState`.
 
-## 2026-08-31T20:50Z — PLAN Fase 2 D.1 + chiusura
+## 2026-08-31T20:50Z — PLAN Phase 2 D.1 + closure
 
 `test_dse_metrics.py` (dominates / gated / HV / EHVI, 15 `ok`).
-`test_dse.py` resta l’entrypoint. Stesso conteggio 994 `ok`.
+`test_dse.py` remains the entrypoint. Same count 994 `ok`.
 `test_dse.py` ALL PASSED (~261 s); DirectLU 6.075 + `sta_t50`. Gold unrestamped.
-AES `febe6804241c` n_r=73139 static 6.954 intatto. `controller.py` 3115:
+AES `febe6804241c` n_r=73139 static 6.954 intact. `controller.py` 3115:
 ingest/F1 teacher → slice → C1–C6 → `run_next_refine` → C7 → report.
-Nessun `DesignState`. Fase 2 chiusa.
+No `DesignState`. Phase 2 closed.
 
-## 2026-08-31T20:44Z — PLAN Fase 2 C7: champ solvers + static/EM
+## 2026-08-31T20:44Z — PLAN Phase 2 C7: champ solvers + static/EM
 
 `STAGES_IR_SOLVERS` after `run_next_refine`. AMG/RAS/Krylov-champ + static
 IR/mesh/straps + EM. `admit_paid_f4` wrappers on ctx. `controller.py`
 3551 → 3115. `test_dse.py` ALL PASSED (~259 s); DirectLU 6.075 + `sta_t50`.
 Gold unrestamped. F1 teacher and refine while stay inlined.
 
-## 2026-08-31T20:38Z — PLAN Fase 2 C6: winning_ir_region_cell depth 0
+## 2026-08-31T20:38Z — PLAN Phase 2 C6: winning_ir_region_cell depth 0
 
 Size / extract / PDN family Stage. `run_next_refine` stays immediately after.
 `controller.py` 3712 → 3551. `test_dse.py` ALL PASSED (~259 s);
 DirectLU 6.075 + `sta_t50`. Gold unrestamped.
 
-## 2026-08-31T20:32Z — PLAN Fase 2 C5: inspect loops
+## 2026-08-31T20:32Z — PLAN Phase 2 C5: inspect loops
 
 `run_inspect_loop` + leftover-cone-region / winning_ir_region (cap 4).
 Denied acquire `"no leftover-cone-region extract or |Δ| PDN"` pinned.
 `controller.py` 3941 → 3712. `test_dse.py` ALL PASSED (~258 s);
 DirectLU 6.075 + `sta_t50`. Gold unrestamped.
 
-## 2026-08-31T20:26Z — PLAN Fase 2 C4: winning_ir + champ family
+## 2026-08-31T20:26Z — PLAN Phase 2 C4: winning_ir + champ family
 
 `STAGES_IR_CHAMP`: winning_ir_pdn → iscale_champ → ir_cell_champ/cone.
 Faithful extract (`ir_champ.py`). `controller.py` 4399 → 3941.
 `test_dse.py` ALL PASSED (~261 s); DirectLU 6.075 + `sta_t50`. Gold unrestamped.
 
-## 2026-08-31T20:18Z — PLAN Fase 2 C3: IR-cell family
+## 2026-08-31T20:18Z — PLAN Phase 2 C3: IR-cell family
 
 `STAGES_IR_CELL`: size → extract → PDN → region → region PDN. Hosts stay
 attribution. `controller.py` 4633 → 4399. `test_dse.py` ALL PASSED (~258 s);
 DirectLU 6.075 + `sta_t50`. Gold unrestamped.
 
-## 2026-08-31T20:20Z — PLAN Fase 2 C2: IR steer slice
+## 2026-08-31T20:20Z — PLAN Phase 2 C2: IR steer slice
 
 ir_steer / host_ir_steer / f4_scale_win → `STAGES_IR_STEER`. While-loop
 acquire strings identical. `controller.py` 4789 → 4633. `test_dse.py` ALL
 PASSED (~259 s); DirectLU 6.075 + `sta_t50`. Gold unrestamped.
 
-## 2026-08-31T20:10Z — PLAN Fase 2 C1: STAGES_STEER_GAP
+## 2026-08-31T20:10Z — PLAN Phase 2 C1: STAGES_STEER_GAP
 
 residual_steer / F5_PORT / port_steer / physical_catalog / f2_region moved
 to `STAGES_STEER_GAP`. Order unchanged. `controller.py` 4920 → 4789.
 `test_dse.py` ALL PASSED (~265 s); DirectLU 6.075 + `sta_t50`. Gold unrestamped.
 
-## 2026-08-31T20:00Z — PLAN Fase 2 passo A: scenario guida I(t)
+## 2026-08-31T20:00Z — PLAN Phase 2 step A: guiding I(t) scenario
 
-`i_t_inputs` + worker: `source` decide STA/VCD/SAIF. Triangle → `--no-sta`,
-nessuno STA leftover. `sta_t50` REAL → `--sta` only. Worker non importa `dse`
+`i_t_inputs` + worker: `source` decides STA/VCD/SAIF. Triangle → `--no-sta`,
+no leftover STA. `sta_t50` REAL → `--sta` only. Worker does not import `dse`
 (SciPy 1.x). GCD live DirectLU **6.075** + `sta_t50`. Gold unrestamped.
-Nessun AES Krylov.
+No AES Krylov.
 
 | Item | Result |
 |---|---|
@@ -398,19 +398,19 @@ Nessun AES Krylov.
 | `test_candidate_schema.py` | SCHEMA_CONTRACT_OK |
 | `test_dse.py` | ALL PASSED (~261 s); 6.075 / sta_t50; AMG/RAS match; C 6.092 |
 
-## 2026-08-31T19:30Z — PLAN Fase 2 scritto (non eseguito)
+## 2026-08-31T19:30Z — PLAN Phase 2 written (not executed)
 
-`PLAN.md` sostituito: Fase 1 (0–6) archiviata su `ca47126`. Fase 2 è il
-piano eseguibile per i buchi rimasti, misurati sul tree (controller 4920,
+`PLAN.md` replaced: Phase 1 (0–6) archived on `ca47126`. Phase 2 is the
+executable plan for the remaining gaps, measured on the tree (controller 4920,
 66 `should_pay_*`, `test_dse` 4925, scenario stamp-only, gated non-picker).
 
-Ordine: A scenario→I(t) · E etichette 6.075 vs 45.298 · B `prefer_gated` +
-Studio · C1–C7 strangler coda IR · D split test (dopo C). Fuori: DesignState,
-AES full/CTS/Krylov, CCS, gold restamp, flatten F1 teacher, gated su F1→F2.
+Order: A scenario→I(t) · E labels 6.075 vs 45.298 · B `prefer_gated` +
+Studio · C1–C7 strangler IR tail · D split test (after C). Out of scope: DesignState,
+AES full/CTS/Krylov, CCS, gold restamp, flatten F1 teacher, gated on F1→F2.
 
-Nessun codice runtime toccato. Nessun `test_dse` in questo passo.
+No runtime code touched. No `test_dse` in this step.
 
-## 2026-08-31T17:56Z — PLAN passo 6: CurrentScenario
+## 2026-08-31T17:56Z — PLAN step 6: CurrentScenario
 
 `learn/dse/current_scenario.py`: named I(t) source. Triangle remains default.
 GCD finish infers `sta_t50` when STA arrivals exist (same 6.075 mV path).
@@ -428,7 +428,7 @@ Nangate45 (NLDM). `build_worker_cmd` / worker take `--scenario` JSON;
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
 | `test_dse.py` | ALL PASSED (~265 s); DirectLU 6.075 with `sta_t50`; ≠ gold 45.298 |
 
-## 2026-08-31T17:50Z — PLAN passo 5: Pareto gated by fidelity
+## 2026-08-31T17:50Z — PLAN step 5: Pareto gated by fidelity
 
 `dominates_with_fidelity` / `pareto_front_gated`: a lower-fidelity timing/power
 point cannot dominate a higher-fidelity point (they co-exist). Area stays
@@ -445,7 +445,7 @@ feeds `plan["next"]` and controller `pareto_gated`. No AES Krylov. Gold unrestam
 | `test_designs/frame/dispatch` | ALL PASSED |
 | `test_dse.py` | ALL PASSED (~263 s); DirectLU 6.075 ≠ 45.298; gated F1/F5 co-exist |
 
-## 2026-08-31T17:45Z — PLAN passo 3e: flatten controller stage slices
+## 2026-08-31T17:45Z — PLAN step 3e: flatten controller stage slices
 
 `run_controller` consecutive `run_stage` calls collapsed into
 `STAGES_LOGIC_TRANSFORM` / `STAGES_PLACE_ROUTE` / `STAGES_F4_HEAD`.
@@ -462,7 +462,7 @@ n_have/wall early-returns dropped on the 3a generic wrappers.
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
 | `test_dse.py` | ALL PASSED (~263 s); DirectLU 6.075 ≠ 45.298 |
 
-## 2026-08-31T18:55Z — PLAN passo 3d: F4 stages + needs_admit
+## 2026-08-31T18:55Z — PLAN step 3d: F4 stages + needs_admit
 
 Strangler: F4 extract / region extract / PDN catalog / AMG / RAS / Krylov / host arrivals / host extract / host region / I-scale moved to `stages.py`. `Stage.needs_admit=True` → `_pay_and_maybe_eval` calls `admit_paid_f4` before evaluate. Evaluate still uses controller wrappers (stamp SolveResult, no JSONL restamp of live memory). Champ/static/EM stay inlined (steer-special). `controller.py` 5432 → 4979 (−453). No AES Krylov. Gold unrestamped.
 
@@ -473,7 +473,7 @@ Strangler: F4 extract / region extract / PDN catalog / AMG / RAS / Krylov / host
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
 | `test_dse.py` | ALL PASSED (~263 s); DirectLU 6.075 ≠ 45.298 |
 
-## 2026-08-31T18:40Z — PLAN passo 3c: cell / net / synthesis / physical-catalog
+## 2026-08-31T18:40Z — PLAN step 3c: cell / net / synthesis / physical-catalog
 
 Strangler: `synthesis`, `cell`, `net`, `net_port`, `physical_catalog` moved to `learn/dse/stages.py`. Order unchanged: synth/cell/net/net_port still run before F2; physical F0 propose + catalog GPL still after port_steer. Catalog keeps `require_plan=False`. `controller.py` 5661 → 5432 (−229). No AES Krylov. Gold unrestamped.
 
@@ -484,7 +484,7 @@ Strangler: `synthesis`, `cell`, `net`, `net_port`, `physical_catalog` moved to `
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
 | `test_dse.py` | ALL PASSED (~263 s); DirectLU 6.075 ≠ 45.298 |
 
-## 2026-08-31T18:20Z — PLAN passo 3b: routing / F5 stages
+## 2026-08-31T18:20Z — PLAN step 3b: routing / F5 stages
 
 Strangler: GRT, F5-DRT, F3-SPEF, F5-CTS, F5-local, F5-port moved to `learn/dse/stages.py`. Order unchanged: STA → GRT → SDF → DRT → SPEF → CTS → LOCAL → residual_steer (inlined) → PORT. `why`/`step` strings unchanged including F5_LOCAL host_why kwargs. `controller.py` 5800 → 5661 (−139). No AES Krylov. Gold unrestamped.
 
@@ -496,7 +496,7 @@ Strangler: GRT, F5-DRT, F3-SPEF, F5-CTS, F5-local, F5-port moved to `learn/dse/s
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
 | `test_dse.py` | ALL PASSED (~266 s); DirectLU 6.075 ≠ 45.298 |
 
-## 2026-08-31T18:00Z — PLAN passo 4: empirical p75 cost model
+## 2026-08-31T18:00Z — PLAN step 4: empirical p75 cost model
 
 `learn/dse/costs.py`: `estimated_cost_s` is p75 of ok `cost_s` for that fidelity+design; < 3 samples → `COST_HINT`. Stages GPL/STA/SDF pass empirical `min_s` into `should_pay_*`. `_pay_and_maybe_eval` skips evaluate when wall+est exceeds `t_end` without changing acquire why. Controller F1/F3 interleave uses the estimate instead of static `COST_HINT`. Budget 45 s unchanged. No AES Krylov. Gold unrestamped.
 
@@ -509,7 +509,7 @@ Strangler: GRT, F5-DRT, F3-SPEF, F5-CTS, F5-local, F5-port moved to `learn/dse/s
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
 | `test_dse.py` | ALL PASSED (~273 s); DirectLU 6.075 ≠ 45.298 |
 
-## 2026-08-31T17:40Z — PLAN passo 3a: stages.py + f2_fast / f2_gpl / f3_sta / f3_sdf
+## 2026-08-31T17:40Z — PLAN step 3a: stages.py + f2_fast / f2_gpl / f3_sta / f3_sdf
 
 Strangler: four simple stages moved to `learn/dse/stages.py`. GRT stays between STA and SDF (order unchanged). `why` strings unchanged. `controller.py` 5900 → 5801 lines (−99). No AES Krylov. Gold unrestamped.
 
@@ -521,7 +521,7 @@ Strangler: four simple stages moved to `learn/dse/stages.py`. GRT stays between 
 | `test_dse.py` | ALL PASSED (~260 s); DirectLU 6.075 ≠ 45.298 |
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
 
-## 2026-08-31T17:20Z — PLAN passo 2: controller consumes admit_solve / SolveResult
+## 2026-08-31T17:20Z — PLAN step 2: controller consumes admit_solve / SolveResult
 
 Every paid F4 goes through `admit_paid_f4` (logs `step("admit", why=…)`) and `solve_f4` re-admits with mesh size. Champ solver residuals read `artifacts.solve.abs_err_vs_reference_mv` when present. `activity_status` is copied onto `attr`. No AES Krylov. 73k-R / 6.954 untouched. Gold 45.298 unrestamped.
 
@@ -535,7 +535,7 @@ Every paid F4 goes through `admit_paid_f4` (logs `step("admit", why=…)`) and `
 | `test_dse.py` | ALL PASSED (~264 s); DirectLU 6.075 reference, Krylov 6.092 accelerator; current finish ≠ 45.298 |
 | `test_heavy/designs/frame/dispatch/actions` | ALL PASSED |
 
-## 2026-08-31T17:00Z — PLAN passo 1: delta_vs_baseline
+## 2026-08-31T17:00Z — PLAN step 1: delta_vs_baseline
 
 Reconcile `Candidate.delta` (vs parent) vs attr baseline-delta (vs liberty_default). No AES Krylov. 73k-R / 6.954 untouched. Gold 45.298 unrestamped.
 
@@ -592,7 +592,7 @@ Still out of scope: AES Krylov, F5-CTS, full AES DSE controller, gold restamp, c
 
 | Check | Result |
 |---|---|
-| Profile | `Profilo analysis EDA_JOBS=2` |
+| Profile | `Profile analysis EDA_JOBS=2` |
 | OpenSTA standalone | skipped |
 | `libdpn.so` | OK, `ALL dpn_test PASSED` (synthetic only) |
 | Studio npm | 453 packages |
