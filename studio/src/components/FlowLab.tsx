@@ -169,8 +169,23 @@ export function FlowLab() {
   useEffect(() => {
     if (!urlReady.current) return;
     if (search.get("phase") === phaseId) return;
-    router.replace(`/flow?phase=${phaseId}`, { scroll: false });
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    const focus = search.get("focus");
+    const qs = new URLSearchParams();
+    qs.set("phase", phaseId);
+    if (focus) qs.set("focus", focus);
+    router.replace(`/flow?${qs.toString()}${hash}`, { scroll: false });
   }, [phaseId, router, search]);
+
+  useEffect(() => {
+    if (loading || typeof window === "undefined") return;
+    const focus = search.get("focus") || window.location.hash.replace(/^#/, "");
+    if (!focus) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [loading, phaseId, search]);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });

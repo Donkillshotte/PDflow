@@ -303,7 +303,7 @@ export function getProductStory(): ProductStory {
     {
       id: "signoff",
       label: "Signoff",
-      href: "/flow?phase=finish#signoff",
+      href: "/flow?phase=finish&focus=signoff#signoff",
       ready: pillars.length > 0 && signoffPassed === pillars.length,
       detail:
         pillars.length === 0
@@ -313,14 +313,14 @@ export function getProductStory(): ProductStory {
     {
       id: "sta-ir",
       label: "STA IR-aware",
-      href: "/flow?phase=finish#sta-ir",
+      href: "/flow?phase=finish&focus=sta-ir#sta-ir",
       ready: staIr.ready,
       detail: staIr.detail,
     },
     {
       id: "ir",
       label: "Dynamic IR",
-      href: "/flow?phase=finish#ir",
+      href: "/flow?phase=finish&focus=ir#ir",
       ready: goldPresent,
       detail: goldPresent
         ? `Gold ${IR_GOLD_MV} mV (reference_run) · current_run ${IR_CURRENT_MV} mV`
@@ -329,7 +329,7 @@ export function getProductStory(): ProductStory {
     {
       id: "dse",
       label: "Product DSE",
-      href: "/flow?phase=pkg#dse",
+      href: "/flow?phase=pkg&focus=dse#dse",
       ready: product.wins > 0,
       detail: product.detail,
     },
@@ -346,14 +346,14 @@ export function getProductStory(): ProductStory {
     {
       id: "lab",
       label: "Lab",
-      href: "/flow?phase=finish#ir",
+      href: "/flow?phase=finish&focus=ir#ir",
       ready: goldPresent,
       detail: `IR F4 · gold ${IR_GOLD_MV} mV · not a product win`,
     },
     {
       id: "product",
       label: "Product",
-      href: "/flow?phase=pkg#dse",
+      href: "/flow?phase=pkg&focus=dse#dse",
       ready: product.wins > 0,
       detail: `${product.wins} wins · official netlist · fixed die`,
     },
