@@ -87,7 +87,7 @@ const STAGE_ARTIFACTS: Record<string, string[]> = {
 
 const STAGE_GOLDEN: Record<string, { label: string; value: string }[]> = {
   synth: [
-    { label: "Celle", value: "496" },
+    { label: "Cells", value: "496" },
     { label: "Area", value: "628.824" },
     { label: "DFF_X1", value: "35" },
   ],

@@ -8,5 +8,5 @@ export const WALKTHROUGHS = WALKTHROUGH_FILES.map((f) => ({
   href: `/materiali/reference/${f}`,
   title: f.replace("walkthrough-", "").replace(".tcl.md", ""),
   group: "Tcl",
-  description: `Walkthrough annotato ${f}`,
+  description: `Annotated walkthrough ${f}`,
 }));

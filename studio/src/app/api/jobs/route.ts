@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   if (id) {
     const job = getJob(id);
     if (!job) {
-      return NextResponse.json({ error: "job non trovato" }, { status: 404 });
+      return NextResponse.json({ error: "job not found" }, { status: 404 });
     }
     return NextResponse.json(job);
   }

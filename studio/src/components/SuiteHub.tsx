@@ -54,13 +54,13 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
       <div className="suite-hub">
         <p className="block-banner">{error}</p>
         <button type="button" className="btn-ghost" onClick={load}>
-          Riprova
+          Retry
         </button>
       </div>
     );
   }
   if (!data) {
-    return <div className="suite-hub muted">Carico stato suite…</div>;
+    return <div className="suite-hub muted">Loading suite status…</div>;
   }
 
   const groups = Array.from(new Set(data.hooks.map((h) => h.group)));
@@ -69,11 +69,11 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
     <div className={clsx("suite-hub", compact && "suite-hub-compact")}>
       <div className="ops-head">
         <div>
-          <h2>Suite collaborativa</h2>
+          <h2>Collaborative suite</h2>
           <p className="muted">
             Hook wrapper · {data.summary.hooksOk}/{data.summary.hooksTotal} ok ·
-            lezioni {data.summary.lessonsDone}/{data.summary.lessonsTotal} ·
-            pipeline {data.summary.pipelineReady}/6 · job recenti{" "}
+            lessons {data.summary.lessonsDone}/{data.summary.lessonsTotal} ·
+            pipeline {data.summary.pipelineReady}/6 · recent jobs{" "}
             {data.summary.recentJobs}
             {data.summary.viewerRunning ? " · web viewer ON" : ""}
           </p>
@@ -83,10 +83,10 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
             {data.ready ? "core wired" : "gap core"}
           </span>
           <button type="button" className="btn-ghost" onClick={load}>
-            Aggiorna
+            Refresh
           </button>
           <Link href="/materiali/reference/extended-flow.md" className="btn-ghost">
-            Mappa flusso
+            Flow map
           </Link>
         </div>
       </div>
@@ -109,7 +109,7 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
                     </span>
                     {h.href && (
                       <Link href={h.href} className="btn-ghost btn-tiny">
-                        Apri
+                        Open
                       </Link>
                     )}
                     {h.action && (

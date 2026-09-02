@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const stage = url.searchParams.get("stage") || "synth";
   const variant = url.searchParams.get("variant") || "learn";
   if (!STAGES.has(stage)) {
-    return NextResponse.json({ error: "stage non valido" }, { status: 400 });
+    return NextResponse.json({ error: "invalid stage" }, { status: 400 });
   }
   try {
     const data = inspectStage(stage, variant);

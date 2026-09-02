@@ -85,7 +85,7 @@ export function FlowLabParamStudio({
           <div className="fl-param-head">
             <div>
               <strong>SDC · periodo clock</strong>
-              <p>Vincoli di timing applicati in sintesi e STA.</p>
+              <p>Timing constraints applied in synthesis and STA.</p>
             </div>
             <Zap size={18} className="fl-param-icon" aria-hidden />
           </div>
@@ -95,7 +95,7 @@ export function FlowLabParamStudio({
               onChange("sdcPreset", e.target.value as FlowlabParams["sdcPreset"])
             }
           >
-            <option value="default">Default · 0.46 ns (corso)</option>
+            <option value="default">Default · 0.46 ns (course)</option>
             <option value="relaxed">Relaxed · 2.0 ns (facile)</option>
             <option value="tight">Tight · 0.25 ns (stress)</option>
           </select>
@@ -112,7 +112,7 @@ export function FlowLabParamStudio({
           <div className="fl-toggle-row">
             {(
               [
-                [1, "Area", "Minimizza celle"],
+                [1, "Area", "Minimize cells"],
                 [0, "Delay", "Minimizza path"],
               ] as const
             ).map(([v, title, sub]) => (
@@ -131,7 +131,7 @@ export function FlowLabParamStudio({
 
         <SliderField
           label="Core utilization"
-          hint="Percentuale del die occupata — più alto = chip più piccolo."
+          hint="Percentage of die occupied — higher = smaller chip."
           value={params.coreUtilization}
           display={`${params.coreUtilization}%`}
           min={20}
@@ -142,7 +142,7 @@ export function FlowLabParamStudio({
 
         <SliderField
           label="Place density addon"
-          hint="Spazio extra tra le righe di placement."
+          hint="Extra space between placement rows."
           value={params.placeDensityAddon}
           display={params.placeDensityAddon.toFixed(2)}
           min={0.05}
@@ -153,7 +153,7 @@ export function FlowLabParamStudio({
 
         <SliderField
           label="TNS end percent"
-          hint="Quanto recovery timing eseguire post-CTS."
+          hint="How much recovery timing to run post-CTS."
           value={params.tnsEndPercent}
           display={`${params.tnsEndPercent}%`}
           min={0}

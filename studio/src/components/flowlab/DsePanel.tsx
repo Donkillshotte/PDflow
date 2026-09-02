@@ -204,7 +204,7 @@ export function DsePanel() {
   return (
     <section className="fl-dynir" aria-label="DSE fisico-aware">
       <header className="fl-dynir-head">
-        <strong>DSE · ricerca a livelli</strong>
+        <strong>DSE · level search</strong>
         <p>
           Planner IR+WNS · EHVI · F2/F5-lite SPEF · extract PDN · STA F3 · IR/EM F4 ·{" "}
           <Link href="/materiali/reference/dse.md">dse.md</Link>
@@ -212,7 +212,7 @@ export function DsePanel() {
       </header>
       {!report?.ok ? (
         <p className="fl-dynir-empty">
-          Report assente — esegui l’azione <code>dse</code> (F5-lite, non <code>make finish</code>).
+          Report missing — run the <code>dse</code> (F5-lite, non <code>make finish</code>).
         </p>
       ) : (
         <>
@@ -658,7 +658,7 @@ export function DsePanel() {
           </dl>
           {report.plan?.steps?.length ? (
             <details className="fl-dynir-plan">
-              <summary>Piano · {report.plan.steps.length} passi</summary>
+              <summary>Plan · {report.plan.steps.length} steps</summary>
               <ul className="fl-dynir-summary">
                 {report.plan.steps.map((s, i) => (
                   <li key={`${s.level}-${i}`}>
@@ -716,12 +716,12 @@ function LevelTable({
             <th>Nome</th>
             <th>F</th>
             <th>Stdcell µm²</th>
-            <th>Celle</th>
+            <th>Cells</th>
             <th>WNS</th>
             <th>TNS</th>
             <th>Leak</th>
             <th>P tot</th>
-            <th>Stato</th>
+            <th>Status</th>
             <th>Pareto</th>
           </tr>
         </thead>
@@ -745,7 +745,7 @@ function LevelTable({
                 {c.qor?.power_w != null ? `${c.qor.power_w.toExponential(2)} W` : "—"}
               </td>
               <td>{c.status}</td>
-              <td>{front.has(c.id) ? "sì" : ""}</td>
+              <td>{front.has(c.id) ? "yes" : ""}</td>
             </tr>
           ))}
         </tbody>
@@ -758,7 +758,7 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
   if (!rows.length) return null;
   return (
     <div className="fl-dynir-group">
-      <span>Physical / routing · F2-fast / GPL / GRT / F5-lite SPEF (non IR)</span>
+      <span>Physical / routing · F2-fast / GPL / GRT / F5-lite SPEF (not IR)</span>
       <table className="fl-dynir-table">
         <thead>
           <tr>
@@ -769,7 +769,7 @@ function PhysicalTable({ rows }: { rows: Cand[] }) {
             <th>TNS</th>
             <th>Leak</th>
             <th>Cong</th>
-            <th>Stato</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -817,7 +817,7 @@ function PdnTable({ rows }: { rows: Cand[] }) {
   if (!rows.length) return null;
   return (
     <div className="fl-dynir-group">
-      <span>PDN · extract candidato / DirectLU / AMG (non gold)</span>
+      <span>PDN · candidate extract / DirectLU / AMG (not gold)</span>
       <table className="fl-dynir-table">
         <thead>
           <tr>
@@ -826,7 +826,7 @@ function PdnTable({ rows }: { rows: Cand[] }) {
             <th>Droop</th>
             <th>EM J</th>
             <th>n_R</th>
-            <th>Stato</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>

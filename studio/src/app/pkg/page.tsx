@@ -4,7 +4,7 @@ import { PkgHubPanel } from "@/components/PkgHubPanel";
 export const metadata = {
   title: "PKG · Design package · OpenROAD Studio",
   description:
-    "System PDN gerarchico, chip mesh SPICE, catena power RTL→PKG.",
+    "Hierarchical System PDN, chip mesh SPICE, power chain RTL→PKG.",
 };
 
 export default function PkgPage() {
@@ -14,7 +14,7 @@ export default function PkgPage() {
         <p className="eyebrow">Design package</p>
         <h1>PKG · Packaging &amp; System PDN</h1>
         <p>
-          Catena completa: <strong>RTL</strong> (VCD) → <strong>liberty/celle</strong> →{" "}
+          Full chain: <strong>RTL</strong> (VCD) → <strong>liberty/cells</strong> →{" "}
           <strong>PDN grid</strong> → <strong>finish/report_power</strong> →{" "}
           <strong>mesh SPICE on-die</strong> → <strong>System PDN ngspice</strong>.
         </p>
@@ -23,21 +23,21 @@ export default function PkgPage() {
       <PkgHubPanel />
 
       <section className="pkg-hero-stack" aria-label="Stack die to board">
-        <div className="pkg-layer board">VRM · regolatore + Cout</div>
+        <div className="pkg-layer board">VRM · regulator + Cout</div>
         <div className="pkg-layer pkg">Board · plane / bulk / HF decap</div>
         <div className="pkg-layer bumps">Package · RLC + bumps</div>
-        <div className="pkg-layer chip">Die · C_die + correnti celle</div>
+        <div className="pkg-layer chip">Die · C_die + cell currents</div>
       </section>
 
       <div className="pkg-grid">
         <article className="pkg-card">
           <h2>1. Chip PDN</h2>
           <p>
-            Gridcheck dopo floorplan. Mesh SPICE post-finish:{" "}
+            Gridcheck after floorplan. SPICE mesh post-finish:{" "}
             <code>write_pg_spice</code> + <code>pdn_transient.py</code>.
           </p>
           <Link className="btn-primary" href="/flusso?phase=pdn">
-            Fase PDN
+            PDN phase
           </Link>
         </article>
         <article className="pkg-card">
@@ -47,20 +47,20 @@ export default function PkgPage() {
             <code>learn/system_pdn/default.json</code>.
           </p>
           <Link className="btn-primary" href="/flusso?phase=pkg">
-            Fase PKG
+            PKG phase
           </Link>
         </article>
         <article className="pkg-card">
-          <h2>3. Catena SPICE</h2>
+          <h2>3. SPICE chain</h2>
           <ul>
             <li>
               <Link href="/materiali/reference/spice-power-chain.md">
-                RTL → PKG · collegamento fasi
+                RTL → PKG · phase links
               </Link>
             </li>
             <li>
               <Link href="/materiali/reference/spice-chip-mesh.md">
-                Mesh chip · celle e ITerm
+                Chip mesh · cells and ITerm
               </Link>
             </li>
             <li>
@@ -79,7 +79,7 @@ export default function PkgPage() {
           </ul>
         </article>
         <article className="pkg-card">
-          <h2>4. Comandi</h2>
+          <h2>4. Commands</h2>
           <ul className="pkg-check">
             <li>
               <code>run_power_chain.sh</code> — activity → chip IR → system → export
@@ -90,7 +90,7 @@ export default function PkgPage() {
             <li>
               <code>run_chip_pdn_ir.sh</code> — mesh on-die
             </li>
-            <li>Signoff FlowLab post-finish · catena SPICE</li>
+            <li>FlowLab signoff post-finish · SPICE chain</li>
           </ul>
         </article>
       </div>

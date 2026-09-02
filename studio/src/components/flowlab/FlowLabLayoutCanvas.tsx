@@ -140,11 +140,11 @@ export function FlowLabLayoutCanvas({
         setViewerUrl(data.url);
         setMode("viewer");
       } else {
-        setViewerErr(data.message || data.error || "Viewer non avviato — resta lo screenshot");
+        setViewerErr(data.message || data.error || "Viewer not started — keeping screenshot");
         setMode("image");
       }
     } catch (e) {
-      setViewerErr(e instanceof Error ? e.message : "Errore viewer");
+      setViewerErr(e instanceof Error ? e.message : "Viewer error");
       setMode("image");
     } finally {
       setViewerBusy(false);
@@ -396,7 +396,7 @@ export function FlowLabLayoutCanvas({
                         title={
                           layer.soloAvailable
                             ? `Mostra ${layer.name}`
-                            : "Legenda (screenshot statico — Web Viewer per togglare i layer)"
+                            : "Legend (static screenshot — Web Viewer to toggle layers)"
                         }
                       >
                         <i style={{ background: layer.color }} />
@@ -463,19 +463,19 @@ export function FlowLabLayoutCanvas({
             {phaseId === "synth" ? (
               <>
                 <p>
-                  La sintesi produce il <strong>netlist</strong>, non un layout nel die
-                  (area 0×0). Le celle compaiono al <strong>floorplan / place</strong>.
+                  Synthesis produces the <strong>netlist</strong>, not a layout in the die
+                  (area 0×0). Cells appear at <strong>floorplan / place</strong>.
                 </p>
                 <p className="fl-layout-empty-hint">
-                  Esegui floorplan, poi place e route per vedere PDN, celle e metal.
+                  Run floorplan, then place and route to see PDN, cells, and metal.
                 </p>
               </>
             ) : (
               <>
                 <p>
                   {stageDone || meta?.odbExists
-                    ? "Screenshot assente per questa fase."
-                    : "Esegui la fase ORFS per vedere placement, PDN e routing reali."}
+                    ? "Screenshot missing for this phase."
+                    : "Run the ORFS phase to see real placement, PDN, and routing."}
                 </p>
                 {meta?.odb && <code>{meta.odb}</code>}
               </>
@@ -487,19 +487,19 @@ export function FlowLabLayoutCanvas({
       {(viewerErr || imgErr) && (
         <p className="fl-layout-warn" role="status">
           {viewerErr}
-          {imgErr ? " Screenshot non caricato." : ""}
+          {imgErr ? " Screenshot not loaded." : ""}
         </p>
       )}
 
       {meta?.odb && (
         <p className="fl-layout-meta">
           ODB: <code>{meta.odb}</code>
-          {meta.odbExists ? " · presente" : " · mancante"}
+          {meta.odbExists ? " · present" : " · missing"}
           {showViewer && (
             <>
               {" · "}
               <a href={viewerUrl!} target="_blank" rel="noreferrer">
-                apri viewer in tab
+                open viewer in tab
               </a>
             </>
           )}

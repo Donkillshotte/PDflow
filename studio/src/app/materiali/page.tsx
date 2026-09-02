@@ -40,7 +40,7 @@ export default function MaterialiPage() {
     );
   }, [all, q]);
 
-  const groups = ["Corso", "Riferimento", "Packaging", "GUI", "Workbook", "Tcl"] as const;
+  const groups = ["Course", "Reference", "Packaging", "GUI", "Workbook", "Tcl"] as const;
   const shotFiltered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return shots;
@@ -50,23 +50,23 @@ export default function MaterialiPage() {
   return (
     <main>
       <header className="page-head">
-        <h1>Materiali</h1>
+        <h1>Materials</h1>
         <p>
-          Cerca nel corso, apri i documenti in-app, sfoglia la galleria GUI.
-          Palette Ctrl+K per saltare a dashboard e viewer Desktop.
+          Search the course, open in-app documents, browse the GUI gallery.
+          Ctrl+K palette to jump to dashboards and Desktop viewer.
         </p>
       </header>
 
       <div className="search-bar">
         <input
           type="search"
-          placeholder="Cerca: golden, CTS, SPEF, atlas…"
+          placeholder="Search: golden, CTS, SPEF, atlas…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Cerca materiali"
+          aria-label="Search materials"
         />
         <span className="muted">
-          {filtered.length} documenti · {shotFiltered.length} PNG
+          {filtered.length} documents · {shotFiltered.length} PNG
         </span>
       </div>
 
@@ -90,13 +90,13 @@ export default function MaterialiPage() {
       })}
 
       <section style={{ marginBottom: "2rem" }} id="gallery">
-        <h2 className="section-title">Galleria GUI</h2>
+        <h2 className="section-title">GUI gallery</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Screenshot reali da <code>learn/reference/gui-shots/</code>. Clic per
-          ingrandire.
+          Real screenshots from <code>learn/reference/gui-shots/</code>. Click to
+          enlarge.
         </p>
         {shotFiltered.length === 0 ? (
-          <p className="empty-hint">Nessuna immagine (o filtro vuoto).</p>
+          <p className="empty-hint">No images (or empty filter).</p>
         ) : (
           <div className="gallery-grid">
             {shotFiltered.map((s) => (
@@ -128,7 +128,7 @@ export default function MaterialiPage() {
             <div className="lightbox-bar">
               <strong>{lightbox.label}</strong>
               <button type="button" className="btn-ghost" onClick={() => setLightbox(null)}>
-                Chiudi
+                Close
               </button>
             </div>
           </div>

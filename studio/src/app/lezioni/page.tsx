@@ -10,10 +10,10 @@ export default function LessonsPage() {
   return (
     <main>
       <header className="page-head">
-        <h1>Lezioni</h1>
+        <h1>Lessons</h1>
         <p>
-          Otto tappe da constraints a GDS. Apri teoria e LAB, lancia le fasi ORFS
-          dalla UI, segna il progresso quando hai finito.
+          Eight steps from constraints to GDS. Open theory and LAB, launch ORFS phases
+          from the UI, mark progress when you are done.
         </p>
       </header>
       <div className="lesson-grid">
@@ -24,13 +24,13 @@ export default function LessonsPage() {
             className={`lesson-item${done.has(l.id) ? " done" : ""}`}
             style={{ animationDelay: `${i * 40}ms` }}
           >
-            <div className="lesson-num">LEZIONE {l.num}</div>
+            <div className="lesson-num">LESSON {l.num}</div>
             <h2>{l.title}</h2>
             <p>{l.blurb}</p>
             <div className="lesson-meta">
               <span className="pill">{l.duration}</span>
               <span className="pill">{l.stage}</span>
-              {done.has(l.id) && <span className="pill ok">completata</span>}
+              {done.has(l.id) && <span className="pill ok">completed</span>}
             </div>
           </Link>
         ))}

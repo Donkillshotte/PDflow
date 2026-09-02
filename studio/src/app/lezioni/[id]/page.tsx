@@ -28,7 +28,7 @@ export default function LessonDetailPage() {
     (async () => {
       const res = await fetch(`/api/lessons/${id}`);
       if (!res.ok) {
-        setError("Lezione non trovata");
+        setError("Lesson not found");
         return;
       }
       const data = (await res.json()) as LessonPayload;
@@ -43,10 +43,10 @@ export default function LessonDetailPage() {
     return (
       <main>
         <header className="page-head">
-          <h1>Errore</h1>
+          <h1>Error</h1>
           <p>{error}</p>
           <Link href="/lezioni" className="btn-ghost">
-            ← Lezioni
+            ← Lessons
           </Link>
         </header>
       </main>
@@ -57,8 +57,8 @@ export default function LessonDetailPage() {
     return (
       <main>
         <header className="page-head">
-          <h1 className="skeleton-line">Caricamento lezione…</h1>
-          <p className="muted">Preparazione percorso guidato</p>
+          <h1 className="skeleton-line">Loading lesson…</h1>
+          <p className="muted">Preparing guided path</p>
         </header>
       </main>
     );
@@ -67,10 +67,10 @@ export default function LessonDetailPage() {
   return (
     <main>
       <header className="page-head">
-        <div className="lesson-num">LEZIONE {lesson.num}</div>
+        <div className="lesson-num">LESSON {lesson.num}</div>
         <h1>{lesson.title}</h1>
         <p>
-          Percorso guidato · {lesson.duration} · fase{" "}
+          Guided path · {lesson.duration} · phase{" "}
           <code>{lesson.makeTarget}</code>
         </p>
         <p className="hero-lead" style={{ marginBottom: 0 }}>
@@ -79,7 +79,7 @@ export default function LessonDetailPage() {
       </header>
       <div className="lesson-actions">
         <Link href="/lezioni" className="btn-ghost">
-          ← Tutte le lezioni
+          ← All lessons
         </Link>
       </div>
       <LessonWizard lesson={lesson} />

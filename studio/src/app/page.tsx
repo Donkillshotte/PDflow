@@ -36,29 +36,29 @@ export default function HomePage() {
         <div className="hero-glow" aria-hidden />
         <div className="hero-copy">
           <p className="hero-brand">OpenROAD</p>
-          <h1 className="hero-title">Physical Design, interattivo</h1>
+          <h1 className="hero-title">Physical Design, interactive</h1>
           <p className="hero-lead">
-            Percorso guidato per lezione: teoria → LAB con checklist → run con
-            log live → ispezione artefatti → chiusura.
+            Guided path per lesson: theory → LAB with checklist → run with
+            live log → artifact inspection → close-out.
           </p>
           <div className="cta-row">
             <Link href="/flusso" className="btn-primary">
-              Apri FlowLab interattivo
+              Open interactive FlowLab
             </Link>
             {next ? (
               <Link href={`/lezioni/${next.id}`} className="btn-ghost">
-                Corso · {next.title}
+                Course · {next.title}
               </Link>
             ) : (
               <Link href="/lezioni" className="btn-ghost">
-                Apri lezioni
+                Open lessons
               </Link>
             )}
             <Link href="/strumenti" className="btn-ghost">
               Console live
             </Link>
           </div>
-          <div className="progress-strip" aria-label={`Progresso ${completed} su 8`}>
+          <div className="progress-strip" aria-label={`Progress ${completed} of 8`}>
             {lessons.map((l) => (
               <Link
                 key={l.id}
@@ -69,29 +69,29 @@ export default function HomePage() {
             ))}
           </div>
           <p className="footer-note">
-            {completed}/8 lezioni · toolchain{" "}
-            {ready === null ? "…" : ready ? "pronta" : "da sistemare"}
+            {completed}/8 lessons · toolchain{" "}
+            {ready === null ? "…" : ready ? "ready" : "needs setup"}
           </p>
         </div>
       </section>
 
       <section className="home-rail">
         <div className="home-rail-head">
-          <h2 className="section-title">Flusso interattivo</h2>
+          <h2 className="section-title">Interactive flow</h2>
           <Link href="/flusso" className="home-rail-cta">
             FlowLab · RTL → PKG →
           </Link>
         </div>
         <p className="footer-note" style={{ marginTop: "0.5rem" }}>
-          Catena power &amp; SPICE:{" "}
-          <Link href="/materiali/reference/spice-power-chain.md">guida esaustiva</Link>
+          Power &amp; SPICE chain:{" "}
+          <Link href="/materiali/reference/spice-power-chain.md">full guide</Link>
           {" · "}
           <Link href="/pkg">hub PKG</Link>
         </p>
         <div className="flow-steps">
           {[
             { n: "RTL", t: "Verilog", d: "Editor · VCD", ph: "rtl" },
-            { n: "SYN", t: "Sintesi", d: "Yosys · .lib", ph: "synth" },
+            { n: "SYN", t: "Synthesis", d: "Yosys · .lib", ph: "synth" },
             { n: "FP", t: "Floorplan", d: "Die · PDN", ph: "floorplan" },
             { n: "PDN", t: "Gridcheck", d: "PSM-0040", ph: "pdn" },
             { n: "PL", t: "Place", d: "ITerm sink", ph: "place" },
@@ -110,14 +110,14 @@ export default function HomePage() {
       </section>
 
       <section className="home-rail home-rail-lessons">
-        <h2 className="section-title">Corso per lezione</h2>
+        <h2 className="section-title">Course per lesson</h2>
         <div className="flow-steps">
           {[
-            { n: "01", t: "Teoria", d: "README della fase" },
-            { n: "02", t: "LAB", d: "Checklist spuntabile" },
-            { n: "03", t: "Esegui", d: "Log in streaming" },
-            { n: "04", t: "Risultati", d: "Artefatti + golden" },
-            { n: "05", t: "Chiudi", d: "Progresso salvato" },
+            { n: "01", t: "Theory", d: "Phase README" },
+            { n: "02", t: "LAB", d: "Checkable checklist" },
+            { n: "03", t: "Run", d: "Streaming log" },
+            { n: "04", t: "Results", d: "Artifacts + golden" },
+            { n: "05", t: "Close", d: "Progress saved" },
           ].map((s) => (
             <div key={s.n} className="flow-step">
               <span>{s.n}</span>

@@ -42,7 +42,7 @@ export const PARAM_PRESETS: Record<
 > = {
   didactic: {
     label: "Didattico",
-    desc: "Timing rilassato, utilizzo basso — ideale per imparare senza congestione.",
+    desc: "Relaxed timing, low utilization — ideal for learning without congestion.",
     params: {
       coreUtilization: 30,
       placeDensityAddon: 0.28,
@@ -53,7 +53,7 @@ export const PARAM_PRESETS: Record<
   },
   balanced: {
     label: "Bilanciato",
-    desc: "Preset di corso: buon compromesso area/timing per GCD tutorial.",
+    desc: "Course preset: good area/timing tradeoff for GCD tutorial.",
     params: {
       coreUtilization: 35,
       placeDensityAddon: 0.2,
@@ -64,7 +64,7 @@ export const PARAM_PRESETS: Record<
   },
   aggressive: {
     label: "Aggressivo",
-    desc: "Timing stretto e core denso — più rischio di DRC/congestione.",
+    desc: "Tight timing and dense core — higher DRC/congestion risk.",
     params: {
       coreUtilization: 48,
       placeDensityAddon: 0.12,

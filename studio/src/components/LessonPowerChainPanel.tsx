@@ -8,11 +8,11 @@ export function LessonPowerChainPanel({ lessonId }: { lessonId: string }) {
   if (!link) return null;
 
   return (
-    <aside className="lesson-power-chain" aria-label="Catena power e SPICE">
+    <aside className="lesson-power-chain" aria-label="Power and SPICE chain">
       <div className="lesson-power-chain-head">
-        <strong>Catena power · {link.title}</strong>
+        <strong>Power chain · {link.title}</strong>
         <Link href={`/materiali/reference/spice-power-chain.md#${link.anchor}`}>
-          Guida completa
+          Full guide
         </Link>
       </div>
       <p>{link.summary}</p>
@@ -39,7 +39,7 @@ export function LessonPowerChainPanel({ lessonId }: { lessonId: string }) {
         </div>
         {link.studioActions.length > 0 && (
           <div>
-            <span className="lesson-power-k">Azioni Studio</span>
+            <span className="lesson-power-k">Studio actions</span>
             <ul>
               {link.studioActions.map((a) => (
                 <li key={a}>

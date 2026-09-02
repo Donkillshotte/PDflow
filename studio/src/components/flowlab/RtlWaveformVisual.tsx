@@ -123,7 +123,7 @@ export function RtlWaveformVisual({
     <div className="fl-vis-rtl fl-wave-studio">
       <div className="fl-vis-stat-grid">
         <div className="fl-vis-stat">
-          <span>Righe RTL</span>
+          <span>RTL lines</span>
           <strong>{rtlLines}</strong>
         </div>
         <div className="fl-vis-stat">
@@ -257,8 +257,8 @@ export function RtlWaveformVisual({
             )}
           </svg>
           <p className="fl-wave-hint">
-            Hover per il cursore · rotella per zoom temporale · i handshake (`req_val` /
-            `resp_val`) devono togglare dopo il reset.
+            Hover for cursor · wheel for time zoom · handshakes (`req_val` /
+            `resp_val`) must toggle after reset.
           </p>
         </>
       ) : (
@@ -267,9 +267,9 @@ export function RtlWaveformVisual({
           <text x="200" y="44" textAnchor="middle" fill="#484f58" fontSize="9">
             {sim.vcdExists
               ? err
-                ? "VCD presente ma parsing fallito"
-                : "Caricamento waveform…"
-              : "Esegui rtl_sim per generare gcd.vcd"}
+                ? "VCD present but parsing failed"
+                : "Loading waveform…"
+              : "Run rtl_sim to generate gcd.vcd"}
           </text>
         </svg>
       )}

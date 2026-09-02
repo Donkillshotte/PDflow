@@ -302,9 +302,9 @@ export function FlowLabPhaseVisual({
   return (
     <div className={clsx("fl-phase-visual", loading && "loading")} aria-busy={loading}>
       <div className="fl-vis-header">
-        <span className="fl-vis-kicker">Viewport laboratorio</span>
+        <span className="fl-vis-kicker">Lab viewport</span>
         <span className={clsx("fl-vis-badge", stageDone ? "done" : "pending")}>
-          {stageDone ? "Artefatto presente" : "Esegui per popolare"}
+          {stageDone ? "Artifact present" : "Run to populate"}
         </span>
       </div>
 
@@ -328,7 +328,7 @@ export function FlowLabPhaseVisual({
 
       {phaseId === "synth" && (
         <div className="fl-vis-body fl-vis-synth fl-vis-stats-only">
-          <StatBar label="Celle Yosys" value={cells} golden={golden.celle ?? golden.cells ?? undefined} max={600} />
+          <StatBar label="Yosys cells" value={cells} golden={golden.celle ?? golden.cells ?? undefined} max={600} />
           <StatBar label="Area" value={area} golden={golden.area ?? undefined} max={700} />
           <StatBar label="DFF_X1" value={parseNum(inspect?.yosys?.dff)} golden={golden.dff ?? undefined} max={50} />
           {inspect?.odb && (
@@ -350,7 +350,7 @@ export function FlowLabPhaseVisual({
                   <strong>{inspect.odb.instances}</strong>
                 </div>
                 <div className="fl-vis-stat">
-                  <span>Reti</span>
+                  <span>Nets</span>
                   <strong>{inspect.odb.nets}</strong>
                 </div>
               </>
@@ -363,7 +363,7 @@ export function FlowLabPhaseVisual({
         <div className="fl-vis-body fl-vis-stats-only">
           <p className="fl-vis-meta">
             Density addon {params.placeDensityAddon.toFixed(2)} ·{" "}
-            {inspect?.odb ? `${inspect.odb.instances} celle piazzate` : "Run placement"}
+            {inspect?.odb ? `${inspect.odb.instances} placed cells` : "Run placement"}
           </p>
         </div>
       )}
@@ -428,7 +428,7 @@ export function FlowLabPhaseVisual({
             <div className="fl-vis-stat">
               <span>Gridcheck</span>
               <strong className={stageDone ? "ok" : ""}>
-                {stageDone ? "PSM-0040" : "Esegui"}
+                {stageDone ? "PSM-0040" : "Run"}
               </strong>
             </div>
             {meshStats && (
@@ -489,8 +489,8 @@ export function FlowLabPhaseVisual({
           ) : (
             <p className="fl-vis-meta">
               {stageDone
-                ? "Report System PDN assente — rilancia PKG"
-                : "Esegui PKG: System PDN VRM→board→pkg→die (ngspice)"}
+                ? "System PDN report missing — rerun PKG"
+                : "Run PKG: System PDN VRM→board→pkg→die (ngspice)"}
             </p>
           )}
           <DsePanel />

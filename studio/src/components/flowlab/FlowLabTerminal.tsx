@@ -33,7 +33,7 @@ function renderDisplay(items: DisplayLine[]) {
           <span className="fl-log-ln">⋯</span>
           <span className="fl-log-txt">
             [{item.code}] ×{item.count}
-            {item.noise ? " · rumore atteso nangate45/ORFS" : ""}
+            {item.noise ? " · expected nangate45/ORFS noise" : ""}
             {" — "}
             {item.sample.slice(0, 90)}
             {item.sample.length > 90 ? "…" : ""}
@@ -86,9 +86,9 @@ export function FlowLabTerminal({
   async function copyLog() {
     try {
       await navigator.clipboard.writeText(log || "");
-      push("Log copiato", "ok");
+      push("Log copied", "ok");
     } catch {
-      push("Copia non disponibile", "bad");
+      push("Copy not available", "bad");
     }
   }
 
@@ -108,13 +108,13 @@ export function FlowLabTerminal({
             </span>
           )}
           {running && <span className="fl-status-pill run">{elapsed}</span>}
-          <button type="button" className="fl-icon-btn" onClick={copyLog} title="Copia log">
+          <button type="button" className="fl-icon-btn" onClick={copyLog} title="Copy log">
             <Copy size={14} />
           </button>
-          <button type="button" className="fl-icon-btn" onClick={onClear} title="Pulisci">
+          <button type="button" className="fl-icon-btn" onClick={onClear} title="Clear">
             <Trash2 size={14} />
           </button>
-          <button type="button" className="fl-icon-btn" onClick={onExport} title="Esporta">
+          <button type="button" className="fl-icon-btn" onClick={onExport} title="Export">
             <Download size={14} />
           </button>
         </div>
@@ -137,7 +137,7 @@ export function FlowLabTerminal({
           <strong>
             {digest.errors} ERROR · {digest.warnings} WARNING
             {digest.noiseWarnings > 0
-              ? ` (${digest.noiseWarnings} rumore)`
+              ? ` (${digest.noiseWarnings} noise)`
               : ""}
           </strong>
           <span>{digest.summary}</span>
@@ -145,7 +145,7 @@ export function FlowLabTerminal({
             <ul>
               {digest.noteworthy.map((n) => (
                 <li key={n.code}>
-                  <code>{n.code}</code> ×{n.count} — atteso su GCD nangate45 se WNS≈−0.04
+                  <code>{n.code}</code> ×{n.count} — expected on GCD nangate45 if WNS≈−0.04
                 </li>
               ))}
             </ul>
@@ -161,16 +161,16 @@ export function FlowLabTerminal({
         {empty ? (
           <div className="fl-terminal-empty">
             <p>
-              Premi <kbd>Ctrl</kbd>+<kbd>Enter</kbd> o «Esegui fase» per avviare.
+              Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or «Run phase» to start.
             </p>
             <p className="muted">
-              Lo stream stdout/stderr apparirà qui. I WARNING ORFS attesi non sono più
-              evidenziati come errori.
+              stdout/stderr stream will appear here. Expected ORFS WARNINGs are no longer
+              highlighted as errors.
             </p>
           </div>
         ) : running && !log ? (
           <div className="fl-terminal-empty">
-            <p className="fl-pulse">Connessione allo stream…</p>
+            <p className="fl-pulse">Connecting to stream…</p>
           </div>
         ) : (
           renderDisplay(display)

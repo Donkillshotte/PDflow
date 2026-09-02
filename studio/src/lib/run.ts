@@ -386,7 +386,7 @@ export async function* streamCourseAction(
     yield {
       type: "blocked",
       code: "forbidden",
-      message: `Azione non consentita: ${action}`,
+      message: `Action not allowed: ${action}`,
     };
     return;
   }
@@ -426,7 +426,7 @@ export async function* streamCourseAction(
     yield {
       type: "blocked",
       code: "locked",
-      message: `Un job è già in corso (${lock.lock.action}).`,
+      message: `A job is already running (${lock.lock.action}).`,
       detail: lock.lock,
     };
     return;
@@ -615,7 +615,7 @@ export async function probeToolchain(): Promise<{
       return {
         name: bin,
         ok: false,
-        detail: e instanceof Error ? e.message : "mancante",
+        detail: e instanceof Error ? e.message : "missing",
       };
     }
   }
@@ -650,7 +650,7 @@ export async function probeToolchain(): Promise<{
           return { name: bin, ok: true, detail: local, required: false };
         }
       }
-      return { name: bin, ok: false, detail: "mancante", required: false };
+      return { name: bin, ok: false, detail: "missing", required: false };
     }
   }
 

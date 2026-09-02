@@ -10,7 +10,7 @@ export async function GET(
   const { id } = await ctx.params;
   const meta = LESSONS.find((l) => l.id === id);
   if (!meta) {
-    return NextResponse.json({ error: "Lezione non trovata" }, { status: 404 });
+    return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
   }
   return NextResponse.json({
     ...meta,

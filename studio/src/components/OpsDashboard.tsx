@@ -80,7 +80,7 @@ export function OpsDashboard({
   }
 
   function exportLog(job: JobRow) {
-    const blob = new Blob([job.logTail || "(vuoto)"], { type: "text/plain" });
+    const blob = new Blob([job.logTail || "(empty)"], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -95,16 +95,16 @@ export function OpsDashboard({
         <div>
           <h2>Pipeline &amp; job</h2>
           <p className="muted">
-            Stato artefatti, dipendenze tra fasi, storico run e lock attivo.
+            Artifact status, phase dependencies, run history, and active lock.
           </p>
         </div>
         <div className="lesson-actions">
           <button type="button" className="btn-ghost" onClick={load} disabled={loading}>
-            {loading ? "Aggiorno…" : "Aggiorna"}
+            {loading ? "Refreshing…" : "Refresh"}
           </button>
           {data?.lock && (
             <button type="button" className="btn-danger" onClick={forceUnlock}>
-              Forza unlock
+              Force unlock
             </button>
           )}
         </div>
@@ -114,12 +114,12 @@ export function OpsDashboard({
 
       {data?.lock && (
         <div className="lock-banner" role="status">
-          Lock attivo: <strong>{data.lock.action}</strong> · job{" "}
-          <code>{data.lock.jobId.slice(0, 8)}…</code> · da {data.lock.startedAt}
+          Active lock: <strong>{data.lock.action}</strong> · job{" "}
+          <code>{data.lock.jobId.slice(0, 8)}…</code> · since {data.lock.startedAt}
         </div>
       )}
 
-      <ol className="pipeline-track" aria-label="Stato pipeline">
+      <ol className="pipeline-track" aria-label="Pipeline status">
         {(data?.pipeline ?? []).map((row) => (
           <li key={row.stage}>
             <button
@@ -133,7 +133,7 @@ export function OpsDashboard({
                 if (onOpenStage) onOpenStage(row.stage);
                 else window.location.href = `/strumenti?stage=${row.stage}&tab=results`;
               }}
-              title={`Apri dashboard ${row.stage}`}
+              title={`Open ${row.stage} dashboard`}
             >
               <strong>{row.stage}</strong>
               <span>
@@ -142,9 +142,9 @@ export function OpsDashboard({
               <span className="muted">
                 {row.depsMet
                   ? row.ready
-                    ? "pronto"
-                    : "eseguibile"
-                  : `attende ${row.dep}`}
+                    ? "ready"
+                    : "runnable"
+                  : `waiting for ${row.dep}`}
               </span>
               {row.lastJob && (
                 <em className={clsx("pill", row.lastJob.status === "ok" ? "ok" : "bad")}>
@@ -158,21 +158,21 @@ export function OpsDashboard({
 
       <div className="job-table-wrap">
         <table className="job-table">
-          <caption>Storico job (ultimi 25)</caption>
+          <caption>Job history (last 25)</caption>
           <thead>
             <tr>
               <th scope="col">Azione</th>
               <th scope="col">Stato</th>
-              <th scope="col">Durata</th>
+              <th scope="col">Duration</th>
               <th scope="col">Inizio</th>
-              <th scope="col">Azioni</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {(data?.jobs ?? []).length === 0 && (
               <tr>
                 <td colSpan={5} className="muted">
-                  Nessun job ancora — lancia una fase dalla console.
+                  No jobs yet — run a phase from the console.
                 </td>
               </tr>
             )}
@@ -197,7 +197,7 @@ export function OpsDashboard({
                 <td className="mono-hint">{j.startedAt.replace("T", " ").slice(0, 19)}</td>
                 <td className="job-row-actions">
                   <button type="button" className="btn-ghost btn-tiny" onClick={() => setSelected(j)}>
-                    Dettaglio
+                    Details
                   </button>
                   <button type="button" className="btn-ghost btn-tiny" onClick={() => exportLog(j)}>
                     Export log
@@ -210,7 +210,7 @@ export function OpsDashboard({
       </div>
 
       {selected && (
-        <aside className="job-detail panel" aria-label="Dettaglio job">
+        <aside className="job-detail panel" aria-label="Job detail">
           <header className="ops-head">
             <div>
               <h3>
@@ -219,10 +219,10 @@ export function OpsDashboard({
               <p className="mono-hint">{selected.command}</p>
             </div>
             <button type="button" className="btn-ghost" onClick={() => setSelected(null)}>
-              Chiudi
+              Close
             </button>
           </header>
-          <pre className="run-log">{selected.logTail || "(log vuoto)"}</pre>
+          <pre className="run-log">{selected.logTail || "(empty log)"}</pre>
         </aside>
       )}
     </div>

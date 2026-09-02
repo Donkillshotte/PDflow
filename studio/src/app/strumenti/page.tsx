@@ -7,8 +7,8 @@ export default function StrumentiPage() {
       fallback={
         <main>
           <header className="page-head">
-            <h1>Strumenti</h1>
-            <p>Carico…</p>
+            <h1>Tools</h1>
+            <p>Loading…</p>
           </header>
         </main>
       }

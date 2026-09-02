@@ -98,7 +98,7 @@ export async function getSuiteStatus() {
       label: "ngspice (System PDN)",
       group: "Ambiente",
       ok: which("ngspice"),
-      detail: which("ngspice") ? "ngspice presente · Xyce GAP" : "apt install ngspice",
+      detail: which("ngspice") ? "ngspice present · Xyce GAP" : "apt install ngspice",
       action: "system_pdn",
     },
     {
@@ -106,7 +106,7 @@ export async function getSuiteStatus() {
       label: "Icarus (RTL sim)",
       group: "Ambiente",
       ok: which("iverilog"),
-      detail: which("iverilog") ? "iverilog presente" : "installa iverilog",
+      detail: which("iverilog") ? "iverilog present" : "install iverilog",
       action: "rtl_sim",
     },
     {
@@ -114,7 +114,7 @@ export async function getSuiteStatus() {
       label: "DISPLAY / Desktop",
       group: "Ambiente",
       ok: Boolean(display),
-      detail: display ? `DISPLAY ${display}` : "apri Desktop su cursor.com/agents",
+      detail: display ? `DISPLAY ${display}` : "open Desktop on cursor.com/agents",
     },
     {
       id: "rtl",
@@ -128,19 +128,19 @@ export async function getSuiteStatus() {
     },
     {
       id: "rtl_sim",
-      label: "Sim RTL + VCD",
+      label: "RTL sim + VCD",
       group: "Frontend",
       ok: which("iverilog") && fs.existsSync(path.join(LEARN_ROOT, "sim/gcd/tb_gcd.v")),
-      detail: "run_rtl_sim.sh · azione rtl_sim",
+      detail: "run_rtl_sim.sh · rtl_sim action",
       action: "rtl_sim",
       href: "/strumenti?tab=run&action=rtl_sim",
     },
     {
       id: "synth",
-      label: "Sintesi / ODB synth",
+      label: "Synthesis / ODB synth",
       group: "PD",
       ok: has("1_synth.odb"),
-      detail: has("1_synth.odb") ? "1_synth.odb ok" : "esegui synth",
+      detail: has("1_synth.odb") ? "1_synth.odb ok" : "run synth",
       action: "synth",
       href: "/strumenti?stage=synth&tab=results",
     },
@@ -149,7 +149,7 @@ export async function getSuiteStatus() {
       label: "PDN",
       group: "PD",
       ok: has("2_4_floorplan_pdn.odb"),
-      detail: has("2_4_floorplan_pdn.odb") ? "2_4_floorplan_pdn.odb" : "esegui floorplan",
+      detail: has("2_4_floorplan_pdn.odb") ? "2_4_floorplan_pdn.odb" : "run floorplan",
       href: "/strumenti?stage=floorplan&tab=results",
     },
     {
@@ -160,7 +160,7 @@ export async function getSuiteStatus() {
         fs.existsSync(path.join(resultsDir("flowlab"), ".gridcheck_pdn.ok")) ||
         fs.existsSync(path.join(resultsDir("learn"), ".gridcheck_pdn.ok")) ||
         has("2_4_floorplan_pdn.odb"),
-      detail: "check_power_grid · azione gridcheck / fase PDN",
+      detail: "check_power_grid · gridcheck action / PDN phase",
       action: "gridcheck",
       href: "/flusso?phase=pdn",
     },
@@ -171,7 +171,7 @@ export async function getSuiteStatus() {
       ok:
         fs.existsSync(path.join(resultsDir("flowlab"), ".system_pdn.ok")) ||
         fs.existsSync(path.join(resultsDir("learn"), ".system_pdn.ok")),
-      detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · fase PKG",
+      detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · PKG phase",
       action: "system_pdn",
       href: "/flusso?phase=pkg",
     },
@@ -180,7 +180,7 @@ export async function getSuiteStatus() {
       label: "Finish GDS/SPEF",
       group: "PD",
       ok: has("6_final.gds") && has("6_final.odb"),
-      detail: has("6_final.gds") ? "6_final.* presenti" : "esegui finish",
+      detail: has("6_final.gds") ? "6_final.* presenti" : "run finish",
       action: "finish",
       href: "/strumenti?stage=finish&tab=results",
     },
@@ -224,7 +224,7 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "vyges_em_ir") ||
         signoffReportPass("learn", "vyges_em_ir"),
-      detail: "binario Apache-2.0 · CG + backward Euler sulla mesh PDNSim",
+      detail: "Apache-2.0 binary · CG + backward Euler on PDNSim mesh",
       action: "vyges_em_ir",
       href: "/strumenti?tab=run&action=vyges_em_ir",
     },
@@ -245,13 +245,13 @@ export async function getSuiteStatus() {
       group: "Power",
       ok:
         signoffReportPass("flowlab", "dse") || signoffReportPass("learn", "dse"),
-      detail: "E-graph dpath + BOiLS SSK-GP + oracolo IR F4 · Pareto per livello",
+      detail: "E-graph dpath + BOiLS SSK-GP + IR F4 oracle · Pareto by level",
       action: "dse",
       href: "/strumenti?tab=run&action=dse",
     },
     {
       id: "power_chain",
-      label: "Catena SPICE",
+      label: "SPICE chain",
       group: "Power",
       ok: powerChainOk(),
       detail: "activity → chip IR → system → export",
@@ -311,13 +311,13 @@ export async function getSuiteStatus() {
       label: "Power signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "power_signoff") || signoffReportPass("learn", "power_signoff"),
-      detail: "Catena power + gate golden",
+      detail: "Power chain + golden gate",
       action: "power_signoff",
       href: "/pkg",
     },
     {
       id: "signoff_all",
-      label: "Signoff completo",
+      label: "Full signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "signoff_all") || signoffReportPass("learn", "signoff_all"),
       detail: "STA → DRC → LVS → power",
@@ -344,7 +344,7 @@ export async function getSuiteStatus() {
     },
     {
       id: "signoff_phase2",
-      label: "Signoff Fase 2",
+      label: "Signoff Phase 2",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "signoff_phase2") || signoffReportPass("learn", "signoff_phase2"),
       detail: "Thermal proxy + PKG orchestrator",
@@ -421,7 +421,7 @@ export async function getSuiteStatus() {
     {
       id: "docs",
       label: "Extended flow docs",
-      group: "Corso",
+      group: "Course",
       ok: fs.existsSync(path.join(LEARN_ROOT, "reference/extended-flow.md")),
       detail: "tool-hooks + extended-flow",
       href: "/materiali/reference/extended-flow.md",
@@ -430,7 +430,7 @@ export async function getSuiteStatus() {
 
   const lessonsDone = (progress.completed_lessons ?? []).length;
   const readyHooks = hooks.filter((h) => h.ok).length;
-  // Core wiring (not full PD finish): ambiente + frontend + analisi + docs
+  // Core wiring (not full PD finish): environment + frontend + analysis + docs
   const coreIds = [
     "toolchain",
     "iverilog",

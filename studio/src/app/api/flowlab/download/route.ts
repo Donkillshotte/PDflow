@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   if (kind === "vcd" || kind === "simlog") {
     const file = FIXED[kind];
     if (!fs.existsSync(file)) {
-      return NextResponse.json({ error: "file non trovato — esegui rtl_sim" }, { status: 404 });
+      return NextResponse.json({ error: "file not found — run rtl_sim" }, { status: 404 });
     }
     const buf = fs.readFileSync(file);
     const name = kind === "vcd" ? "gcd.vcd" : "sim.log";
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     const rel = url.searchParams.get("path") ?? "";
     const abs = resolveLearnContent(rel);
     if (!abs) {
-      return NextResponse.json({ error: "Percorso non consentito" }, { status: 404 });
+      return NextResponse.json({ error: "Path not allowed" }, { status: 404 });
     }
     const buf = fs.readFileSync(abs);
     const name = path.basename(abs);

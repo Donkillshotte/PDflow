@@ -37,7 +37,7 @@ export default async function LabFilePage({
       </header>
       <div className="lesson-actions">
         <Link href="/materiali" className="btn-ghost">
-          ← Materiali
+          ← Materials
         </Link>
         <Link href="/pkg" className="btn-ghost">
           PKG hub
@@ -47,7 +47,7 @@ export default async function LabFilePage({
             className="btn-primary"
             href={`/api/flowlab/download?kind=spice&path=${encodeURIComponent(rel)}`}
           >
-            Scarica
+            Download
           </a>
         )}
       </div>

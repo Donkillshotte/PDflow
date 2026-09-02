@@ -148,7 +148,7 @@ export function FlowLab() {
       setDirty(false);
       return data;
     } catch (e) {
-      push(e instanceof Error ? e.message : "errore FlowLab", "bad");
+      push(e instanceof Error ? e.message : "FlowLab error", "bad");
       return null;
     }
   }, [push]);
@@ -204,10 +204,10 @@ export function FlowLab() {
         paramsRef.current = body.params;
         setStages(body.stages ?? []);
         setDirty(false);
-        if (!quiet) push("Salvato", "ok");
+        if (!quiet) push("Saved", "ok");
         return true;
       } catch (e) {
-        push(e instanceof Error ? e.message : "salvataggio fallito", "bad");
+        push(e instanceof Error ? e.message : "save failed", "bad");
         return false;
       } finally {
         setSaving(false);
@@ -248,7 +248,7 @@ export function FlowLab() {
     setParams(preset.params);
     paramsRef.current = preset.params;
     scheduleAutosave(rtlRef.current, preset.params);
-    push(`Profilo «${preset.label}» applicato`, "info");
+    push(`Profile «${preset.label}» applied`, "info");
   }
 
   async function resetGolden() {
@@ -260,13 +260,13 @@ export function FlowLab() {
         body: JSON.stringify({ resetRtl: true }),
       });
       const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "reset fallito");
+      if (!res.ok) throw new Error(body.error || "reset failed");
       setRtl(body.rtl);
       rtlRef.current = body.rtl;
       setDirty(false);
-      push("RTL ripristinato dal golden", "info");
+      push("RTL restored from golden", "info");
     } catch (e) {
-      push(e instanceof Error ? e.message : "reset fallito", "bad");
+      push(e instanceof Error ? e.message : "reset failed", "bad");
     } finally {
       setSaving(false);
     }
@@ -343,8 +343,8 @@ export function FlowLab() {
             setOk(ev.ok);
             push(
               ev.ok
-                ? `${action} completata · ${formatMs(ev.ms)}`
-                : `${action} fallita`,
+                ? `${action} completed · ${formatMs(ev.ms)}`
+                : `${action} failed`,
               ev.ok ? "ok" : "bad",
             );
             if (ev.ok) {
@@ -358,7 +358,7 @@ export function FlowLab() {
       }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
-        push(e instanceof Error ? e.message : "run fallito", "bad");
+        push(e instanceof Error ? e.message : "run failed", "bad");
         setOk(false);
       }
     } finally {
@@ -390,7 +390,7 @@ export function FlowLab() {
 
   const requestRun = useCallback(() => {
     if (!unlocked) {
-      push("Completa prima la fase precedente", "bad");
+      push("Complete the previous phase first", "bad");
       return;
     }
     if (LONG_ACTIONS.has(phase.action)) {
@@ -429,7 +429,7 @@ export function FlowLab() {
       });
     }
     abortRef.current?.abort();
-    push("Run annullato", "info");
+    push("Run cancelled", "info");
   }
 
   async function openGui() {
@@ -462,9 +462,9 @@ export function FlowLab() {
       }
       if (body.command) {
         await navigator.clipboard?.writeText(body.command).catch(() => undefined);
-        push(body.message || "Comando GUI copiato — apri Desktop", "info");
+        push(body.message || "GUI command copied — open Desktop", "info");
       } else {
-        push(body.message || "Nessuna GUI pronta per questa fase", "bad");
+        push(body.message || "No GUI ready for this phase", "bad");
       }
     } finally {
       setGuiBusy(false);
@@ -472,14 +472,14 @@ export function FlowLab() {
   }
 
   function exportLog() {
-    const blob = new Blob([log || "(vuoto)"], { type: "text/plain" });
+    const blob = new Blob([log || "(empty)"], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `flowlab-${phase.id}-${Date.now()}.log`;
     a.click();
     URL.revokeObjectURL(url);
-    push("Log esportato", "ok");
+    push("Log exported", "ok");
   }
 
   function selectPhase(id: string) {
@@ -510,10 +510,10 @@ export function FlowLab() {
       <header className="fl-hero">
         <div className="fl-hero-copy">
           <p className="fl-eyebrow">OpenROAD Studio · FlowLab</p>
-          <h1>Da RTL a GDSII, fase per fase</h1>
+          <h1>From RTL to GDSII, phase by phase</h1>
           <p>
-            Workbench interattivo con editor Verilog, parametri ORFS live, log streaming
-            e ispezione artefatti. Variante isolata{" "}
+            Interactive workbench with Verilog editor, live ORFS parameters, streaming log
+            and artifact inspection. Variante isolata{" "}
             <code>results/nangate45/gcd/flowlab</code>.
           </p>
         </div>
@@ -534,7 +534,7 @@ export function FlowLab() {
           </div>
           <div>
             <strong>{doneCount} / {PHASES.length}</strong>
-            <span>fasi completate</span>
+            <span>phases completed</span>
           </div>
         </div>
       </header>
@@ -553,20 +553,20 @@ export function FlowLab() {
           <p>{phase.help}</p>
         </div>
         <div className="fl-toolbar-right">
-          <span className="fl-kbd-hint" title="Scorciatoie">
+          <span className="fl-kbd-hint" title="Shortcuts">
             <Keyboard size={14} aria-hidden />
             <kbd>Ctrl</kbd>+<kbd>S</kbd> · <kbd>Ctrl</kbd>+<kbd>Enter</kbd>
           </span>
           <span className={clsx("fl-sync-pill", dirty ? "dirty" : saving ? "saving" : "ok")}>
             {saving ? (
               <>
-                <CloudUpload size={14} className="fl-spin" aria-hidden /> Salvataggio…
+                <CloudUpload size={14} className="fl-spin" aria-hidden /> Saving…
               </>
             ) : dirty ? (
-              "Modifiche locali"
+              "Local changes"
             ) : (
               <>
-                <Save size={14} aria-hidden /> Sincronizzato
+                <Save size={14} aria-hidden /> Synced
               </>
             )}
           </span>
@@ -574,14 +574,14 @@ export function FlowLab() {
             type="button"
             className={clsx("fl-btn fl-btn-ghost", sideCollapsed && "chip-active")}
             onClick={() => setSideCollapsed((v) => !v)}
-            title={sideCollapsed ? "Mostra console" : "Nascondi console"}
+            title={sideCollapsed ? "Show console" : "Hide console"}
           >
             {sideCollapsed ? (
               <PanelRightOpen size={16} aria-hidden />
             ) : (
               <PanelRightClose size={16} aria-hidden />
             )}
-            {sideCollapsed ? "Console" : "Espandi chip"}
+            {sideCollapsed ? "Console" : "Expand chip"}
           </button>
           <button
             type="button"
@@ -590,7 +590,7 @@ export function FlowLab() {
             onClick={() => void saveAll()}
           >
             <Save size={16} aria-hidden />
-            Salva
+            Save
           </button>
           {running ? (
             <button type="button" className="fl-btn fl-btn-danger" onClick={() => void cancel()}>
@@ -605,7 +605,7 @@ export function FlowLab() {
               onClick={requestRun}
             >
               <Play size={16} aria-hidden />
-              Esegui {phase.label}
+              Run {phase.label}
             </button>
           )}
         </div>
@@ -613,8 +613,8 @@ export function FlowLab() {
 
       {!unlocked && (
         <div className="fl-lock-banner">
-          Fase bloccata — completa «{PHASES[PHASE_IDS.indexOf(phaseId) - 1]?.label}» per
-          sbloccare.
+          Phase locked — complete «{PHASES[PHASE_IDS.indexOf(phaseId) - 1]?.label}» to
+          unlock.
         </div>
       )}
 
@@ -642,7 +642,7 @@ export function FlowLab() {
               <div className="fl-editor-shell">
               <div className="fl-editor-toolbar">
                 <span>
-                  <code>learn/flowlab/gcd.v</code> · {lineCount} righe · Verilog-2001
+                  <code>learn/flowlab/gcd.v</code> · {lineCount} lines · Verilog-2001
                 </span>
                 <button
                   type="button"
@@ -651,7 +651,7 @@ export function FlowLab() {
                   onClick={() => void resetGolden()}
                 >
                   <RotateCcw size={14} aria-hidden />
-                  Ripristina golden
+                  Restore golden
                 </button>
               </div>
               <FlowLabRtlEditor
@@ -681,9 +681,9 @@ export function FlowLab() {
                   <p>{phase.help}</p>
                   {phase.id === "pkg" && (
                     <p>
-                      Teoria:{" "}
+                      Theory:{" "}
                       <a href="/pkg">PKG hub</a> ·{" "}
-                      <a href="/materiali/reference/spice-power-chain.md">Catena SPICE</a> ·{" "}
+                      <a href="/materiali/reference/spice-power-chain.md">SPICE chain</a> ·{" "}
                       <a href="/materiali/reference/spice-ngspice-primer.md">ngspice</a> ·{" "}
                       <a href="/materiali/sim/spice/README.md">Lab netlist</a>
                     </p>
@@ -692,7 +692,7 @@ export function FlowLab() {
                     <p>
                       Docs:{" "}
                       <a href="/materiali/reference/spice-chip-mesh.md">Mesh SPICE</a> ·{" "}
-                      <a href="/materiali/reference/spice-power-chain.md">Catena fasi</a> ·{" "}
+                      <a href="/materiali/reference/spice-power-chain.md">Phase chain</a> ·{" "}
                       chip IR post-finish in signoff
                     </p>
                   )}
@@ -740,8 +740,8 @@ export function FlowLab() {
           {offerNext && nextPhase && ok && (
             <div className="fl-next-banner">
               <div>
-                <strong>{phase.label} completata</strong>
-                <p>Prossimo passo: {nextPhase.title}</p>
+                <strong>{phase.label} completed</strong>
+                <p>Next step: {nextPhase.title}</p>
               </div>
               <button
                 type="button"
@@ -783,8 +783,8 @@ export function FlowLab() {
             {(
               [
                 ["log", "Console"],
-                ["artifacts", "Artefatti"],
-                ["inspect", "Ispeziona"],
+                ["artifacts", "Artifacts"],
+                ["inspect", "Inspect"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -821,13 +821,13 @@ export function FlowLab() {
                   <div className="fl-empty-state">
                     {sim.vcdExists ? (
                       <>
-                        <p>Simulazione completata — waveform disponibile.</p>
+                        <p>Simulation completed — waveform available.</p>
                         <div className="fl-artifacts-actions">
                           <a
                             className="fl-btn fl-btn-primary fl-btn-sm"
                             href="/api/flowlab/download?kind=vcd"
                           >
-                            Scarica VCD ({Math.round(sim.vcdBytes / 1024)} KB)
+                            Download VCD ({Math.round(sim.vcdBytes / 1024)} KB)
                           </a>
                           {sim.logExists && (
                             <a
@@ -841,9 +841,9 @@ export function FlowLab() {
                       </>
                     ) : (
                       <>
-                        <p>Esegui la simulazione RTL per generare il VCD.</p>
+                        <p>Run RTL simulation to generate the VCD.</p>
                         <p className="muted">
-                          Output atteso: <code>learn/sim/gcd/gcd.vcd</code>
+                          Expected output: <code>learn/sim/gcd/gcd.vcd</code>
                         </p>
                       </>
                     )}
@@ -857,7 +857,7 @@ export function FlowLab() {
                         disabled={guiBusy || running}
                         onClick={() => void openGui()}
                       >
-                        {guiBusy ? "Apertura…" : "Apri GUI Desktop"}
+                        {guiBusy ? "Opening…" : "Open GUI Desktop"}
                       </button>
                     </div>
                     <ResultsPanel
@@ -874,7 +874,7 @@ export function FlowLab() {
               <div className="fl-inspect-pane">
                 {phase.id === "rtl" ? (
                   <div className="fl-empty-state">
-                    <p>Ispezione ODB, STA e report Yosys disponibile dalla sintesi.</p>
+                    <p>ODB, STA, and Yosys report inspection available from synthesis.</p>
                   </div>
                 ) : (
                   <InspectPanel
@@ -902,15 +902,15 @@ export function FlowLab() {
         open={confirmOpen}
         title={
           pendingSignoff
-            ? `Confermi ${pendingSignoff}?`
-            : `Confermi ${phase.label}?`
+            ? `Confirm ${pendingSignoff}?`
+            : `Confirm ${phase.label}?`
         }
         body={
           pendingSignoff
-            ? `Signoff ${pendingSignoff} può richiedere diversi minuti.`
-            : `${phase.tool} — stima ${phase.estTime}. Un solo job alla volta nel runner.`
+            ? `Signoff ${pendingSignoff} may take several minutes.`
+            : `${phase.tool} — est. ${phase.estTime}. One job at a time in the runner.`
         }
-        confirmLabel="Esegui"
+        confirmLabel="Run"
         onCancel={() => {
           setConfirmOpen(false);
           setPendingSignoff(null);

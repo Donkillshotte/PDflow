@@ -1,4 +1,4 @@
-/** Catena dati RTL → PKG: cosa produce/consuma ogni fase per power & SPICE. */
+/** RTL → PKG data chain: what each phase produces/consumes for power & SPICE. */
 
 export type ChainNode = {
   phaseId: string;
@@ -26,7 +26,7 @@ export const POWER_CHAIN: ChainNode[] = [
     phaseId: "synth",
     label: "Sintesi",
     lessonIds: ["01-constraints", "02-synthesis"],
-    produces: ["netlist gate-level", "celle .lib", "area Yosys"],
+    produces: ["gate-level netlist", ".lib cells", "Yosys area"],
     consumes: ["RTL", "SDC", "liberty"],
     spice: "liberty → report_power",
     doc: "/materiali/reference/spice-power-chain.md#lezione-02-synthesis",
@@ -56,7 +56,7 @@ export const POWER_CHAIN: ChainNode[] = [
     phaseId: "place",
     label: "Place",
     lessonIds: ["04-placement"],
-    produces: ["ITermNode posizioni", "sink correnti"],
+    produces: ["ITermNode positions", "current sinks"],
     consumes: ["floorplan ODB"],
     spice: "I per pin in mesh",
     doc: "/materiali/reference/spice-power-chain.md#lezione-04-placement",
@@ -133,7 +133,7 @@ export const SPICE_ANALYSES = [
     id: "vyges_em_ir",
     label: "vyges-em-ir",
     produces: ["vyges_em_ir_*.json", "gcd_*.pdn"],
-    spice: "binario CG + backward Euler sulla stessa mesh",
+    spice: "CG binary + backward Euler on the same mesh",
     doc: "/materiali/reference/vyges-em-ir.md",
     action: "vyges_em_ir",
   },
@@ -163,8 +163,8 @@ export const SPICE_ANALYSES = [
   },
   {
     id: "power_chain",
-    label: "Catena completa",
-    produces: ["tutti report", "sim/spice/"],
+    label: "Full chain",
+    produces: ["all reports", "sim/spice/"],
     spice: "ngspice + mesh + export",
     doc: "/materiali/reference/spice-power-chain.md",
     action: "power_chain",

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Corso interattivo completo di Physical Design con OpenROAD / ORFS.
+# Complete interactive Physical Design course with OpenROAD / ORFS.
 #
-# Uso:
+# Usage:
 #   ./scripts/learn_physical_design.sh --list
 #   ./scripts/learn_physical_design.sh --lesson 01
 #   ./scripts/learn_physical_design.sh --all
 #   ./scripts/learn_physical_design.sh --resume
 #   ./scripts/learn_physical_design.sh --status
 #   ./scripts/learn_physical_design.sh --check
-#   ./scripts/learn_physical_design.sh --auto --lesson 02   # senza pause
+#   ./scripts/learn_physical_design.sh --auto --lesson 02   # no pauses
 #
 set -euo pipefail
 
@@ -33,37 +33,37 @@ RESUME=0
 
 usage() {
   cat <<'EOF'
-Corso Physical Design — OpenROAD + ORFS
+Physical Design course — OpenROAD + ORFS
 
-Opzioni:
-  --list              Elenco lezioni
-  --lesson ID         Esegue una lezione (es. 01, 03-floorplan, floorplan)
-  --all               Percorso completo 00 → 07
-  --resume            Riprende dall'ultima lezione incompleta
-  --status            Mostra progresso salvato
-  --check             Verifica prerequisiti e toolchain
-  --auto              Salta le pause interattive
-  --deep              Modalità approfondita: richiede lettura LAB.md per lezione
-  --help              Questo messaggio
+Options:
+  --list              List lessons
+  --lesson ID         Run one lesson (e.g. 01, 03-floorplan, floorplan)
+  --all               Full path 00 → 07
+  --resume            Resume from the last incomplete lesson
+  --status            Show saved progress
+  --check             Verify prerequisites and toolchain
+  --auto              Skip interactive pauses
+  --deep              Deep mode: requires reading LAB.md per lesson
+  --help              This message
 
-Esempi:
+Examples:
   ./scripts/learn_physical_design.sh --check
   ./scripts/learn_physical_design.sh --lesson 01-constraints
   ./scripts/learn_physical_design.sh --all
 
-Documentazione estesa: learn/README.md e learn/CURRICULUM.md
+Extended documentation: learn/README.md and learn/CURRICULUM.md
 EOF
 }
 
 list_lessons() {
-  ui_banner "Corso Physical Design — Indice lezioni"
+  ui_banner "Physical Design course — lesson index"
   find "${LEARN_ROOT}/lessons" -mindepth 1 -maxdepth 1 -type d | sort | while read -r d; do
     id="$(basename "${d}")"
     title="$(rg -m1 '^# ' "${d}/README.md" 2>/dev/null | sed 's/^# //' || echo "${id}")"
     printf "  %-18s %s\n" "${id}" "${title}"
   done
   echo
-  ui_tip "Ogni lezione ha README.md (teoria) + run.sh (esercizi guidati)."
+  ui_tip "Each lesson has README.md (theory) + run.sh (guided exercises)."
 }
 
 normalize_lesson_id() {
@@ -91,7 +91,7 @@ run_one_lesson() {
   local id="$1"
   local dir="${LEARN_ROOT}/lessons/${id}"
   if [[ ! -f "${dir}/run.sh" ]]; then
-    ui_fail "Lezione non trovata: ${id}"
+    ui_fail "Lesson not found: ${id}"
     exit 1
   fi
   # shellcheck source=/dev/null
@@ -116,7 +116,7 @@ while [[ $# -gt 0 ]]; do
     --auto) LEARN_AUTO=1; export LEARN_AUTO; shift ;;
     --deep) LEARN_DEEP=1; export LEARN_DEEP; shift ;;
     --help|-h) usage; exit 0 ;;
-    *) ui_fail "Opzione sconosciuta: $1"; usage; exit 1 ;;
+    *) ui_fail "Unknown option: $1"; usage; exit 1 ;;
   esac
 done
 
@@ -124,13 +124,13 @@ learn_orfs_env
 learn_progress_init
 
 if [[ "${RUN_ALL}" == "1" ]]; then
-  ui_banner "Percorso completo Physical Design"
-  ui_warn "Durata totale stimata: 6–10 ore (con esercizi e GUI)."
-  ui_confirm "Avviare tutte le lezioni in sequenza?" || exit 0
+  ui_banner "Full Physical Design path"
+  ui_warn "Estimated total duration: 6–10 hours (with exercises and GUI)."
+  ui_confirm "Start all lessons in sequence?" || exit 0
   while read -r id; do
     run_one_lesson "${id}"
   done < <(all_lesson_ids)
-  ui_banner "Corso completato"
+  ui_banner "Course completed"
   learn_show_progress
   exit 0
 fi
@@ -150,11 +150,11 @@ else:
 PY
 )"
   if [[ -z "${last}" ]]; then
-    ui_ok "Tutte le lezioni risultano già completate."
+    ui_ok "All lessons are already completed."
     learn_show_progress
     exit 0
   fi
-  ui_note "Ripresa da lezione: ${last}"
+  ui_note "Resuming from lesson: ${last}"
   run_one_lesson "${last}"
   exit 0
 fi
@@ -166,7 +166,7 @@ fi
 
 id="$(normalize_lesson_id "${LESSON}")"
 if [[ -z "${id}" ]]; then
-  ui_fail "ID lezione non valido: ${LESSON}"
+  ui_fail "Invalid lesson ID: ${LESSON}"
   list_lessons
   exit 1
 fi

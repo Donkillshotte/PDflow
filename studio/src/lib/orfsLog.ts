@@ -185,8 +185,8 @@ export function digestOrfsLog(text: string): LogDigest {
   const actionable = warnings - noiseWarnings;
   const summary = healthy
     ? actionable <= 0
-      ? `Flusso OK · 0 ERROR · ${warnings} WARNING (tutti attesi/rumore ORFS)`
-      : `Flusso OK · 0 ERROR · ${warnings} WARNING (${noiseWarnings} rumore, ${actionable} da rivedere)`
+      ? `Flow OK · 0 ERROR · ${warnings} WARNING (all expected/ORFS noise)`
+      : `Flow OK · 0 ERROR · ${warnings} WARNING (${noiseWarnings} noise, ${actionable} to review)`
     : `${errors} ERROR · ${warnings} WARNING — fallimento reale`;
 
   return {

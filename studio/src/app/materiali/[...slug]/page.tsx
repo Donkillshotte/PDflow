@@ -26,11 +26,11 @@ export default async function MaterialDetailPage({
       <header className="page-head">
         <div className="lesson-num">{rel}</div>
         <h1>{slug[slug.length - 1]?.replace(/\.md$/, "")}</h1>
-        <p>Documento del corso · percorso learn/{rel}</p>
+        <p>Course document · path learn/{rel}</p>
       </header>
       <div className="lesson-actions">
         <Link href="/materiali" className="btn-ghost">
-          ← Materiali
+          ← Materials
         </Link>
       </div>
       <section className="panel">

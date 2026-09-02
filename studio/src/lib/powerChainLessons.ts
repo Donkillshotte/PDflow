@@ -1,4 +1,4 @@
-/** Collegamento esaustivo lezioni 00–07 ↔ FlowLab ↔ SPICE (single source). */
+/** Exhaustive mapping lessons 00–07 ↔ FlowLab ↔ SPICE (single source). */
 
 export type LessonPowerLink = {
   lessonId: string;
@@ -18,15 +18,15 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     lessonId: "00-intro",
     flowlabPhases: ["rtl"],
     anchor: "lezione-00-intro",
-    title: "RTL e mappa del flusso",
+    title: "RTL and flow map",
     summary:
-      "La sim RTL produce il VCD: primo anello della catena power (toggle → activity futura).",
+      "RTL sim produces the VCD: first link in the power chain (toggle → future activity).",
     orfsArtifacts: ["learn/flowlab/gcd.v", "learn/sim/gcd/gcd.vcd"],
     studioActions: ["rtl_sim"],
     spiceOutputs: [],
     docs: [
       { href: "/materiali/reference/spice-power-chain.md#lezione-00-intro", label: "§00 RTL" },
-      { href: "/materiali/reference/file-formats.md", label: "Formati" },
+      { href: "/materiali/reference/file-formats.md", label: "Formats" },
     ],
     flowlabHref: "/flusso?phase=rtl",
   },
@@ -34,9 +34,9 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     lessonId: "01-constraints",
     flowlabPhases: ["synth"],
     anchor: "lezione-01-constraints",
-    title: "SDC e clock",
+    title: "SDC and clock",
     summary:
-      "I vincoli di clock determinano frequenza e duty: influenzano switching power indirettamente.",
+      "Clock constraints set frequency and duty: they indirectly affect switching power.",
     orfsArtifacts: ["constraint.sdc", "config.mk"],
     studioActions: ["synth"],
     spiceOutputs: [],
@@ -49,9 +49,9 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     lessonId: "02-synthesis",
     flowlabPhases: ["synth"],
     anchor: "lezione-02-synthesis",
-    title: "Liberty e celle",
+    title: "Liberty and cells",
     summary:
-      "Ogni cella .lib porta leakage/switching/internal power → base di report_power e sink SPICE.",
+      "Each .lib cell carries leakage/switching/internal power → basis for report_power and SPICE sinks.",
     orfsArtifacts: ["1_synth.v", "1_synth.odb", "NangateOpenCellLibrary_typical.lib"],
     studioActions: ["synth"],
     spiceOutputs: ["learn/sim/spice/nangate_inverter_demo.sp"],
@@ -65,9 +65,9 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     lessonId: "03-floorplan",
     flowlabPhases: ["floorplan", "pdn"],
     anchor: "lezione-03-floorplan",
-    title: "Floorplan e PDN straps",
+    title: "Floorplan and PDN straps",
     summary:
-      "pdngen crea la griglia VDD/VSS; gridcheck verifica connettività prima del place.",
+      "pdngen creates the VDD/VSS grid; gridcheck verifies connectivity before place.",
     orfsArtifacts: ["2_4_floorplan_pdn.odb", "grid_strategy-M1-M4-M7.tcl"],
     studioActions: ["floorplan", "gridcheck"],
     spiceOutputs: [],
@@ -82,9 +82,9 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     lessonId: "04-placement",
     flowlabPhases: ["place"],
     anchor: "lezione-04-placement",
-    title: "Placement e sink di corrente",
+    title: "Placement and current sinks",
     summary:
-      "Coordinate celle → nodi ITermNode_* nella mesh write_pg_spice.",
+      "Cell coordinates → ITermNode_* nodes in the write_pg_spice mesh.",
     orfsArtifacts: ["3_5_place_dp.odb", "3_place.odb"],
     studioActions: ["place"],
     spiceOutputs: ["pg_vdd_bumps.sp (post finish)"],
@@ -98,9 +98,9 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     lessonId: "05-cts",
     flowlabPhases: ["cts"],
     anchor: "lezione-05-cts",
-    title: "CTS e switching clock",
+    title: "CTS and clock switching",
     summary:
-      "Buffer clock aggiungono capacità e toggle → aumentano corrente di switching nel report_power.",
+      "Clock buffers add capacitance and toggles → increase switching current in report_power.",
     orfsArtifacts: ["4_1_cts.odb", "4_cts.odb"],
     studioActions: ["cts"],
     spiceOutputs: [],
@@ -113,15 +113,15 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     lessonId: "06-routing",
     flowlabPhases: ["route"],
     anchor: "lezione-06-routing",
-    title: "Routing e SPEF",
+    title: "Routing and SPEF",
     summary:
-      "Parassiti di rete influenzano timing; route DRC alimenta il pilastro geometria del signoff post-finish.",
+      "Net parasitics affect timing; route DRC feeds the geometry pillar of post-finish signoff.",
     orfsArtifacts: ["5_2_route.odb", "route.guide", "5_route_drc.rpt"],
     studioActions: ["route", "drc_signoff"],
     spiceOutputs: [],
     docs: [
       { href: "/materiali/reference/spice-power-chain.md#lezione-06-routing", label: "§06 Route" },
-      { href: "/materiali/reference/signoff-matrix.md", label: "Matrice signoff (DRC)" },
+      { href: "/materiali/reference/signoff-matrix.md", label: "Signoff matrix (DRC)" },
     ],
     flowlabHref: "/flusso?phase=route",
   },
@@ -129,7 +129,7 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     lessonId: "07-finish",
     flowlabPhases: ["finish", "pkg"],
     anchor: "lezione-07-finish",
-    title: "Finish, IR e catena SPICE",
+    title: "Finish, IR, and SPICE chain",
     summary:
       "report_power + analyze_power_grid → chip IR mesh + System PDN ngspice (signoff FlowLab).",
     orfsArtifacts: [
@@ -171,8 +171,8 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
       { href: "/materiali/reference/vectorless-power.md", label: "Vectorless / dynamic" },
       { href: "/materiali/reference/vyges-em-ir.md", label: "vyges-em-ir" },
       { href: "/materiali/reference/dynamic-ir.md", label: "Dynamic IR I(t)" },
-      { href: "/materiali/reference/oss-integrations.md", label: "Matrice OSS" },
-      { href: "/materiali/reference/signoff-matrix.md", label: "Matrice signoff 4 pilastri" },
+      { href: "/materiali/reference/oss-integrations.md", label: "OSS matrix" },
+      { href: "/materiali/reference/signoff-matrix.md", label: "Signoff matrix 4 pillars" },
       { href: "/materiali/reference/spice-ngspice-primer.md", label: "ngspice" },
       { href: "/pkg", label: "Hub PKG" },
       { href: "/flusso?phase=pkg", label: "FlowLab PKG" },

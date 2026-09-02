@@ -116,7 +116,7 @@ export function isDseAction(action: string): action is DseAction {
   return (DSE_ACTIONS as readonly string[]).includes(action);
 }
 
-/** All post-finish analysis actions (power + signoff + fase 2 + tool matrix). */
+/** All post-finish analysis actions (power + signoff + phase 2 + tool matrix). */
 export const POST_FINISH_ACTIONS = [
   ...POWER_ACTIONS,
   ...SIGNOFF_ACTIONS,

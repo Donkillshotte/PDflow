@@ -230,7 +230,7 @@ export const LayoutViewport = forwardRef<LayoutViewportHandle, Props>(
         className={clsx("fl-vp", !ready && "is-loading")}
         tabIndex={0}
         role="application"
-        aria-label="Viewport layout: rotella zoom, trascina per pan, + − 0 F"
+        aria-label="Layout viewport: wheel zoom, drag to pan, + − 0 F"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -311,7 +311,7 @@ export const LayoutViewport = forwardRef<LayoutViewportHandle, Props>(
             data-wipe-handle
             className="fl-vp-wipe-handle"
             style={{ left: handleLeft }}
-            aria-label="Trascina per confrontare"
+            aria-label="Drag to compare"
           >
             <span />
           </button>
@@ -327,7 +327,7 @@ export const LayoutViewport = forwardRef<LayoutViewportHandle, Props>(
         <div className="fl-vp-hud">
           <span>{Math.round(scale * 100)}%</span>
           <span className="fl-vp-keys">
-            rotella · drag · <kbd>+</kbd>
+            wheel · drag · <kbd>+</kbd>
             <kbd>-</kbd>
             <kbd>0</kbd>
             <kbd>F</kbd>

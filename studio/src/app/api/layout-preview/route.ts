@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const variant = url.searchParams.get("variant") || "flowlab";
 
   if (!PHASES.has(phase)) {
-    return NextResponse.json({ error: "phase non valido" }, { status: 400 });
+    return NextResponse.json({ error: "invalid phase" }, { status: 400 });
   }
 
   const meta = layoutPreviewMeta(phase, variant);
@@ -38,12 +38,12 @@ export async function POST(req: Request) {
   const phase = (body.phase || "place") as LayoutPhaseId;
   const variant = body.variant || "flowlab";
   if (!PHASES.has(phase)) {
-    return NextResponse.json({ error: "phase non valido" }, { status: 400 });
+    return NextResponse.json({ error: "invalid phase" }, { status: 400 });
   }
   const resolved = resolveLayoutImageAbs(phase, variant);
   if (!resolved) {
     return NextResponse.json(
-      { ok: false, message: "Impossibile generare preview — esegui la fase ORFS" },
+      { ok: false, message: "Cannot generate preview — run the ORFS phase" },
       { status: 404 },
     );
   }

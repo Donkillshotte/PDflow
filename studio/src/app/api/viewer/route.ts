@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(result, { status: result.ok ? 200 : 422 });
   }
-  return NextResponse.json({ error: "action non valida" }, { status: 400 });
+  return NextResponse.json({ error: "invalid action" }, { status: 400 });
 }
 
 export async function DELETE() {

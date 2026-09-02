@@ -91,7 +91,7 @@ export function InspectPanel({
           window.open(body.url, "_blank", "noopener,noreferrer");
         }, 800);
       } else {
-        push(body.message || "Viewer non avviato", "bad");
+        push(body.message || "Viewer not started", "bad");
       }
     } finally {
       setViewerBusy(false);
@@ -105,16 +105,16 @@ export function InspectPanel({
       body: JSON.stringify({ action: "stop" }),
     });
     setViewerUrl(null);
-    push("Web viewer fermato", "info");
+    push("Web viewer stopped", "info");
   }
 
   return (
     <div className="inspect-panel" id="inspect-panel">
       <div className="results-head">
-        <h3>Ispezione tool · {stage}</h3>
+        <h3>Inspection tool · {stage}</h3>
         <div className="lesson-actions">
           <button type="button" className="btn-ghost" onClick={load} disabled={loading}>
-            {loading ? "Analizzo…" : "Ricalcola"}
+            {loading ? "Analyzing…" : "Recalculate"}
           </button>
           <button
             type="button"
@@ -122,12 +122,12 @@ export function InspectPanel({
             onClick={() => void startWeb()}
             disabled={viewerBusy}
           >
-            {viewerBusy ? "Avvio…" : "Apri Web Viewer"}
+            {viewerBusy ? "Avvio…" : "Open Web Viewer"}
           </button>
           {viewerUrl && (
             <>
               <a className="btn-ghost" href={viewerUrl} target="_blank" rel="noreferrer">
-                Apri tab
+                Open tab
               </a>
               <button type="button" className="btn-ghost" onClick={() => void stopWeb()}>
                 Stop viewer
@@ -202,8 +202,8 @@ export function InspectPanel({
           {data.sta.paths.length > 0 && (
             <>
               <p className="muted">
-                Path VIOLATED con WNS≈−0.04 ns sul GCD nangate45 sono allineati al
-                golden del corso — non indicano un crash del wrapper.
+                VIOLATED paths with WNS≈−0.04 ns on GCD nangate45 align with the
+                course golden — they do not indicate a wrapper crash.
               </p>
               <ul className="path-list">
                 {data.sta.paths.map((p) => (
@@ -248,13 +248,13 @@ export function InspectPanel({
 
       {data && !data.odb && !data.sta && !data.yosys && (
         <p className="empty-hint">
-          Nessun dato tool ancora — esegui la fase, poi Ricalcola.
+          No tool data yet — run the phase, then Recalculate.
         </p>
       )}
 
       {data?.hooks && (
         <details className="hooks-details">
-          <summary>Hook tool disponibili</summary>
+          <summary>Available tool hooks</summary>
           <ul className="hook-list">
             {data.hooks.map((h) => (
               <li key={h.id}>
@@ -264,7 +264,7 @@ export function InspectPanel({
             ))}
           </ul>
           <p className="muted">
-            Guida:{" "}
+            Guide:{" "}
             <a href="/materiali/reference/tool-hooks.md">tool-hooks.md</a>
           </p>
         </details>

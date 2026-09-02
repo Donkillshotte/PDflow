@@ -95,9 +95,9 @@ function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: Artifa
           {lvs.exists ? (
             <>Errori: {lvs.errors ?? 0}</>
           ) : (
-            <>File .lvsdb assente</>
+            <>Missing .lvsdb file</>
           )}
-          {log?.missing_lylvs && <> · runset .lylvs mancante</>}
+          {log?.missing_lylvs && <> · missing .lylvs runset</>}
         </p>
         {lvs.messages && lvs.messages.length > 0 && (
           <ul>
@@ -143,7 +143,7 @@ export function SignoffMatrixPanel({
       setData(await res.json());
       setErr(null);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Errore signoff");
+      setErr(e instanceof Error ? e.message : "Signoff error");
     }
   }, [variant]);
 
@@ -196,7 +196,7 @@ export function SignoffMatrixPanel({
                     className="sig-expand-btn"
                     onClick={() => setExpanded(isOpen ? null : g.id)}
                   >
-                    {isOpen ? "Nascondi dettagli" : "Metriche & artefatti"}
+                    {isOpen ? "Hide details" : "Metrics & artifacts"}
                   </button>
                 )}
                 {isOpen && checks.length > 0 && (
@@ -291,7 +291,7 @@ export function SignoffMatrixPanel({
               disabled={Boolean(busy)}
               onClick={() => onRun("signoff_all", true)}
             >
-              {busy === "signoff_all" ? "Signoff completo…" : "Signoff completo (STA→DRC→LVS→Power)"}
+              {busy === "signoff_all" ? "Full signoff…" : "Full signoff (STA→DRC→LVS→Power)"}
             </button>
           )}
           <button
@@ -307,9 +307,9 @@ export function SignoffMatrixPanel({
 
       {data && (
         <p className="sig-summary">
-          Stato globale:{" "}
+          Global status:{" "}
           <span className={data.evaluation.ok ? "sig-ok-text" : "sig-fail-text"}>
-            {data.evaluation.ok ? "PASS" : "FAIL / incompleto"}
+            {data.evaluation.ok ? "PASS" : "FAIL / incomplete"}
           </span>
         </p>
       )}

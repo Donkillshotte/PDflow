@@ -35,7 +35,7 @@ export async function GET(req: Request) {
   if (lessonId) {
     const gates = gatesFor(lessonId);
     if (!gates) {
-      return NextResponse.json({ error: "lessonId non valido" }, { status: 400 });
+      return NextResponse.json({ error: "invalid lessonId" }, { status: 400 });
     }
     return NextResponse.json({ progress, gates });
   }
@@ -66,13 +66,13 @@ export async function POST(req: Request) {
   if (body.action === "gates" && body.lessonId) {
     const gates = gatesFor(body.lessonId);
     if (!gates) {
-      return NextResponse.json({ error: "lessonId non valido" }, { status: 400 });
+      return NextResponse.json({ error: "invalid lessonId" }, { status: 400 });
     }
     return NextResponse.json(gates);
   }
 
   if (!body.lessonId || !LESSONS.some((l) => l.id === body.lessonId)) {
-    return NextResponse.json({ error: "lessonId non valido" }, { status: 400 });
+    return NextResponse.json({ error: "invalid lessonId" }, { status: 400 });
   }
 
   if (body.action === "steps" && Array.isArray(body.steps)) {
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
   if (!gates.ok) {
     return NextResponse.json(
       {
-        error: "Gate di completamento non soddisfatti",
+        error: "Completion gates not satisfied",
         code: "gates",
         gates: gates.gates,
       },

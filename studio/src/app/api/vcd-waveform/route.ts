@@ -10,7 +10,7 @@ export async function GET() {
   const data = parseVcdWaveform(vcdPath);
   if (!data) {
     return NextResponse.json(
-      { exists: false, message: "gcd.vcd assente — esegui rtl_sim" },
+      { exists: false, message: "gcd.vcd missing — run rtl_sim" },
       { status: 404 },
     );
   }

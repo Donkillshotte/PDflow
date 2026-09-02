@@ -52,7 +52,7 @@ export const PHASE_LAYOUT: Record<LayoutPhaseId, LayoutPreviewConfig> = {
     orfsReportPng: null,
     guiShot: "03_pdn.png",
     label: "Floorplan · die + PDN straps",
-    layerHint: "Rows + VDD/VSS — le celle arrivano al place",
+    layerHint: "Rows + VDD/VSS — cells arrive at place",
   },
   pdn: {
     phaseId: "pdn",
@@ -70,7 +70,7 @@ export const PHASE_LAYOUT: Record<LayoutPhaseId, LayoutPreviewConfig> = {
     orfsReportPng: "final_placement.webp.png",
     guiShot: "05_place_dp.png",
     label: "Placement · standard cells",
-    layerHint: "Celle legalizzate sulle row",
+    layerHint: "Cells legalized on rows",
   },
   cts: {
     phaseId: "cts",
@@ -87,7 +87,7 @@ export const PHASE_LAYOUT: Record<LayoutPhaseId, LayoutPreviewConfig> = {
     orfsReportPng: "final_routing.webp.png",
     guiShot: "08_route_labeled.png",
     label: "Detailed route · metal layers",
-    layerHint: "Rosso ≈ M2 · verde ≈ M3",
+    layerHint: "Red ≈ M2 · green ≈ M3",
   },
   finish: {
     phaseId: "finish",

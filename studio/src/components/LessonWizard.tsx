@@ -27,11 +27,11 @@ type CheckItem = { id: string; label: string };
 type Gate = { id: string; label: string; ok: boolean; detail?: string };
 
 const STEPS = [
-  { id: "teoria", label: "1 · Teoria", short: "Teoria" },
+  { id: "teoria", label: "1 · Theory", short: "Theory" },
   { id: "lab", label: "2 · LAB", short: "LAB" },
-  { id: "run", label: "3 · Esegui", short: "Esegui" },
-  { id: "risultati", label: "4 · Risultati", short: "Risultati" },
-  { id: "chiudi", label: "5 · Chiudi", short: "Chiudi" },
+  { id: "run", label: "3 · Run", short: "Run" },
+  { id: "risultati", label: "4 · Results", short: "Results" },
+  { id: "chiudi", label: "5 · Close", short: "Close" },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -170,7 +170,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setCompleted(true);
-      push("Lezione segnata come completata", "ok");
+      push("Lesson marked as completed", "ok");
       await refreshGates();
       return;
     }
@@ -178,7 +178,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
       setGates(data.gates);
       setGatesOk(false);
     }
-    const msg = data.error || "Impossibile completare: gate non soddisfatti";
+    const msg = data.error || "Unable to complete: gates not satisfied";
     setCompleteError(msg);
     push(msg, "bad");
   }
@@ -190,7 +190,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
 
   return (
     <div className="wizard">
-      <ol className="wizard-steps" aria-label="Passi lezione">
+      <ol className="wizard-steps" aria-label="Lesson steps">
         {STEPS.map((s, i) => {
           const active = s.id === step;
           const done = doneSteps.includes(s.id);
@@ -216,8 +216,8 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
         {step === "teoria" && (
           <div className="wizard-pane">
             <header className="wizard-pane-head">
-              <h2>Leggi la teoria</h2>
-              <p>Quando hai chiaro il contratto di questa fase, passa al LAB.</p>
+              <h2>Read the theory</h2>
+              <p>Once you understand this phase contract, move on to the LAB.</p>
             </header>
             {lesson.readme ? (
               <MarkdownView
@@ -225,7 +225,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                 basePath={`lessons/${lesson.id}`}
               />
             ) : (
-              <p className="empty-hint">README assente.</p>
+              <p className="empty-hint">README missing.</p>
             )}
           </div>
         )}
@@ -233,10 +233,10 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
         {step === "lab" && (
           <div className="wizard-pane">
             <header className="wizard-pane-head">
-              <h2>Laboratorio interattivo</h2>
+              <h2>Interactive lab</h2>
               <p>
-                Spunta le parti mentre le fai ({checksDone}/
-                {checklist.length || "—"}). Serve almeno metà checklist per chiudere.
+                Check off parts as you go ({checksDone}/
+                {checklist.length || "—"}). At least half the checklist is required to close.
               </p>
             </header>
             {checklist.length > 0 && (
@@ -265,14 +265,14 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
             )}
             {lesson.lab ? (
               <details className="lab-details" open={checklist.length === 0}>
-                <summary>Testo completo LAB.md</summary>
+                <summary>Full LAB.md text</summary>
                 <MarkdownView
                   content={lesson.lab}
                   basePath={`lessons/${lesson.id}`}
                 />
               </details>
             ) : (
-              <p className="empty-hint">LAB assente.</p>
+              <p className="empty-hint">LAB missing.</p>
             )}
           </div>
         )}
@@ -280,10 +280,10 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
         {step === "run" && (
           <div className="wizard-pane">
             <header className="wizard-pane-head">
-              <h2>Esegui · {lesson.makeTarget}</h2>
+              <h2>Run · {lesson.makeTarget}</h2>
               <p>
-                Single-flight: un solo job alla volta. Dipendenze di fase
-                bloccate lato server. Export log e retry disponibili.
+                Single-flight: one job at a time. Phase dependencies
+                enforced server-side. Log export and retry available.
               </p>
             </header>
             <LiveRunConsole
@@ -301,16 +301,16 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
         {step === "risultati" && (
           <div className="wizard-pane">
             <header className="wizard-pane-head">
-              <h2>Ispeziona i risultati</h2>
+              <h2>Inspect the results</h2>
               <p>
-                Confronta artefatti e metriche con{" "}
+                Compare artifacts and metrics with{" "}
                 <Link href="/materiali/reference/golden-metrics.md">
                   golden-metrics
                 </Link>
                 {lesson.id === "07-finish" && (
                   <>
                     {" "}
-                    · catena SPICE:{" "}
+                    · SPICE chain:{" "}
                     <Link href="/materiali/reference/spice-power-chain.md#lezione-07-finish">
                       finish → PKG
                     </Link>
@@ -327,7 +327,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                     {" "}
                     ·{" "}
                     <Link href="/materiali/reference/spice-power-chain.md#lezione-03-floorplan">
-                      griglia → mesh
+                      grid → mesh
                     </Link>
                   </>
                 )}
@@ -345,7 +345,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                 className="btn-ghost"
                 href={`/strumenti?stage=${lesson.makeTarget}&tab=results`}
               >
-                Apri dashboard · {lesson.makeTarget}
+                Open dashboard · {lesson.makeTarget}
               </a>
               <button
                 type="button"
@@ -366,7 +366,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                       t.exists,
                   );
                   if (!pick) {
-                    push("Nessun ODB per questa fase", "bad");
+                    push("No ODB for this phase", "bad");
                     return;
                   }
                   const res = await fetch("/api/open", {
@@ -380,11 +380,11 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                     await navigator.clipboard
                       ?.writeText(body.command)
                       .catch(() => undefined);
-                    push(body.message || "Comando copiato", "info");
-                  } else push(body.message || "Apertura fallita", "bad");
+                    push(body.message || "Command copied", "info");
+                  } else push(body.message || "Open failed", "bad");
                 }}
               >
-                Apri OpenROAD GUI
+                Open OpenROAD GUI
               </button>
             </div>
           </div>
@@ -393,13 +393,13 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
         {step === "chiudi" && (
           <div className="wizard-pane close-pane">
             <header className="wizard-pane-head">
-              <h2>Chiudi la lezione</h2>
+              <h2>Close the lesson</h2>
               <p>
-                Il server rifiuta il completamento se i gate non sono verdi —
-                non basta un click a vuoto.
+                The server rejects completion if gates are not green —
+                an empty click is not enough.
               </p>
             </header>
-            <ul className="gate-list" aria-label="Gate di completamento">
+            <ul className="gate-list" aria-label="Completion gates">
               {gates.map((g) => (
                 <li key={g.id} className={g.ok ? "ok" : "bad"}>
                   <span>{g.ok ? "✓" : "○"}</span>
@@ -410,7 +410,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                 </li>
               ))}
               {gates.length === 0 && (
-                <li className="muted">Caricamento gate…</li>
+                <li className="muted">Loading gates…</li>
               )}
             </ul>
             {completeError && (
@@ -426,20 +426,20 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                 disabled={completed || !gatesOk}
                 title={
                   gatesOk
-                    ? "Segna lezione completata"
-                    : "Completa prima tutti i gate"
+                    ? "Mark lesson completed"
+                    : "Complete all gates first"
                 }
               >
                 {completed
-                  ? "Già nel progresso"
+                  ? "Already in progress"
                   : gatesOk
-                    ? "Segna lezione completata"
-                    : "Gate incompleti"}
+                    ? "Mark lesson completed"
+                    : "Incomplete gates"}
               </button>
               <button type="button" className="btn-ghost" onClick={() => void refreshGates()}>
-                Ricalcola gate
+                Recalculate gates
               </button>
-              {completed && <span className="pill ok">salvata</span>}
+              {completed && <span className="pill ok">saved</span>}
             </div>
           </div>
         )}
@@ -451,19 +451,19 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
             onClick={prevStep}
             disabled={stepIndex === 0}
           >
-            Indietro
+            Back
           </button>
           <span className="muted">
-            Passo {stepIndex + 1}/{STEPS.length}
-            {saving ? " · salvataggio…" : ""}
+            Step {stepIndex + 1}/{STEPS.length}
+            {saving ? " · saving…" : ""}
           </span>
           {step !== "chiudi" ? (
             <button type="button" className="btn-primary" onClick={nextStep}>
-              Avanti
+              Next
             </button>
           ) : (
             <Link href="/lezioni" className="btn-ghost">
-              Torna alle lezioni
+              Back to lessons
             </Link>
           )}
         </footer>

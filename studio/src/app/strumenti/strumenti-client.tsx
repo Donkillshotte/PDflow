@@ -134,7 +134,7 @@ export default function StrumentiClient() {
         list.find((t) => t.stage === stage && t.kind === "openroad" && t.exists) ??
         list.find((t) => t.stage === stage && t.exists);
       if (!pick) {
-        push(`Nessuna GUI pronta per ${stage}`, "bad");
+        push(`No GUI ready for ${stage}`, "bad");
         return;
       }
       const res = await fetch("/api/open", {
@@ -146,8 +146,8 @@ export default function StrumentiClient() {
       if (body.launched) push(body.message, "ok");
       else if (body.command) {
         await navigator.clipboard?.writeText(body.command).catch(() => undefined);
-        push(body.message || "Comando copiato", "info");
-      } else push(body.message || "Apertura fallita", "bad");
+        push(body.message || "Command copied", "info");
+      } else push(body.message || "Open failed", "bad");
     } finally {
       setGuiBusy(false);
     }
@@ -157,33 +157,33 @@ export default function StrumentiClient() {
     <main className="studio-pro-page">
       <header className="studio-pro-banner">
         <div>
-          <p className="studio-pro-eyebrow">OpenROAD Studio · Strumenti</p>
-          <h1>Console, suite e ispezione</h1>
+          <p className="studio-pro-eyebrow">OpenROAD Studio · Tools</p>
+          <h1>Console, suite, and inspection</h1>
           <p>
-            Variant <code>learn</code> per il corso · variant <code>flowlab</code> nel
-            laboratorio interattivo.
+            Variant <code>learn</code> for the course · variant <code>flowlab</code> in the
+            interactive lab.
           </p>
         </div>
         <Link href="/flusso" className="btn-primary">
-          Apri FlowLab →
+          Open FlowLab →
         </Link>
       </header>
 
       <header className="page-head page-head-compact">
         <p>
-          Suite collaborativa: deep-link, palette Ctrl+K, run/inspect/viewer e
-          Apri GUI (OpenROAD / KLayout) sul variant learn.
+          Collaborative suite: deep-link, Ctrl+K palette, run/inspect/viewer and
+          Open GUI (OpenROAD / KLayout) on the learn variant.
         </p>
       </header>
 
       <div className="lesson-actions">
         <button type="button" className="btn-ghost" onClick={refresh} disabled={loading}>
-          {loading ? "Aggiorno…" : "Aggiorna toolchain"}
+          {loading ? "Refreshing…" : "Refresh toolchain"}
         </button>
         {status?.ready ? (
-          <span className="pill ok">ambiente pronto</span>
+          <span className="pill ok">environment ready</span>
         ) : status ? (
-          <span className="pill bad">manca qualcosa</span>
+          <span className="pill bad">something missing</span>
         ) : (
           <span className="pill">…</span>
         )}
@@ -193,11 +193,11 @@ export default function StrumentiClient() {
           onClick={() => void openDefaultGui()}
           disabled={guiBusy}
         >
-          {guiBusy ? "Apro…" : `Apri GUI · ${stage}`}
+          {guiBusy ? "Opening…" : `Open GUI · ${stage}`}
         </button>
       </div>
 
-      <div className="stage-jump" role="navigation" aria-label="Vai alla fase">
+      <div className="stage-jump" role="navigation" aria-label="Go to phase">
         {STAGES.map((s) => (
           <button
             key={s}

@@ -72,7 +72,7 @@ export function PkgHubPanel() {
 
   async function runSignoff(action: string, long: boolean) {
     if (busy) return;
-    if (long && !window.confirm(`Avviare «${action}»? Può richiedere diversi minuti.`)) {
+    if (long && !window.confirm(`Start «${action}»? This may take several minutes.`)) {
       return;
     }
     setBusy(action);
@@ -82,7 +82,7 @@ export function PkgHubPanel() {
         `/api/run/stream?action=${encodeURIComponent(action)}&mode=flowlab`,
         { signal: ac.signal },
       );
-      if (!res.ok || !res.body) throw new Error("Stream non disponibile");
+      if (!res.ok || !res.body) throw new Error("Stream not available");
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let ok = false;
@@ -100,10 +100,10 @@ export function PkgHubPanel() {
           }
         }
       }
-      push(ok ? `${action} completato` : `${action} fallito`, ok ? "ok" : "bad");
+      push(ok ? `${action} completed` : `${action} failed`, ok ? "ok" : "bad");
       void refresh();
     } catch (e) {
-      push(e instanceof Error ? e.message : "Errore run", "bad");
+      push(e instanceof Error ? e.message : "Run error", "bad");
     } finally {
       setBusy(null);
     }
@@ -112,7 +112,7 @@ export function PkgHubPanel() {
   return (
     <section className="pkg-hub-panel panel">
       <header className="pkg-hub-head">
-        <h2>Stato catena power</h2>
+        <h2>Power chain status</h2>
         <p>
           Hook live da suite · report flowlab · signoff rapido.{" "}
           <Link href="/flusso?phase=pkg">FlowLab PKG →</Link>
@@ -143,7 +143,7 @@ export function PkgHubPanel() {
               </p>
             </>
           ) : (
-            <p>Report assente — esegui system_pdn o power_chain.</p>
+            <p>Report missing — run system_pdn or power_chain.</p>
           )}
         </article>
         <article className="pkg-report-card">
@@ -151,7 +151,7 @@ export function PkgHubPanel() {
           {(chipReport as { summary?: string } | null)?.summary ? (
             <p>{(chipReport as { summary: string }).summary}</p>
           ) : (
-            <p>Report assente — esegui chip_pdn_ir dopo finish.</p>
+            <p>Report missing — run chip_pdn_ir after finish.</p>
           )}
         </article>
       </div>

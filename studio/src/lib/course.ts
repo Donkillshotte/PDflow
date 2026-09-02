@@ -19,10 +19,10 @@ export const LESSONS: LessonMeta[] = [
   {
     id: "00-intro",
     num: "00",
-    title: "Introduzione",
+    title: "Introduction",
     duration: "45–60 min",
-    stage: "mappa",
-    blurb: "RTL→GDS, cartelle ORFS, Desktop vs Preview, primo smoke synth.",
+    stage: "map",
+    blurb: "RTL→GDS, ORFS folders, Desktop vs Preview, first synth smoke.",
     makeTarget: "synth",
   },
   {
@@ -40,7 +40,7 @@ export const LESSONS: LessonMeta[] = [
     title: "Synthesis",
     duration: "45–75 min",
     stage: "Yosys",
-    blurb: "Netlist gate-level, synth_stat, 1_synth.odb senza die.",
+    blurb: "Gate-level netlist, synth_stat, 1_synth.odb without die.",
     makeTarget: "synth",
   },
   {
@@ -67,7 +67,7 @@ export const LESSONS: LessonMeta[] = [
     title: "CTS",
     duration: "60–90 min",
     stage: "clock",
-    blurb: "Albero clock, skew, RSZ-0062 vs DPL-0038.",
+    blurb: "Clock tree, skew, RSZ-0062 vs DPL-0038.",
     makeTarget: "cts",
   },
   {
@@ -85,7 +85,7 @@ export const LESSONS: LessonMeta[] = [
     title: "Finish",
     duration: "60–90 min",
     stage: "GDS",
-    blurb: "SPEF, signoff, period_min vs SDC, progetto finale.",
+    blurb: "SPEF, signoff, period_min vs SDC, final project.",
     makeTarget: "finish",
   },
 ];
@@ -217,5 +217,5 @@ export const WALKTHROUGHS = WALKTHROUGH_FILES.map((f) => ({
   href: `/materiali/reference/${f}`,
   title: f.replace("walkthrough-", "").replace(".tcl.md", ""),
   group: "Tcl",
-  description: `Walkthrough annotato ${f}`,
+  description: `Annotated walkthrough ${f}`,
 }));

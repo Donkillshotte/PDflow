@@ -155,7 +155,7 @@ export function listOpenTargets(): {
   for (const stage of Object.keys(STAGE_GUI_TARGETS)) {
     targets.push({
       id: `dash-${stage}`,
-      label: `Dashboard risultati · ${stage}`,
+      label: `Results dashboard · ${stage}`,
       kind: "dashboard",
       href: `/strumenti?stage=${stage}&tab=results`,
       exists: true,
@@ -163,7 +163,7 @@ export function listOpenTargets(): {
     });
     targets.push({
       id: `run-${stage}`,
-      label: `Console run · ${stage}`,
+      label: `Run console · ${stage}`,
       kind: "dashboard",
       href: `/strumenti?stage=${stage}&tab=run&action=${stage}`,
       exists: true,
@@ -180,14 +180,14 @@ export function listOpenTargets(): {
   });
   targets.push({
     id: "dash-inspect",
-    label: "Ispezione tool (STA / ODB / Yosys)",
+    label: "Tool inspection (STA / ODB / Yosys)",
     kind: "dashboard",
     href: "/strumenti?stage=synth&tab=results#inspect",
     exists: true,
   });
   targets.push({
     id: "dash-suite",
-    label: "Suite collaborativa · stato hook",
+    label: "Collaborative suite · hook status",
     kind: "dashboard",
     href: "/strumenti#suite",
     exists: true,
@@ -209,7 +209,7 @@ export function listOpenTargets(): {
 
   // Extended / analysis run actions (deep-link to LiveRunConsole)
   const runActions: { id: string; label: string; action: string }[] = [
-    { id: "run-check", label: "Run · verifica toolchain", action: "check" },
+    { id: "run-check", label: "Run · verify toolchain", action: "check" },
     { id: "run-rtl-sim", label: "Run · sim RTL (Icarus)", action: "rtl_sim" },
     { id: "run-gridcheck", label: "Run · gridcheck PDN", action: "gridcheck" },
     { id: "run-system-pdn", label: "Run · System PDN (hier)", action: "system_pdn" },
@@ -217,7 +217,7 @@ export function listOpenTargets(): {
     { id: "run-vyges-em-ir", label: "Run · vyges-em-ir", action: "vyges_em_ir" },
     { id: "run-dynamic-ir", label: "Run · dynamic IR I(t)", action: "dynamic_ir" },
     { id: "run-dse", label: "Run · DSE fisico-aware", action: "dse" },
-    { id: "run-power-chain", label: "Run · catena SPICE", action: "power_chain" },
+    { id: "run-power-chain", label: "Run · SPICE chain", action: "power_chain" },
     {
       id: "run-export-spice",
       label: "Run · export SPICE lab",
@@ -259,7 +259,7 @@ export function listOpenTargets(): {
       action: "tool_matrix",
     },
     { id: "run-klayout-drc", label: "Run · KLayout DRC", action: "klayout_drc" },
-    { id: "run-test-course", label: "Run · smoke corso", action: "test_course" },
+    { id: "run-test-course", label: "Run · course smoke", action: "test_course" },
   ];
   for (const r of runActions) {
     targets.push({
@@ -289,7 +289,7 @@ export function listOpenTargets(): {
   }
   targets.push({
     id: "gallery",
-    label: "Galleria GUI (screenshot)",
+    label: "GUI gallery (screenshot)",
     kind: "gallery",
     href: "/materiali?tab=gallery",
     exists: true,
@@ -351,7 +351,7 @@ export function listOpenTargets(): {
   for (const id of lessons) {
     targets.push({
       id: `lesson-${id}`,
-      label: `Lezione ${id}`,
+      label: `Lesson ${id}`,
       kind: "lesson",
       href: `/lezioni/${id}`,
       exists: true,
@@ -431,7 +431,7 @@ export function launchExternal(target: OpenTarget): LaunchResult {
     return {
       ok: false,
       launched: false,
-      message: `Artefatto mancante: ${target.artifact ?? target.id}`,
+      message: `Missing artifact: ${target.artifact ?? target.id}`,
       command: target.command,
       display,
     };
@@ -441,7 +441,7 @@ export function launchExternal(target: OpenTarget): LaunchResult {
       ok: false,
       launched: false,
       message:
-        "Nessun DISPLAY (apri Desktop su cursor.com/agents). Comando pronto da copiare.",
+        "No DISPLAY (open Desktop on cursor.com/agents). Command ready to copy.",
       command: target.command,
       display: null,
     };
@@ -458,7 +458,7 @@ export function launchExternal(target: OpenTarget): LaunchResult {
       return {
         ok: true,
         launched: true,
-        message: `KLayout avviato su ${target.artifact}`,
+        message: `KLayout started on ${target.artifact}`,
         command: target.command,
         display,
         pid: child.pid,
@@ -495,7 +495,7 @@ export function launchExternal(target: OpenTarget): LaunchResult {
     return {
       ok: false,
       launched: false,
-      message: "Target non lanciabile esternamente",
+      message: "Target not launchable externally",
       display,
     };
   } catch (e) {

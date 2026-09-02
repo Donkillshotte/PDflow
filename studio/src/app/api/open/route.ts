@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
   if (!target) {
     return NextResponse.json(
-      { error: "target non trovato", ok: false },
+      { error: "target not found", ok: false },
       { status: 404 },
     );
   }
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       launched: false,
       navigate: target.href,
       target,
-      message: `Apri ${target.label}`,
+      message: `Open ${target.label}`,
     });
   }
 
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         target,
         message: target.exists
           ? "dry-run webviewer ok"
-          : `Artefatto mancante: ${target.artifact}`,
+          : `Missing artifact: ${target.artifact}`,
       });
     }
     if (!target.exists || !target.stage) {
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           launched: false,
-          message: `ODB mancante per web viewer (${target.stage ?? "?"})`,
+          message: `Missing ODB for web viewer (${target.stage ?? "?"})`,
           target,
         },
         { status: 412 },
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       command: target.command,
       message: target.exists
         ? "dry-run ok"
-        : `Artefatto mancante: ${target.artifact}`,
+        : `Missing artifact: ${target.artifact}`,
     });
   }
 

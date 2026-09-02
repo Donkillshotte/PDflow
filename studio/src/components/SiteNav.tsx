@@ -6,11 +6,11 @@ import clsx from "clsx";
 
 const LINKS = [
   { href: "/", label: "Studio" },
-  { href: "/flusso", label: "Flusso" },
+  { href: "/flusso", label: "Flow" },
   { href: "/pkg", label: "PKG" },
-  { href: "/lezioni", label: "Lezioni" },
-  { href: "/strumenti", label: "Strumenti" },
-  { href: "/materiali", label: "Materiali" },
+  { href: "/lezioni", label: "Lessons" },
+  { href: "/strumenti", label: "Tools" },
+  { href: "/materiali", label: "Materials" },
 ];
 
 export function SiteNav() {
@@ -21,7 +21,7 @@ export function SiteNav() {
         <span className="brand-word">OpenROAD</span>
         <span className="brand-sub">Physical Design Studio</span>
       </Link>
-      <nav className="nav-links" aria-label="Principale">
+      <nav className="nav-links" aria-label="Main">
         {LINKS.map((l) => {
           const active =
             l.href === "/"

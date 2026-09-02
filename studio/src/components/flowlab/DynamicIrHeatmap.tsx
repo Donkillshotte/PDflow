@@ -302,7 +302,7 @@ export function DynamicIrHeatmap({
       </header>
       {missing || !report?.ok ? (
         <p className="fl-dynir-empty">
-          Report assente — esegui l’azione <code>dynamic_ir</code> dopo finish.
+          Report missing — run the <code>dynamic_ir</code> action after finish.
         </p>
       ) : (
         <>
@@ -623,7 +623,7 @@ export function DynamicIrHeatmap({
           )}
           {tiers && (
             <ChipList
-              label="Livelli prodotto"
+              label="Product tiers"
               items={[
                 { key: "FAST", status: tiers.FAST?.status, text: "FAST" },
                 {
@@ -740,8 +740,8 @@ export function DynamicIrHeatmap({
           )}
           {worstScen && !worstScen.primary && (
             <p className="fl-dynir-hotspot">
-              Ranking: il peggiore è {worstScen.mode} ({worstScen.droop_mv?.toFixed(2)} mV),
-              non il modo corrente.
+              Ranking: worst is {worstScen.mode} ({worstScen.droop_mv?.toFixed(2)} mV),
+              not the current mode.
             </p>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}

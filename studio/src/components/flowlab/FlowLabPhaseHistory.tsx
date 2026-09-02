@@ -22,7 +22,7 @@ export function FlowLabPhaseHistory({
   if (loading) {
     return (
       <div className="fl-phase-history fl-phase-history-loading" aria-busy="true">
-        <span className="fl-pulse">Carico storico {phaseLabel}…</span>
+        <span className="fl-pulse">Loading {phaseLabel} history…</span>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export function FlowLabPhaseHistory({
   return (
     <div className="fl-phase-history">
       <div className="fl-phase-history-head">
-        <strong>Storico run · {phaseLabel}</strong>
+        <strong>Run history · {phaseLabel}</strong>
         <span>{runs.length} recenti</span>
       </div>
       <ul className="fl-phase-history-list">

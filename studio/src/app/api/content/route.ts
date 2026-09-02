@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const rel = url.searchParams.get("path") ?? "";
   const abs = resolveLearnContent(rel);
   if (!abs) {
-    return NextResponse.json({ error: "Percorso non consentito" }, { status: 404 });
+    return NextResponse.json({ error: "Path not allowed" }, { status: 404 });
   }
   const ext = path.extname(abs).toLowerCase();
   if (ext === ".svg") {

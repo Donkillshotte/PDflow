@@ -17,15 +17,15 @@ type StreamEvent =
 
 const PIPELINE_ACTIONS = [
   { id: "check", label: "Verifica toolchain", hint: "openroad · yosys · sta · klayout" },
-  { id: "rtl_sim", label: "Sim RTL (Icarus)", hint: "GCD + VCD" },
-  { id: "status", label: "Progresso corso", hint: "lezioni completate" },
-  { id: "synth", label: "Esegui synth", hint: "~30s" },
-  { id: "floorplan", label: "Esegui floorplan", hint: "die / PDN" },
+  { id: "rtl_sim", label: "RTL sim (Icarus)", hint: "GCD + VCD" },
+  { id: "status", label: "Course progress", hint: "lessons completed" },
+  { id: "synth", label: "Run synth", hint: "~30s" },
+  { id: "floorplan", label: "Run floorplan", hint: "die / PDN" },
   { id: "gridcheck", label: "Gridcheck PDN", hint: "check_power_grid" },
-  { id: "place", label: "Esegui place", hint: "GP → DP" },
-  { id: "cts", label: "Esegui CTS", hint: "minuti · conferma" },
-  { id: "route", label: "Esegui route", hint: "lungo · conferma" },
-  { id: "finish", label: "Esegui finish", hint: "GDS · conferma" },
+  { id: "place", label: "Run place", hint: "GP → DP" },
+  { id: "cts", label: "Run CTS", hint: "minutes · confirm" },
+  { id: "route", label: "Run route", hint: "long · confirm" },
+  { id: "finish", label: "Run finish", hint: "GDS · confirm" },
 ] as const;
 
 /** Post-finish: power chain + signoff (aligned with POST_FINISH_ACTIONS in actions.ts). */
@@ -37,22 +37,22 @@ const POST_FINISH_CHIPS = [
   { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "A DirectLU current_run · B SA-AMG" },
   { id: "dse", label: "DSE fisico-aware", hint: "e-graph · BOiLS · oracolo IR" },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
-  { id: "power_chain", label: "Catena SPICE", hint: "activity→IR→system" },
+  { id: "power_chain", label: "SPICE chain", hint: "activity→IR→system" },
   { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },
   { id: "sta_signoff", label: "STA signoff", hint: "timing vs golden" },
   { id: "drc_signoff", label: "DRC signoff", hint: "route + GDS DRC" },
   { id: "klayout_lvs", label: "LVS signoff", hint: "GDS vs netlist" },
   { id: "power_signoff", label: "Power signoff", hint: "IR/droop/Zmax" },
-  { id: "signoff_all", label: "Signoff completo", hint: "4 pilastri · lungo" },
-  { id: "thermal_signoff", label: "Thermal proxy", hint: "IR+droop Fase 2" },
+  { id: "signoff_all", label: "Full signoff", hint: "4 pillars · long" },
+  { id: "thermal_signoff", label: "Thermal proxy", hint: "IR+droop Phase 2" },
   { id: "pkg_signoff", label: "PKG signoff", hint: "bump/RDL/system" },
-  { id: "signoff_phase2", label: "Signoff Fase 2", hint: "thermal + PKG" },
+  { id: "signoff_phase2", label: "Signoff Phase 2", hint: "thermal + PKG" },
   { id: "yosys_equiv", label: "Yosys equiv", hint: "EQY-class RTL↔synth" },
   { id: "formal_gcd", label: "Formal SAT", hint: "sby-class tempinduct" },
   { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },
   { id: "analytical_pex", label: "PEX analitico", hint: "FasterCap-class FDM" },
   { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
-  { id: "tool_matrix", label: "Tool matrix", hint: "tutti i check OSS" },
+  { id: "tool_matrix", label: "Tool matrix", hint: "all OSS checks" },
 ] as const;
 
 const STAGE_ACTIONS = [...PIPELINE_ACTIONS, ...POST_FINISH_CHIPS];
@@ -108,14 +108,14 @@ export function LiveRunConsole({
   }, []);
 
   function exportLog() {
-    const blob = new Blob([log || "(vuoto)"], { type: "text/plain" });
+    const blob = new Blob([log || "(empty)"], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `run-${lastActionRef.current}-${Date.now()}.log`;
     a.click();
     URL.revokeObjectURL(url);
-    push("Log esportato", "ok");
+    push("Log exported", "ok");
   }
 
   async function cancel() {
@@ -179,7 +179,7 @@ export function LiveRunConsole({
       }
       if (!res.body) {
         setOk(false);
-        setLog("Nessun body SSE");
+        setLog("No SSE body");
         setRunning(false);
         return;
       }
@@ -218,7 +218,7 @@ export function LiveRunConsole({
                 `\n—— fine · ${ev.status ?? (ev.ok ? "ok" : "error")} · exit ${ev.code ?? "?"} · ${formatMs(ev.ms)} ——\n`,
             );
             push(
-              ev.ok ? `${a} completato` : `${a} fallito (exit ${ev.code})`,
+              ev.ok ? `${a} completed` : `${a} failed (exit ${ev.code})`,
               ev.ok ? "ok" : "bad",
             );
           }
@@ -234,7 +234,7 @@ export function LiveRunConsole({
       } else {
         setOk(false);
         setLog((prev) => prev + `\n${e instanceof Error ? e.message : String(e)}\n`);
-        push("Errore di rete sul run", "bad");
+        push("Network error on run", "bad");
       }
       setRunning(false);
       if (tickRef.current) window.clearInterval(tickRef.current);
@@ -245,7 +245,7 @@ export function LiveRunConsole({
   return (
     <div className={clsx("run-console", compact && "run-console-compact")}>
       {!compact && (
-        <div className="run-actions" role="group" aria-label="Azioni pipeline">
+        <div className="run-actions" role="group" aria-label="Pipeline actions">
           {STAGE_ACTIONS.map((s) => (
             <button
               key={s.id}
@@ -265,7 +265,7 @@ export function LiveRunConsole({
         {!running ? (
           <>
             <button type="button" className="btn-primary" onClick={() => requestRun()}>
-              {compact ? `Lancia ${action}` : "Esegui"}
+              {compact ? `Launch ${action}` : "Run"}
             </button>
             {ok === false && (
               <button
@@ -273,7 +273,7 @@ export function LiveRunConsole({
                 className="btn-ghost"
                 onClick={() => requestRun(lastActionRef.current)}
               >
-                Riprova
+                Retry
               </button>
             )}
             {log && (
@@ -284,12 +284,12 @@ export function LiveRunConsole({
           </>
         ) : (
           <button type="button" className="btn-danger" onClick={cancel}>
-            Annulla
+            Cancel
           </button>
         )}
         {running && <span className="pill live">live · {formatMs(elapsed)}</span>}
         {ok === true && <span className="pill ok">OK</span>}
-        {ok === false && <span className="pill bad">Errore</span>}
+        {ok === false && <span className="pill bad">Error</span>}
         {command && !running && <span className="mono-hint">{command}</span>}
       </div>
       {blockMsg && (
@@ -307,16 +307,16 @@ export function LiveRunConsole({
       )}
       {(log || running) && (
         <pre className="run-log" ref={logRef} aria-live="polite" tabIndex={0}>
-          {log || "In attesa del primo output…"}
+          {log || "Waiting for first output…"}
           {running && <span className="cursor-blink">▍</span>}
         </pre>
       )}
 
       <ConfirmDialog
         open={confirmOpen}
-        title={`Confermare ${pendingAction}?`}
-        body="Questa fase può richiedere diversi minuti e tiene il lock della pipeline. Continua solo se le dipendenze precedenti sono complete."
-        confirmLabel="Avvia comunque"
+        title={`Confirmre ${pendingAction}?`}
+        body="This phase may take several minutes and holds the pipeline lock. Continue only if previous dependencies are complete."
+        confirmLabel="Start comunque"
         danger
         onCancel={() => {
           setConfirmOpen(false);

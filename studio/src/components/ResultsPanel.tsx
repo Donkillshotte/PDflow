@@ -70,7 +70,7 @@ export function ResultsPanel({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "errore");
+      setError(e instanceof Error ? e.message : "error");
     } finally {
       setLoading(false);
     }
@@ -93,9 +93,9 @@ export function ResultsPanel({
         push(body.message || `Aperto ${name}`, "ok");
       } else if (body.command) {
         await navigator.clipboard?.writeText(body.command).catch(() => undefined);
-        push(body.message || "Comando copiato — apri Desktop", "info");
+        push(body.message || "Command copied — open Desktop", "info");
       } else {
-        push(body.message || body.error || "Apertura fallita", "bad");
+        push(body.message || body.error || "Open failed", "bad");
       }
     } finally {
       setBusy(null);
@@ -103,14 +103,14 @@ export function ResultsPanel({
   }
 
   if (loading && !data) {
-    return <div className="results-panel muted">Carico artefatti…</div>;
+    return <div className="results-panel muted">Loading artifacts…</div>;
   }
   if (error) {
     return (
       <div className="results-panel">
         <p className="pill bad">{error}</p>
         <button type="button" className="btn-ghost" onClick={load}>
-          Riprova
+          Retry
         </button>
       </div>
     );
@@ -123,13 +123,13 @@ export function ResultsPanel({
   return (
     <div className="results-panel" id="results-panel">
       <div className="results-head">
-        <h3>Risultati · {stage}</h3>
+        <h3>Results · {stage}</h3>
         <div className="lesson-actions">
           <a className="btn-ghost btn-tiny" href={`/strumenti?stage=${stage}&tab=results`}>
             Permalink
           </a>
           <button type="button" className="btn-ghost" onClick={load}>
-            Aggiorna
+            Refresh
           </button>
         </div>
       </div>
@@ -137,7 +137,7 @@ export function ResultsPanel({
       {total > 0 && (
         <>
           <p className="muted">
-            Artefatti: <strong>{ready}/{total}</strong> — Apri ODB in OpenROAD o
+            Artifacts: <strong>{ready}/{total}</strong> — Open ODB in OpenROAD o
             GDS in KLayout (Desktop).
           </p>
           <ul className="artifact-list">
@@ -148,7 +148,7 @@ export function ResultsPanel({
                 <em>
                   {a.exists
                     ? `${fmtSize(a.size)}${a.mtime ? ` · ${new Date(a.mtime).toLocaleString()}` : ""}`
-                    : "mancante"}
+                    : "missing"}
                 </em>
                 {a.exists && canOpenExternally(a.name) && (
                   <button
@@ -157,7 +157,7 @@ export function ResultsPanel({
                     disabled={busy === a.name}
                     onClick={() => void openArtifact(a.name)}
                   >
-                    {busy === a.name ? "…" : "Apri GUI"}
+                    {busy === a.name ? "…" : "Open GUI"}
                   </button>
                 )}
               </li>
@@ -179,7 +179,7 @@ export function ResultsPanel({
                   <code>{c.code}</code>
                   <span>
                     ×{c.count}
-                    {c.noise ? " · rumore atteso" : ""}
+                    {c.noise ? " · expected noise" : ""}
                   </span>
                 </li>
               ))}
@@ -188,8 +188,8 @@ export function ResultsPanel({
           {data.logDigest.noteworthy.length > 0 && (
             <p className="muted">
               Note: {data.logDigest.noteworthy.map((n) => n.code).join(", ")} —
-              su GCD nangate45 un WNS≈−0.04 con qualche setup violation è il
-              golden del corso, non un bug del wrapper.
+              on GCD nangate45 a WNS≈−0.04 with some setup violations is the
+              course golden, not a wrapper bug.
             </p>
           )}
         </div>
@@ -197,14 +197,14 @@ export function ResultsPanel({
 
       {data.metrics.length > 0 && (
         <div className="metric-block">
-          <h4>Metriche dai tuoi report</h4>
+          <h4>Metrics dai tuoi report</h4>
           <ul className="metric-list">
             {data.metrics.map((m, i) => (
               <li key={`${m.source}-${i}`}>
                 <code>{m.source}</code>
                 <span>
                   {m.value}
-                  {m.expected ? " · atteso (golden)" : ""}
+                  {m.expected ? " · expected (golden)" : ""}
                 </span>
               </li>
             ))}
@@ -215,8 +215,8 @@ export function ResultsPanel({
       {data.goldenHints.length > 0 && (
         <div className="metric-block golden">
           <h4>
-            Riferimento golden{" "}
-            <a href="/materiali/reference/golden-metrics.md">apri tabella</a>
+            Golden reference{" "}
+            <a href="/materiali/reference/golden-metrics.md">open table</a>
           </h4>
           <ul className="metric-list">
             {data.goldenHints.map((g) => (
@@ -231,7 +231,7 @@ export function ResultsPanel({
 
       {total > 0 && ready === 0 && (
         <p className="empty-hint">
-          Nessun artefatto ancora: lancia la fase, poi premi Aggiorna.
+          No artifacts yet: run the phase, then press Refresh.
         </p>
       )}
     </div>

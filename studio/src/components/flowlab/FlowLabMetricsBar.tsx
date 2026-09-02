@@ -95,7 +95,7 @@ export function FlowLabMetricsBar({
             <span>ORFS log</span>
             <strong>
               {digest.errors}E / {digest.warnings}W
-              {digest.noiseWarnings > 0 ? ` · ${digest.noiseWarnings} rumore` : ""}
+              {digest.noiseWarnings > 0 ? ` · ${digest.noiseWarnings} noise` : ""}
             </strong>
           </div>
         </div>
@@ -104,7 +104,7 @@ export function FlowLabMetricsBar({
         <div className={clsx("fl-metric-card", wnsExpected ? "accent" : "accent")}>
           <Clock size={16} aria-hidden />
           <div>
-            <span>WNS{wnsExpected ? " · atteso" : ""}</span>
+            <span>WNS{wnsExpected ? " · expected" : ""}</span>
             <strong className={clsx(!wnsExpected && wns.trim().startsWith("-") && "warn")}>
               {wns}
             </strong>
@@ -115,8 +115,8 @@ export function FlowLabMetricsBar({
         <div className="fl-metric-card muted-card">
           <Box size={16} aria-hidden />
           <div>
-            <span>Metriche</span>
-            <strong>Esegui la fase</strong>
+            <span>Metrics</span>
+            <strong>Run the phase</strong>
           </div>
         </div>
       )}

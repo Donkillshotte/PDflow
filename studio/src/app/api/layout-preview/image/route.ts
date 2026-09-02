@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     if (!abs) {
       const invalid = !/^[A-Za-z0-9._-]+\.(png|webp|jpe?g)$/.test(shot);
       return NextResponse.json(
-        { error: invalid ? "shot non valido" : "shot assente" },
+        { error: invalid ? "invalid shot" : "shot missing" },
         { status: invalid ? 400 : 404 },
       );
     }
@@ -52,13 +52,13 @@ export async function GET(req: Request) {
   const variant = url.searchParams.get("variant") || "flowlab";
 
   if (!PHASES.has(phase)) {
-    return NextResponse.json({ error: "phase non valido" }, { status: 400 });
+    return NextResponse.json({ error: "invalid phase" }, { status: 400 });
   }
 
   const resolved = resolveLayoutImageAbs(phase, variant);
   if (!resolved) {
     return NextResponse.json(
-      { error: "Preview assente — esegui la fase o genera da ODB" },
+      { error: "Preview missing — run the phase or generate from ODB" },
       { status: 404 },
     );
   }

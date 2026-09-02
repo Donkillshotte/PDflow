@@ -285,11 +285,11 @@ export function evaluateLessonGates(input: {
   const gates: CompletionGate[] = [
     {
       id: "teoria",
-      label: "Teoria consultata",
+      label: "Theory consultata",
       ok: theoryOk,
       detail: theoryOk
-        ? "passo Teoria completato"
-        : "apri e conferma il passo Teoria",
+        ? "Theory step completed"
+        : "open and confirm the Theory step",
     },
     {
       id: "lab",
@@ -304,24 +304,24 @@ export function evaluateLessonGates(input: {
       detail: lastOkJob
         ? `job ${lastOkJob.id.slice(0, 8)}… ok`
         : !runOk
-          ? "completa il passo Esegui con un run riuscito"
+          ? "complete the Run step with a successful run"
           : artifactsOk
-            ? "artefatti presenti (run precedente)"
-            : "esegui la fase con successo",
+            ? "artifacts present (previous run)"
+            : "run the phase successfully",
     },
     {
-      id: "artefatti",
-      label: "Artefatti presenti",
+      id: "artifacts",
+      label: "Artifacts presenti",
       ok: artifactsOk,
       detail: `${results.artifacts.filter((a) => a.exists).length}/${results.artifacts.length}`,
     },
     {
       id: "risultati",
-      label: "Risultati ispezionati",
+      label: "Results inspected",
       ok: inspectOk,
       detail: inspectOk
-        ? "passo Risultati completato"
-        : "apri il passo Risultati",
+        ? "Results step completed"
+        : "open the Results step",
     },
   ];
 
@@ -348,87 +348,87 @@ export function preflightAction(
   const needFile: Record<string, { rel: string; hint: string }> = {
     gridcheck: {
       rel: "2_4_floorplan_pdn.odb",
-      hint: "esegui prima floorplan (PDN)",
+      hint: "run floorplan first (PDN)",
     },
     activity_power: {
       rel: "6_final.odb",
-      hint: "esegui prima finish",
+      hint: "run finish first",
     },
     vectorless: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (vectorless/dynamic)",
+      hint: "run finish first (vectorless/dynamic)",
     },
     openrcx_report: {
       rel: "6_final.spef",
-      hint: "esegui prima finish (OpenRCX SPEF)",
+      hint: "run finish first (OpenRCX SPEF)",
     },
     chip_pdn_ir: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (mesh SPICE)",
+      hint: "run finish first (mesh SPICE)",
     },
     vyges_em_ir: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (vyges-em-ir sulla mesh PDN)",
+      hint: "run finish first (vyges-em-ir on PDN mesh)",
     },
     dynamic_ir: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (dynamic IR I(t) sulla mesh PDN)",
+      hint: "run finish first (dynamic IR I(t) on PDN mesh)",
     },
     power_chain: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (catena power completa)",
+      hint: "run finish first (full power chain)",
     },
     export_spice_lab: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (export mesh SPICE)",
+      hint: "run finish first (export mesh SPICE)",
     },
     system_pdn: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (I_die da activity/chip IR)",
+      hint: "run finish first (I_die from activity/chip IR)",
     },
     klayout_drc: {
       rel: "6_final.gds",
-      hint: "esegui prima finish (GDS)",
+      hint: "run finish first (GDS)",
     },
     sta_signoff: {
       rel: "6_final.v",
-      hint: "esegui prima finish (netlist SPEF)",
+      hint: "run finish first (netlist SPEF)",
     },
     drc_signoff: {
       rel: "6_final.gds",
-      hint: "esegui prima finish (GDS DRC)",
+      hint: "run finish first (GDS DRC)",
     },
     klayout_lvs: {
       rel: "6_final.gds",
-      hint: "esegui prima finish (LVS GDS vs CDL)",
+      hint: "run finish first (LVS GDS vs CDL)",
     },
     power_signoff: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (catena power)",
+      hint: "run finish first (power chain)",
     },
     signoff_all: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (signoff completo)",
+      hint: "run finish first (full signoff)",
     },
     thermal_signoff: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (chip IR per proxy thermal)",
+      hint: "run finish first (chip IR for thermal proxy)",
     },
     pkg_bump: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (mesh SPICE bump)",
+      hint: "run finish first (mesh SPICE bump)",
     },
     pkg_rdl: {
       rel: "6_final.gds",
-      hint: "esegui prima finish (GDS per lab RDL)",
+      hint: "run finish first (GDS for lab RDL)",
     },
     pkg_signoff: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (PKG signoff)",
+      hint: "run finish first (PKG signoff)",
     },
     signoff_phase2: {
       rel: "6_final.odb",
-      hint: "esegui prima finish (signoff Fase 2 thermal+pkg)",
+      hint: "run finish first (signoff Phase 2 thermal+pkg)",
     },
   };
   const need = needFile[action];
@@ -441,7 +441,7 @@ export function preflightAction(
       return {
         ok: false,
         code: "deps",
-        message: `Artefatto mancante «${need.rel}»: ${need.hint}.`,
+        message: `Missing artifact «${need.rel}»: ${need.hint}.`,
         missing: [need.rel],
       };
     }
@@ -462,7 +462,7 @@ export function preflightAction(
       return {
         ok: false,
         code: "deps",
-        message: "Manca RTL o testbench GCD.",
+        message: "Missing RTL or GCD testbench.",
         missing: ["gcd.v", "tb_gcd.v"],
       };
     }
@@ -473,7 +473,7 @@ export function preflightAction(
     return {
       ok: false,
       code: "deps",
-      message: `Dipendenza mancante: esegui prima «${dep.dep}» (artefatti assenti: ${dep.missing.join(", ") || "tutti"}).`,
+      message: `Missing dependency: run «${dep.dep}» first (missing artifacts: ${dep.missing.join(", ") || "all"}).`,
       dep: dep.dep,
       missing: dep.missing,
     };
@@ -483,7 +483,7 @@ export function preflightAction(
     return {
       ok: false,
       code: "locked",
-      message: `Un job è già in corso (${lock.action}, da ${lock.startedAt}).`,
+      message: `A job is already running (${lock.action}, since ${lock.startedAt}).`,
       lock,
     };
   }

@@ -33,7 +33,7 @@ const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "vectorless",
     label: "Vectorless / dynamic",
-    hint: "Najm P01 · IR senza vettori",
+    hint: "Najm P01 · IR without vectors",
     icon: Zap,
     long: false,
   },
@@ -81,7 +81,7 @@ const POWER_ACTIONS: SignoffAction[] = [
   },
   {
     id: "power_chain",
-    label: "Catena SPICE",
+    label: "SPICE chain",
     hint: "activity → chip IR → system → lab",
     icon: Activity,
     long: true,
@@ -147,8 +147,8 @@ const FINISH_ACTIONS: SignoffAction[] = [
   },
   {
     id: "klayout_drc",
-    label: "KLayout DRC (solo GDS)",
-    hint: "Legacy · usa drc_signoff per unificato",
+    label: "KLayout DRC (GDS only)",
+    hint: "Legacy · use drc_signoff for unified",
     icon: ShieldCheck,
     long: true,
   },
@@ -185,7 +185,7 @@ const PHASE2_ACTIONS: SignoffAction[] = [
   },
   {
     id: "signoff_phase2",
-    label: "Signoff Fase 2",
+    label: "Signoff Phase 2",
     hint: "Thermal proxy + PKG bump/RDL",
     icon: Package,
     long: false,
@@ -247,7 +247,7 @@ export function FlowLabSignoff({
         <>
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
           <div className="fl-signoff-head">
-            <strong>Azioni signoff timing / geometria / LVS</strong>
+            <strong>Signoff actions timing / geometry / LVS</strong>
             <p>
               Docs{" "}
               <a href="/materiali/reference/signoff-matrix.md">signoff-matrix</a> ·{" "}
@@ -268,7 +268,7 @@ export function FlowLabSignoff({
           <div className="fl-signoff-head">
             <strong>Signoff power &amp; SPICE</strong>
             <p>
-              Catena: VCD/activity → <strong>vectorless</strong> → chip mesh → vyges-em-ir →{" "}
+              Chain: VCD/activity → <strong>vectorless</strong> → chip mesh → vyges-em-ir →{" "}
               <strong>dynamic IR I(t)</strong> → System PDN. Docs{" "}
               <a href="/materiali/reference/spice-power-chain.md">spice-power-chain</a>
               {" · "}
@@ -289,7 +289,7 @@ export function FlowLabSignoff({
           {(mode === "full") && (
             <>
               <div className="fl-signoff-head">
-                <strong>Fase 2 · PKG &amp; thermal</strong>
+                <strong>Phase 2 · PKG &amp; thermal</strong>
                 <p>
                   Proxy educativi ·{" "}
                   <a href="/materiali/reference/pkg-design-package.md">pkg-design-package</a>

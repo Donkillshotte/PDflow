@@ -19,12 +19,12 @@ type OpenTarget = {
 
 const KIND_LABEL: Record<string, string> = {
   dashboard: "Dashboard",
-  gallery: "Galleria",
-  doc: "Documento",
-  lesson: "Lezione",
+  gallery: "Gallery",
+  doc: "Document",
+  lesson: "Lesson",
   openroad: "OpenROAD GUI",
   klayout: "KLayout",
-  run: "Esegui",
+  run: "Run",
   webviewer: "Web Viewer",
 };
 
@@ -108,7 +108,7 @@ export function CommandPalette() {
 
     if (t.kind === "webviewer") {
       if (!t.exists) {
-        push(`Manca ODB per ${t.stage ?? t.label}`, "bad");
+        push(`Missing ODB for ${t.stage ?? t.label}`, "bad");
         return;
       }
       const res = await fetch("/api/open", {
@@ -118,7 +118,7 @@ export function CommandPalette() {
       });
       const data = await res.json();
       if (data.ok && data.url) {
-        push(data.message || "Web viewer avviato", "ok");
+        push(data.message || "Web viewer started", "ok");
         if (data.navigate) router.push(data.navigate);
         window.setTimeout(() => {
           window.open(data.url, "_blank", "noopener,noreferrer");
@@ -126,12 +126,12 @@ export function CommandPalette() {
         setOpen(false);
         return;
       }
-      push(data.message || "Web viewer non avviato", "bad");
+      push(data.message || "Web viewer not started", "bad");
       return;
     }
 
     if (!t.exists) {
-      push(`Manca ${t.artifact ?? t.label}`, "bad");
+      push(`Missing ${t.artifact ?? t.label}`, "bad");
       return;
     }
 
@@ -147,17 +147,17 @@ export function CommandPalette() {
       return;
     }
     if (data.launched) {
-      push(data.message || "GUI avviata — apri Desktop", "ok");
+      push(data.message || "GUI started — open Desktop", "ok");
       setOpen(false);
       return;
     }
     if (data.command) {
       await navigator.clipboard?.writeText(data.command).catch(() => undefined);
-      push(data.message || "Comando copiato (serve Desktop)", "info");
+      push(data.message || "Command copied (Desktop required)", "info");
       setOpen(false);
       return;
     }
-    push(data.message || "Impossibile aprire", "bad");
+    push(data.message || "Unable to open", "bad");
   }
 
   if (!open) {
@@ -166,8 +166,8 @@ export function CommandPalette() {
         type="button"
         className="cmd-trigger"
         onClick={() => setOpen(true)}
-        title="Palette comandi (Ctrl+K)"
-        aria-label="Apri palette comandi"
+        title="Command palette (Ctrl+K)"
+        aria-label="Open command palette"
       >
         ⌘K
       </button>
@@ -184,7 +184,7 @@ export function CommandPalette() {
         className="cmd-palette"
         role="dialog"
         aria-modal="true"
-        aria-label="Palette comandi"
+        aria-label="Command palette"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="cmd-head">
@@ -192,8 +192,8 @@ export function CommandPalette() {
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Apri dashboard, run, lezione, OpenROAD, web viewer…"
-            aria-label="Cerca comando"
+            placeholder="Open dashboard, run, lesson, OpenROAD, web viewer…"
+            aria-label="Search command"
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -208,12 +208,12 @@ export function CommandPalette() {
             }}
           />
           <span className="muted">
-            {display ? `DISPLAY ${display}` : "no DISPLAY · copia comando"}
+            {display ? `DISPLAY ${display}` : "no DISPLAY · copy command"}
           </span>
         </header>
         <ul className="cmd-list" role="listbox">
           {filtered.length === 0 && (
-            <li className="muted cmd-empty">Nessun risultato</li>
+            <li className="muted cmd-empty">No results</li>
           )}
           {filtered.map((t, i) => (
             <li key={t.id}>
@@ -231,12 +231,12 @@ export function CommandPalette() {
               >
                 <span className="cmd-kind">{KIND_LABEL[t.kind] ?? t.kind}</span>
                 <span className="cmd-label">{t.label}</span>
-                {!t.exists && <em className="pill bad">manca</em>}
+                {!t.exists && <em className="pill bad">missing</em>}
                 {t.exists &&
                   (t.kind === "openroad" ||
                     t.kind === "klayout" ||
                     t.kind === "webviewer") && (
-                    <em className="pill ok">apri</em>
+                    <em className="pill ok">open</em>
                   )}
                 {t.kind === "run" && <em className="pill ok">run</em>}
               </button>
@@ -244,7 +244,7 @@ export function CommandPalette() {
           ))}
         </ul>
         <footer className="cmd-foot muted">
-          ↑↓ naviga · Enter apri · Esc chiudi · Ctrl+K
+          ↑↓ navigate · Enter open · Esc close · Ctrl+K
         </footer>
       </div>
     </div>

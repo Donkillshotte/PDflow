@@ -19,12 +19,12 @@ export function FlowLabPowerChain({
   return (
     <section
       className={clsx("fl-power-chain", compact && "fl-power-chain-compact")}
-      aria-label="Catena power e SPICE"
+      aria-label="Power and SPICE chain"
     >
       <div className="fl-power-chain-head">
-        <strong>Catena RTL → PKG</strong>
+        <strong>RTL → PKG chain</strong>
         <Link href="/materiali/reference/spice-power-chain.md">
-          Guida SPICE completa
+          Full SPICE guide
         </Link>
       </div>
 
@@ -72,7 +72,7 @@ export function FlowLabPowerChain({
             </ul>
           </div>
           <div className="fl-power-chain-col fl-power-chain-spice">
-            <span className="fl-power-chain-k">Lezione corso</span>
+            <span className="fl-power-chain-k">Course lesson</span>
             <p>
               {current.lessonIds.map((id, i) => (
                 <span key={id}>
@@ -110,7 +110,7 @@ export function FlowLabPowerChain({
           </ul>
           <p className="fl-power-chain-note">
             Lab netlist: <code>learn/sim/spice/</code> · export con{" "}
-            <code>export_spice_lab.sh</code> · catena con{" "}
+            <code>export_spice_lab.sh</code> · chain with{" "}
             <code>run_power_chain.sh</code>
           </p>
         </div>

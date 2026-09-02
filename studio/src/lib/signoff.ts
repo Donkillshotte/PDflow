@@ -65,7 +65,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   },
   {
     id: "equivalence",
-    label: "Equivalenza (LVS)",
+    label: "Equivalence (LVS)",
     description: "GDS vs CDL via ORFS make lvs",
     status: "active",
     orchestratorAction: "klayout_lvs",
@@ -147,7 +147,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   },
 ];
 
-/** Fase 2 — packaging + thermal proxy (extended-flow §8–9). */
+/** Phase 2 — packaging + thermal proxy (extended-flow §8–9). */
 export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
   {
     id: "pkg",
@@ -194,7 +194,7 @@ export const ALL_SIGNOFF_PILLARS = [...SIGNOFF_PILLARS, ...SIGNOFF_PLANNED_PILLA
 
 export const SIGNOFF_ORCHESTRATOR = {
   id: "signoff_all",
-  label: "Signoff completo",
+  label: "Full signoff",
   action: "signoff_all",
   script: "learn/scripts/run_signoff_all.sh",
   reportRel: "sim/reports/signoff_all_{variant}.json",
@@ -204,7 +204,7 @@ export const SIGNOFF_ORCHESTRATOR = {
 
 export const SIGNOFF_PHASE2_ORCHESTRATOR = {
   id: "signoff_phase2",
-  label: "Signoff Fase 2",
+  label: "Signoff Phase 2",
   action: "signoff_phase2",
   script: "learn/scripts/run_signoff_phase2.sh",
   reportRel: "sim/reports/signoff_phase2_{variant}.json",
@@ -333,8 +333,8 @@ export function evaluateSignoffGates(variant = "flowlab"): {
       label: pillar.label,
       ok: pillarOk,
       detail: orchReport
-        ? (orchReport.summary as string) || (pillarOk ? "report ok" : "soglie golden")
-        : "report assente — esegui signoff",
+        ? (orchReport.summary as string) || (pillarOk ? "report ok" : "golden thresholds")
+        : "report missing — run signoff",
       action: pillar.orchestratorAction,
     });
 
@@ -354,8 +354,8 @@ export function evaluateSignoffGates(variant = "flowlab"): {
         detail: exists
           ? stampOk
             ? rel
-            : `manca stamp ${check.stampRel}`
-          : "artefatto assente",
+            : `missing stamp ${check.stampRel}`
+          : "artifact missing",
         action: check.action,
       });
     }
@@ -367,9 +367,9 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   gates.push({
     id: "signoff_all",
     pillar: "timing",
-    label: "Signoff completo",
+    label: "Full signoff",
     ok: allReport?.ok === true,
-    detail: allReport ? String(allReport.summary ?? "signoff_all") : "non eseguito",
+    detail: allReport ? String(allReport.summary ?? "signoff_all") : "not run",
     action: SIGNOFF_ORCHESTRATOR.action,
   });
 
@@ -387,8 +387,8 @@ export function evaluateSignoffGates(variant = "flowlab"): {
       label: pillar.label,
       ok: pillarOk,
       detail: orchReport
-        ? (orchReport.summary as string) || (pillarOk ? "report ok" : "soglie / proxy")
-        : "report assente — esegui signoff Fase 2",
+        ? (orchReport.summary as string) || (pillarOk ? "report ok" : "thresholds / proxy")
+        : "report missing — run signoff Phase 2",
       action: pillar.orchestratorAction,
     });
   }
@@ -399,9 +399,9 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   gates.push({
     id: "signoff_phase2",
     pillar: "thermal",
-    label: "Signoff Fase 2",
+    label: "Signoff Phase 2",
     ok: ph2Report?.ok === true,
-    detail: ph2Report ? String(ph2Report.summary ?? "signoff_phase2") : "non eseguito",
+    detail: ph2Report ? String(ph2Report.summary ?? "signoff_phase2") : "not run",
     action: SIGNOFF_PHASE2_ORCHESTRATOR.action,
   });
 

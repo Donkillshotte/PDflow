@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const action = body.action ?? "";
   if (!isAllowedAction(action)) {
     return NextResponse.json(
-      { error: `Azione non consentita. Usa: check, status, list, synth, floorplan, place, cts, route, finish, test_course` },
+      { error: `Action not allowed. Use: check, status, list, synth, floorplan, place, cts, route, finish, test_course` },
       { status: 400 },
     );
   }

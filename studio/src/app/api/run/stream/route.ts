@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const action = url.searchParams.get("action") ?? "";
   if (!isAllowedAction(action)) {
     return Response.json(
-      { error: `Azione non consentita: ${action}`, code: "forbidden" },
+      { error: `Action not allowed: ${action}`, code: "forbidden" },
       { status: 400 },
     );
   }

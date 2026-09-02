@@ -244,17 +244,17 @@ export function inspectStage(
     {
       id: "or-python",
       label: "OpenROAD -python + odb",
-      detail: "Conteggio inst/net/die da .odb",
+      detail: "inst/net/die count from .odb",
     },
     {
       id: "or-metrics",
       label: "OpenROAD -metrics JSON",
-      detail: "Metriche di flusso in JSON",
+      detail: "Flow metrics in JSON",
     },
     {
       id: "gridcheck",
       label: "check_power_grid",
-      detail: "learn/scripts/run_gridcheck.sh · azione Studio gridcheck",
+      detail: "learn/scripts/run_gridcheck.sh · Studio gridcheck action",
     },
     {
       id: "activity",
@@ -294,12 +294,12 @@ export function inspectStage(
     {
       id: "sta-json",
       label: "OpenSTA report_checks -format json",
-      detail: "Path timing strutturati",
+      detail: "Structured path timing",
     },
     {
       id: "yosys-stat",
       label: "Yosys stat",
-      detail: "Celle/area sul netlist",
+      detail: "Cells/area on netlist",
     },
     {
       id: "rtl-sim",

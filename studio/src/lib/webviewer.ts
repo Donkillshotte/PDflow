@@ -66,7 +66,7 @@ export function viewerStatus() {
 
 export function stopViewer(): { ok: boolean; message: string } {
   const lock = readLock();
-  if (!lock) return { ok: true, message: "nessun viewer attivo" };
+  if (!lock) return { ok: true, message: "no active viewer" };
   try {
     process.kill(lock.pid, "SIGTERM");
     setTimeout(() => {
@@ -80,7 +80,7 @@ export function stopViewer(): { ok: boolean; message: string } {
     /* ignore */
   }
   clearLock();
-  return { ok: true, message: `viewer fermato (pid ${lock.pid})` };
+  return { ok: true, message: `viewer stopped (pid ${lock.pid})` };
 }
 
 export function startViewer(
@@ -105,7 +105,7 @@ export function startViewer(
   if (!fs.existsSync(abs)) {
     return {
       ok: false,
-      message: `Artefatto mancante: ${artifact} — esegui prima la fase ${stage} (${variant})`,
+      message: `Missing artifact: ${artifact} — run phase ${stage} first (${variant})`,
     };
   }
 
@@ -114,7 +114,7 @@ export function startViewer(
     if (existing.artifact === artifact && existing.stage === stage) {
       return {
         ok: true,
-        message: "viewer già attivo su questo artefatto",
+        message: "viewer already active on this artifact",
         url: existing.url,
         port: existing.port,
         artifact,
@@ -143,7 +143,7 @@ export function startViewer(
   );
   child.unref();
   if (!child.pid) {
-    return { ok: false, message: "spawn openroad -web fallito" };
+    return { ok: false, message: "spawn openroad -web failed" };
   }
 
   const url = `http://127.0.0.1:${port}/`;

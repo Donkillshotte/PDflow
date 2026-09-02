@@ -55,14 +55,14 @@ export const FLOW_PHASES = [
   {
     id: "floorplan",
     label: "Floorplan",
-    title: "Floorplan e die",
+    title: "Floorplan and die",
     action: "floorplan" as const,
     hint: "Utilizzo core",
   },
   {
     id: "pdn",
     label: "PDN",
-    title: "Analisi chip PDN",
+    title: "Chip PDN analysis",
     action: "gridcheck" as const,
     hint: "check_power_grid",
   },
@@ -71,7 +71,7 @@ export const FLOW_PHASES = [
     label: "Place",
     title: "Placement",
     action: "place" as const,
-    hint: "Densità",
+    hint: "Density",
   },
   {
     id: "cts",
@@ -126,7 +126,7 @@ export function ensureFlowlabWorkspace() {
   fs.mkdirSync(/*turbopackIgnore: true*/ FLOWLAB_DIR, { recursive: true });
   if (!fs.existsSync(FLOWLAB_RTL)) {
     if (!fs.existsSync(UPSTREAM_RTL)) {
-      throw new Error(`RTL upstream mancante: ${UPSTREAM_RTL}`);
+      throw new Error(`Missing upstream RTL: ${UPSTREAM_RTL}`);
     }
     fs.copyFileSync(UPSTREAM_RTL, FLOWLAB_RTL);
   }
@@ -143,10 +143,10 @@ export function readRtl(): string {
 export function writeRtl(source: string) {
   ensureFlowlabWorkspace();
   if (!source || source.trim().length < 20) {
-    throw new Error("RTL troppo corto o vuoto");
+    throw new Error("RTL too short or empty");
   }
   if (!/\bmodule\s+\w+/i.test(source)) {
-    throw new Error("RTL senza dichiarazione module");
+    throw new Error("RTL without module declaration");
   }
   fs.writeFileSync(
     /*turbopackIgnore: true*/ FLOWLAB_RTL,
@@ -158,7 +158,7 @@ export function writeRtl(source: string) {
 export function resetRtl(): string {
   ensureFlowlabWorkspace();
   if (!fs.existsSync(UPSTREAM_RTL)) {
-    throw new Error("RTL golden mancante");
+    throw new Error("Missing golden RTL");
   }
   fs.copyFileSync(UPSTREAM_RTL, FLOWLAB_RTL);
   return readRtl();
