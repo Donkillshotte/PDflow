@@ -7,7 +7,7 @@ this tree is for navigation. Do not rewrite I1–I5 or §5 P0–P7.
 
 | Surface | What it is | Where wins are decided |
 |---|---|---|
-| **Product** | Physical knobs on the official netlist, fixed die, real finish | [`prodotto.md`](prodotto.md) · [`learn/dse/product.md`](../learn/dse/product.md) |
+| **Product** | Physical knobs on the official netlist, fixed die, real finish | [`win_rule.py`](../learn/dse/win_rule.py) · [`prodotto.md`](prodotto.md) |
 | **Lab** | e-graph, Verilog rewrite, F4 IR, refine, GNN | [`learn/dse/README.md`](../learn/dse/README.md) (Lab section) |
 | **Course / Studio** | RTL→GDS lessons, FlowLab, GUI | [`learn/README.md`](../learn/README.md) · [`studio/README.md`](../studio/README.md) |
 

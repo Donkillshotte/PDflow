@@ -53,7 +53,7 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 
 ---
 
-## 3. Sintesi logica — READY
+## 3. Logic synthesis — READY
 
 | Layer | Path / hook |
 |---|---|

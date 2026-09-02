@@ -1,15 +1,15 @@
 # Lesson 03 — Floorplanning
 
-Il floorplan is l'**building** del chip: walls (die), rooms (core), floor (rows), electrical system (PDN). Le celle logiche **non** are not yet placed: se in GUI look for NAND gates, stai in the lesson 04.
+The floorplan is the chip's **building**: walls (die), rooms (core), floor (rows), electrical system (PDN). Logic cells are **not** yet placed: if you look for NAND gates in the GUI, you are in lesson 04.
 
-On the GCD `learn` con `CORE_UTILIZATION=35` the log `2_1_floorplan.log` dice circa:
+On the GCD `learn` with `CORE_UTILIZATION=35` the log `2_1_floorplan.log` reports approximately:
 
 | Metric | Typical course value |
 |---|---|
-| Die da utilization | 35%, aspect 1.0 |
+| Die from utilization | 35%, aspect 1.0 |
 | Core area | **1712.5 µm²** |
 | Effective utilization | **0.367** |
-| Design area (celle) | ~629 µm² (~37% of core) |
+| Design area (cells) | ~629 µm² (~37% of core) |
 | Snapping origin | `(1.000, 1.000)` → `(1.140, 1.400)` (site grid) |
 
 These numbers are your **yardstick**. If you double utilization, the core must shrink.
@@ -17,9 +17,9 @@ These numbers are your **yardstick**. If you double utilization, the core must s
 ## Objectives
 
 - Draw die vs core vs row vs site and explain *snapping*
-- Use `CORE_UTILIZATION` knowing it is mutually exclusive con `DIE_AREA`
-- Read `grid_strategy-M1-M4-M7.tcl` riga per riga
-- Predict why utilization high kills CTS (bridge to lesson 05)
+- Use `CORE_UTILIZATION` knowing it is mutually exclusive with `DIE_AREA`
+- Read `grid_strategy-M1-M4-M7.tcl` line by line
+- Predict why high utilization kills CTS (bridge to lesson 05)
 
 ## Reading
 
@@ -49,9 +49,9 @@ initialize_floorplan -utilization 35 -aspect_ratio 1.0 \
 area_core ≈ cell_area / (utilization/100)
 ```
 
-High utilization = **small** core. Non “more visually full” in GUI at step 2_1: the cells are not there yet. You see fullness at CTS.
+High utilization = **small** core. Not “more visually full” in GUI at step 2_1: the cells are not there yet. You see fullness at CTS.
 
-Lo **site** is la tile: larghezza/altezza della libreria. Lo snapping IFP-0028 is not un bug: aligns core to grid.
+The **site** is the tile: library width/height. Snapping IFP-0028 is not a bug: it aligns the core to the grid.
 
 ## Sub-stages
 
@@ -82,27 +82,27 @@ add_pdn_connect -layers {metal4 metal7}
 | strap M7 | backbone | thick pink bars |
 | `add_pdn_connect` | via stack between layers | visible when zooming crossings |
 
-Without PDN the cells have no legal power. L’IR drop al finish (`orfs_final_ir_drop.png`, scale ~0–5 mV on the GCD) is blind if grid does not exist.
+Without PDN the cells have no legal power. IR drop at finish (`orfs_final_ir_drop.png`, scale ~0–5 mV on the GCD) is blind if the grid does not exist.
 
 `add_global_connection` connects instance `VDD`/`VSS` pins to power nets: that is why you do not hand-wire VDD on every NAND.
 
 ## GUI
 
-- `gui_2_1_floorplan.odb`: two rectangles. **Non** `gui::set_display_controls "Rows"` → GUI-0013.
+- `gui_2_1_floorplan.odb`: two rectangles. Do **not** use `gui::set_display_controls "Rows"` → GUI-0013.
 - `gui_2_4_floorplan_pdn.odb`: turn off metal2/3, keep M1+strap.
 
 ## Required experiment
 
-`CORE_UTILIZATION=25` vs `50`, stessa `1_synth.odb` (non rifare synth). Table core area from log `2_1_floorplan.log`.
+`CORE_UTILIZATION=25` vs `50`, same `1_synth.odb` (do not rerun synth). Table core area from log `2_1_floorplan.log`.
 
 Prediction: 50% → core ≈ half of 25% (not exact: snapping, margins, aspect).
 
 ## Common mistakes
 
-- Util 55% + SDC 0.25 ns → DPL-0038 **later**, non al floorplan (floorplan “green” ti inganna)
+- Util 55% + SDC 0.25 ns → DPL-0038 **later**, not at floorplan (a “green” floorplan misleads you)
 - `DIE_AREA` together with `CORE_UTILIZATION` → exit 1 immediate
 - PDN “invisible” = layers off
-- Confrontare core area tra run senza `clean_floorplan`
+- Comparing core area between runs without `clean_floorplan`
 
 ## Power & SPICE chain
 

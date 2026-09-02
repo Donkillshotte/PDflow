@@ -1,46 +1,46 @@
-# Risultati (onesti)
+# Results (honest)
 
-Registro: `learn/sim/dse/campaign_experiments.jsonl`.
-Verdetto = `win_rule`, non lo score TPE.
+Registry: `learn/sim/dse/campaign_experiments.jsonl`.
+Verdict = `win_rule`, not the TPE score.
 
-Percentuali = variazione della metrica vs base dello slot.
-Negativo su area / potenza / leakage / IR = più piccolo (meglio).
+Percentages = metric change vs the slot base.
+Negative on area / power / leakage / IR = smaller (better).
 
 ## Per slot
 
 | Slot | Base | OFAT | TPE | Min/finish |
 |---|---|---|---|---|
-| gcd | −37 ps | 3 win (Place più denso, Padding +1, …) | 8 cook, **0 win nuovi** | ~0.9 |
-| spi | +612 ps | 0 win (10 tie) | non ammissibile | ~0.6 |
-| ibex | +22 ps | 4 win | 8 cook, **6 win nuovi** | ~7 |
-| aes | −8.9 ps | 3 win | 8 cook, **5 win nuovi** | ~8 |
-| dynamic_node | +3354 ps | 1 win (Buffer di clock più fitti) | non ancora | ~4.5 |
+| gcd | −37 ps | 3 wins (Denser placement, Padding +1, …) | 8 cooks, **0 new wins** | ~0.9 |
+| spi | +612 ps | 0 wins (10 ties) | not admissible | ~0.6 |
+| ibex | +22 ps | 4 wins | 8 cooks, **6 new wins** | ~7 |
+| aes | −8.9 ps | 3 wins | 8 cooks, **5 new wins** | ~8 |
+| dynamic_node | +3354 ps | 1 win (Tighter clock buffers) | not yet | ~4.5 |
 
-## Cosa ha funzionato
+## What worked
 
-- **Ibex:** combo OFAT (Place sparso + pad, Place denso + pad) e mix IR
-  fino a −38%, slack dentro 5 ps. Area / potenza / leakage ~0 o sotto +10%.
-- **Aes:** chiude il timing (base era aperto). Area / potenza / leakage
-  salgono un po’ (fino a +7%), tutti sotto il 10%. SHA `6_report` = disco.
-- **Enqueue stesso-slot:** i 2 win immediati aes erano combo deepen
-  (Place più sparso + Margine di setup; Setup + Buffer di clock più fitti).
+- **Ibex:** OFAT combos (sparser place + pad, denser place + pad) and IR mixes
+  down to −38%, slack within 5 ps. Area / power / leakage ~0 or under +10%.
+- **Aes:** closes timing (base was open). Area / power / leakage rise a bit
+  (up to +7%), all under 10%. SHA `6_report` = disk truth.
+- **Same-slot enqueue:** the 2 immediate aes wins were combo deepen
+  (Sparser placement + Setup margin; Setup + Tighter clock buffers).
 
-## Cosa non ha funzionato
+## What did not work
 
-- **Gcd:** il continuo TPE non ha battuto OFAT. Miss vicino: IR −19% con
-  slack −7.4 ps (vincolo, non proposta cieca).
-- **Padding celle +2:** 5 fail (3 gcd, 2 ibex). Il place può chiudere;
-  il finish no. Ora è un muro.
-- **Place sparso + CTS 80 su aes:** lose, slack −30 ps.
-- **Senza timing-driven su aes:** STOP al place (WNS −0.78 / −0.47 ns).
-- **Sintesi gerarchica:** 0 win su 5 design. Muro.
+- **Gcd:** continuous TPE did not beat OFAT. Close miss: IR −19% with
+  slack −7.4 ps (constraint, not a blind proposal).
+- **Cell padding +2:** 5 fails (3 gcd, 2 ibex). Place may close;
+  finish does not. Now a wall.
+- **Sparser placement + CTS 80 on aes:** lose, slack −30 ps.
+- **Placement without timing-driven on aes:** STOP at place (WNS −0.78 / −0.47 ns).
+- **Hierarchical synthesis:** 0 wins on 5 designs. Wall.
 
-## Transfer (dopo i live)
+## Transfer (after live runs)
 
-`learn/dse/tune_transfer.py`: pad=2 e synth_hier non si ricuociono;
-fino a 3 meccanismi win-su-≥2-design in coda TPE.
-«Place più sparso + margine di setup» è ricetta di catalogo.
+`learn/dse/tune_transfer.py`: pad=2 and synth_hier are not recooked;
+up to 3 cross-design win mechanisms queued for TPE.
+«Sparser placement + setup margin» is a catalog recipe.
 
-Criterio di successo del transfer (congelato in `arch_review.md`):
-sul prossimo slot live, zero pad=2, un enqueue cross-design nei primi 3,
-primo win entro 3 cotture — o verdetto onesto che lo slot non ha win.
+Transfer success criterion (frozen in `arch_review.md`):
+on the next live slot, zero pad=2, one cross-design enqueue in the first 3,
+first win within 3 cooks — or an honest verdict that the slot has no win.

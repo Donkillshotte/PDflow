@@ -1,30 +1,30 @@
-# Architettura del repository
+# Repository architecture
 
-Il tree è un **monorepo a tre superfici**. Non si riorganizza ORFS, non si
-spostano i moduli in `learn/dse/*.py`, non si unificano prodotto e laboratorio.
+The tree is a **three-surface monorepo**. Do not reorganize ORFS, do not
+move modules in `learn/dse/*.py`, and do not merge product and lab.
 
-## Directory
+## Directories
 
-| Path | Superficie | Ruolo |
+| Path | Surface | Role |
 |---|---|---|
-| `docs/` | tutte | Indice di lettura. Non contiene piani congelati. |
-| `learn/dse/` | prodotto + lab | Package Python. Win = `win_rule.py`. Lab = controller F4. |
-| `learn/scripts/` | prodotto + lab | Entry cook / TPE / test / IR / signoff |
-| `learn/sim/dse/` | prodotto + lab | Registro jsonl, memorie, SDC campagna |
-| `learn/designs/` | prodotto + corso | Overlay ORFS (gcd-tutorial, spi, aes, ibex, …) |
-| `learn/lessons/` | corso | 00–07: README + LAB + `run.sh` |
-| `learn/reference/` | corso + lab | Glossario, Tcl, IR, OSS, DSE lab |
-| `learn/workbook/` | corso | Esercizi e quiz |
-| `learn/flowlab/` | corso | RTL tutorial (variante `flowlab` locked) |
-| `studio/` | corso | UI Next.js. Orchestra gli script, non li sostituisce |
-| `engine/` | lab | `libdpn` (DirectLU / AMG / RAS / Krylov). Mai su AES 50–70k-R |
-| `scripts/` | tutte | Install, finish prodotto, smoke corso, cloud |
-| `tools/` | infra | ORFS + yosys + OpenSTA. **gitignored**, ricreabile |
-| `PLAN.md` | lab | Fase 2 controller. Non è il prodotto |
-| `AGENTS.md` | tutte | Refuse, un job, test, leftover |
-| `CONTRIBUTING.md` | tutte | Come contribuire |
+| `docs/` | all | Reading index. Does not hold frozen plans. |
+| `learn/dse/` | product + lab | Python package. Win = `win_rule.py`. Lab = F4 controller. |
+| `learn/scripts/` | product + lab | Cook / TPE / test / IR / signoff entry points |
+| `learn/sim/dse/` | product + lab | jsonl registry, memories, campaign SDC |
+| `learn/designs/` | product + course | ORFS overlays (gcd-tutorial, spi, aes, ibex, …) |
+| `learn/lessons/` | course | 00–07: README + LAB + `run.sh` |
+| `learn/reference/` | course + lab | Glossary, Tcl, IR, OSS, lab DSE |
+| `learn/workbook/` | course | Exercises and quiz |
+| `learn/flowlab/` | course | Tutorial RTL (locked `flowlab` variant) |
+| `studio/` | course | Next.js UI. Orchestrates scripts, does not replace them |
+| `engine/` | lab | `libdpn` (DirectLU / AMG / RAS / Krylov). Never on AES 50–70k-R |
+| `scripts/` | all | Install, product finish, course smoke, cloud |
+| `tools/` | infra | ORFS + yosys + OpenSTA. **gitignored**, reproducible |
+| `PLAN.md` | lab | Phase 2 controller. Not the product |
+| `AGENTS.md` | all | Refuse rules, one job, tests, leftovers |
+| `CONTRIBUTING.md` | all | How to contribute |
 
-## Flusso prodotto (finish vero)
+## Product flow (real finish)
 
 ```
 run_recipe_loop.py
@@ -34,10 +34,10 @@ run_recipe_loop.py
         → 6_report → win_rule.py → campaign_experiments.jsonl
 ```
 
-Optuna vive **solo** in `learn/scripts/run_tpe.py`.
-Niente `if design ==` in tuner, spazio, score, coordinatore, transfer.
+Optuna lives **only** in `learn/scripts/run_tpe.py`.
+No `if design ==` in tuner, space, score, coordinator, or transfer.
 
-## Flusso laboratorio (non win)
+## Lab flow (not wins)
 
 ```
 run_dse.py / controller
@@ -45,43 +45,43 @@ run_dse.py / controller
     → DesignMemory JSONL
 ```
 
-Gold GCD Dynamic IR **45.298 mV** è `reference_run`. Finish FlowLab **6.075 mV**
-è `current_run`. Non si confondono. AES riga `febe6804241c` è intatta.
+Gold GCD Dynamic IR **45.298 mV** is `reference_run`. FlowLab finish **6.075 mV**
+is `current_run`. Do not confuse them. AES row `febe6804241c` stays intact.
 
-## Cosa non si sposta
+## Do not move
 
-- `tools/OpenROAD-flow-scripts/` (checkout ORFS)
+- `tools/OpenROAD-flow-scripts/` (ORFS checkout)
 - `results/.../gcd/flowlab/` (baseline A)
-- Moduli prodotto in `learn/dse/{win_rule,knob_catalog,tune_*,cook,floorplan}.py`
-- Piani congelati elencati in [piani.md](piani.md)
+- Product modules in `learn/dse/{win_rule,knob_catalog,tune_*,cook,floorplan}.py`
+- Frozen plans listed in [piani.md](piani.md)
 
-## Slot ufficiali (prodotto)
+## Official slots (product)
 
-Clock da `DESIGN_CATALOG` in `learn/dse/experiments.py`. Die da DEF ufficiale
-(`floorplan.official_box`), non da `CORE_UTILIZATION`.
+Clock from `DESIGN_CATALOG` in `learn/dse/experiments.py`. Die from the official DEF
+(`floorplan.official_box`), not from `CORE_UTILIZATION`.
 
 | id | top | clock | note |
 |---|---|---|---|
-| `gcd` | `gcd` | 0.46 ns | overlay `gcd-tutorial` |
-| `spi` | `spi` | 1.0 ns | tune non ammissibile |
+| `gcd` | `gcd` | 0.46 ns | `gcd-tutorial` overlay |
+| `spi` | `spi` | 1.0 ns | tune not admissible |
 | `ibex` | `ibex_core` | 2.2 ns | Verilog overlay |
 | `aes` | `aes_cipher_top` | 0.82 ns | `FLOORPLAN_DEF`; no DIE+DEF |
 | `dynamic_node` | `dynamic_node_top_wrap` | 6.0 ns | |
 
-Ordine cheap-first: gcd → spi → ibex → aes → dynamic_node.
+Cheap-first order: gcd → spi → ibex → aes → dynamic_node.
 
-## Varianti ORFS
+## ORFS variants
 
-| Nome | Chi la scrive | Locked |
+| Name | Writer | Locked |
 |---|---|---|
-| `learn` | corso | sì |
-| `flowlab` | Studio / lab GCD A | sì |
-| `base` | nome riservato | sì |
-| `camp_{design}_base` | P0 prodotto | no (non si pulisce) |
+| `learn` | course | yes |
+| `flowlab` | Studio / lab GCD A | yes |
+| `base` | reserved name | yes |
+| `camp_{design}_base` | product P0 | no (do not delete) |
 | `camp_{design}_{recipe}` | OFAT | no |
 | `camp_{design}_tpe_{12hex}` | TPE | no |
 
-## Risorse VM
+## VM resources
 
-~15 GiB / 4 CPU / swap 0. Un job pesante. Wrapper con `prlimit --as`.
-TPE è ask → `cook_one` → tell, seriale.
+~15 GiB / 4 CPU / swap 0. One heavy job. Wrapper with `prlimit --as`.
+TPE is ask → `cook_one` → tell, serial.

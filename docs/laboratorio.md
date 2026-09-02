@@ -1,24 +1,24 @@
-# Laboratorio
+# Lab
 
-Non decide i win di prodotto. Resta nel tree perché è lo stack IR / e-graph /
-refine. Indice prodotto: [prodotto.md](prodotto.md).
+Does not decide product wins. Stays in the tree as the IR / e-graph /
+refine stack. Product index: [prodotto.md](prodotto.md).
 
-## Cosa è
+## What it is
 
-Ricerca multi-fedeltà: architecture → logic → synth → place → route → PDN.
-Dynamic IR è un oracolo OpenROAD/ODB (`engine/` + `pdn_*.py`), non una mappa
-neurale. I proposer GNN / LLM restano qui.
+Multi-fidelity search: architecture → logic → synth → place → route → PDN.
+Dynamic IR is an OpenROAD/ODB oracle (`engine/` + `pdn_*.py`), not a neural
+voltage map. GNN / LLM proposers stay here.
 
-Piano eseguibile (Fase 2 **chiusa**): [`PLAN.md`](../PLAN.md).
-Stack F0–F6: [`learn/reference/dse.md`](../learn/reference/dse.md).
-Solver nativi: [`engine/README.md`](../engine/README.md).
+Executable plan (Phase 2 **closed**): [`PLAN.md`](../PLAN.md).
+F0–F6 stack: [`learn/reference/dse.md`](../learn/reference/dse.md).
+Native solvers: [`engine/README.md`](../engine/README.md).
 
 ## Entry
 
 ```bash
 export PYTHONPATH=learn:learn/scripts
-python3 learn/scripts/run_dse.py --campaign --wall-s 180
-python3 learn/scripts/test_dse.py          # un file alla volta; F4 per ultimo
+python3 learn/scripts/run_dse.py --campaign --wall-s=180
+python3 learn/scripts/test_dse.py          # one file at a time; F4 last
 ```
 
 Cloud / IR:
@@ -27,45 +27,45 @@ Cloud / IR:
 ./scripts/run_dse_gcd_cloud.sh
 ./scripts/run_dynamic_ir_cloud.sh
 ./scripts/run_gcd_finish_cloud.sh
-# AES F4/F5-lite: solo con ALLOW_HEAVY_ANALYSIS=1 e mai Krylov
+# AES F4/F5-lite: only with ALLOW_HEAVY_ANALYSIS=1 and never Krylov
 ```
 
 Build solver: `./learn/scripts/build_dpn_engine.sh`.
 
-## Invarianti (non negoziabili)
+## Invariants (non-negotiable)
 
-- Oro GCD Dynamic IR **45.298 mV**: mai restampato
+- Gold GCD Dynamic IR **45.298 mV**: never restamped
   (`learn/sim/reports/dynamic_ir_flowlab.json`).
-- Finish FlowLab corrente **6.075 mV** (`n_r` worker ~5816) = `current_run`,
-  non `reference_run`.
-- AES `learn/sim/dse/memory_aes.jsonl` riga `febe6804241c` intatta.
-- `QoR.area_um2` = area stdcell, non die.
-- `Candidate`: `knobs` azione, `artifacts` osservazione, `pred` predizione.
-- `admit_solve` è il gate risorse. DirectLU = riferimento numerico.
-- Non appiattire architecture + ABC + util + PDN in un vettore.
-- `f1_pareto_parents` è F1-only. Non sostituirlo per F2-fast.
-- Non `mem.touch` su hit F4 in cache.
+- Current FlowLab finish **6.075 mV** (worker `n_r` ~5816) = `current_run`,
+  not `reference_run`.
+- AES `learn/sim/dse/memory_aes.jsonl` row `febe6804241c` stays intact.
+- `QoR.area_um2` = stdcell area, not die.
+- `Candidate`: `knobs` = action, `artifacts` = observation, `pred` = prediction.
+- `admit_solve` is the resource gate. DirectLU = numerical reference.
+- Do not flatten architecture + ABC + util + PDN into one vector.
+- `f1_pareto_parents` is F1-only. Do not replace it for F2-fast.
+- Do not `mem.touch` on cached F4 hits.
 
-## Test lab (split D.1–D.5)
+## Lab tests (split D.1–D.5)
 
-`learn/scripts/test_dse.py` è il runner. Ordine fisso:
+`learn/scripts/test_dse.py` is the runner. Fixed order:
 
-| Modulo | Cosa |
+| Module | What |
 |---|---|
 | `test_dse_metrics.py` | dominates / gated / HV |
 | `test_dse_memory.py` | JSONL / BOiLS / e-graph |
 | `test_dse_planner.py` | attribution / `plan_search` / F1 |
 | `test_dse_steer.py` | residual / F5 / IR leftover |
-| `test_dse_live_f4.py` | live F4, **ultimo**, un job |
+| `test_dse_live_f4.py` | live F4, **last**, one job |
 
-Sintetico o GCD-scale. Un `test_dse.py` alla volta. Non lanciare AES finish
-«per vedere».
+Synthetic or gcd-scale. One `test_dse.py` at a time. Do not launch AES finish
+“just to see”.
 
-## Moduli lab (package `learn/dse`)
+## Lab modules (`learn/dse` package)
 
-Controller / stage / acquire restano grandi di proposito (`PLAN.md`).
-Layer sostituibili: `dse.layers.ADAPTERS`.
+Controller / stage / acquire stay large on purpose (`PLAN.md`).
+Replaceable layers: `dse.layers.ADAPTERS`.
 
-Handoff finish vs ORFS: [`flow_vs_orfs_gcd.md`](../learn/dse/flow_vs_orfs_gcd.md),
+Finish handoff vs ORFS: [`flow_vs_orfs_gcd.md`](../learn/dse/flow_vs_orfs_gcd.md),
 [`handoff_finish_bakeoff.md`](../learn/dse/handoff_finish_bakeoff.md).
-Baseline A (`FLOW_VARIANT=flowlab` su gcd) non si sovrascrive.
+Baseline A (`FLOW_VARIANT=flowlab` on gcd) is not overwritten.

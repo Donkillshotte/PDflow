@@ -1,53 +1,53 @@
-# Contribuire
+# Contributing
 
-Indice: [`docs/README.md`](docs/README.md). Legge prodotto: [`learn/dse/product.md`](learn/dse/product.md).
-Regole agente: [`AGENTS.md`](AGENTS.md).
+Index: [`docs/README.md`](docs/README.md). Product law: [`learn/dse/product.md`](learn/dse/product.md).
+Agent rules: [`AGENTS.md`](AGENTS.md).
 
-## Prima di toccare codice
+## Before changing code
 
-1. Capire la superficie: prodotto, laboratorio, o corso. Non mescolarle.
-2. Un job pesante. VM ~15 GiB / 4 CPU.
-3. Test sintetici o gcd-scale. Live F4 per ultimo.
+1. Know the surface: product, lab, or course. Do not mix them.
+2. One heavy job. VM ~15 GiB / 4 CPU.
+3. Synthetic or gcd-scale tests. Live F4 last.
 
-## Branch e commit
+## Branch and commits
 
-Prefisso `cursor/`, suffisso assegnato dall’agente. Non lavorare su `main`.
-Un commit per cambiamento logico. Non force-push. Non mergiare da soli.
+`cursor/` prefix, agent-assigned suffix. Do not work on `main`.
+One commit per logical change. No force-push. Do not merge on your own.
 
-Non committare leftover:
+Do not commit leftovers:
 
 - `learn/sim/dse/memory_flowlab_nl.jsonl` (+ `.index.json`)
 - `learn/sim/dse/memory_camp_spi_dse.index.json`
 - `learn/sim/reports/dse_camp_spi_dse.json`
-- `learn/sim/dse/tpe_*.db` (già ignorato)
+- `learn/sim/dse/tpe_*.db` (already ignored)
 
-## Test minimi
+## Minimum tests
 
 ```bash
 export PYTHONPATH=learn:learn/scripts
-python3 learn/scripts/test_dse_next.py    # prodotto + mappa docs
-./scripts/test_cloud_bootstrap.sh         # se si tocca install
-./scripts/test_course.sh                  # se si tocca il corso
+python3 learn/scripts/test_dse_next.py    # product + docs map
+./scripts/test_cloud_bootstrap.sh         # if touching install
+./scripts/test_course.sh                  # if touching the course
 ```
 
-Lab: `python3 learn/scripts/test_dse.py` da solo, mai nello stesso processo
-della suite prodotto.
+Lab: `python3 learn/scripts/test_dse.py` alone, never in the same process
+as the product suite.
 
-## Vietato
+## Forbidden
 
-- `if design ==` in tuner / spazio / score / coordinatore / transfer
-- `FLOW_VARIANT` in `{flowlab, learn, base}` dal wrapper prodotto
-- Krylov / MOR su AES (~50–70k-R)
-- Restampare l’oro GCD Dynamic IR **45.298 mV**
-- Sovrascrivere `results/.../gcd/flowlab/` o `memory_aes.jsonl` riga `febe6804241c`
-- TPE su spi @ 1 ns
-- Spostare ORFS o i moduli prodotto per “pulizia”
-- Riscrivere piani congelati ([docs/piani.md](docs/piani.md))
-- `pkill -f` (kill per PID)
+- `if design ==` in tuner / space / score / coordinator / transfer
+- `FLOW_VARIANT` in `{flowlab, learn, base}` from the product wrapper
+- Krylov / MOR on AES (~50–70k-R)
+- Restamping gold GCD Dynamic IR **45.298 mV**
+- Overwriting `results/.../gcd/flowlab/` or `memory_aes.jsonl` row `febe6804241c`
+- TPE on spi @ 1 ns
+- Moving ORFS or product modules for “cleanup”
+- Rewriting frozen plans ([docs/piani.md](docs/piani.md))
+- `pkill -f` (kill by PID)
 
-## Documentazione
+## Documentation
 
-Titoli di ricetta per gli umani (`Place più denso`, non `camp_gcd_tpe_*`).
-Sempre area, potenza, leakage, IR insieme. Win/lose onesti.
-Se cambi un entry point, aggiorna `docs/` e il test della mappa in
+Human recipe titles (`Denser placement`, not `camp_gcd_tpe_*`).
+Always report area, power, leakage, IR together. Honest win/lose.
+If you change an entry point, update `docs/` and the map check in
 `test_dse_next.py`.

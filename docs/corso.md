@@ -1,11 +1,11 @@
-# Corso / Studio
+# Course / Studio
 
-Didattica RTL→GDS. Non decide i win di prodotto. Varianti ORFS `learn` e
-`flowlab` sono **locked**: il wrapper prodotto le rifiuta.
+RTL→GDS teaching. Does not decide product wins. ORFS variants `learn` and
+`flowlab` are **locked**: the product wrapper refuses them.
 
-## Corso (`learn/`)
+## Course (`learn/`)
 
-Percorso 20–28 ore: 8 lezioni (00–07), LAB, walkthrough Tcl, workbook, GUI.
+20–28 hour path: 8 lessons (00–07), LABs, Tcl walkthroughs, workbook, GUI.
 
 ```bash
 ./scripts/learn_physical_design.sh --check
@@ -14,41 +14,41 @@ Percorso 20–28 ore: 8 lezioni (00–07), LAB, walkthrough Tcl, workbook, GUI.
 ./scripts/test_course.sh
 ```
 
-| File | Ruolo |
+| File | Role |
 |---|---|
-| [`learn/README.md`](../learn/README.md) | Avvio |
+| [`learn/README.md`](../learn/README.md) | Start here |
 | [`learn/CURRICULUM.md`](../learn/CURRICULUM.md) | Syllabus |
-| [`learn/EVIDENCE.md`](../learn/EVIDENCE.md) | Pipeline eseguita |
+| [`learn/EVIDENCE.md`](../learn/EVIDENCE.md) | Pipeline evidence |
 | [`learn/AUDIT.md`](../learn/AUDIT.md) | Requirement-by-requirement |
-| [`learn/reference/README.md`](../learn/reference/README.md) | Glossario, Tcl, IR, OSS |
+| [`learn/reference/README.md`](../learn/reference/README.md) | Glossary, Tcl, IR, OSS |
 
-Tutorial GCD: `FLOW_VARIANT=learn`. Finish verde ≠ timing chiuso
-(vedi `golden-metrics.md`). SDC tutorial 0.46 ns è aggressivo.
+GCD tutorial: `FLOW_VARIANT=learn`. Green finish ≠ timing closed
+(see `golden-metrics.md`). Tutorial SDC 0.46 ns is aggressive.
 
 ## Studio (`studio/`)
 
-UI Next.js. Orchestra gli script con lock, dipendenze fase, storico job.
+Next.js UI. Orchestrates scripts with lock, phase dependencies, job history.
 
 ```bash
 ./scripts/run_studio.sh          # http://127.0.0.1:43217
 ./scripts/test_studio_api.sh
-./scripts/test_all_phases.sh     # esaustivo
+./scripts/test_all_phases.sh     # exhaustive
 ```
 
-Dettagli: [`studio/README.md`](../studio/README.md).
-Un job ORFS alla volta (`learn/.studio-run.lock`).
-FlowLab vive su `/flusso`, variante `flowlab` isolata dal corso.
+Details: [`studio/README.md`](../studio/README.md).
+One ORFS job at a time (`learn/.studio-run.lock`).
+FlowLab lives at `/flusso`, `flowlab` variant isolated from the course.
 
-GUI Qt OpenROAD: pulsante Desktop su Cursor, non le card Preview HTTP.
+OpenROAD Qt GUI: Desktop button on Cursor, not HTTP Preview cards.
 
-## Signoff didattico
+## Course signoff
 
-Dopo `make finish` sulla variante del corso:
+After `make finish` on the course variant:
 
 ```bash
-export FLOW_VARIANT=learn   # locked per il prodotto; ok qui
+export FLOW_VARIANT=learn   # locked for product; OK here
 ./learn/scripts/run_signoff_all.sh
 ```
 
-Catena power/IR di studio: [`learn/reference/spice-power-chain.md`](../learn/reference/spice-power-chain.md).
-Non ristampa il gold 45.298 mV.
+Study power/IR chain: [`learn/reference/spice-power-chain.md`](../learn/reference/spice-power-chain.md).
+Does not restamp gold 45.298 mV.

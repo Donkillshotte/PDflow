@@ -1,20 +1,20 @@
 # Lesson 04 — Placement
 
-Il placement is il momento in cui il design **occupies space**. Prima: celle in un mucchio. Dopo: every gate ha una coordinata, e the timing inizia a dipendere dai fili.
+Placement is the moment when the design **occupies space**. Before: cells in a pile. After: every gate has a coordinate, and timing starts to depend on wires.
 
 ## Objectives
 
-- Distinguere **global placement** vs **detailed placement** senza mescolarli
-- Capire density, overflow, padding
+- Distinguish **global placement** vs **detailed placement** without mixing them up
+- Understand density, overflow, padding
 - Read resizer report as *narrative* (what RSZ did and why)
-- Ispezionare legalizzazione in GUI (gp vs dp)
-- Collegare placement al failure CTS of the lesson 05
+- Inspect legalization in GUI (gp vs dp)
+- Connect placement to CTS failure in lesson 05
 
 ## Required reading
 
 1. This README
 2. `walkthrough-global_place.tcl.md`
-3. `golden-metrics.md` riga Place / CTS DPL
+3. `golden-metrics.md` Place / CTS DPL section line by line
 4. Atlas §5.5–5.6 (`win_place_gp.png` vs `win_place_dp.png`)
 5. `LAB.md` lesson 04
 
@@ -22,100 +22,100 @@ Il placement is il momento in cui il design **occupies space**. Prima: celle in 
 
 | Stage | Area / util | Slack |
 |---|---|---|
-| Post-synth (nel core) | ~629 µm² / 37% | (liberty) |
-| Post-resizer `3_4` | **684 µm² / 40%** | worst slack **+0.01 ns**, 0 viol setup |
-| `period_min` place | **0.45 ns** (~2240 MHz) | ancora **ideal clock** |
-| CTS after (lesson 05) | 828 µm² / **48.3%** | −0.04 ns, clock **propagato** |
+| Post-synth (in core) | ~629 µm² / 37% | (liberty) |
+| Post-resizer `3_4` | **684 µm² / 40%** | worst slack **+0.01 ns**, 0 setup viol |
+| `period_min` place | **0.45 ns** (~2240 MHz) | still **ideal clock** |
+| CTS after (lesson 05) | 828 µm² / **48.3%** | −0.04 ns, clock **propagated** |
 
 Resizer already ate ~55 µm² before CTS. The 45 buffers from lesson 05 start here, not from zero.
 
-## The problem matematico (intuizione)
+## The mathematical problem (intuition)
 
-Global placement minimizza circa:
+Global placement minimizes approximately:
 
 ```
 wirelength + penalty_density + (optional) penalty_timing
 ```
 
-soggetto a: celle nel core, non troppo ammassate.
+subject to: cells in the core, not too crowded.
 
-This is not NP-hard che *tu* risolvi a mano: RePlAce (in OpenROAD) itera. Tu scegli **density target** e **padding**.
+This is not NP-hard that *you* solve by hand: RePlAce (in OpenROAD) iterates. You choose **density target** and **padding**.
 
 ## Sub-stages placement ORFS
 
-| Step | What it does | Why esiste |
+| Step | What it does | Why it exists |
 |---|---|---|
-| 3_1_place_gp_skip_io | GP senza IO | before stima interna |
-| 3_2_place_iop | I/O placement | pin sul bordo |
-| 3_3_place_gp | GP completo | wirelength + density |
+| 3_1_place_gp_skip_io | GP without IO | internal estimate first |
+| 3_2_place_iop | I/O placement | pins on the edge |
+| 3_3_place_gp | full GP | wirelength + density |
 | 3_4_place_resized | RSZ buffer/upsize/clone | timing pre-CTS |
-| 3_5_place_dp | Detailed placement | legalizzazione site/row |
+| 3_5_place_dp | Detailed placement | site/row legalization |
 
-L'ordine IO → GP is importante: i pin fissati **tirano** the cells verso i bordi.
+The IO → GP order matters: fixed pins **pull** cells toward the edges.
 
-## Global vs detailed — analogia
+## Global vs detailed — analogy
 
-- **GP:** sistema i mobili nella stanza “a spanne” (posare sovrapporsi un po' nel disegno)
-- **DP:** aligns everything to tiles (sites). Nessun overlap. May worsen wirelength a bit.
+- **GP:** arrange furniture in the room “roughly” (may overlap a bit in the drawing)
+- **DP:** aligns everything to tiles (sites). No overlap. May worsen wirelength a bit.
 
-Se in GUI `3_3` e `3_5` are identici, stai guardando the same file.
+If in GUI `3_3` and `3_5` look identical, you are viewing the same file.
 
-## Resizer (RSZ) — il vero costo del tight clock
+## Resizer (RSZ) — the real cost of a tight clock
 
-After GP, OpenROAD stima parasitics da placement e:
+After GP, OpenROAD estimates parasitics from placement and:
 
-- inserisce **buffer** su net lente / high fanout
-- **upsize** celle (X1 → X2 → X4) per slew
-- **clone** gate per split carichi
-- swap pin
+- inserts **buffers** on slow / high fanout nets
+- **upsize** cells (X1 → X2 → X4) for slew
+- **clone** gates to split loads
+- swap pins
 
-Every inserimento **aumenta area**. This is il ponte verso DPL-0038 in CTS.
+Every insertion **increases area**. This is the bridge to DPL-0038 in CTS.
 
-Prefissi istanze (GUI Find):
+Instance prefixes (GUI Find):
 
-| Prefisso | Role |
+| Prefix | Role |
 |---|---|
-| `rebuffer*` | buffer timing |
+| `rebuffer*` | timing buffer |
 | `fanout*` | split fanout |
 | `hold*` | fix hold (rarer pre-CTS) |
-| `max_cap*` / `max_length*` | vincoli capacitance/length |
+| `max_cap*` / `max_length*` | capacitance/length constraints |
 
-## Metrics da monitorare
+## Metrics to monitor
 
-| Metric | Where | Soglia mental GCD |
+| Metric | Where | GCD mental threshold |
 |---|---|---|
-| Overflow | `3_global_place.rpt` / log GP | → 0 |
-| Density | heatmap / log | sotto 1.0 after DP |
+| Overflow | `3_global_place.rpt` / GP log | → 0 |
+| Density | heatmap / log | below 1.0 after DP |
 | WNS/TNS | `3_resizer.rpt` | may be negative |
-| Buffer count | log `3_4_place_resized` | cresce se SDC stretto |
-| Utilizzazione istanze | log DP | << 100% se vuoi CTS facile |
+| Buffer count | log `3_4_place_resized` | grows if SDC is tight |
+| Instance utilization | DP log | << 100% if you want easy CTS |
 
-## GUI — cosa osservare
+## GUI — what to observe
 
-Sequenza required (15 min ciascuna):
+Required sequence (15 min each):
 
-1. `gui_3_2_place_iop.odb` — pin sul die edge
+1. `gui_3_2_place_iop.odb` — pins on the die edge
 2. `gui_3_3_place_gp.odb` — blob, possible visual overlap
-3. `gui_3_4_place_resized.odb` — search for buffer nuovi
-4. `gui_3_5_place_dp.odb` — rows allineate
+3. `gui_3_4_place_resized.odb` — search for new buffers
+4. `gui_3_5_place_dp.odb` — aligned rows
 
-Heatmap **Placement Density**: red = full. If all red at util 55% + tight SDC, lesson 05 will fail.
+**Placement Density** heatmap: red = full. If all red at util 55% + tight SDC, lesson 05 will fail.
 
-Pixel e PNG: `learn/reference/gui-atlas.md` §5.5–5.6. Menu: `gui-openroad.md`.
+Pixels and PNGs: `learn/reference/gui-atlas.md` §5.5–5.6. Menu: `gui-openroad.md`.
 
-## Esperimento controllato
+## Controlled experiment
 
-Un parayardstick per run:
+One yardstick per run:
 
-- Solo `PLACE_DENSITY_LB_ADDON` 0.10 vs 0.20
-- Solo SDC relaxed vs default
-- Non entrambi
+- Only `PLACE_DENSITY_LB_ADDON` 0.10 vs 0.20
+- Only SDC relaxed vs default
+- Not both
 
-Table nel notebook: density addon | overflow | buffer | WNS.
+Table in notebook: density addon | overflow | buffer | WNS.
 
 ## Power & SPICE chain
 
-Il placement fissa **dove** every cella alimenta the mesh (`ITermNode_*` in `write_pg_spice`). See [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-04-placement).
+Placement fixes **where** each cell feeds the mesh (`ITermNode_*` in `write_pg_spice`). See [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-04-placement).
 
 | Link | Where |
 |---|---|
@@ -126,5 +126,5 @@ Il placement fissa **dove** every cella alimenta the mesh (`ITermNode_*` in `wri
 
 - README + walkthrough: 45 min
 - LAB: 90 min
-- GUI confrontata: 45 min
-- **Totale: ~3 ore**
+- GUI comparison: 45 min
+- **Total: ~3 hours**

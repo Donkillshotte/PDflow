@@ -1,23 +1,23 @@
 # Lesson 06 — Routing
 
-Routing is il step from “celle con pin” a “wires the fab can print”.
+Routing is the step from “cells with pins” to “wires the fab can print”.
 
 On the GCD `learn` the timing **worsens** when wires become real:
 
-| Stadio | worst slack max | setup viol | Commento |
+| Stage | worst slack max | setup viol | Comment |
 |---|---|---|---|
 | Detailed place | **+0.01 ns** | 0 | placement estimate, optimistic |
 | CTS final | **−0.04 ns** | 32 | propagated clock |
 | Global route | **−0.05 ns** | 43 | RC from **guide** |
 | Finish SPEF | **−0.04 ns** | 38 | extraction; TNS −0.60 |
 
-Non “adjust numbers by hand”: understand **why** the sign changes. GRT sees congestion e corridor length; SPEF vede RC geometric.
+Do not “adjust numbers by hand”: understand **why** the sign changes. GRT sees congestion and corridor length; SPEF sees geometric RC.
 
 ## Objectives
 
-- Distinguere guide GRT da wire DRT (stessa net, due ODB)
-- Leggere congestion heatmap (`orfs_final_congestion.png`)
-- Capire because DRT **aborts** without `grt::have_routes`
+- Distinguish GRT guides from DRT wires (same net, two ODBs)
+- Read congestion heatmap (`orfs_final_congestion.png`)
+- Understand why DRT **aborts** without `grt::have_routes`
 - Antenna at conceptual level + loop in `detail_route.tcl`
 
 ## Reading
@@ -29,62 +29,62 @@ Non “adjust numbers by hand”: understand **why** the sign changes. GRT sees 
 
 ## Two different problems
 
-**Global routing:** assign bands (2D / gcell resources) minimizzando overflow. Output: `route.guide` (thousands of lines on GCD).
+**Global routing:** assign bands (2D / gcell resources) minimizing overflow. Output: `route.guide` (thousands of lines on GCD).
 
-**Detailed routing:** mask geometry: width, spacing, via, enclosure. Output: metal in ODB + `5_route_drc.rpt` (0 righe = clean sul nostro GCD).
+**Detailed routing:** mask geometry: width, spacing, via, enclosure. Output: metal in ODB + `5_route_drc.rpt` (0 lines = clean on our GCD).
 
-DRT senza guide is pave without a route: `detail_route.tcl` riga 5–8 exits with error and sends you a `make gui_grt`.
+DRT without guides is paving without a route: `detail_route.tcl` lines 5–8 exits with error and sends you to `make gui_grt`.
 
 ## Sub-stages ORFS
 
-| Step | Output | Cosa succede al timing |
+| Step | Output | What happens to timing |
 |---|---|---|
-| 5_1_grt | GRT + `estimate_parasitics -global_routing` + repair incremental | more honest slack than place |
-| 5_2_route | TritonRoute + `repair_antennas` eventuale re-route | geometria; STA ancora senza SPEF |
-| 5_3_fillcell | fill post-route | density processo |
+| 5_1_grt | GRT + `estimate_parasitics -global_routing` + incremental repair | more honest slack than place |
+| 5_2_route | TritonRoute + `repair_antennas` possible re-route | geometry; STA still without SPEF |
+| 5_3_fillcell | fill post-route | process density |
 
-GRT **still repairs timing** because le guide are un modello RC migliore del placement. Poi DPL incremental + `global_route -start_incremental` / `-end_incremental` re-routes only touched nets.
+GRT **still repairs timing** because guides are a better RC model than placement. Then incremental DPL + `global_route -start_incremental` / `-end_incremental` re-routes only touched nets.
 
-## Layer Nangate45 in *questa* GUI
+## Layer Nangate45 in *this* GUI
 
 | Layer | Qt 26Q2 color | Typical GCD role |
 |---|---|---|
-| metal1 | blu | rails + local pins |
-| metal2 | rosso | segnale |
-| metal3 | green | segnale, opposite direction |
-| metal4/7 | giallo / rosa | PDN strap |
+| metal1 | blue | rails + local pins |
+| metal2 | red | signal |
+| metal3 | green | signal, opposite direction |
+| metal4/7 | yellow / pink | PDN strap |
 
-Exercise: solo M2, poi solo M3 (`gui-atlas` Tcl). Dominant direction should change.
+Exercise: M2 only, then M3 only (`gui-atlas` Tcl). Dominant direction should change.
 
 ## Congestion
 
-Heatmap `orfs_final_congestion.png`: gcell grid, green = aria, red = full. On the GCD il centro is caldo, i edges cold: consistent with placement blob.
+Heatmap `orfs_final_congestion.png`: gcell grid, green = free, red = full. On the GCD the center is hot, the edges cold: consistent with placement blob.
 
-Se GRT does not converge: `5_1_grt-failed.odb` + congestion report. Fix: less density, more util headroom, fewer buffers (SDC).
+If GRT does not converge: `5_1_grt-failed.odb` + congestion report. Fix: less density, more util headroom, fewer buffers (SDC).
 
 ## Antenna
 
-During etch, un long wire on a gate is un capacitor that charges. `repair_antennas` inserts diodes; poi **re-runs** `detailed_route`. Log: `drt_antennas.log`. You do not need la plasma physics: you need sapere che ORFS can **iterate**.
+During etch, a long wire on a gate is a capacitor that charges. `repair_antennas` inserts diodes; then **re-runs** `detailed_route`. Log: `drt_antennas.log`. You do not need plasma physics: you need to know that ORFS can **iterate**.
 
-`DETAILED_ROUTE_END_ITERATION` / `DETAILED_ROUTE_ARGS -droute_end_iter 5`: stops TritonRoute early for debug (comment in `detail_route.tcl` righe 30–42).
+`DETAILED_ROUTE_END_ITERATION` / `DETAILED_ROUTE_ARGS -droute_end_iter 5`: stops TritonRoute early for debug (comment in `detail_route.tcl` lines 30–42).
 
 ## Files
 
-| Files | If empty / non vuoto |
+| Files | If empty / non-empty |
 |---|---|
 | `route.guide` | must be large |
-| `5_route_drc.rpt` | vuoto = DRC clean (GCD) — see anche [`drc_signoff`](../../reference/signoff-matrix.md) unificato post-finish |
-| `5_global_route.rpt` | overflow + slack GRT |
-| `maze.log` | debug DRT |
+| `5_route_drc.rpt` | empty = DRC clean (GCD) — see also unified [`drc_signoff`](../../reference/signoff-matrix.md) post-finish |
+| `5_global_route.rpt` | overflow + GRT slack |
+| `maze.log` | DRT debug |
 
 ## GUI
 
 1. `gui_5_1_grt.odb` — `win_grt.png`, `07_grt.png`
-2. `gui_5_2_route.odb` — `08_route_labeled.png`, isola M2/M3
+2. `gui_5_2_route.odb` — `08_route_labeled.png`, isolate M2/M3
 
 ## Power & SPICE chain
 
-Il routing completes geometry per IR/SPEF. PDNSim use il design **post-route/finish**. See [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-06-routing).
+Routing completes geometry for IR/SPEF. PDNSim uses the **post-route/finish** design. See [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-06-routing).
 
 | Link | Where |
 |---|---|
