@@ -41,6 +41,11 @@ Due modi, entrambi senza `if design == …`.
 
 Dopo ogni batch: regola win prodotto. Se uno slot non ha win, il ciclo
 inventa il prossimo esperimento: combo di assi indipendenti se il die
-è ancora aperto; su un die già chiuso (spi) salta i repair no-op e
-prova knob nuovi (place senza timing-driven, margine hold). Non si
-riscrive il Verilog.
+è ancora aperto; su un die già chiuso salta i repair no-op e prova
+knob nuovi (place senza timing-driven, margine hold, CTS più radi,
+repair spento).
+
+**spi @ 1 ns è esaurito.** Catalogo + 4 knob nuovi: 0 win prodotto.
+Die già chiuso (+612 ps), 238 celle, IR 0.98 mV. Non esiste un
+lever 10% su area/potenza/IR senza una classe nuova (PDN o clock).
+Il ciclo si ferma su questo slot. Non si riscrive il Verilog.

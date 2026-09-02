@@ -289,6 +289,16 @@ _EXPLICIT: dict[str, RecipeLabel] = {
         "HOLD_SLACK_MARGIN=0.05 ns.",
         "Su spi: identico al default. No-op.",
     ),
+    "camp_spi_cts_sparser": RecipeLabel(
+        "Buffer di clock più radi",
+        "CTS_BUF_DISTANCE=200.",
+        "Su spi: identico al default (albero già piccolo). No-op.",
+    ),
+    "camp_spi_repair_skip": RecipeLabel(
+        "Nessun repair TNS",
+        "TNS_END_PERCENT=0.",
+        "Su spi: identico al default (già in orario). No-op.",
+    ),
 }
 
 

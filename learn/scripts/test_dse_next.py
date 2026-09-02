@@ -598,6 +598,7 @@ def check_next_level(check, root: Path) -> None:
     from dse.win_rule import verdict as prod_verdict
     from dse.recipe_select import (
         CHEAP_FIRST,
+        CLOSED_IMPROVE,
         already_tried,
         combo_already_tried,
         floorplan_locked,
@@ -660,6 +661,11 @@ def check_next_level(check, root: Path) -> None:
     check(closed_imp[:2] == [["place_notiming"], ["hold_margin"]], f"very-closed improve starts with unused knobs {closed_imp}")
     check(["cts_sparser"] in closed_imp and ["repair_skip"] in closed_imp, f"very-closed also tries sparse CTS and skip-repair {closed_imp}")
     check({"hold_margin", "place_notiming", "cts_sparser", "repair_skip"} <= {r["id"] for r in RECIPES}, "improve knobs are in the catalog")
+    check(propose_improve(product_wins=0, wns_ns=0.612, already=set(CLOSED_IMPROVE)) == [], "exhausted closed-die knobs propose nothing")
+    spi_nt = label_for("camp_spi_place_notiming")
+    check("perde" in spi_nt.payoff.lower() and "ir" in spi_nt.payoff.lower(), f"I1 notiming payoff {spi_nt.payoff}")
+    spi_sk = label_for("camp_spi_repair_skip")
+    check("no-op" in spi_sk.payoff.lower() or "identico" in spi_sk.payoff.lower(), f"I1 skip-repair payoff {spi_sk.payoff}")
     check("HOLD_SLACK_MARGIN" in src and "GPL_TIMING_DRIVEN" in src, "wrapper passes hold margin and timing-driven")
     combo_row = _E(
         status="done",
