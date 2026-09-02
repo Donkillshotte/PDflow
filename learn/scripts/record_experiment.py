@@ -76,9 +76,14 @@ def main(argv: list[str] | None = None) -> int:
     else:
         exp.status = "done"
     log = ExperimentLog(args.jsonl)
-    if log.has(exp.variant, exp.phase):
+    existing = [e for e in log.all() if e.variant == exp.variant and e.phase == exp.phase]
+    kept = [e for e in existing if e.status in ("done", "stopped_by_policy", "frozen")]
+    if kept:
         print(json.dumps({"skipped": True, "variant": exp.variant, "phase": exp.phase}))
         return 0
+    if existing:
+        log._rows = [e for e in log._rows if not (e.variant == exp.variant and e.phase == exp.phase)]
+        log.rewrite()
     log.append(exp)
     freeze = {
         "kind": "campaign_freeze",

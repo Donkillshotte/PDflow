@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -788,6 +789,70 @@ def check_next_level(check, root: Path) -> None:
     check("CORE_UTILIZATION" not in aes_pin, f"aes pin still strips util {aes_pin}")
     wrap_src = (root / "scripts/run_design_finish.sh").read_text()
     check("FLOORPLAN_DEF=" in wrap_src, "wrapper clears FLOORPLAN_DEF when DIE_AREA is set")
+    import record_experiment
+
+    restamp_dir = Path(tempfile.mkdtemp(prefix="dse-restamp-"))
+    restamp_jsonl = restamp_dir / "campaign_experiments.jsonl"
+    restamp_jsonl.write_text(
+        json.dumps(
+            {
+                "id": "deadbeef0001",
+                "phase": "T1",
+                "design": "gcd",
+                "clock_ns": 0.46,
+                "variant": "camp_gcd_tpe_restamptest",
+                "role": "knob",
+                "status": "failed",
+                "notes": "floorplan exclusive",
+                "extra": {"tuner": "tpe"},
+            }
+        )
+        + "\n"
+    )
+    rc1 = record_experiment.main(
+        [
+            "--phase",
+            "T1",
+            "--design",
+            "gcd",
+            "--variant",
+            "camp_gcd_tpe_restamptest",
+            "--role",
+            "knob",
+            "--status",
+            "stopped_by_policy",
+            "--jsonl",
+            str(restamp_jsonl),
+            "--freeze",
+            str(restamp_dir / "freeze.json"),
+        ]
+    )
+    check(rc1 == 0, f"restamp of failed T1 returns 0 {rc1}")
+    restamp_rows = [json.loads(l) for l in restamp_jsonl.read_text().splitlines() if l.strip()]
+    check(len(restamp_rows) == 1, f"restamp keeps one row {len(restamp_rows)}")
+    check(restamp_rows[0]["status"] == "stopped_by_policy", f"failed T1 is replaced {restamp_rows[0]['status']}")
+    rc2 = record_experiment.main(
+        [
+            "--phase",
+            "T1",
+            "--design",
+            "gcd",
+            "--variant",
+            "camp_gcd_tpe_restamptest",
+            "--role",
+            "knob",
+            "--status",
+            "done",
+            "--jsonl",
+            str(restamp_jsonl),
+            "--freeze",
+            str(restamp_dir / "freeze2.json"),
+        ]
+    )
+    check(rc2 == 0, f"skip of stopped T1 returns 0 {rc2}")
+    restamp_rows2 = [json.loads(l) for l in restamp_jsonl.read_text().splitlines() if l.strip()]
+    check(len(restamp_rows2) == 1, f"done restamp does not duplicate {len(restamp_rows2)}")
+    check(restamp_rows2[0]["status"] == "stopped_by_policy", "kept row is still stopped_by_policy")
     omitted = to_env(
         {
             "PLACE_DENSITY_LB_ADDON": gcd_def.get("PLACE_DENSITY_LB_ADDON", 0.20),
