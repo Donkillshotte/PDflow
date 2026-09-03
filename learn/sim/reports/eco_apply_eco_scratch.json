@@ -1,0 +1,22 @@
+{
+  "kind": "eco",
+  "mode": "apply",
+  "variant": "eco_scratch",
+  "ok": true,
+  "signoff": false,
+  "signoff_required": "learn/scripts/run_signoff_all.sh",
+  "source_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb",
+  "output_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_out.odb",
+  "log": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_apply.log",
+  "rc": 0,
+  "error": null,
+  "rewrote": [
+    "odb"
+  ],
+  "not_rewritten": [
+    "verilog",
+    "spef",
+    "gds"
+  ],
+  "summary": "ECO apply wrote sidecar ODB \u00b7 run signoff_all next (GDS/SPEF/verilog not rewritten)"
+}
