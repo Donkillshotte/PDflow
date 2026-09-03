@@ -38,60 +38,36 @@ export function EcoPanel() {
   }, [load]);
 
   return (
-    <section className="fl-card" id="eco">
-      <header className="fl-card-head">
-        <h3>ECO</h3>
-        <p className="muted">
-          Propose post-finish timing repair. Apply is refused on locked variants
-          (`flowlab` / `learn` / `base`). Does not replace signoff.
+    <section className="fl-dynir" id="eco" aria-label="ECO propose">
+      <header className="fl-dynir-head">
+        <strong>ECO</strong>
+        <p>
+          Post-finish timing repair plan. Apply is refused on locked variants.
+          Does not replace <code>signoff_all</code>.
         </p>
       </header>
       {report ? (
-        <dl className="fl-kv">
-          <div>
-            <dt>Mode</dt>
-            <dd>{report.mode ?? "—"}</dd>
-          </div>
-          <div>
-            <dt>Claims signoff</dt>
-            <dd>{report.signoff ? "yes (bug)" : "no"}</dd>
-          </div>
-          <div>
-            <dt>Next</dt>
-            <dd>
-              <code>{report.signoff_required ?? "learn/scripts/run_signoff_all.sh"}</code>
-            </dd>
-          </div>
-        </dl>
+        <p className="fl-dynir-summary">
+          {report.summary ?? report.mode} · signoff claim: {report.signoff ? "yes (bug)" : "no"}
+          {report.signoff_required ? ` · next ${report.signoff_required}` : ""}
+        </p>
       ) : (
-        <p className="muted">No ECO report yet. Run the eco action after finish.</p>
+        <p className="fl-dynir-empty">No ECO report yet. Run the eco action after finish.</p>
       )}
-      {report?.error ? <p className="muted">{report.error}</p> : null}
+      {report?.error ? <p className="fl-dynir-empty">{report.error}</p> : null}
       {report?.proposed?.length ? (
-        <table className="fl-table">
-          <thead>
-            <tr>
-              <th>Step</th>
-              <th>Args</th>
-              <th>On</th>
-              <th>Why</th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.proposed.map((step, i) => (
-              <tr key={`${step.step}-${i}`}>
-                <td>
-                  <code>{step.step}</code>
-                </td>
-                <td>
-                  <code>{step.args || "—"}</code>
-                </td>
-                <td>{step.enabled ? "yes" : "no"}</td>
-                <td>{step.reason}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ul className="lb-chips" aria-label="Proposed ECO steps">
+          {report.proposed.map((step, i) => (
+            <li key={`${step.step}-${i}`}>
+              <span>
+                {step.step}
+                {step.args ? ` ${step.args}` : ""}
+                {step.enabled ? "" : " (off)"}
+              </span>
+              <b>{step.reason}</b>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </section>
   );
