@@ -508,6 +508,21 @@ connect_implicit("XOR2_X2" , "VSS")
 # Actually performs the extraction
 netlist # ... not really required
 
+# FILL/TAP CDL bodies are empty (Nangate). VIA_* have no schematic.
+# blank_circuit marks them abstract (pin frame) so KLayout does not
+# flatten them as "layout cell (no schematic)". Does not invent devices.
+blank_circuit("FILLCELL*")
+blank_circuit("TAPCELL*")
+blank_circuit("VIA_*")
+
+# XNOR2 well ties are split at cell level. Flatten into gcd so
+# connect_global(nwell, VDD) / (pwell, VSS) can join them without a
+# leftover must-connect warning at top.
+netlist.flatten_circuit("XNOR2_X1")
+schematic.flatten_circuit("XNOR2_X1")
+netlist.flatten_circuit("XNOR2_X2")
+schematic.flatten_circuit("XNOR2_X2")
+
 # Flatten cells which are present in one netlist only
 align
 # SIMPLIFICATION of the netlist
