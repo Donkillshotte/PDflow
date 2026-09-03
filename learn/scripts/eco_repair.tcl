@@ -50,3 +50,10 @@ if {[info commands filler_placement] != ""} {
 
 write_db $::env(ECO_ODB_OUT)
 puts "ECO_REPAIR_WROTE $::env(ECO_ODB_OUT)"
+
+if {[info commands write_verilog] != ""} {
+  set vout $::env(ECO_ODB_OUT)
+  regsub {\.odb$} $vout {.v} vout
+  write_verilog $vout
+  puts "ECO_REPAIR_WROTE_V $vout"
+}

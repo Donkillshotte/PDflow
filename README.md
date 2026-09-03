@@ -19,7 +19,8 @@ Agent rules: [`AGENTS.md`](AGENTS.md).
 
 Educational stack, not a foundry deck. Signoff is `run_signoff_all.sh`
 (STA → DRC → LVS → power). DSE only proposes knobs. ECO propose is
-allowed on locked variants; apply is not. License-gated leftovers
+allowed on locked variants; apply writes a sidecar ODB on an unlocked
+copy and still requires `signoff_all`. License-gated leftovers
 (CCS liberty, StarRC, S-parameter, MCMM corners) are listed in
 [`learn/reference/gaps.md`](learn/reference/gaps.md).
 

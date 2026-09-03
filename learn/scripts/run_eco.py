@@ -151,6 +151,8 @@ def apply(variant: str) -> dict:
     log = obj / "eco_apply.log"
     log.write_text((proc.stdout or "") + "\n" + (proc.stderr or ""))
     wrote = out.is_file() and proc.returncode == 0
+    verilog = out.with_suffix(".v")
+    wrote_v = wrote and verilog.is_file()
     err = None
     if not wrote:
         combined = f"{proc.stderr or ''}\n{proc.stdout or ''}"
@@ -170,11 +172,13 @@ def apply(variant: str) -> dict:
         "log": str(log),
         "rc": proc.returncode,
         "error": err,
-        "rewrote": ["odb"] if wrote else [],
-        "not_rewritten": ["verilog", "spef", "gds"],
+        "output_verilog": str(verilog) if wrote_v else None,
+        "rewrote": (["odb"] + (["verilog"] if wrote_v else [])) if wrote else [],
+        "not_rewritten": ["spef", "gds"] + ([] if wrote_v else ["verilog"]),
         "summary": (
-            "ECO apply wrote sidecar ODB · run signoff_all next "
-            "(GDS/SPEF/verilog not rewritten)"
+            "ECO apply wrote sidecar ODB"
+            + (" + verilog" if wrote_v else "")
+            + " · run signoff_all next (GDS/SPEF not rewritten)"
             if wrote
             else "ECO apply failed"
         ),

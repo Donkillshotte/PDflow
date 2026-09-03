@@ -66,6 +66,7 @@ def main() -> int:
     check("read_sdc" in tcl, "repair tcl reads SDC")
     check("ECO_RC" in tcl, "repair tcl sources ECO_RC")
     check("remove_fillers" in tcl and "filler_placement" in tcl, "repair tcl refills after DPL")
+    check("write_verilog" in tcl, "repair tcl writes sidecar verilog")
 
     live = ROOT / "learn/sim/reports/eco_apply_eco_scratch.json"
     if live.is_file():
@@ -79,6 +80,11 @@ def main() -> int:
         flowlab = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb"
         check(flowlab.is_file(), "flowlab 6_final.odb still present")
         check(out_odb.resolve() != flowlab.resolve(), "sidecar is not the locked flowlab ODB")
+        if scratch.get("ok"):
+            check("gds" in (scratch.get("not_rewritten") or []), "scratch apply does not rewrite GDS")
+            vpath = Path(scratch.get("output_verilog") or "")
+            if vpath.is_file():
+                check("verilog" in (scratch.get("rewrote") or []), "scratch apply lists verilog when written")
     print("ALL test_eco PASSED")
     return 0
 

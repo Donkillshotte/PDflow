@@ -28,7 +28,7 @@ Do not mix them on a roadmap. A gated item is not a sprint.
 | Item | State |
 |---|---|
 | LVS on FlowLab GCD | Built: filter unused CDL, inject FILL from DEF, map wells to VDD/VSS. KLayout compare must print a real match. Must-connect warnings on XNOR2 well ties stay in the lvsdb. |
-| ECO after finish | Propose on locked variants. Apply on an unlocked copy loads `typical.lib` + SDC + `setRC.tcl`, writes a sidecar ODB (not GDS/SPEF/verilog), and never calls `signoff_all`. |
+| ECO after finish | Propose on locked variants. Apply on an unlocked copy loads `typical.lib` + SDC + `setRC.tcl`, writes a sidecar ODB and verilog (not GDS/SPEF), and never calls `signoff_all`. |
 | Antenna in GDS DRC | Already in `FreePDK45.lydrc` (`antenna_check`, 300:1). |
 | Density / named ERC | Not in the FreePDK45 DRC deck. Adding a wrapper would not add the rules. Treat as PDK-deck gated unless a new deck is written. |
 | DSE as flow controller | Not to build. DSE stays a proposer. See `learn/dse/flow_role.py`. |
