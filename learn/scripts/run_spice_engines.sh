@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# SPICE engines: ngspice INTEGRATED; Sandia Xyce probed (usually GAP).
+# SPICE engines: ngspice INTEGRATED; Sandia Xyce probed and N4 gold if present.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=learn/lib/lab_tools.sh
+source "${ROOT}/learn/lib/lab_tools.sh"
+lab_tools_path "${ROOT}"
+export PYTHONPATH="/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 JSON="${ROOT}/learn/sim/reports/spice_engines_${VARIANT}.json"
 DEMO="${ROOT}/learn/sim/spice/system_pdn_tran_demo.sp"
@@ -20,18 +24,23 @@ if command -v ngspice >/dev/null 2>&1; then
   fi
 fi
 
-xyce_bin=""
-for c in xyce Xyce; do
-  if command -v "${c}" >/dev/null 2>&1; then
-    xyce_bin="$(command -v "${c}")"
-    break
-  fi
-done
+xyce_path=""
+if xyce_path="$(xyce_bin "${ROOT}")"; then
+  :
+else
+  xyce_path=""
+fi
 
 python3 - <<PY
-import json, shutil
+import json, shutil, sys
 from pathlib import Path
+sys.path.insert(0, "${ROOT}/learn/scripts")
+from pdn_vrm import xyce_vrm_die_gold
 xyce = shutil.which("xyce") or shutil.which("Xyce")
+n4 = {}
+if xyce:
+    n4 = xyce_vrm_die_gold()
+xyce_ready = bool(xyce) and n4.get("status") == "READY" and n4.get("ok") is True
 payload = {
   "ok": bool(${ng_ok}),
   "kind": "spice_engines",
@@ -40,11 +49,13 @@ payload = {
   "ngspice_demo_ok": bool(${ng_ok}),
   "xyce_present": xyce is not None,
   "xyce_bin": xyce,
-  "role": "ngspice is the System PDN / chip-mesh engine; Xyce (Sandia) is the parallel SPICE-class alternative",
-  "commercial_gap": None if xyce else "Sandia Xyce not installed — ngspice covers AC/TRAN PDN on GCD",
+  "xyce_n4": n4,
+  "xyce_status": "READY" if xyce_ready else ("GAP" if not xyce else "WATCH"),
+  "role": "ngspice is the System PDN / chip-mesh engine; Xyce is the dual-solver N4 gold when installed",
+  "commercial_gap": None if xyce else "Sandia Xyce not installed — run learn/scripts/install_xyce.sh",
   "summary": "ngspice={0} Xyce={1}".format(
     "ok" if ${ng_ok} else "no",
-    "yes" if xyce else "GAP",
+    "READY" if xyce_ready else ("yes" if xyce else "GAP"),
   ),
 }
 Path(${JSON@Q}).write_text(json.dumps(payload, indent=2) + "\n")

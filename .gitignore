@@ -16,6 +16,14 @@ terminals/
 # Native solver build
 engine/build/
 
+# Xyce local prefix (install via learn/scripts/install_xyce.sh)
+learn/tools/xyce/bin/
+learn/tools/xyce/lib/
+learn/tools/xyce/include/
+learn/tools/xyce/libexec/
+learn/tools/xyce/share/
+learn/tools/xyce/info/
+
 # Python
 __pycache__/
 *.py[cod]

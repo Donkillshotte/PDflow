@@ -16,6 +16,7 @@ Never ML.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -680,7 +681,25 @@ def xyce_in_path() -> str | None:
     """Xyce binary if installed. Never a fake solver."""
     import shutil
 
-    return shutil.which("Xyce") or shutil.which("xyce")
+    found = shutil.which("Xyce") or shutil.which("xyce")
+    if found:
+        return found
+    local = Path(__file__).resolve().parents[2] / "learn/tools/xyce/bin/Xyce"
+    if local.is_file() and os.access(local, os.X_OK):
+        return str(local)
+    return None
+
+
+def _xyce_env() -> dict:
+    """LD_LIBRARY_PATH for a local learn/tools/xyce prefix."""
+    env = os.environ.copy()
+    exe = xyce_in_path()
+    if not exe:
+        return env
+    lib = Path(exe).resolve().parent.parent / "lib"
+    if lib.is_dir():
+        env["LD_LIBRARY_PATH"] = f"{lib}{os.pathsep}{env.get('LD_LIBRARY_PATH', '')}"
+    return env
 
 
 def write_xyce_rlc_deck(
@@ -777,7 +796,14 @@ def xyce_vrm_die_gold(**kwargs) -> dict:
             "backend": be.get("backend"),
             "method": "Xyce deck contract (R/L/C/PWL/.TRAN/.PRINT); solver not installed",
         }
-    proc = subprocess.run([exe, str(deck)], capture_output=True, text=True, timeout=60, cwd=str(tmp))
+    proc = subprocess.run(
+        [exe, str(deck)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=str(tmp),
+        env=_xyce_env(),
+    )
     vmin = None
     csv_path = tmp / "n4_xyce.csv"
     if csv_path.is_file():
