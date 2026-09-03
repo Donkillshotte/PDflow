@@ -64,6 +64,21 @@ def main() -> int:
     tcl = (SCRIPTS / "eco_repair.tcl").read_text()
     check("read_liberty" in tcl, "repair tcl reads liberty")
     check("read_sdc" in tcl, "repair tcl reads SDC")
+    check("ECO_RC" in tcl, "repair tcl sources ECO_RC")
+    check("remove_fillers" in tcl and "filler_placement" in tcl, "repair tcl refills after DPL")
+
+    live = ROOT / "learn/sim/reports/eco_apply_eco_scratch.json"
+    if live.is_file():
+        scratch = json.loads(live.read_text())
+        check(scratch.get("mode") == "apply", "scratch apply report is apply")
+        check(scratch.get("signoff") is False, "scratch apply does not claim signoff")
+        check(scratch.get("ok") is True, "scratch apply wrote sidecar")
+        check("run_signoff_all" in str(scratch.get("signoff_required")), "scratch still requires signoff_all")
+        out_odb = Path(scratch.get("output_odb") or "")
+        check(out_odb.is_file(), "scratch sidecar ODB exists")
+        flowlab = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb"
+        check(flowlab.is_file(), "flowlab 6_final.odb still present")
+        check(out_odb.resolve() != flowlab.resolve(), "sidecar is not the locked flowlab ODB")
     print("ALL test_eco PASSED")
     return 0
 

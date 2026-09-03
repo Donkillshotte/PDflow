@@ -140,6 +140,7 @@ def apply(variant: str) -> dict:
     env["ECO_LIB"] = str(FLOW / "platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib")
     env["ECO_SDC"] = str(FLOW / "designs/nangate45/gcd-tutorial/constraint.sdc")
     env["ECO_RC"] = str(FLOW / "platforms/nangate45/setRC.tcl")
+    env["ECO_FILL"] = "FILLCELL_X1 FILLCELL_X2 FILLCELL_X4 FILLCELL_X8 FILLCELL_X16 FILLCELL_X32"
     proc = subprocess.run(
         [exe, "-exit", str(TCL)],
         capture_output=True,
@@ -169,7 +170,14 @@ def apply(variant: str) -> dict:
         "log": str(log),
         "rc": proc.returncode,
         "error": err,
-        "summary": "ECO apply wrote sidecar ODB · run signoff_all next" if wrote else "ECO apply failed",
+        "rewrote": ["odb"] if wrote else [],
+        "not_rewritten": ["verilog", "spef", "gds"],
+        "summary": (
+            "ECO apply wrote sidecar ODB · run signoff_all next "
+            "(GDS/SPEF/verilog not rewritten)"
+            if wrote
+            else "ECO apply failed"
+        ),
     }
 
 
