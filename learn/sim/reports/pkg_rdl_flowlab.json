@@ -1,42 +1,48 @@
 {
   "kind": "pkg_rdl",
   "variant": "flowlab",
-  "status": "GAP",
+  "status": "READY",
   "rdl": {
     "api": "rdl_route",
-    "executed": false,
+    "executed": true,
     "gds_present": true,
-    "platform_bump_lef": false
+    "platform_bump_lef": true,
+    "sidecar_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pkg_rdl_sidecar/rdl.odb",
+    "sidecar_def": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pkg_rdl_sidecar/rdl.def",
+    "n_dummy_bump": 4,
+    "n_rdl_wires": 36,
+    "n_metal10_tokens": 5,
+    "openroad_rc": 0,
+    "log": "/workspace/learn/sim/reports/pkg_rdl_flowlab.log"
   },
   "evaluation": {
     "checks": [
       {
         "id": "rdl_executed",
-        "label": "rdl_route executed",
-        "actual": false,
-        "target": true,
-        "ok": false,
-        "note": "Nangate45 GCD has no bump/pad LEF; rdl_route is not run"
-      },
-      {
-        "id": "platform_bump_lef",
-        "label": "Platform bump LEF",
-        "actual": false,
-        "target": true,
-        "ok": false
-      },
-      {
-        "id": "gds_for_future_rdl",
-        "label": "GDS present (prerequisite for an RDL lab)",
+        "label": "rdl_route executed and wrote wires",
         "actual": true,
         "target": true,
         "ok": true,
-        "note": "Prerequisite only \u2014 does not make RDL pass"
+        "note": "ok only when the router wrote metal10/metal6 wires on the sidecar"
+      },
+      {
+        "id": "platform_bump_lef",
+        "label": "Educational dummy bump LEF",
+        "actual": true,
+        "target": true,
+        "ok": true
+      },
+      {
+        "id": "sidecar_not_baseline",
+        "label": "Sidecar ODB (baseline untouched)",
+        "actual": true,
+        "target": true,
+        "ok": true
       }
     ],
-    "ok": false
+    "ok": true
   },
-  "ok": false,
-  "educational_note": "rdl_route not executed on GCD. GAP, not a mock pass. See pkg-design-package.md.",
-  "summary": "RDL GAP \u00b7 rdl_route not executed \u00b7 bump LEF=N/A \u00b7 GDS=ok"
+  "ok": true,
+  "educational_note": "dummy bump LEF (scaled OpenROAD pad test), not C4. Sidecar ODB only \u2014 FlowLab 6_final.odb is untouched. metal10 bump-to-bump plus metal6 pin fallback (GCD pins are M5/M6).",
+  "summary": "RDL READY \u00b7 executed=True \u00b7 bumps=4 \u00b7 wires=36 \u00b7 dummy LEF, not C4"
 }

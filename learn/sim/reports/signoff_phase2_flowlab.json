@@ -4,11 +4,11 @@
   "pillars": {
     "thermal": {
       "ok": true,
-      "summary": "Thermal proxy 31.39 mV (IR 3.09 + droop 28.30)"
+      "summary": "HotSpot t_max=70.54 \u00b0C \u00b7 IR+droop proxy 31.39 mV"
     },
     "pkg": {
       "ok": true,
-      "summary": "bump:ok \u00b7 rdl:GAP \u00b7 system_pdn:ok"
+      "summary": "bump:ok \u00b7 rdl:ok \u00b7 system_pdn:ok"
     }
   },
   "ok": true,

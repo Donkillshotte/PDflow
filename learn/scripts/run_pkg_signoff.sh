@@ -47,9 +47,9 @@ steps = {
   },
   "system_pdn": {"ok": bool(sys_ok), "summary": sys.get("summary")},
 }
-# Executable pieces: bump mesh + system PDN. RDL stays a labeled GAP on Nangate GCD.
+# Executable pieces: bump mesh + system PDN. Dummy rdl_route is extra when it ran.
 executable_ok = bool(steps["pkg_bump"]["ok"]) and bool(steps["system_pdn"]["ok"])
-rdl_label = "GAP" if not rdl_executed else ("ok" if rdl_ok else "fail")
+rdl_label = "ok" if rdl_ok else ("GAP" if not rdl_executed else "fail")
 out = {
   "kind": "pkg_signoff",
   "variant": v,
@@ -70,7 +70,7 @@ out = {
         "actual": rdl_executed,
         "target": True,
         "ok": rdl_ok,
-        "note": "GAP: rdl_route not executed (no bump LEF on Nangate GCD)",
+        "note": "dummy bump LEF sidecar; not C4. ok only if rdl_route wrote wires",
       },
       {
         "id": "system_pdn",
