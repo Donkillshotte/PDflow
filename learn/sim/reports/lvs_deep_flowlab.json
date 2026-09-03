@@ -19,9 +19,9 @@
       "Flatten layout cell (no schematic): TAPCELL_X1",
       "Writing netlist: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/gcd_extracted.cir ..",
       "Writing LVS database: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/lvs_deep/transistor.lvsdb ..",
-      "Total elapsed: 0.570s  Memory: 444.00M",
+      "Total elapsed: 0.580s  Memory: 444.00M",
       "ERROR : Netlists don't match",
-      "LVS finished at : 18:34:34  -  LVS duration =  0 hrs. 0 min. 0 sec.",
+      "LVS finished at : 21:11:13  -  LVS duration =  0 hrs. 0 min. 0 sec.",
       ""
     ],
     "ok": false
@@ -45,7 +45,7 @@
       "Writing LVS database: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/lvs_deep/blackbox.lvsdb ..",
       "Total elapsed: 0.500s  Memory: 444.00M",
       "ERROR : Netlists don't match",
-      "LVS finished at : 18:34:36  -  LVS duration =  0 hrs. 0 min. 0 sec.",
+      "LVS finished at : 21:11:15  -  LVS duration =  0 hrs. 0 min. 0 sec.",
       ""
     ],
     "ok": false,
@@ -99,6 +99,8 @@
   ],
   "n_filtered_masters": 44,
   "vtl_tolerances": true,
-  "educational_note": "Filtered unused library SUBCKTs and renamed device tolerances to NMOS_VTL/PMOS_VTL. Black-box is connectivity-only, not transistor LVS. Do not treat black-box PASS as tapeout LVS.",
+  "well_implicit": true,
+  "fill_tap_blank": true,
+  "educational_note": "Filtered unused library SUBCKTs, VTL tolerances, connect_implicit NWELL/PWELL, and blank_circuit on FILL/TAP (pins-only CDL). Do not add extra SUBCKT ports \u2014 instance pin counts must stay. Black-box is connectivity-only, not transistor LVS.",
   "summary": "LVS deep transistor=FAIL \u00b7 blackbox=FAIL \u00b7 filtered 44 masters \u00b7 unused flatten 0"
 }

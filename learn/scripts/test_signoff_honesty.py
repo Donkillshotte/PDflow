@@ -73,6 +73,16 @@ def main() -> int:
     check(gate.get("ok") is True, "gate_sim report ok")
     check(gate.get("status") == "READY", "gate_sim READY")
 
+    vl = load("vectorless_flowlab.json")
+    check(vl.get("ok") is True, "vectorless report ok")
+    dyn_src = str((vl.get("dynamic") or {}).get("source") or "")
+    check("gcd_gate.vcd" in dyn_src, "dynamic source is gate VCD")
+    check("tb_gcd_gate/dut" in dyn_src, "dynamic VCD scope is tb_gcd_gate/dut")
+
+    gc = load("gridcheck_flowlab.json")
+    check(gc.get("ok") is True, "gridcheck flowlab ok")
+    check(gc.get("vdd_connected") is True and gc.get("vss_connected") is True, "gridcheck VDD+VSS")
+
     spice = load("spice_engines_flowlab.json")
     check(spice.get("xyce_status") == "READY", "Xyce N4 READY in spice_engines")
     check((spice.get("xyce_n4") or {}).get("ok") is True, "Xyce N4 gold ok")
@@ -88,9 +98,11 @@ def main() -> int:
     check(ccs.get("status") == "READY", "ccs_char READY")
     check((ccs.get("official_probe") or {}).get("status") == "GAP", "official Nangate liberty stays NLDM GAP")
     check((ccs.get("official_probe") or {}).get("n_ccs_tables", 1) == 0, "official lib has zero CCS tables")
-    check(int(ccs.get("n_ccs_tables") or 0) >= 18, "sidecar has ≥9 cells × rise/fall")
-    check(int(ccs.get("n_cells") or 0) >= 9, "at least 9 GCD cells characterized")
+    check(int(ccs.get("n_ccs_tables") or 0) >= 30, "sidecar has ≥15 cells × rise/fall")
+    check(int(ccs.get("n_cells") or 0) >= 15, "at least 15 GCD combo cells characterized")
     check("INV_X1" in (ccs.get("cells") or []), "INV_X1 still in sidecar")
+    check("AOI21_X1" in (ccs.get("cells") or []), "AOI21_X1 in sidecar")
+    check("CLKBUF_X1" in (ccs.get("cells") or []), "CLKBUF_X1 in sidecar")
     check(0.25 <= float(ccs.get("delay_ratio_vs_nldm") or 0) <= 4.0, "PTM delay within band of NLDM")
     sidecar = ROOT / "learn/sim/lib/nangate45_ptm_ccs_sidecar.lib"
     inv = ROOT / "learn/sim/lib/INV_X1_ptm45_ccs.lib"
@@ -104,6 +116,8 @@ def main() -> int:
     check((deep.get("transistor") or {}).get("ok") is False, "transistor compare is fail")
     check(int(deep.get("n_filtered_masters") or 0) >= 30, "filtered CDL keeps used masters")
     check(int((deep.get("transistor") or {}).get("n_flatten", 99)) == 0, "unused library flatten is gone")
+    check(deep.get("well_implicit") is True, "deep LVS uses well connect_implicit")
+    check(deep.get("fill_tap_blank") is True, "deep LVS blanks FILL/TAP only")
     check(not (ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/.lvs.ok").exists(), "deep LVS did not stamp .lvs.ok")
     print("ALL test_signoff_honesty PASSED")
     return 0

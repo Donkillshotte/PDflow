@@ -55,6 +55,25 @@ def _inject_blank(xml: str, cells: list[str]) -> str:
     return xml.replace(needle, calls + "\n\nif ! compare", 1)
 
 
+FILL_TAP = (
+    "FILLCELL_X1",
+    "FILLCELL_X2",
+    "FILLCELL_X4",
+    "FILLCELL_X8",
+    "FILLCELL_X16",
+    "FILLCELL_X32",
+    "TAPCELL_X1",
+)
+
+
+def _inject_well_implicit(xml: str) -> str:
+    extra = 'connect_implicit("*", "NWELL")\nconnect_implicit("*", "PWELL")\n'
+    needle = "schematic.simplify"
+    if needle not in xml:
+        return extra + xml
+    return xml.replace(needle, needle + "\n" + extra, 1)
+
+
 def _write_runset(text: str, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
@@ -135,10 +154,11 @@ def main() -> int:
     filt_cdl.write_text(filtered)
     print("LVS_DEEP keep", len(keep), "masters")
 
-    base_xml = _patch_vtl_tolerances(LYLVS.read_text())
+    base_xml = _inject_well_implicit(_patch_vtl_tolerances(LYLVS.read_text()))
     trans_rs = obj / "FreePDK45_vtl.lylvs"
     box_rs = obj / "FreePDK45_blackbox.lylvs"
-    _write_runset(base_xml, trans_rs)
+    # FILL/TAP CDL is pins-only; blank them on transistor compare (not a fake pass).
+    _write_runset(_inject_blank(base_xml, list(FILL_TAP)), trans_rs)
     _write_runset(_inject_blank(base_xml, sorted(keep)), box_rs)
 
     deep_dir = res / "lvs_deep"
@@ -175,10 +195,13 @@ def main() -> int:
         "filtered_masters": sorted(keep),
         "n_filtered_masters": len(keep),
         "vtl_tolerances": True,
+        "well_implicit": True,
+        "fill_tap_blank": True,
         "educational_note": (
-            "Filtered unused library SUBCKTs and renamed device tolerances to "
-            "NMOS_VTL/PMOS_VTL. Black-box is connectivity-only, not transistor LVS. "
-            "Do not treat black-box PASS as tapeout LVS."
+            "Filtered unused library SUBCKTs, VTL tolerances, connect_implicit "
+            "NWELL/PWELL, and blank_circuit on FILL/TAP (pins-only CDL). "
+            "Do not add extra SUBCKT ports — instance pin counts must stay. "
+            "Black-box is connectivity-only, not transistor LVS."
         ),
         "summary": (
             f"LVS deep transistor={'PASS' if transistor_ok else 'FAIL'} · "
