@@ -26,8 +26,8 @@
       "errors": 0,
       "must_connect": 2,
       "messages": [
-        "Must-connect subnets of VDD of circuit AND3_X1 must be connected further up in the hierarchy - this is an error at chip top level.\\nInstance path: gcd/AND3_X1[m0 8.17,26.6]",
-        "Must-connect subnets of VSS of circuit AND3_X1 must be connected further up in the hierarchy - this is an error at chip top level.\\nInstance path: gcd/AND3_X1[m0 8.17,26.6]"
+        "Must-connect subnets of VDD of circuit DFF_X2 must be connected further up in the hierarchy - this is an error at chip top level.\\nInstance path: gcd/DFF_X2[r0 5.51,26.6]:$",
+        "Must-connect subnets of VSS of circuit DFF_X2 must be connected further up in the hierarchy - this is an error at chip top level.\\nInstance path: gcd/DFF_X2[r0 5.51,26.6]:$"
       ],
       "path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb"
     },
@@ -46,9 +46,9 @@
         "Flatten layout cell (no schematic): VIA_via1_2_960_340_1_3_300_300",
         "Writing netlist: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/gcd_extracted.cir ..",
         "Writing LVS database: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb ..",
-        "Total elapsed: 0.660s  Memory: 444.00M",
+        "Total elapsed: 0.700s  Memory: 444.00M",
         "CONGRATULATIONS! Netlists match.",
-        "LVS finished at : 23:30:6  -  LVS duration =  0 hrs. 0 min. 0 sec."
+        "LVS finished at : 23:37:31  -  LVS duration =  0 hrs. 0 min. 0 sec."
       ],
       "missing_lylvs": false,
       "netlists_match": true
@@ -56,7 +56,7 @@
   },
   "ok": true,
   "must_connect": 2,
-  "educational_note": "KLayout compare on filtered CDL + DEF fillers + well\u2192VDD/VSS. FILL/TAP/VIA are blank_circuit (empty Nangate CDL, no invented devices). XNOR2/MUX2/NAND3-4/OAI22 flatten. Remaining must-connect is Nangate split wells.",
+  "educational_note": "KLayout compare on filtered CDL + DEF fillers + well\u2192VDD/VSS. FILL/TAP/VIA are blank_circuit (empty Nangate CDL, no invented devices). XNOR2/MUX2/NAND3-4/OAI22/AND3 flatten. Remaining must-connect is DFF_X2 (Nangate split wells).",
   "summary": "LVS PASS \u00b7 errors 0",
   "artifacts": {
     "lvsdb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb",

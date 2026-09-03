@@ -129,7 +129,7 @@ out = {
   "educational_note": (
       "KLayout compare on filtered CDL + DEF fillers + well→VDD/VSS. "
       "FILL/TAP/VIA are blank_circuit (empty Nangate CDL, no invented devices). "
-      "XNOR2/MUX2/NAND3-4/OAI22 flatten. Remaining must-connect is Nangate split wells."
+      "XNOR2/MUX2/NAND3-4/OAI22/AND3 flatten. Remaining must-connect is DFF_X2 (Nangate split wells)."
   ),
   "summary": f"LVS {'PASS' if eq['lvs_pass'] else 'FAIL'} · errors {eq['lvs_errors']}",
   "artifacts": {"lvsdb": "${LVSDB}", "log": "${LOG}"},
