@@ -7,6 +7,13 @@ Evidence: `learn/sim/reports/*_flowlab.json`, ORFS
 `results/nangate45/gcd/flowlab/`, `GET /api/suite`. Course progress is
 student work (`0/8`).
 
+Live `GET /api/suite` on this Cloud VM: **35 / 46** hooks `ok`,
+`lessonsDone` **0 / 8**, `pipelineReady` **0**. Several Studio hooks
+look at `results/.../gcd/learn/` (empty here) instead of
+`gcd/flowlab/` — those are **UI false-negatives**, not missing cooks.
+`dynamic_ir` is also false in the UI because the gold JSON has no
+`ok: true` field (it is **LOCKED**, not missing).
+
 Legend:
 
 | Status | Meaning |
@@ -137,3 +144,78 @@ Area, power, leakage, and IR. Honest win/lose.
 | Chip PDN static / transient | **3.09 / 28.3 mV** | gold · vyges mesh |
 | System PDN droop | **6.27 mV** | chip transient |
 | HotSpot t_max | **70.54 °C** | IR proxy mV |
+
+---
+
+## Studio `GET /api/suite` hooks (live)
+
+Physics status is the source of truth. `UI` is the boolean Studio
+shows. `FN` = false-negative (artifact exists under `flowlab/`).
+
+| Group | Hook | UI | Physics | Note |
+|---|---|---|---|---|
+| Environment | toolchain | ok | **WORKS** | openroad · yosys · sta · klayout |
+| Environment | magic_netgen | no | **GAP** | not in PATH · no FreePDK45 `.tech` |
+| Environment | ngspice | ok | **WORKS** | Xyce READY |
+| Environment | iverilog | ok | **WORKS** | RTL + gate sim |
+| Environment | hotspot | ok | **WORKS*** | t_max 70.54 °C |
+| Environment | fastercap | ok | **WORKS*** | 2-wire BEM |
+| Environment | ccs_char | ok | **WORKS*** | 9 cells · official lib NLDM |
+| Environment | display | ok | **WORKS** | `DISPLAY :1` |
+| Environment | spice_engines | ok | **WORKS** | ngspice + Xyce N4 |
+| Frontend | rtl | ok | **WORKS** | `gcd.v` |
+| Frontend | rtl_sim | ok | **WORKS** | `gcd.vcd` |
+| Frontend | gate_sim | ok | **WORKS** | `GATE_SIM_PASS` |
+| PD | synth | no | **WORKS** | FN · `flowlab/1_synth.odb` exists |
+| PD | pdn | no | **WORKS** | FN · `flowlab/2_4_floorplan_pdn.odb` |
+| PD | finish | no | **WORKS** | FN · `flowlab/6_final.gds` |
+| Power | gridcheck | no | **WORKS*** | PDN ODB exists · no `.gridcheck_pdn.ok` stamp |
+| Power | system_pdn | ok | **WORKS*** | droop 6.27 mV · no Touchstone |
+| Power | activity | ok | **WORKS** | gate VCD preferred |
+| Power | vectorless | ok | **WORKS*** | label still `missing_vcd` |
+| Power | chip_pdn_ir | ok | **WORKS*** | 3.09 / 28.3 mV |
+| Power | vyges_em_ir | ok | **WORKS*** | 15.1 / 86.0 mV · other mesh |
+| Power | dynamic_ir | no | **LOCKED** | gold 45.298 · JSON has no `ok` |
+| Power | dse | ok | **WORKS*** | lab only · not a product win |
+| Power | power_chain | ok | **WORKS** | activity → chip → system |
+| Power | spice_lab | ok | **WORKS** | `INDEX_flowlab.md` |
+| Signoff | klayout_drc | no | **WORKS** | FN · signoff DRC 0 |
+| Signoff | sta_signoff | ok | **WORKS** | WNS −0.02 · TNS −0.14 · 3 viol |
+| Signoff | sta_ir_aware | ok | **WORKS*** | educational, not Tempus |
+| Signoff | drc_signoff | ok | **WORKS** | 0 route · 0 GDS |
+| Signoff | lvs_signoff | no | **FAIL** | `Netlists don't match` |
+| Signoff | power_signoff | ok | **WORKS*** | lumped board |
+| Signoff | signoff_all | no | **FAIL** | LVS pillar |
+| Signoff | thermal_signoff | ok | **WORKS*** | HotSpot |
+| Signoff | pkg_rdl | ok | **WORKS*** | dummy, not C4 |
+| Signoff | pkg_signoff | ok | **WORKS*** | bump + RDL + system |
+| Signoff | signoff_phase2 | ok | **WORKS** | thermal + PKG |
+| GUI | or-web | ok | **WORKS** | `POST /api/viewer` |
+| GUI | or-gui | no | **WORKS*** | DISPLAY ok · Qt targets look at `learn/` |
+| Analysis | yosys_equiv | ok | **WORKS** | EQY-class mapped |
+| Analysis | formal_gcd | ok | **WORKS** | sby-class mapped |
+| Analysis | openrcx | ok | **WORKS** | 657 nets |
+| Analysis | analytical_pex | ok | **WORKS** | ST + FDM + FasterCap |
+| Analysis | ccs_char_report | ok | **WORKS*** | sidecar only |
+| Analysis | lvs_deep | ok | **FAIL** | report exists · transistor FAIL |
+| Analysis | inspect | no | **WORKS** | FN · looks at `learn/1_synth.odb` |
+| Course | docs | ok | **WORKS** | extended-flow + tool-hooks |
+
+ORFS pipeline UI (`pipelineReady 0`) is the same `learn/` path issue.
+Physical stages synth → finish are **WORKS** on `flowlab/`.
+
+---
+
+## What is still not functional (do not fake)
+
+| Leftover | Why it stays |
+|---|---|
+| Course **0/8** | Student work |
+| Official LVS / `signoff_all` | Well ports + empty FILL/TAP CDL |
+| Official Nangate CCS | `typical.lib` is NLDM |
+| CCS on DFF / MUX / AOI / OAI | Sequential / multi-arc not validated |
+| Board S-parameter | TUHH zip is form-gated |
+| Raphael / StarRC | Commercial |
+| Magic / Netgen extract | No FreePDK45 `.tech` here |
+| sky130 | Different PDK · course pinned |
+| Gold Dynamic IR restamp | Forbidden · **45.298 mV** |
