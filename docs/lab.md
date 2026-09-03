@@ -15,10 +15,14 @@ Native solvers: [`engine/README.md`](../engine/README.md).
 
 ## Entry
 
+Studio Lab bench: `/lab` (`GET /api/lab`). Physics ledger and DSE launch
+compare live there. FlowLab finish `#ir` is the GCD mesh, not this bench.
+
 ```bash
 export PYTHONPATH=learn:learn/scripts
 python3 learn/scripts/run_dse.py --campaign --wall-s=180
 python3 learn/scripts/test_dse.py          # one file at a time; F4 last
+python3 learn/scripts/validate_lab_physics.py
 ```
 
 Cloud / IR:
