@@ -95,8 +95,9 @@ Registry and matrix: [`signoff-matrix.md`](../../reference/signoff-matrix.md).
 | All | `signoff_all` | `run_signoff_all.sh` |
 
 FlowLab **finish** phase shows the matrix vs `golden-gcd.json`. LVS is a
-KLayout compare (filtered CDL + well→VDD/VSS). Read the report, including
-must-connect warnings. Educational FreePDK45, not foundry LVS.
+KLayout compare (filtered CDL + well→VDD/VSS + FILL/TAP `blank_circuit`).
+Read the report, including remaining AND3_X1 must-connect warnings.
+Educational FreePDK45, not foundry LVS.
 
 After signoff, ECO propose is allowed on `flowlab`. Apply only on an
 unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply writes

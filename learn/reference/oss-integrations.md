@@ -36,7 +36,7 @@ Live WORKS / FAIL / GAP table: [suite-status.md](./suite-status.md).
 | **OpenRCX** | INTEGRATED | Inside OpenROAD (`extract_parasitics`) | `6_final.spef` + `rcx_patterns.rules` · action `openrcx_report` | — |
 | **FasterCap** | INTEGRATED (when `install_fastercap.sh` succeeds) | 3D BEM 2-wire extract vs Sakurai–Tamaru + FDM | `analytical_pex_*.json` `fastercap.status: READY` | Raphael remains commercial GAP |
 | **CCS sidecar (GCD cells)** | INTEGRATED | ngspice + PTM 45 nm `output_current` on **19** GCD combinational cells (38 tables) | `ccs_char_*.json` READY · `learn/sim/lib/nangate45_ptm_ccs_sidecar.lib` | Official `typical.lib` stays NLDM GAP · no DFF/MUX |
-| **LVS deep** | INTEGRATED | Filter unused CDL + FILL from DEF + well→VDD/VSS | `lvs_deep_*.json` transistor PASS · FILL/TAP still flatten · XNOR2 must-connect 6 | `.lvs.ok` only on a real KLayout match |
+| **LVS deep** | INTEGRATED | Filter unused CDL + FILL from DEF + well→VDD/VSS + FILL/TAP `blank_circuit` | `lvs_deep_*.json` transistor PASS · VIA flatten · AND3_X1 must-connect 2 | `.lvs.ok` only on a real KLayout match |
 | **Raphael** | GAP | Synopsys commercial, no license | documented | OpenRCX SPEF + analytical PEX |
 | **StarRC** | GAP | Synopsys commercial, no license | documented | **OpenRCX** SPEF at finish |
 | **open_pdks** | GAP | Sky130 / gf180, **different PDK** | course pinned to Nangate45 | Not mixed with FreePDK45 |

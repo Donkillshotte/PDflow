@@ -134,9 +134,11 @@ FILLCELL from DEF) and maps wells to VDD/VSS. KLayout printed
 `CONGRATULATIONS! Netlists match` on FlowLab GCD. `.lvs.ok` is stamped
 only on that line.
 
-Leftovers: empty FILL/TAP CDL bodies still flatten; VIA_* have no
-schematic; lvsdb may list XNOR2 must-connect warnings. Do not hide
-those. Do not stamp `.lvs.ok` without the match line.
+Leftovers: FILL/TAP are `blank_circuit` (empty Nangate CDL, no invented
+devices). VIA_* have no schematic and still flatten. lvsdb lists
+AND3_X1 must-connect (2). Flattening more std-cell families inflated
+that count. Do not hide those. Do not stamp `.lvs.ok` without the
+match line.
 
 ---
 

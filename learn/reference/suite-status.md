@@ -45,10 +45,13 @@ dropped, FILLCELL instances taken from the DEF, wells mapped to VDD/VSS
 
 Leftovers that stay visible:
 
-- FILL/TAP CDL bodies are empty, so those cells still flatten.
-- VIA_* routing cells have no schematic (expected).
-- lvsdb may still list must-connect warnings on XNOR2 well ties.
-  Those are warnings, not a substitute for the compare line.
+- FILL/TAP CDL bodies are empty; `blank_circuit` marks them abstract
+  so they no longer flatten as "layout cell (no schematic)".
+- VIA_* routing cells have no schematic and still flatten (expected).
+- lvsdb still lists must-connect on AND3_X1 well ties (2 warnings).
+  Flattening XNOR2/MUX2/NAND3-4/OAI22 moved the leftover; flattening
+  AND/DFF/INV/BUF next inflated the count. Warnings, not a substitute
+  for the compare line.
 
 ### 3. Real GAPs — missing data or a tool we will not pretend to be
 
@@ -119,7 +122,7 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | STA | **WORKS** | WNS −0.02 ns · TNS −0.14 · 3 viol | Educational Nangate, not PrimeTime |
 | STA IR-aware | **WORKS*** | `sta_ir_aware` ok · NLDM × ITerm V | Does not change official WNS |
 | DRC (route + GDS) | **WORKS** | 0 route lines · 0 GDS items | — |
-| LVS (KLayout) | **WORKS*** | Compare match on filtered CDL | FILL/TAP still flatten (empty CDL). XNOR2 must-connect warnings stay in lvsdb |
+| LVS (KLayout) | **WORKS*** | Compare match on filtered CDL | FILL/TAP abstract. VIA flatten. AND3_X1 must-connect 2 |
 | LVS deep (filter + VTL) | **WORKS*** | same compare path | Black-box is labeled separately |
 | ECO | **WORKS*** | propose on flowlab; apply refused | Does not run `signoff_all` |
 | Power signoff | **WORKS*** | Chip static **1.05 mV** · sys droop **6.03 mV** | Lumped board, not S-parameter |
@@ -245,7 +248,7 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Signoff | sta_signoff | ok | **WORKS** | WNS −0.02 · TNS −0.14 · 3 viol |
 | Signoff | sta_ir_aware | ok | **WORKS*** | educational, not Tempus |
 | Signoff | drc_signoff | ok | **WORKS** | 0 route · 0 GDS |
-| Signoff | lvs_signoff | ok | **WORKS*** | KLayout match · XNOR2 must-connect warnings |
+| Signoff | lvs_signoff | ok | **WORKS*** | KLayout match · AND3_X1 must-connect 2 |
 | Signoff | power_signoff | ok | **WORKS*** | lumped board |
 | Signoff | signoff_all | ok | **WORKS** | four pillars |
 | Signoff | eco | ok | **WORKS*** | propose only on flowlab |
@@ -260,7 +263,7 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Analysis | openrcx | ok | **WORKS** | 657 nets |
 | Analysis | analytical_pex | ok | **WORKS** | ST + FDM + FasterCap |
 | Analysis | ccs_char_report | ok | **WORKS*** | sidecar only |
-| Analysis | lvs_deep | ok | **WORKS*** | transistor match · FILL still flattens |
+| Analysis | lvs_deep | ok | **WORKS*** | transistor match · FILL/TAP abstract · AND3 must-connect 2 |
 | Analysis | inspect | ok | **WORKS** | flowlab `1_synth.odb` |
 | Course | docs | ok | **WORKS** | extended-flow + tool-hooks |
 
@@ -273,7 +276,7 @@ ORFS pipeline UI follows `preferredResultsVariant()` (`flowlab` here).
 | Leftover | Why it stays |
 |---|---|
 | Course **0/8** | Student work |
-| XNOR2 must-connect warnings | Well ties inside the cell; compare still matches |
+| AND3_X1 must-connect (2) | Nangate split wells; compare still matches |
 | Official Nangate CCS | `typical.lib` is NLDM |
 | CCS on DFF / MUX | Sequential / multi-arc not validated · AOI21/OAI21 combo shipped |
 | Board S-parameter | TUHH zip is form-gated |
