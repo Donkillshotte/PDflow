@@ -139,6 +139,7 @@ def apply(variant: str) -> dict:
     env["ECO_HOLD"] = os.environ.get("ECO_HOLD", "0")
     env["ECO_LIB"] = str(FLOW / "platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib")
     env["ECO_SDC"] = str(FLOW / "designs/nangate45/gcd-tutorial/constraint.sdc")
+    env["ECO_RC"] = str(FLOW / "platforms/nangate45/setRC.tcl")
     proc = subprocess.run(
         [exe, "-exit", str(TCL)],
         capture_output=True,
