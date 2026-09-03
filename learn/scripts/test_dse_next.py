@@ -1221,6 +1221,8 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("dse-compare" in (root / "studio/src/components/LabBench.tsx").read_text(), "LabBench has launch compare")
     check((root / "learn/sim/dse/lab_physics_ledger.json").is_file(), "committed physics ledger exists")
     check("staIr" in story_txt, "story snapshot includes STA IR-aware")
+    check('id: "eco"' in story_txt, "story snapshot includes ECO after signoff")
+    check("DSE (proposer)" in story_txt, "story labels DSE as proposer")
     check('href: "/lab"' in story_txt, "story Lab surface points at /lab")
     check("sta_ir_aware" in (root / "studio/src/lib/signoff.ts").read_text(), "signoff registry lists sta_ir_aware")
     check("sta_ir_aware" in (root / "studio/src/lib/run.ts").read_text(), "run.ts allows sta_ir_aware")
