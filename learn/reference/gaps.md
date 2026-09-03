@@ -1,0 +1,38 @@
+# Remaining gaps
+
+Two kinds of leftover. They look similar in Studio (a red or amber
+hook) but they are not the same work.
+
+| Kind | Meaning | Who can close it |
+|---|---|---|
+| **License / PDK gated** | The file or tool exists in the industry and is not in this tree. We will not invent a substitute and call it the real thing. | A license, a form, or a different PDK |
+| **To build** | Missing flow, script, or check we can write here. | This repo |
+
+Do not mix them on a roadmap. A gated item is not a sprint.
+
+## License / PDK gated
+
+| Item | What we have | Why it stays gated |
+|---|---|---|
+| Official Nangate **CCS** liberty | `typical.lib` is NLDM. Educational PTM sidecar on 19 GCD combo cells. | Si2/Silvaco 2008 CCS is form-gated. The sidecar is re-characterized, not that file. |
+| **StarRC / Raphael** | OpenRCX SPEF + 2-wire FasterCap BEM | Commercial extractors. No license. |
+| Board **S-parameter** (Touchstone) | Lumped VRM→board→pkg ladder | Public SI/PI decks are form-gated. Exporting the lump as `.sNp` would be false. |
+| **MCMM** liberty (slow/fast) | Single `typical.lib` + one SDC | Nangate45 in ORFS ships one corner. Extra corners need the full kit or a foundry PDK. Not required for this educational close. |
+| **Magic + Netgen** on FreePDK45 | KLayout DRC/LVS | No verified FreePDK45 Magic `.tech` in this environment. |
+| **sky130** as the course PDK | Nangate45 only | Different PDK. Do not mix it into this course. |
+| **PrimeTime / Tempus / Voltus** | OpenSTA + PDNSim + Xyce N4 | Different tools. We do not claim equivalence. |
+
+## To build (or already built)
+
+| Item | State |
+|---|---|
+| LVS on FlowLab GCD | Built: filter unused CDL, inject FILL from DEF, map wells to VDD/VSS. KLayout compare must print a real match. Must-connect warnings on XNOR2 well ties stay in the lvsdb. |
+| ECO after finish | Built as propose on locked variants. Apply is refused on `flowlab` / `learn` / `base`. Next step is always `signoff_all`. |
+| Antenna in GDS DRC | Already in `FreePDK45.lydrc` (`antenna_check`, 300:1). |
+| Density / named ERC | Not in the FreePDK45 DRC deck. Adding a wrapper would not add the rules. Treat as PDK-deck gated unless a new deck is written. |
+| DSE as flow controller | Not to build. DSE stays a proposer. See `learn/dse/flow_role.py`. |
+
+## What this flow does not pretend to be
+
+Educational Nangate45 / FreePDK45. Failed or gated checks stay labeled.
+Gold Dynamic IR on the FlowLab mesh stays **45.298 mV**.

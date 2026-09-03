@@ -7,11 +7,11 @@ Evidence: `learn/sim/reports/*_flowlab.json`, ORFS
 `results/nangate45/gcd/flowlab/`, `GET /api/suite`. Course progress is
 student work (`0/8`).
 
-Studio prefers `gcd/flowlab/` then `gcd/learn/`. Live suite:
-**43 / 46** hooks `ok` · `pipelineReady` **6 / 6** · `wired` true ·
-lessons **0 / 8**. The three red hooks are real leftovers: Magic/Netgen
-**GAP**, LVS **FAIL**, `signoff_all` **FAIL**. Gold Dynamic IR stays
-**LOCKED** at 45.298 mV.
+Studio prefers `gcd/flowlab/` then `gcd/learn/`. Live suite count is
+taken from `GET /api/suite` after the last signoff run. Magic/Netgen
+stays **GAP**. Gold Dynamic IR stays **LOCKED** at 45.298 mV.
+
+Gaps are split in [`gaps.md`](gaps.md): license/PDK gated vs to-build.
 
 Legend:
 
@@ -36,26 +36,19 @@ gates stay on `learn` so 0/8 is not stamped by FlowLab artifacts.
 
 The remaining real leftover is LVS, plus commercial / form-gated GAPs.
 
-### 2. The only flow step that ran and failed: LVS
+### 2. LVS (KLayout compare)
 
-KLayout compared the GDS transistors to the CDL schematic and printed
-`Netlists don't match`. That is why `signoff_all` is FAIL (timing,
-geometry, and power already pass).
+Signoff LVS now runs KLayout on a prepared CDL: unused library SUBCKTs
+dropped, FILLCELL instances taken from the DEF, wells mapped to VDD/VSS
+(`connect_global`). A pass is only recorded when KLayout prints
+`CONGRATULATIONS! Netlists match`.
 
-Root leftover after we filtered unused library cells (TBUF/TLAT flatten
-is now **0**):
+Leftovers that stay visible:
 
-- Extracted cells expose extra well pins (`NWELL|VDD`, `PWELL`) that
-  the official CDL does not list as ports.
-- `FILLCELL_*` / `TAPCELL_*` CDL is pins-only (empty body). OpenROAD
-  `6_final.cdl` also omits fills. Layout still has them →
-  "Flatten layout cell (no schematic)".
-
-Tried next: `connect_implicit` NWELL/PWELL + `blank_circuit` on
-FILL/TAP. Extract still prints "Flatten layout cell (no schematic)"
-for fills (pins-only CDL vs extracted wells). Transistor compare
-stays **FAIL**. No `.lvs.ok`. Adding extra SUBCKT ports breaks
-instance pin counts (4 vs 6) — do not do that.
+- FILL/TAP CDL bodies are empty, so those cells still flatten.
+- VIA_* routing cells have no schematic (expected).
+- lvsdb may still list must-connect warnings on XNOR2 well ties.
+  Those are warnings, not a substitute for the compare line.
 
 ### 3. Real GAPs — missing data or a tool we will not pretend to be
 
@@ -63,13 +56,13 @@ instance pin counts (4 vs 6) — do not do that.
 |---|---|---|
 | Foundry / Si2 **CCS liberty** on every Nangate cell | Official `typical.lib` is **NLDM**. PTM sidecar: **19 combinational GCD cells** / 38 `output_current` tables (INV/BUF/CLKBUF/NAND/NOR/AND/OR/AOI21/OAI21). No DFF/MUX. | Si2 2008 CCS is form-gated. Sidecar is re-char, not that file. |
 | **StarRC / Raphael** full-chip parasitics | OpenRCX SPEF (657 nets) + 2-wire FasterCap BEM | Those two are Synopsys commercial. No license → no fake SPEF. |
-| Board **S-parameter** (Touchstone `.sNp`) | Lumped VRM→board→pkg ladder in ngspice (droop 6.27 mV) | Public TUHH SI/PI decks are form-gated. Exporting the lump as `.sNp` would be a lie. |
+| Board **S-parameter** (Touchstone `.sNp`) | Lumped VRM→board→pkg ladder in ngspice | Public TUHH SI/PI decks are form-gated. Exporting the lump as `.sNp` would be a lie. |
 | **Magic + Netgen** LVS/extract on this GCD | KLayout DRC/LVS | `magic` / `netgen` are not in PATH here, and there is no verified FreePDK45 Magic `.tech`. |
 | **sky130** course | Nangate45 only | Different PDK. Mixing it into this course is forbidden. |
 | Tapeout **C4 bumps / RDL** | Dummy bump LEF + sidecar `rdl_route` (4 bumps, 36 wires) | Educational OpenROAD pad test, not a package foundry. |
 | **PrimeTime / Tempus / Voltus** | OpenSTA + PDNSim + Xyce N4 compact | We do not claim sign-off equivalence. |
 | Course **8/8** | **0/8** | Student pace. Do not stamp `.progress.json`. |
-| A new gold Dynamic IR | **45.298 mV** stays | current_run (~6.075) and chip PDN (28.3) are other meshes. Never restamp gold. |
+| A new gold Dynamic IR | **45.298 mV** stays | current_run (~6.075) and chip PDN are other meshes. Never restamp gold. |
 
 **WORKS\*** in the tables below means: the script ran and the number is
 real, but it is not the commercial / foundry object with the same name.
@@ -88,7 +81,7 @@ Course stays **0/8**. `gcd/flowlab/` baseline ODBs are not overwritten.
 | 3 | Vectorless VCD | **done** | `gcd_gate.vcd` · `tb_gcd_gate/dut` |
 | 4 | gridcheck | **done** | PSM-0040 VDD+VSS · stamp only after pass |
 | 5 | Extra combo CCS | **done** | 19 cells / 38 tables · official lib NLDM |
-| 6 | LVS increment | **tried · still FAIL** | well implicit + FILL blank · no `.lvs.ok` |
+| 6 | LVS increment | **done (KLayout match)** | well→VDD/VSS + FILL from DEF · `.lvs.ok` only on match |
 
 Gates: `test_signoff_honesty.py` · `test_lab_physics.py` · live `GET /api/suite`.
 
@@ -126,10 +119,11 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | STA | **WORKS** | WNS −0.02 ns · TNS −0.14 · 3 viol | Educational Nangate, not PrimeTime |
 | STA IR-aware | **WORKS*** | `sta_ir_aware` ok · NLDM × ITerm V | Does not change official WNS |
 | DRC (route + GDS) | **WORKS** | 0 route lines · 0 GDS items | — |
-| LVS (KLayout) | **FAIL** | `Netlists don't match` · no `.lvs.ok` | Well pins `NWELL\|VDD`; empty FILL/TAP CDL |
-| LVS deep (filter + VTL) | **FAIL** | unused flatten 0 · transistor FAIL · black-box FAIL | Same leftover; not a fake pass |
-| Power signoff | **WORKS*** | Chip IR 3.09 mV · sys droop 6.27 mV · Zmax 9.06 Ω | Lumped board, not S-parameter |
-| `signoff_all` | **FAIL** | timing/geometry/power ok · LVS fail | Stays fail while LVS fails |
+| LVS (KLayout) | **WORKS*** | Compare match on filtered CDL | FILL/TAP still flatten (empty CDL). XNOR2 must-connect warnings stay in lvsdb |
+| LVS deep (filter + VTL) | **WORKS*** | same compare path | Black-box is labeled separately |
+| ECO | **WORKS*** | propose on flowlab; apply refused | Does not run `signoff_all` |
+| Power signoff | **WORKS*** | Chip static **1.05 mV** · sys droop **6.03 mV** | Lumped board, not S-parameter |
+| `signoff_all` | **WORKS** | four pillars from their JSON | DSE never calls this script |
 
 ---
 
@@ -141,11 +135,11 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | Gate sim + name-join | **WORKS** | `GATE_SIM_PASS` · `gcd_gate.vcd` | Functional GLS, no SDF |
 | Activity → power | **WORKS** | `activity_power` / vectorless report | Prefer gate VCD scope |
 | Vectorless | **WORKS*** | P=4.9 mW · I_avg=4.45 mA · dynamic source gate VCD | GLS, no SDF |
-| Chip PDN (PDNSim mesh) | **WORKS*** | static **3.09 mV** · transient **28.3 mV** | Not gold Dynamic IR |
-| vyges-em-ir | **WORKS*** | static 15.1 mV · droop 86.0 mV | Different mesh from 3.09 / 28.3 |
+| Chip PDN (PDNSim mesh) | **WORKS*** | static **1.05 mV** · transient **9.47 mV** (`pdn_chip_ir`) | Not gold Dynamic IR. Companion static on the I(t) mesh is 3.09 mV |
+| vyges-em-ir | **WORKS*** | static 15.1 mV · droop 86.0 mV | Different mesh again |
 | Dynamic IR **gold** | **LOCKED** | **45.298 mV** · `gold: true` | Never restamp |
-| Dynamic IR current_run | **WORKS*** | ~**6.075 mV** | Not gold; not chip 28.3 |
-| System PDN | **WORKS*** | droop 6.27 mV · Zmax 9058 mΩ | Lumped VRM→board→pkg. No Touchstone |
+| Dynamic IR current_run | **WORKS*** | ~**6.075 mV** | Not gold; not chip PDN |
+| System PDN | **WORKS*** | droop **6.03 mV** (power_signoff) | Lumped VRM→board→pkg. No Touchstone |
 | Board S-parameter | **GAP** | TUHH form-gated | Do not export the lumped ladder as `.sNp` |
 
 ---
@@ -208,9 +202,9 @@ Area, power, leakage, and IR. Honest win/lose.
 
 | Quantity | Value | Do not confuse with |
 |---|---|---|
-| Gold Dynamic IR | **45.298 mV** | current_run 6.075 · chip PDN 28.3 |
-| Chip PDN static / transient | **3.09 / 28.3 mV** | gold · vyges mesh |
-| System PDN droop | **6.27 mV** | chip transient |
+| Gold Dynamic IR | **45.298 mV** | current_run 6.075 · chip PDN |
+| Chip PDN static / transient | **1.05 / 9.47 mV** | gold · I(t) companion static 3.09 |
+| System PDN droop | **6.03 mV** | chip transient |
 | HotSpot t_max | **70.54 °C** | IR proxy mV |
 
 ---
@@ -238,10 +232,10 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | PD | pdn | ok | **WORKS** | `flowlab/2_4_floorplan_pdn.odb` |
 | PD | finish | ok | **WORKS** | `flowlab/6_final.gds` |
 | Power | gridcheck | ok | **WORKS*** | PSM-0040 · stamp after pass |
-| Power | system_pdn | ok | **WORKS*** | droop 6.27 mV · no Touchstone |
+| Power | system_pdn | ok | **WORKS*** | lumped ladder · no Touchstone |
 | Power | activity | ok | **WORKS** | gate VCD preferred |
 | Power | vectorless | ok | **WORKS*** | dynamic source gate VCD |
-| Power | chip_pdn_ir | ok | **WORKS*** | 3.09 / 28.3 mV |
+| Power | chip_pdn_ir | ok | **WORKS*** | 1.05 / 9.47 mV |
 | Power | vyges_em_ir | ok | **WORKS*** | 15.1 / 86.0 mV · other mesh |
 | Power | dynamic_ir | ok | **LOCKED** | gold 45.298 present |
 | Power | dse | ok | **WORKS*** | lab only · not a product win |
@@ -251,9 +245,10 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Signoff | sta_signoff | ok | **WORKS** | WNS −0.02 · TNS −0.14 · 3 viol |
 | Signoff | sta_ir_aware | ok | **WORKS*** | educational, not Tempus |
 | Signoff | drc_signoff | ok | **WORKS** | 0 route · 0 GDS |
-| Signoff | lvs_signoff | no | **FAIL** | `Netlists don't match` |
+| Signoff | lvs_signoff | ok | **WORKS*** | KLayout match · XNOR2 must-connect warnings |
 | Signoff | power_signoff | ok | **WORKS*** | lumped board |
-| Signoff | signoff_all | no | **FAIL** | LVS pillar |
+| Signoff | signoff_all | ok | **WORKS** | four pillars |
+| Signoff | eco | ok | **WORKS*** | propose only on flowlab |
 | Signoff | thermal_signoff | ok | **WORKS*** | HotSpot |
 | Signoff | pkg_rdl | ok | **WORKS*** | dummy, not C4 |
 | Signoff | pkg_signoff | ok | **WORKS*** | bump + RDL + system |
@@ -265,7 +260,7 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Analysis | openrcx | ok | **WORKS** | 657 nets |
 | Analysis | analytical_pex | ok | **WORKS** | ST + FDM + FasterCap |
 | Analysis | ccs_char_report | ok | **WORKS*** | sidecar only |
-| Analysis | lvs_deep | ok | **FAIL** | report exists · transistor FAIL |
+| Analysis | lvs_deep | ok | **WORKS*** | transistor match · FILL still flattens |
 | Analysis | inspect | ok | **WORKS** | flowlab `1_synth.odb` |
 | Course | docs | ok | **WORKS** | extended-flow + tool-hooks |
 
@@ -278,7 +273,7 @@ ORFS pipeline UI follows `preferredResultsVariant()` (`flowlab` here).
 | Leftover | Why it stays |
 |---|---|
 | Course **0/8** | Student work |
-| Official LVS / `signoff_all` | Well ports + empty FILL/TAP CDL |
+| XNOR2 must-connect warnings | Well ties inside the cell; compare still matches |
 | Official Nangate CCS | `typical.lib` is NLDM |
 | CCS on DFF / MUX | Sequential / multi-arc not validated · AOI21/OAI21 combo shipped |
 | Board S-parameter | TUHH zip is form-gated |

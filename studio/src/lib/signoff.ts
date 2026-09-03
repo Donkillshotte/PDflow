@@ -74,7 +74,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   {
     id: "equivalence",
     label: "Equivalence (LVS)",
-    description: "GDS vs CDL via ORFS make lvs",
+    description: "GDS vs filtered CDL (FILL from DEF, wells → VDD/VSS)",
     status: "active",
     orchestratorAction: "klayout_lvs",
     checks: [

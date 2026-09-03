@@ -56,14 +56,16 @@ Transfer success criterion (frozen in `arch_review.md` §6), live on
 3. First win on cook 1 (not “no win in space v1”).
 4. Cover had already proposed `place_sparse_setup`.
 
-Method success. Sampler unchanged. Chip PDN transient (28.3 mV) is not
+Method success. Sampler unchanged. Chip PDN transient is not
 gold Dynamic IR 45.298 and not current_run 6.075.
 
 ## Lab signoff (FlowLab GCD)
 
-Four pillars materialized on the existing finish (no `make finish`).
-STA / DRC / power evaluate ok. KLayout LVS **ran** and reports
-`Netlists don't match` — recorded as fail, not foundry sign-off.
+Four pillars on the existing finish (no new `make finish` for this
+note). STA / DRC / power evaluate ok. LVS is a KLayout compare on a
+filtered CDL (FILL from DEF, wells mapped to VDD/VSS). A pass requires
+`CONGRATULATIONS! Netlists match`. Must-connect warnings on XNOR2 stay
+in the lvsdb. This is educational FreePDK45, not foundry LVS.
 Physics ledger: 28/30 READY, 2 WATCH (ibex/aes ORFS IR), 0 GAP.
 
 Phase 2 (thermal proxy + PKG) is materialized on the same finish.

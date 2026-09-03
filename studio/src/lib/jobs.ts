@@ -57,6 +57,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   spice_engines: null,
   tool_matrix: null,
   dse: null,
+  eco: "finish",
   synth: null,
   floorplan: "synth",
   place: "floorplan",
@@ -446,6 +447,10 @@ export function preflightAction(
     lvs_deep: {
       rel: "6_final.gds",
       hint: "run finish first (filtered LVS + VTL tolerances, no fake pass)",
+    },
+    eco: {
+      rel: "6_final.odb",
+      hint: "run finish first (ECO propose on the finished ODB)",
     },
   };
   const need = needFile[action];

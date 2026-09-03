@@ -310,7 +310,7 @@ export async function getSuiteStatus() {
       group: "Power",
       ok:
         signoffReportPass("flowlab", "dse") || signoffReportPass("learn", "dse"),
-      detail: "E-graph dpath + BOiLS SSK-GP + IR F4 oracle · Pareto by level",
+      detail: "Proposer only — does not run signoff_all",
       action: "dse",
       href: "/tools?tab=run&action=dse",
     },
@@ -373,7 +373,7 @@ export async function getSuiteStatus() {
       label: "LVS signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "lvs_signoff") || signoffReportPass("learn", "lvs_signoff"),
-      detail: "KLayout netlist match · FreePDK45 GCD may FAIL",
+      detail: "KLayout GDS vs filtered CDL · well→VDD/VSS",
       action: "klayout_lvs",
       href: "/flow?phase=finish",
     },
@@ -394,6 +394,15 @@ export async function getSuiteStatus() {
       detail: "STA → DRC → LVS → power",
       action: "signoff_all",
       href: "/pkg",
+    },
+    {
+      id: "eco",
+      label: "ECO propose",
+      group: "Signoff",
+      ok: signoffReportPass("flowlab", "eco") || signoffReportPass("learn", "eco"),
+      detail: "Post-finish plan. Apply refused on locked variants. Does not skip signoff_all.",
+      action: "eco",
+      href: "/flow?phase=finish#eco",
     },
     {
       id: "thermal_signoff",

@@ -47,6 +47,7 @@ Wins stay in `win_rule.py`. Lab IR gold stays 45.298 mV.
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — how to contribute
 - [`../AGENTS.md`](../AGENTS.md) — operational rules for agents
 - [`../learn/reference/suite-status.md`](../learn/reference/suite-status.md) — live flow WORKS / FAIL / GAP table
+- [`../learn/reference/gaps.md`](../learn/reference/gaps.md) — license/PDK gated vs to-build
 
 ## Product code
 

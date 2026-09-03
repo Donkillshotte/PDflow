@@ -224,9 +224,9 @@ export function DsePanel() {
   return (
     <section className="fl-dynir" aria-label="Physically-aware DSE">
       <header className="fl-dynir-head">
-        <strong>DSE · level search</strong>
+        <strong>DSE · proposer</strong>
         <p>
-          Planner IR+WNS · EHVI · F2/F5-lite SPEF · extract PDN · STA F3 · IR/EM F4 ·{" "}
+          Suggests knobs and extracts. Does not run <code>signoff_all</code>.{" "}
           <Link href="/materials/reference/dse.md">dse.md</Link>
         </p>
       </header>

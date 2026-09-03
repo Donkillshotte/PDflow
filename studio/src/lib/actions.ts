@@ -7,6 +7,7 @@ export const SIGNOFF_ACTIONS = [
   "klayout_lvs",
   "power_signoff",
   "signoff_all",
+  "eco",
 ] as const;
 
 /** Phase 2 signoff / packaging actions (post-finish). */
@@ -114,6 +115,12 @@ export function isToolMatrixAction(action: string): action is ToolMatrixAction {
   return (TOOL_MATRIX_ACTIONS as readonly string[]).includes(action);
 }
 
+export const ECO_ACTIONS = ["eco"] as const;
+export type EcoAction = (typeof ECO_ACTIONS)[number];
+export function isEcoAction(action: string): action is EcoAction {
+  return (ECO_ACTIONS as readonly string[]).includes(action);
+}
+
 export const DSE_ACTIONS = ["dse"] as const;
 export type DseAction = (typeof DSE_ACTIONS)[number];
 export function isDseAction(action: string): action is DseAction {
@@ -127,4 +134,5 @@ export const POST_FINISH_ACTIONS = [
   ...PHASE2_SIGNOFF_ACTIONS,
   ...TOOL_MATRIX_ACTIONS,
   ...DSE_ACTIONS,
+  ...ECO_ACTIONS,
 ] as const;

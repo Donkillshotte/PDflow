@@ -105,6 +105,7 @@ const ALLOWED_ACTIONS = new Set([
   "dynamic_ir",
   "tool_matrix",
   "dse",
+  "eco",
 ]);
 
 type Job = {
@@ -279,6 +280,7 @@ function resolveCommand(
     dynamic_ir: { script: "run_dynamic_ir.sh", pythonpath: true },
     tool_matrix: { script: "run_tool_matrix.sh", pythonpath: true },
     dse: { script: "run_dse.sh", pythonpath: true },
+    eco: { script: "run_eco.sh", pythonpath: true },
   };
   if (action in analysisScripts) {
     const spec = analysisScripts[action]!;

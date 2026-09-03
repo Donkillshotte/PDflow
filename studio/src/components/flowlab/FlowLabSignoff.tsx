@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
 import { StaIrAwarePanel } from "./StaIrAwarePanel";
+import { EcoPanel } from "./EcoPanel";
 import { LabBench } from "@/components/LabBench";
 import { DynamicIrHeatmap } from "./DynamicIrHeatmap";
 
@@ -62,8 +63,8 @@ const POWER_ACTIONS: SignoffAction[] = [
   },
   {
     id: "dse",
-    label: "Physically-aware DSE",
-    hint: "e-graph dpath · BOiLS · IR oracle",
+    label: "DSE (proposer)",
+    hint: "Suggests knobs. Does not run signoff_all.",
     icon: Layers,
     long: false,
   },
@@ -150,9 +151,16 @@ const FINISH_ACTIONS: SignoffAction[] = [
   {
     id: "klayout_lvs",
     label: "LVS signoff",
-    hint: "GDS vs CDL · ORFS make lvs",
+    hint: "GDS vs filtered CDL · well→VDD/VSS",
     icon: ShieldCheck,
     long: true,
+  },
+  {
+    id: "eco",
+    label: "ECO propose",
+    hint: "Post-finish plan. Apply refused on flowlab.",
+    icon: Clock,
+    long: false,
   },
   {
     id: "klayout_drc",
@@ -257,6 +265,7 @@ export function FlowLabSignoff({
           <div id="signoff">
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
           <StaIrAwarePanel busy={busy} onRun={onRun} />
+          <EcoPanel />
           <LabBench tone="dark" busy={busy} onRun={onRun} />
           <div className="fl-signoff-head">
             <strong>Signoff actions timing / geometry / LVS</strong>

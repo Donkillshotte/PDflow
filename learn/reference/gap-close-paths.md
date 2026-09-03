@@ -127,17 +127,16 @@ PACT is the better **standard-cell** path if we accept a Docker/Xyce dependency.
 
 ---
 
-## 6. LVS match (3/4 pillars)
+## 6. LVS match
 
-**Tree today.** KLayout ran. `Netlists don't match`. Log lists schematic-only cells (`TBUF_*`, `TINV_*`, `TLAT_*`). Report `ok: false`. That is not a missing script.
+**Tree today.** Signoff LVS prepares a CDL (unused library cells dropped,
+FILLCELL from DEF) and maps wells to VDD/VSS. KLayout printed
+`CONGRATULATIONS! Netlists match` on FlowLab GCD. `.lvs.ok` is stamped
+only on that line.
 
-**Possible real close (investigate first).**
-
-1. Diff extracted vs source CDL: unused library cells vs real shorts/opens.
-2. If the fail is “library extras in CDL, not in GDS”, tighten the LVS runset (`exclude` / flatten policy) **without** treating mismatch as pass.
-3. If the fail is real connectivity, fix the tutorial netlist or accept educational FAIL.
-
-**Do not** write `.lvs.ok` on fail (already removed).
+Leftovers: empty FILL/TAP CDL bodies still flatten; VIA_* have no
+schematic; lvsdb may list XNOR2 must-connect warnings. Do not hide
+those. Do not stamp `.lvs.ok` without the match line.
 
 ---
 
