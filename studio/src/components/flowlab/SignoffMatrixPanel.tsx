@@ -285,7 +285,10 @@ export function SignoffMatrixPanel({
                   <StatusIcon ok={Boolean(ok)} pending={!eval_} />
                   <div className="sig-row-body">
                     <strong>
-                      <span className="sig-planned-badge">{p.status ?? "proxy"}</span> {p.label}
+                      {p.status && p.status !== "active" ? (
+                        <span className="sig-planned-badge">{p.status}</span>
+                      ) : null}{" "}
+                      {p.label}
                     </strong>
                     <small>{eval_?.summary ?? p.description}</small>
                     {checks.length > 0 && (

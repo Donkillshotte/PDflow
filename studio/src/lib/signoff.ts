@@ -161,7 +161,7 @@ export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
     id: "pkg",
     label: "Packaging (bump/RDL)",
     description: "Bump mesh + system PDN + dummy rdl_route on a sidecar ODB (not C4).",
-    status: "proxy",
+    status: "active",
     orchestratorAction: "pkg_signoff",
     checks: [
       {
@@ -184,7 +184,7 @@ export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
     id: "thermal",
     label: "Thermal (HotSpot)",
     description: "UVA HotSpot architecture compact model (°C). Not Ansys / not foundry.",
-    status: "proxy",
+    status: "active",
     orchestratorAction: "thermal_signoff",
     checks: [
       {

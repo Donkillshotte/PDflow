@@ -48,6 +48,14 @@ After lessons 00–07, for end-to-end power integrity:
 6. [pkg-design-package.md](./pkg-design-package.md) — packaging
 7. [../sim/spice/README.md](../sim/spice/README.md) — local lab netlists
 
+## Signoff · educational GAP closes
+
+- [signoff-matrix.md](./signoff-matrix.md) — pillars, Phase 2 (HotSpot + dummy RDL)
+- [gap-close-paths.md](./gap-close-paths.md) — what is closable vs leftover on purpose
+- [oss-integrations.md](./oss-integrations.md) — Icarus / HotSpot / Xyce / OpenRCX
+- [extended-flow.md](./extended-flow.md) — Studio actions after `make finish`
+- [tool-hooks.md](./tool-hooks.md) — `/api/suite` hook map
+
 ## GUI
 
 - [gui-atlas.md](./gui-atlas.md) — pixel-level guide with PNGs in `gui-shots/`

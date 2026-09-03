@@ -64,7 +64,7 @@ Path:
 
 ## 3. Thermal (HotSpot / 3D-ICE / PACT)
 
-**Tree today.** `run_thermal_signoff.sh` is IR mV + droop mV (31.39 mV proxy). No °C field. OpenROAD has no thermal command (`extended-flow.md` §9).
+**Tree today.** `run_thermal_signoff.sh` runs UVA HotSpot and reports `t_max_c` (live ~70.54 °C on FlowLab GCD). IR+droop mV stays a secondary check. OpenROAD has no thermal command (`extended-flow.md` §9).
 
 **Public tools.**
 
@@ -92,7 +92,7 @@ PACT is the better **standard-cell** path if we accept a Docker/Xyce dependency.
 
 ## 4. Xyce
 
-**Tree today.** `spice_engines_flowlab.json`: `ngspice=ok Xyce=GAP`. `pdn_vrm.write_xyce_rlc_deck` / `xyce_vrm_die_gold` already emit a real N4 deck and run it **if** `Xyce` is on PATH. Tests keep the deck contract when the binary is missing.
+**Tree today.** `spice_engines_flowlab.json`: `ngspice=ok Xyce=READY`. `install_xyce.sh` puts the vlsida-eda Xyce 7.4 prefix on PATH; `xyce_vrm_die_gold` runs the N4 deck. Tests keep the deck contract when the binary is missing.
 
 **Why it is GAP.** Sandia ships **RPM for RHEL 8**, not Debian/Ubuntu ([executables](https://xyce.sandia.gov/downloads/executables/)). GitHub is GPLv3 source ([Xyce/Xyce](https://github.com/Xyce/Xyce)). Official install is **CMake + Trilinos** ([INSTALL.md](https://github.com/Xyce/Xyce/blob/master/INSTALL.md)). **Spack** has `xyce` (`spack install xyce ~mpi` is enough for the N4 deck).
 

@@ -56,3 +56,9 @@ export FLOW_VARIANT=learn   # locked for product; OK here
 
 Study power/IR chain: [`learn/reference/spice-power-chain.md`](../learn/reference/spice-power-chain.md).
 Does not restamp gold 45.298 mV.
+
+Educational closes on FlowLab (not product wins): gate VCD name-join,
+dummy `rdl_route` on a sidecar ODB, HotSpot architecture °C, Xyce N4
+dual-solver. Paths and leftovers: [`learn/reference/gap-close-paths.md`](../learn/reference/gap-close-paths.md).
+CCS tables, Raphael/StarRC, Magic/Netgen without a FreePDK45 `.tech`,
+and a fake LVS pass stay out of scope.
