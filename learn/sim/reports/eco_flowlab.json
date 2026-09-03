@@ -1,0 +1,37 @@
+{
+  "kind": "eco",
+  "mode": "propose",
+  "variant": "flowlab",
+  "ok": true,
+  "signoff": false,
+  "signoff_required": "learn/scripts/run_signoff_all.sh",
+  "locked": true,
+  "source_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb",
+  "source_sta": {
+    "report": "/workspace/learn/sim/reports/sta_signoff_flowlab.json",
+    "ok": true,
+    "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 3"
+  },
+  "proposed": [
+    {
+      "step": "repair_timing",
+      "args": "-setup",
+      "reason": "WNS -0.02 ns",
+      "enabled": true
+    },
+    {
+      "step": "repair_timing",
+      "args": "-hold",
+      "reason": "hold not reported on this educational STA \u2014 off unless ECO_HOLD=1",
+      "enabled": false
+    },
+    {
+      "step": "detailed_placement",
+      "args": "",
+      "reason": "legalize cells moved by repair_timing",
+      "enabled": true
+    }
+  ],
+  "apply": "refused on locked variants; set FLOW_VARIANT to a copy (not flowlab/learn/base) and ECO_MODE=apply",
+  "summary": "ECO propose \u00b7 locked source \u00b7 signoff_all still required"
+}

@@ -1041,6 +1041,7 @@ def run_controller(
             "flattened black-box of all knobs",
             "neural voltage map as sign-off",
             "make finish launched from the controller (F5-lite and F5-CTS are not signoff)",
+            "signoff_all (DSE proposes; the signoff script is the orchestrator)",
             "LLM as the optimizer (proposer-only; DSE_LLM_URL optional)",
             "signal SPEF C mapped onto the PDN extract",
         ],

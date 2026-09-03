@@ -1,0 +1,12 @@
+{
+  "deck": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/drc/FreePDK45.lydrc",
+  "feol": true,
+  "beol": true,
+  "offgrid": true,
+  "antenna": true,
+  "antenna_ratio": "300:1",
+  "density": false,
+  "named_erc_section": false,
+  "ok": true,
+  "summary": "DRC deck: FEOL+BEOL+antenna \u00b7 no density rules \u00b7 no named ERC section"
+}

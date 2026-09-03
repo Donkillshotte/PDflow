@@ -1,0 +1,14 @@
+{
+  "kind": "eco",
+  "mode": "apply",
+  "variant": "flowlab",
+  "ok": false,
+  "signoff": false,
+  "error": "refuse apply on locked FLOW_VARIANT=flowlab",
+  "locked": [
+    "base",
+    "flowlab",
+    "learn"
+  ],
+  "summary": "ECO apply refused on flowlab"
+}
