@@ -35,8 +35,8 @@ Live WORKS / FAIL / GAP table: [suite-status.md](./suite-status.md).
 | **Xyce (Sandia)** | INTEGRATED (when `install_xyce.sh` succeeds) | Dual-solver N4 compact VRM+pkg+die | `spice_engines_*.json` `xyce_status: READY` · `xyce_vrm_die_gold` | **ngspice** still covers System PDN AC/TRAN |
 | **OpenRCX** | INTEGRATED | Inside OpenROAD (`extract_parasitics`) | `6_final.spef` + `rcx_patterns.rules` · action `openrcx_report` | — |
 | **FasterCap** | INTEGRATED (when `install_fastercap.sh` succeeds) | 3D BEM 2-wire extract vs Sakurai–Tamaru + FDM | `analytical_pex_*.json` `fastercap.status: READY` | Raphael remains commercial GAP |
-| **CCS sidecar (GCD cells)** | INTEGRATED | ngspice + PTM 45 nm `output_current` on 9 GCD combinational cells | `ccs_char_*.json` READY · `learn/sim/lib/nangate45_ptm_ccs_sidecar.lib` | Official `typical.lib` stays NLDM GAP |
-| **LVS deep** | PARTIAL | Filtered unused CDL + VTL tolerances + black-box probe | `lvs_deep_*.json` transistor FAIL | Signoff LVS stays FAIL; no `.lvs.ok` |
+| **CCS sidecar (GCD cells)** | INTEGRATED | ngspice + PTM 45 nm `output_current` on **19** GCD combinational cells (38 tables) | `ccs_char_*.json` READY · `learn/sim/lib/nangate45_ptm_ccs_sidecar.lib` | Official `typical.lib` stays NLDM GAP · no DFF/MUX |
+| **LVS deep** | PARTIAL | Filter + VTL + well `connect_implicit` + FILL/TAP blank | `lvs_deep_*.json` transistor FAIL | Signoff LVS stays FAIL; no `.lvs.ok` |
 | **Raphael** | GAP | Synopsys commercial, no license | documented | OpenRCX SPEF + analytical PEX |
 | **StarRC** | GAP | Synopsys commercial, no license | documented | **OpenRCX** SPEF at finish |
 | **open_pdks** | GAP | Sky130 / gf180, **different PDK** | course pinned to Nangate45 | Not mixed with FreePDK45 |

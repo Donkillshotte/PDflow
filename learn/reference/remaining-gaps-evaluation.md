@@ -17,7 +17,7 @@ here because the user asked.
 
 | GAP | Verdict | Effort | What changes |
 |---|---|---|---|
-| **CCS tables** | **Closed (INV_X1 sidecar)** — PTM + ngspice | Low (one cell) | `INV_X1_ptm45_ccs.lib` · official typical.lib stays NLDM |
+| **CCS tables** | **Closed (19-cell sidecar)** — PTM + ngspice | Done | `nangate45_ptm_ccs_sidecar.lib` · official typical.lib stays NLDM |
 | **LVS mismatch** | **Partially closable** — investigate + tighten runset | Low-medium | KLayout LVS runset fix or `connect_implicit` for TBUF/TINV/TLAT |
 | **Raphael / StarRC** | **Not closable** — commercial | — | OpenRCX + analytical PEX stay the OSS path |
 | **FasterCap (field solver)** | **Closable** — build + 2-wire demo | Low | Compile FasterCap, run on existing analytical PEX geometry |
