@@ -13,6 +13,7 @@ echo "=== TOOL MATRIX ${VARIANT} ==="
 "${ROOT}/learn/scripts/run_formal_gcd.sh"
 "${ROOT}/learn/scripts/run_openrcx_report.sh"
 python3 "${ROOT}/learn/scripts/run_analytical_pex.py"
+"${ROOT}/learn/scripts/run_ccs_char.sh"
 "${ROOT}/learn/scripts/run_layout_tools_probe.sh"
 "${ROOT}/learn/scripts/run_spice_engines.sh"
 if [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/6_final.odb" ]]; then
@@ -51,6 +52,7 @@ parts = {
     "formal_gcd": load("formal_gcd"),
     "openrcx": load("openrcx"),
     "analytical_pex": load("analytical_pex"),
+    "ccs_char": load("ccs_char"),
     "layout_tools": load("layout_tools"),
     "spice_engines": load("spice_engines"),
     "vectorless": load("vectorless"),
@@ -67,7 +69,8 @@ tools = {
     "ngspice": {"status": "INTEGRATED", "bin": shutil.which("ngspice"), "role": "System PDN + demo TRAN"},
     "xyce": {"status": "GAP" if not (shutil.which("xyce") or shutil.which("Xyce")) else "INTEGRATED", "bin": shutil.which("xyce") or shutil.which("Xyce"), "role": "Sandia parallel SPICE; ngspice covers GCD"},
     "openrcx": {"status": "INTEGRATED", "bin": "openroad extract_parasitics", "role": "6_final.spef from finish"},
-    "fastercap": {"status": "MAPPED", "bin": shutil.which("fastercap") or shutil.which("FasterCap"), "role": "Sakurai–Tamaru + 2D FDM"},
+    "fastercap": {"status": "INTEGRATED" if (shutil.which("fastercap") or shutil.which("FasterCap") or (root / "learn/tools/fastercap/FasterCap").is_file()) else "MAPPED", "bin": shutil.which("fastercap") or shutil.which("FasterCap") or (str(root / "learn/tools/fastercap/FasterCap") if (root / "learn/tools/fastercap/FasterCap").is_file() else None), "role": "3D BEM 2-wire vs Sakurai–Tamaru"},
+    "ccs_char": {"status": "INTEGRATED" if (rep / f"ccs_char_{variant}.json").is_file() else "GAP", "bin": str(root / "learn/scripts/char_nangate_ccs.py"), "role": "INV_X1 PTM CCS sidecar; official Nangate stays NLDM"},
     "raphael": {"status": "GAP", "bin": None, "role": "Synopsys commercial — not licensed"},
     "starrc": {"status": "GAP", "bin": None, "role": "Synopsys commercial — OpenRCX SPEF is the extract"},
     "open_pdks": {"status": "GAP", "bin": None, "role": "Sky130/gf180; this course is pinned Nangate45/FreePDK45"},

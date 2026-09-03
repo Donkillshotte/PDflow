@@ -45,6 +45,7 @@ const RUN_ACTIONS = new Set([
   "formal_gcd",
   "openrcx_report",
   "analytical_pex",
+  "ccs_char",
   "layout_tools",
   "spice_engines",
   "tool_matrix",

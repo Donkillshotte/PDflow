@@ -82,6 +82,17 @@ def main() -> int:
     fc = pex.get("fastercap") or {}
     check(fc.get("status") == "READY", "FasterCap BEM READY")
     check(float(fc.get("c_couple_fF") or 0) > 0, "FasterCap Cc > 0")
+
+    ccs = load("ccs_char_flowlab.json")
+    check(ccs.get("ok") is True, "ccs_char report ok")
+    check(ccs.get("status") == "READY", "ccs_char READY")
+    check((ccs.get("official_probe") or {}).get("status") == "GAP", "official Nangate liberty stays NLDM GAP")
+    check((ccs.get("official_probe") or {}).get("n_ccs_tables", 1) == 0, "official lib has zero CCS tables")
+    check(int(ccs.get("n_ccs_tables") or 0) >= 2, "sidecar has rise+fall output_current")
+    check(0.25 <= float(ccs.get("delay_ratio_vs_nldm") or 0) <= 4.0, "PTM delay within band of NLDM")
+    sidecar = ROOT / "learn/sim/lib/INV_X1_ptm45_ccs.lib"
+    check(sidecar.is_file(), "sidecar CCS liberty exists")
+    check("output_current_fall" in sidecar.read_text(), "sidecar contains output_current_fall")
     print("ALL test_signoff_honesty PASSED")
     return 0
 

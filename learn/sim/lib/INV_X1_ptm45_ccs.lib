@@ -1,0 +1,32 @@
+/* Educational sidecar. PTM 45 nm re-char of INV_X1. Not Nangate CCS. */
+library (nangate45_ptm_ccs_sidecar) {
+  delay_model : table_lookup;
+  time_unit : "1s";
+  voltage_unit : "1V";
+  current_unit : "1A";
+  nom_voltage : 1.1;
+  cell (INV_X1) {
+    pin (ZN) {
+      direction : output;
+      function : "!A";
+      timing () {
+        related_pin : "A";
+        timing_sense : negative_unate;
+      output_current_fall (ptm45_inv_x1) {
+        index_1 ("5.000000e-12, 2.000000e-11, 8.000000e-11");
+        index_2 ("0.000, 0.275, 0.550, 0.825, 1.100");
+        values ("8.850862e-09, 3.306557e-04, 4.524071e-04, 4.856640e-04, 3.980520e-06", \
+	        "4.439463e-09, 3.306654e-04, 4.524184e-04, 4.842289e-04, 3.979339e-06", \
+	        "1.353340e-09, 3.003220e-04, 3.064527e-04, 2.243358e-04, 3.981835e-06");
+      }
+      output_current_rise (ptm45_inv_x1) {
+        index_1 ("5.000000e-12, 2.000000e-11, 8.000000e-11");
+        index_2 ("0.000, 0.275, 0.550, 0.825, 1.100");
+        values ("1.438500e-06, 4.716823e-04, 4.183602e-04, 2.833862e-04, 3.822388e-08", \
+	        "1.438500e-06, 4.718296e-04, 4.183753e-04, 2.834094e-04, 6.672188e-09", \
+	        "1.438500e-06, 2.225286e-04, 3.005181e-04, 2.688205e-04, 4.276191e-10");
+      }
+      }
+    }
+  }
+}

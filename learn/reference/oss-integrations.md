@@ -11,7 +11,7 @@ Legend:
 | **PARTIAL** | Binary present, but PDK/tech incompatible with Nangate45 |
 | **GAP** | Commercial or wrong PDK — integration is not faked |
 
-Studio actions: `gate_sim`, `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `layout_tools`, `spice_engines`, `vyges_em_ir`, `dynamic_ir`, `thermal_signoff`, `pkg_rdl`, `tool_matrix`.
+Studio actions: `gate_sim`, `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `ccs_char`, `layout_tools`, `spice_engines`, `vyges_em_ir`, `dynamic_ir`, `thermal_signoff`, `pkg_rdl`, `tool_matrix`.
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
@@ -33,6 +33,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 | **Xyce (Sandia)** | INTEGRATED (when `install_xyce.sh` succeeds) | Dual-solver N4 compact VRM+pkg+die | `spice_engines_*.json` `xyce_status: READY` · `xyce_vrm_die_gold` | **ngspice** still covers System PDN AC/TRAN |
 | **OpenRCX** | INTEGRATED | Inside OpenROAD (`extract_parasitics`) | `6_final.spef` + `rcx_patterns.rules` · action `openrcx_report` | — |
 | **FasterCap** | INTEGRATED (when `install_fastercap.sh` succeeds) | 3D BEM 2-wire extract vs Sakurai–Tamaru + FDM | `analytical_pex_*.json` `fastercap.status: READY` | Raphael remains commercial GAP |
+| **CCS sidecar (INV_X1)** | INTEGRATED | ngspice + PTM 45 nm `output_current` on INV_X1 | `ccs_char_*.json` READY · `learn/sim/lib/INV_X1_ptm45_ccs.lib` | Official `typical.lib` stays NLDM GAP |
 | **Raphael** | GAP | Synopsys commercial, no license | documented | OpenRCX SPEF + analytical PEX |
 | **StarRC** | GAP | Synopsys commercial, no license | documented | **OpenRCX** SPEF at finish |
 | **open_pdks** | GAP | Sky130 / gf180, **different PDK** | course pinned to Nangate45 | Not mixed with FreePDK45 |

@@ -129,6 +129,17 @@ export async function getSuiteStatus() {
       action: "analytical_pex",
     },
     {
+      id: "ccs_char",
+      label: "CCS char (INV_X1 PTM)",
+      group: "Environment",
+      ok:
+        signoffReportPass("flowlab", "ccs_char") ||
+        signoffReportPass("learn", "ccs_char"),
+      detail: "ngspice + PTM 45 nm sidecar · official Nangate liberty stays NLDM",
+      action: "ccs_char",
+      href: "/tools?tab=run&action=ccs_char",
+    },
+    {
       id: "display",
       label: "DISPLAY / Desktop",
       group: "Environment",
@@ -464,6 +475,17 @@ export async function getSuiteStatus() {
       detail: "Sakurai–Tamaru + FDM 2D + FasterCap BEM · Raphael GAP",
       action: "analytical_pex",
       href: "/tools?tab=run&action=analytical_pex",
+    },
+    {
+      id: "ccs_char_report",
+      label: "CCS sidecar liberty",
+      group: "Analysis",
+      ok:
+        signoffReportPass("flowlab", "ccs_char") ||
+        signoffReportPass("learn", "ccs_char"),
+      detail: "INV_X1 output_current from SPICE · not foundry CCS",
+      action: "ccs_char",
+      href: "/tools?tab=run&action=ccs_char",
     },
     {
       id: "inspect",

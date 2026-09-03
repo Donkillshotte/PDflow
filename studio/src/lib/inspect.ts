@@ -312,6 +312,11 @@ export function inspectStage(
       detail: "learn/scripts/run_gate_sim.sh · gcd_gate.vcd name-join",
     },
     {
+      id: "ccs-char",
+      label: "CCS char (INV_X1 PTM)",
+      detail: "learn/scripts/run_ccs_char.sh · sidecar liberty, official NLDM stays GAP",
+    },
+    {
       id: "klayout",
       label: "KLayout GDS / DRC",
       detail: "Viewer + run_klayout_drc.sh",

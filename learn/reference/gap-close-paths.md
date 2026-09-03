@@ -123,7 +123,7 @@ PACT is the better **standard-cell** path if we accept a Docker/Xyce dependency.
 | Switch the course to sky130 (some CCS/NLDM mixes) | **Forbidden** — course pinned to Nangate45. |
 | Keep NLDM + α-law STA IR (`sta_ir_aware`) | Current honest path. |
 
-**Next step.** Do **not** close this GAP with fake tables. Leave CCS READY only when a liberty file contains `output_current`. Document that the **engine** is done; the **PDK** is not.
+**Done (educational sidecar).** `char_nangate_ccs.py` runs ngspice on Nangate `INV_X1` CDL + PTM 45 nm and writes `learn/sim/lib/INV_X1_ptm45_ccs.lib` with real `output_current_rise/fall`. Probe on that file is READY. Probe on official `typical.lib` stays **NLDM GAP**. Delay @ 20 ps / 10 fF is the same order as Nangate NLDM (~16 ps vs ~19 ps). This is re-characterization, not the 2008 Nangate CCS kit. Do not restamp gold Dynamic IR with the sidecar.
 
 ---
 
@@ -158,7 +158,7 @@ These stay GAP on purpose (`oss-integrations.md`):
 2. **Dummy `rdl_route` lab** — OpenROAD test LEF, sidecar ODB, honest dummy label.
 3. **HotSpot** — replace mV proxy with °C on a coarse floorplan.
 4. **Xyce in the image** — flip the existing deck from GAP to READY.
-5. Leave **CCS**, **Raphael**, **sky130**, and **course 0/8** alone.
+5. Leave **Raphael**, **sky130**, and **course 0/8** alone. CCS is the INV_X1 PTM sidecar only.
 
 ---
 

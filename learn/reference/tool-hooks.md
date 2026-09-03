@@ -115,6 +115,7 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | **Icarus** | INTEGRATED | `rtl_sim` (RTL VCD) + `gate_sim` (name-join VCD) |
 | **HotSpot** | INTEGRATED | `thermal_signoff` architecture °C |
 | **FasterCap** | INTEGRATED | `analytical_pex` 3D BEM 2-wire vs Sakurai–Tamaru |
+| **CCS sidecar** | INTEGRATED | `ccs_char` INV_X1 PTM `output_current` · official Nangate stays NLDM |
 
 ## How Studio orchestrates them
 
@@ -125,7 +126,7 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | `/api/inspect` | OpenROAD `-python`, OpenSTA, Yosys |
 | `/api/suite` | collaborative hook matrix (toolchain → signoff) |
 | `/api/results` | ORFS results/reports/logs files |
-| `/api/run/stream` | ORFS make + `rtl_sim` / `gate_sim` / `vectorless` / `vyges_em_ir` / `dynamic_ir` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `thermal_signoff` / `pkg_rdl` / `spice_engines` / `klayout_drc` |
+| `/api/run/stream` | ORFS make + `rtl_sim` / `gate_sim` / `vectorless` / `vyges_em_ir` / `dynamic_ir` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `analytical_pex` / `ccs_char` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `thermal_signoff` / `pkg_rdl` / `spice_engines` / `klayout_drc` |
 | Ctrl+K | dashboard, run extended, Qt GUI, web viewer |
 | Suite hub (`/` · `/tools#suite`) | live hook status + Open/Run |
 
@@ -137,6 +138,7 @@ Useful deep-links:
 - `/tools?tab=run&action=thermal_signoff`
 - `/tools?tab=run&action=pkg_rdl`
 - `/tools?tab=run&action=spice_engines`
+- `/tools?tab=run&action=ccs_char`
 - `/tools?tab=run&action=gridcheck`
 - `/tools?tab=run&action=chip_pdn_ir`
 - `/tools?tab=run&action=vyges_em_ir`

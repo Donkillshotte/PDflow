@@ -258,8 +258,13 @@ export function listOpenTargets(): {
     },
     {
       id: "run-analytical-pex",
-      label: "Run · PEX analitico FasterCap-class",
+      label: "Run · analytical PEX + FasterCap",
       action: "analytical_pex",
+    },
+    {
+      id: "run-ccs-char",
+      label: "Run · INV_X1 PTM CCS char",
+      action: "ccs_char",
     },
     {
       id: "run-tool-matrix",

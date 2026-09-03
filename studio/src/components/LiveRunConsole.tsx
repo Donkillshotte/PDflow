@@ -55,6 +55,7 @@ const POST_FINISH_CHIPS = [
   { id: "formal_gcd", label: "Formal SAT", hint: "sby-class tempinduct" },
   { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },
   { id: "analytical_pex", label: "Analytical PEX", hint: "Sakurai + FDM + FasterCap BEM" },
+  { id: "ccs_char", label: "CCS char", hint: "INV_X1 PTM sidecar, not foundry CCS" },
   { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
   { id: "tool_matrix", label: "Tool matrix", hint: "all OSS checks" },
 ] as const;

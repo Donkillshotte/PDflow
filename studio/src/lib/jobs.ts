@@ -51,6 +51,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   formal_gcd: null,
   openrcx_report: "finish",
   analytical_pex: null,
+  ccs_char: null,
   layout_tools: null,
   spice_engines: null,
   tool_matrix: null,

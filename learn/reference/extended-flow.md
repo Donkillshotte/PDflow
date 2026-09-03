@@ -231,6 +231,7 @@ Honest leftover: architecture compact model, not Ansys/COMSOL, not foundry. IR+d
 | `formal_gcd` | Yosys sat tempinduct (sby-class) |
 | `openrcx_report` | OpenRCX SPEF counts |
 | `analytical_pex` | Sakurai–Tamaru + FDM 2D + FasterCap BEM (when installed) |
+| `ccs_char` | INV_X1 PTM CCS sidecar (`output_current`) · official Nangate stays NLDM |
 | `layout_tools` | Magic / Netgen / KLayout probe |
 | `tool_matrix` | OSS orchestrator |
 | `klayout_drc` | GDS DRC (legacy, GDS only) |

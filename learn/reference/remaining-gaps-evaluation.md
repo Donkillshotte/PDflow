@@ -17,7 +17,7 @@ here because the user asked.
 
 | GAP | Verdict | Effort | What changes |
 |---|---|---|---|
-| **CCS tables** | **Partially closable** — re-characterize from SPICE | Medium-high | New CCS `.lib` from `vyges-char` + Nangate CDL + FreePDK45 PTM |
+| **CCS tables** | **Closed (INV_X1 sidecar)** — PTM + ngspice | Low (one cell) | `INV_X1_ptm45_ccs.lib` · official typical.lib stays NLDM |
 | **LVS mismatch** | **Partially closable** — investigate + tighten runset | Low-medium | KLayout LVS runset fix or `connect_implicit` for TBUF/TINV/TLAT |
 | **Raphael / StarRC** | **Not closable** — commercial | — | OpenRCX + analytical PEX stay the OSS path |
 | **FasterCap (field solver)** | **Closable** — build + 2-wire demo | Low | Compile FasterCap, run on existing analytical PEX geometry |
@@ -62,7 +62,9 @@ the ORFS public drop. The Si2 download requires an institutional request form.
 
 **Honest leftover**: the CCS tables would be re-characterized, not the original Nangate CCS. WNS delta should be small for 45 nm NLDM-vs-CCS (CCS matters more at advanced nodes). The **engine** (`sta_ir_aware` CCS interpolator) is already done and tested.
 
-**Verdict**: partially closable with real work. Not a mock.
+**Shipped (2026-09-03).** One-cell sidecar: `learn/scripts/char_nangate_ccs.py` + `learn/sim/lib/INV_X1_ptm45_ccs.lib`. Official ORFS liberty is unchanged. Full-library CCS and the Si2 Nangate kit remain leftovers.
+
+**Verdict**: closable as an educational sidecar. Not a mock. Not foundry CCS.
 
 ---
 
@@ -317,7 +319,7 @@ Tried every closable item. Kept only what ran end-to-end.
 |---|---|---|
 | LVS CDL filter | Yes — unused library SUBCKTs dropped | Unused TBUF/TLAT gone. **Every used stdcell still fails transistor compare** (`AND2_X1`…`XNOR2_X2`). Not a pass. Script kept as `filter_lvs_cdl.py`. Transistor LVS stays FAIL. |
 | FasterCap | Yes — built 6.0.7 headless, 2-wire deck | **READY.** Wired into `run_analytical_pex.py`. |
-| CCS / vyges-char | Not shipped | Needs PTM + full-library char hours. No fake tables. |
+| CCS / INV_X1 PTM | Yes — ngspice + PTM 45 nm on Nangate CDL | **READY sidecar.** `output_current` rise+fall. fall@20ps = 16.1 ps vs NLDM 19.2 ps. Official `typical.lib` stays NLDM GAP. Full-library / original Nangate CCS not shipped. |
 | Board S-parameter | Not shipped | TUHH data is form-gated. No public Touchstone without a request. |
 | Magic `.tech` | Not shipped | No verified extract. KLayout stays LVS/DRC. |
 | Netgen | Not shipped | Same device-compare problem without Magic extract. |
@@ -334,7 +336,7 @@ If we proceed with the closable items:
 |---|---|---|
 | 1 | **LVS investigation** | Low effort, high signal. May close the last red X in the signoff matrix. |
 | 2 | **FasterCap** | Low effort. Adds a real field solver to the PEX comparison. |
-| 3 | **CCS re-characterization** | Medium-high effort. Closes the last timing-model gap. Requires PTM models + `vyges-char`. |
+| 3 | **CCS full-library** | Optional later. INV_X1 sidecar is already live. |
 | 4 | **Board S-parameter** | Medium effort. Adds real EM data to the System PDN. |
 | 5 | **Netgen LVS** | Low-medium. Adds a second LVS engine. Depends on LVS investigation results. |
 | 6 | **Magic `.tech`** | Medium. Enables Magic extraction but may not add much over KLayout. |

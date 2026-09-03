@@ -1,0 +1,148 @@
+{
+  "ok": true,
+  "kind": "ccs_char",
+  "status": "READY",
+  "cell": "INV_X1",
+  "engine": "ngspice+ptm45hp",
+  "sidecar_lib": "/workspace/learn/sim/lib/INV_X1_ptm45_ccs.lib",
+  "official_lib": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib",
+  "official_probe": {
+    "status": "GAP",
+    "kind": "nldm",
+    "path": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib",
+    "ccs": false,
+    "ecsm": false,
+    "nldm_timing": true,
+    "n_ccs_tables": 0,
+    "n_ecsm_tables": 0,
+    "note": "NLDM delay/slew only \u2014 no CCS/ECSM current tables; triangle from I_avg is not a substitute"
+  },
+  "sidecar_probe": {
+    "status": "READY",
+    "kind": "ccs_output_current",
+    "path": "/workspace/learn/sim/lib/INV_X1_ptm45_ccs.lib",
+    "ccs": true,
+    "ecsm": false,
+    "nldm_timing": false,
+    "n_ccs_tables": 2,
+    "n_ecsm_tables": 0,
+    "note": "2 output_current table(s) parsed \u2014 interpolator READY; GCD Nangate mesh still uses triangle unless a cell Vout(t) is supplied"
+  },
+  "n_ccs_tables": 2,
+  "slews_s": [
+    5e-12,
+    2e-11,
+    8e-11
+  ],
+  "vouts_v": [
+    0.0,
+    0.275,
+    0.55,
+    0.825,
+    1.1
+  ],
+  "cload_fF": 10.0,
+  "runs": [
+    {
+      "direction": "fall",
+      "slew_s": 5e-12,
+      "i_abs_a": [
+        8.85086158e-09,
+        0.0003306556590246384,
+        0.00045240710008514497,
+        0.0004856639974158289,
+        3.9805195881372775e-06
+      ],
+      "i_peak_a": 0.000520325529,
+      "delay_s": 1.3335488974613403e-11,
+      "n_samples": 8914,
+      "v_min": 7.19250104e-07,
+      "v_max": 1.12388169
+    },
+    {
+      "direction": "fall",
+      "slew_s": 2e-11,
+      "i_abs_a": [
+        4.43946338e-09,
+        0.0003306653738376812,
+        0.000452418388412263,
+        0.0004842288703207338,
+        3.979338832275883e-06
+      ],
+      "i_peak_a": 0.000489465544,
+      "delay_s": 1.6071079913525782e-11,
+      "n_samples": 9214,
+      "v_min": 7.19250103e-07,
+      "v_max": 1.114342
+    },
+    {
+      "direction": "fall",
+      "slew_s": 8e-11,
+      "i_abs_a": [
+        1.35333995e-09,
+        0.0003003220471091654,
+        0.0003064526652700325,
+        0.00022433579892584178,
+        3.981835320570918e-06
+      ],
+      "i_peak_a": 0.0003295774,
+      "delay_s": 2.540504207988325e-11,
+      "n_samples": 10414,
+      "v_min": 7.19250106e-07,
+      "v_max": 1.10595118
+    },
+    {
+      "direction": "rise",
+      "slew_s": 5e-12,
+      "i_abs_a": [
+        1.4385001901668065e-06,
+        0.0004716822769427964,
+        0.00041836024482724344,
+        0.00028338622737104506,
+        3.82238827e-08
+      ],
+      "i_peak_a": 0.000521490253,
+      "delay_s": 1.373951778720198e-11,
+      "n_samples": 8914,
+      "v_min": -0.0202586841,
+      "v_max": 1.09999801
+    },
+    {
+      "direction": "rise",
+      "slew_s": 2e-11,
+      "i_abs_a": [
+        1.4385001895477805e-06,
+        0.00047182957254579793,
+        0.0004183752729576004,
+        0.0002834094462238804,
+        6.67218764e-09
+      ],
+      "i_peak_a": 0.000480256933,
+      "delay_s": 1.694352037432903e-11,
+      "n_samples": 9214,
+      "v_min": -0.0111077126,
+      "v_max": 1.09999801
+    },
+    {
+      "direction": "rise",
+      "slew_s": 8e-11,
+      "i_abs_a": [
+        1.4385001912721487e-06,
+        0.00022252864686602824,
+        0.00030051807849147493,
+        0.00026882049662543865,
+        4.27619096e-10
+      ],
+      "i_peak_a": 0.000312612667,
+      "delay_s": 2.921330198752382e-11,
+      "n_samples": 10414,
+      "v_min": -0.00405116412,
+      "v_max": 1.09999801
+    }
+  ],
+  "mid_fall_delay_ps": 16.071079913525782,
+  "nldm_ref_delay_ps": 19.2,
+  "delay_ratio_vs_nldm": 0.8370354121628012,
+  "educational_note": "PTM 45 nm re-characterization of INV_X1. Not original Nangate CCS. Official typical.lib stays NLDM GAP. Do not restamp gold Dynamic IR with this sidecar.",
+  "summary": "INV_X1 PTM CCS 2 tables \u00b7 fall@20ps 16.1ps (NLDM ref 19.2ps, ratio 0.84) \u00b7 official nldm/GAP"
+}
