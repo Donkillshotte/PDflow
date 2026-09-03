@@ -21,13 +21,14 @@ Do not mix them on a roadmap. A gated item is not a sprint.
 | **Magic + Netgen** on FreePDK45 | KLayout DRC/LVS | No verified FreePDK45 Magic `.tech` in this environment. |
 | **sky130** as the course PDK | Nangate45 only | Different PDK. Do not mix it into this course. |
 | **PrimeTime / Tempus / Voltus** | OpenSTA + PDNSim + Xyce N4 | Different tools. We do not claim equivalence. |
+| **EM current-density limits** | vyges-em-ir static/dynamic IR on the `write_pg_spice` mesh. `em_checked` is 0. | Nangate45 has no foundry `emlimit`. Adding a guessed limit would be a fake EM close. |
 
 ## To build (or already built)
 
 | Item | State |
 |---|---|
 | LVS on FlowLab GCD | Built: filter unused CDL, inject FILL from DEF, map wells to VDD/VSS. KLayout compare must print a real match. Must-connect warnings on XNOR2 well ties stay in the lvsdb. |
-| ECO after finish | Propose on locked variants. Apply on an unlocked copy loads `typical.lib` + SDC, writes a sidecar ODB, and never calls `signoff_all`. |
+| ECO after finish | Propose on locked variants. Apply on an unlocked copy loads `typical.lib` + SDC + `setRC.tcl`, writes a sidecar ODB (not GDS/SPEF/verilog), and never calls `signoff_all`. |
 | Antenna in GDS DRC | Already in `FreePDK45.lydrc` (`antenna_check`, 300:1). |
 | Density / named ERC | Not in the FreePDK45 DRC deck. Adding a wrapper would not add the rules. Treat as PDK-deck gated unless a new deck is written. |
 | DSE as flow controller | Not to build. DSE stays a proposer. See `learn/dse/flow_role.py`. |

@@ -43,14 +43,15 @@ This is not a drop-in Ansys RedHawk. Upstream: correlated vs PDNSim on Sky130; o
 
 ## GCD flowlab numbers (verified)
 
-Same `pg_vdd_bumps.sp` (~3985 nodes, 13 pad metal4, 601 load, I_tot ≈ 6.34 mA, Vdd = 1.1 V).
+Same `pg_vdd_bumps.sp` (4438 nodes, 15 pads, 622 loads, I_tot ≈ 7.43 mA, Vdd = 1.1 V).
+Chip-PDN live numbers (1.05 mV static / 9.47 mV transient) are a **different** mesh — do not mix them with this table. Gold Dynamic IR stays **45.298 mV**.
 
 | Engine | Static IR | Dynamic droop |
 |---|---|---|
-| `pdn_transient.py` (spsolve) | **17.52 mV** (1.593 %) | 154.0 mV (14.0 %) — load-step ×8 + C/L package |
-| **vyges-em-ir** 0.1.33 | **17.46 mV** (1.587 %) | 78.8 mV (7.17 %) @ 1.016 ns — simultaneous triangles |
+| `pdn_transient.py` (spsolve) | **15.17 mV** (1.379 %) | 138.2 mV (12.6 %) — load-step ×8 + C/L package |
+| **vyges-em-ir** 0.1.33 | **15.10 mV** (1.373 %) | 86.0 mV (7.82 %) @ 1.016 ns — simultaneous triangles |
 
-Static ratio vyges / pdn_transient ≈ **0.996**. Dynamic droop is **not** comparable 1:1: different waveforms (step+pkg vs triangle, single `t50`). The 7.17% exceeds default `ir_limit_pct: 5` — is the educational upper bound, not a tapeout FAIL. The script **does not** use `--fail-on-violation`.
+Static ratio vyges / pdn_transient ≈ **0.996**. Dynamic droop is **not** comparable 1:1: different waveforms (step+pkg vs triangle, single `t50`). The 7.82% exceeds default `ir_limit_pct: 5` — educational upper bound, not a tapeout FAIL. The script **does not** use `--fail-on-violation`. `em_checked` is 0: no foundry `emlimit` on Nangate45.
 
 ## Files
 

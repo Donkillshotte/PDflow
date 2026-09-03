@@ -50,6 +50,9 @@ def main() -> int:
             drop_mv = float(drop) * 1000.0
             check(drop_mv > 0, f"vyges static drop {drop_mv:.2f} mV")
             check(abs(drop_mv - GOLD_MV) > 1.0, "vyges mesh is not gold 45.298")
+        em_checked = (blob.get("vyges") or {}).get("em_checked")
+        if em_checked is not None:
+            check(int(em_checked) == 0, "Nangate45 has no emlimit; EM stays unchecked")
 
     print("ALL test_ir_chain PASSED")
     return 0
