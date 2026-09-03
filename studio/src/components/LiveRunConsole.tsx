@@ -36,7 +36,8 @@ const POST_FINISH_CHIPS = [
   { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
   { id: "vyges_em_ir", label: "vyges-em-ir", hint: "CG + backward Euler" },
   { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "A DirectLU current_run · B SA-AMG" },
-  { id: "dse", label: "Physically-aware DSE", hint: "e-graph · BOiLS · IR oracle" },
+  { id: "dse", label: "DSE (proposer)", hint: "Suggests knobs. Does not run signoff_all." },
+  { id: "eco", label: "ECO propose", hint: "Post-finish plan. Apply refused on flowlab." },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
   { id: "power_chain", label: "SPICE chain", hint: "activity→IR→system" },
   { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },
@@ -56,7 +57,7 @@ const POST_FINISH_CHIPS = [
   { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },
   { id: "analytical_pex", label: "Analytical PEX", hint: "Sakurai + FDM + FasterCap BEM" },
   { id: "ccs_char", label: "CCS char", hint: "PTM sidecar on GCD cells, not foundry CCS" },
-  { id: "lvs_deep", label: "Deep LVS", hint: "filter + VTL; transistor FAIL stays FAIL" },
+  { id: "lvs_deep", label: "Deep LVS", hint: "filtered CDL + well→VDD/VSS" },
   { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
   { id: "tool_matrix", label: "Tool matrix", hint: "all OSS checks" },
 ] as const;

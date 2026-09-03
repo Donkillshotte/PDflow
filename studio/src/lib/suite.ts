@@ -524,7 +524,7 @@ export async function getSuiteStatus() {
       label: "Deep LVS (filter + VTL)",
       group: "Analysis",
       ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lvs_deep_flowlab.json")),
-      detail: "Unused CDL dropped · transistor FAIL stays FAIL · not a fake pass",
+      detail: "Filtered CDL + well→VDD/VSS · match required · FILL/TAP still flatten",
       action: "lvs_deep",
       href: "/tools?tab=run&action=lvs_deep",
     },

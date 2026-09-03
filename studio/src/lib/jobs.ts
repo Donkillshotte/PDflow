@@ -446,7 +446,7 @@ export function preflightAction(
     },
     lvs_deep: {
       rel: "6_final.gds",
-      hint: "run finish first (filtered LVS + VTL tolerances, no fake pass)",
+      hint: "run finish first (filtered LVS, well→VDD/VSS)",
     },
     eco: {
       rel: "6_final.odb",

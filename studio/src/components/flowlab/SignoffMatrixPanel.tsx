@@ -26,7 +26,7 @@ type ArtifactParse = {
   items?: number;
   samples?: { category: string; detail: string }[];
   categories?: string[];
-  lvsdb?: { exists?: boolean; errors?: number; messages?: string[] };
+  lvsdb?: { exists?: boolean; errors?: number; must_connect?: number; messages?: string[] };
   log?: { exists?: boolean; tail?: string[]; missing_lylvs?: boolean; netlists_match?: boolean };
 };
 
@@ -53,6 +53,13 @@ type StaIr = {
   degradation_ps?: number | null;
 };
 
+type EcoInfo = {
+  ok?: boolean;
+  mode?: string;
+  summary?: string;
+  signoff?: boolean;
+};
+
 type SignoffApi = {
   variant: string;
   evaluation: { ok: boolean; gates: Gate[] };
@@ -60,6 +67,7 @@ type SignoffApi = {
   plannedPillars?: PillarRow[];
   orchestrator: { action: string; label: string; reportExists: boolean };
   staIr?: StaIr | null;
+  eco?: EcoInfo | null;
 };
 
 function StatusIcon({ ok, pending }: { ok: boolean; pending?: boolean }) {
@@ -105,7 +113,11 @@ function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: Artifa
           {lvs.exists ? (
             <>
               Errors: {lvs.errors ?? 0}
+              {log?.netlists_match === true && <> · netlists match</>}
               {log?.netlists_match === false && <> · netlists don&apos;t match</>}
+              {typeof lvs.must_connect === "number" && lvs.must_connect > 0 && (
+                <> · must-connect {lvs.must_connect}</>
+              )}
             </>
           ) : (
             <>Missing .lvsdb file</>
@@ -360,7 +372,22 @@ export function SignoffMatrixPanel({
           >
             {busy === "signoff_phase2" ? "Phase 2…" : "Signoff Phase 2 (thermal + PKG)"}
           </button>
+          <button
+            type="button"
+            className="sig-all-btn sig-phase2-btn"
+            disabled={Boolean(busy)}
+            onClick={() => onRun("eco", false)}
+          >
+            {busy === "eco" ? "ECO…" : "ECO propose"}
+          </button>
         </div>
+      )}
+
+      {data?.eco && (
+        <p className="sig-summary">
+          ECO {data.eco.mode ?? "propose"}: {data.eco.summary ?? "—"}
+          {data.eco.signoff ? " · claims signoff (bug)" : " · does not claim signoff"}
+        </p>
       )}
 
       {data && (

@@ -512,6 +512,7 @@ export function signoffMatrixForUi(variant = "flowlab") {
     },
     evaluation: evaluateSignoffGates(variant),
     staIr: readStaIrAware(variant),
+    eco: readJsonReport(path.join(LEARN_ROOT, `sim/reports/eco_${variant}.json`)),
   };
 }
 

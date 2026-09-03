@@ -297,7 +297,7 @@ export function listOpenTargets(): {
     },
     {
       id: "run-lvs-deep",
-      label: "Run · deep LVS (filter, no fake pass)",
+      label: "Run · deep LVS (filtered CDL, well→VDD/VSS)",
       action: "lvs_deep",
     },
     {

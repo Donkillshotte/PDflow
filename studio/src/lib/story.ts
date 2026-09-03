@@ -330,8 +330,15 @@ export function getProductStory(): ProductStory {
         : `Gold ${IR_GOLD_MV} mV is the frozen reference_run`,
     },
     {
+      id: "eco",
+      label: "ECO",
+      href: "/flow?phase=finish#eco",
+      ready: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/eco_flowlab.json")),
+      detail: "Propose after signoff. Apply refused on locked variants.",
+    },
+    {
       id: "dse",
-      label: "Product DSE",
+      label: "DSE (proposer)",
       href: "/flow?phase=pkg&focus=dse#dse",
       ready: product.wins > 0,
       detail: product.detail,

@@ -25,6 +25,16 @@ type SignoffAction = {
   long: boolean;
 };
 
+const LAB_ACTIONS: SignoffAction[] = [
+  {
+    id: "dse",
+    label: "DSE (proposer)",
+    hint: "Suggests knobs. Does not run signoff_all.",
+    icon: Layers,
+    long: false,
+  },
+];
+
 const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "activity_power",
@@ -59,13 +69,6 @@ const POWER_ACTIONS: SignoffAction[] = [
     label: "Dynamic IR I(t)",
     hint: "A DirectLU current_run · B SA-AMG · heatmap",
     icon: Zap,
-    long: false,
-  },
-  {
-    id: "dse",
-    label: "DSE (proposer)",
-    hint: "Suggests knobs. Does not run signoff_all.",
-    icon: Layers,
     long: false,
   },
   {
@@ -260,6 +263,13 @@ export function FlowLabSignoff({
 
   return (
     <div className="fl-signoff">
+      <div className="fl-signoff-head">
+        <strong>Loop</strong>
+        <p>
+          RTL → finish → <code>signoff_all</code> (STA · DRC · LVS · power). ECO propose
+          is after signoff and does not skip it. DSE only suggests knobs.
+        </p>
+      </div>
       {isFinish && (
         <>
           <div id="signoff">
@@ -304,6 +314,19 @@ export function FlowLabSignoff({
           <DynamicIrHeatmap />
           <ActionGrid
             actions={POWER_ACTIONS}
+            disabled={disabled}
+            busy={busy}
+            onRun={onRun}
+          />
+          <div className="fl-signoff-head">
+            <strong>Lab proposer</strong>
+            <p>
+              DSE is not the signoff orchestrator. Wins stay in{" "}
+              <code>win_rule.py</code>.
+            </p>
+          </div>
+          <ActionGrid
+            actions={LAB_ACTIONS}
             disabled={disabled}
             busy={busy}
             onRun={onRun}
