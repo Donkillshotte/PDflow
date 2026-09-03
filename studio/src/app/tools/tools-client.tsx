@@ -165,8 +165,8 @@ export default function ToolsClient() {
           <p className="studio-pro-eyebrow">OpenROAD Studio · Tools</p>
           <h1>Console, suite, and inspection</h1>
           <p>
-            Same unified path as Studio home: course variant <code>learn</code>,
-            FlowLab variant <code>flowlab</code>.
+            Course variant <code>learn</code>. FlowLab variant{" "}
+            <code>flowlab</code>. Do not mix them.
           </p>
         </div>
         <Link href="/flow" className="btn-primary">
@@ -178,8 +178,8 @@ export default function ToolsClient() {
 
       <header className="page-head page-head-compact">
         <p>
-          Collaborative suite: deep-link, Ctrl+K palette, run/inspect/viewer and
-          Open GUI (OpenROAD / KLayout) on the learn variant.
+          Deep-link, Ctrl+K palette, run/inspect/viewer, and Open GUI
+          (OpenROAD / KLayout) on the learn variant.
         </p>
       </header>
 

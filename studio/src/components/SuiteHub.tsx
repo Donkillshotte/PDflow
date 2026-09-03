@@ -69,7 +69,7 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
     <div className={clsx("suite-hub", compact && "suite-hub-compact")}>
       <div className="ops-head">
         <div>
-          <h2>Toolchain on the unified path</h2>
+          <h2>Toolchain hooks</h2>
           <p className="muted">
             Hooks for course, FlowLab, and product cooks ·{" "}
             {data.summary.hooksOk}/{data.summary.hooksTotal} ok ·

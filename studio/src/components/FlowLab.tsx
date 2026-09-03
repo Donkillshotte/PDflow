@@ -526,11 +526,12 @@ export function FlowLab() {
       <header className="fl-hero">
         <div className="fl-hero-copy">
           <p className="fl-eyebrow">OpenROAD Studio · FlowLab</p>
-          <h1>From RTL to GDSII, then signoff and IR</h1>
+          <h1>RTL → finish → signoff_all</h1>
           <p>
-            Isolated GCD workbench at{" "}
-            <code>results/nangate45/gcd/flowlab</code>. Same finish feeds
-            signoff, dynamic IR, and the product DSE panel.
+            Isolated GCD at <code>results/nangate45/gcd/flowlab</code>.
+            Signoff is STA → DRC → LVS → power. ECO apply writes{" "}
+            <code>eco_scratch</code> and still requires{" "}
+            <code>signoff_all</code>. DSE proposes knobs.
           </p>
         </div>
         <div className="fl-hero-stats">

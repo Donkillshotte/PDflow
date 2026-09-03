@@ -37,14 +37,15 @@ export default function HomePage() {
         <div className="hero-glow" aria-hidden />
         <div className="hero-copy">
           <p className="hero-brand">OpenROAD</p>
-          <h1 className="hero-title">Physical design as one product</h1>
+          <h1 className="hero-title">RTL → GDS on OpenROAD</h1>
           <p className="hero-lead">
-            Course, lab IR, and product DSE on the same GCD: RTL → GDS →
-            signoff → I(t) gold 45.298 mV → frozen win rule.
+            Nangate45 / FreePDK45. Signoff is STA → DRC → LVS → power.
+            DSE proposes knobs; wins stay in <code>win_rule.py</code>.
+            Gold Dynamic IR is 45.298 mV.
           </p>
           <div className="cta-row">
             <Link href="/flow" className="btn-primary">
-              Open the unified path
+              Open FlowLab
             </Link>
             {next ? (
               <Link href={`/lessons/${next.id}`} className="btn-ghost">
@@ -56,7 +57,7 @@ export default function HomePage() {
               </Link>
             )}
             <Link href="/tools" className="btn-ghost">
-              Console live
+              Tools
             </Link>
           </div>
           <div className="progress-strip" aria-label={`Progress ${completed} of 8`}>
@@ -91,7 +92,7 @@ export default function HomePage() {
           Power &amp; SPICE chain:{" "}
           <Link href="/materials/reference/spice-power-chain.md">full guide</Link>
           {" · "}
-          <Link href="/pkg">hub PKG</Link>
+          <Link href="/pkg">PKG hub</Link>
         </p>
         <div className="flow-steps">
           {[

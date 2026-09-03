@@ -93,7 +93,7 @@ export function ProductStory({
   if (!data) {
     return (
       <section className={clsx("product-story", `product-story-${tone}`, "is-loading")}>
-        <p className="muted">Loading the unified path…</p>
+        <p className="muted">Loading story…</p>
       </section>
     );
   }

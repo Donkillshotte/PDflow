@@ -79,6 +79,16 @@ function StatusIcon({ ok, pending }: { ok: boolean; pending?: boolean }) {
   );
 }
 
+function leftoverCircuits(messages?: string[]): string[] {
+  return Array.from(
+    new Set(
+      (messages || [])
+        .map((m) => m.match(/circuit (\S+)/)?.[1])
+        .filter((n): n is string => Boolean(n)),
+    ),
+  );
+}
+
 function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: ArtifactParse }) {
   if (!parse) return null;
   if (pillarId === "geometry" && parse.exists) {
@@ -106,6 +116,7 @@ function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: Artifa
   if (pillarId === "equivalence" && parse.lvsdb) {
     const lvs = parse.lvsdb;
     const log = parse.log;
+    const leftover = leftoverCircuits(lvs.messages);
     return (
       <div className="sig-artifact">
         <strong>LVS report</strong>
@@ -116,7 +127,11 @@ function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: Artifa
               {log?.netlists_match === true && <> · netlists match</>}
               {log?.netlists_match === false && <> · netlists don&apos;t match</>}
               {typeof lvs.must_connect === "number" && lvs.must_connect > 0 && (
-                <> · must-connect {lvs.must_connect}</>
+                <>
+                  {" "}
+                  · must-connect {lvs.must_connect}
+                  {leftover.length ? ` (${leftover.join(", ")})` : ""}
+                </>
               )}
             </>
           ) : (
