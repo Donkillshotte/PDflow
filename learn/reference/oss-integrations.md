@@ -17,6 +17,8 @@ Studio actions: `gate_sim`, `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_
 FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 ```
 
+Live WORKS / FAIL / GAP table: [suite-status.md](./suite-status.md).
+
 ---
 
 ## Tool matrix

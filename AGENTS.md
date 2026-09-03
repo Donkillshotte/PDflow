@@ -64,3 +64,16 @@ No force-push. Do not merge on your own.
 
 Origin repo: use `origin` (not `gh`) for forge CLI.
 Create/update PRs with the agent PR tool.
+
+## Cursor Cloud specific instructions
+
+Do **not** send progress videos or screen recordings unless the user
+explicitly asks for a demo. Validate with tests, logs, report JSON, and
+(when needed) `GET /api/suite`. Preferred gates:
+
+```bash
+PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_signoff_honesty.py
+PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_lab_physics.py
+```
+
+Live suite status: [`learn/reference/suite-status.md`](learn/reference/suite-status.md).
