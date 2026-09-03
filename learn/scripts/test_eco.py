@@ -85,6 +85,13 @@ def main() -> int:
     check('onRun("eco_apply"' in panel, "EcoPanel can launch apply")
     check('onRun("eco_close"' in panel, "EcoPanel can launch close")
     check("signoff_all" in panel, "EcoPanel names signoff_all as close")
+    finish = (ROOT / "studio/src/components/flowlab/FlowLabSignoff.tsx").read_text()
+    check("LabBench" not in finish, "finish loop does not mix LabBench")
+    check("fl-signoff-more" in finish, "individual STA/DRC/LVS scripts are behind details")
+    check("eco_scratch" in finish, "finish copy names eco_scratch")
+    sig_ts = (ROOT / "studio/src/lib/signoff.ts").read_text()
+    check("leftoverMustConnectDetail" in sig_ts, "equivalence pillar names leftover")
+    check("Nangate split wells" in sig_ts, "leftover names the PDK cause")
 
     live = ROOT / "learn/sim/reports/eco_apply_eco_scratch.json"
     if live.is_file():

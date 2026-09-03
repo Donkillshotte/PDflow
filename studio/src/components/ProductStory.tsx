@@ -101,11 +101,11 @@ export function ProductStory({
   return (
     <section
       className={clsx("product-story", `product-story-${tone}`, compact && "product-story-compact")}
-      aria-label="Unified product path"
+      aria-label="RTL to signoff path"
     >
       {!compact && (
         <header className="product-story-head">
-          <p className="eyebrow">One product</p>
+          <p className="eyebrow">Three surfaces</p>
           <h2>{data.title}</h2>
           <p className="product-story-lead">{data.lead}</p>
         </header>

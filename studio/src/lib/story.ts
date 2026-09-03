@@ -252,6 +252,11 @@ export function getProductStory(): ProductStory {
   const pillarIds = ["timing", "geometry", "equivalence", "power"];
   const pillars = gates.gates.filter((g) => pillarIds.includes(g.id));
   const signoffPassed = pillars.filter((g) => g.ok).length;
+  const leftoverBit = (() => {
+    const detail = gates.gates.find((g) => g.id === "equivalence")?.detail ?? "";
+    const at = detail.indexOf("leftover");
+    return at >= 0 ? ` · ${detail.slice(at)}` : "";
+  })();
 
   const staIrReport = readReport("sta_ir_aware");
   const staBlock = (staIrReport?.sta ?? null) as
@@ -311,7 +316,7 @@ export function getProductStory(): ProductStory {
       detail:
         pillars.length === 0
           ? "Four pillars: STA · DRC · LVS · power"
-          : `${signoffPassed}/${pillars.length} pillars pass`,
+          : `${signoffPassed}/${pillars.length} pillars pass${leftoverBit}`,
     },
     {
       id: "sta-ir",
@@ -334,7 +339,7 @@ export function getProductStory(): ProductStory {
       label: "ECO",
       href: "/flow?phase=finish#eco",
       ready: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/eco_flowlab.json")),
-      detail: "Propose after signoff. Apply refused on locked variants.",
+      detail: "Propose on flowlab. Apply and signoff_all close on eco_scratch only.",
     },
     {
       id: "dse",
@@ -388,7 +393,7 @@ export function getProductStory(): ProductStory {
       detail:
         pillars.length === 0
           ? "Run finish, then the four signoff pillars"
-          : `${signoffPassed}/${pillars.length} pillars pass on ${STORY_VARIANT}`,
+          : `${signoffPassed}/${pillars.length} pillars pass on ${STORY_VARIANT}${leftoverBit}`,
     },
     ir: {
       goldMv: IR_GOLD_MV,

@@ -14,7 +14,6 @@ import {
 import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
 import { StaIrAwarePanel } from "./StaIrAwarePanel";
 import { EcoPanel } from "./EcoPanel";
-import { LabBench } from "@/components/LabBench";
 import { DynamicIrHeatmap } from "./DynamicIrHeatmap";
 
 type SignoffAction = {
@@ -266,8 +265,9 @@ export function FlowLabSignoff({
       <div className="fl-signoff-head">
         <strong>Loop</strong>
         <p>
-          RTL → finish → <code>signoff_all</code> (STA · DRC · LVS · power). ECO propose
-          is after signoff and does not skip it. DSE only suggests knobs.
+          RTL → finish → <code>signoff_all</code> (STA · DRC · LVS · power).
+          ECO apply writes <code>eco_scratch</code> and still requires
+          that close. DSE only suggests knobs.
         </p>
       </div>
       {isFinish && (
@@ -276,21 +276,20 @@ export function FlowLabSignoff({
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
           <StaIrAwarePanel busy={busy} onRun={onRun} />
           <EcoPanel busy={busy} onRun={onRun} />
-          <LabBench tone="dark" busy={busy} onRun={onRun} />
-          <div className="fl-signoff-head">
-            <strong>Signoff actions timing / geometry / LVS</strong>
+          <details className="fl-signoff-more">
+            <summary>Individual STA / DRC / LVS scripts</summary>
             <p>
               Docs{" "}
               <a href="/materials/reference/signoff-matrix.md">signoff-matrix</a> ·{" "}
               <a href="/materials/reference/golden-metrics.md">golden-metrics</a>
             </p>
-          </div>
-          <ActionGrid
-            actions={FINISH_ACTIONS}
-            disabled={disabled}
-            busy={busy}
-            onRun={onRun}
-          />
+            <ActionGrid
+              actions={FINISH_ACTIONS}
+              disabled={disabled}
+              busy={busy}
+              onRun={onRun}
+            />
+          </details>
           </div>
         </>
       )}

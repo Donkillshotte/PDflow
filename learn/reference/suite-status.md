@@ -34,7 +34,8 @@ Three different things get mixed in Studio. Only the last two are real leftovers
 Studio now prefers `gcd/flowlab/` then `gcd/learn/`. Course lesson
 gates stay on `learn` so 0/8 is not stamped by FlowLab artifacts.
 
-The remaining real leftover is LVS, plus commercial / form-gated GAPs.
+LVS compare now matches. The remaining real leftover is the DFF_X2
+must-connect (Nangate split wells), plus commercial / form-gated GAPs.
 
 ### 2. LVS (KLayout compare)
 

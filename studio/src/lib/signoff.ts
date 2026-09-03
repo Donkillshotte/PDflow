@@ -336,6 +336,34 @@ export function readStaIrAware(variant = "flowlab"): StaIrAwareSummary | null {
   };
 }
 
+/** LVS leftover circuits named in must-connect messages (e.g. DFF_X2). */
+export function leftoverCircuitsFromReport(
+  report: Record<string, unknown> | null,
+): string[] {
+  const parse = report?.artifact_parse as
+    | { lvsdb?: { messages?: string[] } }
+    | undefined;
+  const messages = parse?.lvsdb?.messages ?? [];
+  return Array.from(
+    new Set(
+      messages
+        .map((m) => m.match(/circuit (\S+)/)?.[1])
+        .filter((n): n is string => Boolean(n)),
+    ),
+  );
+}
+
+export function leftoverMustConnectDetail(
+  report: Record<string, unknown> | null,
+): string | null {
+  if (!report) return null;
+  const mc = Number(report.must_connect ?? 0);
+  if (!(mc > 0)) return null;
+  const cells = leftoverCircuitsFromReport(report);
+  const named = cells.length ? cells.join(", ") : "Nangate cell";
+  return `leftover must-connect ${mc} (${named}, Nangate split wells)`;
+}
+
 function readJsonReport(abs: string): Record<string, unknown> | null {
   try {
     if (!fs.existsSync(abs)) return null;
@@ -413,14 +441,19 @@ export function evaluateSignoffGates(variant = "flowlab"): {
       report: orchReport ? `sim/reports/${pillar.orchestratorAction}_${variant}.json` : undefined,
     };
 
+    let detail = orchReport
+      ? (orchReport.summary as string) || (pillarOk ? "report ok" : "golden thresholds")
+      : "report missing — run signoff";
+    if (pillar.id === "equivalence" && orchReport) {
+      const leftover = leftoverMustConnectDetail(orchReport);
+      if (leftover) detail += ` · ${leftover}`;
+    }
     gates.push({
       id: pillar.id,
       pillar: pillar.id,
       label: pillar.label,
       ok: pillarOk,
-      detail: orchReport
-        ? (orchReport.summary as string) || (pillarOk ? "report ok" : "golden thresholds")
-        : "report missing — run signoff",
+      detail,
       action: pillar.orchestratorAction,
     });
 

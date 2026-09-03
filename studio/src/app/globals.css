@@ -1427,8 +1427,11 @@ button.pipeline-node {
   margin: 0.1rem 0 0;
   letter-spacing: -0.03em;
 }
-.fl-hero-copy p {
-  display: none;
+.fl-hero-copy p:not(.fl-eyebrow) {
+  margin: 0.35rem 0 0;
+  max-width: 44rem;
+  font-size: 0.8rem;
+  color: var(--fl-muted);
 }
 .fl-hero-copy code {
   font-size: 0.82em;
@@ -2276,6 +2279,26 @@ button.pipeline-node {
   margin-top: 0.15rem;
 }
 .fl-signoff-card svg { color: var(--fl-accent-2); flex-shrink: 0; margin-top: 0.1rem; }
+
+.fl-signoff-more {
+  margin-top: 0.15rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--fl-border);
+  border-radius: 10px;
+  background: rgba(11, 18, 32, 0.45);
+}
+
+.fl-signoff-more summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.fl-signoff-more summary + p {
+  margin: 0.45rem 0 0.55rem;
+  font-size: 0.76rem;
+  color: var(--fl-muted);
+}
 
 .fl-dynir {
   display: grid;
@@ -4055,7 +4078,7 @@ nextjs-portal,
   display: none !important;
 }
 
-/* —— Unified product story —— */
+/* —— Product story (course / lab / product) —— */
 .product-story {
   display: grid;
   gap: 1rem;

@@ -28,6 +28,9 @@ def main() -> int:
 
     lvs = load("lvs_signoff_flowlab.json")
     check(lvs.get("ok") is True, "LVS compare is a real KLayout match")
+    check(int(lvs.get("must_connect") or 0) == 2, "LVS leftover must-connect stays 2")
+    msgs = ((lvs.get("artifact_parse") or {}).get("lvsdb") or {}).get("messages") or []
+    check(any("DFF_X2" in str(m) for m in msgs), "leftover messages name DFF_X2")
     tail = ((lvs.get("artifact_parse") or {}).get("log") or {}).get("tail") or []
     check(any("CONGRATULATIONS" in str(x) or "Netlists match" in str(x) for x in tail), "LVS log keeps the match line")
     check(not any("Netlists don't match" in str(x) for x in tail), "LVS log has no mismatch line")
