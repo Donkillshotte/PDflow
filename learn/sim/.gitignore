@@ -18,6 +18,8 @@ reports/*
 !reports/pkg_rdl_flowlab.json
 !reports/pkg_signoff_flowlab.json
 !reports/signoff_phase2_flowlab.json
+!reports/gate_sim_flowlab.json
+!reports/spice_engines_flowlab.json
 reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/

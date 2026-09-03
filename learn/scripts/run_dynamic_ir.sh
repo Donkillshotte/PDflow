@@ -10,7 +10,8 @@
 # Cox (RAIL_C_GEOM=1) — not the GCD default.
 # Electrothermal: default ON reports one-shot R(T) Solver A TRAN (not gold).
 #   ELECTROTHERMAL=0 skips that TRAN; N1 restamp still reported.
-# Activity = OpenSTA arrival t50 (clock) + VCD/SAIF name-join (GAP on RTL tb_gcd).
+# Activity = OpenSTA arrival t50 (clock) + VCD/SAIF name-join
+# (gate VCD from gate_sim joins; RTL tb_gcd stays GAP).
 # SAIF idle-zeros TC=0 pulses; does not invent t50 or rescale I_avg.
 # Path STA delay from OpenSTA report_checks (NLDM typical-V × (Vdd/V)^α).
 # Ranking of extra I(t) stays Solver A (synthetic). vyges-em-ir is bootstrap.
@@ -52,7 +53,12 @@ OUT_DIR="${ROOT}/learn/sim/reports"
 JSON="${OUT_DIR}/dynamic_ir_${VARIANT}.json"
 LOG="${OUT_DIR}/dynamic_ir_${VARIANT}.log"
 STA_JSON="${OUT_DIR}/sta_arrivals_${VARIANT}.json"
-VCD="${ROOT}/learn/sim/gcd/gcd.vcd"
+VCD=""
+if VCD="$(power_vcd_path "${ROOT}")"; then
+  :
+else
+  VCD=""
+fi
 STAMP="${RES}/.dynamic_ir.ok"
 
 [[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run finish first (variant=${VARIANT})"; exit 1; }
@@ -133,7 +139,7 @@ if [[ -f "${SPEF}" ]]; then
   EXTRA+=(--spef "${SPEF}")
 fi
 EXTRA+=(--sta "${STA_JSON}")
-if [[ -f "${VCD}" ]]; then
+if [[ -n "${VCD}" && -f "${VCD}" ]]; then
   EXTRA+=(--vcd "${VCD}")
 fi
 if [[ "${ON_DIE_L:-}" == "1" ]]; then

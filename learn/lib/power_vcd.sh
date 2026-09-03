@@ -3,19 +3,34 @@
 # OpenSTA 26Q2: `read_power_activities` is deprecated and calls `read_vcd`
 # with the wrong arity. Use `read_vcd -scope … file` (see `help read_vcd`).
 #
-# RTL VCD (Icarus tb_gcd/dut) only annotates nets whose names match the
-# gate-level ODB — typically ports. Unmatched pins keep OpenSTA defaults
-# (do NOT follow with set_power_activity -global: that overwrites VCD).
+# Prefer gate-level VCD (Icarus on 6_final.v) so scopes join ODB instances.
+# RTL VCD (tb_gcd/dut) only annotates ports — keep it for lesson 00.
+# Unmatched pins keep OpenSTA defaults (do NOT follow with set_power_activity
+# -global: that overwrites VCD).
 set -euo pipefail
 
 power_vcd_path() {
   local root="$1"
-  local vcd="${root}/learn/sim/gcd/gcd.vcd"
-  if [[ -f "${vcd}" && -s "${vcd}" ]]; then
-    echo "${vcd}"
+  local gate="${root}/learn/sim/gcd/gcd_gate.vcd"
+  local rtl="${root}/learn/sim/gcd/gcd.vcd"
+  if [[ -f "${gate}" && -s "${gate}" ]]; then
+    echo "${gate}"
+    return 0
+  fi
+  if [[ -f "${rtl}" && -s "${rtl}" ]]; then
+    echo "${rtl}"
     return 0
   fi
   return 1
+}
+
+power_vcd_scope() {
+  local vcd="$1"
+  if [[ "${vcd}" == *gcd_gate.vcd ]]; then
+    echo "tb_gcd_gate/dut"
+  else
+    echo "tb_gcd/dut"
+  fi
 }
 
 # Prints TCL: vectorless global, dynamic VCD, or auto.
@@ -33,15 +48,17 @@ EOF
   fi
   if [[ "${mode}" == "dynamic" || "${mode}" == "auto" ]]; then
     if vcd="$(power_vcd_path "${root}")"; then
+      local scope
+      scope="$(power_vcd_scope "${vcd}")"
       cat <<EOF
-read_vcd -scope tb_gcd/dut ${vcd}
-puts "ACTIVITY_SOURCE vcd ${vcd}"
+read_vcd -scope ${scope} ${vcd}
+puts "ACTIVITY_SOURCE vcd ${vcd} scope ${scope}"
 EOF
       return 0
     fi
   fi
   if [[ "${mode}" == "dynamic" ]]; then
-    echo "puts \"ACTIVITY_SOURCE missing_vcd — run rtl_sim\""
+    echo "puts \"ACTIVITY_SOURCE missing_vcd — run gate_sim (or rtl_sim)\""
     echo "set_power_activity -global -activity 0.2 -duty 0.5"
     return 0
   fi

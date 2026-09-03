@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Activity → report_power on final ODB.
-# Uses VCD from rtl_sim when present (read_vcd via power_vcd.sh), else synthetic global.
+# Uses gate VCD from gate_sim when present (preferred name-join), else RTL VCD, else synthetic.
 #
 # Env: FLOW_VARIANT=learn|flowlab (default flowlab — aligned with power_chain)
 set -euo pipefail
@@ -35,5 +35,5 @@ echo "OK activity power ${VARIANT} → ${OUT}"
 if power_vcd_path "${ROOT}" >/dev/null 2>&1; then
   echo "  source: VCD $(power_vcd_path "${ROOT}")"
 else
-  echo "  source: synthetic (run rtl_sim for VCD-driven activity)"
+  echo "  source: synthetic (run gate_sim for name-join VCD, or rtl_sim)"
 fi

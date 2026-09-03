@@ -15,16 +15,23 @@ mkdir -p "$(dirname "${LOG}")"
 
 echo "=== POWER CHAIN START ${VARIANT} ===" | tee -a "${LOG}"
 
-echo "--- 1/4 activity_power ---" | tee -a "${LOG}"
+echo "--- 1/5 gate_sim ---" | tee -a "${LOG}"
+if [[ -f "${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/6_final.v" ]]; then
+  FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_gate_sim.sh" 2>&1 | tee -a "${LOG}" || echo "WARN gate_sim failed — activity falls back to RTL/synthetic" | tee -a "${LOG}"
+else
+  echo "skip gate_sim (no 6_final.v)" | tee -a "${LOG}"
+fi
+
+echo "--- 2/5 activity_power ---" | tee -a "${LOG}"
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_activity_power.sh" 2>&1 | tee -a "${LOG}"
 
-echo "--- 2/4 chip_pdn_ir ---" | tee -a "${LOG}"
+echo "--- 3/5 chip_pdn_ir ---" | tee -a "${LOG}"
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_chip_pdn_ir.sh" 2>&1 | tee -a "${LOG}"
 
-echo "--- 3/4 system_pdn ---" | tee -a "${LOG}"
+echo "--- 4/5 system_pdn ---" | tee -a "${LOG}"
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_system_pdn.sh" 2>&1 | tee -a "${LOG}"
 
-echo "--- 4/4 export_spice_lab ---" | tee -a "${LOG}"
+echo "--- 5/5 export_spice_lab ---" | tee -a "${LOG}"
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/export_spice_lab.sh" 2>&1 | tee -a "${LOG}"
 
 python3 - <<PY | tee -a "${LOG}"
