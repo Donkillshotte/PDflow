@@ -13,10 +13,10 @@
   },
   "dynamic": {
     "exists": true,
-    "source": "missing_vcd \u2014 run rtl_sim",
-    "total_w": 0.00229,
-    "i_avg_a": 0.0020818181818181816,
-    "ir_straps_mv": 3.0300000000000002,
+    "source": "vcd /workspace/learn/sim/gcd/gcd_gate.vcd scope tb_gcd_gate/dut",
+    "total_w": 0.000779,
+    "i_avg_a": 0.0007081818181818181,
+    "ir_straps_mv": 0.9859999999999999,
     "log": "/workspace/learn/sim/reports/power_dynamic_flowlab.log"
   },
   "design": {
@@ -84,14 +84,14 @@
       }
     ]
   },
-  "ir_mesh_vectorless_mv": 19.500187583810337,
-  "summary": "Vectorless P=0.0049 W \u00b7 I_avg=4.4545e-03 A \u00b7 dynamic P=0.00229 W \u00b7 source missing_vcd \u2014 run rtl_sim",
+  "ir_mesh_vectorless_mv": null,
+  "summary": "Vectorless P=0.0049 W \u00b7 I_avg=4.4545e-03 A \u00b7 dynamic P=0.000779 W \u00b7 source vcd /workspace/learn/sim/gcd/gcd_gate.vcd scope tb_gcd_gate/dut",
   "references": [
     "Najm, Proc. IEEE 1994, power estimation / switching probability",
     "Kouroussis & Najm, DAC 2003, vectorless IR current constraints"
   ],
   "notes": [
-    "RTL VCD annotates matching names only (ports). Unmatched pins use OpenSTA defaults.",
+    "Gate VCD (tb_gcd_gate/dut) name-joins ODB instances. RTL VCD is ports-only (lesson 00).",
     "Icarus TB clock is 10 ns vs SDC 0.46 ns \u2014 OpenSTA warns STA-1452; dynamic watts are not 1:1 with vectorless.",
     "Fill/tap cells are excluded from the current envelope (Kouroussis instance currents).",
     "Raphael/StarRC are commercial; OpenRCX SPEF + this envelope are the OSS path."

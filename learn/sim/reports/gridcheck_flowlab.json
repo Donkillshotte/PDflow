@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "kind": "gridcheck",
+  "variant": "flowlab",
+  "stage": "pdn",
+  "vdd_connected": true,
+  "vss_connected": true,
+  "stamp": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/.gridcheck_pdn.ok",
+  "log": "/workspace/learn/sim/reports/gridcheck_flowlab_pdn.log",
+  "educational_note": "OpenROAD check_power_grid on flowlab PDN. Not Voltus.",
+  "summary": "GRIDCHECK PASS \u00b7 VDD+VSS connected"
+}
