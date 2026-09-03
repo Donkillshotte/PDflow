@@ -11,7 +11,7 @@ Legend:
 | **PARTIAL** | Binary present, but PDK/tech incompatible with Nangate45 |
 | **GAP** | Commercial or wrong PDK — integration is not faked |
 
-Studio actions: `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `layout_tools`, `spice_engines`, `vyges_em_ir`, `dynamic_ir`, `tool_matrix`.
+Studio actions: `gate_sim`, `vectorless`, `yosys_equiv`, `formal_gcd`, `openrcx_report`, `analytical_pex`, `layout_tools`, `spice_engines`, `vyges_em_ir`, `dynamic_ir`, `thermal_signoff`, `pkg_rdl`, `tool_matrix`.
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
@@ -30,7 +30,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 | **EQY** | MAPPED | CLI `eqy` absent | Yosys `equiv_make` / `equiv_induct` / `equiv_status` | Same engine as EQY |
 | **SymbiYosys (`sby`)** | MAPPED | CLI `sby` absent; **z3** present | Yosys `sat -tempinduct` on `reset \|-> resp_val=0` | Same SAT/BMC backend |
 | **ngspice** | INTEGRATED | System PDN AC+TRAN + demo | `ngspice -v` 42 · `system_pdn` · `spice_engines` | — |
-| **Xyce (Sandia)** | GAP | Not in apt / not in PATH | `spice_engines_*.json` `xyce_present: false` | **ngspice** covers educational AC/TRAN PDN |
+| **Xyce (Sandia)** | INTEGRATED (when `install_xyce.sh` succeeds) | Dual-solver N4 compact VRM+pkg+die | `spice_engines_*.json` `xyce_status: READY` · `xyce_vrm_die_gold` | **ngspice** still covers System PDN AC/TRAN |
 | **OpenRCX** | INTEGRATED | Inside OpenROAD (`extract_parasitics`) | `6_final.spef` + `rcx_patterns.rules` · action `openrcx_report` | — |
 | **FasterCap** | MAPPED | Binary absent | Sakurai–Tamaru 1983 + FDM 2D Laplace · `analytical_pex` | Raphael-class 2-wire tutorial |
 | **Raphael** | GAP | Synopsys commercial, no license | documented | OpenRCX SPEF + analytical PEX |

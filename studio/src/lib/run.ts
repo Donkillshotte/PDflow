@@ -73,6 +73,7 @@ const ALLOWED_ACTIONS = new Set([
   "finish",
   "test_course",
   "rtl_sim",
+  "gate_sim",
   "gridcheck",
   "system_pdn",
   "chip_pdn_ir",
@@ -168,6 +169,17 @@ function resolveCommand(
       cwd: REPO_ROOT,
       command: flowlab ? `RTL_FILE=learn/flowlab/gcd.v ${cmd}` : cmd,
       env,
+    };
+  }
+  if (action === "gate_sim") {
+    const cmd = path.join(LEARN_ROOT, "scripts/run_gate_sim.sh");
+    const variant = flowlab ? FLOWLAB_VARIANT : "learn";
+    return {
+      cmd,
+      args: [],
+      cwd: REPO_ROOT,
+      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      env: { FLOW_VARIANT: variant },
     };
   }
   if (action === "gridcheck") {
@@ -652,6 +664,18 @@ export async function probeToolchain(): Promise<{
           return { name: bin, ok: true, detail: local, required: false };
         }
       }
+      if (bin === "xyce" || bin === "Xyce") {
+        const local = path.join(REPO_ROOT, "learn/tools/xyce/bin/Xyce");
+        if (fs.existsSync(local)) {
+          return { name: "xyce", ok: true, detail: local, required: false };
+        }
+      }
+      if (bin === "hotspot") {
+        const local = path.join(REPO_ROOT, "learn/tools/hotspot/hotspot");
+        if (fs.existsSync(local)) {
+          return { name: bin, ok: true, detail: local, required: false };
+        }
+      }
       return { name: bin, ok: false, detail: "missing", required: false };
     }
   }
@@ -663,6 +687,7 @@ export async function probeToolchain(): Promise<{
     present("eqy"),
     present("sby"),
     present("xyce"),
+    present("hotspot"),
     present("fastercap"),
     present("vyges-em-ir"),
   ]);

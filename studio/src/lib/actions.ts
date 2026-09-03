@@ -78,6 +78,7 @@ export const DEFAULT_FLOW_VARIANT = "flowlab";
 
 /** Power-chain script actions (post-finish analysis). */
 export const POWER_ACTIONS = [
+  "gate_sim",
   "activity_power",
   "vectorless",
   "chip_pdn_ir",

@@ -20,9 +20,9 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
     anchor: "lesson-00-intro",
     title: "RTL and flow map",
     summary:
-      "RTL sim produces the VCD: first link in the power chain (toggle → future activity).",
-    orfsArtifacts: ["learn/flowlab/gcd.v", "learn/sim/gcd/gcd.vcd"],
-    studioActions: ["rtl_sim"],
+      "RTL sim produces the lesson-00 VCD. Gate sim on 6_final.v is the name-join source for activity/IR.",
+    orfsArtifacts: ["learn/flowlab/gcd.v", "learn/sim/gcd/gcd.vcd", "learn/sim/gcd/gcd_gate.vcd"],
+    studioActions: ["rtl_sim", "gate_sim"],
     spiceOutputs: [],
     docs: [
       { href: "/materials/reference/spice-power-chain.md#lesson-00-intro", label: "§00 RTL" },

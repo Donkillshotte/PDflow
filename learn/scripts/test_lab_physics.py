@@ -75,8 +75,9 @@ def main() -> int:
     pkg_rdl = reports / "pkg_rdl_flowlab.json"
     if pkg_rdl.is_file():
         blob = json.loads(pkg_rdl.read_text())
-        check(blob.get("ok") is False, "pkg_rdl is GAP, not a mock pass")
-        check((blob.get("rdl") or {}).get("executed") is False, "rdl_route stayed unexecuted")
+        check(blob.get("ok") is True, "pkg_rdl executed dummy rdl_route")
+        check((blob.get("rdl") or {}).get("executed") is True, "rdl_route wrote sidecar wires")
+        check("dummy" in str(blob.get("educational_note") or "").lower() or "not C4" in str(blob.get("educational_note") or ""), "RDL keeps dummy label")
     import tempfile
     from parse_signoff_artifacts import parse_lvs_log
 

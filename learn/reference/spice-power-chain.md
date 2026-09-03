@@ -6,7 +6,7 @@
 
 | Lesson | FlowLab | Key ORFS make / output | Studio actions | SPICE / report |
 |---|---|---|---|---|
-| [00-intro](#lesson-00-intro) | `rtl` | `gcd.v`, `gcd.vcd` | `rtl_sim` | — (VCD → future activity) |
+| [00-intro](#lesson-00-intro) | `rtl` | `gcd.v`, `gcd.vcd`, `gcd_gate.vcd` | `rtl_sim`, `gate_sim` | gate VCD name-join → activity |
 | [01-constraints](#lesson-01-constraints) | `synth` (prep) | `constraint.sdc`, `config.mk` | — | — |
 | [02-synthesis](#lesson-02-synthesis) | `synth` | `1_synth.*`, `.lib` | `synth` | `nangate_inverter_demo.sp` |
 | [03-floorplan](#lesson-03-floorplan) | `floorplan`, `pdn` | `2_4_floorplan_pdn.odb` | `floorplan`, `gridcheck` | mesh post-finish |
@@ -35,6 +35,7 @@
 │ Course 00–07 (FLOW_VARIANT=learn)     │  FlowLab (FLOW_VARIANT=flowlab) │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ 00 RTL sim → VCD                     │  rtl_sim → gcd.vcd               │
+│      gate sim → name-join VCD        │  gate_sim → gcd_gate.vcd         │
 │ 02 Synth → netlist + .lib            │  synth → 1_synth.odb             │
 │ 03 Floorplan → 2_4 PDN ODB           │  floorplan → 2_4_floorplan_pdn   │
 │      └─ gridcheck (FlowLab PDN)      │  gridcheck → .gridcheck_pdn.ok   │
@@ -66,7 +67,7 @@ read_vcd -scope tb_gcd/dut gcd.vcd
 report_power
 ```
 
-Studio uses **`read_vcd`** (not `read_power_activities`) when `run_rtl_sim.sh` produced `gcd.vcd` — see `learn/lib/power_vcd.sh`. For IR without vectors: `vectorless` action ([vectorless-power.md](./vectorless-power.md)).
+Studio uses **`read_vcd`** (not `read_power_activities`). `power_vcd.sh` prefers `gcd_gate.vcd` from `gate_sim` (`-scope tb_gcd_gate/dut`) and falls back to RTL `gcd.vcd` for lesson 00. For IR without vectors: `vectorless` action ([vectorless-power.md](./vectorless-power.md)).
 
 **Next chain step:** 02 synth (cells) → 07 finish (`report_power`).
 

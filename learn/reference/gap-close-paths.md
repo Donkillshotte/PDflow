@@ -21,7 +21,7 @@ Course progress `0/8` is student work, not a tool GAP.
 
 ## 1. RTL VCD name-join
 
-**Tree today.** `learn/scripts/pdn_activity.py` `probe_activity_trace` joins VCD scopes to gate instance names. Synthetic VCD is READY. Live `learn/sim/gcd/gcd.vcd` is **RTL** (`rtl_sim` / Icarus on `gcd.v`) and matches **0** gate insts (`test_pdn_layers.py`). Comment in `pdn_dynamic.py`: no silent RTL→ITerm map.
+**Tree today.** `learn/scripts/pdn_activity.py` `probe_activity_trace` joins VCD scopes to gate instance names. Synthetic VCD is READY. Live `learn/sim/gcd/gcd.vcd` is **RTL** and matches **0** gate insts. `gate_sim` dumps `gcd_gate.vcd`; `power_vcd.sh` prefers it. RTL VCD stays the lesson-00 artifact.
 
 **Why it is GAP.** RTL names (`req_msg`, `tb.dut.clk`) are not `_479_/ZN` or `ctrl.state.out[0]$_DFF_P_`.
 
@@ -34,13 +34,13 @@ Course progress `0/8` is student work, not a tool GAP.
 
 **Blockers.** Yosys/ORFS hierarchical names (`$_DFF_P_`) must match the Verilog dump. Functional GLS (no SDF interconnect) is enough for activity edges; Icarus SDF is still incomplete ([iverilog#746](https://github.com/steveicarus/iverilog/issues/746)). Do not invent a name map from RTL ports to ITerms.
 
-**Next step.** Add `run_gate_sim.sh` on FlowLab `6_final.v` + vendored Nangate `.v`. Keep RTL VCD for lesson 00. Gate VCD is the IR activity source.
+**Done.** `run_gate_sim.sh` + Studio action `gate_sim`. Keep RTL VCD for lesson 00. Gate VCD is the IR activity source. Functional GLS, not SDF.
 
 ---
 
 ## 2. `rdl_route` (no bump LEF on ORFS GCD)
 
-**Tree today.** `run_pkg_rdl.sh` records GAP: `rdl.executed=false`. Bump mesh + system PDN already run. ORFS `nangate45/gcd` has no package LEF.
+**Tree today.** Dummy `rdl_route` runs on a sidecar ODB (`run_pkg_rdl.sh`). Bump mesh + system PDN already run. `ok` only if the router wrote wires.
 
 **Why it is GAP.** `rdl_route` needs a bump **master** in LEF (`make_io_bump_array -bump …`). OpenROAD docs: [pad README](https://openroad.readthedocs.io/en/latest/main/src/pad/README.html).
 
@@ -58,7 +58,7 @@ Path:
 
 **Blockers.** Dummy pads are not a foundry bump. Do not grow the die or rewrite FlowLab finish. Prefer a **sidecar ODB** so `gcd/flowlab` baseline stays untouched. sky130hd in ORFS has a real IO library; that is a **different PDK** (`oss-integrations.md` forbids mixing).
 
-**Next step.** Port `rdl_route.tcl` onto a copy of the GCD finish ODB. Keep the dummy label.
+**Done.** `pkg_rdl_sidecar.tcl` on a copy of the finish ODB + scaled `dummy_bump_gcd.lef`. Dummy label kept. FlowLab baseline untouched.
 
 ---
 
@@ -86,7 +86,7 @@ PACT is the better **standard-cell** path if we accept a Docker/Xyce dependency.
 
 **Blockers.** Floorplan power from OpenSTA is switching/internal/leakage, not a measured IR²R map. Package is a lumped R_ja unless we add a HotSpot package config. That is still more physics than `IR_mV + droop_mV`.
 
-**Next step.** Env package HotSpot; writer from `6_final.def` + activity power.
+**Done.** `install_hotspot.sh` → `learn/tools/hotspot`. `write_hotspot_deck.py` + `run_thermal_signoff.sh` report `t_max_c`. IR+droop stays a secondary check.
 
 ---
 
@@ -104,7 +104,7 @@ PACT is the better **standard-cell** path if we accept a Docker/Xyce dependency.
 
 **Blockers.** Trilinos build is heavy (time, disk). Do not drop ngspice. Do not treat Xyce as Voltus. Parallel Xyce is unnecessary for GCD.
 
-**Next step.** Environment build, not product code. The Python contract is already there.
+**Done (env).** `learn/scripts/install_xyce.sh` puts `Xyce` on PATH (`learn/tools/xyce/bin`). `run_spice_engines.sh` runs `xyce_vrm_die_gold`. Do not restamp gold Dynamic IR.
 
 ---
 

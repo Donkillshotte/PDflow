@@ -218,6 +218,7 @@ export function listOpenTargets(): {
   const runActions: { id: string; label: string; action: string }[] = [
     { id: "run-check", label: "Run · verify toolchain", action: "check" },
     { id: "run-rtl-sim", label: "Run · sim RTL (Icarus)", action: "rtl_sim" },
+    { id: "run-gate-sim", label: "Run · gate sim (Icarus)", action: "gate_sim" },
     { id: "run-gridcheck", label: "Run · gridcheck PDN", action: "gridcheck" },
     { id: "run-system-pdn", label: "Run · System PDN (hier)", action: "system_pdn" },
     { id: "run-chip-ir", label: "Run · chip IR mesh", action: "chip_pdn_ir" },

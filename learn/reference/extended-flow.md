@@ -34,7 +34,9 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
 
 ---
 
-## 2. RTL simulation — READY (new slice)
+## 2. RTL simulation — READY
+
+Also **gate-level VCD** (name-join): action `gate_sim` → `run_gate_sim.sh` on `6_final.v` + Nangate behavioral `.v` → `learn/sim/gcd/gcd_gate.vcd`. Functional GLS, not SDF. `power_vcd.sh` prefers the gate VCD.
 
 | Component | Path |
 |---|---|
@@ -71,8 +73,8 @@ make … synth
 
 | Layer | Status |
 |---|---|
-| OpenSTA | `set_power_activity`, **`read_vcd -scope tb_gcd/dut`**, `report_power` |
-| Dynamic | Icarus VCD on names that match the gate netlist (port) |
+| OpenSTA | `set_power_activity`, **`read_vcd -scope tb_gcd_gate/dut`** (gate) or `tb_gcd/dut` (RTL) |
+| Dynamic | Gate VCD name-joins ODB instances; RTL VCD matches ports only |
 | Vectorless | global activity 0.5 + Kouroussis envelope (DAC 2003) + Najm \(P_{01}\) |
 | Demo | `learn/scripts/run_activity_power.sh` · `run_vectorless.sh` |
 
@@ -167,7 +169,7 @@ Expected: `PSM-0040 All shapes on net VDD/VSS are connected`.
 
 ---
 
-## 8. Bump · RDL · system PDN — PARTIAL (Studio demo)
+## 8. Bump · RDL · system PDN — READY (dummy RDL) / PARTIAL (package)
 
 OpenROAD exposes:
 
@@ -188,35 +190,25 @@ OpenROAD exposes:
 
 **Exhaustive phase-chain guide:** [spice-power-chain.md](./spice-power-chain.md) — maps lessons 00–07 ↔ FlowLab ↔ SPICE.
 
-**Honest limit:** System PDN is an educational *lumped* ladder; Nangate45 GCD has no packaging LEF/tech. Chip IR `BUMPS` uses a synthetic OpenROAD pattern (PSM-0073), not a tapeout-ready package.
+**Honest limit:** System PDN is an educational *lumped* ladder. Dummy `rdl_route` runs on a **sidecar ODB** with a scaled `DUMMY_BUMP` LEF — not C4, and never written into `gcd/flowlab` finish. Chip IR `BUMPS` uses a synthetic OpenROAD pattern (PSM-0073).
 
-**Future extensions:** see [gap-close-paths.md](./gap-close-paths.md).
-
-1. Dummy-bump `rdl_route` lab (OpenROAD `Nangate45_io/dummy_pads.lef`) — educational, not C4
-2. Board SI/PI models outside OpenROAD
-3. Thermal: HotSpot / PACT — still a proxy until installed
+**Still outside this slice:** board S-parameter SI/PI, foundry bump LEF. See [gap-close-paths.md](./gap-close-paths.md).
 
 ---
 
-## 9. Thermal analysis — PARTIAL (proxy READY)
+## 9. Thermal analysis — READY (HotSpot architecture model)
 
-No native thermal command in OpenROAD 26Q2; no HotSpot ORFS target.
-
-**Course slice (proxy READY):**
+No native thermal command in OpenROAD 26Q2. Studio runs **UVA HotSpot 7** on a coarse 2×2 floorplan from DIEAREA + `report_power` watts.
 
 | Component | Path |
 |---|---|
+| Binary | `learn/tools/hotspot/hotspot` · `learn/scripts/install_hotspot.sh` |
 | Script | `learn/scripts/run_thermal_signoff.sh` |
-| Report | `learn/sim/reports/thermal_signoff_{v}.json` |
-| Input | chip IR JSON + ORFS heatmap `orfs_final_ir_drop.png` |
-| Studio | action `thermal_signoff` · Phase 2 matrix on `/pkg` |
+| Deck | `learn/sim/thermal/{v}/gcd.flp` + `gcd.ptrace` |
+| Report | `learn/sim/reports/thermal_signoff_{v}.json` (`t_max_c`) |
+| Studio | action `thermal_signoff` · Phase 2 on `/pkg` |
 
-The proxy sums static IR + transient droop as an educational hotspot estimate; 50 mV threshold in the report.
-
-**External open options (not installed):** HotSpot, 3D-ICE.  
-**Honest treatment:** “reliability / thermal” chapter with proxy + power map, without pretending tapeout thermal closed-loop.
-
-Power map proxy already available: IR heatmap + `report_power` (activity script).
+Honest leftover: architecture compact model, not Ansys/COMSOL, not foundry. IR+droop mV stays a **secondary** labeled check.
 
 ---
 
@@ -224,7 +216,9 @@ Power map proxy already available: IR heatmap + `report_power` (activity script)
 
 | Action / API | Topic |
 |---|---|
-| `rtl_sim` | Icarus RTL sim |
+| `rtl_sim` | Icarus RTL sim (lesson 00) |
+| `gate_sim` | Icarus functional GLS → `gcd_gate.vcd` name-join |
+| `spice_engines` | ngspice + Xyce N4 dual-solver gold |
 | `gridcheck` | `check_power_grid` |
 | `system_pdn` | ngspice System PDN · VRM→board→pkg→die |
 | `chip_pdn_ir` | PDNSim + write_pg_spice + pdn_transient |
@@ -246,9 +240,10 @@ Power map proxy already available: IR heatmap + `report_power` (activity script)
 | `klayout_lvs` | LVS GDS vs CDL |
 | `power_signoff` | Power chain + golden gate |
 | `signoff_all` | Four-pillar orchestrator (+ optional Phase 2: `SIGNOFF_INCLUDE_PHASE2=1`) |
-| `signoff_phase2` | Thermal proxy + PKG orchestrator |
-| `thermal_signoff` | IR+droop hotspot proxy |
-| `pkg_signoff` | Bump + system PDN; RDL is GAP on Nangate GCD |
+| `signoff_phase2` | HotSpot + PKG orchestrator |
+| `thermal_signoff` | HotSpot t_max °C + IR+droop secondary |
+| `pkg_rdl` | Dummy `rdl_route` on sidecar ODB |
+| `pkg_signoff` | Bump + system PDN + dummy RDL |
 | `/api/signoff` | Signoff matrix + gate |
 | `/api/inspect` | ODB / STA / Yosys (+ hook notes) |
 | `/api/viewer` | OpenROAD `-web` |

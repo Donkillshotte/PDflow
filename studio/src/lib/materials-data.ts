@@ -84,7 +84,7 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materials/reference/extended-flow.md",
     title: "Extended flow",
     group: "Reference",
-    description: "RTL sim, activity, vectorless, DRC, gridcheck, PDN, bump/RDL, thermal.",
+    description: "RTL + gate sim, activity, vectorless, DRC, gridcheck, PDN, dummy RDL, HotSpot, Xyce.",
   },
   {
     href: "/materials/reference/vectorless-power.md",

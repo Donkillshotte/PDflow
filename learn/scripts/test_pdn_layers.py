@@ -483,6 +483,32 @@ $end
     else:
         print("    skip GCD VCD (missing learn/sim/gcd/gcd.vcd)")
 
+    gate_vcd = Path(__file__).resolve().parents[2] / "learn/sim/gcd/gcd_gate.vcd"
+    inst_map = (
+        Path(__file__).resolve().parents[2]
+        / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/inst_power_map.json"
+    )
+    if gate_vcd.is_file() and inst_map.is_file():
+        import json as _json
+
+        insts = (_json.loads(inst_map.read_text()).get("insts") or [])[:80]
+        joined = probe_activity_trace(gate_vcd, insts)
+        check(
+            joined["status"] == "READY" and (joined.get("n_matched") or 0) > 0,
+            f"GCD gate VCD name-joins gate insts (n={joined.get('n_matched')})",
+        )
+    elif gate_vcd.is_file():
+        joined = probe_activity_trace(
+            gate_vcd,
+            [{"name": "_479_"}, {"name": r"ctrl.state.out[1]$_DFF_P_"}],
+        )
+        check(
+            joined["status"] == "READY" and (joined.get("n_matched") or 0) > 0,
+            f"GCD gate VCD name-joins (n={joined.get('n_matched')})",
+        )
+    else:
+        print("    skip GCD gate VCD (missing learn/sim/gcd/gcd_gate.vcd)")
+
     tmp_sta = Path(tempfile.mkdtemp(prefix="sta-json-")) / "arr.json"
     tmp_sta.write_text(
         '{"by_inst": {"_479_": {"rise_ns": 0.09, "fall_ns": 0.10, "full": "_479_/ZN"}}}\n'

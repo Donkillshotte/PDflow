@@ -17,7 +17,8 @@ type StreamEvent =
 
 const PIPELINE_ACTIONS = [
   { id: "check", label: "Verify toolchain", hint: "openroad · yosys · sta · klayout" },
-  { id: "rtl_sim", label: "RTL sim (Icarus)", hint: "GCD + VCD" },
+  { id: "rtl_sim", label: "RTL sim (Icarus)", hint: "GCD + RTL VCD" },
+  { id: "gate_sim", label: "Gate sim (Icarus)", hint: "6_final.v + name-join VCD" },
   { id: "status", label: "Course progress", hint: "lessons completed" },
   { id: "synth", label: "Run synth", hint: "~30s" },
   { id: "floorplan", label: "Run floorplan", hint: "die / PDN" },
@@ -45,9 +46,11 @@ const POST_FINISH_CHIPS = [
   { id: "klayout_lvs", label: "LVS signoff", hint: "GDS vs netlist" },
   { id: "power_signoff", label: "Power signoff", hint: "IR/droop/Zmax" },
   { id: "signoff_all", label: "Full signoff", hint: "4 pillars · long" },
-  { id: "thermal_signoff", label: "Thermal proxy", hint: "IR+droop Phase 2" },
+  { id: "thermal_signoff", label: "Thermal (HotSpot)", hint: "t_max °C · Phase 2" },
+  { id: "pkg_rdl", label: "PKG RDL (dummy)", hint: "sidecar rdl_route" },
   { id: "pkg_signoff", label: "PKG signoff", hint: "bump/RDL/system" },
-  { id: "signoff_phase2", label: "Signoff Phase 2", hint: "thermal + PKG" },
+  { id: "signoff_phase2", label: "Signoff Phase 2", hint: "HotSpot + PKG" },
+  { id: "spice_engines", label: "SPICE engines", hint: "ngspice + Xyce N4" },
   { id: "yosys_equiv", label: "Yosys equiv", hint: "EQY-class RTL↔synth" },
   { id: "formal_gcd", label: "Formal SAT", hint: "sby-class tempinduct" },
   { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },

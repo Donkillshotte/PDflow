@@ -27,6 +27,7 @@ const RUN_ACTIONS = new Set([
   "list",
   "test_course",
   "rtl_sim",
+  "gate_sim",
   "gridcheck",
   "system_pdn",
   "chip_pdn_ir",

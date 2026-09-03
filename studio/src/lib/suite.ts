@@ -94,16 +94,28 @@ export async function getSuiteStatus() {
       label: "ngspice (System PDN)",
       group: "Environment",
       ok: which("ngspice"),
-      detail: which("ngspice") ? "ngspice present · Xyce GAP" : "apt install ngspice",
+      detail: which("ngspice")
+        ? which("Xyce") || which("xyce") || fs.existsSync(path.join(LEARN_ROOT, "tools/xyce/bin/Xyce"))
+          ? "ngspice present · Xyce READY"
+          : "ngspice present · Xyce install via install_xyce.sh"
+        : "apt install ngspice",
       action: "system_pdn",
     },
     {
       id: "iverilog",
-      label: "Icarus (RTL sim)",
+      label: "Icarus (RTL + gate sim)",
       group: "Environment",
       ok: which("iverilog"),
       detail: which("iverilog") ? "iverilog present" : "install iverilog",
       action: "rtl_sim",
+    },
+    {
+      id: "hotspot",
+      label: "HotSpot (thermal)",
+      group: "Environment",
+      ok: which("hotspot") || fs.existsSync(path.join(LEARN_ROOT, "tools/hotspot/hotspot")),
+      detail: "UVA HotSpot architecture compact model",
+      action: "thermal_signoff",
     },
     {
       id: "display",
@@ -127,9 +139,21 @@ export async function getSuiteStatus() {
       label: "RTL sim + VCD",
       group: "Frontend",
       ok: which("iverilog") && fs.existsSync(path.join(LEARN_ROOT, "sim/gcd/tb_gcd.v")),
-      detail: "run_rtl_sim.sh · rtl_sim action",
+      detail: "run_rtl_sim.sh · rtl_sim action · lesson 00",
       action: "rtl_sim",
       href: "/tools?tab=run&action=rtl_sim",
+    },
+    {
+      id: "gate_sim",
+      label: "Gate sim + VCD name-join",
+      group: "Frontend",
+      ok:
+        which("iverilog") &&
+        fs.existsSync(path.join(LEARN_ROOT, "sim/gcd/tb_gcd_gate.v")) &&
+        fs.existsSync(path.join(LEARN_ROOT, "platforms/nangate45/verilog/NangateOpenCellLibrary.v")),
+      detail: "run_gate_sim.sh · 6_final.v + Nangate .v · prefers gcd_gate.vcd",
+      action: "gate_sim",
+      href: "/tools?tab=run&action=gate_sim",
     },
     {
       id: "synth",
@@ -187,7 +211,7 @@ export async function getSuiteStatus() {
       ok:
         powerReportOk("flowlab", "activity_power") ||
         powerReportOk("learn", "activity_power"),
-      detail: "VCD if rtl_sim · report_power → I_avg System PDN",
+      detail: "Gate VCD if gate_sim · else RTL · report_power → I_avg",
       action: "activity_power",
       href: "/tools?tab=run&action=activity_power",
     },
@@ -328,11 +352,20 @@ export async function getSuiteStatus() {
     },
     {
       id: "thermal_signoff",
-      label: "Thermal proxy",
+      label: "Thermal (HotSpot)",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "thermal_signoff") || signoffReportPass("learn", "thermal_signoff"),
-      detail: "IR+droop proxy · run_thermal_signoff.sh",
+      detail: "HotSpot t_max °C · IR+droop secondary · run_thermal_signoff.sh",
       action: "thermal_signoff",
+      href: "/pkg",
+    },
+    {
+      id: "pkg_rdl",
+      label: "PKG RDL (dummy)",
+      group: "Signoff",
+      ok: signoffReportPass("flowlab", "pkg_rdl") || signoffReportPass("learn", "pkg_rdl"),
+      detail: "rdl_route on sidecar ODB · dummy bump LEF, not C4",
+      action: "pkg_rdl",
       href: "/pkg",
     },
     {
@@ -340,7 +373,7 @@ export async function getSuiteStatus() {
       label: "PKG signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "pkg_signoff") || signoffReportPass("learn", "pkg_signoff"),
-      detail: "Bump + system PDN · RDL is GAP on Nangate GCD",
+      detail: "Bump + system PDN + dummy rdl_route",
       action: "pkg_signoff",
       href: "/pkg",
     },
@@ -349,9 +382,18 @@ export async function getSuiteStatus() {
       label: "Signoff Phase 2",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "signoff_phase2") || signoffReportPass("learn", "signoff_phase2"),
-      detail: "Thermal proxy + PKG orchestrator",
+      detail: "HotSpot + PKG orchestrator",
       action: "signoff_phase2",
       href: "/pkg",
+    },
+    {
+      id: "spice_engines",
+      label: "SPICE engines",
+      group: "Environment",
+      ok: signoffReportPass("flowlab", "spice_engines") || signoffReportPass("learn", "spice_engines"),
+      detail: "ngspice + Xyce N4 gold · run_spice_engines.sh",
+      action: "spice_engines",
+      href: "/tools?tab=run&action=spice_engines",
     },
     {
       id: "or-web",
@@ -371,7 +413,7 @@ export async function getSuiteStatus() {
     {
       id: "yosys_equiv",
       label: "Yosys equiv (EQY-class)",
-      group: "Analisi",
+      group: "Analysis",
       ok:
         signoffReportPass("flowlab", "yosys_equiv") ||
         signoffReportPass("learn", "yosys_equiv"),
@@ -382,7 +424,7 @@ export async function getSuiteStatus() {
     {
       id: "formal_gcd",
       label: "Formal SAT (sby-class)",
-      group: "Analisi",
+      group: "Analysis",
       ok:
         signoffReportPass("flowlab", "formal_gcd") ||
         signoffReportPass("learn", "formal_gcd"),
@@ -393,7 +435,7 @@ export async function getSuiteStatus() {
     {
       id: "openrcx",
       label: "OpenRCX SPEF",
-      group: "Analisi",
+      group: "Analysis",
       ok:
         signoffReportPass("flowlab", "openrcx") ||
         signoffReportPass("learn", "openrcx"),
@@ -403,8 +445,8 @@ export async function getSuiteStatus() {
     },
     {
       id: "analytical_pex",
-      label: "PEX analitico (FasterCap-class)",
-      group: "Analisi",
+      label: "Analytical PEX (FasterCap-class)",
+      group: "Analysis",
       ok:
         signoffReportPass("flowlab", "analytical_pex") ||
         signoffReportPass("learn", "analytical_pex"),
@@ -415,7 +457,7 @@ export async function getSuiteStatus() {
     {
       id: "inspect",
       label: "Inspect ODB/STA/Yosys",
-      group: "Analisi",
+      group: "Analysis",
       ok: has("1_synth.odb"),
       detail: "GET /api/inspect",
       href: "/tools?stage=synth&tab=results#inspect",
@@ -438,6 +480,7 @@ export async function getSuiteStatus() {
     "iverilog",
     "rtl",
     "rtl_sim",
+    "gate_sim",
     "inspect",
     "or-web",
     "docs",

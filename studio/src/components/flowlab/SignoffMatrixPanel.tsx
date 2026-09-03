@@ -271,7 +271,7 @@ export function SignoffMatrixPanel({
 
       {data?.plannedPillars && data.plannedPillars.length > 0 && (
         <div className="sig-planned">
-          <strong>Phase 2 (proxy)</strong>
+          <strong>Phase 2 (HotSpot + dummy RDL)</strong>
           <ul className="sig-pillar-list">
             {data.plannedPillars.map((p) => {
               const eval_ = p.reportEval;

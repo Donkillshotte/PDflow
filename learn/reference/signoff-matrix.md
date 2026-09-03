@@ -136,16 +136,16 @@ Cross-ref: [extended-flow.md](./extended-flow.md) · [spice-power-chain.md](./sp
 
 ---
 
-## Phase 2 (proxy) {#phase-2-proxy}
+## Phase 2 (HotSpot + dummy RDL) {#phase-2-proxy}
 
-Pillars in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS` (status `proxy`, not “planned / unrun”):
+Pillars in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
 
 | Pillar | Action | Script | Status |
 |---|---|---|---|
-| **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | proxy: bump + system PDN execute; **RDL is GAP** (`rdl_route` not run, no bump LEF) |
-| **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (IR+droop proxy) | proxy READY (not HotSpot) |
+| **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | bump + system PDN + **dummy `rdl_route` on a sidecar ODB** (`ok` only if `rdl.executed`) |
+| **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (UVA HotSpot °C) | architecture compact model; IR+droop kept as a secondary check |
 
-Do not treat `pkg_rdl` `ok: true` as a pass unless `rdl.executed` is true.
+`pkg_rdl` `ok: true` requires `rdl.executed` and wires on the sidecar. Dummy bump LEF is not C4.
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_pkg_signoff.sh

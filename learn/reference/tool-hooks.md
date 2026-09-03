@@ -109,10 +109,11 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | **Magic** | PARTIAL | installed; tech `minimum` — no FreePDK45 |
 | **Netgen** | PARTIAL | `netgen-lvs`; LVS signoff = KLayout |
 | **EQY / sby** | MAPPED | Yosys `equiv_*` and `sat -tempinduct` |
-| **Xyce** | GAP | ngspice covers System PDN |
+| **Xyce** | INTEGRATED | `install_xyce.sh` · N4 dual-solver gold · ngspice still covers System PDN |
 | **FasterCap / Raphael / StarRC** | MAPPED/GAP | OpenRCX + analytical PEX |
 | **open_pdks** | GAP | Sky130/gf180, not this course |
-| **Icarus** | INTEGRATED | `rtl_sim` + VCD |
+| **Icarus** | INTEGRATED | `rtl_sim` (RTL VCD) + `gate_sim` (name-join VCD) |
+| **HotSpot** | INTEGRATED | `thermal_signoff` architecture °C |
 
 ## How Studio orchestrates them
 
@@ -123,7 +124,7 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | `/api/inspect` | OpenROAD `-python`, OpenSTA, Yosys |
 | `/api/suite` | collaborative hook matrix (toolchain → signoff) |
 | `/api/results` | ORFS results/reports/logs files |
-| `/api/run/stream` | ORFS make + `rtl_sim` / `vectorless` / `vyges_em_ir` / `dynamic_ir` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `klayout_drc` |
+| `/api/run/stream` | ORFS make + `rtl_sim` / `gate_sim` / `vectorless` / `vyges_em_ir` / `dynamic_ir` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `thermal_signoff` / `pkg_rdl` / `spice_engines` / `klayout_drc` |
 | Ctrl+K | dashboard, run extended, Qt GUI, web viewer |
 | Suite hub (`/` · `/tools#suite`) | live hook status + Open/Run |
 
@@ -131,6 +132,10 @@ Useful deep-links:
 
 - `/tools?stage=cts&tab=results#inspect`
 - `/tools?tab=run&action=rtl_sim`
+- `/tools?tab=run&action=gate_sim`
+- `/tools?tab=run&action=thermal_signoff`
+- `/tools?tab=run&action=pkg_rdl`
+- `/tools?tab=run&action=spice_engines`
 - `/tools?tab=run&action=gridcheck`
 - `/tools?tab=run&action=chip_pdn_ir`
 - `/tools?tab=run&action=vyges_em_ir`

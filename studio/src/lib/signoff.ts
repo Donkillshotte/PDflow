@@ -155,12 +155,12 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   },
 ];
 
-/** Phase 2 — packaging + thermal proxy (extended-flow §8–9). */
+/** Phase 2 — packaging + HotSpot thermal (extended-flow §8–9). */
 export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
   {
     id: "pkg",
     label: "Packaging (bump/RDL)",
-    description: "Bump mesh + system PDN. rdl_route is GAP on Nangate GCD (no bump LEF).",
+    description: "Bump mesh + system PDN + dummy rdl_route on a sidecar ODB (not C4).",
     status: "proxy",
     orchestratorAction: "pkg_signoff",
     checks: [
@@ -182,14 +182,14 @@ export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
   },
   {
     id: "thermal",
-    label: "Thermal (proxy)",
-    description: "Power map + IR → hotspot proxy · HotSpot future",
+    label: "Thermal (HotSpot)",
+    description: "UVA HotSpot architecture compact model (°C). Not Ansys / not foundry.",
     status: "proxy",
     orchestratorAction: "thermal_signoff",
     checks: [
       {
-        id: "thermal_proxy",
-        label: "Thermal proxy signoff",
+        id: "thermal_hotspot",
+        label: "HotSpot t_max (°C)",
         action: "thermal_signoff",
         script: "learn/scripts/run_thermal_signoff.sh",
         reportRel: "sim/reports/thermal_signoff_{variant}.json",

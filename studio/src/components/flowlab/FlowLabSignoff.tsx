@@ -166,15 +166,15 @@ const FINISH_ACTIONS: SignoffAction[] = [
 const PHASE2_ACTIONS: SignoffAction[] = [
   {
     id: "thermal_signoff",
-    label: "Thermal proxy",
-    hint: "IR + droop → hotspot estimate",
+    label: "Thermal (HotSpot)",
+    hint: "Architecture compact model · °C",
     icon: Thermometer,
     long: false,
   },
   {
     id: "pkg_signoff",
     label: "PKG signoff",
-    hint: "Bump config + RDL edu + system PDN",
+    hint: "Bump + dummy rdl_route + system PDN",
     icon: Package,
     long: false,
   },
@@ -187,15 +187,15 @@ const PHASE2_ACTIONS: SignoffAction[] = [
   },
   {
     id: "pkg_rdl",
-    label: "PKG RDL (edu)",
-    hint: "rdl_route GAP · no bump LEF on GCD",
+    label: "PKG RDL (dummy)",
+    hint: "sidecar rdl_route · dummy bump, not C4",
     icon: Package,
     long: false,
   },
   {
     id: "signoff_phase2",
     label: "Signoff Phase 2",
-    hint: "Thermal proxy + PKG bump/RDL",
+    hint: "HotSpot + PKG bump/RDL",
     icon: Package,
     long: false,
   },

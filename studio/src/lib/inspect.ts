@@ -259,7 +259,7 @@ export function inspectStage(
     {
       id: "activity",
       label: "set_power_activity / VCD",
-      detail: "run_activity_power.sh · VCD da rtl_sim (read_vcd)",
+      detail: "run_activity_power.sh · gate VCD name-join (read_vcd)",
     },
     {
       id: "vectorless",
@@ -305,6 +305,11 @@ export function inspectStage(
       id: "rtl-sim",
       label: "Icarus RTL sim",
       detail: "learn/scripts/run_rtl_sim.sh",
+    },
+    {
+      id: "gate-sim",
+      label: "Icarus gate sim",
+      detail: "learn/scripts/run_gate_sim.sh · gcd_gate.vcd name-join",
     },
     {
       id: "klayout",

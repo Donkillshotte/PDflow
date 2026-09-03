@@ -25,6 +25,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   list: null,
   test_course: null,
   rtl_sim: null,
+  gate_sim: "finish",
   gridcheck: "floorplan",
   system_pdn: "finish",
   chip_pdn_ir: "finish",
@@ -417,15 +418,15 @@ export function preflightAction(
     },
     thermal_signoff: {
       rel: "6_final.odb",
-      hint: "run finish first (chip IR for thermal proxy)",
+      hint: "run finish first (HotSpot °C + chip IR secondary)",
     },
     pkg_bump: {
       rel: "6_final.odb",
       hint: "run finish first (mesh SPICE bump)",
     },
     pkg_rdl: {
-      rel: "6_final.gds",
-      hint: "run finish first (GDS for lab RDL)",
+      rel: "6_final.odb",
+      hint: "run finish first (sidecar rdl_route + dummy bump LEF)",
     },
     pkg_signoff: {
       rel: "6_final.odb",
@@ -433,7 +434,11 @@ export function preflightAction(
     },
     signoff_phase2: {
       rel: "6_final.odb",
-      hint: "run finish first (signoff Phase 2 thermal+pkg)",
+      hint: "run finish first (signoff Phase 2 HotSpot + PKG)",
+    },
+    gate_sim: {
+      rel: "6_final.v",
+      hint: "run finish first (gate-level VCD)",
     },
   };
   const need = needFile[action];
@@ -448,6 +453,28 @@ export function preflightAction(
         code: "deps",
         message: `Missing artifact «${need.rel}»: ${need.hint}.`,
         missing: [need.rel],
+      };
+    }
+  }
+  if (action === "gate_sim") {
+    const net = path.join(
+      /*turbopackIgnore: true*/ resultsDir(variant),
+      "6_final.v",
+    );
+    const cells = path.join(
+      /*turbopackIgnore: true*/ LEARN_ROOT,
+      "platforms/nangate45/verilog/NangateOpenCellLibrary.v",
+    );
+    const tb = path.join(
+      /*turbopackIgnore: true*/ LEARN_ROOT,
+      "sim/gcd/tb_gcd_gate.v",
+    );
+    if (!fs.existsSync(net) || !fs.existsSync(cells) || !fs.existsSync(tb)) {
+      return {
+        ok: false,
+        code: "deps",
+        message: "Missing gate netlist, Nangate .v, or gate testbench.",
+        missing: ["6_final.v", "NangateOpenCellLibrary.v", "tb_gcd_gate.v"],
       };
     }
   }

@@ -34,10 +34,12 @@ def main() -> int:
     check(not stamp.exists(), "failed LVS does not leave .lvs.ok")
 
     rdl = load("pkg_rdl_flowlab.json")
-    check(rdl.get("ok") is False, "pkg_rdl is not a mock pass")
-    check(rdl.get("status") == "GAP", "pkg_rdl status is GAP")
-    check((rdl.get("rdl") or {}).get("executed") is False, "rdl_route was not executed")
-    check((rdl.get("evaluation") or {}).get("ok") is False, "pkg_rdl evaluation.ok is false")
+    check(rdl.get("ok") is True, "pkg_rdl executed dummy rdl_route")
+    check(rdl.get("status") == "READY", "pkg_rdl status is READY")
+    check((rdl.get("rdl") or {}).get("executed") is True, "rdl_route wrote sidecar wires")
+    check((rdl.get("evaluation") or {}).get("ok") is True, "pkg_rdl evaluation.ok is true")
+    note = str(rdl.get("educational_note") or "")
+    check("not C4" in note or "dummy" in note.lower(), "pkg_rdl keeps dummy-not-C4 label")
 
     bump = load("pkg_bump_flowlab.json")
     check(bump.get("ok") is True, "pkg_bump executed on mesh+config")
@@ -45,23 +47,35 @@ def main() -> int:
     pkg = load("pkg_signoff_flowlab.json")
     check(pkg.get("ok") is True, "pkg_signoff ok from bump + system PDN")
     rdl_step = (pkg.get("steps") or {}).get("pkg_rdl") or {}
-    check(rdl_step.get("ok") is False, "pkg_signoff does not promote RDL GAP to pass")
-    check("GAP" in str(pkg.get("summary")), "pkg_signoff summary labels RDL GAP")
+    check(rdl_step.get("ok") is True, "pkg_signoff records dummy rdl_route ok")
     rdl_check = next(
         (c for c in (pkg.get("evaluation") or {}).get("checks") or [] if c.get("id") == "pkg_rdl"),
         None,
     )
-    check(rdl_check is not None and rdl_check.get("ok") is False, "nested RDL check is fail")
+    check(rdl_check is not None and rdl_check.get("ok") is True, "nested RDL check is pass")
 
     ph2 = load("signoff_phase2_flowlab.json")
-    check(ph2.get("ok") is True, "phase 2 ok from thermal proxy + executable PKG")
-    check((ph2.get("pillars") or {}).get("thermal", {}).get("ok") is True, "thermal proxy ok")
+    check(ph2.get("ok") is True, "phase 2 ok from HotSpot + executable PKG")
+    check((ph2.get("pillars") or {}).get("thermal", {}).get("ok") is True, "HotSpot thermal ok")
+    thermal = load("thermal_signoff_flowlab.json")
+    check(thermal.get("ok") is True, "thermal_signoff ok")
+    tmax = (thermal.get("thermal") or {}).get("t_max_c")
+    check(tmax is not None and float(tmax) < 85.0, f"HotSpot t_max_c={tmax} under 85")
+    check((thermal.get("thermal") or {}).get("engine") == "hotspot", "thermal engine is hotspot")
 
     sta_ir = load("sta_ir_aware_flowlab.json")
     check(sta_ir.get("ok") is True, "STA IR-aware report ok")
 
     signoff_all = load("signoff_all_flowlab.json")
     check(signoff_all.get("ok") is False, "signoff_all stays fail while LVS fails")
+
+    gate = load("gate_sim_flowlab.json")
+    check(gate.get("ok") is True, "gate_sim report ok")
+    check(gate.get("status") == "READY", "gate_sim READY")
+
+    spice = load("spice_engines_flowlab.json")
+    check(spice.get("xyce_status") == "READY", "Xyce N4 READY in spice_engines")
+    check((spice.get("xyce_n4") or {}).get("ok") is True, "Xyce N4 gold ok")
     print("ALL test_signoff_honesty PASSED")
     return 0
 
