@@ -232,7 +232,7 @@ Honest leftover: architecture compact model, not Ansys/COMSOL, not foundry. IR+d
 | `openrcx_report` | OpenRCX SPEF counts |
 | `analytical_pex` | Sakurai–Tamaru + FDM 2D + FasterCap BEM (when installed) |
 | `ccs_char` | PTM CCS sidecar on 19 GCD combo cells (`output_current`) · official Nangate stays NLDM |
-| `lvs_deep` | Filtered CDL + well→VDD/VSS; match required; FILL/TAP abstract; AND3_X1 must-connect 2 |
+| `lvs_deep` | Filtered CDL + well→VDD/VSS; match required; FILL/TAP abstract; DFF_X2 must-connect 2 |
 | `layout_tools` | Magic / Netgen / KLayout probe |
 | `tool_matrix` | OSS orchestrator |
 | `klayout_drc` | GDS DRC (legacy, GDS only) |

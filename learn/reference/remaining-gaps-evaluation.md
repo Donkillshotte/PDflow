@@ -116,8 +116,9 @@ cells).
 **Shipped (FlowLab GCD).** Filter unused CDL, inject FILLCELL from DEF, map
 wells to VDD/VSS, `blank_circuit` on empty FILL/TAP. KLayout prints
 `CONGRATULATIONS! Netlists match`. `.lvs.ok` only on that line.
-AND3_X1 must-connect warnings (2) stay in the lvsdb. Flattening further
-Nangate families inflated the count; the leftover is kept visible.
+DFF_X2 must-connect warnings (2) stay in the lvsdb. Flattening AND3
+closed the previous leftover; unpinning DFF_X breaks the match. The
+leftover is kept visible.
 
 **Verdict**: closed as educational compare on this GCD. Not foundry LVS.
 
@@ -324,7 +325,7 @@ Tried every closable item. Kept only what ran end-to-end.
 
 | GAP | Tried | Result |
 |---|---|---|
-| LVS CDL filter + well→VDD/VSS | Yes — unused SUBCKTs dropped, FILL from DEF, wells mapped to rails, FILL/TAP `blank_circuit` | KLayout compare **match** on FlowLab GCD. VIA_* still flatten (no schematic). AND3_X1 must-connect 2 stays in the lvsdb. `.lvs.ok` only on a real match. |
+| LVS CDL filter + well→VDD/VSS | Yes — unused SUBCKTs dropped, FILL from DEF, wells mapped to rails, FILL/TAP `blank_circuit` | KLayout compare **match** on FlowLab GCD. VIA_* still flatten (no schematic). DFF_X2 must-connect 2 stays in the lvsdb. `.lvs.ok` only on a real match. |
 | FasterCap | Yes — built 6.0.7 headless, 2-wire deck | **READY.** Wired into `run_analytical_pex.py`. |
 | CCS / INV_X1 PTM | Yes — ngspice + PTM 45 nm on Nangate CDL | **READY sidecar, 19 GCD combo cells / 38 tables.** INV_X1 fall@20ps = 16.1 ps vs NLDM 19.2 ps. Official `typical.lib` stays NLDM GAP. Sequential / full-library / original Nangate CCS not shipped. |
 | Board S-parameter | Not shipped | TUHH data is form-gated. No public Touchstone without a request. |

@@ -136,9 +136,9 @@ only on that line.
 
 Leftovers: FILL/TAP are `blank_circuit` (empty Nangate CDL, no invented
 devices). VIA_* have no schematic and still flatten. lvsdb lists
-AND3_X1 must-connect (2). Flattening more std-cell families inflated
-that count. Do not hide those. Do not stamp `.lvs.ok` without the
-match line.
+DFF_X2 must-connect (2). Unpinning DFF_X breaks the match; flattening
+it raised the count. Do not hide those. Do not stamp `.lvs.ok` without
+the match line.
 
 ---
 
