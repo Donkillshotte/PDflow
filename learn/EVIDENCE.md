@@ -29,7 +29,7 @@ Qt screenshots in `learn/reference/gui-shots/` plus ORFS heatmaps (`orfs_*.png`:
 
 Guide: `learn/reference/gui-atlas.md` (sections 1–9).
 
-## Enterprise signoff (Phase 1 + Phase 2)
+## Signoff (Phase 1 + Phase 2)
 
 `flowlab` (FlowLab) and `learn` (ORFS course) variants share scripts in `learn/scripts/`.
 

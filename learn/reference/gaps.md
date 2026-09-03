@@ -22,15 +22,17 @@ Do not mix them on a roadmap. A gated item is not a sprint.
 | **sky130** as the course PDK | Nangate45 only | Different PDK. Do not mix it into this course. |
 | **PrimeTime / Tempus / Voltus** | OpenSTA + PDNSim + Xyce N4 | Different tools. We do not claim equivalence. |
 | **EM current-density limits** | vyges-em-ir static/dynamic IR on the `write_pg_spice` mesh. `em_checked` is 0. | Nangate45 has no foundry `emlimit`. Adding a guessed limit would be a fake EM close. |
+| **LVS must-connect on DFF_X2** | KLayout compare matches. lvsdb lists 2 well-tie warnings on `DFF_X2`. | Nangate split wells. Unpin, flatten-after-extract, flatten-all-before-extract, and flat extract all fail to clear the leftover without breaking the match. |
+| **VIA_* flatten in LVS** | `blank_circuit("VIA_*")` after extract. | Routing vias have no CDL. Do not invent devices. |
+| **Density / named ERC** | Antenna is in `FreePDK45.lydrc` (300:1). | Density and named ERC rules are not in the deck. |
 
 ## To build (or already built)
 
 | Item | State |
 |---|---|
-| LVS on FlowLab GCD | Built: filter unused CDL, inject FILL from DEF, map wells to VDD/VSS, `blank_circuit` on empty FILL/TAP. KLayout compare must print a real match. Remaining must-connect (DFF_X2, 2 warnings) is Nangate split wells — unpinning DFF_X breaks the match; flattening DFF after extract raised the count; flattening every used std-cell master before extract failed the compare; flat extract (no `deep`) plus schematic flatten also failed the compare. VIA_* still flatten (no schematic). |
+| LVS on FlowLab GCD | Built: filter unused CDL, inject FILL from DEF, map wells to VDD/VSS, `blank_circuit` on empty FILL/TAP. KLayout compare must print a real match. `.lvs.ok` only on that line. Split-well leftover is PDK-gated (table above). |
 | ECO after finish | Propose on locked variants. Apply on an unlocked copy loads `typical.lib` + SDC + `setRC.tcl`, writes `6_final.{odb,def,v,cdl,gds}` (SPEF when OpenRCX works), and never calls `signoff_all`. |
 | Antenna in GDS DRC | Already in `FreePDK45.lydrc` (`antenna_check`, 300:1). |
-| Density / named ERC | Not in the FreePDK45 DRC deck. Adding a wrapper would not add the rules. Treat as PDK-deck gated unless a new deck is written. |
 | DSE as flow controller | Not to build. DSE stays a proposer. See `learn/dse/flow_role.py`. |
 
 ## What this flow does not pretend to be
