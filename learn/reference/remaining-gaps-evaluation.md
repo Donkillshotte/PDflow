@@ -112,7 +112,12 @@ cells).
 
 **Honest leftover**: if LVS passes after fixing the runset, it passes on the *educational* FreePDK45 flow, not on a foundry-qualified PDK. If it still fails on real connectivity issues (missing S/D connections, incomplete abstracts), that is an honest fail, not a mock.
 
-**Verdict**: partially closable. Worth investigating. Do **not** write `.lvs.ok` on a fake pass.
+**Shipped (FlowLab GCD).** Filter unused CDL, inject FILLCELL from DEF, map
+wells to VDD/VSS. KLayout prints `CONGRATULATIONS! Netlists match`.
+`.lvs.ok` only on that line. FILL/TAP still flatten (empty CDL bodies).
+XNOR2 must-connect warnings stay in the lvsdb.
+
+**Verdict**: closed as educational compare on this GCD. Not foundry LVS.
 
 ---
 
@@ -317,7 +322,7 @@ Tried every closable item. Kept only what ran end-to-end.
 
 | GAP | Tried | Result |
 |---|---|---|
-| LVS CDL filter | Yes — unused library SUBCKTs dropped + VTL tolerances + black-box | Unused TBUF flatten **0**. FILLCELL empty CDL + well-pin `NWELL\|VDD` leftover. **Transistor still FAIL.** Black-box also FAIL. `run_lvs_deep.py` records both. No `.lvs.ok`. |
+| LVS CDL filter + well→VDD/VSS | Yes — unused SUBCKTs dropped, FILL from DEF, wells mapped to rails | KLayout compare **match** on FlowLab GCD. FILL/TAP still flatten (empty CDL). XNOR2 must-connect warnings stay in the lvsdb. `.lvs.ok` only on a real match. |
 | FasterCap | Yes — built 6.0.7 headless, 2-wire deck | **READY.** Wired into `run_analytical_pex.py`. |
 | CCS / INV_X1 PTM | Yes — ngspice + PTM 45 nm on Nangate CDL | **READY sidecar, 19 GCD combo cells / 38 tables.** INV_X1 fall@20ps = 16.1 ps vs NLDM 19.2 ps. Official `typical.lib` stays NLDM GAP. Sequential / full-library / original Nangate CCS not shipped. |
 | Board S-parameter | Not shipped | TUHH data is form-gated. No public Touchstone without a request. |

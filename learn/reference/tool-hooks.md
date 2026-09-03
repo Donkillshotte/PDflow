@@ -116,7 +116,7 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | **HotSpot** | INTEGRATED | `thermal_signoff` architecture °C |
 | **FasterCap** | INTEGRATED | `analytical_pex` 3D BEM 2-wire vs Sakurai–Tamaru |
 | **CCS sidecar** | INTEGRATED | `ccs_char` PTM `output_current` on 19 GCD combo cells · official Nangate stays NLDM |
-| **LVS deep** | PARTIAL | `lvs_deep` filter + VTL · transistor FAIL stays FAIL |
+| **LVS deep** | INTEGRATED | `lvs_deep` filter + well→VDD/VSS · match required |
 
 ## How Studio orchestrates them
 

@@ -18,7 +18,10 @@ Studio API: `GET /api/signoff?variant=flowlab`
 | **FAIL** | Threshold exceeded — interpret the report, not just the badge |
 | **Missing** | Script not run after `finish` |
 
-On educational FreePDK45, **LVS may FAIL** even with a correct flow: the educational value is the process and interpreting `.lvsdb`; do not pretend tapeout-clean.
+LVS is a KLayout compare on a prepared CDL (unused library cells dropped,
+FILLCELL from DEF, wells mapped to VDD/VSS). A pass requires
+`CONGRATULATIONS! Netlists match`. Must-connect warnings on XNOR2 stay in
+the lvsdb. This is educational FreePDK45, not foundry LVS.
 
 ---
 

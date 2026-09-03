@@ -94,7 +94,9 @@ Registry and matrix: [`signoff-matrix.md`](../../reference/signoff-matrix.md).
 | Power / PKG | `power_signoff` | `run_power_signoff.sh` |
 | All | `signoff_all` | `run_signoff_all.sh` |
 
-FlowLab **finish** phase shows the matrix with gate vs `golden-gcd.json`. LVS on FreePDK45 may FAIL — interpret the report.
+FlowLab **finish** phase shows the matrix vs `golden-gcd.json`. LVS is a
+KLayout compare (filtered CDL + well→VDD/VSS). Read the report, including
+must-connect warnings. Educational FreePDK45, not foundry LVS.
 
 ## Power & SPICE chain (recommended post-course module)
 
