@@ -159,3 +159,12 @@ These stay GAP on purpose (`oss-integrations.md`):
 3. **HotSpot** — replace mV proxy with °C on a coarse floorplan.
 4. **Xyce in the image** — flip the existing deck from GAP to READY.
 5. Leave **CCS**, **Raphael**, **sky130**, and **course 0/8** alone.
+
+---
+
+## Deep feasibility analysis
+
+For a per-GAP evaluation of all remaining items (CCS, LVS, Raphael/StarRC,
+FasterCap, Magic/Netgen, sky130, board S-parameter, course 0/8) with public
+tools, papers, and implementation paths, see
+[remaining-gaps-evaluation.md](./remaining-gaps-evaluation.md).
