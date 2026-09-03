@@ -57,7 +57,12 @@ def main() -> int:
 
     src = (SCRIPTS / "run_eco.py").read_text()
     check("eco_repair.tcl" in src, "apply points at eco_repair.tcl")
+    check("ECO_LIB" in src and "NangateOpenCellLibrary_typical.lib" in src, "apply sets ECO_LIB")
+    check("ECO_SDC" in src, "apply sets ECO_SDC")
     check(src.find("subprocess.run") > src.find("run_signoff_all.sh"), "signoff_all is only named, not launched")
+    tcl = (SCRIPTS / "eco_repair.tcl").read_text()
+    check("read_liberty" in tcl, "repair tcl reads liberty")
+    check("read_sdc" in tcl, "repair tcl reads SDC")
     print("ALL test_eco PASSED")
     return 0
 

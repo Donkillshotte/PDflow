@@ -137,6 +137,8 @@ def apply(variant: str) -> dict:
     env["ECO_ODB_OUT"] = str(out)
     env["ECO_SETUP"] = "1"
     env["ECO_HOLD"] = os.environ.get("ECO_HOLD", "0")
+    env["ECO_LIB"] = str(FLOW / "platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib")
+    env["ECO_SDC"] = str(FLOW / "designs/nangate45/gcd-tutorial/constraint.sdc")
     proc = subprocess.run(
         [exe, "-exit", str(TCL)],
         capture_output=True,
@@ -147,6 +149,13 @@ def apply(variant: str) -> dict:
     log = obj / "eco_apply.log"
     log.write_text((proc.stdout or "") + "\n" + (proc.stderr or ""))
     wrote = out.is_file() and proc.returncode == 0
+    err = None
+    if not wrote:
+        combined = f"{proc.stderr or ''}\n{proc.stdout or ''}"
+        for line in reversed(combined.splitlines()):
+            if "ERROR" in line or line.startswith("FAIL"):
+                err = line.strip()
+                break
     return {
         "kind": "eco",
         "mode": "apply",
@@ -158,6 +167,7 @@ def apply(variant: str) -> dict:
         "output_odb": str(out) if wrote else None,
         "log": str(log),
         "rc": proc.returncode,
+        "error": err,
         "summary": "ECO apply wrote sidecar ODB · run signoff_all next" if wrote else "ECO apply failed",
     }
 

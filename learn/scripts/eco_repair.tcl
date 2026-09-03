@@ -1,7 +1,7 @@
 # Post-finish ECO apply. Operates on a copied ODB — never the locked
 # flowlab/learn/base 6_final.odb. Does not run signoff.
 #
-# Env: ECO_ODB (input), ECO_ODB_OUT (output), ECO_SETUP (0|1), ECO_HOLD (0|1)
+# Env: ECO_ODB, ECO_ODB_OUT, ECO_LIB, ECO_SDC (optional), ECO_SETUP, ECO_HOLD
 
 if {![info exists ::env(ECO_ODB)] || ![info exists ::env(ECO_ODB_OUT)]} {
   puts "FAIL eco_repair.tcl needs ECO_ODB and ECO_ODB_OUT"
@@ -9,6 +9,13 @@ if {![info exists ::env(ECO_ODB)] || ![info exists ::env(ECO_ODB_OUT)]} {
 }
 
 read_db $::env(ECO_ODB)
+
+if {[info exists ::env(ECO_LIB)] && $::env(ECO_LIB) != ""} {
+  read_liberty $::env(ECO_LIB)
+}
+if {[info exists ::env(ECO_SDC)] && $::env(ECO_SDC) != "" && [file exists $::env(ECO_SDC)]} {
+  read_sdc $::env(ECO_SDC)
+}
 
 if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
   if {[info commands repair_timing] != ""} {
