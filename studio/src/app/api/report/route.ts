@@ -8,8 +8,10 @@ export const dynamic = "force-dynamic";
 const ALLOWED = new Set([
   "eco_flowlab.json",
   "eco_learn.json",
+  "eco_apply_eco_scratch.json",
   "lvs_signoff_flowlab.json",
   "signoff_all_flowlab.json",
+  "signoff_all_eco_scratch.json",
   "drc_deck_coverage.json",
 ]);
 

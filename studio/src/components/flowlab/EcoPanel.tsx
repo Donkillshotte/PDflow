@@ -18,18 +18,26 @@ type EcoReport = {
   locked?: boolean;
   proposed?: EcoStep[];
   error?: string;
+  rewrote?: string[];
 };
 
 export function EcoPanel() {
   const [report, setReport] = useState<EcoReport | null>(null);
+  const [apply, setApply] = useState<EcoReport | null>(null);
+  const [close, setClose] = useState<EcoReport | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/report?name=eco_flowlab.json", { cache: "no-store" });
-      if (!res.ok) return;
-      setReport(await res.json());
+      const [proposeRes, applyRes, closeRes] = await Promise.all([
+        fetch("/api/report?name=eco_flowlab.json", { cache: "no-store" }),
+        fetch("/api/report?name=eco_apply_eco_scratch.json", { cache: "no-store" }),
+        fetch("/api/report?name=signoff_all_eco_scratch.json", { cache: "no-store" }),
+      ]);
+      if (proposeRes.ok) setReport(await proposeRes.json());
+      if (applyRes.ok) setApply(await applyRes.json());
+      if (closeRes.ok) setClose(await closeRes.json());
     } catch {
-      /* report is optional until eco has been run */
+      /* reports are optional until eco / signoff_all have been run */
     }
   }, []);
 
@@ -56,6 +64,19 @@ export function EcoPanel() {
         <p className="fl-dynir-empty">No ECO report yet. Run the eco action after finish.</p>
       )}
       {report?.error ? <p className="fl-dynir-empty">{report.error}</p> : null}
+      {apply ? (
+        <p className="fl-dynir-summary">
+          Apply ({apply.mode ?? "apply"}): {apply.summary ?? "—"}
+          {apply.signoff ? " · claims signoff (bug)" : " · does not claim signoff"}
+          {apply.rewrote?.length ? ` · wrote ${apply.rewrote.join("+")}` : ""}
+        </p>
+      ) : null}
+      {close ? (
+        <p className="fl-dynir-summary">
+          Close on copy: {close.summary ?? "signoff_all"}
+          {close.ok ? " · ok" : " · not ok"}
+        </p>
+      ) : null}
       {report?.proposed?.length ? (
         <ul className="lb-chips" aria-label="Proposed ECO steps">
           {report.proposed.map((step, i) => (
