@@ -67,3 +67,5 @@ Course template: [final-project-template.md](../workbook/final-project-template.
 
 For a real packaging lab you need an ORFS design with bump LEF or a
 vendor flow — outside the scope of required courses 00–07.
+
+Educational close (dummy LEF, not tapeout): [gap-close-paths.md](./gap-close-paths.md) §2.

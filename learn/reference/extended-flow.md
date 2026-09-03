@@ -190,11 +190,11 @@ OpenROAD exposes:
 
 **Honest limit:** System PDN is an educational *lumped* ladder; Nangate45 GCD has no packaging LEF/tech. Chip IR `BUMPS` uses a synthetic OpenROAD pattern (PSM-0073), not a tapeout-ready package.
 
-**Future extensions:**
+**Future extensions:** see [gap-close-paths.md](./gap-close-paths.md).
 
-1. Lab on an ORFS design with real bump LEF
+1. Dummy-bump `rdl_route` lab (OpenROAD `Nangate45_io/dummy_pads.lef`) — educational, not C4
 2. Board SI/PI models outside OpenROAD
-3. Thermal (HotSpot / 3D-ICE) — still MISSING
+3. Thermal: HotSpot / PACT — still a proxy until installed
 
 ---
 

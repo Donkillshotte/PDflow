@@ -85,4 +85,4 @@ test -f learn/sim/reports/dynamic_ir_flowlab.json
 test -f learn/platforms/nangate45/lvs/FreePDK45.lylvs
 ```
 
-Cross-ref: [signoff-matrix.md](./signoff-matrix.md) · [extended-flow.md](./extended-flow.md) · [tool-hooks.md](./tool-hooks.md)
+Cross-ref: [signoff-matrix.md](./signoff-matrix.md) · [extended-flow.md](./extended-flow.md) · [tool-hooks.md](./tool-hooks.md) · [gap-close-paths.md](./gap-close-paths.md) (how to close labeled GAPs without mocks)
