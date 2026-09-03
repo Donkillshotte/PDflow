@@ -42,16 +42,29 @@ fi
 mkdir -p "$(dirname "${ORFS_LVS}")"
 cp "${LYLVS}" "${ORFS_LVS}"
 
+DESIGN_CDL="${RES}/6_final.cdl"
+DEF_FILE="${RES}/6_final.def"
+LIB_CDL="${FLOW}/platforms/nangate45/cdl/NangateOpenCellLibrary.cdl"
+OBJ="${FLOW}/objects/nangate45/gcd/${VARIANT}"
+PREP_CDL="${OBJ}/6_final_lvs_filtered.cdl"
+mkdir -p "${OBJ}" "$(dirname "${LOG}")"
+python3 "${ROOT}/learn/scripts/prepare_lvs_netlist.py" \
+  --design-cdl "${DESIGN_CDL}" \
+  --library-cdl "${LIB_CDL}" \
+  --def "${DEF_FILE}" \
+  --top gcd \
+  --out "${PREP_CDL}"
+
 cd "${FLOW}"
 set +e
-make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT="${VARIANT}" \
-     CORE_UTILIZATION="${CORE_UTILIZATION:-35}" \
-     OPENROAD_EXE="${OPENROAD_EXE:-openroad}" \
-     OPENSTA_EXE="${OPENSTA_EXE:-sta}" \
-     YOSYS_EXE="${YOSYS_EXE:-yosys}" \
-     KLAYOUT_LVS_FILE="${LYLVS}" \
-     lvs 2>&1 | tee /tmp/lvs-signoff-${VARIANT}.log
+# Direct KLayout compare on the prepared CDL (unused library cells dropped,
+# FILLCELL instances taken from DEF). ORFS make lvs concat is not used.
+klayout -b \
+  -rd "in_gds=${GDS}" \
+  -rd "cdl_file=${PREP_CDL}" \
+  -rd "report_file=${LVSDB}" \
+  -r "${LYLVS}" \
+  2>&1 | tee /tmp/lvs-signoff-${VARIANT}.log | tee "${LOG}"
 MAKE_RC=$?
 set -e
 
@@ -112,7 +125,12 @@ out = {
   "evaluation": ev,
   "artifact_parse": artifact_parse,
   "ok": eq["lvs_pass"],
-  "educational_note": "FreePDK45 GCD may not be tapeout-clean; value is process + report interpretation",
+  "must_connect": (artifact_parse.get("lvsdb") or {}).get("must_connect", 0),
+  "educational_note": (
+      "KLayout compare on filtered CDL + DEF fillers + well→VDD/VSS. "
+      "Must-connect warnings on XNOR2 well ties are recorded, not hidden. "
+      "FILL/TAP CDL bodies are empty so those cells still flatten."
+  ),
   "summary": f"LVS {'PASS' if eq['lvs_pass'] else 'FAIL'} · errors {eq['lvs_errors']}",
   "artifacts": {"lvsdb": "${LVSDB}", "log": "${LOG}"},
 }

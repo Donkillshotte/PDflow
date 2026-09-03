@@ -69,9 +69,12 @@ def main() -> int:
     lvs = reports / "lvs_signoff_flowlab.json"
     if lvs.is_file():
         blob = json.loads(lvs.read_text())
-        check(blob.get("ok") is False, "KLayout netlist mismatch is LVS fail, not a fake pass")
+        check(blob.get("ok") is True, "KLayout netlist match is recorded as LVS pass")
         tail = ((blob.get("artifact_parse") or {}).get("log") or {}).get("tail") or []
-        check(any("Netlists don't match" in str(x) for x in tail), "LVS report keeps the KLayout mismatch line")
+        check(
+            any("CONGRATULATIONS" in str(x) or "Netlists match" in str(x) for x in tail),
+            "LVS report keeps the KLayout match line",
+        )
     pkg_rdl = reports / "pkg_rdl_flowlab.json"
     if pkg_rdl.is_file():
         blob = json.loads(pkg_rdl.read_text())

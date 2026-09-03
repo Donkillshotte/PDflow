@@ -24,6 +24,9 @@ reports/*
 !reports/ccs_char_flowlab.json
 !reports/lvs_deep_flowlab.json
 !reports/gridcheck_flowlab.json
+!reports/eco_flowlab.json
+!reports/eco_apply_flowlab.json
+!reports/drc_deck_coverage.json
 reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/

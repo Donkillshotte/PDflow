@@ -52,13 +52,18 @@ def parse_lvsdb(path: Path) -> dict:
     if "LVS not supported" in text:
         return {"exists": True, "supported": False, "errors": 0, "messages": ["LVS not supported on platform"]}
     errors = len(re.findall(r"<error\b", text, flags=re.I))
+    must_connect = len(re.findall(r"Must-connect", text))
     messages: list[str] = []
     for m in re.findall(r"<message[^>]*>([^<]+)", text)[:6]:
         messages.append(m.strip()[:160])
+    if must_connect and not messages:
+        for m in re.findall(r"Must-connect[^']{0,160}", text)[:4]:
+            messages.append(m.strip())
     return {
         "exists": True,
         "supported": True,
         "errors": errors,
+        "must_connect": must_connect,
         "messages": messages,
         "path": str(path),
     }

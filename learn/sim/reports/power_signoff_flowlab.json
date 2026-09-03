@@ -2,9 +2,9 @@
   "kind": "power_signoff",
   "variant": "flowlab",
   "power": {
-    "chip_static_ir_mv": 3.0944465142916933,
-    "chip_transient_droop_mv": 28.2999414862346,
-    "system_droop_mv": 6.272510000000064,
+    "chip_static_ir_mv": 1.0535620881952923,
+    "chip_transient_droop_mv": 9.473257892617104,
+    "system_droop_mv": 6.025990000000148,
     "system_zmax_mohm": 9058.35944
   },
   "evaluation": {
@@ -12,21 +12,21 @@
       {
         "id": "chip_static_ir_mv",
         "label": "Chip static IR (mV)",
-        "actual": 3.0944465142916933,
+        "actual": 1.0535620881952923,
         "target": 15.0,
         "ok": true
       },
       {
         "id": "chip_transient_droop_mv",
         "label": "Chip transient droop (mV)",
-        "actual": 28.2999414862346,
+        "actual": 9.473257892617104,
         "target": 120.0,
         "ok": true
       },
       {
         "id": "system_droop_mv",
         "label": "System droop (mV)",
-        "actual": 6.272510000000064,
+        "actual": 6.025990000000148,
         "target": 20.0,
         "ok": true
       },
@@ -41,7 +41,7 @@
     "ok": true
   },
   "ok": true,
-  "summary": "Chip IR 3.09 mV \u00b7 Sys droop 6.27 mV \u00b7 Zmax 9058.4 m\u03a9",
+  "summary": "Chip IR 1.05 mV \u00b7 Sys droop 6.03 mV \u00b7 Zmax 9058.4 m\u03a9",
   "steps": [
     "activity_power",
     "chip_pdn_ir",
