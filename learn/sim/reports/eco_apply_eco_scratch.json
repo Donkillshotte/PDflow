@@ -10,13 +10,14 @@
   "log": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_apply.log",
   "rc": 0,
   "error": null,
+  "output_verilog": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_out.v",
   "rewrote": [
-    "odb"
+    "odb",
+    "verilog"
   ],
   "not_rewritten": [
-    "verilog",
     "spef",
     "gds"
   ],
-  "summary": "ECO apply wrote sidecar ODB \u00b7 run signoff_all next (GDS/SPEF/verilog not rewritten)"
+  "summary": "ECO apply wrote sidecar ODB + verilog \u00b7 run signoff_all next (GDS/SPEF not rewritten)"
 }
