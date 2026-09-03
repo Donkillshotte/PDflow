@@ -12,13 +12,13 @@ Live counts below are `win_rule` on the JSONL, not archived prose.
 
 | Slot | Base | OFAT / catalog | TPE | Min/finish |
 |---|---|---|---|---|
-| gcd | −37 ps | **2 wins** (`q1_d25u35`, Cell padding +1). No `place_denser` catalog row. | 8 cooks, **0 new wins** | ~0.9 |
-| spi | +612 ps | 0 wins (ties) | not admissible | ~0.6 |
-| ibex | +22 ps | 4 wins | 8 cooks, **6 new wins** | ~7 |
-| aes | −8.9 ps | 3 wins | 8 cooks, **5 new wins** | ~8 |
-| dynamic_node | +3354 ps | 1 win (Tighter clock buffers) | not yet | ~4.5 |
+| gcd | −37 ps | **3 wins** (`q1_d25u35`, Cell padding +1, Sparser placement + setup margin). No `place_denser` catalog row. | 8 cooks, **0 new wins** | ~0.9 |
+| spi | +612 ps | 0 wins (ties). `place_sparse_setup` is a tie (slack +1.1 ps, no 10% axis). | not admissible | ~0.6 |
+| ibex | +22 ps | 4 catalog wins | 8 cooks, **6 new wins** (10 total) | ~7 |
+| aes | −8.9 ps | 3 catalog wins | 8 cooks, **5 new wins** (8 total) | ~8 |
+| dynamic_node | +3354 ps | 1 win (Tighter clock buffers). `place_sparse_setup` is a **lose** (slack +38 ps, IR +14.6%). | next live slot (`arch_review.md` §6) | ~13 |
 
-Coordinator dry-run (cover first): `place_sparse_setup` still unmeasured on gcd, spi, and dynamic_node.
+Coordinator dry-run after this cover: **catalog holes empty**. Decision is TPE. Frozen success criterion is `dynamic_node`, not gcd (gcd is also admissible). Do not TPE spi.
 
 ## What worked
 
@@ -32,7 +32,8 @@ Coordinator dry-run (cover first): `place_sparse_setup` still unmeasured on gcd,
 ## What did not work
 
 - **Gcd:** continuous TPE did not beat OFAT. Close miss: IR −19% with
-  slack −7.4 ps (constraint, not a blind proposal).
+  slack −7.4 ps (constraint, not a blind proposal). Catalog
+  `place_sparse_setup` later won: IR −11% with slack −4.1 ps (inside 5 ps).
 - **Cell padding +2:** 5 fails (3 gcd, 2 ibex). Place may close;
   finish does not. Now a wall.
 - **Sparser placement + CTS 80 on aes:** lose, slack −30 ps.
