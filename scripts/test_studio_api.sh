@@ -153,7 +153,10 @@ d=json.load(open("/tmp/studio-story.json"))
 ids={s["id"] for s in d.get("surfaces",[])}
 assert ids=={"course","lab","product"}, ids
 assert len(d.get("path",[]))>=5, d.get("path")
+lab=next(s for s in d["surfaces"] if s["id"]=="lab")
+assert lab.get("href")=="/lab", lab
 print("ok story surface ids")
+print("ok story lab href /lab")
 PY
 if python3 - <<'PY'
 import json,sys

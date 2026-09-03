@@ -6,15 +6,19 @@ Verdict = `win_rule`, not the TPE score.
 Percentages = metric change vs the slot base.
 Negative on area / power / leakage / IR = smaller (better).
 
+Live counts below are `win_rule` on the JSONL, not archived prose.
+
 ## By slot
 
-| Slot | Base | OFAT | TPE | Min/finish |
+| Slot | Base | OFAT / catalog | TPE | Min/finish |
 |---|---|---|---|---|
-| gcd | −37 ps | 3 wins (Denser placement, Padding +1, …) | 8 cooks, **0 new wins** | ~0.9 |
-| spi | +612 ps | 0 wins (10 ties) | not admissible | ~0.6 |
+| gcd | −37 ps | **2 wins** (`q1_d25u35`, Cell padding +1). No `place_denser` catalog row. | 8 cooks, **0 new wins** | ~0.9 |
+| spi | +612 ps | 0 wins (ties) | not admissible | ~0.6 |
 | ibex | +22 ps | 4 wins | 8 cooks, **6 new wins** | ~7 |
 | aes | −8.9 ps | 3 wins | 8 cooks, **5 new wins** | ~8 |
 | dynamic_node | +3354 ps | 1 win (Tighter clock buffers) | not yet | ~4.5 |
+
+Coordinator dry-run (cover first): `place_sparse_setup` still unmeasured on gcd, spi, and dynamic_node.
 
 ## What worked
 

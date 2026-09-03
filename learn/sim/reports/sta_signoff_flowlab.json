@@ -1,0 +1,60 @@
+{
+  "kind": "sta_signoff",
+  "variant": "flowlab",
+  "engine": "opensta+finish_rpt",
+  "timing": {
+    "wns_ns": -0.02,
+    "tns": -0.14,
+    "setup_violations": 3,
+    "period_min_ns": 0.5
+  },
+  "evaluation": {
+    "checks": [
+      {
+        "id": "wns_ns",
+        "label": "WNS max (ns)",
+        "actual": -0.02,
+        "target": -0.04,
+        "ok": true
+      },
+      {
+        "id": "tns",
+        "label": "TNS max",
+        "actual": -0.14,
+        "target": -0.6,
+        "ok": true
+      },
+      {
+        "id": "setup_violations",
+        "label": "Setup violations",
+        "actual": 3.0,
+        "target": 45.0,
+        "ok": true
+      },
+      {
+        "id": "period_min_ns",
+        "label": "period_min (ns)",
+        "actual": 0.5,
+        "target": 0.5,
+        "ok": true
+      }
+    ],
+    "ok": true
+  },
+  "ok": true,
+  "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 3",
+  "artifacts": {
+    "finish_rpt": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/6_finish.rpt",
+    "sta_log": "/workspace/learn/sim/reports/sta_signoff_flowlab.log"
+  },
+  "ir_aware": {
+    "report": "/workspace/learn/sim/reports/sta_ir_aware_flowlab.json",
+    "ok": true,
+    "slack_ns": 0.004644,
+    "slack_ir_ns": 0.0040228722421615975,
+    "n_joined": 18,
+    "n_gates": 18,
+    "degradation_ps": 0.6211277578384022,
+    "note": "educational NLDM \u00d7 ITerm V; does not change nominal WNS"
+  }
+}

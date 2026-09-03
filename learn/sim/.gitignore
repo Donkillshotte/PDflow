@@ -3,6 +3,11 @@
 sim.log
 reports/*
 !reports/dse_*.json
+!reports/sta_signoff_flowlab.json
+!reports/drc_signoff_flowlab.json
+!reports/lvs_signoff_flowlab.json
+!reports/power_signoff_flowlab.json
+!reports/signoff_all_flowlab.json
 reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/

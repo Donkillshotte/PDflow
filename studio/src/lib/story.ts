@@ -349,9 +349,9 @@ export function getProductStory(): ProductStory {
     {
       id: "lab",
       label: "Lab",
-      href: "/flow?phase=finish&focus=ir#ir",
+      href: "/lab",
       ready: goldPresent,
-      detail: `IR F4 · gold ${IR_GOLD_MV} mV · not a product win`,
+      detail: `Physics ledger · gold ${IR_GOLD_MV} mV · not a product win`,
     },
     {
       id: "product",
