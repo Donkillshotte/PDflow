@@ -2,9 +2,21 @@
 
 **Open-source RTL → GDS with honest power integrity — not another screenshot of `make finish`.**
 
+[![FlowLab — RTL to GDS workbench](studio/docs/images/flowlab/flowlab-pro-hero.png)](studio/README.md)
+
 PDflow is a physical-design workspace built on OpenROAD / ORFS: a guided course, a FlowLab workbench, and a product-grade design-space loop underneath. Timing, area, power, leakage, and IR are reported together. Failures stay failures.
 
 > Educational Nangate45 / FreePDK45. Not a foundry sign-off deck. No fake `.lvs.ok`.
+
+---
+
+## About
+
+I'm **Alessandro Angora** — physical design engineer focused on **implementation + power integrity** on open tools, not slide-deck sign-off.
+
+This repository is my public lab: a full **RTL → GDS** path on OpenROAD, a **gate-VCD → chip → package** power chain, explicit **WORKS / FAIL / GAP** labels, and a **product DSE loop** with a written [win rule](learn/dse/win_rule.py). I care about showing what closed, what failed, and what we deliberately do not fake.
+
+Sharing on LinkedIn? Use [docs/social-preview.md](docs/social-preview.md) and upload [`docs/assets/social-preview.png`](docs/assets/social-preview.png) as the GitHub social preview image.
 
 ---
 
@@ -47,7 +59,19 @@ Full matrix: [learn/reference/suite-status.md](learn/reference/suite-status.md).
 
 ---
 
-## Flow at a glance
+## FlowLab (screenshots)
+
+| Pipeline & signoff | RTL editor (Monaco) | Layout viewport |
+|---|---|---|
+| ![FlowLab pipeline](studio/docs/images/flowlab/flowlab-pro-hero-pipeline.png) | ![RTL editor](studio/docs/images/flowlab/flowlab-pro-rtl-editor.png) | ![Floorplan viewport](studio/docs/images/flowlab/flowlab-vis-floorplan-browser.png) |
+
+Run locally: `./scripts/run_studio.sh` → [http://127.0.0.1:43217/flow](http://127.0.0.1:43217/flow). More captures: [`studio/docs/images/flowlab/`](studio/docs/images/flowlab/).
+
+**Dynamic IR heatmap** (I(t) per pin; gold mesh **45.298 mV** is separate from chip PDN transient):
+
+![Dynamic IR heatmap](learn/sim/reports/dynamic_ir_flowlab.svg)
+
+---
 
 ```mermaid
 flowchart LR
