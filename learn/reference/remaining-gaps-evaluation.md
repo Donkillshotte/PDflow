@@ -317,9 +317,9 @@ Tried every closable item. Kept only what ran end-to-end.
 
 | GAP | Tried | Result |
 |---|---|---|
-| LVS CDL filter | Yes — unused library SUBCKTs dropped | Unused TBUF/TLAT gone. **Every used stdcell still fails transistor compare** (`AND2_X1`…`XNOR2_X2`). Not a pass. Script kept as `filter_lvs_cdl.py`. Transistor LVS stays FAIL. |
+| LVS CDL filter | Yes — unused library SUBCKTs dropped + VTL tolerances + black-box | Unused TBUF flatten **0**. FILLCELL empty CDL + well-pin `NWELL\|VDD` leftover. **Transistor still FAIL.** Black-box also FAIL. `run_lvs_deep.py` records both. No `.lvs.ok`. |
 | FasterCap | Yes — built 6.0.7 headless, 2-wire deck | **READY.** Wired into `run_analytical_pex.py`. |
-| CCS / INV_X1 PTM | Yes — ngspice + PTM 45 nm on Nangate CDL | **READY sidecar.** `output_current` rise+fall. fall@20ps = 16.1 ps vs NLDM 19.2 ps. Official `typical.lib` stays NLDM GAP. Full-library / original Nangate CCS not shipped. |
+| CCS / INV_X1 PTM | Yes — ngspice + PTM 45 nm on Nangate CDL | **READY sidecar, 9 GCD cells.** `output_current` rise+fall. INV_X1 fall@20ps = 16.1 ps vs NLDM 19.2 ps. Official `typical.lib` stays NLDM GAP. Sequential / full-library / original Nangate CCS not shipped. |
 | Board S-parameter | Not shipped | TUHH data is form-gated. No public Touchstone without a request. |
 | Magic `.tech` | Not shipped | No verified extract. KLayout stays LVS/DRC. |
 | Netgen | Not shipped | Same device-compare problem without Magic extract. |

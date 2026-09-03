@@ -123,7 +123,7 @@ PACT is the better **standard-cell** path if we accept a Docker/Xyce dependency.
 | Switch the course to sky130 (some CCS/NLDM mixes) | **Forbidden** — course pinned to Nangate45. |
 | Keep NLDM + α-law STA IR (`sta_ir_aware`) | Current honest path. |
 
-**Done (educational sidecar).** `char_nangate_ccs.py` runs ngspice on Nangate `INV_X1` CDL + PTM 45 nm and writes `learn/sim/lib/INV_X1_ptm45_ccs.lib` with real `output_current_rise/fall`. Probe on that file is READY. Probe on official `typical.lib` stays **NLDM GAP**. Delay @ 20 ps / 10 fF is the same order as Nangate NLDM (~16 ps vs ~19 ps). This is re-characterization, not the 2008 Nangate CCS kit. Do not restamp gold Dynamic IR with the sidecar.
+**Done (educational sidecar).** `char_nangate_ccs.py` runs ngspice on GCD combinational cells + PTM 45 nm and writes `learn/sim/lib/nangate45_ptm_ccs_sidecar.lib` with real `output_current_rise/fall`. Probe on that file is READY. Probe on official `typical.lib` stays **NLDM GAP**. INV_X1 delay @ 20 ps / 10 fF is the same order as Nangate NLDM (~16 ps vs ~19 ps). Sequential cells and the 2008 Nangate CCS kit are leftovers. Do not restamp gold Dynamic IR with the sidecar.
 
 ---
 

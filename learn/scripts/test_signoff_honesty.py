@@ -88,11 +88,23 @@ def main() -> int:
     check(ccs.get("status") == "READY", "ccs_char READY")
     check((ccs.get("official_probe") or {}).get("status") == "GAP", "official Nangate liberty stays NLDM GAP")
     check((ccs.get("official_probe") or {}).get("n_ccs_tables", 1) == 0, "official lib has zero CCS tables")
-    check(int(ccs.get("n_ccs_tables") or 0) >= 2, "sidecar has rise+fall output_current")
+    check(int(ccs.get("n_ccs_tables") or 0) >= 18, "sidecar has ≥9 cells × rise/fall")
+    check(int(ccs.get("n_cells") or 0) >= 9, "at least 9 GCD cells characterized")
+    check("INV_X1" in (ccs.get("cells") or []), "INV_X1 still in sidecar")
     check(0.25 <= float(ccs.get("delay_ratio_vs_nldm") or 0) <= 4.0, "PTM delay within band of NLDM")
-    sidecar = ROOT / "learn/sim/lib/INV_X1_ptm45_ccs.lib"
-    check(sidecar.is_file(), "sidecar CCS liberty exists")
+    sidecar = ROOT / "learn/sim/lib/nangate45_ptm_ccs_sidecar.lib"
+    inv = ROOT / "learn/sim/lib/INV_X1_ptm45_ccs.lib"
+    check(sidecar.is_file(), "multi-cell sidecar CCS liberty exists")
+    check(inv.is_file(), "INV_X1 sidecar still exists")
     check("output_current_fall" in sidecar.read_text(), "sidecar contains output_current_fall")
+    check("cell (NAND2_X1)" in sidecar.read_text(), "sidecar includes NAND2_X1")
+
+    deep = load("lvs_deep_flowlab.json")
+    check(deep.get("ok") is False, "deep transistor LVS stays fail")
+    check((deep.get("transistor") or {}).get("ok") is False, "transistor compare is fail")
+    check(int(deep.get("n_filtered_masters") or 0) >= 30, "filtered CDL keeps used masters")
+    check(int((deep.get("transistor") or {}).get("n_flatten", 99)) == 0, "unused library flatten is gone")
+    check(not (ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/.lvs.ok").exists(), "deep LVS did not stamp .lvs.ok")
     print("ALL test_signoff_honesty PASSED")
     return 0
 

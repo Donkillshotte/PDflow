@@ -1,10 +1,11 @@
-/* Educational sidecar. PTM 45 nm re-char of INV_X1. Not Nangate CCS. */
+/* Educational sidecar. PTM 45 nm re-char. Not Nangate CCS. */
 library (nangate45_ptm_ccs_sidecar) {
   delay_model : table_lookup;
   time_unit : "1s";
   voltage_unit : "1V";
   current_unit : "1A";
   nom_voltage : 1.1;
+
   cell (INV_X1) {
     pin (ZN) {
       direction : output;

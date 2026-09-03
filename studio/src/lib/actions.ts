@@ -102,6 +102,7 @@ export const TOOL_MATRIX_ACTIONS = [
   "openrcx_report",
   "analytical_pex",
   "ccs_char",
+  "lvs_deep",
   "layout_tools",
   "spice_engines",
   "tool_matrix",

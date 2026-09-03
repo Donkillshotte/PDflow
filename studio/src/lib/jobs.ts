@@ -52,6 +52,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   openrcx_report: "finish",
   analytical_pex: null,
   ccs_char: null,
+  lvs_deep: "finish",
   layout_tools: null,
   spice_engines: null,
   tool_matrix: null,
@@ -440,6 +441,10 @@ export function preflightAction(
     gate_sim: {
       rel: "6_final.v",
       hint: "run finish first (gate-level VCD)",
+    },
+    lvs_deep: {
+      rel: "6_final.gds",
+      hint: "run finish first (filtered LVS + VTL tolerances, no fake pass)",
     },
   };
   const need = needFile[action];

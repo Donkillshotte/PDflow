@@ -130,12 +130,12 @@ export async function getSuiteStatus() {
     },
     {
       id: "ccs_char",
-      label: "CCS char (INV_X1 PTM)",
+      label: "CCS char (PTM GCD cells)",
       group: "Environment",
       ok:
         signoffReportPass("flowlab", "ccs_char") ||
         signoffReportPass("learn", "ccs_char"),
-      detail: "ngspice + PTM 45 nm sidecar · official Nangate liberty stays NLDM",
+      detail: "ngspice + PTM 45 nm sidecar on GCD cells · official Nangate liberty stays NLDM",
       action: "ccs_char",
       href: "/tools?tab=run&action=ccs_char",
     },
@@ -483,9 +483,18 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "ccs_char") ||
         signoffReportPass("learn", "ccs_char"),
-      detail: "INV_X1 output_current from SPICE · not foundry CCS",
+      detail: "GCD-cell output_current from SPICE · not foundry CCS",
       action: "ccs_char",
       href: "/tools?tab=run&action=ccs_char",
+    },
+    {
+      id: "lvs_deep",
+      label: "Deep LVS (filter + VTL)",
+      group: "Analysis",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lvs_deep_flowlab.json")),
+      detail: "Unused CDL dropped · transistor FAIL stays FAIL · not a fake pass",
+      action: "lvs_deep",
+      href: "/tools?tab=run&action=lvs_deep",
     },
     {
       id: "inspect",

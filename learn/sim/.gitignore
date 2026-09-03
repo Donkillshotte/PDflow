@@ -22,6 +22,7 @@ reports/*
 !reports/spice_engines_flowlab.json
 !reports/analytical_pex_flowlab.json
 !reports/ccs_char_flowlab.json
+!reports/lvs_deep_flowlab.json
 reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/

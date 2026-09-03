@@ -263,8 +263,13 @@ export function listOpenTargets(): {
     },
     {
       id: "run-ccs-char",
-      label: "Run · INV_X1 PTM CCS char",
+      label: "Run · PTM CCS char (GCD cells)",
       action: "ccs_char",
+    },
+    {
+      id: "run-lvs-deep",
+      label: "Run · deep LVS (filter, no fake pass)",
+      action: "lvs_deep",
     },
     {
       id: "run-tool-matrix",

@@ -42,6 +42,9 @@ def used_masters(design_cdl: str) -> set[str]:
     return used
 
 
+ALWAYS_KEEP = re.compile(r"^(FILLCELL|TAPCELL)_")
+
+
 def filter_library(lib_cdl: str, keep: set[str]) -> str:
     out: list[str] = []
     keep_block = False
@@ -50,7 +53,7 @@ def filter_library(lib_cdl: str, keep: set[str]) -> str:
         m = SUBCKT_RE.match(line.strip())
         if m:
             in_sub = True
-            keep_block = m.group(1) in keep
+            keep_block = m.group(1) in keep or bool(ALWAYS_KEEP.match(m.group(1)))
             if keep_block:
                 out.append(line)
             continue

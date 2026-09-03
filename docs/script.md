@@ -58,6 +58,6 @@ Optuna **only** in `run_tpe.py`.
 | PDN / IR | `pdn_dynamic.py`, `pdn_extract.py`, `pdn_solvers.py`, `run_dynamic_ir.sh` |
 | Signoff | `run_signoff_all.sh`, `run_sta_signoff.sh`, `run_sta_ir_aware.sh`, `run_drc_signoff.sh` |
 | Engine | `build_dpn_engine.sh` |
-| Lab PEX / CCS | `run_analytical_pex.py`, `char_nangate_ccs.py`, `install_fastercap.sh` |
+| Lab PEX / CCS / LVS | `run_analytical_pex.py`, `char_nangate_ccs.py`, `run_lvs_deep.py`, `install_fastercap.sh` |
 
 One heavy job. `pkill -f` forbidden: kill by PID.

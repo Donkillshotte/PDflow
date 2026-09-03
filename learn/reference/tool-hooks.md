@@ -115,7 +115,8 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | **Icarus** | INTEGRATED | `rtl_sim` (RTL VCD) + `gate_sim` (name-join VCD) |
 | **HotSpot** | INTEGRATED | `thermal_signoff` architecture °C |
 | **FasterCap** | INTEGRATED | `analytical_pex` 3D BEM 2-wire vs Sakurai–Tamaru |
-| **CCS sidecar** | INTEGRATED | `ccs_char` INV_X1 PTM `output_current` · official Nangate stays NLDM |
+| **CCS sidecar** | INTEGRATED | `ccs_char` PTM `output_current` on GCD cells · official Nangate stays NLDM |
+| **LVS deep** | PARTIAL | `lvs_deep` filter + VTL · transistor FAIL stays FAIL |
 
 ## How Studio orchestrates them
 
