@@ -39,6 +39,7 @@ Wins stay in `win_rule.py`. Lab IR gold stays 45.298 mV.
 
 ## Repository map
 
+- [`install.md`](install.md) — environment setup, tool versions, GCD flow launcher
 - [`architecture.md`](architecture.md) — directories, ownership, what not to move
 - [`script.md`](script.md) — wrappers in `scripts/` and `learn/scripts/`
 - [`plans.md`](plans.md) — frozen plan index
