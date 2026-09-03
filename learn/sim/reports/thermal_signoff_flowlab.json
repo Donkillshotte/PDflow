@@ -1,26 +1,39 @@
 {
   "kind": "thermal_signoff",
   "variant": "flowlab",
-  "status": "proxy",
+  "status": "READY",
   "thermal": {
+    "engine": "hotspot",
+    "kind": "thermal_hotspot",
+    "t_max_c": 70.54000000000002,
+    "t_min_c": 45.01000000000005,
+    "t_bound_c": 85.0,
     "chip_ir_mv": 3.0944465142916933,
     "chip_droop_mv": 28.2999414862346,
     "combined_proxy_mv": 31.394388000526295,
-    "heatmap_png": null,
-    "note": "Proxy from chip IR + droop; HotSpot/3D-ICE planned for full thermal"
+    "note": "architecture compact model (UVA HotSpot), not foundry / not Ansys"
   },
   "evaluation": {
     "checks": [
       {
-        "id": "combined_proxy_mv",
-        "label": "Combined IR+droop proxy (mV)",
+        "id": "hotspot_tmax_c",
+        "label": "HotSpot t_max (\u00b0C)",
+        "actual": 70.54000000000002,
+        "target": 85.0,
+        "ok": true,
+        "note": "architecture compact model"
+      },
+      {
+        "id": "ir_droop_proxy_mv",
+        "label": "Secondary IR+droop proxy (mV)",
         "actual": 31.394388000526295,
         "target": 50.0,
-        "ok": true
+        "ok": true,
+        "note": "kept as a labeled secondary check; not the pass criterion"
       }
     ],
     "ok": true
   },
   "ok": true,
-  "summary": "Thermal proxy 31.39 mV (IR 3.09 + droop 28.30)"
+  "summary": "HotSpot t_max=70.54 \u00b0C \u00b7 IR+droop proxy 31.39 mV"
 }
