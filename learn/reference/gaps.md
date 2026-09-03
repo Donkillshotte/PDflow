@@ -27,7 +27,7 @@ Do not mix them on a roadmap. A gated item is not a sprint.
 
 | Item | State |
 |---|---|
-| LVS on FlowLab GCD | Built: filter unused CDL, inject FILL from DEF, map wells to VDD/VSS, `blank_circuit` on empty FILL/TAP. KLayout compare must print a real match. Remaining must-connect (DFF_X2, 2 warnings) is Nangate split wells — unpinning DFF_X breaks the match; flattening DFF after extract raised the count; flattening every used std-cell master in layout+schematic before extract made align treat those cells as layout-only and the compare failed. VIA_* still flatten (no schematic). |
+| LVS on FlowLab GCD | Built: filter unused CDL, inject FILL from DEF, map wells to VDD/VSS, `blank_circuit` on empty FILL/TAP. KLayout compare must print a real match. Remaining must-connect (DFF_X2, 2 warnings) is Nangate split wells — unpinning DFF_X breaks the match; flattening DFF after extract raised the count; flattening every used std-cell master before extract failed the compare; flat extract (no `deep`) plus schematic flatten also failed the compare. VIA_* still flatten (no schematic). |
 | ECO after finish | Propose on locked variants. Apply on an unlocked copy loads `typical.lib` + SDC + `setRC.tcl`, writes `6_final.{odb,def,v,cdl,gds}` (SPEF when OpenRCX works), and never calls `signoff_all`. |
 | Antenna in GDS DRC | Already in `FreePDK45.lydrc` (`antenna_check`, 300:1). |
 | Density / named ERC | Not in the FreePDK45 DRC deck. Adding a wrapper would not add the rules. Treat as PDK-deck gated unless a new deck is written. |

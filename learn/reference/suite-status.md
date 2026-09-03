@@ -52,7 +52,8 @@ Leftovers that stay visible:
   Flattening XNOR2/MUX2/NAND3-4/OAI22/AND3 moved the leftover.
   Unpinning DFF_X breaks the match; flattening it after extract raised
   the count to 4. Flattening every used std-cell master before extract
-  failed the compare. Warnings, not a substitute for the compare line.
+  failed the compare. Flat extract (no `deep`) plus schematic flatten
+  also failed the compare. Warnings, not a substitute for the compare line.
 
 ### 3. Real GAPs — missing data or a tool we will not pretend to be
 

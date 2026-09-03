@@ -130,7 +130,8 @@ out = {
       "KLayout compare on filtered CDL + DEF fillers + well→VDD/VSS. "
       "FILL/TAP/VIA are blank_circuit (empty Nangate CDL, no invented devices). "
       "XNOR2/MUX2/NAND3-4/OAI22/AND3 flatten. Remaining must-connect is DFF_X2 "
-      "(Nangate split wells). Flatten-all before extract fails the compare."
+      "(Nangate split wells). Flatten-all before extract and flat extract "
+      "both fail the compare."
   ),
   "summary": f"LVS {'PASS' if eq['lvs_pass'] else 'FAIL'} · errors {eq['lvs_errors']}",
   "artifacts": {"lvsdb": "${LVSDB}", "log": "${LOG}"},

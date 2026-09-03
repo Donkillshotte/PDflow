@@ -139,6 +139,7 @@ devices). VIA_* have no schematic and still flatten. lvsdb lists
 DFF_X2 must-connect (2). Unpinning DFF_X breaks the match; flattening
 it after extract raised the count. Flattening every used std-cell
 master before extract failed the compare (layout-only cells at align).
+Flat extract (no `deep`) plus schematic flatten also failed the compare.
 Do not hide those. Do not stamp `.lvs.ok` without the match line.
 
 ---

@@ -121,7 +121,9 @@ closed the previous leftover; unpinning DFF_X breaks the match;
 flattening DFF after extract raised the count to 4 (NOR4). Flattening
 every used std-cell master before extract dropped the schematic
 hierarchy while layout cells remained, and KLayout printed
-`Netlists don't match`. The leftover is kept visible.
+`Netlists don't match`. Flat extract (comment out `deep`) plus
+schematic flatten also printed `Netlists don't match` and align
+dropped FILL/TAP as schematic-only. The leftover is kept visible.
 
 **Verdict**: closed as educational compare on this GCD. Not foundry LVS.
 
