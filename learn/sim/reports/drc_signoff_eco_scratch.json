@@ -1,0 +1,53 @@
+{
+  "kind": "drc_signoff",
+  "variant": "eco_scratch",
+  "geometry": {
+    "route_drc_lines": 0,
+    "gds_drc_violations": 0
+  },
+  "evaluation": {
+    "checks": [
+      {
+        "id": "route_drc_lines",
+        "label": "Route DRC report lines",
+        "actual": 0,
+        "target": 0,
+        "ok": true
+      },
+      {
+        "id": "gds_drc_violations",
+        "label": "KLayout GDS DRC violations",
+        "actual": 0,
+        "target": 0,
+        "ok": true
+      }
+    ],
+    "ok": true
+  },
+  "artifact_parse": {
+    "exists": true,
+    "items": 0,
+    "categories": [
+      "WELL.1",
+      "WELL.3",
+      "WELL.4",
+      "VT.1",
+      "POLY.1",
+      "POLY.4",
+      "POLY.5",
+      "POLY.6",
+      "ACTIVE.1",
+      "ACTIVE.2",
+      "ACTIVE.3",
+      "ACTIVE.4"
+    ],
+    "samples": [],
+    "path": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/6_drc.lyrdb"
+  },
+  "ok": true,
+  "summary": "Route DRC 0 lines \u00b7 GDS DRC 0 items",
+  "artifacts": {
+    "route_drc": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/5_route_drc.rpt",
+    "gds_lyrdb": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/6_drc.lyrdb"
+  }
+}

@@ -97,6 +97,13 @@ def main() -> int:
                 check(gds.resolve() != flowlab_gds.resolve(), "ECO GDS is not the locked flowlab GDS")
             installed = Path(scratch.get("results_dir") or "") / "6_final.gds"
             check(installed.is_file(), "unlocked results/6_final.gds installed")
+            close = ROOT / "learn/sim/reports/signoff_all_eco_scratch.json"
+            if close.is_file():
+                sig = json.loads(close.read_text())
+                check(sig.get("kind") == "signoff_all", "eco_scratch close is signoff_all")
+                check(sig.get("ok") is True, "eco_scratch signoff_all ok")
+                check(sig.get("variant") == "eco_scratch", "close is not flowlab")
+                check(scratch.get("signoff") is False, "apply still does not claim the close")
     print("ALL test_eco PASSED")
     return 0
 

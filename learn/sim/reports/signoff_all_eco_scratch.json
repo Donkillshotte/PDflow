@@ -1,0 +1,24 @@
+{
+  "kind": "signoff_all",
+  "variant": "eco_scratch",
+  "pillars": {
+    "timing": {
+      "ok": true,
+      "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 0"
+    },
+    "geometry": {
+      "ok": true,
+      "summary": "Route DRC 0 lines \u00b7 GDS DRC 0 items"
+    },
+    "equivalence": {
+      "ok": true,
+      "summary": "LVS PASS \u00b7 errors 0"
+    },
+    "power": {
+      "ok": true,
+      "summary": "Chip IR 1.05 mV \u00b7 Sys droop 6.03 mV \u00b7 Zmax 9058.4 m\u03a9"
+    }
+  },
+  "ok": true,
+  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok"
+}

@@ -1,0 +1,67 @@
+{
+  "kind": "lvs_signoff",
+  "variant": "eco_scratch",
+  "equivalence": {
+    "lvs_pass": true,
+    "lvs_errors": 0,
+    "make_rc": 0
+  },
+  "evaluation": {
+    "checks": [
+      {
+        "id": "lvs_pass",
+        "label": "LVS clean",
+        "actual": true,
+        "target": true,
+        "ok": true,
+        "note": "FreePDK45 GCD may not be tapeout-clean; interpret LVS report even if FAIL"
+      }
+    ],
+    "ok": true
+  },
+  "artifact_parse": {
+    "lvsdb": {
+      "exists": true,
+      "supported": true,
+      "errors": 0,
+      "must_connect": 6,
+      "messages": [
+        "Must-connect subnets of VDD of circuit XNOR2_X1 must be connected further up in the hierarchy - this is an error at chip top level.\\nInstance path: gcd/XNOR2_X1[m0 8.93,18.",
+        "Must-connect subnets of VDD of circuit XNOR2_X1 must be connected further up in the hierarchy - this is an error at chip top level.\\nInstance path: gcd/XNOR2_X1[r0 8.55,18.",
+        "Must-connect subnets of VDD of circuit XNOR2_X1 must be connected further up in the hierarchy - this is an error at chip top level.\\nInstance path: gcd/XNOR2_X1[m0 13.49,15",
+        "Must-connect subnets of VSS of circuit XNOR2_X1 must be connected further up in the hierarchy - this is an error at chip top level.\\nInstance path: gcd/XNOR2_X1[m0 8.93,18."
+      ],
+      "path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb"
+    },
+    "log": {
+      "exists": true,
+      "tail": [
+        "Flatten layout cell (no schematic): VIA_via3_4_960_340_1_3_320_320",
+        "Flatten layout cell (no schematic): VIA_via2_3_960_340_1_3_320_320",
+        "Flatten layout cell (no schematic): VIA_via1_2_960_340_1_3_300_300",
+        "Flatten layout cell (no schematic): FILLCELL_X32",
+        "Flatten layout cell (no schematic): FILLCELL_X4",
+        "Flatten layout cell (no schematic): FILLCELL_X2",
+        "Flatten layout cell (no schematic): FILLCELL_X1",
+        "Flatten layout cell (no schematic): FILLCELL_X8",
+        "Flatten layout cell (no schematic): FILLCELL_X16",
+        "Flatten layout cell (no schematic): TAPCELL_X1",
+        "Writing netlist: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/gcd_extracted.cir ..",
+        "Writing LVS database: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb ..",
+        "Total elapsed: 0.560s  Memory: 444.00M",
+        "CONGRATULATIONS! Netlists match.",
+        "LVS finished at : 22:41:31  -  LVS duration =  0 hrs. 0 min. 0 sec."
+      ],
+      "missing_lylvs": false,
+      "netlists_match": true
+    }
+  },
+  "ok": true,
+  "must_connect": 6,
+  "educational_note": "KLayout compare on filtered CDL + DEF fillers + well\u2192VDD/VSS. Must-connect warnings on XNOR2 well ties are recorded, not hidden. FILL/TAP CDL bodies are empty so those cells still flatten.",
+  "summary": "LVS PASS \u00b7 errors 0",
+  "artifacts": {
+    "lvsdb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb",
+    "log": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/eco_scratch/6_lvs.log"
+  }
+}
