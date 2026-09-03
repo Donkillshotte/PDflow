@@ -1082,18 +1082,18 @@ def check_next_level(check, root: Path) -> None:
     check(not s_prev.get("admissible"), f"spi is not tune-admissible {s_prev}")
     coord = run_recipe_loop.coordinate(ExperimentLog(), list(CHEAP_FIRST))
     check(
-        coord["decision"] == "cover",
-        f"promoted combo is a catalog hole {coord.get('decision')} {coord.get('why')}",
+        coord["decision"] == "tune",
+        f"catalog covered; coordinator tunes {coord.get('decision')} {coord.get('why')}",
     )
-    cover_ids = [j.get("id") for j in (coord.get("jobs") or [])]
+    check(not (coord.get("jobs") or []), f"cover queue empty after place_sparse_setup {coord.get('jobs')}")
     check(
-        "place_sparse_setup" in cover_ids,
-        f"cover proposes Sparser placement + setup margin {cover_ids[:6]}",
+        coord.get("design") == "gcd",
+        f"cheap-first TPE is gcd; frozen §6 is run_tpe.py --design dynamic_node ({coord.get('design')})",
     )
     deep_coord = run_recipe_loop.coordinate(ExperimentLog(), list(CHEAP_FIRST), deepen=True)
     check(
-        deep_coord["decision"] == "cover",
-        f"cover still outranks --deepen while the promoted combo is open {deep_coord['decision']}",
+        deep_coord["decision"] == "deepen",
+        f"--deepen still grid-combines wins after cover {deep_coord['decision']}",
     )
     check("--deepen" in loop_src, "deepen stays an override")
     try:

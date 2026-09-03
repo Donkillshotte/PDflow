@@ -8,6 +8,10 @@ reports/*
 !reports/lvs_signoff_flowlab.json
 !reports/power_signoff_flowlab.json
 !reports/signoff_all_flowlab.json
+!reports/vectorless_flowlab.json
+!reports/pdn_chip_ir_flowlab.json
+!reports/system_pdn_flowlab.json
+!reports/thermal_signoff_flowlab.json
 reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/
