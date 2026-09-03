@@ -118,6 +118,17 @@ export async function getSuiteStatus() {
       action: "thermal_signoff",
     },
     {
+      id: "fastercap",
+      label: "FasterCap (PEX BEM)",
+      group: "Environment",
+      ok:
+        which("FasterCap") ||
+        which("fastercap") ||
+        fs.existsSync(path.join(LEARN_ROOT, "tools/fastercap/FasterCap")),
+      detail: "LGPL 3D BEM · 2-wire educational extract, not Raphael",
+      action: "analytical_pex",
+    },
+    {
       id: "display",
       label: "DISPLAY / Desktop",
       group: "Environment",
@@ -445,12 +456,12 @@ export async function getSuiteStatus() {
     },
     {
       id: "analytical_pex",
-      label: "Analytical PEX (FasterCap-class)",
+      label: "Analytical PEX + FasterCap",
       group: "Analysis",
       ok:
         signoffReportPass("flowlab", "analytical_pex") ||
         signoffReportPass("learn", "analytical_pex"),
-      detail: "Sakurai–Tamaru + FDM 2D · Raphael GAP",
+      detail: "Sakurai–Tamaru + FDM 2D + FasterCap BEM · Raphael GAP",
       action: "analytical_pex",
       href: "/tools?tab=run&action=analytical_pex",
     },

@@ -676,6 +676,12 @@ export async function probeToolchain(): Promise<{
           return { name: bin, ok: true, detail: local, required: false };
         }
       }
+      if (bin === "fastercap" || bin === "FasterCap") {
+        const local = path.join(REPO_ROOT, "learn/tools/fastercap/FasterCap");
+        if (fs.existsSync(local)) {
+          return { name: "fastercap", ok: true, detail: local, required: false };
+        }
+      }
       return { name: bin, ok: false, detail: "missing", required: false };
     }
   }

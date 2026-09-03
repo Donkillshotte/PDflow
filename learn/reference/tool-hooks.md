@@ -114,6 +114,7 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | **open_pdks** | GAP | Sky130/gf180, not this course |
 | **Icarus** | INTEGRATED | `rtl_sim` (RTL VCD) + `gate_sim` (name-join VCD) |
 | **HotSpot** | INTEGRATED | `thermal_signoff` architecture °C |
+| **FasterCap** | INTEGRATED | `analytical_pex` 3D BEM 2-wire vs Sakurai–Tamaru |
 
 ## How Studio orchestrates them
 

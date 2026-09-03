@@ -309,6 +309,23 @@ Course progress is tracked by `learn/lib/progress.sh` → `learn/.progress.json`
 
 ---
 
+## Attempted integration (2026-09-03)
+
+Tried every closable item. Kept only what ran end-to-end.
+
+| GAP | Tried | Result |
+|---|---|---|
+| LVS CDL filter | Yes — unused library SUBCKTs dropped | Unused TBUF/TLAT gone. **Every used stdcell still fails transistor compare** (`AND2_X1`…`XNOR2_X2`). Not a pass. Script kept as `filter_lvs_cdl.py`. Transistor LVS stays FAIL. |
+| FasterCap | Yes — built 6.0.7 headless, 2-wire deck | **READY.** Wired into `run_analytical_pex.py`. |
+| CCS / vyges-char | Not shipped | Needs PTM + full-library char hours. No fake tables. |
+| Board S-parameter | Not shipped | TUHH data is form-gated. No public Touchstone without a request. |
+| Magic `.tech` | Not shipped | No verified extract. KLayout stays LVS/DRC. |
+| Netgen | Not shipped | Same device-compare problem without Magic extract. |
+| sky130 | Out of scope | Course pinned to Nangate45. |
+| Course 0/8 | Not faked | Student progress. |
+
+---
+
 ## Recommended implementation order
 
 If we proceed with the closable items:

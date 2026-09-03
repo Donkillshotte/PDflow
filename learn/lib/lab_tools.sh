@@ -2,7 +2,7 @@
 # Does not replace system PATH tools when they already exist.
 lab_tools_path() {
   local root="$1"
-  export PATH="${root}/learn/tools/hotspot:${root}/learn/tools/xyce/bin:${PATH}"
+  export PATH="${root}/learn/tools/hotspot:${root}/learn/tools/fastercap:${root}/learn/tools/xyce/bin:${PATH}"
   if [[ -d "${root}/learn/tools/xyce/lib" ]]; then
     export LD_LIBRARY_PATH="${root}/learn/tools/xyce/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   fi

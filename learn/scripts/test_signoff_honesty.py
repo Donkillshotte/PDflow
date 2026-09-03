@@ -76,6 +76,12 @@ def main() -> int:
     spice = load("spice_engines_flowlab.json")
     check(spice.get("xyce_status") == "READY", "Xyce N4 READY in spice_engines")
     check((spice.get("xyce_n4") or {}).get("ok") is True, "Xyce N4 gold ok")
+
+    pex = load("analytical_pex_flowlab.json")
+    check(pex.get("ok") is True, "analytical_pex ok")
+    fc = pex.get("fastercap") or {}
+    check(fc.get("status") == "READY", "FasterCap BEM READY")
+    check(float(fc.get("c_couple_fF") or 0) > 0, "FasterCap Cc > 0")
     print("ALL test_signoff_honesty PASSED")
     return 0
 

@@ -1,0 +1,5 @@
+* Educational 2-trace over ground (FasterCap). Units: meters.
+* W=0.14 T=0.35 H=0.29 S=0.14 L=10.0 um  epsr=3.9
+C gnd.txt 3.9 0 0 0
+C trace_a.txt 3.9 0 0 0
+C trace_b.txt 3.9 0 0 0

@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "kind": "analytical_pex",
+  "engine": "fastercap+sakurai+fdm2d",
+  "fastercap_present": true,
+  "fastercap": {
+    "ok": true,
+    "present": true,
+    "status": "READY",
+    "bin": "/workspace/learn/tools/fastercap/FasterCap",
+    "deck": "/workspace/learn/sim/pex/flowlab/two_trace.lst",
+    "log": "/workspace/learn/sim/reports/fastercap_flowlab.log",
+    "c_ground_f": 1.096689e-15,
+    "c_couple_f": 5.63651e-16,
+    "c_ground_fF": 1.096689,
+    "c_couple_fF": 0.563651,
+    "matrix_f": [
+      -3.93421e-15,
+      1.20559e-15,
+      1.19961e-15,
+      2.21491e-15,
+      -1.66034e-15,
+      5.63651e-16,
+      2.33062e-15,
+      5.28275e-16,
+      -1.69567e-15
+    ],
+    "educational_note": "3D BEM two-trace, not Raphael / not full-chip SPEF"
+  },
+  "commercial_gap": "Raphael (Synopsys) not licensed; FasterCap is the OSS field-solver demo",
+  "sakurai_tamaru": {
+    "length_um": 10.0,
+    "w_um": 0.14,
+    "t_um": 0.35,
+    "h_um": 0.29,
+    "s_um": 0.14,
+    "c_ground_f": 1.1997795090561282e-15,
+    "c_couple_f": 8.64211659625109e-16,
+    "r_ohm": 5.0,
+    "c_ground_fF": 1.199779509056128,
+    "c_couple_fF": 0.864211659625109
+  },
+  "fdm2d": {
+    "nx": 72,
+    "ny": 48,
+    "iters": 800,
+    "c11_pul_f_per_um": 1.8764070118979012e-16,
+    "c12_pul_f_per_um": 9.992243723827112e-17,
+    "c_ground_f": 8.7718263951519e-16,
+    "c_couple_f": 9.992243723827113e-16,
+    "c_ground_fF": 0.8771826395151899,
+    "c_couple_fF": 0.9992243723827112
+  },
+  "geometry": {
+    "length_um": 10.0,
+    "w_um": 0.14,
+    "t_um": 0.35,
+    "h_um": 0.29,
+    "s_um": 0.14,
+    "c_ground_f": 1.1997795090561282e-15,
+    "c_couple_f": 8.64211659625109e-16,
+    "r_ohm": 5.0,
+    "c_ground_fF": 1.199779509056128,
+    "c_couple_fF": 0.864211659625109
+  },
+  "summary": "M2 10.0\u00b5m \u00b7 ST Cg=1.200 fF Cc=0.864 fF \u00b7 FDM Cg=0.877 fF Cc=0.999 fF \u00b7 FasterCap Cg=1.097 fF Cc=0.564 fF",
+  "reference": "Sakurai & Tamaru, IEEE TED 1983; 2D Laplace FDM; FasterCap 6 BEM"
+}

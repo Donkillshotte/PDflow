@@ -230,7 +230,7 @@ Honest leftover: architecture compact model, not Ansys/COMSOL, not foundry. IR+d
 | `yosys_equiv` | Yosys equiv RTL↔synth (EQY-class) |
 | `formal_gcd` | Yosys sat tempinduct (sby-class) |
 | `openrcx_report` | OpenRCX SPEF counts |
-| `analytical_pex` | Sakurai–Tamaru + FDM 2D (FasterCap-class) |
+| `analytical_pex` | Sakurai–Tamaru + FDM 2D + FasterCap BEM (when installed) |
 | `layout_tools` | Magic / Netgen / KLayout probe |
 | `tool_matrix` | OSS orchestrator |
 | `klayout_drc` | GDS DRC (legacy, GDS only) |

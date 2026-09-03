@@ -32,7 +32,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_tool_matrix.sh
 | **ngspice** | INTEGRATED | System PDN AC+TRAN + demo | `ngspice -v` 42 · `system_pdn` · `spice_engines` | — |
 | **Xyce (Sandia)** | INTEGRATED (when `install_xyce.sh` succeeds) | Dual-solver N4 compact VRM+pkg+die | `spice_engines_*.json` `xyce_status: READY` · `xyce_vrm_die_gold` | **ngspice** still covers System PDN AC/TRAN |
 | **OpenRCX** | INTEGRATED | Inside OpenROAD (`extract_parasitics`) | `6_final.spef` + `rcx_patterns.rules` · action `openrcx_report` | — |
-| **FasterCap** | MAPPED | Binary absent | Sakurai–Tamaru 1983 + FDM 2D Laplace · `analytical_pex` | Raphael-class 2-wire tutorial |
+| **FasterCap** | INTEGRATED (when `install_fastercap.sh` succeeds) | 3D BEM 2-wire extract vs Sakurai–Tamaru + FDM | `analytical_pex_*.json` `fastercap.status: READY` | Raphael remains commercial GAP |
 | **Raphael** | GAP | Synopsys commercial, no license | documented | OpenRCX SPEF + analytical PEX |
 | **StarRC** | GAP | Synopsys commercial, no license | documented | **OpenRCX** SPEF at finish |
 | **open_pdks** | GAP | Sky130 / gf180, **different PDK** | course pinned to Nangate45 | Not mixed with FreePDK45 |

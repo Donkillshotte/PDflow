@@ -12,9 +12,16 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT / "learn" / "scripts") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "learn" / "scripts"))
+from write_fastercap_deck import write_two_trace_deck  # noqa: E402
 
 # FreePDK45 / Nangate45 metal2-ish stack (µm). Educational, not foundry-signed.
 W = 0.14  # width
@@ -135,28 +142,99 @@ def fdm_two_trace(w: float, t: float, h: float, s: float, length: float,
     }
 
 
+def _fastercap_bin(root: Path) -> Path | None:
+    for cand in (
+        shutil.which("FasterCap"),
+        shutil.which("fastercap"),
+        str(root / "learn/tools/fastercap/FasterCap"),
+    ):
+        if cand and Path(cand).is_file() and os.access(cand, os.X_OK):
+            return Path(cand)
+    return None
+
+
+def run_fastercap(root: Path, variant: str) -> dict:
+    bin_path = _fastercap_bin(root)
+    if bin_path is None:
+        return {"ok": False, "present": False, "status": "GAP", "note": "FasterCap binary missing"}
+    deck_dir = root / "learn/sim/pex" / variant
+    lst = write_two_trace_deck(deck_dir, w=W, t=T, h=H, s=S, length=L_UM, epsr=EPSR)
+    log = root / "learn/sim/reports" / f"fastercap_{variant}.log"
+    cmd = [str(bin_path), str(lst), "-b", "-a0.08", "-v"]
+    proc = subprocess.run(cmd, cwd=deck_dir, capture_output=True, text=True, timeout=120)
+    text = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    log.write_text(text)
+    # Matrix rows after "Capacitance matrix is:" — 3 conductors (gnd, a, b)
+    nums = []
+    grab = False
+    for line in text.splitlines():
+        if "Capacitance matrix is:" in line:
+            grab = True
+            continue
+        if grab:
+            if re.search(r"[-+]?\d+\.\d+e[+-]\d+", line):
+                nums.extend(float(x) for x in re.findall(r"[-+]?\d+\.\d+e[+-]\d+", line))
+            if len(nums) >= 9:
+                break
+    if len(nums) < 9:
+        return {
+            "ok": False,
+            "present": True,
+            "status": "FAIL",
+            "bin": str(bin_path),
+            "rc": proc.returncode,
+            "log": str(log),
+            "note": "could not parse capacitance matrix",
+        }
+    # C[i,j] in F. Index: 0=gnd 1=a 2=b
+    c_aa, c_ab = nums[4], nums[5]
+    c_g = abs(c_aa + c_ab)  # self + mutual ≈ ground return
+    c_c = abs(c_ab)
+    return {
+        "ok": c_g > 0 and c_c > 0,
+        "present": True,
+        "status": "READY",
+        "bin": str(bin_path),
+        "deck": str(lst),
+        "log": str(log),
+        "c_ground_f": c_g,
+        "c_couple_f": c_c,
+        "c_ground_fF": c_g * 1e15,
+        "c_couple_fF": c_c * 1e15,
+        "matrix_f": nums[:9],
+        "educational_note": "3D BEM two-trace, not Raphael / not full-chip SPEF",
+    }
+
+
 def main() -> int:
     variant = os.environ.get("FLOW_VARIANT", "flowlab")
     root = Path(__file__).resolve().parents[2]
     out = root / "learn/sim/reports" / f"analytical_pex_{variant}.json"
-    faster = bool(shutil.which("fastercap") or shutil.which("FasterCap"))
     geom = sakurai_tamaru(W, T, H, S, L_UM)
     fdm = fdm_two_trace(W, T, H, S, L_UM)
+    fc = run_fastercap(root, variant)
     ok = geom["c_ground_fF"] > 0 and geom["c_couple_fF"] > 0 and fdm["c_couple_fF"] >= 0
+    if fc.get("present"):
+        ok = ok and bool(fc.get("ok"))
+    engine = "fastercap+sakurai+fdm2d" if fc.get("status") == "READY" else "sakurai_tamaru_1983+fdm2d"
+    summary = (
+        f"M2 {L_UM}µm · ST Cg={geom['c_ground_fF']:.3f} fF Cc={geom['c_couple_fF']:.3f} fF · "
+        f"FDM Cg={fdm['c_ground_fF']:.3f} fF Cc={fdm['c_couple_fF']:.3f} fF"
+    )
+    if fc.get("status") == "READY":
+        summary += f" · FasterCap Cg={fc['c_ground_fF']:.3f} fF Cc={fc['c_couple_fF']:.3f} fF"
     payload = {
         "ok": ok,
         "kind": "analytical_pex",
-        "engine": "fastercap" if faster else "sakurai_tamaru_1983+fdm2d",
-        "fastercap_present": faster,
-        "commercial_gap": "Raphael (Synopsys) not licensed; FasterCap binary optional",
+        "engine": engine,
+        "fastercap_present": bool(fc.get("present")),
+        "fastercap": fc,
+        "commercial_gap": "Raphael (Synopsys) not licensed; FasterCap is the OSS field-solver demo",
         "sakurai_tamaru": geom,
         "fdm2d": fdm,
         "geometry": geom,
-        "summary": (
-            f"M2 {L_UM}µm · ST Cg={geom['c_ground_fF']:.3f} fF Cc={geom['c_couple_fF']:.3f} fF · "
-            f"FDM Cg={fdm['c_ground_fF']:.3f} fF Cc={fdm['c_couple_fF']:.3f} fF"
-        ),
-        "reference": "Sakurai & Tamaru, IEEE TED 1983; 2D Laplace FDM (FasterCap-class)",
+        "summary": summary,
+        "reference": "Sakurai & Tamaru, IEEE TED 1983; 2D Laplace FDM; FasterCap 6 BEM",
     }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n")
