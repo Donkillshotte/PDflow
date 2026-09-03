@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Educational INV_X1 CCS re-char (PTM 45 nm + Nangate CDL). Official lib stays NLDM.
+# Educational GCD-combo CCS re-char (PTM 45 nm + Nangate CDL). Official lib stays NLDM.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export FLOW_VARIANT="${FLOW_VARIANT:-flowlab}"

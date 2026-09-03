@@ -37,6 +37,18 @@ CELLS = (
     {"name": "NAND2_X2", "inp": "A1", "out": "ZN", "sense": "negative", "tie": {"A2": VDD}},
     {"name": "NOR2_X1", "inp": "A1", "out": "ZN", "sense": "negative", "tie": {"A2": 0.0}},
     {"name": "AND2_X1", "inp": "A1", "out": "ZN", "sense": "positive", "tie": {"A2": VDD}},
+    {"name": "AND2_X2", "inp": "A1", "out": "ZN", "sense": "positive", "tie": {"A2": VDD}},
+    {"name": "OR2_X1", "inp": "A1", "out": "ZN", "sense": "positive", "tie": {"A2": 0.0}},
+    {"name": "BUF_X4", "inp": "A", "out": "Z", "sense": "positive", "tie": {}},
+    {"name": "INV_X8", "inp": "A", "out": "ZN", "sense": "negative", "tie": {}},
+    {"name": "CLKBUF_X1", "inp": "A", "out": "Z", "sense": "positive", "tie": {}},
+    {"name": "CLKBUF_X3", "inp": "A", "out": "Z", "sense": "positive", "tie": {}},
+    # AOI21 ZN=!(A|(B1&B2)); B1=B2=0 → inverter on A.
+    {"name": "AOI21_X1", "inp": "A", "out": "ZN", "sense": "negative", "tie": {"B1": 0.0, "B2": 0.0}},
+    {"name": "AOI21_X2", "inp": "A", "out": "ZN", "sense": "negative", "tie": {"B1": 0.0, "B2": 0.0}},
+    # OAI21 ZN=!(A&(B1|B2)); B1=B2=VDD → inverter on A.
+    {"name": "OAI21_X1", "inp": "A", "out": "ZN", "sense": "negative", "tie": {"B1": VDD, "B2": VDD}},
+    {"name": "OAI21_X2", "inp": "A", "out": "ZN", "sense": "negative", "tie": {"B1": VDD, "B2": VDD}},
 )
 
 
