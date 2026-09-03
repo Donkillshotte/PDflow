@@ -268,7 +268,7 @@ export default function ToolsClient() {
 
       <section className="panel panel-pro" style={{ marginBottom: "1.2rem" }} ref={runRef} id="run">
         <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>
-          Console live · {runAction}
+          Run · {runAction}
         </h2>
         <LiveRunConsole
           defaultAction={runAction}

@@ -41,8 +41,8 @@ export const PARAM_PRESETS: Record<
   { label: string; desc: string; params: FlowlabParams }
 > = {
   didactic: {
-    label: "Didactic",
-    desc: "Relaxed timing, low utilization — ideal for learning without congestion.",
+    label: "Tutorial",
+    desc: "Relaxed SDC, lower utilization. Fewer congestion failures on the GCD tutorial.",
     params: {
       coreUtilization: 30,
       placeDensityAddon: 0.28,

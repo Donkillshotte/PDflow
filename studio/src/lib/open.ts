@@ -216,7 +216,7 @@ export function listOpenTargets(): {
   });
   targets.push({
     id: "dash-suite",
-    label: "Collaborative suite · hook status",
+    label: "Suite · hook status",
     kind: "dashboard",
     href: "/tools#suite",
     exists: true,
@@ -230,7 +230,7 @@ export function listOpenTargets(): {
   });
   targets.push({
     id: "dash-story",
-    label: "Unified path · course + lab + product",
+    label: "Story · course, lab, product",
     kind: "dashboard",
     href: "/#story",
     exists: true,

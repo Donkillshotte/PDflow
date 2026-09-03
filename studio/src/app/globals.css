@@ -992,7 +992,7 @@ a.progress-dot {
   }
 }
 
-/* —— Enterprise ops / toasts / dialogs —— */
+/* Ops, toasts, dialogs */
 .toast-stack {
   position: fixed;
   right: 1rem;
