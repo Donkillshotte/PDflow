@@ -43,8 +43,8 @@ export function EcoPanel() {
         <strong>ECO</strong>
         <p>
           Post-finish timing repair plan. Apply is refused on locked variants.
-          Unlocked apply writes a sidecar ODB and netlist — not GDS or
-          SPEF. Does not replace <code>signoff_all</code>.
+          Unlocked apply writes finish artifacts on a copy (ODB, DEF,
+          verilog, CDL, GDS). Does not replace <code>signoff_all</code>.
         </p>
       </header>
       {report ? (

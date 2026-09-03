@@ -27,6 +27,11 @@ reports/*
 !reports/eco_flowlab.json
 !reports/eco_apply_flowlab.json
 !reports/eco_apply_eco_scratch.json
+!reports/signoff_all_eco_scratch.json
+!reports/sta_signoff_eco_scratch.json
+!reports/drc_signoff_eco_scratch.json
+!reports/lvs_signoff_eco_scratch.json
+!reports/power_signoff_eco_scratch.json
 !reports/drc_deck_coverage.json
 reports/dse_camp_spi_dse.json
 previews/

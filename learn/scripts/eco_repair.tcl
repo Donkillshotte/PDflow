@@ -2,7 +2,8 @@
 # flowlab/learn/base 6_final.odb. Does not run signoff.
 #
 # Env: ECO_ODB, ECO_ODB_OUT, ECO_LIB, ECO_SDC, ECO_RC, ECO_FILL,
-#      ECO_SETUP, ECO_HOLD
+#      ECO_SETUP, ECO_HOLD, ECO_DEF_OUT, ECO_V_OUT, ECO_CDL_OUT,
+#      ECO_CDL_MASTERS, ECO_SPEF_OUT, ECO_RCX
 
 if {![info exists ::env(ECO_ODB)] || ![info exists ::env(ECO_ODB_OUT)]} {
   puts "FAIL eco_repair.tcl needs ECO_ODB and ECO_ODB_OUT"
@@ -51,9 +52,38 @@ if {[info commands filler_placement] != ""} {
 write_db $::env(ECO_ODB_OUT)
 puts "ECO_REPAIR_WROTE $::env(ECO_ODB_OUT)"
 
-if {[info commands write_verilog] != ""} {
+if {[info exists ::env(ECO_DEF_OUT)] && $::env(ECO_DEF_OUT) != ""} {
+  write_def $::env(ECO_DEF_OUT)
+  puts "ECO_REPAIR_WROTE_DEF $::env(ECO_DEF_OUT)"
+}
+
+if {[info exists ::env(ECO_V_OUT)] && $::env(ECO_V_OUT) != ""} {
+  set vout $::env(ECO_V_OUT)
+} else {
   set vout $::env(ECO_ODB_OUT)
   regsub {\.odb$} $vout {.v} vout
-  write_verilog $vout
+}
+if {[info commands write_verilog] != ""} {
+  if {[catch {find_physical_only_masters} phys]} {
+    write_verilog $vout
+  } else {
+    write_verilog $vout -remove_cells $phys
+  }
   puts "ECO_REPAIR_WROTE_V $vout"
+}
+
+if {[info exists ::env(ECO_CDL_OUT)] && $::env(ECO_CDL_OUT) != "" && [info exists ::env(ECO_CDL_MASTERS)] && [file exists $::env(ECO_CDL_MASTERS)]} {
+  write_cdl -masters $::env(ECO_CDL_MASTERS) $::env(ECO_CDL_OUT)
+  puts "ECO_REPAIR_WROTE_CDL $::env(ECO_CDL_OUT)"
+}
+
+if {[info exists ::env(ECO_SPEF_OUT)] && $::env(ECO_SPEF_OUT) != "" && [info exists ::env(ECO_RCX)] && [file exists $::env(ECO_RCX)]} {
+  if {[catch {
+    define_process_corner -ext_model_index 0 X
+    extract_parasitics -ext_model_file $::env(ECO_RCX)
+    write_spef $::env(ECO_SPEF_OUT)
+    puts "ECO_REPAIR_WROTE_SPEF $::env(ECO_SPEF_OUT)"
+  } rcx_err]} {
+    puts "WARN ECO rcx: $rcx_err"
+  }
 }

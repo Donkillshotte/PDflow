@@ -67,6 +67,13 @@ def main() -> int:
     check("ECO_RC" in tcl, "repair tcl sources ECO_RC")
     check("remove_fillers" in tcl and "filler_placement" in tcl, "repair tcl refills after DPL")
     check("write_verilog" in tcl, "repair tcl writes sidecar verilog")
+    check("write_def" in tcl, "repair tcl writes DEF")
+    check("write_cdl" in tcl, "repair tcl writes CDL")
+    check("extract_parasitics" in tcl, "repair tcl extracts SPEF when RCX exists")
+    check((SCRIPTS / "eco_stream_gds.py").is_file(), "GDS stream helper exists")
+    check("eco_stream_gds.py" in src, "apply streams GDS after DEF")
+    check("6_final.gds" in src, "apply installs 6_final.gds on unlocked copy")
+    check("run_signoff_all.sh" not in src[src.find("subprocess.run"):src.find("subprocess.run") + 400], "first OpenROAD launch is not signoff_all")
 
     live = ROOT / "learn/sim/reports/eco_apply_eco_scratch.json"
     if live.is_file():
@@ -81,10 +88,15 @@ def main() -> int:
         check(flowlab.is_file(), "flowlab 6_final.odb still present")
         check(out_odb.resolve() != flowlab.resolve(), "sidecar is not the locked flowlab ODB")
         if scratch.get("ok"):
-            check("gds" in (scratch.get("not_rewritten") or []), "scratch apply does not rewrite GDS")
-            vpath = Path(scratch.get("output_verilog") or "")
-            if vpath.is_file():
-                check("verilog" in (scratch.get("rewrote") or []), "scratch apply lists verilog when written")
+            check("gds" in (scratch.get("rewrote") or []), "scratch apply streamed GDS")
+            check("verilog" in (scratch.get("rewrote") or []), "scratch apply lists verilog")
+            gds = Path(scratch.get("output_gds") or "")
+            check(gds.is_file(), "scratch GDS exists")
+            flowlab_gds = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
+            if gds.is_file() and flowlab_gds.is_file():
+                check(gds.resolve() != flowlab_gds.resolve(), "ECO GDS is not the locked flowlab GDS")
+            installed = Path(scratch.get("results_dir") or "") / "6_final.gds"
+            check(installed.is_file(), "unlocked results/6_final.gds installed")
     print("ALL test_eco PASSED")
     return 0
 
