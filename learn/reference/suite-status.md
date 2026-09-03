@@ -26,6 +26,61 @@ Legend:
 
 ---
 
+## What is missing, and why (plain language)
+
+Three different things get mixed in Studio. Only the last two are real leftovers.
+
+### 1. Studio red lights that are not missing work
+
+`GET /api/suite` is **35 / 46**. Several hooks look at
+`results/nangate45/gcd/learn/` (empty on this VM) instead of
+`gcd/flowlab/` where the real cook lives.
+
+| Looks broken in Studio | Reality |
+|---|---|
+| synth / pdn / finish / inspect / klayout_drc / pipelineReady 0 | ODBs and GDS are on disk under `flowlab/` |
+| dynamic_ir hook `ok=false` | Gold file is present and **LOCKED** at 45.298 mV; it has no `ok` field |
+| or-gui | DISPLAY is up; Qt targets also look at `learn/` |
+
+These are UI path bugs, not missing RTL→GDS.
+
+### 2. The only flow step that ran and failed: LVS
+
+KLayout compared the GDS transistors to the CDL schematic and printed
+`Netlists don't match`. That is why `signoff_all` is FAIL (timing,
+geometry, and power already pass).
+
+Root leftover after we filtered unused library cells (TBUF/TLAT flatten
+is now **0**):
+
+- Extracted cells expose extra well pins (`NWELL|VDD`, `PWELL`) that
+  the official CDL does not list as ports.
+- `FILLCELL_*` / `TAPCELL_*` CDL is pins-only (empty body). OpenROAD
+  `6_final.cdl` also omits fills. Layout still has them →
+  "Flatten layout cell (no schematic)".
+
+We do **not** write `.lvs.ok` on a black-box-only or filtered fake
+match. Deep LVS (`lvs_deep`) is the same FAIL, documented.
+
+### 3. Real GAPs — missing data or a tool we will not pretend to be
+
+| What you might expect | What we have | Why it stays missing |
+|---|---|---|
+| Foundry / Si2 **CCS liberty** on every Nangate cell | Official `typical.lib` is **NLDM** (delay/slew tables only). We re-characterized **9 combinational GCD cells** with PTM+ngspice (`output_current`). No DFF/MUX/AOI. | The 2008 CCS views are in the Si2 tarball (form), not the public ORFS drop. A PTM sidecar is not that file. |
+| **StarRC / Raphael** full-chip parasitics | OpenRCX SPEF (657 nets) + 2-wire FasterCap BEM | Those two are Synopsys commercial. No license → no fake SPEF. |
+| Board **S-parameter** (Touchstone `.sNp`) | Lumped VRM→board→pkg ladder in ngspice (droop 6.27 mV) | Public TUHH SI/PI decks are form-gated. Exporting the lump as `.sNp` would be a lie. |
+| **Magic + Netgen** LVS/extract on this GCD | KLayout DRC/LVS | `magic` / `netgen` are not in PATH here, and there is no verified FreePDK45 Magic `.tech`. |
+| **sky130** course | Nangate45 only | Different PDK. Mixing it into this course is forbidden. |
+| Tapeout **C4 bumps / RDL** | Dummy bump LEF + sidecar `rdl_route` (4 bumps, 36 wires) | Educational OpenROAD pad test, not a package foundry. |
+| **PrimeTime / Tempus / Voltus** | OpenSTA + PDNSim + Xyce N4 compact | We do not claim sign-off equivalence. |
+| Course **8/8** | **0/8** | Student pace. Do not stamp `.progress.json`. |
+| A new gold Dynamic IR | **45.298 mV** stays | current_run (~6.075) and chip PDN (28.3) are other meshes. Never restamp gold. |
+
+**WORKS\*** in the tables below means: the script ran and the number is
+real, but it is not the commercial / foundry object with the same name.
+
+---
+
 ## Course (Studio lessons)
 
 | Step | Status | Evidence | Leftover |
