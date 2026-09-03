@@ -80,7 +80,7 @@ function runCapture(
 
 export function inspectOdb(
   artifact: string,
-  variant = preferredResultsVariant(),
+  variant: string = preferredResultsVariant(),
 ): OdbStats | null {
   const abs = path.join(resultsDir(variant), artifact);
   if (!fs.existsSync(abs)) return null;
@@ -177,7 +177,7 @@ report_checks -format json -group_path_count 3 > /tmp/studio-sta-checks.json
 
 export function inspectYosys(
   verilogRel: string,
-  variant = preferredResultsVariant(),
+  variant: string = preferredResultsVariant(),
 ): YosysStat | null {
   const abs = path.join(resultsDir(variant), verilogRel);
   if (!fs.existsSync(abs)) return null;
@@ -203,7 +203,7 @@ export function inspectYosys(
 
 export function inspectStage(
   stage: string,
-  variant = preferredResultsVariant(),
+  variant: string = preferredResultsVariant(),
 ): StageInspect {
   const odbName = STAGE_PRIMARY_ODB[stage];
   const netlist = STAGE_NETLIST[stage] ?? null;

@@ -157,7 +157,7 @@ export function detectDisplay(): string | null {
   return null;
 }
 
-function absArtifact(name: string, variant = preferredResultsVariant()) {
+function absArtifact(name: string, variant: string = preferredResultsVariant()) {
   return path.join(resultsDir(variant), name);
 }
 
@@ -433,7 +433,7 @@ export function resolveOpenTarget(id: string): OpenTarget | null {
 
 export function resolveArtifactOpen(
   artifact: string,
-  variant = preferredResultsVariant(),
+  variant: string = preferredResultsVariant(),
 ): OpenTarget | null {
   const name = path.basename(artifact);
   const abs = absArtifact(name, variant);

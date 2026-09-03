@@ -90,7 +90,7 @@ export function stopViewer(): { ok: boolean; message: string } {
 
 export function startViewer(
   stage: string,
-  variant = preferredResultsVariant(),
+  variant: string = preferredResultsVariant(),
   opts?: { artifact?: string },
 ): {
   ok: boolean;
@@ -101,7 +101,7 @@ export function startViewer(
 } {
   const artifact = opts?.artifact ?? primaryArtifactForStage(stage);
   if (!artifact) {
-    return { ok: false, message: `stage sconosciuto: ${stage}` };
+    return { ok: false, message: `unknown stage: ${stage}` };
   }
   const abs = path.join(
     /*turbopackIgnore: true*/ resultsDir(variant),
