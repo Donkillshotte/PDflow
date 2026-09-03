@@ -117,8 +117,11 @@ cells).
 wells to VDD/VSS, `blank_circuit` on empty FILL/TAP. KLayout prints
 `CONGRATULATIONS! Netlists match`. `.lvs.ok` only on that line.
 DFF_X2 must-connect warnings (2) stay in the lvsdb. Flattening AND3
-closed the previous leftover; unpinning DFF_X breaks the match. The
-leftover is kept visible.
+closed the previous leftover; unpinning DFF_X breaks the match;
+flattening DFF after extract raised the count to 4 (NOR4). Flattening
+every used std-cell master before extract dropped the schematic
+hierarchy while layout cells remained, and KLayout printed
+`Netlists don't match`. The leftover is kept visible.
 
 **Verdict**: closed as educational compare on this GCD. Not foundry LVS.
 

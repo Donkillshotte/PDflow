@@ -50,8 +50,9 @@ Leftovers that stay visible:
 - VIA_* routing cells have no schematic and still flatten (expected).
 - lvsdb still lists must-connect on DFF_X2 well ties (2 warnings).
   Flattening XNOR2/MUX2/NAND3-4/OAI22/AND3 moved the leftover.
-  Unpinning DFF_X breaks the match; flattening it raised the count to 4.
-  Warnings, not a substitute for the compare line.
+  Unpinning DFF_X breaks the match; flattening it after extract raised
+  the count to 4. Flattening every used std-cell master before extract
+  failed the compare. Warnings, not a substitute for the compare line.
 
 ### 3. Real GAPs — missing data or a tool we will not pretend to be
 
@@ -124,7 +125,7 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | DRC (route + GDS) | **WORKS** | 0 route lines · 0 GDS items | — |
 | LVS (KLayout) | **WORKS*** | Compare match on filtered CDL | FILL/TAP abstract. VIA flatten. DFF_X2 must-connect 2 |
 | LVS deep (filter + VTL) | **WORKS*** | same compare path | Black-box is labeled separately |
-| ECO | **WORKS*** | propose on flowlab; apply refused | Does not run `signoff_all` |
+| ECO | **WORKS*** | propose on flowlab; apply/close on eco_scratch | Does not skip `signoff_all` |
 | Power signoff | **WORKS*** | Chip static **1.05 mV** · sys droop **6.03 mV** | Lumped board, not S-parameter |
 | `signoff_all` | **WORKS** | four pillars from their JSON | DSE never calls this script |
 
@@ -276,7 +277,7 @@ ORFS pipeline UI follows `preferredResultsVariant()` (`flowlab` here).
 | Leftover | Why it stays |
 |---|---|
 | Course **0/8** | Student work |
-| DFF_X2 must-connect (2) | Nangate split wells; unpin breaks match; flatten raised count |
+| DFF_X2 must-connect (2) | Nangate split wells; unpin or flatten-all-before-extract breaks match; flatten-after-extract raised count |
 | Official Nangate CCS | `typical.lib` is NLDM |
 | CCS on DFF / MUX | Sequential / multi-arc not validated · AOI21/OAI21 combo shipped |
 | Board S-parameter | TUHH zip is form-gated |

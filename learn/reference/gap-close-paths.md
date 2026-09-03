@@ -137,8 +137,9 @@ only on that line.
 Leftovers: FILL/TAP are `blank_circuit` (empty Nangate CDL, no invented
 devices). VIA_* have no schematic and still flatten. lvsdb lists
 DFF_X2 must-connect (2). Unpinning DFF_X breaks the match; flattening
-it raised the count. Do not hide those. Do not stamp `.lvs.ok` without
-the match line.
+it after extract raised the count. Flattening every used std-cell
+master before extract failed the compare (layout-only cells at align).
+Do not hide those. Do not stamp `.lvs.ok` without the match line.
 
 ---
 
