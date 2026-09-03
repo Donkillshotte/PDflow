@@ -21,10 +21,22 @@ type EcoReport = {
   rewrote?: string[];
 };
 
+type CloseReport = {
+  ok?: boolean;
+  summary?: string;
+  pillars?: Record<string, { ok?: boolean; summary?: string }>;
+};
+
+function stepState(ok: boolean | undefined, present: boolean): "ok" | "wait" | "fail" {
+  if (!present) return "wait";
+  if (ok) return "ok";
+  return "fail";
+}
+
 export function EcoPanel() {
   const [report, setReport] = useState<EcoReport | null>(null);
   const [apply, setApply] = useState<EcoReport | null>(null);
-  const [close, setClose] = useState<EcoReport | null>(null);
+  const [close, setClose] = useState<CloseReport | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -45,38 +57,59 @@ export function EcoPanel() {
     void load();
   }, [load]);
 
+  const closePillars = close?.pillars
+    ? Object.entries(close.pillars)
+        .map(([name, pillar]) => `${name}:${pillar.ok ? "ok" : "fail"}`)
+        .join(" · ")
+    : "";
+
   return (
-    <section className="fl-dynir" id="eco" aria-label="ECO propose">
+    <section className="fl-dynir" id="eco" aria-label="ECO loop">
       <header className="fl-dynir-head">
-        <strong>ECO</strong>
+        <strong>ECO loop</strong>
         <p>
-          Post-finish timing repair plan. Apply is refused on locked variants.
-          Unlocked apply writes finish artifacts on a copy (ODB, DEF,
-          verilog, CDL, GDS). Does not replace <code>signoff_all</code>.
+          Propose on the locked finish. Apply writes artifacts only on an
+          unlocked copy. Close is <code>signoff_all</code> on that copy —
+          ECO never skips it.
         </p>
       </header>
-      {report ? (
-        <p className="fl-dynir-summary">
-          {report.summary ?? report.mode} · signoff claim: {report.signoff ? "yes (bug)" : "no"}
-          {report.signoff_required ? ` · next ${report.signoff_required}` : ""}
-        </p>
-      ) : (
-        <p className="fl-dynir-empty">No ECO report yet. Run the eco action after finish.</p>
-      )}
+      <ol className="fl-eco-loop" aria-label="ECO propose, apply, close">
+        <li data-state={stepState(report?.ok, Boolean(report))}>
+          <span>1 · Propose</span>
+          <b>{report ? (report.summary ?? "propose") : "no propose report yet"}</b>
+          <em>
+            flowlab · locked
+            {report
+              ? report.signoff
+                ? " · claims signoff (bug)"
+                : " · does not claim signoff"
+              : ""}
+            {report?.signoff_required ? ` · next ${report.signoff_required}` : ""}
+          </em>
+        </li>
+        <li data-state={stepState(apply?.ok, Boolean(apply))}>
+          <span>2 · Apply on copy</span>
+          <b>{apply ? (apply.summary ?? "apply") : "no apply on eco_scratch yet"}</b>
+          <em>
+            eco_scratch · refused on flowlab/learn/base
+            {apply?.signoff ? " · claims signoff (bug)" : " · does not claim signoff"}
+            {apply?.rewrote?.length ? ` · wrote ${apply.rewrote.join("+")}` : ""}
+          </em>
+        </li>
+        <li data-state={stepState(close?.ok, Boolean(close))}>
+          <span>3 · Close on copy</span>
+          <b>
+            {close
+              ? `${close.summary ?? "signoff_all"}${close.ok ? " · ok" : " · not ok"}`
+              : "signoff_all not run on eco_scratch"}
+          </b>
+          <em>
+            FLOW_VARIANT=eco_scratch ./learn/scripts/run_signoff_all.sh
+            {closePillars ? ` · ${closePillars}` : ""}
+          </em>
+        </li>
+      </ol>
       {report?.error ? <p className="fl-dynir-empty">{report.error}</p> : null}
-      {apply ? (
-        <p className="fl-dynir-summary">
-          Apply ({apply.mode ?? "apply"}): {apply.summary ?? "—"}
-          {apply.signoff ? " · claims signoff (bug)" : " · does not claim signoff"}
-          {apply.rewrote?.length ? ` · wrote ${apply.rewrote.join("+")}` : ""}
-        </p>
-      ) : null}
-      {close ? (
-        <p className="fl-dynir-summary">
-          Close on copy: {close.summary ?? "signoff_all"}
-          {close.ok ? " · ok" : " · not ok"}
-        </p>
-      ) : null}
       {report?.proposed?.length ? (
         <ul className="lb-chips" aria-label="Proposed ECO steps">
           {report.proposed.map((step, i) => (

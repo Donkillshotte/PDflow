@@ -2305,6 +2305,46 @@ button.pipeline-node {
   font-family: var(--font-mono);
   font-size: 0.82rem;
 }
+.fl-eco-loop {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fl-eco-loop li {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--fl-border);
+  background: rgba(11, 18, 32, 0.55);
+}
+.fl-eco-loop li[data-state="ok"] {
+  border-color: rgba(74, 222, 128, 0.45);
+}
+.fl-eco-loop li[data-state="fail"] {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+.fl-eco-loop li[data-state="wait"] {
+  border-color: rgba(250, 204, 21, 0.35);
+}
+.fl-eco-loop li span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fl-muted);
+}
+.fl-eco-loop li b {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.fl-eco-loop li em {
+  font-style: normal;
+  font-size: 0.74rem;
+  font-family: var(--font-mono);
+  color: var(--fl-muted);
+}
 .fl-dynir-table {
   width: 100%;
   border-collapse: collapse;
