@@ -128,8 +128,8 @@ out = {
   "must_connect": (artifact_parse.get("lvsdb") or {}).get("must_connect", 0),
   "educational_note": (
       "KLayout compare on filtered CDL + DEF fillers + well→VDD/VSS. "
-      "Must-connect warnings on XNOR2 well ties are recorded, not hidden. "
-      "FILL/TAP CDL bodies are empty so those cells still flatten."
+      "FILL/TAP/VIA are blank_circuit (empty Nangate CDL, no invented devices). "
+      "XNOR2 is flattened so well ties join on gcd."
   ),
   "summary": f"LVS {'PASS' if eq['lvs_pass'] else 'FAIL'} · errors {eq['lvs_errors']}",
   "artifacts": {"lvsdb": "${LVSDB}", "log": "${LOG}"},

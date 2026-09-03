@@ -43,6 +43,11 @@ else
    schematic(RBA::CellView::active.filename.sub(/\.(oas|gds|oas.gz|gds.gz)$/, ".sp"))
 end
 
+# Mark empty Nangate FILL/TAP as abstract before extract so align does
+# not flatten them as "layout cell (no schematic)".
+schematic.blank_circuit("FILLCELL*")
+schematic.blank_circuit("TAPCELL*")
+
 # Legacy batch comment: klayout -b -rd input=... -rd report=... -rd schematic=...
 
 # true: use net names instead of numbers
@@ -229,7 +234,10 @@ for pat in %w(pnand*_0 and2_dec_0 port_address* replica_bitcell_array)
   connect_explicit(pat, [ "BULK", "PWELL", "gnd" ])
 end
   
-for pat in %w(XOR* XNOR* TLAT* TINV* TBUF* SDFF* OR* OAI*  NOR* NAND* MUX* LOGIC* INV* HA* FILLCELL*
+# XNOR2_* is flattened after extract (split well islands vs CDL).
+# connect_explicit(XNOR*, [NWELL, VDD]) recorded must-connect during
+# extract; flatten after extract does not erase those warnings.
+for pat in %w(XOR* TLAT* TINV* TBUF* SDFF* OR* OAI*  NOR* NAND* MUX* LOGIC* INV* HA* FILLCELL*
               FA* DLL* DLH* DFF* DFFS* DFFR* DFFRS* CLKGATE*  CLKBUF* BUF* AOI* ANTENNA* AND*)
   connect_explicit(pat, [ "NWELL", "VDD" ])
   connect_explicit(pat, [ "BULK", "VSS" ])
@@ -496,10 +504,8 @@ connect_implicit("TINV_X1" , "VDD")
 connect_implicit("TINV_X1" , "VSS")
 connect_implicit("TLAT_X1" , "VDD")
 connect_implicit("TLAT_X1" , "VSS")
-connect_implicit("XNOR2_X1" , "VDD")
-connect_implicit("XNOR2_X1" , "VSS")
-connect_implicit("XNOR2_X2" , "VDD")
-connect_implicit("XNOR2_X2" , "VSS")
+# XNOR2 well islands are joined by connect_global + flatten_circuit below.
+# connect_implicit here was the source of must-connect warnings at top.
 connect_implicit("XOR2_X1" , "VDD")
 connect_implicit("XOR2_X1" , "VSS")
 connect_implicit("XOR2_X2" , "VDD")
