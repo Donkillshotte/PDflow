@@ -33,18 +33,61 @@ sys_ok = sys.get("ok")
 if sys_ok is None and sys.get("summary"):
     sys_ok = True
 
+rdl_executed = bool((rdl.get("rdl") or {}).get("executed"))
+# Never treat "API documented" / GDS present as an RDL pass.
+rdl_ok = bool(rdl.get("ok")) and rdl_executed
+rdl_status = rdl.get("status") or ("GAP" if not rdl_executed else None)
+
 steps = {
-  "pkg_bump": {"ok": bump.get("ok"), "summary": bump.get("summary")},
-  "pkg_rdl": {"ok": rdl.get("ok"), "summary": rdl.get("summary")},
-  "system_pdn": {"ok": sys_ok, "summary": sys.get("summary")},
+  "pkg_bump": {"ok": bump.get("ok") is True, "summary": bump.get("summary")},
+  "pkg_rdl": {
+    "ok": rdl_ok,
+    "status": rdl_status,
+    "summary": rdl.get("summary"),
+  },
+  "system_pdn": {"ok": bool(sys_ok), "summary": sys.get("summary")},
 }
-all_ok = all(s.get("ok") for s in steps.values() if s.get("ok") is not None)
+# Executable pieces: bump mesh + system PDN. RDL stays a labeled GAP on Nangate GCD.
+executable_ok = bool(steps["pkg_bump"]["ok"]) and bool(steps["system_pdn"]["ok"])
+rdl_label = "GAP" if not rdl_executed else ("ok" if rdl_ok else "fail")
 out = {
   "kind": "pkg_signoff",
   "variant": v,
+  "status": "proxy",
   "steps": steps,
-  "ok": all_ok,
-  "summary": " · ".join(f"{k}:{'ok' if s.get('ok') else 'fail'}" for k, s in steps.items()),
+  "evaluation": {
+    "checks": [
+      {
+        "id": "pkg_bump",
+        "label": "Bump mesh + package config",
+        "actual": steps["pkg_bump"]["ok"],
+        "target": True,
+        "ok": steps["pkg_bump"]["ok"],
+      },
+      {
+        "id": "pkg_rdl",
+        "label": "RDL routing",
+        "actual": rdl_executed,
+        "target": True,
+        "ok": rdl_ok,
+        "note": "GAP: rdl_route not executed (no bump LEF on Nangate GCD)",
+      },
+      {
+        "id": "system_pdn",
+        "label": "System PDN",
+        "actual": steps["system_pdn"]["ok"],
+        "target": True,
+        "ok": steps["system_pdn"]["ok"],
+      },
+    ],
+    "ok": executable_ok,
+  },
+  "ok": executable_ok,
+  "summary": (
+      f"bump:{'ok' if steps['pkg_bump']['ok'] else 'fail'} · "
+      f"rdl:{rdl_label} · "
+      f"system_pdn:{'ok' if steps['system_pdn']['ok'] else 'fail'}"
+  ),
 }
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 print("PKG_SIGNOFF_JSON", "${OUT}")

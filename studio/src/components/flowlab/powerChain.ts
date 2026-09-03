@@ -182,7 +182,7 @@ export const SPICE_ANALYSES = [
     label: "Thermal proxy",
     produces: ["thermal_signoff_*.json"],
     spice: "IR+droop hotspot proxy",
-    doc: "/materials/reference/signoff-matrix.md#phase-2-planned-in-registry",
+    doc: "/materials/reference/signoff-matrix.md#phase-2-proxy",
     action: "thermal_signoff",
   },
   {

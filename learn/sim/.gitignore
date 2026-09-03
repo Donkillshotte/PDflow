@@ -12,6 +12,12 @@ reports/*
 !reports/pdn_chip_ir_flowlab.json
 !reports/system_pdn_flowlab.json
 !reports/thermal_signoff_flowlab.json
+!reports/dynamic_ir_flowlab.json
+!reports/sta_ir_aware_flowlab.json
+!reports/pkg_bump_flowlab.json
+!reports/pkg_rdl_flowlab.json
+!reports/pkg_signoff_flowlab.json
+!reports/signoff_phase2_flowlab.json
 reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/

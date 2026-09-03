@@ -1,0 +1,28 @@
+{
+  "worst_droop_mv": 45.298,
+  "gold": true,
+  "extract": "finish",
+  "note": "historical reference_run sentinel 45.298 \u2014 not current_run 6.075, not a restamp",
+  "hotspot": {
+    "node": "ITermNode_metal1_1_2",
+    "droop_mv": 45.298,
+    "x_dbu": 70896.0,
+    "y_dbu": 39429.0,
+    "contributors": {
+      "seq_frac": 0.02,
+      "combo_frac": 0.98
+    },
+    "timing": {
+      "path_slack_ns": 0.04
+    }
+  },
+  "activity_model": {
+    "sta": {
+      "worst_path": {
+        "startpoint": "dpath.a_reg.out[5]$_DFFE_PP_",
+        "endpoint": "dpath.a_reg.out[7]$_DFFE_PP_",
+        "slack_ns": 0.04353
+      }
+    }
+  }
+}

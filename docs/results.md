@@ -65,3 +65,9 @@ Four pillars materialized on the existing finish (no `make finish`).
 STA / DRC / power evaluate ok. KLayout LVS **ran** and reports
 `Netlists don't match` — recorded as fail, not foundry sign-off.
 Physics ledger: 28/30 READY, 2 WATCH (ibex/aes ORFS IR), 0 GAP.
+
+Phase 2 (thermal proxy + PKG) is materialized on the same finish.
+Bump mesh and system PDN evaluate. `rdl_route` stays a labeled GAP
+(no bump LEF on Nangate GCD) — not a mock pass. Gold Dynamic IR
+`learn/sim/reports/dynamic_ir_flowlab.json` is tracked and still
+`gold: true` / 45.298 mV.

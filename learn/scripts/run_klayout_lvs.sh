@@ -121,5 +121,9 @@ print("LVS_SIGNOFF_JSON", "${OUT}")
 print(out["summary"])
 PY
 
-date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
+if [[ "${LVS_PASS}" == "true" ]]; then
+  date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
+else
+  rm -f "${STAMP}"
+fi
 echo "LVS_SIGNOFF_DONE ${VARIANT}"

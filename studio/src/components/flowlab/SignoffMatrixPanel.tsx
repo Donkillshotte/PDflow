@@ -27,7 +27,7 @@ type ArtifactParse = {
   samples?: { category: string; detail: string }[];
   categories?: string[];
   lvsdb?: { exists?: boolean; errors?: number; messages?: string[] };
-  log?: { exists?: boolean; tail?: string[]; missing_lylvs?: boolean };
+  log?: { exists?: boolean; tail?: string[]; missing_lylvs?: boolean; netlists_match?: boolean };
 };
 
 type PillarRow = {
@@ -103,7 +103,10 @@ function ArtifactDetails({ pillarId, parse }: { pillarId: string; parse?: Artifa
         <strong>LVS report</strong>
         <p>
           {lvs.exists ? (
-            <>Errors: {lvs.errors ?? 0}</>
+            <>
+              Errors: {lvs.errors ?? 0}
+              {log?.netlists_match === false && <> · netlists don&apos;t match</>}
+            </>
           ) : (
             <>Missing .lvsdb file</>
           )}
@@ -268,21 +271,54 @@ export function SignoffMatrixPanel({
 
       {data?.plannedPillars && data.plannedPillars.length > 0 && (
         <div className="sig-planned">
-          <strong>Phase 2 (proxy / planned)</strong>
+          <strong>Phase 2 (proxy)</strong>
           <ul className="sig-pillar-list">
             {data.plannedPillars.map((p) => {
               const eval_ = p.reportEval;
               const ok = eval_?.ok;
               const action = p.orchestratorAction;
               const canRun = action === "thermal_signoff" || action === "pkg_signoff";
+              const checks = eval_?.checks ?? [];
+              const isOpen = expanded === p.id;
               return (
                 <li key={p.id} className={ok === true ? "sig-row-ok" : ok === false ? "sig-row-fail" : ""}>
                   <StatusIcon ok={Boolean(ok)} pending={!eval_} />
                   <div className="sig-row-body">
                     <strong>
-                      <span className="sig-planned-badge">{p.status ?? "planned"}</span> {p.label}
+                      <span className="sig-planned-badge">{p.status ?? "proxy"}</span> {p.label}
                     </strong>
                     <small>{eval_?.summary ?? p.description}</small>
+                    {checks.length > 0 && (
+                      <button
+                        type="button"
+                        className="sig-expand-btn"
+                        onClick={() => setExpanded(isOpen ? null : p.id)}
+                      >
+                        {isOpen ? "Hide details" : "Metrics"}
+                      </button>
+                    )}
+                    {isOpen && checks.length > 0 && (
+                      <table className="sig-check-table">
+                        <thead>
+                          <tr>
+                            <th>Check</th>
+                            <th>Actual</th>
+                            <th>Target</th>
+                            <th />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {checks.map((c) => (
+                            <tr key={c.id} className={c.ok ? "sig-check-ok" : "sig-check-fail"}>
+                              <td>{c.label}</td>
+                              <td>{fmtVal(c.actual)}</td>
+                              <td>{fmtVal(c.target)}</td>
+                              <td>{c.ok ? "✓" : "✗"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                   {onRun && canRun && (
                     <button

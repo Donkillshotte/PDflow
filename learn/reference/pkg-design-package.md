@@ -59,10 +59,11 @@ Course template: [final-project-template.md](../workbook/final-project-template.
 
 ## Honest limits on Nangate45 GCD
 
-- No bump/RDL LEF in the tutorial platform
+- No bump/RDL LEF in the tutorial platform. `run_pkg_rdl.sh` records **GAP**
+  (`ok: false`, `rdl.executed: false`). GDS on disk is not an RDL pass.
 - System PDN = educational *lumped* ladder (not board S-parameter)
 - `source_type BUMPS` (chip IR) uses a synthetic OpenROAD **pattern** (PSM-0073)
-- Thermal / full-wave board SI not installed in VM
+- Thermal / full-wave board SI not installed in VM (thermal pillar is an IR+droop **proxy**)
 
 For a real packaging lab you need an ORFS design with bump LEF or a
 vendor flow — outside the scope of required courses 00–07.

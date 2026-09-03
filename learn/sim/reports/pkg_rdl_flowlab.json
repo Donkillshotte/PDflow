@@ -1,0 +1,42 @@
+{
+  "kind": "pkg_rdl",
+  "variant": "flowlab",
+  "status": "GAP",
+  "rdl": {
+    "api": "rdl_route",
+    "executed": false,
+    "gds_present": true,
+    "platform_bump_lef": false
+  },
+  "evaluation": {
+    "checks": [
+      {
+        "id": "rdl_executed",
+        "label": "rdl_route executed",
+        "actual": false,
+        "target": true,
+        "ok": false,
+        "note": "Nangate45 GCD has no bump/pad LEF; rdl_route is not run"
+      },
+      {
+        "id": "platform_bump_lef",
+        "label": "Platform bump LEF",
+        "actual": false,
+        "target": true,
+        "ok": false
+      },
+      {
+        "id": "gds_for_future_rdl",
+        "label": "GDS present (prerequisite for an RDL lab)",
+        "actual": true,
+        "target": true,
+        "ok": true,
+        "note": "Prerequisite only \u2014 does not make RDL pass"
+      }
+    ],
+    "ok": false
+  },
+  "ok": false,
+  "educational_note": "rdl_route not executed on GCD. GAP, not a mock pass. See pkg-design-package.md.",
+  "summary": "RDL GAP \u00b7 rdl_route not executed \u00b7 bump LEF=N/A \u00b7 GDS=ok"
+}

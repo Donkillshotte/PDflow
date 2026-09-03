@@ -1,0 +1,39 @@
+{
+  "kind": "pkg_bump",
+  "variant": "flowlab",
+  "package": {
+    "n_bumps": 14,
+    "r_bump": 0.005,
+    "l_bump": 5e-11,
+    "r_pkg": 0.04,
+    "l_pkg": 3e-10
+  },
+  "mesh": {
+    "path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
+    "v_sources": 15,
+    "r_elements": 5816
+  },
+  "evaluation": {
+    "checks": [
+      {
+        "id": "n_bumps",
+        "label": "Package bump count (config)",
+        "actual": 14,
+        "target": 1,
+        "ok": true
+      },
+      {
+        "id": "mesh_spice",
+        "label": "Chip mesh SPICE (write_pg_spice)",
+        "actual": true,
+        "target": true,
+        "ok": true,
+        "note": "Run chip_pdn_ir after finish if mesh missing"
+      }
+    ],
+    "ok": true
+  },
+  "ok": true,
+  "educational_note": "GCD has synthetic BUMPS pattern (PSM-0073), not tapeout bump LEF",
+  "summary": "Bumps 14 \u00b7 mesh V=15 R=5816"
+}

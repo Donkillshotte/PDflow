@@ -188,7 +188,7 @@ const PHASE2_ACTIONS: SignoffAction[] = [
   {
     id: "pkg_rdl",
     label: "PKG RDL (edu)",
-    hint: "rdl_route API map · no bump LEF on GCD",
+    hint: "rdl_route GAP · no bump LEF on GCD",
     icon: Package,
     long: false,
   },

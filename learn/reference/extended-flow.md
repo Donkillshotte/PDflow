@@ -248,7 +248,7 @@ Power map proxy already available: IR heatmap + `report_power` (activity script)
 | `signoff_all` | Four-pillar orchestrator (+ optional Phase 2: `SIGNOFF_INCLUDE_PHASE2=1`) |
 | `signoff_phase2` | Thermal proxy + PKG orchestrator |
 | `thermal_signoff` | IR+droop hotspot proxy |
-| `pkg_signoff` | Bump + educational RDL + system PDN |
+| `pkg_signoff` | Bump + system PDN; RDL is GAP on Nangate GCD |
 | `/api/signoff` | Signoff matrix + gate |
 | `/api/inspect` | ODB / STA / Yosys (+ hook notes) |
 | `/api/viewer` | OpenROAD `-web` |

@@ -160,8 +160,8 @@ export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
   {
     id: "pkg",
     label: "Packaging (bump/RDL)",
-    description: "assign_io_bump · rdl_route · System PDN profondo",
-    status: "planned",
+    description: "Bump mesh + system PDN. rdl_route is GAP on Nangate GCD (no bump LEF).",
+    status: "proxy",
     orchestratorAction: "pkg_signoff",
     checks: [
       {
@@ -345,6 +345,49 @@ function readJsonReport(abs: string): Record<string, unknown> | null {
   }
 }
 
+function evaluateCheckGate(
+  check: SignoffCheckDef,
+  pillar: SignoffPillarId,
+  variant: string,
+): SignoffGate {
+  const rel = check.reportRel.replace("{variant}", variant);
+  const abs = path.join(LEARN_ROOT, rel);
+  const exists = fs.existsSync(abs);
+  const report = exists ? readJsonReport(abs) : null;
+  let stampOk = true;
+  if (check.stampRel) {
+    stampOk = fs.existsSync(path.join(resultsDir(variant), check.stampRel));
+  }
+  if (report && typeof report.ok === "boolean") {
+    return {
+      id: `${pillar}_${check.id}`,
+      pillar,
+      label: check.label,
+      ok: report.ok === true,
+      detail: String(report.summary ?? rel),
+      action: check.action,
+    };
+  }
+  if (check.stampRel) {
+    return {
+      id: `${pillar}_${check.id}`,
+      pillar,
+      label: check.label,
+      ok: stampOk,
+      detail: stampOk ? rel : `missing stamp ${check.stampRel}`,
+      action: check.action,
+    };
+  }
+  return {
+    id: `${pillar}_${check.id}`,
+    pillar,
+    label: check.label,
+    ok: exists,
+    detail: exists ? rel : "artifact missing",
+    action: check.action,
+  };
+}
+
 export function evaluateSignoffGates(variant = "flowlab"): {
   ok: boolean;
   gates: SignoffGate[];
@@ -382,25 +425,7 @@ export function evaluateSignoffGates(variant = "flowlab"): {
     });
 
     for (const check of pillar.checks) {
-      const rel = check.reportRel.replace("{variant}", variant);
-      const abs = path.join(LEARN_ROOT, rel);
-      const exists = fs.existsSync(abs);
-      let stampOk = true;
-      if (check.stampRel) {
-        stampOk = fs.existsSync(path.join(resultsDir(variant), check.stampRel));
-      }
-      gates.push({
-        id: `${pillar.id}_${check.id}`,
-        pillar: pillar.id,
-        label: check.label,
-        ok: exists && stampOk,
-        detail: exists
-          ? stampOk
-            ? rel
-            : `missing stamp ${check.stampRel}`
-          : "artifact missing",
-        action: check.action,
-      });
+      gates.push(evaluateCheckGate(check, pillar.id, variant));
     }
   }
 
@@ -434,6 +459,9 @@ export function evaluateSignoffGates(variant = "flowlab"): {
         : "report missing — run signoff Phase 2",
       action: pillar.orchestratorAction,
     });
+    for (const check of pillar.checks) {
+      gates.push(evaluateCheckGate(check, pillar.id, variant));
+    }
   }
 
   const ph2Report = readJsonReport(

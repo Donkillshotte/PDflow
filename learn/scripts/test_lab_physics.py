@@ -72,6 +72,11 @@ def main() -> int:
         check(blob.get("ok") is False, "KLayout netlist mismatch is LVS fail, not a fake pass")
         tail = ((blob.get("artifact_parse") or {}).get("log") or {}).get("tail") or []
         check(any("Netlists don't match" in str(x) for x in tail), "LVS report keeps the KLayout mismatch line")
+    pkg_rdl = reports / "pkg_rdl_flowlab.json"
+    if pkg_rdl.is_file():
+        blob = json.loads(pkg_rdl.read_text())
+        check(blob.get("ok") is False, "pkg_rdl is GAP, not a mock pass")
+        check((blob.get("rdl") or {}).get("executed") is False, "rdl_route stayed unexecuted")
     import tempfile
     from parse_signoff_artifacts import parse_lvs_log
 

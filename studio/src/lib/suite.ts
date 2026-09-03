@@ -30,10 +30,6 @@ function which(bin: string) {
   }
 }
 
-function signoffReportOk(variant: string, name: string) {
-  return fs.existsSync(path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.json`));
-}
-
 function signoffReportPass(variant: string, name: string) {
   const p = path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.json`);
   if (!fs.existsSync(p)) return false;
@@ -78,7 +74,7 @@ export async function getSuiteStatus() {
     {
       id: "toolchain",
       label: "Toolchain core",
-      group: "Ambiente",
+      group: "Environment",
       ok: tools.tools.filter((t) => ["openroad", "yosys", "sta", "klayout"].includes(t.name)).every((t) => t.ok) && tools.orfs,
       detail: tools.tools.map((t) => `${t.name}:${t.ok ? "ok" : "no"}`).join(" · "),
       href: "/tools",
@@ -86,17 +82,17 @@ export async function getSuiteStatus() {
     {
       id: "magic_netgen",
       label: "Magic / Netgen",
-      group: "Ambiente",
+      group: "Environment",
       ok: which("magic") && (which("netgen") || which("netgen-lvs")),
       detail: which("magic")
-        ? "present · LVS Nangate resta KLayout (no FreePDK45 .tech)"
+        ? "present · Nangate LVS stays on KLayout (no FreePDK45 .tech)"
         : "apt install magic netgen-lvs",
       action: "layout_tools",
     },
     {
       id: "ngspice",
       label: "ngspice (System PDN)",
-      group: "Ambiente",
+      group: "Environment",
       ok: which("ngspice"),
       detail: which("ngspice") ? "ngspice present · Xyce GAP" : "apt install ngspice",
       action: "system_pdn",
@@ -104,7 +100,7 @@ export async function getSuiteStatus() {
     {
       id: "iverilog",
       label: "Icarus (RTL sim)",
-      group: "Ambiente",
+      group: "Environment",
       ok: which("iverilog"),
       detail: which("iverilog") ? "iverilog present" : "install iverilog",
       action: "rtl_sim",
@@ -112,7 +108,7 @@ export async function getSuiteStatus() {
     {
       id: "display",
       label: "DISPLAY / Desktop",
-      group: "Ambiente",
+      group: "Environment",
       ok: Boolean(display),
       detail: display ? `DISPLAY ${display}` : "open Desktop on cursor.com/agents",
     },
@@ -191,7 +187,7 @@ export async function getSuiteStatus() {
       ok:
         powerReportOk("flowlab", "activity_power") ||
         powerReportOk("learn", "activity_power"),
-      detail: "VCD se rtl_sim · report_power → I_avg System PDN",
+      detail: "VCD if rtl_sim · report_power → I_avg System PDN",
       action: "activity_power",
       href: "/tools?tab=run&action=activity_power",
     },
@@ -307,11 +303,8 @@ export async function getSuiteStatus() {
       id: "lvs_signoff",
       label: "LVS signoff",
       group: "Signoff",
-      ok:
-        signoffReportOk("flowlab", "lvs_signoff") ||
-        signoffReportOk("learn", "lvs_signoff") ||
-        fs.existsSync(path.join(resultsDir("flowlab"), ".lvs.ok")),
-      detail: "ORFS make lvs · educational PASS optional",
+      ok: signoffReportPass("flowlab", "lvs_signoff") || signoffReportPass("learn", "lvs_signoff"),
+      detail: "KLayout netlist match · FreePDK45 GCD may FAIL",
       action: "klayout_lvs",
       href: "/flow?phase=finish",
     },
@@ -337,7 +330,7 @@ export async function getSuiteStatus() {
       id: "thermal_signoff",
       label: "Thermal proxy",
       group: "Signoff",
-      ok: signoffReportOk("flowlab", "thermal_signoff") || signoffReportOk("learn", "thermal_signoff"),
+      ok: signoffReportPass("flowlab", "thermal_signoff") || signoffReportPass("learn", "thermal_signoff"),
       detail: "IR+droop proxy · run_thermal_signoff.sh",
       action: "thermal_signoff",
       href: "/pkg",
@@ -347,7 +340,7 @@ export async function getSuiteStatus() {
       label: "PKG signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "pkg_signoff") || signoffReportPass("learn", "pkg_signoff"),
-      detail: "Bump + RDL edu + system PDN",
+      detail: "Bump + system PDN · RDL is GAP on Nangate GCD",
       action: "pkg_signoff",
       href: "/pkg",
     },

@@ -17,42 +17,55 @@ import json
 from pathlib import Path
 
 has_gds = "${HAS_GDS}" == "true"
-# Educational: rdl_route requires bump/pad LEF — not in nangate45 GCD tutorial
-api_ready = True
+# Honest GAP: rdl_route needs bump/pad LEF — Nangate45 GCD tutorial has none.
+# Documented API is not a pass. Do not set ok true because GDS exists.
 rdl_executed = False
+has_bump_lef = False
 
 out = {
   "kind": "pkg_rdl",
   "variant": "${VARIANT}",
+  "status": "GAP",
   "rdl": {
     "api": "rdl_route",
     "executed": rdl_executed,
     "gds_present": has_gds,
-    "platform_bump_lef": False,
+    "platform_bump_lef": has_bump_lef,
   },
   "evaluation": {
     "checks": [
       {
-        "id": "api_documented",
-        "label": "RDL API documented (pkg-design-package)",
-        "actual": api_ready,
+        "id": "rdl_executed",
+        "label": "rdl_route executed",
+        "actual": rdl_executed,
         "target": True,
-        "ok": api_ready,
+        "ok": False,
+        "note": "Nangate45 GCD has no bump/pad LEF; rdl_route is not run",
+      },
+      {
+        "id": "platform_bump_lef",
+        "label": "Platform bump LEF",
+        "actual": has_bump_lef,
+        "target": True,
+        "ok": False,
       },
       {
         "id": "gds_for_future_rdl",
-        "label": "GDS present (prerequisite for RDL lab)",
+        "label": "GDS present (prerequisite for an RDL lab)",
         "actual": has_gds,
         "target": True,
         "ok": has_gds,
-        "note": "Real rdl_route needs bump LEF design",
+        "note": "Prerequisite only — does not make RDL pass",
       },
     ],
-    "ok": api_ready and has_gds,
+    "ok": False,
   },
-  "ok": api_ready and has_gds,
-  "educational_note": "rdl_route not run on GCD — value is process map for packaging labs",
-  "summary": f"RDL educational · GDS={'ok' if has_gds else 'missing'} · bump LEF=N/A",
+  "ok": False,
+  "educational_note": "rdl_route not executed on GCD. GAP, not a mock pass. See pkg-design-package.md.",
+  "summary": (
+      f"RDL GAP · rdl_route not executed · bump LEF=N/A · "
+      f"GDS={'ok' if has_gds else 'missing'}"
+  ),
 }
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 print("PKG_RDL_JSON", "${OUT}")

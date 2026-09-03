@@ -1,0 +1,49 @@
+{
+  "kind": "pkg_signoff",
+  "variant": "flowlab",
+  "status": "proxy",
+  "steps": {
+    "pkg_bump": {
+      "ok": true,
+      "summary": "Bumps 14 \u00b7 mesh V=15 R=5816"
+    },
+    "pkg_rdl": {
+      "ok": false,
+      "status": "GAP",
+      "summary": "RDL GAP \u00b7 rdl_route not executed \u00b7 bump LEF=N/A \u00b7 GDS=ok"
+    },
+    "system_pdn": {
+      "ok": true,
+      "summary": "System PDN \u00b7 die droop 6.27 mV (0.57%) \u00b7 Zmax 9058.36 m\u03a9 @ 2.239e+08 Hz \u00b7 Iavg 2.082 mA"
+    }
+  },
+  "evaluation": {
+    "checks": [
+      {
+        "id": "pkg_bump",
+        "label": "Bump mesh + package config",
+        "actual": true,
+        "target": true,
+        "ok": true
+      },
+      {
+        "id": "pkg_rdl",
+        "label": "RDL routing",
+        "actual": false,
+        "target": true,
+        "ok": false,
+        "note": "GAP: rdl_route not executed (no bump LEF on Nangate GCD)"
+      },
+      {
+        "id": "system_pdn",
+        "label": "System PDN",
+        "actual": true,
+        "target": true,
+        "ok": true
+      }
+    ],
+    "ok": true
+  },
+  "ok": true,
+  "summary": "bump:ok \u00b7 rdl:GAP \u00b7 system_pdn:ok"
+}

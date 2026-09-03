@@ -1,0 +1,16 @@
+{
+  "kind": "signoff_phase2",
+  "variant": "flowlab",
+  "pillars": {
+    "thermal": {
+      "ok": true,
+      "summary": "Thermal proxy 31.39 mV (IR 3.09 + droop 28.30)"
+    },
+    "pkg": {
+      "ok": true,
+      "summary": "bump:ok \u00b7 rdl:GAP \u00b7 system_pdn:ok"
+    }
+  },
+  "ok": true,
+  "summary": "thermal:ok \u00b7 pkg:ok"
+}

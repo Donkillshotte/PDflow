@@ -136,16 +136,19 @@ Cross-ref: [extended-flow.md](./extended-flow.md) · [spice-power-chain.md](./sp
 
 ---
 
-## Phase 2 (planned in registry) {#phase-2-planned-in-registry}
+## Phase 2 (proxy) {#phase-2-proxy}
 
-Pillars prepared in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS`:
+Pillars in `signoff.ts` → `SIGNOFF_PLANNED_PILLARS` (status `proxy`, not “planned / unrun”):
 
-| Pillar | Action (future) | Script | Status |
+| Pillar | Action | Script | Status |
 |---|---|---|---|
-| **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | READY (educational) |
-| **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (IR+droop proxy) | proxy READY |
+| **Packaging** | `pkg_signoff` | `run_pkg_bump.sh`, `run_pkg_rdl.sh` | proxy: bump + system PDN execute; **RDL is GAP** (`rdl_route` not run, no bump LEF) |
+| **Thermal** | `thermal_signoff` | `run_thermal_signoff.sh` (IR+droop proxy) | proxy READY (not HotSpot) |
+
+Do not treat `pkg_rdl` `ok: true` as a pass unless `rdl.executed` is true.
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_pkg_signoff.sh
 FLOW_VARIANT=flowlab ./learn/scripts/run_thermal_signoff.sh
+FLOW_VARIANT=flowlab ./learn/scripts/run_signoff_phase2.sh
 ```
