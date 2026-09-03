@@ -2,7 +2,7 @@ import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { REPO_ROOT } from "./course";
-import { resultsDir } from "./open";
+import { preferredResultsVariant, resultsDir } from "./open";
 
 const FLOW = () => path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow");
 const LIB = () =>
@@ -80,7 +80,7 @@ function runCapture(
 
 export function inspectOdb(
   artifact: string,
-  variant = "learn",
+  variant = preferredResultsVariant(),
 ): OdbStats | null {
   const abs = path.join(resultsDir(variant), artifact);
   if (!fs.existsSync(abs)) return null;
@@ -121,7 +121,7 @@ export function inspectSta(opts: {
   label: string;
   variant?: string;
 }): StaSummary | null {
-  const variant = opts.variant ?? "learn";
+  const variant = opts.variant ?? preferredResultsVariant();
   const v = opts.verilog ? path.join(resultsDir(variant), opts.verilog) : null;
   if (!v || !fs.existsSync(v)) return null;
   if (!fs.existsSync(LIB()) || !fs.existsSync(SDC())) return null;
@@ -177,7 +177,7 @@ report_checks -format json -group_path_count 3 > /tmp/studio-sta-checks.json
 
 export function inspectYosys(
   verilogRel: string,
-  variant = "learn",
+  variant = preferredResultsVariant(),
 ): YosysStat | null {
   const abs = path.join(resultsDir(variant), verilogRel);
   if (!fs.existsSync(abs)) return null;
@@ -203,7 +203,7 @@ export function inspectYosys(
 
 export function inspectStage(
   stage: string,
-  variant = "learn",
+  variant = preferredResultsVariant(),
 ): StageInspect {
   const odbName = STAGE_PRIMARY_ODB[stage];
   const netlist = STAGE_NETLIST[stage] ?? null;

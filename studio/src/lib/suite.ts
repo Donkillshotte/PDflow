@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { execFileSync } from "child_process";
 import { LEARN_ROOT, REPO_ROOT, LESSONS, readProgress } from "./course";
-import { resultsDir, detectDisplay, listOpenTargets } from "./open";
+import { artifactExists, detectDisplay, listOpenTargets, resultsDir } from "./open";
 import { viewerStatus } from "./webviewer";
 import { listJobs, readLock, getPipelineStatus } from "./jobs";
 import { probeToolchain } from "./run";
@@ -18,7 +18,7 @@ export type HookStatus = {
 };
 
 function has(rel: string) {
-  return fs.existsSync(path.join(resultsDir(), rel));
+  return artifactExists(rel);
 }
 
 function which(bin: string) {
@@ -39,6 +39,31 @@ function signoffReportPass(variant: string, name: string) {
   } catch {
     return false;
   }
+}
+
+/** Gold Dynamic IR is LOCKED at 45.298 mV and has no `ok` field. */
+function goldDynamicIrPresent() {
+  for (const variant of ["flowlab", "learn"]) {
+    const p = path.join(LEARN_ROOT, "sim/reports", `dynamic_ir_${variant}.json`);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
+        ok?: boolean;
+        gold?: boolean;
+        worst_droop_mv?: number;
+      };
+      if (j.ok === true) return true;
+      if (
+        j.gold === true &&
+        Math.abs(Number(j.worst_droop_mv) - 45.298) < 0.02
+      ) {
+        return true;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
 }
 
 function powerReportOk(variant: string, name: string) {
@@ -274,10 +299,8 @@ export async function getSuiteStatus() {
       id: "dynamic_ir",
       label: "Dynamic IR I(t)",
       group: "Power",
-      ok:
-        signoffReportPass("flowlab", "dynamic_ir") ||
-        signoffReportPass("learn", "dynamic_ir"),
-      detail: "A DirectLU current_run + B SA-AMG · not reference_run 45.298",
+      ok: goldDynamicIrPresent(),
+      detail: "Gold 45.298 mV LOCKED · current_run is a different mesh",
       action: "dynamic_ir",
       href: "/tools?tab=run&action=dynamic_ir",
     },

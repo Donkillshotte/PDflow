@@ -5,6 +5,35 @@ import { REPO_ROOT, LEARN_ROOT } from "./course";
 
 const DEFAULT_VARIANT = "learn";
 
+/** Prefer FlowLab when the physical cook is there. Course tree stays `learn`. */
+export function preferredResultsVariant(): "flowlab" | "learn" {
+  const flowlab = resultsDir("flowlab");
+  const learn = resultsDir("learn");
+  if (
+    fs.existsSync(path.join(flowlab, "1_synth.odb")) ||
+    fs.existsSync(path.join(flowlab, "6_final.odb"))
+  ) {
+    return "flowlab";
+  }
+  if (
+    fs.existsSync(path.join(learn, "1_synth.odb")) ||
+    fs.existsSync(path.join(learn, "6_final.odb"))
+  ) {
+    return "learn";
+  }
+  return "flowlab";
+}
+
+export function artifactExists(rel: string, variant?: string): boolean {
+  if (variant) {
+    return fs.existsSync(path.join(resultsDir(variant), rel));
+  }
+  return (
+    fs.existsSync(path.join(resultsDir("flowlab"), rel)) ||
+    fs.existsSync(path.join(resultsDir("learn"), rel))
+  );
+}
+
 export function resultsDir(variant: string = DEFAULT_VARIANT) {
   return path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
@@ -128,7 +157,7 @@ export function detectDisplay(): string | null {
   return null;
 }
 
-function absArtifact(name: string, variant = DEFAULT_VARIANT) {
+function absArtifact(name: string, variant = preferredResultsVariant()) {
   return path.join(resultsDir(variant), name);
 }
 
@@ -404,7 +433,7 @@ export function resolveOpenTarget(id: string): OpenTarget | null {
 
 export function resolveArtifactOpen(
   artifact: string,
-  variant = DEFAULT_VARIANT,
+  variant = preferredResultsVariant(),
 ): OpenTarget | null {
   const name = path.basename(artifact);
   const abs = absArtifact(name, variant);

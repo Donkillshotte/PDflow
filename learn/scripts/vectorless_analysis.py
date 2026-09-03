@@ -178,7 +178,7 @@ def main() -> int:
             "Kouroussis & Najm, DAC 2003, vectorless IR current constraints",
         ],
         "notes": [
-            "RTL VCD annotates matching names only (ports). Unmatched pins use OpenSTA defaults.",
+            "Gate VCD (tb_gcd_gate/dut) name-joins ODB instances. RTL VCD is ports-only (lesson 00).",
             "Icarus TB clock is 10 ns vs SDC 0.46 ns — OpenSTA warns STA-1452; dynamic watts are not 1:1 with vectorless.",
             "Fill/tap cells are excluded from the current envelope (Kouroussis instance currents).",
             "Raphael/StarRC are commercial; OpenRCX SPEF + this envelope are the OSS path.",

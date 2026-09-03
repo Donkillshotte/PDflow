@@ -4,7 +4,7 @@
 # Vectorless IR follows the current-constraint idea of Kouroussis & Najm
 # (DAC 2003): instance currents lie in [0, I_max], chip current is bounded,
 # worst drop is estimated without a simulation vector. Dynamic mode uses
-# RTL VCD on matching names (OpenSTA read_vcd). Unmatched pins keep STA defaults.
+# Gate VCD on matching names (OpenSTA read_vcd) when gcd_gate.vcd exists.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=learn/lib/power_vcd.sh

@@ -23,7 +23,10 @@ export async function POST(req: Request) {
 
   let target = body.id ? resolveOpenTarget(body.id) : null;
   if (!target && body.artifact) {
-    target = resolveArtifactOpen(body.artifact, body.variant ?? "learn");
+    target = resolveArtifactOpen(
+      body.artifact,
+      body.variant ?? undefined,
+    );
   }
   if (!target) {
     return NextResponse.json(

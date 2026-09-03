@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { collectStageResults } from "./results";
-import { resultsDir } from "./open";
+import { preferredResultsVariant, resultsDir } from "./open";
 
 export { LONG_ACTIONS };
 
@@ -235,9 +235,10 @@ export type PipelineStatus = {
 
 export function getPipelineStatus(): PipelineStatus[] {
   const jobs = listJobs(40);
+  const variant = preferredResultsVariant();
   return PIPELINE_STAGES.map((stage) => {
-    const r = collectStageResults(stage);
-    const depInfo = stageReady(stage);
+    const r = collectStageResults(stage, variant);
+    const depInfo = stageReady(stage, variant);
     const lastJob =
       jobs.find((j) => j.action === stage && j.status !== "running") ?? null;
     return {
@@ -274,7 +275,7 @@ export function evaluateLessonGates(input: {
     checklistSize === 0 ? 0 : Math.max(1, Math.ceil(checklistSize * 0.5));
   const labOk = checklistSize === 0 || checks.length >= labNeed;
   const runOk = steps.includes("run");
-  const results = collectStageResults(makeTarget);
+  const results = collectStageResults(makeTarget, "learn");
   const artifactsOk =
     results.artifacts.length === 0
       ? runOk

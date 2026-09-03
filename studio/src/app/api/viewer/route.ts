@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { startViewer, stopViewer, viewerStatus } from "@/lib/webviewer";
+import { preferredResultsVariant } from "@/lib/open";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
   }
   if (action === "start") {
     const stage = body.stage || "cts";
-    const variant = body.variant || "learn";
+    const variant = body.variant || preferredResultsVariant();
     const result = startViewer(stage, variant, {
       artifact: body.artifact,
     });

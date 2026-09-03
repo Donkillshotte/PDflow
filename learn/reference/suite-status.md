@@ -81,6 +81,24 @@ real, but it is not the commercial / foundry object with the same name.
 
 ---
 
+## Next honest closes (this goal)
+
+Do all six. Do not fake a pass. Do not restamp gold IR **45.298 mV**.
+Course stays **0/8**. `gcd/flowlab/` baseline ODBs are not overwritten.
+
+| # | Workstream | Done when | Must not |
+|---|---|---|---|
+| 1 | Studio paths | `GET /api/suite` synth/pdn/finish/inspect/klayout_drc/or-gui follow `flowlab/` then `learn/` | Change course `learn` tree or stamp lessons |
+| 2 | dynamic_ir hook | Gold JSON with `gold: true` and 45.298 counts as present (LOCKED) | Rewrite the gold file |
+| 3 | Vectorless VCD | Dynamic source is gate VCD (`tb_gcd_gate/dut`) when `gcd_gate.vcd` exists | Invent a name map |
+| 4 | gridcheck | `FLOW_VARIANT=flowlab` `check_power_grid`; `.gridcheck_pdn.ok` only if OpenROAD passes | Stamp on a failed check |
+| 5 | Extra combo CCS | AOI21 / OAI21 / CLKBUF (and extra drives) only with real `output_current` | DFF/MUX · overwrite official NLDM lib |
+| 6 | LVS increment | well `connect_implicit` + FILL/TAP CDL attempt; report updated | `.lvs.ok` unless transistor nets match |
+
+Gates: `test_signoff_honesty.py` · `test_lab_physics.py` · live `GET /api/suite`.
+
+---
+
 ## Course (Studio lessons)
 
 | Step | Status | Evidence | Leftover |

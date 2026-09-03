@@ -2,7 +2,12 @@ import fs from "fs";
 import path from "path";
 import { ChildProcess, spawn } from "child_process";
 import { LEARN_ROOT } from "./course";
-import { resultsDir, STAGE_GUI_TARGETS, detectDisplay } from "./open";
+import {
+  detectDisplay,
+  preferredResultsVariant,
+  resultsDir,
+  STAGE_GUI_TARGETS,
+} from "./open";
 
 const LOCK = () => path.join(LEARN_ROOT, ".studio-web.lock");
 const DEFAULT_PORT = Number(process.env.STUDIO_OR_WEB_PORT || 43190);
@@ -85,7 +90,7 @@ export function stopViewer(): { ok: boolean; message: string } {
 
 export function startViewer(
   stage: string,
-  variant = "learn",
+  variant = preferredResultsVariant(),
   opts?: { artifact?: string },
 ): {
   ok: boolean;
