@@ -37,9 +37,32 @@ def main() -> int:
     check(by["dse_winning_ir_not_gold"]["ok"], "DSE winning IR is not gold 45.298")
     check(by["dse_winning_static"]["ok"], "DSE winning static is rail-scale")
     check(by["dse_amg_vs_ras"]["ok"], "DSE AMG and RAS agree")
-    check(by["artifact_sta_signoff"]["status"] == "GAP", "missing sta_signoff stays GAP")
-    check(by["artifact_vectorless"]["status"] == "GAP", "missing vectorless stays GAP")
-    check("GAP" in {c["status"] for c in rep["checks"]}, "ledger keeps GAP rows")
+    reports = _SCRIPTS.parents[1] / "learn/sim/reports"
+    for key, fname in (
+        ("sta_signoff", "sta_signoff_flowlab.json"),
+        ("vectorless", "vectorless_flowlab.json"),
+        ("chip_pdn", "pdn_chip_ir_flowlab.json"),
+        ("system_pdn", "system_pdn_flowlab.json"),
+        ("thermal", "thermal_signoff_flowlab.json"),
+    ):
+        present = (reports / fname).is_file()
+        st = by[f"artifact_{key}"]["status"]
+        if present:
+            check(st == "READY" and by[f"artifact_{key}"]["ok"], f"{key} on disk is READY")
+        else:
+            check(st == "GAP", f"missing {key} stays GAP")
+    missing = [
+        fname
+        for fname in (
+            "vectorless_flowlab.json",
+            "pdn_chip_ir_flowlab.json",
+            "system_pdn_flowlab.json",
+            "thermal_signoff_flowlab.json",
+        )
+        if not (reports / fname).is_file()
+    ]
+    if missing:
+        check("GAP" in {c["status"] for c in rep["checks"]}, f"GAP remains for {missing}")
     gold = json.loads((_SCRIPTS.parents[1] / "learn/sim/reports/dynamic_ir_flowlab.json").read_text())
     check(gold.get("gold") is True, "gold file still gold")
     print("ALL test_lab_physics PASSED")
