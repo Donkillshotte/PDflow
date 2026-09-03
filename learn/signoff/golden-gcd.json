@@ -18,7 +18,7 @@
   },
   "equivalence": {
     "lvs_errors_max": 0,
-    "educational_note": "FreePDK45 GCD may not be tapeout-clean; interpret LVS report even if FAIL"
+    "educational_note": "FreePDK45 GCD LVS is an educational KLayout compare. A pass is a real match; read must-connect leftovers."
   },
   "power": {
     "chip_static_ir_mv_max": 15.0,

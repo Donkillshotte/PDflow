@@ -133,7 +133,7 @@ ORFS: `make lvs` → CDL concat + KLayout LVS → `6_lvs.lvsdb`.
 | Parser UI | `learn/scripts/parse_signoff_artifacts.py` |
 | Report | `learn/sim/reports/lvs_signoff_{v}.json` |
 
-**Honest note:** on GCD FreePDK45, LVS may not be tapeout-clean; interpret the report.
+**Honest note:** on GCD FreePDK45, LVS is an educational KLayout compare. A pass is a real match. Must-connect and empty FILL/TAP CDL leftovers stay in the report.
 
 **Study:** action `klayout_lvs` · artifact matrix in FlowLab finish.
 

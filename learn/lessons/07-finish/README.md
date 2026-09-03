@@ -98,6 +98,12 @@ FlowLab **finish** phase shows the matrix vs `golden-gcd.json`. LVS is a
 KLayout compare (filtered CDL + well→VDD/VSS). Read the report, including
 must-connect warnings. Educational FreePDK45, not foundry LVS.
 
+After signoff, ECO propose is allowed on `flowlab`. Apply only on an
+unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply writes
+`6_final.{odb,def,v,cdl,gds}` on that copy. Then run
+`FLOW_VARIANT=<copy> ./learn/scripts/run_signoff_all.sh`. DSE does not
+run that script.
+
 ## Power & SPICE chain (recommended post-course module)
 
 Finish produces `6_final.odb`, IR heatmap, and enables the full **SPICE chain**:
