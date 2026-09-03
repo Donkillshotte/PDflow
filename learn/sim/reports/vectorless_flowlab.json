@@ -1,0 +1,99 @@
+{
+  "ok": true,
+  "kind": "vectorless_vs_dynamic",
+  "variant": "flowlab",
+  "vdd": 1.1,
+  "vectorless": {
+    "exists": true,
+    "source": "vectorless global 0.5",
+    "total_w": 0.0049,
+    "i_avg_a": 0.004454545454545454,
+    "ir_straps_mv": 6.37,
+    "log": "/workspace/learn/sim/reports/power_vectorless_flowlab.log"
+  },
+  "dynamic": {
+    "exists": true,
+    "source": "missing_vcd \u2014 run rtl_sim",
+    "total_w": 0.00229,
+    "i_avg_a": 0.0020818181818181816,
+    "ir_straps_mv": 3.0300000000000002,
+    "log": "/workspace/learn/sim/reports/power_dynamic_flowlab.log"
+  },
+  "design": {
+    "instances": 1160,
+    "sequential": 35
+  },
+  "envelope": {
+    "budget_a": 0.013363636363636362,
+    "spent_a": 0.013363636363636362,
+    "n": 622,
+    "n_skipped_fill": 538,
+    "p_combo": 0.5,
+    "p_seq": 0.1,
+    "p01_combo": 0.25,
+    "p01_seq": 0.09000000000000001,
+    "crest": 3.0,
+    "hottest": [
+      {
+        "name": "_648_",
+        "cell": "OAI21_X4",
+        "seq": false,
+        "i_a": 7.040159651662005e-05
+      },
+      {
+        "name": "_707_",
+        "cell": "AOI21_X4",
+        "seq": false,
+        "i_a": 6.227842539826394e-05
+      },
+      {
+        "name": "_856_",
+        "cell": "NAND4_X4",
+        "seq": false,
+        "i_a": 6.224184983813804e-05
+      },
+      {
+        "name": "_602_",
+        "cell": "NAND2_X4",
+        "seq": false,
+        "i_a": 5.9554696746098424e-05
+      },
+      {
+        "name": "_693_",
+        "cell": "NAND2_X4",
+        "seq": false,
+        "i_a": 5.903932510577276e-05
+      },
+      {
+        "name": "_600_",
+        "cell": "NAND2_X4",
+        "seq": false,
+        "i_a": 5.8911306153336656e-05
+      },
+      {
+        "name": "_691_",
+        "cell": "NAND2_X4",
+        "seq": false,
+        "i_a": 5.8309478214651194e-05
+      },
+      {
+        "name": "_688_",
+        "cell": "NAND2_X4",
+        "seq": false,
+        "i_a": 5.7405172890648883e-05
+      }
+    ]
+  },
+  "ir_mesh_vectorless_mv": 19.500187583810337,
+  "summary": "Vectorless P=0.0049 W \u00b7 I_avg=4.4545e-03 A \u00b7 dynamic P=0.00229 W \u00b7 source missing_vcd \u2014 run rtl_sim",
+  "references": [
+    "Najm, Proc. IEEE 1994, power estimation / switching probability",
+    "Kouroussis & Najm, DAC 2003, vectorless IR current constraints"
+  ],
+  "notes": [
+    "RTL VCD annotates matching names only (ports). Unmatched pins use OpenSTA defaults.",
+    "Icarus TB clock is 10 ns vs SDC 0.46 ns \u2014 OpenSTA warns STA-1452; dynamic watts are not 1:1 with vectorless.",
+    "Fill/tap cells are excluded from the current envelope (Kouroussis instance currents).",
+    "Raphael/StarRC are commercial; OpenRCX SPEF + this envelope are the OSS path."
+  ]
+}

@@ -65,6 +65,22 @@ def main() -> int:
         check("GAP" in {c["status"] for c in rep["checks"]}, f"GAP remains for {missing}")
     gold = json.loads((_SCRIPTS.parents[1] / "learn/sim/reports/dynamic_ir_flowlab.json").read_text())
     check(gold.get("gold") is True, "gold file still gold")
+    check(abs(float(gold["worst_droop_mv"]) - GOLD_MV) < 0.02, "gold droop still 45.298")
+    lvs = reports / "lvs_signoff_flowlab.json"
+    if lvs.is_file():
+        blob = json.loads(lvs.read_text())
+        check(blob.get("ok") is False, "KLayout netlist mismatch is LVS fail, not a fake pass")
+        tail = ((blob.get("artifact_parse") or {}).get("log") or {}).get("tail") or []
+        check(any("Netlists don't match" in str(x) for x in tail), "LVS report keeps the KLayout mismatch line")
+    import tempfile
+    from parse_signoff_artifacts import parse_lvs_log
+
+    with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as fh:
+        fh.write("ERROR : Netlists don't match\n")
+        path = Path(fh.name)
+    parsed = parse_lvs_log(path)
+    path.unlink(missing_ok=True)
+    check(parsed.get("netlists_match") is False, "parse_lvs_log sees a mismatch")
     print("ALL test_lab_physics PASSED")
     return 0
 

@@ -1,0 +1,60 @@
+{
+  "kind": "lvs_signoff",
+  "variant": "flowlab",
+  "equivalence": {
+    "lvs_pass": false,
+    "lvs_errors": 0,
+    "make_rc": 0
+  },
+  "evaluation": {
+    "checks": [
+      {
+        "id": "lvs_pass",
+        "label": "LVS clean",
+        "actual": false,
+        "target": true,
+        "ok": false,
+        "note": "FreePDK45 GCD may not be tapeout-clean; interpret LVS report even if FAIL"
+      }
+    ],
+    "ok": false
+  },
+  "artifact_parse": {
+    "lvsdb": {
+      "exists": true,
+      "supported": true,
+      "errors": 0,
+      "messages": [],
+      "path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_lvs.lvsdb"
+    },
+    "log": {
+      "exists": true,
+      "tail": [
+        "Flatten schematic circuit (no layout): TBUF_X1",
+        "Flatten schematic circuit (no layout): TBUF_X16",
+        "Flatten schematic circuit (no layout): TBUF_X2",
+        "Flatten schematic circuit (no layout): TBUF_X4",
+        "Flatten schematic circuit (no layout): TBUF_X8",
+        "Flatten schematic circuit (no layout): TINV_X1",
+        "Flatten schematic circuit (no layout): TLAT_X1",
+        "Flatten schematic circuit (no layout): XOR2_X1",
+        "Flatten schematic circuit (no layout): XOR2_X2",
+        "Writing netlist: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/gcd_extracted.cir ..",
+        "Writing LVS database: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_lvs.lvsdb ..",
+        "Total elapsed: 0.600s  Memory: 437.00M",
+        "ERROR : Netlists don't match",
+        "LVS finished at : 8:23:4  -  LVS duration =  0 hrs. 0 min. 0 sec.",
+        "Elapsed time: 0:02.55[h:]min:sec. CPU time: user 1.82 sys 0.21 (79%). Peak memory: 447888KB."
+      ],
+      "missing_lylvs": false,
+      "netlists_match": false
+    }
+  },
+  "ok": false,
+  "educational_note": "FreePDK45 GCD may not be tapeout-clean; value is process + report interpretation",
+  "summary": "LVS FAIL \u00b7 errors 0",
+  "artifacts": {
+    "lvsdb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_lvs.lvsdb",
+    "log": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/6_lvs.log"
+  }
+}

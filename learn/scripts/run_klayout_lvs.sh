@@ -57,22 +57,22 @@ set -e
 
 LVS_PASS=false
 LVS_ERRORS=0
+COMBINED_LOG="/tmp/lvs-signoff-${VARIANT}.log"
 if [[ -f "${LVSDB}" ]]; then
   if rg -q 'LVS not supported' "${LVSDB}" 2>/dev/null; then
-    LVS_PASS=false
     echo "WARN LVS not supported on platform marker"
   elif rg -q '<error' "${LVSDB}" 2>/dev/null; then
     LVS_ERRORS="$(rg -c '<error' "${LVSDB}" || echo 1)"
-    LVS_PASS=false
-  elif [[ -s "${LVSDB}" ]]; then
-    # empty or clean — treat as pass for educational flow
-    LVS_PASS=true
   fi
 fi
-
-# Also check log for success phrases
-if rg -qi 'clean|success|0 errors' /tmp/lvs-signoff-${VARIANT}.log 2>/dev/null; then
+# KLayout writes 6_lvs.lvsdb even when netlists do not match.
+if rg -q "Netlists match" "${LOG}" "${COMBINED_LOG}" 2>/dev/null && \
+   ! rg -q "Netlists don't match" "${LOG}" "${COMBINED_LOG}" 2>/dev/null; then
   LVS_PASS=true
+fi
+if rg -q "Netlists don't match" "${LOG}" "${COMBINED_LOG}" 2>/dev/null; then
+  LVS_PASS=false
+  echo "WARN KLayout: Netlists don't match (educational LVS still recorded)"
 fi
 
 METRICS="${ROOT}/learn/sim/reports/.lvs_metrics_${VARIANT}.json"

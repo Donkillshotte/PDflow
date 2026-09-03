@@ -70,7 +70,14 @@ def parse_lvs_log(path: Path) -> dict:
     lines = path.read_text(errors="replace").splitlines()
     tail = [ln for ln in lines[-15:] if ln.strip()]
     missing_lylvs = any("FreePDK45.lylvs" in ln or "No rule to make" in ln for ln in tail)
-    return {"exists": True, "tail": tail, "missing_lylvs": missing_lylvs}
+    blob = "\n".join(lines)
+    matched = "Netlists match" in blob and "Netlists don't match" not in blob
+    return {
+        "exists": True,
+        "tail": tail,
+        "missing_lylvs": missing_lylvs,
+        "netlists_match": matched,
+    }
 
 
 def main() -> int:

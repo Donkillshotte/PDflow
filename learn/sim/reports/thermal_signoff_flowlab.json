@@ -1,0 +1,26 @@
+{
+  "kind": "thermal_signoff",
+  "variant": "flowlab",
+  "status": "proxy",
+  "thermal": {
+    "chip_ir_mv": 3.0944465142916933,
+    "chip_droop_mv": 28.2999414862346,
+    "combined_proxy_mv": 31.394388000526295,
+    "heatmap_png": null,
+    "note": "Proxy from chip IR + droop; HotSpot/3D-ICE planned for full thermal"
+  },
+  "evaluation": {
+    "checks": [
+      {
+        "id": "combined_proxy_mv",
+        "label": "Combined IR+droop proxy (mV)",
+        "actual": 31.394388000526295,
+        "target": 50.0,
+        "ok": true
+      }
+    ],
+    "ok": true
+  },
+  "ok": true,
+  "summary": "Thermal proxy 31.39 mV (IR 3.09 + droop 28.30)"
+}

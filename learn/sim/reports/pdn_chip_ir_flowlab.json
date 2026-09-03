@@ -1,0 +1,40 @@
+{
+  "engine": "studio-pdn-transient",
+  "prior_art": [
+    "OpenROAD PDNSim / write_pg_spice (static mesh)",
+    "VoltSpot-style transient PDN",
+    "vyges-em-ir backward-Euler dynamic IR"
+  ],
+  "mode": "BUMPS",
+  "spice": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
+  "vdd": 1.1,
+  "static": {
+    "worst_voltage": 1.0969055534857084,
+    "worst_ir": 0.0030944465142916933,
+    "worst_ir_pct": 0.281313319481063,
+    "worst_node": "Node_metal1_86520_61600",
+    "total_current_a": 0.0020822231,
+    "nodes": 4453,
+    "resistors": 8020,
+    "loads": 622,
+    "sources": 15,
+    "solver": "spsolve",
+    "pkg_r": 0.0,
+    "pad": "ideal_bump"
+  },
+  "transient": {
+    "worst_voltage": 1.0717000585137655,
+    "worst_droop": 0.028299941486234603,
+    "worst_droop_pct": 2.572721953294055,
+    "worst_time_s": 2e-10,
+    "worst_node": "ITermNode_metal1_85646_61395",
+    "peak_factor": 8.0,
+    "pkg_r": 0.05,
+    "pkg_l": 2e-10,
+    "c_decap": 5e-14,
+    "dt": 5e-11,
+    "t_end": 1e-09,
+    "steps": 20
+  },
+  "summary": "static IR 3.094 mV (0.281%) \u00b7 transient droop 28.300 mV (2.573%) @ t=0.20 ns \u00b7 peak\u00d78.0 \u00b7 pkg R=0.05\u03a9 L=2e-10H"
+}

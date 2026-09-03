@@ -5,19 +5,14 @@
   "alpha": 1.3,
   "gold_ir_mv": 45.298,
   "current_ir_mv": 6.075,
-  "n_ready": 24,
+  "n_ready": 28,
   "n_checks": 30,
   "fail": [],
   "watch": [
     "orfs_ir_ibex",
     "orfs_ir_aes"
   ],
-  "gap": [
-    "artifact_vectorless",
-    "artifact_chip_pdn",
-    "artifact_system_pdn",
-    "artifact_thermal"
-  ],
+  "gap": [],
   "slots": [
     {
       "design": "gcd",
@@ -57,7 +52,7 @@
       "status": "READY",
       "orfs_ir_mv": 1.7828600000000001,
       "finish_wns_ns": 3.35383,
-      "n_cooks": 13
+      "n_cooks": 17
     }
   ],
   "checks": [
@@ -354,42 +349,42 @@
     {
       "id": "artifact_vectorless",
       "design": "gcd",
-      "ok": false,
-      "status": "GAP",
+      "ok": true,
+      "status": "READY",
       "quantity": "vectorless activity / IR artifact",
-      "value": null,
+      "value": "vectorless_flowlab.json",
       "bound": "report present on disk",
-      "note": "Not materialized in this checkout. Do not invent a number."
+      "note": "Present \u2014 still not foundry sign-off."
     },
     {
       "id": "artifact_chip_pdn",
       "design": "gcd",
-      "ok": false,
-      "status": "GAP",
+      "ok": true,
+      "status": "READY",
       "quantity": "chip-level PDN IR",
-      "value": null,
+      "value": "pdn_chip_ir_flowlab.json",
       "bound": "report present on disk",
-      "note": "Not materialized in this checkout. Do not invent a number."
+      "note": "Present \u2014 still not foundry sign-off."
     },
     {
       "id": "artifact_system_pdn",
       "design": "gcd",
-      "ok": false,
-      "status": "GAP",
+      "ok": true,
+      "status": "READY",
       "quantity": "package + die system PDN",
-      "value": null,
+      "value": "system_pdn_flowlab.json",
       "bound": "report present on disk",
-      "note": "Not materialized in this checkout. Do not invent a number."
+      "note": "Present \u2014 still not foundry sign-off."
     },
     {
       "id": "artifact_thermal",
       "design": "gcd",
-      "ok": false,
-      "status": "GAP",
+      "ok": true,
+      "status": "READY",
       "quantity": "thermal / electrothermal snapshot",
-      "value": null,
+      "value": "thermal_signoff_flowlab.json",
       "bound": "report present on disk",
-      "note": "Not materialized in this checkout. Do not invent a number."
+      "note": "Present \u2014 still not foundry sign-off."
     }
   ],
   "not": [
