@@ -33,7 +33,13 @@ function stepState(ok: boolean | undefined, present: boolean): "ok" | "wait" | "
   return "fail";
 }
 
-export function EcoPanel() {
+export function EcoPanel({
+  busy,
+  onRun,
+}: {
+  busy?: string | null;
+  onRun?: (action: string, long: boolean) => void;
+} = {}) {
   const [report, setReport] = useState<EcoReport | null>(null);
   const [apply, setApply] = useState<EcoReport | null>(null);
   const [close, setClose] = useState<CloseReport | null>(null);
@@ -86,6 +92,15 @@ export function EcoPanel() {
               : ""}
             {report?.signoff_required ? ` · next ${report.signoff_required}` : ""}
           </em>
+          {onRun ? (
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => onRun("eco", false)}
+            >
+              {busy === "eco" ? "Proposing…" : "Run propose"}
+            </button>
+          ) : null}
         </li>
         <li data-state={stepState(apply?.ok, Boolean(apply))}>
           <span>2 · Apply on copy</span>
@@ -95,6 +110,15 @@ export function EcoPanel() {
             {apply?.signoff ? " · claims signoff (bug)" : " · does not claim signoff"}
             {apply?.rewrote?.length ? ` · wrote ${apply.rewrote.join("+")}` : ""}
           </em>
+          {onRun ? (
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => onRun("eco_apply", true)}
+            >
+              {busy === "eco_apply" ? "Applying…" : "Run apply on eco_scratch"}
+            </button>
+          ) : null}
         </li>
         <li data-state={stepState(close?.ok, Boolean(close))}>
           <span>3 · Close on copy</span>
@@ -107,6 +131,15 @@ export function EcoPanel() {
             FLOW_VARIANT=eco_scratch ./learn/scripts/run_signoff_all.sh
             {closePillars ? ` · ${closePillars}` : ""}
           </em>
+          {onRun ? (
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => onRun("eco_close", true)}
+            >
+              {busy === "eco_close" ? "Closing…" : "Run signoff_all on copy"}
+            </button>
+          ) : null}
         </li>
       </ol>
       {report?.error ? <p className="fl-dynir-empty">{report.error}</p> : null}

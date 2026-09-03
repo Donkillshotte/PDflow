@@ -38,6 +38,8 @@ const POST_FINISH_CHIPS = [
   { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "A DirectLU current_run · B SA-AMG" },
   { id: "dse", label: "DSE (proposer)", hint: "Suggests knobs. Does not run signoff_all." },
   { id: "eco", label: "ECO propose", hint: "Post-finish plan. Apply refused on flowlab." },
+  { id: "eco_apply", label: "ECO apply", hint: "Writes eco_scratch only. Never flowlab." },
+  { id: "eco_close", label: "ECO close", hint: "signoff_all on eco_scratch. Cannot skip." },
   { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
   { id: "power_chain", label: "SPICE chain", hint: "activity→IR→system" },
   { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },
@@ -134,7 +136,7 @@ export function LiveRunConsole({
       }).catch(() => undefined);
     }
     abortRef.current?.abort();
-    push("Job annullato", "info");
+    push("Job cancelled", "info");
   }
 
   function requestRun(a = action) {

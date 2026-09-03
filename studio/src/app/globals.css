@@ -2345,6 +2345,24 @@ button.pipeline-node {
   font-family: var(--font-mono);
   color: var(--fl-muted);
 }
+.fl-eco-loop li button {
+  justify-self: start;
+  margin-top: 0.2rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--fl-border);
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--fl-text);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+.fl-eco-loop li button:hover:not(:disabled) {
+  border-color: var(--fl-accent-2);
+}
+.fl-eco-loop li button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .fl-dynir-table {
   width: 100%;
   border-collapse: collapse;

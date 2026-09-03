@@ -106,6 +106,8 @@ const ALLOWED_ACTIONS = new Set([
   "tool_matrix",
   "dse",
   "eco",
+  "eco_apply",
+  "eco_close",
 ]);
 
 type Job = {
@@ -281,12 +283,17 @@ function resolveCommand(
     tool_matrix: { script: "run_tool_matrix.sh", pythonpath: true },
     dse: { script: "run_dse.sh", pythonpath: true },
     eco: { script: "run_eco.sh", pythonpath: true },
+    eco_apply: { script: "run_eco.sh", pythonpath: true },
   };
   if (action in analysisScripts) {
     const spec = analysisScripts[action]!;
     const cmd = path.join(LEARN_ROOT, "scripts", spec.script);
     const variant = flowlab ? FLOWLAB_VARIANT : "learn";
     const env: Record<string, string> = { FLOW_VARIANT: variant };
+    if (action === "eco_apply") {
+      env.FLOW_VARIANT = "eco_scratch";
+      env.ECO_MODE = "apply";
+    }
     if (spec.pythonpath) {
       env.PYTHONPATH = `/usr/lib/python3/dist-packages${
         process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ""
@@ -295,11 +302,13 @@ function resolveCommand(
     const isPy = spec.script.endsWith(".py");
     const args = isPy ? [cmd] : [];
     const invoke = isPy ? `python3 ${cmd}` : cmd;
+    const shown = env.FLOW_VARIANT ?? variant;
+    const extra = action === "eco_apply" ? " ECO_MODE=apply" : "";
     return {
       cmd: isPy ? "python3" : cmd,
       args,
       cwd: REPO_ROOT,
-      command: `FLOW_VARIANT=${variant} ${invoke}`,
+      command: `FLOW_VARIANT=${shown}${extra} ${invoke}`,
       env,
     };
   }
@@ -321,6 +330,7 @@ function resolveCommand(
     klayout_lvs: "run_klayout_lvs.sh",
     power_signoff: "run_power_signoff.sh",
     signoff_all: "run_signoff_all.sh",
+    eco_close: "run_signoff_all.sh",
     thermal_signoff: "run_thermal_signoff.sh",
     pkg_bump: "run_pkg_bump.sh",
     pkg_rdl: "run_pkg_rdl.sh",
@@ -331,7 +341,10 @@ function resolveCommand(
     const cmd = path.join(LEARN_ROOT, "scripts", signoffScripts[action]!);
     const variant = flowlab ? FLOWLAB_VARIANT : "learn";
     const env: Record<string, string> = { FLOW_VARIANT: variant };
-    if (action === "power_signoff" || action === "signoff_all" || action === "sta_ir_aware") {
+    if (action === "eco_close") {
+      env.FLOW_VARIANT = "eco_scratch";
+    }
+    if (action === "power_signoff" || action === "signoff_all" || action === "sta_ir_aware" || action === "eco_close") {
       env.PYTHONPATH = `/usr/lib/python3/dist-packages${
         process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ""
       }`;
@@ -340,7 +353,7 @@ function resolveCommand(
       cmd,
       args: [],
       cwd: REPO_ROOT,
-      command: `FLOW_VARIANT=${variant} ${cmd}`,
+      command: `FLOW_VARIANT=${env.FLOW_VARIANT ?? variant} ${cmd}`,
       env,
     };
   }
@@ -509,7 +522,7 @@ export async function* streamCourseAction(
 
   const timer = setTimeout(() => {
     child.kill("SIGTERM");
-    const msg = "\n[timeout] processo interrotto\n";
+    const msg = "\n[timeout] process stopped\n";
     bufferJobLog(jobId, msg);
     push({ type: "stderr", chunk: msg });
   }, timeoutMs);
@@ -518,7 +531,7 @@ export async function* streamCourseAction(
     const j = jobs.get(jobId);
     if (j) j.cancelled = true;
     child.kill("SIGTERM");
-    const msg = "\n[annullato]\n";
+    const msg = "\n[cancelled]\n";
     bufferJobLog(jobId, msg);
     push({ type: "stderr", chunk: msg });
   };

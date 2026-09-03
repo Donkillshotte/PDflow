@@ -18,7 +18,14 @@ export async function GET(req: Request) {
   const mode = (url.searchParams.get("mode") === "flowlab"
     ? "flowlab"
     : "learn") as RunMode;
-  const variant = mode === "flowlab" ? FLOWLAB_VARIANT : "learn";
+  const variant =
+    action === "eco_apply"
+      ? "flowlab"
+      : action === "eco_close"
+        ? "eco_scratch"
+        : mode === "flowlab"
+          ? FLOWLAB_VARIANT
+          : "learn";
 
   // Optional query overrides (allowlisted) — merged with saved FlowLab params
   const qParams =

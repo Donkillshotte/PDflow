@@ -58,6 +58,8 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   tool_matrix: null,
   dse: null,
   eco: "finish",
+  eco_apply: "finish",
+  eco_close: "finish",
   synth: null,
   floorplan: "synth",
   place: "floorplan",
@@ -349,7 +351,12 @@ export function preflightAction(
   action: string,
   opts: { variant?: string } = {},
 ): PreflightResult {
-  const variant = opts.variant ?? "learn";
+  const variant =
+    action === "eco_apply"
+      ? "flowlab"
+      : action === "eco_close"
+        ? "eco_scratch"
+        : (opts.variant ?? "learn");
   // Artifact gates for extended / analysis actions
   const needFile: Record<string, { rel: string; hint: string }> = {
     gridcheck: {
@@ -451,6 +458,14 @@ export function preflightAction(
     eco: {
       rel: "6_final.odb",
       hint: "run finish first (ECO propose on the finished ODB)",
+    },
+    eco_apply: {
+      rel: "6_final.odb",
+      hint: "run finish first (apply copies flowlab ODB onto eco_scratch)",
+    },
+    eco_close: {
+      rel: "6_final.gds",
+      hint: "run ECO apply on eco_scratch first (signoff_all on the copy)",
     },
   };
   const need = needFile[action];

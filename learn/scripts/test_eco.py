@@ -75,6 +75,17 @@ def main() -> int:
     check("6_final.gds" in src, "apply installs 6_final.gds on unlocked copy")
     check("run_signoff_all.sh" not in src[src.find("subprocess.run"):src.find("subprocess.run") + 400], "first OpenROAD launch is not signoff_all")
 
+    studio_run = (ROOT / "studio/src/lib/run.ts").read_text()
+    check('"eco_apply"' in studio_run, "Studio allows eco_apply")
+    check('"eco_close"' in studio_run, "Studio allows eco_close")
+    check('env.FLOW_VARIANT = "eco_scratch"' in studio_run, "Studio apply/close force eco_scratch")
+    check('env.ECO_MODE = "apply"' in studio_run, "Studio apply sets ECO_MODE")
+    check("run_signoff_all.sh" in studio_run, "Studio close maps to signoff_all")
+    panel = (ROOT / "studio/src/components/flowlab/EcoPanel.tsx").read_text()
+    check('onRun("eco_apply"' in panel, "EcoPanel can launch apply")
+    check('onRun("eco_close"' in panel, "EcoPanel can launch close")
+    check("signoff_all" in panel, "EcoPanel names signoff_all as close")
+
     live = ROOT / "learn/sim/reports/eco_apply_eco_scratch.json"
     if live.is_file():
         scratch = json.loads(live.read_text())

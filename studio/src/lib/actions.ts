@@ -43,6 +43,8 @@ export const LONG_ACTIONS = new Set([
   "chip_pdn_ir",
   "power_signoff",
   "signoff_all",
+  "eco_apply",
+  "eco_close",
   "thermal_signoff",
   "pkg_signoff",
   "signoff_phase2",
@@ -60,13 +62,16 @@ export const EXTENDED_TIMEOUT_ACTIONS = new Set([
   "chip_pdn_ir",
   "power_signoff",
   "signoff_all",
+  "eco_apply",
+  "eco_close",
   "pkg_signoff",
   "signoff_phase2",
   "tool_matrix",
 ]);
 
 export function defaultActionTimeoutMs(action: string): number {
-  if (action === "signoff_all") return 1_200_000;
+  if (action === "signoff_all" || action === "eco_close") return 1_200_000;
+  if (action === "eco_apply") return 600_000;
   return EXTENDED_TIMEOUT_ACTIONS.has(action) ? 900_000 : 300_000;
 }
 
@@ -115,11 +120,14 @@ export function isToolMatrixAction(action: string): action is ToolMatrixAction {
   return (TOOL_MATRIX_ACTIONS as readonly string[]).includes(action);
 }
 
-export const ECO_ACTIONS = ["eco"] as const;
+export const ECO_ACTIONS = ["eco", "eco_apply", "eco_close"] as const;
 export type EcoAction = (typeof ECO_ACTIONS)[number];
 export function isEcoAction(action: string): action is EcoAction {
   return (ECO_ACTIONS as readonly string[]).includes(action);
 }
+
+/** Unlocked copy used by apply/close. Never flowlab/learn/base. */
+export const ECO_COPY_VARIANT = "eco_scratch";
 
 export const DSE_ACTIONS = ["dse"] as const;
 export type DseAction = (typeof DSE_ACTIONS)[number];

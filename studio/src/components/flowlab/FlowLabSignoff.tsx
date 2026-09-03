@@ -275,7 +275,7 @@ export function FlowLabSignoff({
           <div id="signoff">
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
           <StaIrAwarePanel busy={busy} onRun={onRun} />
-          <EcoPanel />
+          <EcoPanel busy={busy} onRun={onRun} />
           <LabBench tone="dark" busy={busy} onRun={onRun} />
           <div className="fl-signoff-head">
             <strong>Signoff actions timing / geometry / LVS</strong>
