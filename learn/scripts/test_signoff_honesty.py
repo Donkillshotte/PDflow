@@ -182,6 +182,9 @@ def main() -> int:
     check("| Dynamic IR I(t) | `dynamic_ir` | `dynamic_ir_{v}.json`" not in matrix, "signoff-matrix does not list gold as the Dynamic IR cook")
     check("currentRunDynamicIrPresent" in suite, "suite Dynamic IR status reads _direct.json")
     check("ok: goldDynamicIrPresent()" not in suite, "suite Dynamic IR ok is not the gold sentinel")
+    therm = suite.split('id: "thermal_signoff"')[1].split("},")[0]
+    check("thermalHookDetail" in therm, "Thermal hook reads t_max from the HotSpot report")
+    check("HotSpot t_max °C" not in therm, "Thermal hook does not print a blank t_max")
     check('"label": "LVS clean"' not in (ROOT / "learn/scripts/signoff_eval.py").read_text(), "evaluator does not label LVS as clean")
     check('"label": "LVS clean"' not in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report does not say LVS clean")
     check("KLayout match" in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report names the compare")
