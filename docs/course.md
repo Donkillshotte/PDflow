@@ -27,6 +27,8 @@ GCD tutorial: `FLOW_VARIANT=learn`. Green finish ≠ leftover-free
 Locked FlowLab leftover is setup open (WNS −0.02, 16 viol). The
 `eco_scratch` copy is register-to-register MET; leftover is course
 20% output delay on `resp_msg[14]`. Do not rewrite the SDC.
+Campaign review (stopped 2026-09-04, not leftover-free):
+[`rtl_to_signoff.md`](rtl_to_signoff.md).
 
 ## Studio (`studio/`)
 

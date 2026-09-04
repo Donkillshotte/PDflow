@@ -2,6 +2,8 @@
 
 Honest snapshot of what runs and what does not. Not a product win list.
 Do not mix Product / Lab / Course. Do not mix IR meshes.
+Living campaign review: [`docs/rtl_to_signoff.md`](../../docs/rtl_to_signoff.md)
+(leftover-free stopped 2026-09-04, not achieved).
 
 Evidence: `learn/sim/reports/*_flowlab.json`, ORFS
 `results/nangate45/gcd/flowlab/`, `GET /api/suite`. Course progress is

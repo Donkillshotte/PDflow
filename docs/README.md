@@ -36,8 +36,9 @@ stays 45.298 mV.
 ### Course / Studio
 
 1. [`course.md`](course.md)
-2. [`../learn/README.md`](../learn/README.md) · [`../learn/CURRICULUM.md`](../learn/CURRICULUM.md)
-3. [`../studio/README.md`](../studio/README.md)
+2. [`rtl_to_signoff.md`](rtl_to_signoff.md) — living campaign: leftover-free **stopped**, not achieved
+3. [`../learn/README.md`](../learn/README.md) · [`../learn/CURRICULUM.md`](../learn/CURRICULUM.md)
+4. [`../studio/README.md`](../studio/README.md)
 
 ## Repository map
 
@@ -46,6 +47,7 @@ stays 45.298 mV.
 - [`architecture.md`](architecture.md) — directories, ownership, what not to move
 - [`script.md`](script.md) — wrappers in `scripts/` and `learn/scripts/`
 - [`plans.md`](plans.md) — frozen plan index
+- [`rtl_to_signoff.md`](rtl_to_signoff.md) — living RTL-to-signoff campaign (stopped)
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — how to contribute
 - [`../AGENTS.md`](../AGENTS.md) — operational rules for agents
 - [`../learn/reference/suite-status.md`](../learn/reference/suite-status.md) — live flow WORKS / FAIL / GAP table

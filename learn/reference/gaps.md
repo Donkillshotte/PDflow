@@ -1,5 +1,8 @@
 # Remaining gaps
 
+Campaign status (leftover-free **stopped**, not achieved):
+[`docs/rtl_to_signoff.md`](../../docs/rtl_to_signoff.md).
+
 Two kinds of leftover. They look similar in Studio (a red or amber
 hook) but they are not the same work.
 

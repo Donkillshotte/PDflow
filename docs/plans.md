@@ -2,6 +2,14 @@
 
 Do not edit after data. Reading index: [`docs/README.md`](README.md).
 
+## Living RTL-to-signoff campaign (not frozen)
+
+The leftover-free RTL-to-signoff goal was **stopped on 2026-09-04,
+not achieved**. Done vs missing, live leftovers, and failed closes:
+[`rtl_to_signoff.md`](rtl_to_signoff.md).
+
+Do **not** copy that review into the frozen files below.
+
 ## Product (from here on)
 
 | File | Role | Do not |
