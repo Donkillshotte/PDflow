@@ -1193,6 +1193,8 @@ def _check_enterprise_docs(check, root: Path) -> None:
     learn_readme = (root / "learn/README.md").read_text()
     check("[RTL → PKG]" not in learn_readme, "learn README does not call FlowLab RTL → PKG")
     check("RTL → finish" in learn_readme, "learn README names FlowLab RTL → finish")
+    check("1. Change PDK" not in learn_readme, "after-course does not lead with a sky130 switch")
+    check("different PDK" in learn_readme, "after-course labels sky130 as a different PDK")
     contrib = (root / "CONTRIBUTING.md").read_text()
     check("test_dse_next.py" in contrib, "CONTRIBUTING names the fast suite")
     check("45.298" in contrib, "CONTRIBUTING protects GCD IR gold")

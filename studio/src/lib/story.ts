@@ -333,13 +333,13 @@ export function getProductStory(): ProductStory {
     },
     {
       id: "signoff",
-      label: "Signoff",
+      label: leftoverBit ? "Signoff · leftover named" : "Signoff",
       href: "/flow?phase=finish&focus=signoff#signoff",
       ready: pillars.length > 0 && signoffPassed === pillars.length,
       detail:
         pillars.length === 0
           ? "Four pillars: STA · DRC · LVS · power"
-          : `${signoffPassed}/${pillars.length} pillars pass${leftoverBit}`,
+          : `${signoffPassed}/${pillars.length} pillars ok${leftoverBit}`,
     },
     {
       id: "sta-ir",
@@ -352,9 +352,9 @@ export function getProductStory(): ProductStory {
       id: "ir",
       label: "Dynamic IR",
       href: "/flow?phase=finish&focus=ir#ir",
-      ready: goldPresent || currentPresent,
-      detail: goldPresent
-        ? `Gold ${IR_GOLD_MV} mV (reference_run) · current_run ${liveMv != null ? liveMv.toFixed(3) : "absent"} mV`
+      ready: currentPresent || goldPresent,
+      detail: currentPresent
+        ? `current_run ${liveMv != null ? liveMv.toFixed(3) : "absent"} mV · gold ${IR_GOLD_MV} mV locked (another mesh)`
         : `Gold ${IR_GOLD_MV} mV is the frozen reference_run`,
     },
     {

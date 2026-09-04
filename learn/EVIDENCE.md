@@ -89,12 +89,12 @@ FLOW_VARIANT=learn SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
 |---|---|---|
 | Timing | **PASS** | WNS −0.02 ns · TNS −0.14 · viol 3 |
 | Geometry | **PASS** | Route DRC 0 · GDS DRC 0 |
-| Equivalence | **PASS** | LVS PASS · errors 0 |
+| Equivalence | **PASS** | LVS PASS · errors 0 · leftover must-connect 2 (DFF_X2) |
 | Power | **PASS** | Chip IR 6.34 mV · Sys droop 10.16 mV |
 | Thermal proxy | **FAIL** (educational) | 62.86 mV > 50 mV threshold — interpret as proxy |
 | PKG | **PASS** | bump + RDL + system_pdn ok |
 
-Report: `learn/sim/reports/signoff_all_learn.json`. Phase 1 complete; thermal proxy flags elevated transient droop on the learn run (educational value).
+Report: `learn/sim/reports/signoff_all_learn.json`. Four pillars ok on that learn run; leftover stays named. Thermal proxy flags elevated transient droop (educational). PKG is after signoff, not a fifth pillar.
 
 ## Studio UI (graphical wrapper)
 

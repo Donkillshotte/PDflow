@@ -66,10 +66,12 @@ note). STA / DRC / power evaluate ok. LVS is a KLayout compare on a
 filtered CDL (FILL from DEF, wells mapped to VDD/VSS). A pass requires
 `CONGRATULATIONS! Netlists match`. Must-connect warnings on DFF_X2 stay
 in the lvsdb (Nangate split wells). This is educational FreePDK45, not
-foundry LVS. Physics ledger: 28/30 READY, 2 WATCH (ibex/aes ORFS IR),
-0 GAP.
+foundry LVS. Physics ledger: 28/30 READY, 2 WATCH (ibex/aes ORFS IR).
+PDK-gated leftovers stay named: DFF_X2 must-connect 2, VIA flatten,
+`em_checked` 0, no density/named ERC, single `typical.lib` (no MCMM).
 
-Phase 2 (thermal proxy + PKG) is materialized on the same finish.
+Phase 2 (thermal proxy + dummy RDL) runs after finish on `/pkg`.
+It is not a fifth signoff pillar.
 Bump mesh and system PDN evaluate. Dummy `rdl_route` executed (4 bumps,
 36 wires) — educational, not C4. Gold Dynamic IR
 `learn/sim/reports/dynamic_ir_flowlab.json` is tracked and still

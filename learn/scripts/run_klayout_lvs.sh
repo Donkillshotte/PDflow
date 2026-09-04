@@ -104,7 +104,7 @@ import json
 import sys
 from pathlib import Path
 sys.path.insert(0, "${ROOT}/learn/scripts")
-from stamp_signoff_all import leftover_from_lvs
+from stamp_signoff_all import leftover_from_lvs, with_leftover_summary
 metrics = json.loads(Path("${METRICS}").read_text())
 evald = json.loads(Path("${OUT}.eval").read_text()) if Path("${OUT}.eval").exists() else {}
 eq = metrics["equivalence"]
@@ -142,6 +142,7 @@ out = {
 leftover = leftover_from_lvs(out)
 if leftover:
     out["leftover"] = leftover
+    out["summary"] = with_leftover_summary(out.get("summary"), leftover)
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 print("LVS_SIGNOFF_JSON", "${OUT}")
 print(out["summary"])

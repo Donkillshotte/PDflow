@@ -221,11 +221,11 @@ Full map: [`learn/reference/extended-flow.md`](./reference/extended-flow.md).
 | System PDN (hier) | `run_system_pdn.sh` · FlowLab PKG · ngspice | READY |
 | Chip IR mesh | `run_chip_pdn_ir.sh` · write_pg_spice | READY |
 | vyges-em-ir | `run_vyges_em_ir.sh` · CG+BE binary | READY |
-| Dynamic IR I(t) | `run_dynamic_ir.sh` · A gold + B SA-AMG + heatmap | READY |
-| SPICE chain | `run_power_chain.sh` · FlowLab signoff | READY |
+| Dynamic IR I(t) | `run_dynamic_ir.sh` · current_run `_direct.json` + SA-AMG · gold 45.298 locked | READY |
+| SPICE chain | `run_power_chain.sh` · FlowLab signoff + `/pkg` ladder | READY |
 | Per-stage chain docs | `spice-power-chain.md` + lab `sim/spice/` | READY |
 | Activity → power | `run_activity_power.sh` · `activity_power` | READY (VCD `read_vcd`) |
 | Vectorless / dynamic IR | `run_vectorless.sh` · `vectorless` | READY (Najm + Kouroussis) |
 | KLayout GDS DRC | `run_klayout_drc.sh` · `klayout_drc` | READY (after finish) |
 | Bump / RDL / design package | `/pkg` · Packaging docs | PARTIAL (theory + BUMPS demo) |
-| Thermal | no tool in VM | MISSING (theory) |
+| Thermal | `run_thermal_signoff.sh` · HotSpot proxy · `/pkg` Phase 2 | READY (proxy) |

@@ -241,7 +241,7 @@ Course is **pinned to Nangate45**. sky130 is a different PDK. Mixing them would 
 - sky130 has **real IO cells** (`sky130_fd_io`), unlike Nangate45 dummy pads.
 - sky130 has **CCS/ECSM in some liberty variants** (mixed with NLDM).
 - sky130 has full Magic `.tech`, Netgen setup, open_pdks integration.
-- sky130 **LVS is clean** on most standard cells via KLayout or Netgen.
+- sky130 typically has fewer split-well leftovers on standard cells via KLayout or Netgen. That is a different PDK, out of scope for this course.
 
 ### Feasibility
 

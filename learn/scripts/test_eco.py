@@ -102,6 +102,7 @@ def main() -> int:
     flow = (ROOT / "studio/src/components/FlowLab.tsx").read_text()
     check('phaseId !== "finish"' in flow and "FlowLabPowerChain" in flow, "finish does not remount the power-chain strip on finish")
     check("RTL → PKG chain" not in (ROOT / "studio/src/components/flowlab/FlowLabPowerChain.tsx").read_text(), "power chain heading is not RTL → PKG")
+    check("SPICE chain RTL→PKG" not in (ROOT / "studio/src/lib/materials-data.ts").read_text(), "materials catalog does not title the chain RTL→PKG")
     jobs_ts = (ROOT / "studio/src/lib/jobs.ts").read_text()
     check("reconcileOrphanJobs" in jobs_ts, "job history marks orphan running cooks")
     check("orphan running job" in jobs_ts, "orphan running jobs get an error stamp")

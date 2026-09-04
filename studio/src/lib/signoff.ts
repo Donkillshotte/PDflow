@@ -453,7 +453,9 @@ export function evaluateSignoffGates(variant = "flowlab"): {
       : "report missing — run signoff";
     if (pillar.id === "equivalence" && orchReport) {
       const leftover = leftoverMustConnectDetail(orchReport);
-      if (leftover) detail += ` · ${leftover}`;
+      if (leftover && !String(detail).includes("leftover must-connect")) {
+        detail += ` · ${leftover}`;
+      }
     }
     if (pillar.id === "power" && orchReport?.ir_mesh_ledger) {
       detail += " · IR meshes not comparable (gold / chip / current_run / vyges / system)";

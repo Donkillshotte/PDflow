@@ -47,6 +47,23 @@ def leftover_from_lvs(lvs: dict | None) -> dict | None:
     }
 
 
+def leftover_summary_suffix(leftover: dict | None) -> str:
+    """Append leftover to a PASS line so a summary-only reader cannot hide it."""
+    if not leftover:
+        return ""
+    cells = leftover.get("circuits") or []
+    named = f" ({', '.join(cells)})" if cells else ""
+    return f" · leftover must-connect {leftover['must_connect']}{named}"
+
+
+def with_leftover_summary(summary: str | None, leftover: dict | None) -> str:
+    text = str(summary or "")
+    suffix = leftover_summary_suffix(leftover)
+    if suffix and "leftover must-connect" not in text:
+        return f"{text}{suffix}"
+    return text
+
+
 def build(variant: str = "flowlab") -> dict:
     pillars: dict[str, dict] = {}
     files = {
@@ -67,10 +84,7 @@ def build(variant: str = "flowlab") -> dict:
             leftover = leftover_from_lvs(report)
             if leftover:
                 row["leftover"] = leftover
-                row["summary"] = (
-                    f"{row['summary']} · leftover must-connect {leftover['must_connect']}"
-                    + (f" ({', '.join(leftover['circuits'])})" if leftover["circuits"] else "")
-                )
+                row["summary"] = with_leftover_summary(row.get("summary"), leftover)
         if kind == "power":
             ledger = report.get("ir_mesh_ledger")
             if isinstance(ledger, dict):
@@ -116,8 +130,15 @@ def stamp(variant: str = "flowlab") -> dict:
         lvs_path = REPORTS / f"lvs_signoff_{variant}.json"
         if lvs_path.is_file():
             lvs = json.loads(lvs_path.read_text())
+            changed = False
             if lvs.get("leftover") != leftover:
                 lvs["leftover"] = leftover
+                changed = True
+            named = with_leftover_summary(lvs.get("summary"), leftover)
+            if named != lvs.get("summary"):
+                lvs["summary"] = named
+                changed = True
+            if changed:
                 lvs_path.write_text(json.dumps(lvs, indent=2) + "\n")
     return blob
 

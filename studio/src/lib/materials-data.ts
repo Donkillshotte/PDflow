@@ -100,9 +100,9 @@ export const MATERIALS: MaterialLink[] = [
   },
   {
     href: "/materials/reference/spice-power-chain.md",
-    title: "SPICE chain RTL→PKG",
+    title: "SPICE chain RTL→finish · /pkg",
     group: "Packaging",
-    description: "Links all phases: VCD, liberty, mesh, ngspice ladder.",
+    description: "On-die mesh through finish; System PDN ladder on /pkg.",
   },
   {
     href: "/materials/reference/spice-ngspice-primer.md",

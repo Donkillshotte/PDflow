@@ -39,7 +39,7 @@ export default function HomePage() {
             { n: "CTS", t: "Clock", d: "Switching", href: "/flow?phase=cts" },
             { n: "RT", t: "Route", d: "SPEF path", href: "/flow?phase=route" },
             { n: "GDS", t: "Finish", d: "STA · DRC · LVS · power", href: "/flow?phase=finish" },
-            { n: "PKG", t: "Package", d: "System PDN", href: "/pkg" },
+            { n: "PKG", t: "After signoff", d: "System PDN · /pkg", href: "/pkg" },
           ].map((s) => (
             <Link key={s.n} href={s.href} className="flow-step flow-step-link">
               <span>{s.n}</span>

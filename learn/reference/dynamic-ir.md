@@ -1,7 +1,7 @@
-# Dynamic IR on the GCD (I(t) per pin + Solver A gold + Solver B SA-AMG)
+# Dynamic IR on the GCD (I(t) per pin + Solver A current_run + Solver B SA-AMG)
 
 Executable slice of a **hybrid platform**, not a RedHawk and not a fork.
-Frontend: OpenROAD `write_pg_spice`. **Solver A** (BE + LU + \(i_L\)) is the oracle. **Solver B** (SA-AMG + CG) is the workhorse on the same \(A=G+C/\Delta t+g_\mathrm{eq}\). **Solver C** is MOR: RC on \(\delta v\), or descriptor RLC on \(x=[v;i_L]\) (same physics as the companion). **Solver D** is RAS Schwarz (graph partition, local LU, GMRES). vyges-em-ir is bootstrap.
+Frontend: OpenROAD `write_pg_spice`. **Solver A** (BE + LU + \(i_L\)) writes **current_run** `dynamic_ir_<variant>_direct.json`. The locked gold **45.298 mV** stays in `dynamic_ir_flowlab.json` on another mesh. **Solver B** (SA-AMG + CG) is the workhorse on the same \(A=G+C/\Delta t+g_\mathrm{eq}\). **Solver C** is MOR: RC on \(\delta v\), or descriptor RLC on \(x=[v;i_L]\) (same physics as the companion). **Solver D** is RAS Schwarz (graph partition, local LU, GMRES). vyges-em-ir is bootstrap.
 
 ```text
 6_final.odb
@@ -17,7 +17,7 @@ pdn_dynamic.py
     VCD/SAIF name-join only     RTL tb_gcd → GAP (no silent pin map); SAIF idle-zeros TC=0
     Path STA delay              OpenSTA worst max path, gate delays × (Vdd/V_inst)^α
     A = G + C/Δt                setup once (independent of I(t))
-    Solver A: LU                gold
+    Solver A: LU                current_run (`_direct.json`); gold 45.298 is another mesh
     Solver B: SA-AMG + CG       workhorse, |A−B| on the GCD < 1 µV
     Solver C: rational Krylov MOR  descriptor RLC (or RC if L=0)
     Solver D: RAS Schwarz (undirected graph A∪Aᵀ, local LU, GMRES)

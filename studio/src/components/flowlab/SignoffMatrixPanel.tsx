@@ -415,7 +415,10 @@ export function SignoffMatrixPanel({
         <p className="sig-summary">
           Global status:{" "}
           <span className={data.evaluation.ok ? "sig-ok-text" : "sig-fail-text"}>
-            {data.evaluation.ok ? "PASS" : "FAIL / incomplete"}
+            {data.evaluation.ok
+              ? data.evaluation.gates.find((g) => g.id === "signoff_all")?.detail ||
+                "Four pillars ok"
+              : "FAIL / incomplete"}
           </span>
         </p>
       )}

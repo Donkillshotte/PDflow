@@ -104,6 +104,27 @@ def main() -> int:
     check(any("DFF_X2" in str(m) for m in msgs), "leftover messages name DFF_X2")
     check(int((lvs.get("leftover") or {}).get("must_connect") or 0) == 2, "LVS leftover object is 2")
     check("DFF_X2" in ((lvs.get("leftover") or {}).get("circuits") or []), "LVS leftover object names DFF_X2")
+    check("leftover must-connect 2" in str(lvs.get("summary")), "LVS summary names leftover (not PASS-only)")
+    check("with_leftover_summary" in (ROOT / "learn/scripts/run_klayout_lvs.sh").read_text(), "LVS cook stamps leftover into summary")
+    check("with_leftover_summary" in (ROOT / "learn/scripts/stamp_signoff_all.py").read_text(), "stamp writes leftover into LVS summary")
+    panel = (ROOT / "studio/src/components/flowlab/SignoffMatrixPanel.tsx").read_text()
+    check('{data.evaluation.ok ? "PASS"' not in panel, "signoff matrix does not print a bare PASS")
+    check("Four pillars ok" in panel, "signoff matrix global line names four pillars")
+    check("signoff_all" in panel, "signoff matrix global line uses the signoff_all summary")
+    check("Signoff · leftover named" in story, "home story labels leftover on the signoff step")
+    check("Gold ${IR_GOLD_MV} mV (reference_run)" not in story, "story IR does not lead with gold as the live number")
+    check("current_run ${liveMv" in story, "story IR leads with current_run")
+    check("After signoff" in home, "home PKG chip is after signoff")
+    check("0 GAP" not in (ROOT / "docs/results.md").read_text(), "results.md does not claim 0 GAP")
+    curric = (ROOT / "learn/CURRICULUM.md").read_text()
+    check("A gold + B SA-AMG" not in curric, "curriculum Dynamic IR is current_run, not A gold")
+    check("| Thermal | no tool in VM |" not in curric, "curriculum thermal is HotSpot, not missing")
+    evidence = (ROOT / "learn/EVIDENCE.md").read_text()
+    check("leftover must-connect 2 (DFF_X2)" in evidence, "EVIDENCE names LVS leftover")
+    check("Phase 1 complete" not in evidence, "EVIDENCE does not call Phase 1 complete")
+    dyn_md = (ROOT / "learn/reference/dynamic-ir.md").read_text()
+    check("Solver A gold + Solver B" not in dyn_md.splitlines()[0], "dynamic-ir title is current_run, not gold")
+    check("_direct.json" in dyn_md, "dynamic-ir names current_run _direct.json")
     tail = ((lvs.get("artifact_parse") or {}).get("log") or {}).get("tail") or []
     check(any("CONGRATULATIONS" in str(x) or "Netlists match" in str(x) for x in tail), "LVS log keeps the match line")
     check(not any("Netlists don't match" in str(x) for x in tail), "LVS log has no mismatch line")
@@ -190,6 +211,10 @@ def main() -> int:
     check("from `_direct.json`" in status, "suite-status names current_run for the Dynamic IR hook")
     chain = (ROOT / "learn/reference/spice-power-chain.md").read_text()
     check("](/pkg)" in chain, "spice-power-chain names the PKG hub")
+    check("RTL → PKG power chain" not in chain, "spice-power-chain title is not RTL → PKG")
+    check("9 FlowLab phases" not in chain, "spice-power-chain is eight close phases, not nine")
+    lvs_hook = suite.split('id: "lvs_signoff"')[1].split("},")[0]
+    check("leftover must-connect 2" in lvs_hook, "suite LVS hook names leftover")
     therm = suite.split('id: "thermal_signoff"')[1].split("},")[0]
     check("thermalHookDetail" in therm, "Thermal hook reads t_max from the HotSpot report")
     check("HotSpot t_max °C" not in therm, "Thermal hook does not print a blank t_max")
@@ -201,6 +226,7 @@ def main() -> int:
     check("foundry contract" not in lab07.lower() and "enterprise signoff" not in lab07.lower(), "LAB 07 signoff is educational")
     gaps_eval = (ROOT / "learn/reference/remaining-gaps-evaluation.md").read_text()
     check("Closed on FlowLab GCD compare" in gaps_eval, "LVS feasibility is closed")
+    check("LVS is clean" not in gaps_eval, "gaps eval does not call sky130 LVS clean")
     eq = pillars.get("equivalence") or {}
     check(int((eq.get("leftover") or {}).get("must_connect") or 0) == 2, "equivalence pillar carries leftover")
     ledger_all = signoff_all.get("ir_mesh_ledger") or {}
@@ -208,10 +234,19 @@ def main() -> int:
     check(int(ledger_all.get("n_meshes") or 0) >= 5, "signoff_all ledger has five meshes")
     check("stamp_signoff_all.py" in (ROOT / "learn/scripts/run_signoff_all.sh").read_text(), "signoff_all restamps leftover from pillar reports")
     check("leftover_from_lvs" in (ROOT / "learn/scripts/run_klayout_lvs.sh").read_text(), "LVS signoff writes leftover object")
-    from stamp_signoff_all import leftover_from_lvs, build
+    from stamp_signoff_all import leftover_from_lvs, build, with_leftover_summary
     parsed = leftover_from_lvs(lvs)
     check(parsed is not None and parsed["must_connect"] == 2, "stamp leftover_from_lvs reads LVS")
     check("DFF_X2" in parsed["circuits"], "stamp leftover_from_lvs names DFF_X2")
+    check(
+        with_leftover_summary("LVS PASS · errors 0", parsed) == "LVS PASS · errors 0 · leftover must-connect 2 (DFF_X2)",
+        "with_leftover_summary appends leftover once",
+    )
+    check(
+        with_leftover_summary("LVS PASS · errors 0 · leftover must-connect 2 (DFF_X2)", parsed)
+        == "LVS PASS · errors 0 · leftover must-connect 2 (DFF_X2)",
+        "with_leftover_summary does not double-append",
+    )
     rebuilt = build("flowlab")
     check(rebuilt.get("ok") is True, "stamp rebuild is ok")
     check(int((rebuilt.get("leftover") or {}).get("must_connect") or 0) == 2, "stamp rebuild leftover")

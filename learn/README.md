@@ -142,10 +142,13 @@ Full detail: [CURRICULUM.md](./CURRICULUM.md)
 
 ## After the course
 
-1. Change PDK: `DESIGN_CONFIG=./designs/sky130hd/gcd/config.mk`
-2. Bring your Verilog into `flow/designs/src/`
-3. Read and edit `flow/scripts/*.tcl` one command at a time
-4. Use `make help` in `flow/` for all GUI targets
+The course stays on Nangate45 / FreePDK45. Do not mix sky130 into these lessons.
+
+1. Bring your Verilog into `flow/designs/src/`
+2. Read and edit `flow/scripts/*.tcl` one command at a time
+3. Use `make help` in `flow/` for all GUI targets
+
+sky130 (`DESIGN_CONFIG=./designs/sky130hd/gcd/config.mk`) is a different PDK. It is a post-course experiment, not a course step. See [`reference/gaps.md`](./reference/gaps.md).
 
 ## Notes
 

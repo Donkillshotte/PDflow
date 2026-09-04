@@ -1,6 +1,6 @@
-# RTL → PKG power chain · comprehensive guide
+# RTL → finish power chain · System PDN on /pkg
 
-**Master** document linking the **8 course lessons (00–07)**, the **9 FlowLab phases**, **ORFS artifacts**, **Studio actions**, and the **two SPICE families** (on-die mesh + System PDN ladder).
+**Master** document linking the **8 course lessons (00–07)**, the **8 FlowLab close phases**, **ORFS artifacts**, **Studio actions**, and the **two SPICE families** (on-die mesh + System PDN ladder on `/pkg`).
 
 ## Complete matrix
 
@@ -13,8 +13,8 @@
 | [04-placement](#lesson-04-placement) | `place` | `3_*place*.odb` | `place` | `ITermNode_*` in mesh |
 | [05-cts](#lesson-05-cts) | `cts` | `4_*cts*.odb` | `cts` | ↑ switching clock |
 | [06-routing](#lesson-06-routing) | `route` | `5_*route*.odb`, guide | `route` | SPEF → STA |
-| [07-finish](#lesson-07-finish) | `finish`, `pkg` | `6_final.*`, IR PNG | signoff chain | all reports |
-| Post-course | `pkg` | `system_pdn/`, reports | `system_pdn`, `power_chain` | ngspice JSON |
+| [07-finish](#lesson-07-finish) | `finish` | `6_final.*`, IR PNG | signoff chain | chip mesh reports |
+| After signoff | `/pkg` | `system_pdn/`, reports | `system_pdn`, `power_chain` | ngspice JSON |
 
 ### Two SPICE engines (do not confuse them)
 

@@ -415,7 +415,7 @@ export async function getSuiteStatus() {
       label: "LVS signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "lvs_signoff") || signoffReportPass("learn", "lvs_signoff"),
-      detail: "KLayout GDS vs filtered CDL · well→VDD/VSS",
+      detail: "KLayout GDS vs filtered CDL · leftover must-connect 2 (DFF_X2)",
       action: "klayout_lvs",
       href: "/flow?phase=finish",
     },
