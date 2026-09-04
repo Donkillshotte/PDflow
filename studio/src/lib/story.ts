@@ -12,6 +12,23 @@ import { PIPELINE_STAGES } from "./jobs";
 export const STORY_VARIANT = "flowlab";
 export const IR_GOLD_MV = 45.298;
 
+/** Compact leftover list for the home story. Do not dump the full signoff_all line. */
+export function leftoverNamedBit(detail: string): string {
+  const bits: string[] = [];
+  const must = detail.match(/leftover must-connect \d+(?:\s*\([^)]+\))?/);
+  if (must) bits.push(must[0]);
+  const setup = detail.match(/leftover setup open \(WNS [^)]+\)/);
+  if (setup) bits.push(setup[0]);
+  const mcmm = detail.match(/leftover no MCMM \([^)]+\)/);
+  if (mcmm) bits.push(mcmm[0]);
+  if (detail.includes("leftover no density")) bits.push("leftover no density / named ERC");
+  if (!bits.length) {
+    const at = detail.indexOf("leftover");
+    return at >= 0 ? ` · ${detail.slice(at)}` : "";
+  }
+  return ` · ${bits.join(" · ")}`;
+}
+
 const SLACK_PS = 5.0;
 const METRIC_FRAC = 0.1;
 const AREA_FRAC = 0.02;
@@ -266,14 +283,11 @@ export function getProductStory(): ProductStory {
   const pillarIds = ["timing", "geometry", "equivalence", "power"];
   const pillars = gates.gates.filter((g) => pillarIds.includes(g.id));
   const signoffPassed = pillars.filter((g) => g.ok).length;
-  const leftoverBit = (() => {
-    const all = gates.gates.find((g) => g.id === "signoff_all")?.detail ?? "";
-    const at = all.indexOf("leftover");
-    if (at >= 0) return ` · ${all.slice(at)}`;
-    const detail = gates.gates.find((g) => g.id === "equivalence")?.detail ?? "";
-    const eqAt = detail.indexOf("leftover");
-    return eqAt >= 0 ? ` · ${detail.slice(eqAt)}` : "";
-  })();
+  const leftoverBit = leftoverNamedBit(
+    gates.gates.find((g) => g.id === "signoff_all")?.detail ??
+      gates.gates.find((g) => g.id === "equivalence")?.detail ??
+      "",
+  );
   const ecoApply = readReportFile("eco_apply_eco_scratch.json");
   const ecoLeftover =
     typeof ecoApply?.leftover === "string" && ecoApply.leftover
