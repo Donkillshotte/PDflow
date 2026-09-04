@@ -242,6 +242,20 @@ def apply(variant: str) -> dict:
     needed = {"odb", "def", "verilog", "gds"}
     ok = needed.issubset(set(rewrote))
     missing = sorted(needed - set(rewrote))
+    log_text = chunks[0]
+    restored = "ECO_RESTORE_SOURCE" in log_text
+    leftover = None
+    if restored:
+        leftover = (
+            "post-route size-up cannot close WNS; detailed_route failed "
+            "connectivity; source ODB restored"
+        )
+    if ok and restored:
+        summary = "ECO apply restored source · post-route repair cannot legalize · run signoff_all next"
+    elif ok:
+        summary = "ECO apply wrote " + "+".join(rewrote) + " · run signoff_all next"
+    else:
+        summary = "ECO apply failed" + (f" · missing {missing}" if missing else "")
     return {
         "kind": "eco",
         "mode": "apply",
@@ -260,15 +274,11 @@ def apply(variant: str) -> dict:
         "log": str(log),
         "rc": proc.returncode,
         "error": err,
+        "repaired": bool("ECO_REPAIR_SETUP" in log_text) and not restored,
+        "leftover": leftover,
         "rewrote": rewrote,
         "not_rewritten": [k for k in ("spef", "cdl", "gds") if k not in rewrote],
-        "summary": (
-            "ECO apply wrote "
-            + "+".join(rewrote)
-            + " · run signoff_all next"
-            if ok
-            else ("ECO apply failed" + (f" · missing {missing}" if missing else ""))
-        ),
+        "summary": summary,
     }
 
 

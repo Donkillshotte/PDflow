@@ -112,8 +112,9 @@ if {[info commands detailed_route] != ""} {
 }
 
 if {[info commands design_is_routed] != "" && ![design_is_routed]} {
-  puts "FAIL ECO design is not routed — refusing to write 6_final"
-  exit 1
+  puts "WARN ECO design is not routed after size-up — restoring source ODB"
+  read_db $::env(ECO_ODB)
+  puts "ECO_RESTORE_SOURCE"
 }
 
 write_db $::env(ECO_ODB_OUT)

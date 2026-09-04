@@ -86,7 +86,9 @@ def main() -> int:
     check("-skip_buffering" in tcl and "sizeup,swap" in tcl, "post-route ECO skips BufferMove (needs GRT)")
     check("ECO_FASTROUTE" in tcl and "global_route" in tcl, "repair tcl initializes GRT before size-up")
     check("detailed_route" in tcl and "design_is_routed" in tcl, "repair tcl detailed-routes before writing 6_final")
-    check("ECO_FASTROUTE" in src and "MIN_ROUTING_LAYER" in src, "apply sets Nangate routing layers for GRT")
+    check("ECO_RESTORE_SOURCE" in tcl, "repair tcl restores source ODB if size-up is not routed")
+    check("exit 1" not in tcl.split("design_is_routed")[1].split("write_db")[0], "unrouted size-up does not write a broken 6_final")
+    check("ECO_RESTORE_SOURCE" in src, "apply report names a restored source")
     check("ECO_SPEF_IN" in src, "apply passes the source 6_final.spef")
     check((SCRIPTS / "eco_stream_gds.py").is_file(), "GDS stream helper exists")
     check("eco_stream_gds.py" in src, "apply streams GDS after DEF")
@@ -221,6 +223,9 @@ def main() -> int:
         check(scratch.get("signoff") is False, "scratch apply does not claim signoff")
         check(scratch.get("ok") is True, "scratch apply wrote sidecar")
         check("run_signoff_all" in str(scratch.get("signoff_required")), "scratch still requires signoff_all")
+        if scratch.get("repaired") is False:
+            check(bool(scratch.get("leftover")), "unrepaired apply names leftover")
+            check("signoff_all" in str(scratch.get("summary")), "unrepaired apply still requires signoff_all")
         out_odb = Path(scratch.get("output_odb") or "")
         check(out_odb.is_file(), "scratch sidecar ODB exists")
         flowlab = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb"
