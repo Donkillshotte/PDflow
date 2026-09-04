@@ -4,7 +4,7 @@
   "pillars": {
     "timing": {
       "ok": true,
-      "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16"
+      "summary": "STA WNS -0.02 ns \u00b7 TNS -0.13 \u00b7 viol 16"
     },
     "geometry": {
       "ok": true,
@@ -23,7 +23,7 @@
     },
     "power": {
       "ok": true,
-      "summary": "Chip IR 1.05 mV \u00b7 transient 9.47 mV \u00b7 IR meshes not comparable",
+      "summary": "Chip IR 1.01 mV \u00b7 transient 9.44 mV \u00b7 IR meshes not comparable",
       "ir_mesh_ledger": {
         "comparable": false,
         "n_meshes": 3

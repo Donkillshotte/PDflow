@@ -41,14 +41,14 @@
         "Flatten layout cell (no schematic): VIA_via4_0",
         "Flatten layout cell (no schematic): VIA_via3_2",
         "Flatten layout cell (no schematic): VIA_via5_0",
+        "Flatten layout cell (no schematic): VIA_via1_2_960_340_1_3_300_300",
         "Flatten layout cell (no schematic): VIA_via3_4_960_340_1_3_320_320",
         "Flatten layout cell (no schematic): VIA_via2_3_960_340_1_3_320_320",
-        "Flatten layout cell (no schematic): VIA_via1_2_960_340_1_3_300_300",
         "Writing netlist: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/gcd_extracted.cir ..",
         "Writing LVS database: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb ..",
         "Total elapsed: 0.660s  Memory: 444.00M",
         "CONGRATULATIONS! Netlists match.",
-        "LVS finished at : 7:36:14  -  LVS duration =  0 hrs. 0 min. 0 sec."
+        "LVS finished at : 8:25:44  -  LVS duration =  0 hrs. 0 min. 0 sec."
       ],
       "missing_lylvs": false,
       "netlists_match": true

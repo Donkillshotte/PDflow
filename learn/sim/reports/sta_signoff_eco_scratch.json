@@ -4,7 +4,7 @@
   "engine": "opensta",
   "timing": {
     "wns_ns": -0.02,
-    "tns": -0.14,
+    "tns": -0.13,
     "setup_violations": 16,
     "period_min_ns": 0.48
   },
@@ -20,7 +20,7 @@
       {
         "id": "tns",
         "label": "TNS max",
-        "actual": -0.14,
+        "actual": -0.13,
         "target": -0.6,
         "ok": true
       },
@@ -42,7 +42,7 @@
     "ok": true
   },
   "ok": true,
-  "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16",
+  "summary": "STA WNS -0.02 ns \u00b7 TNS -0.13 \u00b7 viol 16",
   "artifacts": {
     "finish_rpt": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/6_finish.rpt",
     "sta_log": "/workspace/learn/sim/reports/sta_signoff_eco_scratch.log"

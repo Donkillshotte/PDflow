@@ -16,8 +16,8 @@
   "log": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_apply.log",
   "rc": 0,
   "error": null,
-  "repaired": false,
-  "leftover": "post-route size-up cannot close WNS; detailed_route failed connectivity; source ODB restored",
+  "repaired": true,
+  "leftover": "size-up legalized (incremental GRT + detailed_route); setup still open; signoff_all required",
   "rewrote": [
     "odb",
     "def",
@@ -27,5 +27,5 @@
     "gds"
   ],
   "not_rewritten": [],
-  "summary": "ECO apply restored source \u00b7 post-route repair cannot legalize \u00b7 run signoff_all next"
+  "summary": "ECO apply wrote odb+def+verilog+cdl+spef+gds \u00b7 leftover size-up legalized (incremental GRT + detailed_route); setup still open; signoff_all required \u00b7 run signoff_all next"
 }
