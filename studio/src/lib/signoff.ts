@@ -133,7 +133,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         label: "Dynamic IR I(t)",
         action: "dynamic_ir",
         script: "learn/scripts/run_dynamic_ir.sh",
-        reportRel: "sim/reports/dynamic_ir_{variant}.json",
+        reportRel: "sim/reports/dynamic_ir_{variant}_direct.json",
         stampRel: ".dynamic_ir.ok",
       },
       {

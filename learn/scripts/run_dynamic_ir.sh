@@ -50,8 +50,9 @@ SPICE="${RES}/pdn/pg_vdd_bumps.sp"
 SPICE_VSS="${RES}/pdn/pg_vss_bumps.sp"
 INSTS="${RES}/pdn/inst_power_map.json"
 OUT_DIR="${ROOT}/learn/sim/reports"
-JSON="${OUT_DIR}/dynamic_ir_${VARIANT}.json"
-LOG="${OUT_DIR}/dynamic_ir_${VARIANT}.log"
+# current_run I(t). Gold 45.298 mV is dynamic_ir_flowlab.json — do not restamp.
+JSON="${OUT_DIR}/dynamic_ir_${VARIANT}_direct.json"
+LOG="${OUT_DIR}/dynamic_ir_${VARIANT}_direct.log"
 STA_JSON="${OUT_DIR}/sta_arrivals_${VARIANT}.json"
 VCD=""
 if VCD="$(power_vcd_path "${ROOT}")"; then
@@ -60,6 +61,11 @@ else
   VCD=""
 fi
 STAMP="${RES}/.dynamic_ir.ok"
+
+if [[ "$(basename "${JSON}")" == "dynamic_ir_flowlab.json" ]]; then
+  echo "FAIL refuse: will not write locked gold Dynamic IR 45.298 mV"
+  exit 2
+fi
 
 [[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run finish first (variant=${VARIANT})"; exit 1; }
 mkdir -p "${OUT_DIR}" "${RES}/pdn"
@@ -183,4 +189,4 @@ rg -q 'DYNAMIC_IR_DONE' "${LOG}"
 date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
 echo "OK dynamic IR ${VARIANT} mode=${MODE}"
 echo "  report: ${JSON}"
-echo "  svg:    ${OUT_DIR}/dynamic_ir_${VARIANT}.svg"
+echo "  svg:    ${OUT_DIR}/dynamic_ir_${VARIANT}_direct.svg"

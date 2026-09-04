@@ -41,7 +41,7 @@ Live WORKS / FAIL / GAP table: [suite-status.md](./suite-status.md).
 | **StarRC** | GAP | Synopsys commercial, no license | documented | **OpenRCX** SPEF at finish |
 | **open_pdks** | GAP | Sky130 / gf180, **different PDK** | course pinned to Nangate45 | Not mixed with FreePDK45 |
 | **vyges-em-ir** | INTEGRATED | static IR CG + transient BE on the mesh `write_pg_spice` | action `vyges_em_ir` · `sim/reports/vyges_em_ir_flowlab.json` · binary v0.1.33 | — |
-| **dynamic_ir (this course)** | INTEGRATED | I(t) per ITerm + Solver A LU gold + **Solver B SA-AMG** + scenarios on shared A | action `dynamic_ir` · `sim/reports/dynamic_ir_flowlab.json` + `.svg` | — |
+| **dynamic_ir (this course)** | INTEGRATED | I(t) per ITerm + Solver A LU + **Solver B SA-AMG** | action `dynamic_ir` writes `dynamic_ir_*_direct.json`. Gold 45.298 mV stays `dynamic_ir_flowlab.json` | Do not restamp gold |
 
 ---
 

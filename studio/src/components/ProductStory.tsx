@@ -163,7 +163,11 @@ export function ProductStory({
           </article>
           <article>
             <span>Dynamic IR</span>
-            <strong>{data.ir.goldMv} mV</strong>
+            <strong>
+              {data.ir.currentPresent && data.ir.currentMv != null
+                ? `${Number(data.ir.currentMv).toFixed(3)} mV`
+                : `${data.ir.goldMv} mV`}
+            </strong>
             <em>{data.ir.detail}</em>
           </article>
           <article>

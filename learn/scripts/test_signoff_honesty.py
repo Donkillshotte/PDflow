@@ -37,6 +37,11 @@ def main() -> int:
     heatmap = (ROOT / "studio/src/components/flowlab/DynamicIrHeatmap.tsx").read_text()
     check("dynamic_ir_${variant}_direct.json" in heatmap, "finish heatmap loads current_run")
     check("dynamic_ir_${variant}.json" not in heatmap, "finish heatmap does not load the gold sentinel")
+    dyn_sh = (ROOT / "learn/scripts/run_dynamic_ir.sh").read_text()
+    check('JSON="${OUT_DIR}/dynamic_ir_${VARIANT}_direct.json"' in dyn_sh, "dynamic_ir writes current_run _direct.json")
+    check('JSON="${OUT_DIR}/dynamic_ir_${VARIANT}.json"' not in dyn_sh, "dynamic_ir does not write the gold sentinel path")
+    check("will not write locked gold Dynamic IR" in dyn_sh, "dynamic_ir refuses the gold filename")
+    check("dynamic_ir_{variant}_direct.json" in (ROOT / "studio/src/lib/signoff.ts").read_text(), "signoff registry points Dynamic IR at current_run")
 
     lvs = load("lvs_signoff_flowlab.json")
     check(lvs.get("ok") is True, "LVS compare is a real KLayout match")
