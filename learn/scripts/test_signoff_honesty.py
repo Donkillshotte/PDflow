@@ -169,6 +169,14 @@ def main() -> int:
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_sta_signoff.sh").read_text(), "STA cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_drc_signoff.sh").read_text(), "DRC cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_power_signoff.sh").read_text(), "power cook fails the shell when ok is not true")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_chip_pdn_ir.sh").read_text(), "chip IR cook fails the shell when ok is not true")
+    chip_ir = load("pdn_chip_ir_flowlab.json")
+    check(chip_ir.get("ok") is True, "live chip IR report has ok")
+    chip_hook = suite_src.split('id: "chip_pdn_ir"')[1].split("},")[0]
+    check("signoffReportPass" in chip_hook, "suite chip IR ok is the JSON report, not the stamp")
+    check('href: "/flow?phase=finish#ir"' in chip_hook, "suite chip IR opens the finish IR ledger")
+    vy_hook = suite_src.split('id: "vyges_em_ir"')[1].split("},")[0]
+    check('href: "/flow?phase=finish#ir"' in vy_hook, "suite vyges opens the finish IR ledger")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_signoff_all.sh").read_text(), "signoff_all re-reads stamped JSON ok")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_pkg_signoff.sh").read_text(), "pkg_signoff fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_pkg_bump.sh").read_text(), "pkg_bump fails the shell when ok is not true")

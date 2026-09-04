@@ -29,6 +29,7 @@ def main() -> int:
     check(abs(float(gold["worst_droop_mv"]) - GOLD_MV) < 0.02, "gold 45.298")
 
     chip = load("pdn_chip_ir_flowlab.json")
+    check(chip.get("ok") is True, "chip IR report has ok")
     static_v = float((chip.get("static") or {}).get("worst_ir") or 0)
     static_mv = static_v * 1000.0
     check(0.1 < static_mv < 50.0, f"chip static IR rail-scale ({static_mv:.3f} mV)")

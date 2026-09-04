@@ -340,11 +340,11 @@ export async function getSuiteStatus() {
       label: "Chip IR mesh",
       group: "Power",
       ok:
-        fs.existsSync(path.join(resultsDir("flowlab"), ".chip_pdn_ir.ok")) ||
-        fs.existsSync(path.join(resultsDir("learn"), ".chip_pdn_ir.ok")),
-      detail: "write_pg_spice · pdn_transient",
+        signoffReportPass("flowlab", "pdn_chip_ir") ||
+        signoffReportPass("learn", "pdn_chip_ir"),
+      detail: "write_pg_spice · pdn_transient · finish IR ledger",
       action: "chip_pdn_ir",
-      href: "/tools?tab=run&action=chip_pdn_ir",
+      href: "/flow?phase=finish#ir",
     },
     {
       id: "vyges_em_ir",
@@ -355,7 +355,7 @@ export async function getSuiteStatus() {
         signoffReportPass("learn", "vyges_em_ir"),
       detail: vygesEmHookDetail(),
       action: "vyges_em_ir",
-      href: "/tools?tab=run&action=vyges_em_ir",
+      href: "/flow?phase=finish#ir",
     },
     {
       id: "dynamic_ir",

@@ -234,7 +234,10 @@ def main():
         args.dt,
     )
 
+    suspect = static["worst_ir"] > 0.2 * vdd
     report = {
+        "ok": not suspect,
+        "kind": "chip_pdn_ir",
         "engine": "studio-pdn-transient",
         "prior_art": [
             "OpenROAD PDNSim / write_pg_spice (static mesh)",
@@ -269,9 +272,9 @@ def main():
     print(f"report → {out}")
     print(f"wave → {wave}")
     # sanity: static IR should be << Vdd on GCD
-    if static["worst_ir"] > 0.2 * vdd:
+    if suspect:
         print(
-            f"[warn] static IR {static['worst_ir']:.3f}V sospetto vs OpenROAD (~mV)",
+            f"[warn] static IR {static['worst_ir']:.3f} V is large vs OpenROAD (~mV)",
             file=sys.stderr,
         )
         return 2

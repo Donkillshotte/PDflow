@@ -1,4 +1,6 @@
 {
+  "ok": true,
+  "kind": "chip_pdn_ir",
   "engine": "studio-pdn-transient",
   "prior_art": [
     "OpenROAD PDNSim / write_pg_spice (static mesh)",

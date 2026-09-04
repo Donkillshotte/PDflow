@@ -108,6 +108,7 @@ print("TRANSIENT_DROOP_mV", round(r["transient"]["worst_droop"]*1e3, 4))
 print("TRANSIENT_DROOP_PCT", round(r["transient"]["worst_droop_pct"], 4))
 PY
 
+python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${TRANSIENT_JSON}"
 date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
 echo "CHIP_PDN_IR_DONE ${VARIANT}" | tee -a "${LOG}"
 echo "OK chip PDN IR ${VARIANT}"
