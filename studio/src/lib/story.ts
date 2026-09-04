@@ -344,7 +344,7 @@ export function getProductStory(): ProductStory {
     {
       id: "dse",
       label: "DSE (proposer)",
-      href: "/flow?phase=pkg&focus=dse#dse",
+      href: "/lab",
       ready: product.wins > 0,
       detail: product.detail,
     },
@@ -368,7 +368,7 @@ export function getProductStory(): ProductStory {
     {
       id: "product",
       label: "Product",
-      href: "/flow?phase=pkg&focus=dse#dse",
+      href: "/lab",
       ready: product.wins > 0,
       detail: `${product.wins} wins · official netlist · fixed die`,
     },

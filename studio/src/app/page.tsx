@@ -41,7 +41,6 @@ export default function HomePage() {
           <p className="hero-lead">
             Nangate45 / FreePDK45. Signoff is STA → DRC → LVS → power.
             DSE proposes knobs; wins stay in <code>win_rule.py</code>.
-            Gold Dynamic IR is 45.298 mV.
           </p>
           <div className="cta-row">
             <Link href="/flow" className="btn-primary">

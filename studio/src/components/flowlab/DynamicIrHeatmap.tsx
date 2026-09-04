@@ -292,9 +292,9 @@ export function DynamicIrHeatmap({
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
-          Piattaforma ibrida: OpenROAD frontend · A = DirectLU current_run ·
-          B = SA-AMG · C = Krylov MOR · D = RAS · reference_run 45.298 mV
-          unrestamped · vyges = bootstrap ·{" "}
+          OpenROAD frontend. A = DirectLU current_run. B = SA-AMG.
+          C = Krylov MOR. D = RAS. Gold reference_run is 45.298 mV
+          (not this mesh). vyges is a bootstrap check.{" "}
           <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>
           {" · "}
           <a href="/materials/reference/dynamic-ir-landscape.md">landscape</a>
@@ -326,14 +326,14 @@ export function DynamicIrHeatmap({
               <dd>{tNs.toFixed(2)} ns</dd>
             </div>
             <div>
-              <dt>Modo</dt>
+              <dt>Mode</dt>
               <dd>{report.mode ?? "—"}</dd>
             </div>
             <div>
               <dt>ngspice gold</dt>
               <dd>
                 {gold == null
-                  ? "n/d"
+                  ? "n/a"
                   : gold.ok
                     ? `PASS · ${gold.abs_err_mv?.toFixed(2) ?? "?"} mV`
                     : `CHECK · ${gold.abs_err_mv?.toFixed(2) ?? "?"} mV`}
@@ -401,10 +401,10 @@ export function DynamicIrHeatmap({
             )}
             {vss && (
               <div>
-                <dt>Rimbalzo VSS</dt>
+                <dt>VSS bounce</dt>
                 <dd>
                   {vss.status === "READY"
-                    ? `${(vss.worst_bounce_mv ?? 0).toFixed(2)} mV · ${vss.n_pairs ?? 0} coppie`
+                    ? `${(vss.worst_bounce_mv ?? 0).toFixed(2)} mV · ${vss.n_pairs ?? 0} pairs`
                     : `GAP${vss.reason ? ` · ${vss.reason}` : ""}`}
                 </dd>
               </div>
@@ -416,7 +416,7 @@ export function DynamicIrHeatmap({
                   droop {(vss.coupled.worst_droop_mv ?? 0).toFixed(2)} mV · bounce{" "}
                   {(vss.coupled.worst_bounce_mv ?? 0).toFixed(2)} mV
                   {vss.coupled.c_rr_f != null && vss.coupled.c_rr_f > 0
-                    ? ` · Crr ${vss.coupled.c_rr_f.toExponential(2)} F/cella`
+                    ? ` · Crr ${vss.coupled.c_rr_f.toExponential(2)} F/cell`
                     : ""}
                   {vss.coupled.c_geom?.status === "READY"
                     ? ` · Cox ${(vss.coupled.c_geom.c_sum_f ?? 0).toExponential(2)} F (${vss.coupled.c_geom.n_lateral ?? 0}+${vss.coupled.c_geom.n_plate ?? 0})`
@@ -623,7 +623,7 @@ export function DynamicIrHeatmap({
           )}
           {tiers && (
             <ChipList
-              label="Product tiers"
+              label="Fidelity tiers"
               items={[
                 { key: "FAST", status: tiers.FAST?.status, text: "FAST" },
                 {
@@ -641,7 +641,7 @@ export function DynamicIrHeatmap({
           )}
           {nets && (
             <ChipList
-              label="Rete R → VRM"
+              label="R mesh → VRM"
               items={[
                 { key: "N1", status: nets.N1_R?.status, text: "N1 R" },
                 { key: "N2", status: nets.N2_RC?.status, text: "N2 RC" },

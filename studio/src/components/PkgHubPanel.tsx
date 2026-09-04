@@ -2,10 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
-import { SignoffMatrixPanel } from "@/components/flowlab/SignoffMatrixPanel";
-import { DsePanel } from "@/components/flowlab/DsePanel";
-import { LabBench } from "@/components/LabBench";
 import { useToast } from "@/components/ToastProvider";
 
 type HookRow = { id: string; label: string; ok: boolean; detail: string };
@@ -116,7 +112,9 @@ export function PkgHubPanel() {
       <header className="pkg-hub-head">
         <h2>Power chain status</h2>
         <p>
-          Hook live da suite · report flowlab · signoff rapido.{" "}
+          FlowLab reports for the power chain. Signoff stays on{" "}
+          <Link href="/flow?phase=finish#signoff">finish</Link>. DSE stays on{" "}
+          <Link href="/lab">/lab</Link>.{" "}
           <Link href="/flow?phase=pkg">FlowLab PKG →</Link>
         </p>
       </header>
@@ -158,14 +156,16 @@ export function PkgHubPanel() {
         </article>
       </div>
 
-      <div id="dse">
-        <LabBench busy={busy} onRun={(a, l) => void runSignoff(a, l)} />
-        <DsePanel />
-      </div>
-
-      <SignoffMatrixPanel busy={busy} onRun={(a, l) => void runSignoff(a, l)} />
-
-      <FlowLabSignoff disabled={Boolean(busy)} busy={busy} onRun={(a, l) => void runSignoff(a, l)} />
+      <p className="pkg-hub-links">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={Boolean(busy)}
+          onClick={() => void runSignoff("power_chain", true)}
+        >
+          {busy === "power_chain" ? "Running…" : "Run power chain"}
+        </button>
+      </p>
     </section>
   );
 }

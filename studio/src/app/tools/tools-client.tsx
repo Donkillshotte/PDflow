@@ -9,7 +9,6 @@ import { OpsDashboard } from "@/components/OpsDashboard";
 import { InspectPanel } from "@/components/InspectPanel";
 import { FlowLabLayoutCanvas } from "@/components/flowlab/FlowLabLayoutCanvas";
 import { SuiteHub } from "@/components/SuiteHub";
-import { ProductStory } from "@/components/ProductStory";
 import { useToast } from "@/components/ToastProvider";
 
 type Tool = { name: string; ok: boolean; detail: string };
@@ -173,8 +172,6 @@ export default function ToolsClient() {
           Open FlowLab →
         </Link>
       </header>
-
-      <ProductStory compact />
 
       <header className="page-head page-head-compact">
         <p>

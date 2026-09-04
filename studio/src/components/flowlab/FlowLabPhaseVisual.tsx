@@ -6,8 +6,6 @@ import clsx from "clsx";
 import type { FlowlabParams } from "./types";
 import { FlowLabLayoutCanvas } from "./FlowLabLayoutCanvas";
 import { RtlWaveformVisual } from "./RtlWaveformVisual";
-import { DsePanel } from "./DsePanel";
-import { LabBench } from "@/components/LabBench";
 
 type Inspect = {
   odb: {
@@ -494,10 +492,10 @@ export function FlowLabPhaseVisual({
                 : "Run PKG: System PDN VRM→board→pkg→die (ngspice)"}
             </p>
           )}
-          <div id="dse">
-            <LabBench tone="dark" />
-            <DsePanel />
-          </div>
+          <p className="fl-vis-meta" id="dse">
+            DSE proposes knobs on <Link href="/lab">/lab</Link>. It does
+            not run <code>signoff_all</code>.
+          </p>
         </div>
       )}
     </div>

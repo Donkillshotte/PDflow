@@ -387,14 +387,6 @@ export function SignoffMatrixPanel({
           >
             {busy === "signoff_phase2" ? "Phase 2…" : "Signoff Phase 2 (thermal + PKG)"}
           </button>
-          <button
-            type="button"
-            className="sig-all-btn sig-phase2-btn"
-            disabled={Boolean(busy)}
-            onClick={() => onRun("eco", false)}
-          >
-            {busy === "eco" ? "ECO…" : "ECO propose"}
-          </button>
         </div>
       )}
 

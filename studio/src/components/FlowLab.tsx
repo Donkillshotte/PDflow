@@ -34,7 +34,6 @@ import type {
   StreamEvent,
 } from "@/components/flowlab/types";
 import { PARAM_PRESETS } from "@/components/flowlab/types";
-import { ProductStory } from "@/components/ProductStory";
 
 function formatMs(ms: number) {
   if (ms < 1000) return `${ms} ms`;
@@ -556,8 +555,6 @@ export function FlowLab() {
         </div>
       </header>
 
-      <ProductStory compact tone="dark" />
-
       <FlowLabPipeline
         phases={PHASES}
         phaseId={phaseId}
@@ -772,7 +769,7 @@ export function FlowLab() {
                   setLog("");
                 }}
               >
-                Continua → {nextPhase.label}
+                Continue → {nextPhase.label}
               </button>
             </div>
           )}

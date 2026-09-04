@@ -1205,7 +1205,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
     home = (root / "studio/src/app/page.tsx").read_text()
     check("ProductStory" in home, "home mounts ProductStory")
     flowlab = (root / "studio/src/components/FlowLab.tsx").read_text()
-    check("ProductStory" in flowlab, "FlowLab mounts ProductStory")
+    check("ProductStory" not in flowlab, "FlowLab does not remount the home story strip")
     check((root / "learn/scripts/sta_ir_aware.py").is_file(), "sta_ir_aware.py exists")
     check((root / "learn/scripts/run_sta_ir_aware.sh").is_file(), "run_sta_ir_aware.sh exists")
     check((root / "learn/scripts/test_sta_ir_aware.py").is_file(), "test_sta_ir_aware.py exists")

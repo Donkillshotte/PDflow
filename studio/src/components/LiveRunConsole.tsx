@@ -224,7 +224,7 @@ export function LiveRunConsole({
             setLog(
               (prev) =>
                 prev +
-                `\n—— fine · ${ev.status ?? (ev.ok ? "ok" : "error")} · exit ${ev.code ?? "?"} · ${formatMs(ev.ms)} ——\n`,
+                `\n—— done · ${ev.status ?? (ev.ok ? "ok" : "error")} · exit ${ev.code ?? "?"} · ${formatMs(ev.ms)} ——\n`,
             );
             push(
               ev.ok ? `${a} completed` : `${a} failed (exit ${ev.code})`,
@@ -238,7 +238,7 @@ export function LiveRunConsole({
       onFinished?.(finalOk, a);
     } catch (e) {
       if ((e as Error).name === "AbortError") {
-        setLog((prev) => prev + "\n[sessione chiusa]\n");
+        setLog((prev) => prev + "\n[session closed]\n");
         setOk(false);
       } else {
         setOk(false);
@@ -323,9 +323,9 @@ export function LiveRunConsole({
 
       <ConfirmDialog
         open={confirmOpen}
-        title={`Confirmre ${pendingAction}?`}
+        title={`Confirm ${pendingAction}?`}
         body="This phase may take several minutes and holds the pipeline lock. Continue only if previous dependencies are complete."
-        confirmLabel="Start comunque"
+        confirmLabel="Start anyway"
         danger
         onCancel={() => {
           setConfirmOpen(false);
