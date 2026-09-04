@@ -138,7 +138,7 @@ export const MATERIALS: MaterialLink[] = [
     href: "/pkg",
     title: "PKG section (hub)",
     group: "Packaging",
-    description: "UI hub: PDN/PKG phases, docs and delivery checklist.",
+    description: "UI hub: System PDN, Phase 2, docs, and delivery checklist.",
   },
   {
     href: "/materials/workbook/quiz.md",

@@ -1,6 +1,6 @@
 # ngspice · reading System PDN simulations
 
-Studio uses **ngspice-42** in batch for the PKG phase. This guide explains netlists, commands, and how to read the reports.
+Studio uses **ngspice-42** in batch for the `/pkg` hub. This guide explains netlists, commands, and how to read the reports.
 
 ## Installation (already in VM)
 

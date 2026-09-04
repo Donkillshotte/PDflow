@@ -7,12 +7,12 @@ See also the **full phase chain**: [spice-power-chain.md](./spice-power-chain.md
 | Level | Question | What Studio uses |
 |---|---|---|
 | **Chip PDN** | Does the on-die grid handle static IR / mesh droop? | OpenROAD **PDNSim** + `write_pg_spice` + `pdn_transient.py` + **vyges-em-ir** + **dynamic_ir** |
-| **System PDN** | VRM → board → package → die chain: Z(f) and load-step? | **ngspice** hierarchical ladder → `run_system_pdn.sh` / FlowLab **PKG** |
+| **System PDN** | VRM → board → package → die chain: Z(f) and load-step? | **ngspice** hierarchical ladder → `run_system_pdn.sh` / Studio `/pkg` |
 
 They are not the same thing: package R on PDNSim is still a *chip-centric* model.
 System PDN simulates the supply chain outside the die.
 
-## System PDN (PKG phase)
+## System PDN (`/pkg`)
 
 `run_system_pdn.sh` / `system_pdn` action:
 

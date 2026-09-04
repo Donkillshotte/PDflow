@@ -218,7 +218,7 @@ Full map: [`learn/reference/extended-flow.md`](./reference/extended-flow.md).
 |---|---|---|
 | RTL sim (Icarus) + VCD | `learn/scripts/run_rtl_sim.sh` · `rtl_sim` | READY |
 | PDN gridcheck | `run_gridcheck.sh` · `gridcheck` · FlowLab PDN stage | READY |
-| System PDN (hier) | `run_system_pdn.sh` · FlowLab PKG · ngspice | READY |
+| System PDN (hier) | `run_system_pdn.sh` · `/pkg` · ngspice | READY |
 | Chip IR mesh | `run_chip_pdn_ir.sh` · write_pg_spice | READY |
 | vyges-em-ir | `run_vyges_em_ir.sh` · CG+BE binary | READY |
 | Dynamic IR I(t) | `run_dynamic_ir.sh` · current_run `_direct.json` + SA-AMG · gold 45.298 locked | READY |

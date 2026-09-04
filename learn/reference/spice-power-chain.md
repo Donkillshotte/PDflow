@@ -183,7 +183,7 @@ Static IR drop uses **post-route/finish** geometry, not placement alone.
 
 ## Lesson 07-finish {#lesson-07-finish}
 
-**Course:** `learn/lessons/07-finish/` · **FlowLab:** [finish](/flow?phase=finish) owns STA · DRC · LVS · chip IR. System PDN and Phase 2 live on [`/pkg`](/pkg). The FlowLab [PKG phase](/flow?phase=pkg) is the teaching view of that hub.
+**Course:** `learn/lessons/07-finish/` · **FlowLab:** [finish](/flow?phase=finish) owns STA · DRC · LVS · chip IR. System PDN and Phase 2 live on [`/pkg`](/pkg).
 
 ### ORFS deliverables
 
@@ -220,7 +220,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh
 
 ---
 
-## FlowLab PKG phase (post L07) {#pkg-phase}
+## PKG hub (post L07) {#pkg-phase}
 
 **Hub:** [/pkg](/pkg) · **Config:** `learn/system_pdn/default.json`
 

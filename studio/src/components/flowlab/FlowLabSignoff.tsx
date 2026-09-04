@@ -324,7 +324,7 @@ export function FlowLabSignoff({
             <p>
               Chip IR, Dynamic IR I(t), and the five-mesh ledger live here with
               the power pillar. System PDN / Phase 2 stay on{" "}
-              <a href="/flow?phase=pkg">PKG</a>. Docs{" "}
+              <a href="/pkg">PKG</a>. Docs{" "}
               <a href="/materials/reference/spice-power-chain.md">spice-power-chain</a>
               {" · "}
               <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>.

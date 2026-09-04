@@ -316,7 +316,7 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
                     </Link>
                     {" "}
                     ·{" "}
-                    <Link href="/flow?phase=pkg">FlowLab PKG</Link>
+                    <Link href="/pkg">PKG hub</Link>
                   </>
                 )}
                 {lesson.id === "03-floorplan" && (

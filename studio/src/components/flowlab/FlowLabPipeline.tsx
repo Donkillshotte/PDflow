@@ -51,7 +51,7 @@ export function FlowLabPipeline({
   running: boolean;
   onSelect: (id: string) => void;
 }) {
-  const activeIdx = PHASE_IDS.indexOf(phaseId);
+  const activeIdx = phases.findIndex((p) => p.id === phaseId);
 
   return (
     <nav className="fl-pipeline" aria-label="Pipeline RTL → finish">
@@ -104,7 +104,7 @@ export function FlowLabPipeline({
                 </span>
                 <span className="fl-pipeline-text">
                   <span className="fl-pipeline-index">
-                    {p.id === "pkg" ? "After signoff" : `Phase ${i + 1}`}
+                    {`Phase ${i + 1}`}
                   </span>
                   <strong>{p.label}</strong>
                   <em>{p.hint}</em>

@@ -144,7 +144,7 @@ FLOW_VARIANT=learn ./learn/scripts/run_power_chain.sh
 
 - [ ] Compare heatmap `orfs_final_ir_drop.png` with `pdn_chip_ir_*.json` — different meshes; do not treat the PNG scale as chip IR or gold 45.298 mV
 - [ ] Open `learn/sim/spice/` and count R/I in `mesh_stats_*.json`
-- [ ] FlowLab [PKG](/flow?phase=pkg) phase: droop and Zmax System PDN
+- [ ] Studio [PKG](/pkg) hub: droop and Zmax System PDN
 
 Optional checklist — does not block lesson completion if skipped.
 

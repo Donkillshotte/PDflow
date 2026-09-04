@@ -398,7 +398,7 @@ export function SignoffMatrixPanel({
           ) : (
             <p className="sig-summary">
               Phase 2 (HotSpot + dummy RDL) stays on{" "}
-              <a href="/flow?phase=pkg">PKG</a>.
+              <a href="/pkg">PKG</a>.
             </p>
           )}
         </div>

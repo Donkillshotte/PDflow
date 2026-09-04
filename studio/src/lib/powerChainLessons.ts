@@ -176,7 +176,6 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
       { href: "/materials/reference/signoff-matrix.md", label: "Signoff matrix 4 pillars" },
       { href: "/materials/reference/spice-ngspice-primer.md", label: "ngspice" },
       { href: "/pkg", label: "Hub PKG" },
-      { href: "/flow?phase=pkg", label: "FlowLab PKG" },
     ],
     flowlabHref: "/flow?phase=finish",
   },

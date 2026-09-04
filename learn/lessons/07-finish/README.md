@@ -120,7 +120,7 @@ Finish produces `6_final.odb`, IR heatmap, and enables the full **SPICE chain**:
 5. `system_pdn` → ngspice ladder  
 6. `power_chain` → all steps + lab export  
 
-Master guide: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-07-finish) · Hub [PKG](/pkg) · FlowLab [finish](/flow?phase=finish) · [PKG phase](/flow?phase=pkg).
+Master guide: [`spice-power-chain.md`](../../reference/spice-power-chain.md#lesson-07-finish) · Hub [PKG](/pkg) · FlowLab [finish](/flow?phase=finish).
 
 ```bash
 FLOW_VARIANT=learn ./learn/scripts/run_power_chain.sh   # after make finish

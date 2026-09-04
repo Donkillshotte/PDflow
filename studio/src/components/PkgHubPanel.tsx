@@ -122,15 +122,14 @@ export function PkgHubPanel() {
   }
 
   return (
-    <section className="pkg-hub-panel panel">
+    <section className="pkg-hub-panel panel" id="system-pdn">
       <header className="pkg-hub-head">
         <h2>System PDN and Phase 2</h2>
         <p>
           Package ladder, HotSpot, and dummy RDL. STA · DRC · LVS · chip IR
           stay on{" "}
           <Link href="/flow?phase=finish#signoff">finish</Link>. DSE stays on{" "}
-          <Link href="/lab">/lab</Link>.{" "}
-          <Link href="/flow?phase=pkg">FlowLab PKG →</Link>
+          <Link href="/lab">/lab</Link>.
         </p>
       </header>
 

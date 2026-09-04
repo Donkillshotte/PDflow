@@ -68,6 +68,7 @@ export function FlowLab() {
   const search = useSearchParams();
   const initialPhase = (() => {
     const q = search.get("phase");
+    if (q === "pkg") return "rtl";
     return q && PHASE_IDS.includes(q) ? q : "rtl";
   })();
 
@@ -160,14 +161,19 @@ export function FlowLab() {
   }, [load]);
 
   useEffect(() => {
+    if (search.get("phase") === "pkg") {
+      router.replace("/pkg");
+      return;
+    }
     const q = search.get("phase");
-    if (q && PHASE_IDS.includes(q) && q !== phaseId) setPhaseId(q);
+    if (q && PHASE_IDS.includes(q) && q !== "pkg" && q !== phaseId) setPhaseId(q);
     urlReady.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   useEffect(() => {
     if (!urlReady.current) return;
+    if (search.get("phase") === "pkg") return;
     if (search.get("phase") === phaseId) return;
     const hash = typeof window !== "undefined" ? window.location.hash : "";
     const focus = search.get("focus");
@@ -560,7 +566,7 @@ export function FlowLab() {
       </header>
 
       <FlowLabPipeline
-        phases={PHASES}
+        phases={CLOSE_PHASES}
         phaseId={phaseId}
         stages={stages}
         running={running}

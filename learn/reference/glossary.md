@@ -168,7 +168,7 @@ Alphabetical reference. Return here during every lesson.
 
 **SPICE** — Circuit simulation. In Studio: (1) chip resistive mesh from `write_pg_spice`; (2) System PDN ladder with **ngspice**.
 
-**System PDN** — VRM → board → package → die chain (ngspice). Distinct from on-die chip PDN. FlowLab PKG phase.
+**System PDN** — VRM → board → package → die chain (ngspice). Distinct from on-die chip PDN. Studio `/pkg` hub.
 
 **Site** — Minimum physical slot for a cell (e.g. `FreePDK45_38x28_...`).
 

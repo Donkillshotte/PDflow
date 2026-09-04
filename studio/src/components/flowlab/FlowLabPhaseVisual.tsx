@@ -245,7 +245,7 @@ export function FlowLabPhaseVisual({
   return (
     <div className={clsx("fl-phase-visual", loading && "loading")} aria-busy={loading}>
       <div className="fl-vis-header">
-        <span className="fl-vis-kicker">Lab viewport</span>
+        <span className="fl-vis-kicker">FlowLab viewport</span>
         <span className={clsx("fl-vis-badge", stageDone ? "done" : "pending")}>
           {stageDone ? "Artifact present" : "Run to populate"}
         </span>
