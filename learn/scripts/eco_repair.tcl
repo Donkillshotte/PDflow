@@ -22,6 +22,13 @@ if {[info exists ::env(ECO_RC)] && $::env(ECO_RC) != "" && [file exists $::env(E
   source $::env(ECO_RC)
 }
 
+# Post-route slack. Without SPEF, repair_timing sees an ideal netlist
+# and prints "No setup violations" while OpenSTA+SPEF still has WNS < 0.
+if {[info exists ::env(ECO_SPEF_IN)] && $::env(ECO_SPEF_IN) != "" && [file exists $::env(ECO_SPEF_IN)]} {
+  read_spef $::env(ECO_SPEF_IN)
+  puts "ECO_READ_SPEF $::env(ECO_SPEF_IN)"
+}
+
 if {[info commands remove_fillers] != ""} {
   remove_fillers
 }

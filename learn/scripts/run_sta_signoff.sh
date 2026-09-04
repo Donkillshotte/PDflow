@@ -18,19 +18,6 @@ FINISH_RPT="${REPORTS}/6_finish.rpt"
 OUT="${ROOT}/learn/sim/reports/sta_signoff_${VARIANT}.json"
 mkdir -p "$(dirname "${OUT}")"
 
-# Parse finish report (OpenROAD signoff numbers)
-parse_finish() {
-  local wns tns viol period
-  wns="$(rg -m1 'wns max\s+([-\d.]+)' "${FINISH_RPT}" -or '$1' 2>/dev/null || echo "")"
-  tns="$(rg -m1 'tns max\s+([-\d.]+)' "${FINISH_RPT}" -or '$1' 2>/dev/null || echo "")"
-  viol="$(rg -c 'VIOLATED' "${FINISH_RPT}" 2>/dev/null || echo 0)"
-  period="$(rg -m1 'period_min\s*=\s*([\d.]+)' "${FINISH_RPT}" -or '$1' 2>/dev/null || echo "")"
-  echo "${wns}|${tns}|${viol}|${period}"
-}
-
-IFS='|' read -r WNS TNS VIOL PERIOD <<< "$(parse_finish)"
-
-# Optional independent STA run with SPEF
 STA_LOG="${ROOT}/learn/sim/reports/sta_signoff_${VARIANT}.log"
 SPEF_LINE=""
 [[ -f "${SPEF}" ]] && SPEF_LINE="read_spef ${SPEF}"
@@ -45,28 +32,44 @@ ${SPEF_LINE}
 report_wns
 report_tns
 report_worst_slack -max
-report_checks -format end -group_path_count 3
+report_checks -path_delay max -slack_max 0 -group_path_count 100 -format end
+report_clock_min_period
 puts "STA_SIGNOFF_DONE ${VARIANT}"
 EOF
 
 rg -q 'STA_SIGNOFF_DONE' "${STA_LOG}" || { echo "FAIL STA signoff"; exit 1; }
 
-STA_WNS="$(rg -m1 'wns max\s+([-\d.]+)' "${STA_LOG}" -or '$1' 2>/dev/null || echo "${WNS}")"
-STA_TNS="$(rg -m1 'tns max\s+([-\d.]+)' "${STA_LOG}" -or '$1' 2>/dev/null || echo "${TNS}")"
-
 METRICS="${ROOT}/learn/sim/reports/.sta_metrics_${VARIANT}.json"
 python3 - <<PY
 import json
+import re
 from pathlib import Path
+
+log = Path("${STA_LOG}").read_text()
+finish_p = Path("${FINISH_RPT}")
+finish = finish_p.read_text() if finish_p.is_file() else ""
+
+
+def first(pat: str, text: str):
+    m = re.search(pat, text)
+    return m.group(1) if m else None
+
+
+wns = first(r"wns max\s+([-\d.]+)", log) or first(r"wns max\s+([-\d.]+)", finish)
+tns = first(r"tns max\s+([-\d.]+)", log) or first(r"tns max\s+([-\d.]+)", finish)
+period = first(r"period_min\s*=\s*([\d.]+)", log) or first(r"period_min\s*=\s*([\d.]+)", finish)
+# Count from this OpenSTA run. A missing finish_rpt used to stamp viol 0.
+viol = sum(1 for line in log.splitlines() if "(VIOLATED)" in line)
 m = {
   "timing": {
-    "wns_ns": float("${STA_WNS}" or "${WNS}" or 0),
-    "tns": float("${STA_TNS}" or "${TNS}" or 0),
-    "setup_violations": int("${VIOL}" or 0),
-    "period_min_ns": float("${PERIOD}" or 0) if "${PERIOD}" else None,
+    "wns_ns": float(wns or 0),
+    "tns": float(tns or 0),
+    "setup_violations": int(viol),
+    "period_min_ns": float(period) if period else None,
   }
 }
 Path("${METRICS}").write_text(json.dumps(m, indent=2))
+print("STA_PARSE", json.dumps(m["timing"]))
 PY
 
 python3 "${ROOT}/learn/scripts/signoff_eval.py" --pillar timing --metrics "${METRICS}" --out "${OUT}.eval" --repo "${ROOT}" || true
@@ -83,7 +86,7 @@ if ep.exists():
 out = {
   "kind": "sta_signoff",
   "variant": "${VARIANT}",
-  "engine": "opensta+finish_rpt",
+  "engine": "opensta",
   "timing": metrics["timing"],
   "evaluation": evald.get("pillars", {}).get("timing", {}),
   "ok": evald.get("pillars", {}).get("timing", {}).get("ok"),

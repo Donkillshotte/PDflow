@@ -78,6 +78,12 @@ def main() -> int:
     check("write_def" in tcl, "repair tcl writes DEF")
     check("write_cdl" in tcl, "repair tcl writes CDL")
     check("extract_parasitics" in tcl, "repair tcl extracts SPEF when RCX exists")
+    check("ECO_SPEF_IN" in tcl and "read_spef" in tcl, "repair tcl can load the source SPEF")
+    # Compare command positions, not comments (line 25 mentions repair_timing).
+    spef_cmd = tcl.find("read_spef $::env(ECO_SPEF_IN)")
+    setup_cmd = tcl.find("repair_timing -setup")
+    check(spef_cmd >= 0 and setup_cmd >= 0 and spef_cmd < setup_cmd, "repair tcl reads SPEF before setup repair")
+    check("ECO_SPEF_IN" in src, "apply passes the source 6_final.spef")
     check((SCRIPTS / "eco_stream_gds.py").is_file(), "GDS stream helper exists")
     check("eco_stream_gds.py" in src, "apply streams GDS after DEF")
     check("6_final.gds" in src, "apply installs 6_final.gds on unlocked copy")

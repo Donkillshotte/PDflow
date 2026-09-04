@@ -122,7 +122,7 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 
 | Step | Status | Evidence | Leftover |
 |---|---|---|---|
-| STA | **WORKS** | WNS −0.02 ns · TNS −0.14 · 3 viol | Educational Nangate, not PrimeTime |
+| STA | **WORKS** | WNS −0.02 ns · TNS −0.14 · 16 viol | Educational Nangate, not PrimeTime |
 | STA IR-aware | **WORKS*** | `sta_ir_aware` ok · NLDM × ITerm V | Does not change official WNS |
 | DRC (route + GDS) | **WORKS** | 0 route lines · 0 GDS items | — |
 | LVS (KLayout) | **WORKS*** | Compare match on filtered CDL | FILL/TAP abstract. VIA flatten. DFF_X2 must-connect 2 |
@@ -248,7 +248,7 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Power | power_chain | ok | **WORKS*** | convenience; System PDN is PKG |
 | Power | spice_lab | ok | **WORKS** | `INDEX_flowlab.md` |
 | Signoff | klayout_drc | ok | **WORKS** | `6_final.gds` on flowlab |
-| Signoff | sta_signoff | ok | **WORKS** | WNS −0.02 · TNS −0.14 · 3 viol |
+| Signoff | sta_signoff | ok | **WORKS** | WNS −0.02 · TNS −0.14 · 16 viol |
 | Signoff | sta_ir_aware | ok | **WORKS*** | educational, not Tempus |
 | Signoff | drc_signoff | ok | **WORKS** | 0 route · 0 GDS |
 | Signoff | lvs_signoff | ok | **WORKS*** | KLayout match · DFF_X2 must-connect 2 |

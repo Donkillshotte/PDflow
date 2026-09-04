@@ -166,7 +166,30 @@ def main() -> int:
     lvs_sh = (ROOT / "learn/scripts/run_klayout_lvs.sh").read_text()
     check("signoff_require_ok.py" in lvs_sh, "LVS cook fails the shell when ok is not true")
     check("exit 0" not in lvs_sh.split("missing FreePDK45.lylvs")[1].split("fi")[0], "missing lylvs no longer exits 0")
-    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_sta_signoff.sh").read_text(), "STA cook fails the shell when ok is not true")
+    sta_sh = (ROOT / "learn/scripts/run_sta_signoff.sh").read_text()
+    check("signoff_require_ok.py" in sta_sh, "STA cook fails the shell when ok is not true")
+    check("slack_max 0" in sta_sh, "STA lists all negative-slack setup paths")
+    check("-group_path_count 100" in sta_sh, "STA does not stop after the first violated path")
+    check('"(VIOLATED)"' in sta_sh, "STA viol counts the OpenSTA log, not a missing finish_rpt")
+    flow_sta = load("sta_signoff_flowlab.json")
+    flow_viol = int((flow_sta.get("timing") or {}).get("setup_violations") or 0)
+    check(flow_viol >= 1, "flowlab STA names OpenSTA setup violations")
+    # Each variant's JSON must match its own OpenSTA log. eco_scratch may
+    # differ from flowlab after a real ECO apply — that is not a hide.
+    for name in ("flowlab", "eco_scratch"):
+        sta = load(f"sta_signoff_{name}.json")
+        viol = int((sta.get("timing") or {}).get("setup_violations") or 0)
+        logp = REPORTS / f"sta_signoff_{name}.log"
+        check(logp.is_file(), f"{name} OpenSTA log exists")
+        log_viol = sum(
+            1 for line in logp.read_text().splitlines() if "(VIOLATED)" in line
+        )
+        check(viol == log_viol, f"{name} STA JSON viol matches the OpenSTA log")
+        if log_viol > 0:
+            check(
+                "viol 0" not in str(sta.get("summary")),
+                f"{name} STA does not hide OpenSTA violations as viol 0",
+            )
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_drc_signoff.sh").read_text(), "DRC cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_power_signoff.sh").read_text(), "power cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_chip_pdn_ir.sh").read_text(), "chip IR cook fails the shell when ok is not true")

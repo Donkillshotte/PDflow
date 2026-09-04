@@ -1,12 +1,12 @@
 {
   "kind": "sta_signoff",
   "variant": "eco_scratch",
-  "engine": "opensta+finish_rpt",
+  "engine": "opensta",
   "timing": {
     "wns_ns": -0.02,
     "tns": -0.14,
-    "setup_violations": 0,
-    "period_min_ns": null
+    "setup_violations": 16,
+    "period_min_ns": 0.48
   },
   "evaluation": {
     "checks": [
@@ -27,15 +27,22 @@
       {
         "id": "setup_violations",
         "label": "Setup violations",
-        "actual": 0.0,
+        "actual": 16.0,
         "target": 45.0,
+        "ok": true
+      },
+      {
+        "id": "period_min_ns",
+        "label": "period_min (ns)",
+        "actual": 0.48,
+        "target": 0.5,
         "ok": true
       }
     ],
     "ok": true
   },
   "ok": true,
-  "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 0",
+  "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16",
   "artifacts": {
     "finish_rpt": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/6_finish.rpt",
     "sta_log": "/workspace/learn/sim/reports/sta_signoff_eco_scratch.log"

@@ -163,6 +163,9 @@ def apply(variant: str) -> dict:
     env["ECO_CDL_MASTERS"] = str(FLOW / "platforms/nangate45/cdl/NangateOpenCellLibrary.cdl")
     env["ECO_SPEF_OUT"] = str(spef_out)
     env["ECO_RCX"] = str(FLOW / "platforms/nangate45/rcx_patterns.rules")
+    spef_in = src.parent / "6_final.spef"
+    if spef_in.is_file():
+        env["ECO_SPEF_IN"] = str(spef_in)
     proc = subprocess.run(
         [exe, "-exit", str(TCL)],
         capture_output=True,
