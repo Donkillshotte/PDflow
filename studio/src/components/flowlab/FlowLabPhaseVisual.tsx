@@ -75,62 +75,6 @@ function Gauge({
   );
 }
 
-function DieCanvas({
-  util,
-  dieDbu,
-  label,
-}: {
-  util: number;
-  dieDbu?: { dx: number; dy: number };
-  label: string;
-}) {
-  const aspect =
-    dieDbu && dieDbu.dx > 0 && dieDbu.dy > 0 ? dieDbu.dx / dieDbu.dy : 1.35;
-  const w = 280;
-  const h = w / aspect;
-  const corePct = util / 100;
-  const margin = 12;
-  const innerW = w - margin * 2;
-  const innerH = h - margin * 2;
-  const coreW = innerW * Math.sqrt(corePct);
-  const coreH = innerH * Math.sqrt(corePct);
-  const cx = (w - coreW) / 2;
-  const cy = (h - coreH) / 2;
-
-  return (
-    <div className="fl-vis-die-wrap">
-      <svg viewBox={`0 0 ${w} ${h}`} className="fl-vis-die" aria-label={label}>
-        <defs>
-          <pattern id="fl-die-grid" width="8" height="8" patternUnits="userSpaceOnUse">
-            <path d="M 8 0 L 0 0 0 8" fill="none" stroke="rgba(88,166,255,0.15)" strokeWidth="0.5" />
-          </pattern>
-        </defs>
-        <rect x="1" y="1" width={w - 2} height={h - 2} rx="6" fill="#0a0e14" stroke="rgba(255,255,255,0.12)" />
-        <rect x={margin} y={margin} width={innerW} height={innerH} rx="4" fill="url(#fl-die-grid)" stroke="rgba(255,255,255,0.08)" />
-        <rect
-          x={cx}
-          y={cy}
-          width={coreW}
-          height={coreH}
-          rx="3"
-          fill="rgba(240,136,62,0.35)"
-          stroke="rgba(240,136,62,0.75)"
-          strokeWidth="1.5"
-        />
-        <text x={w / 2} y={h - 4} textAnchor="middle" fill="#8b949e" fontSize="9">
-          core {util}%
-        </text>
-        {dieDbu && dieDbu.dx > 0 && (
-          <text x={w / 2} y="11" textAnchor="middle" fill="#58a6ff" fontSize="8">
-            {Math.round(dieDbu.dx / 1000)}×{Math.round(dieDbu.dy / 1000)} kDBU
-          </text>
-        )}
-      </svg>
-      <p className="fl-vis-die-caption">{label}</p>
-    </div>
-  );
-}
-
 function StatBar({
   label,
   value,

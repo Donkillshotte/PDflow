@@ -911,7 +911,9 @@ export function FlowLab() {
         refreshKey={refreshKey}
         visible={phase.id !== "rtl"}
       />
-      <FlowLabPowerChain phaseId={phaseId} compact />
+      {phaseId !== "finish" && phaseId !== "pkg" && (
+        <FlowLabPowerChain phaseId={phaseId} compact />
+      )}
       <FlowLabPhaseHistory phaseLabel={phase.label} runs={phaseRuns} />
 
       <ConfirmDialog

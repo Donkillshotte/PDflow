@@ -35,7 +35,9 @@ Isolated finish at `results/nangate45/gcd/flowlab`.
 2. synth → finish — layout preview, phase log
 3. Signoff — STA → DRC → LVS → power (`signoff_all`)
 4. ECO — propose on `flowlab`; apply/close on `eco_scratch` only
-5. DSE — proposer only
+
+DSE proposes knobs on `/lab`. It is not a FlowLab finish step and does
+not run `signoff_all`.
 
 Shortcuts: `Ctrl+S` save, `Ctrl+Enter` run phase.
 Screenshots: `studio/docs/images/flowlab/`.

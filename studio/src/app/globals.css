@@ -3139,19 +3139,6 @@ button.pipeline-node {
   align-items: center;
   gap: 1rem;
 }
-.fl-vis-die-wrap { display: grid; gap: 0.35rem; justify-items: center; }
-.fl-vis-die {
-  width: 100%;
-  max-width: 300px;
-  height: auto;
-  display: block;
-}
-.fl-vis-die-caption {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--fl-muted);
-  text-align: center;
-}
 .fl-vis-side-stats {
   display: grid;
   gap: 0.55rem;
