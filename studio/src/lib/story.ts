@@ -272,6 +272,11 @@ export function getProductStory(): ProductStory {
     const at = detail.indexOf("leftover");
     return at >= 0 ? ` · ${detail.slice(at)}` : "";
   })();
+  const ecoApply = readReportFile("eco_apply_eco_scratch.json");
+  const ecoLeftover =
+    typeof ecoApply?.leftover === "string" && ecoApply.leftover
+      ? ecoApply.leftover
+      : "";
 
   const staIrReport = readReport("sta_ir_aware");
   const staBlock = (staIrReport?.sta ?? null) as
@@ -361,10 +366,12 @@ export function getProductStory(): ProductStory {
     },
     {
       id: "eco",
-      label: "ECO",
+      label: ecoLeftover ? "ECO · leftover named" : "ECO",
       href: "/flow?phase=finish#eco",
       ready: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/eco_flowlab.json")),
-      detail: "Propose on flowlab. Apply and signoff_all close on eco_scratch only.",
+      detail: ecoLeftover
+        ? `Propose on flowlab. Apply leftover: ${ecoLeftover}`
+        : "Propose on flowlab. Apply and signoff_all close on eco_scratch only.",
     },
     {
       id: "dse",

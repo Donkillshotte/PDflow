@@ -463,7 +463,7 @@ export async function getSuiteStatus() {
       label: "ECO loop",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "eco") || signoffReportPass("learn", "eco"),
-      detail: "Propose on flowlab. Apply/close only on eco_scratch. Does not skip signoff_all.",
+      detail: "Propose on flowlab. Apply/close only on eco_scratch. Size-up leftover (DRT-0206) does not skip signoff_all.",
       action: "eco",
       href: "/flow?phase=finish#eco",
     },

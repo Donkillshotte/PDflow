@@ -202,8 +202,9 @@ export function InspectPanel({
           {data.sta.paths.length > 0 && (
             <>
               <p className="muted">
-                VIOLATED paths with WNS≈−0.04 ns on GCD nangate45 align with the
-                course golden — they do not indicate a wrapper crash.
+              Finish golden on this GCD is WNS ≈ −0.04 ns. OpenSTA signoff
+              lists all negative-slack paths (WNS −0.02 ns, 16 viol). Neither
+              is a wrapper crash.
               </p>
               <ul className="path-list">
                 {data.sta.paths.map((p) => (

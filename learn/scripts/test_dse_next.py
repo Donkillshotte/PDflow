@@ -1251,6 +1251,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check((root / "learn/sim/dse/lab_physics_ledger.json").is_file(), "committed physics ledger exists")
     check("staIr" in story_txt, "story snapshot includes STA IR-aware")
     check('id: "eco"' in story_txt, "story snapshot includes ECO after signoff")
+    check("eco_apply_eco_scratch.json" in story_txt, "story ECO reads apply leftover")
     check("DSE (proposer)" in story_txt, "story labels DSE as proposer")
     check('href: "/lab"' in story_txt, "story Lab surface points at /lab")
     check("sta_ir_aware" in (root / "studio/src/lib/signoff.ts").read_text(), "signoff registry lists sta_ir_aware")

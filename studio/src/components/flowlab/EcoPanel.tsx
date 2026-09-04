@@ -21,6 +21,11 @@ type EcoReport = {
   rewrote?: string[];
 };
 
+type EcoApplyReport = EcoReport & {
+  repaired?: boolean;
+  leftover?: string;
+};
+
 type CloseReport = {
   ok?: boolean;
   summary?: string;
@@ -34,6 +39,13 @@ function stepState(ok: boolean | undefined, present: boolean): "ok" | "wait" | "
   return "fail";
 }
 
+function applyState(apply: EcoApplyReport | null): "ok" | "wait" | "fail" | "leftover" {
+  if (!apply) return "wait";
+  if (apply.ok === false) return "fail";
+  if (apply.repaired === false || apply.leftover) return "leftover";
+  return "ok";
+}
+
 export function EcoPanel({
   busy,
   onRun,
@@ -42,7 +54,7 @@ export function EcoPanel({
   onRun?: (action: string, long: boolean) => void;
 } = {}) {
   const [report, setReport] = useState<EcoReport | null>(null);
-  const [apply, setApply] = useState<EcoReport | null>(null);
+  const [apply, setApply] = useState<EcoApplyReport | null>(null);
   const [close, setClose] = useState<CloseReport | null>(null);
 
   const load = useCallback(async () => {
@@ -76,8 +88,9 @@ export function EcoPanel({
         <strong>ECO loop</strong>
         <p>
           Propose on the locked finish. Apply writes artifacts only on an
-          unlocked copy. Close is <code>signoff_all</code> on that copy —
-          ECO never skips it.
+          unlocked copy. Post-route size-up cannot legalize this GCD
+          (DRT-0206); apply restores the source and names leftover. Close
+          is <code>signoff_all</code> on that copy — ECO never skips it.
         </p>
       </header>
       <ol className="fl-eco-loop" aria-label="ECO propose, apply, close">
@@ -103,12 +116,14 @@ export function EcoPanel({
             </button>
           ) : null}
         </li>
-        <li data-state={stepState(apply?.ok, Boolean(apply))}>
+        <li data-state={applyState(apply)}>
           <span>2 · Apply on copy</span>
           <b>{apply ? (apply.summary ?? "apply") : "no apply on eco_scratch yet"}</b>
           <em>
             eco_scratch · refused on flowlab/learn/base
             {apply?.signoff ? " · claims signoff (bug)" : " · does not claim signoff"}
+            {apply?.repaired === false ? " · did not close timing" : ""}
+            {apply?.leftover ? ` · leftover ${apply.leftover}` : ""}
             {apply?.rewrote?.length ? ` · wrote ${apply.rewrote.join("+")}` : ""}
           </em>
           {onRun ? (

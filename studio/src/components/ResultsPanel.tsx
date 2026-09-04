@@ -188,8 +188,9 @@ export function ResultsPanel({
           {data.logDigest.noteworthy.length > 0 && (
             <p className="muted">
               Note: {data.logDigest.noteworthy.map((n) => n.code).join(", ")} —
-              on GCD nangate45 a WNS≈−0.04 with some setup violations is the
-              course golden, not a wrapper bug.
+              on GCD nangate45 finish golden is WNS ≈ −0.04 ns; OpenSTA
+              signoff is WNS −0.02 ns with 16 setup paths. Neither is a
+              wrapper bug.
             </p>
           )}
         </div>
