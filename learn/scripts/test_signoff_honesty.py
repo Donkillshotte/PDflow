@@ -381,6 +381,8 @@ def main() -> int:
     matrix = (ROOT / "learn/reference/signoff-matrix.md").read_text()
     check("leftover must-connect 2 on DFF_X2" in matrix, "signoff-matrix names leftover")
     check("leftover setup open" in matrix, "signoff-matrix names leftover setup open")
+    check("leftover no density / named ERC" in matrix, "signoff-matrix names DRC deck leftover")
+    check("leftoverDeckCoverageDetail" in signoff_ts, "geometry gate reads FreePDK45.lydrc coverage")
     check("dynamic_ir_{v}_direct.map.csv" in matrix, "signoff-matrix pins STA IR-aware to current_run map")
     check("LVS clean (educational)" not in matrix, "signoff-matrix does not call LVS clean")
     check("/flow?phase=finish" in matrix, "signoff-matrix points the matrix at finish")

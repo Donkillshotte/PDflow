@@ -32,7 +32,7 @@ the lvsdb (Nangate split wells). This is educational FreePDK45, not foundry LVS.
 |---|---|---|---|---|---|
 | **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden · leftover setup open if WNS < 0 (register or I/O) |
 | **Timing (STA IR-aware)** | 07-finish | `sta_ir_aware` | `run_sta_ir_aware.sh` | `sim/reports/sta_ir_aware_{v}.json` | Educational NLDM × ITerm V (does not change WNS) |
-| **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
+| **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items · antenna 300:1 in `FreePDK45.lydrc` · leftover no density / named ERC |
 | **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | KLayout match + leftover named |
 | **Power** | 03–07, finish | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | chip IR vs golden |
 | **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | all 4 pillars (+ optional Phase 2 with `SIGNOFF_INCLUDE_PHASE2=1`) |

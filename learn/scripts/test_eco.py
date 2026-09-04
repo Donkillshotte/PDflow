@@ -235,6 +235,8 @@ def main() -> int:
     check("leftoverMustConnectDetail" in sig_ts, "equivalence pillar names leftover")
     check("Nangate split wells" in sig_ts, "leftover names the PDK cause")
     check("leftoverSetupOpenDetail" in sig_ts, "timing pillar names leftover setup open")
+    check("leftoverDeckCoverageDetail" in sig_ts, "geometry pillar reads FreePDK45.lydrc coverage")
+    check("leftover no" in sig_ts and "named ERC" in sig_ts, "geometry leftover names missing density/ERC")
     check("wns_kind" in sig_ts and "register-to-register MET" in sig_ts, "timing leftover names I/O vs register WNS")
     check("shared NAND2_X2 cone" in sig_ts, "timing leftover names why clone is not a missing ECO")
     check("appendSetupLeftover" in sig_ts, "signoff matrix keeps I/O leftover after leftover setup is already in the summary")

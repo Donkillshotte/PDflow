@@ -403,6 +403,32 @@ export function leftoverSetupOpenDetail(
   return `${named}; educational golden still ≥ -0.04`;
 }
 
+/** Antenna is in FreePDK45.lydrc. Density and named ERC are not. */
+export function leftoverDeckCoverageDetail(
+  report: Record<string, unknown> | null,
+): string | null {
+  if (!report) return null;
+  const antenna = report.antenna === true;
+  const density = report.density === true;
+  const erc = report.named_erc_section === true;
+  if (antenna && density && erc) return null;
+  const ratio = report.antenna_ratio ? String(report.antenna_ratio) : "in deck";
+  const antennaBit = antenna ? `antenna ${ratio}` : "antenna not in deck";
+  const missing: string[] = [];
+  if (!density) missing.push("density");
+  if (!erc) missing.push("named ERC");
+  if (!missing.length) return `${antennaBit} in FreePDK45.lydrc`;
+  return `${antennaBit} in FreePDK45.lydrc · leftover no ${missing.join(" / ")}`;
+}
+
+export function appendDeckLeftover(detail: string, leftover: string | null): string {
+  if (!leftover) return detail;
+  if (detail.includes("leftover no density") || detail.includes("no density rules")) {
+    return detail;
+  }
+  return `${detail} · ${leftover}`;
+}
+
 export function appendSetupLeftover(detail: string, leftover: string | null): string {
   if (!leftover) return detail;
   if (!detail.includes("leftover setup open")) {
@@ -520,6 +546,14 @@ export function evaluateSignoffGates(variant = "flowlab"): {
         detail += ` · ${leftover}`;
       }
     }
+    if (pillar.id === "geometry") {
+      detail = appendDeckLeftover(
+        String(detail),
+        leftoverDeckCoverageDetail(
+          readJsonReport(path.join(LEARN_ROOT, "sim/reports/drc_deck_coverage.json")),
+        ),
+      );
+    }
     if (pillar.id === "power" && orchReport?.ir_mesh_ledger) {
       detail += " · IR meshes not comparable (gold / chip / current_run / vyges / system)";
     }
@@ -543,6 +577,12 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   let allDetail = allReport ? String(allReport.summary ?? "signoff_all") : "not run";
   if (allReport) {
     allDetail = appendSetupLeftover(allDetail, leftoverSetupOpenDetail(allReport));
+    allDetail = appendDeckLeftover(
+      allDetail,
+      leftoverDeckCoverageDetail(
+        readJsonReport(path.join(LEARN_ROOT, "sim/reports/drc_deck_coverage.json")),
+      ),
+    );
   }
   gates.push({
     id: "signoff_all",
