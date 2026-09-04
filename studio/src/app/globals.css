@@ -535,6 +535,66 @@ a {
   gap: 0.55rem;
 }
 
+.run-picker {
+  display: grid;
+  gap: 0.3rem;
+  max-width: 32rem;
+}
+
+.run-picker label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.run-picker select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper, #fff);
+  color: inherit;
+  font: inherit;
+}
+
+.run-picker-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.fl-ir-ledger {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--fl-border);
+  border-radius: 10px;
+  background: rgba(11, 18, 32, 0.45);
+}
+
+.fl-ir-ledger header p,
+.fl-signoff-lab {
+  margin: 0.25rem 0 0;
+  font-size: 0.76rem;
+  color: var(--fl-muted);
+}
+
+.fl-ir-ledger table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  font-size: 0.74rem;
+}
+
+.fl-ir-ledger th,
+.fl-ir-ledger td {
+  text-align: left;
+  padding: 0.22rem 0.35rem;
+  border-bottom: 1px solid var(--fl-border);
+}
+
+.fl-ir-ledger code {
+  font-size: 0.72rem;
+}
+
 .chip {
   text-align: left;
   border: 1px solid var(--line);

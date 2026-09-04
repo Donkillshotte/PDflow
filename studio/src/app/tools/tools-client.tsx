@@ -162,7 +162,7 @@ export default function ToolsClient() {
       <header className="studio-pro-banner">
         <div>
           <p className="studio-pro-eyebrow">OpenROAD Studio · Tools</p>
-          <h1>Console, suite, and inspection</h1>
+          <h1>Toolchain and run console</h1>
           <p>
             Course variant <code>learn</code>. FlowLab variant{" "}
             <code>flowlab</code>. Do not mix them.

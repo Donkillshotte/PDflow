@@ -29,42 +29,64 @@ const PIPELINE_ACTIONS = [
   { id: "finish", label: "Run finish", hint: "GDS · confirm" },
 ] as const;
 
-/** Post-finish: power chain + signoff (aligned with POST_FINISH_ACTIONS in actions.ts). */
-const POST_FINISH_CHIPS = [
-  { id: "activity_power", label: "Activity → power", hint: "set_power_activity" },
-  { id: "vectorless", label: "Vectorless / dynamic", hint: "Najm + Kouroussis IR" },
-  { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
-  { id: "vyges_em_ir", label: "vyges-em-ir", hint: "CG + backward Euler" },
-  { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "A DirectLU current_run · B SA-AMG" },
-  { id: "dse", label: "DSE (proposer)", hint: "Suggests knobs. Does not run signoff_all." },
-  { id: "eco", label: "ECO propose", hint: "Post-finish plan. Apply refused on flowlab." },
-  { id: "eco_apply", label: "ECO apply", hint: "Writes eco_scratch only. Never flowlab." },
-  { id: "eco_close", label: "ECO close", hint: "signoff_all on eco_scratch. Cannot skip." },
-  { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
-  { id: "power_chain", label: "SPICE chain", hint: "activity→IR→system" },
-  { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },
-  { id: "sta_signoff", label: "STA signoff", hint: "timing vs golden" },
-  { id: "sta_ir_aware", label: "STA IR-aware", hint: "NLDM × ITerm V" },
-  { id: "drc_signoff", label: "DRC signoff", hint: "route + GDS DRC" },
-  { id: "klayout_lvs", label: "LVS signoff", hint: "GDS vs netlist" },
-  { id: "power_signoff", label: "Power signoff", hint: "IR/droop/Zmax" },
-  { id: "signoff_all", label: "Full signoff", hint: "4 pillars · long" },
-  { id: "thermal_signoff", label: "Thermal (HotSpot)", hint: "t_max °C · Phase 2" },
-  { id: "pkg_rdl", label: "PKG RDL (dummy)", hint: "sidecar rdl_route" },
-  { id: "pkg_signoff", label: "PKG signoff", hint: "bump/RDL/system" },
-  { id: "signoff_phase2", label: "Signoff Phase 2", hint: "HotSpot + PKG" },
-  { id: "spice_engines", label: "SPICE engines", hint: "ngspice + Xyce N4" },
-  { id: "yosys_equiv", label: "Yosys equiv", hint: "EQY-class RTL↔synth" },
-  { id: "formal_gcd", label: "Formal SAT", hint: "sby-class tempinduct" },
-  { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },
-  { id: "analytical_pex", label: "Analytical PEX", hint: "Sakurai + FDM + FasterCap BEM" },
-  { id: "ccs_char", label: "CCS char", hint: "PTM sidecar on GCD cells, not foundry CCS" },
-  { id: "lvs_deep", label: "Deep LVS", hint: "filtered CDL + well→VDD/VSS" },
-  { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
-  { id: "tool_matrix", label: "Tool matrix", hint: "all OSS checks" },
-] as const;
+type ActionItem = { id: string; label: string; hint: string };
 
-const STAGE_ACTIONS = [...PIPELINE_ACTIONS, ...POST_FINISH_CHIPS];
+const ACTION_GROUPS: { label: string; items: ActionItem[] }[] = [
+  { label: "Pipeline", items: [...PIPELINE_ACTIONS] },
+  {
+    label: "Signoff",
+    items: [
+      { id: "sta_signoff", label: "STA signoff", hint: "timing vs golden" },
+      { id: "drc_signoff", label: "DRC signoff", hint: "route + GDS DRC" },
+      { id: "klayout_lvs", label: "LVS signoff", hint: "GDS vs netlist" },
+      { id: "power_signoff", label: "Power signoff", hint: "IR/droop/Zmax" },
+      { id: "signoff_all", label: "Full signoff", hint: "STA → DRC → LVS → power" },
+    ],
+  },
+  {
+    label: "ECO",
+    items: [
+      { id: "eco", label: "ECO propose", hint: "Post-finish plan. Apply refused on flowlab." },
+      { id: "eco_apply", label: "ECO apply", hint: "Writes eco_scratch only. Never flowlab." },
+      { id: "eco_close", label: "ECO close", hint: "signoff_all on eco_scratch. Cannot skip." },
+    ],
+  },
+  {
+    label: "Power / IR",
+    items: [
+      { id: "activity_power", label: "Activity → power", hint: "set_power_activity" },
+      { id: "vectorless", label: "Vectorless / dynamic", hint: "Najm + Kouroussis IR" },
+      { id: "chip_pdn_ir", label: "Chip IR mesh", hint: "write_pg_spice" },
+      { id: "vyges_em_ir", label: "vyges-em-ir", hint: "CG + backward Euler" },
+      { id: "dynamic_ir", label: "Dynamic IR I(t)", hint: "DirectLU current_run" },
+      { id: "system_pdn", label: "System PDN", hint: "VRM→board→pkg→die" },
+      { id: "power_chain", label: "SPICE chain", hint: "activity→IR→system" },
+      { id: "export_spice_lab", label: "Export SPICE lab", hint: "sim/spice/" },
+    ],
+  },
+  {
+    label: "Lab / probes",
+    items: [
+      { id: "dse", label: "DSE (proposer)", hint: "Suggests knobs. Does not run signoff_all." },
+      { id: "sta_ir_aware", label: "STA IR-aware", hint: "NLDM × ITerm V" },
+      { id: "thermal_signoff", label: "Thermal (HotSpot)", hint: "t_max °C · Phase 2" },
+      { id: "pkg_rdl", label: "PKG RDL (dummy)", hint: "sidecar rdl_route" },
+      { id: "pkg_signoff", label: "PKG signoff", hint: "bump/RDL/system" },
+      { id: "signoff_phase2", label: "Signoff Phase 2", hint: "HotSpot + PKG" },
+      { id: "spice_engines", label: "SPICE engines", hint: "ngspice + Xyce N4" },
+      { id: "yosys_equiv", label: "Yosys equiv", hint: "RTL ↔ synth" },
+      { id: "formal_gcd", label: "Formal SAT", hint: "reset |-> !resp_val" },
+      { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },
+      { id: "analytical_pex", label: "Analytical PEX", hint: "Sakurai + FDM + FasterCap BEM" },
+      { id: "ccs_char", label: "CCS char", hint: "PTM sidecar, not foundry CCS" },
+      { id: "lvs_deep", label: "Deep LVS", hint: "filtered CDL + well→VDD/VSS" },
+      { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
+      { id: "tool_matrix", label: "Tool matrix", hint: "all OSS checks" },
+    ],
+  },
+];
+
+const STAGE_ACTIONS = ACTION_GROUPS.flatMap((g) => g.items);
 
 function formatMs(ms: number) {
   if (ms < 1000) return `${ms} ms`;
@@ -254,20 +276,27 @@ export function LiveRunConsole({
   return (
     <div className={clsx("run-console", compact && "run-console-compact")}>
       {!compact && (
-        <div className="run-actions" role="group" aria-label="Pipeline actions">
-          {STAGE_ACTIONS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={clsx("chip", action === s.id && "chip-active")}
-              onClick={() => setAction(s.id)}
-              disabled={running}
-              aria-pressed={action === s.id}
-            >
-              <span>{s.label}</span>
-              <em>{s.hint}</em>
-            </button>
-          ))}
+        <div className="run-picker">
+          <label htmlFor="run-action">Action</label>
+          <select
+            id="run-action"
+            value={action}
+            disabled={running}
+            onChange={(e) => setAction(e.target.value)}
+          >
+            {ACTION_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.items.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <p className="run-picker-hint">
+            {STAGE_ACTIONS.find((s) => s.id === action)?.hint ?? ""}
+          </p>
         </div>
       )}
       <div className="run-bar">

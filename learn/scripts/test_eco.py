@@ -96,6 +96,13 @@ def main() -> int:
     sig_ts = (ROOT / "studio/src/lib/signoff.ts").read_text()
     check("leftoverMustConnectDetail" in sig_ts, "equivalence pillar names leftover")
     check("Nangate split wells" in sig_ts, "leftover names the PDK cause")
+    check("IrMeshLedger" in finish, "finish power shows IR mesh ledger")
+    check('href="/lab"' in finish, "finish DSE points at /lab")
+    console = (ROOT / "studio/src/components/LiveRunConsole.tsx").read_text()
+    check("optgroup" in console and "run-picker" in console, "Tools runner is a grouped select")
+    check("POST_FINISH_CHIPS" not in console, "chip wall list is gone")
+    report_api = (ROOT / "studio/src/app/api/report/route.ts").read_text()
+    check("power_signoff_flowlab.json" in report_api, "report API serves the IR mesh ledger")
 
     live = ROOT / "learn/sim/reports/eco_apply_eco_scratch.json"
     if live.is_file():

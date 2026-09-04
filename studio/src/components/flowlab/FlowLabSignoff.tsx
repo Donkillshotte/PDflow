@@ -15,6 +15,7 @@ import { SignoffMatrixPanel } from "./SignoffMatrixPanel";
 import { StaIrAwarePanel } from "./StaIrAwarePanel";
 import { EcoPanel } from "./EcoPanel";
 import { DynamicIrHeatmap } from "./DynamicIrHeatmap";
+import { IrMeshLedger } from "./IrMeshLedger";
 
 type SignoffAction = {
   id: string;
@@ -23,16 +24,6 @@ type SignoffAction = {
   icon: typeof Activity;
   long: boolean;
 };
-
-const LAB_ACTIONS: SignoffAction[] = [
-  {
-    id: "dse",
-    label: "DSE (proposer)",
-    hint: "Suggests knobs. Does not run signoff_all.",
-    icon: Layers,
-    long: false,
-  },
-];
 
 const POWER_ACTIONS: SignoffAction[] = [
   {
@@ -270,11 +261,15 @@ export function FlowLabSignoff({
           that close. DSE only suggests knobs.
         </p>
       </div>
+      {(isFinish || isPower) && <IrMeshLedger />}
       {isFinish && (
         <>
           <div id="signoff">
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
-          <StaIrAwarePanel busy={busy} onRun={onRun} />
+          <details className="fl-signoff-more">
+            <summary>STA IR-aware overlay (lab · does not change WNS)</summary>
+            <StaIrAwarePanel busy={busy} onRun={onRun} />
+          </details>
           <EcoPanel busy={busy} onRun={onRun} />
           <details className="fl-signoff-more">
             <summary>Individual STA / DRC / LVS scripts</summary>
@@ -311,41 +306,33 @@ export function FlowLabSignoff({
             </p>
           </div>
           <DynamicIrHeatmap />
-          <ActionGrid
-            actions={POWER_ACTIONS}
-            disabled={disabled}
-            busy={busy}
-            onRun={onRun}
-          />
-          <div className="fl-signoff-head">
-            <strong>Lab proposer</strong>
-            <p>
-              DSE is not the signoff orchestrator. Wins stay in{" "}
-              <code>win_rule.py</code>.
-            </p>
-          </div>
-          <ActionGrid
-            actions={LAB_ACTIONS}
-            disabled={disabled}
-            busy={busy}
-            onRun={onRun}
-          />
+          <details className="fl-signoff-more">
+            <summary>Individual power / SPICE scripts</summary>
+            <ActionGrid
+              actions={POWER_ACTIONS}
+              disabled={disabled}
+              busy={busy}
+              onRun={onRun}
+            />
+          </details>
+          <p className="fl-signoff-lab">
+            DSE proposes knobs on <a href="/lab">/lab</a>. It does not run{" "}
+            <code>signoff_all</code>. Wins stay in <code>win_rule.py</code>.
+          </p>
           {(mode === "full") && (
-            <>
-              <div className="fl-signoff-head">
-                <strong>Phase 2 · PKG &amp; thermal</strong>
-                <p>
-                  Educational proxies ·{" "}
-                  <a href="/materials/reference/pkg-design-package.md">pkg-design-package</a>
-                </p>
-              </div>
+            <details className="fl-signoff-more">
+              <summary>Phase 2 · PKG &amp; thermal (educational proxies)</summary>
+              <p>
+                Docs{" "}
+                <a href="/materials/reference/pkg-design-package.md">pkg-design-package</a>
+              </p>
               <ActionGrid
                 actions={PHASE2_ACTIONS}
                 disabled={disabled}
                 busy={busy}
                 onRun={onRun}
               />
-            </>
+            </details>
           )}
         </>
       )}

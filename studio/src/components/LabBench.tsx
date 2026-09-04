@@ -183,8 +183,8 @@ export function LabBench({
     <section className={clsx("lb-bench", tone === "dark" && "lb-bench-dark")} aria-label="Lab bench">
       <header className="lb-mast">
         <div>
-          <p className="lb-kicker">Bench folio {folio} · not a brochure</p>
-          <h2>What the numbers are allowed to mean</h2>
+          <p className="lb-kicker">Lab physics {folio}</p>
+          <h2>Rail-scale checks on finished cooks</h2>
           <p className="lb-lead">
             {data?.lead ?? "Rail-scale checks on real finishes. Gold 45.298 mV stays a sentinel."}
           </p>
