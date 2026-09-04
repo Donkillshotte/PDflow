@@ -1,8 +1,10 @@
 # Lesson 00 — Introduction to Physical Design
 
-Welcome to the hands-on **digital physical design** course with OpenROAD.
+This is the **digital physical design** course on OpenROAD / ORFS
+(Nangate45 / FreePDK45).
 
-This lesson is not a summary to skim. It is the **mental map** you will use for 6–10 hours. If you skip sections, lessons 03–07 will feel like black magic.
+This lesson is the map for the rest of the course. If you skip it,
+lessons 03–07 are harder to debug.
 
 ## Objectives
 

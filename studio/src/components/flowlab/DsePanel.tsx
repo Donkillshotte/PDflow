@@ -275,6 +275,16 @@ export function DsePanel() {
       ) : (
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
+          <p className="muted">
+            Lab extracts only. Not gold Dynamic IR 45.298 mV and not the
+            signoff chip mesh. DSE does not run <code>signoff_all</code>.
+          </p>
+          {(irChips(report).length > 0 ||
+            report.n_ir_cell ||
+            report.n_ir_cell_champ ||
+            report.winning_static_mv != null) && (
+            <details className="lb-raw">
+            <summary>Lab IR highlights / raw tape</summary>
           {irChips(report).length > 0 && (
             <ul className="lb-chips" aria-label="DSE IR highlights">
               {irChips(report).map((c) => (
@@ -285,9 +295,6 @@ export function DsePanel() {
               ))}
             </ul>
           )}
-          {report.n_ir_cell || report.n_ir_cell_champ || report.n_ir_cell_champ_cone || report.n_f4_ir_cell_champ_extract || report.n_f4_ir_cell_champ_cone_extract || report.n_ir_cell_champ_pdn || report.n_ir_cell_champ_cone_pdn || report.n_f4_ir_cell_champ_cone_region_extract || report.n_ir_cell_champ_cone_region_pdn || report.n_f4_amg_champ || report.n_f4_ras_champ || report.n_f4_krylov_champ || report.n_static_ir_steer || report.n_static_mesh || report.n_static_straps || report.n_em_straps || report.n_winning_ir_pdn || report.winning_static_mv != null || report.n_f4_ir_cell_extract || report.n_ir_cell_pdn || report.n_f4_ir_cell_region_extract || report.n_ir_cell_region_pdn || report.n_f4_iscale_champ ? (
-            <details className="lb-raw">
-            <summary>Raw IR-loop tape</summary>
             <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
               IR loop
               {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
@@ -579,7 +586,7 @@ export function DsePanel() {
                   : ""}
             </p>
             </details>
-          ) : null}
+          )}
           <ul className="fl-dynir-levels">
             {LEVELS.map((lv) => {
               const n = cands.filter((c) => c.level === lv).length;
