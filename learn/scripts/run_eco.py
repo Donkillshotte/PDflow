@@ -153,6 +153,10 @@ def apply(variant: str) -> dict:
     env["ECO_SDC"] = str(FLOW / "designs/nangate45/gcd-tutorial/constraint.sdc")
     env["ECO_RC"] = str(FLOW / "platforms/nangate45/setRC.tcl")
     env["ECO_FILL"] = "FILLCELL_X1 FILLCELL_X2 FILLCELL_X4 FILLCELL_X8 FILLCELL_X16 FILLCELL_X32"
+    env["MIN_ROUTING_LAYER"] = "metal2"
+    env["MAX_ROUTING_LAYER"] = "metal10"
+    env["MIN_CLK_ROUTING_LAYER"] = "metal4"
+    env["ECO_FASTROUTE"] = str(FLOW / "platforms/nangate45/fastroute.tcl")
     def_out = obj / "eco_out.def"
     v_out = obj / "eco_out.v"
     cdl_out = obj / "eco_out.cdl"
@@ -163,6 +167,7 @@ def apply(variant: str) -> dict:
     env["ECO_CDL_MASTERS"] = str(FLOW / "platforms/nangate45/cdl/NangateOpenCellLibrary.cdl")
     env["ECO_SPEF_OUT"] = str(spef_out)
     env["ECO_RCX"] = str(FLOW / "platforms/nangate45/rcx_patterns.rules")
+    env["ECO_DRC_OUT"] = str(obj / "eco_route.drc")
     spef_in = src.parent / "6_final.spef"
     if spef_in.is_file():
         env["ECO_SPEF_IN"] = str(spef_in)
@@ -203,7 +208,9 @@ def apply(variant: str) -> dict:
         wrote_gds = gds_out.is_file() and gds_proc.returncode == 0
     log.write_text("\n".join(chunks))
     err = None
-    if not wrote:
+    if proc.returncode < 0:
+        err = f"OpenROAD signal {-proc.returncode}"
+    elif not wrote:
         combined = chunks[0]
         for line in reversed(combined.splitlines()):
             if "ERROR" in line or line.startswith("FAIL"):

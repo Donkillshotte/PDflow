@@ -35,15 +35,32 @@ if {[info commands set_propagated_clock] != "" && [info commands all_clocks] != 
   }
 }
 
+# Pin-swap / resize notify GRT. Without this, OpenROAD SIGSEGVs in
+# getPinGridPositions / addDirtyNet. BufferMove still hits RSZ-0074 on
+# this finished ODB — keep size-only, then detailed_route.
+set eco_grt 0
+if {[info exists ::env(ECO_FASTROUTE)] && $::env(ECO_FASTROUTE) != "" && [file exists $::env(ECO_FASTROUTE)]} {
+  source $::env(ECO_FASTROUTE)
+}
+if {[info commands global_route] != ""} {
+  if {[catch {global_route -allow_congestion} err]} {
+    puts "WARN ECO global_route: $err"
+  } else {
+    set eco_grt 1
+    puts "ECO_GRT initialized"
+  }
+}
+
 if {[info commands remove_fillers] != ""} {
   remove_fillers
 }
 
-# Post-route size-only. Default BufferMove calls GRT getPinGridPositions and
-# SIGSEGVs on a finished ODB that never ran global_route in this session.
-# Inserting buffers here would also leave undetailed wires; close is signoff_all.
+# Post-route size-only. Default BufferMove SIGSEGVs without GRT and
+# RSZ-0074 with GRT on this netlist. Close is still signoff_all.
 if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
-  if {[info commands repair_timing] != ""} {
+  if {!$eco_grt} {
+    puts "WARN ECO setup repair skipped — GRT not initialized"
+  } elseif {[info commands repair_timing] != ""} {
     if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
       puts "WARN ECO setup repair: $err"
     } else {
@@ -73,6 +90,30 @@ if {[info commands filler_placement] != ""} {
     set fills $::env(ECO_FILL)
   }
   filler_placement $fills
+}
+
+if {$eco_grt && [info commands global_route] != ""} {
+  if {[catch {global_route -allow_congestion} err]} {
+    puts "WARN ECO global_route after DPL: $err"
+  }
+}
+
+if {[info commands detailed_route] != ""} {
+  set drc_out $::env(ECO_ODB_OUT)
+  regsub {\.odb$} $drc_out {.drc} drc_out
+  if {[info exists ::env(ECO_DRC_OUT)] && $::env(ECO_DRC_OUT) != ""} {
+    set drc_out $::env(ECO_DRC_OUT)
+  }
+  if {[catch {detailed_route -verbose 1 -output_drc $drc_out} err]} {
+    puts "WARN ECO detailed_route: $err"
+  } else {
+    puts "ECO_DRT $drc_out"
+  }
+}
+
+if {[info commands design_is_routed] != "" && ![design_is_routed]} {
+  puts "FAIL ECO design is not routed — refusing to write 6_final"
+  exit 1
 }
 
 write_db $::env(ECO_ODB_OUT)
