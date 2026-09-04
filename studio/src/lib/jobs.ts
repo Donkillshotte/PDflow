@@ -100,11 +100,33 @@ function writeHistory(data: HistoryFile) {
   fs.writeFileSync(HISTORY_PATH(), JSON.stringify(data, null, 2) + "\n");
 }
 
+/** Running rows with no live lock are leftovers from a crashed cook. */
+function reconcileOrphanJobs() {
+  const lock = readLock();
+  const data = readHistory();
+  let changed = false;
+  for (const job of data.jobs) {
+    if (job.status !== "running") continue;
+    if (lock?.jobId === job.id) continue;
+    job.status = "error";
+    job.finishedAt = new Date().toISOString();
+    const started = Date.parse(job.startedAt || "");
+    if (Number.isFinite(started)) job.ms = Date.now() - started;
+    job.logTail = `${job.logTail || ""}\n[studio] orphan running job: no lock\n`.slice(
+      -16000,
+    );
+    changed = true;
+  }
+  if (changed) writeHistory(data);
+}
+
 export function listJobs(limit = 20): JobRecord[] {
+  reconcileOrphanJobs();
   return readHistory().jobs.slice(0, limit);
 }
 
 export function getJob(id: string): JobRecord | null {
+  reconcileOrphanJobs();
   return readHistory().jobs.find((j) => j.id === id) ?? null;
 }
 

@@ -22,7 +22,7 @@ export function FlowLabPowerChain({
       aria-label="Power and SPICE chain"
     >
       <div className="fl-power-chain-head">
-        <strong>RTL → PKG chain</strong>
+        <strong>Power / SPICE chain</strong>
         <Link href="/materials/reference/spice-power-chain.md">
           Full SPICE guide
         </Link>

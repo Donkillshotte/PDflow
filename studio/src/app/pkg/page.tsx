@@ -55,7 +55,7 @@ export default function PkgPage() {
           <ul>
             <li>
               <Link href="/materials/reference/spice-power-chain.md">
-                RTL → PKG · phase links
+                Power / SPICE chain · phase links
               </Link>
             </li>
             <li>

@@ -81,7 +81,7 @@ learn/
 **Recommended** module (not required to complete the course):
 
 1. Read [`reference/spice-power-chain.md`](reference/spice-power-chain.md) — exhaustive map lessons ↔ FlowLab ↔ netlists
-2. Open FlowLab [RTL → PKG](http://127.0.0.1:43217/flow) and the chain below the pipeline
+2. Open FlowLab [RTL → finish](http://127.0.0.1:43217/flow) (`signoff_all` on finish). System PDN is [/pkg](http://127.0.0.1:43217/pkg)
 3. Post-`make finish`: `./learn/scripts/run_power_chain.sh` (`learn` or `flowlab` variant)
 4. Explore netlists in `learn/sim/spice/` · hub [/pkg](http://127.0.0.1:43217/pkg)
 

@@ -1,4 +1,4 @@
-/** RTL → PKG data chain: what each phase produces/consumes for power & SPICE. */
+/** Power / SPICE data chain: what each phase produces/consumes. PKG is not a signoff pillar. */
 
 export type ChainNode = {
   phaseId: string;
