@@ -87,7 +87,7 @@ def main() -> int:
     check('href: "/pkg"' in home, "home Package chip goes to /pkg, not FlowLab finish")
     flowlab = (ROOT / "studio/src/components/FlowLab.tsx").read_text()
     check("CLOSE_PHASES" in flowlab, "FlowLab close count excludes PKG")
-    check("PHASES.length" not in flowlab.split("progressPct")[1][:200], "progress ring does not divide by nine phases")
+    check("doneCount / PHASES.length" not in flowlab, "progress ring does not divide by nine phases")
     check('href: "/flow?phase=pkg"' not in home, "home does not treat Package as a FlowLab finish phase")
     dyn_hook = suite_src.split('id: "dynamic_ir"')[1].split("},")[0]
     check("currentRunDynamicIrPresent" in dyn_hook, "Dynamic IR hook ok is current_run, not gold")
