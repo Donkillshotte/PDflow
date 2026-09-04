@@ -71,7 +71,7 @@ const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "power_signoff",
     label: "Power signoff",
-    hint: "4 step + gate golden",
+    hint: "activity → chip IR → export + golden",
     icon: Zap,
     long: true,
   },
@@ -162,6 +162,13 @@ const PHASE2_ACTIONS: SignoffAction[] = [
     id: "pkg_signoff",
     label: "PKG signoff",
     hint: "Bump + dummy rdl_route + system PDN",
+    icon: Package,
+    long: true,
+  },
+  {
+    id: "system_pdn",
+    label: "System PDN",
+    hint: "VRM→board→pkg→die ngspice ladder",
     icon: Package,
     long: false,
   },

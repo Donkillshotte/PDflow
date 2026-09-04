@@ -39,7 +39,11 @@ def main() -> int:
 
     pwr = load("power_signoff_flowlab.json")
     check(pwr.get("ok") is True, "power signoff ok")
-    sys_mv = float((pwr.get("power") or {}).get("system_droop_mv") or 0)
+    check("system_pdn" not in (pwr.get("steps") or []), "power signoff steps are chip-only")
+    check("system_droop_mv" not in (pwr.get("power") or {}), "power signoff metrics are chip-only")
+    sys_rep = load("system_pdn_flowlab.json")
+    check(sys_rep.get("ok") is True, "system PDN report has ok")
+    sys_mv = float((sys_rep.get("transient") or {}).get("droop_mv") or 0)
     check(sys_mv > 0, f"system droop {sys_mv:.3f} mV")
     ledger = pwr.get("ir_mesh_ledger") or {}
     check(ledger.get("comparable") is False, "IR mesh ledger is not comparable")

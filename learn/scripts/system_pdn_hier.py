@@ -290,6 +290,8 @@ def main() -> int:
     tran_rows = parse_wrdata(tpath)
     ac_rows = parse_wrdata(apath)
     report = analyze(cfg, tran_rows, ac_rows, i_die)
+    report["ok"] = bool(tran_rows) and bool(ac_rows)
+    report["variant"] = args.variant
     report["files"] = {
         "tran_netlist": str(out_dir / "tran.sp"),
         "ac_netlist": str(out_dir / "ac.sp"),
@@ -298,7 +300,7 @@ def main() -> int:
         "config": args.config,
     }
     Path(args.report).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.report).write_text(json.dumps(report, indent=2))
+    Path(args.report).write_text(json.dumps(report, indent=2) + "\n")
     print("SYSTEM_PDN_HIER_DONE")
     print(report["summary"])
     print(f"report → {args.report}")

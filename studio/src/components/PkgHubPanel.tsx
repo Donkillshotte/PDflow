@@ -167,7 +167,7 @@ export function PkgHubPanel({
               </p>
             </>
           ) : (
-            <p>Report missing — run system_pdn after finish.</p>
+            <p>Report missing — run System PDN here after four-pillar signoff.</p>
           )}
         </article>
         <article className="pkg-report-card">
@@ -187,6 +187,14 @@ export function PkgHubPanel({
       </div>
 
       <p className="pkg-hub-links">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={Boolean(busy)}
+          onClick={() => void runAction("system_pdn", false)}
+        >
+          {busy === "system_pdn" ? "Running…" : "Run System PDN"}
+        </button>
         <button
           type="button"
           className="btn-primary"

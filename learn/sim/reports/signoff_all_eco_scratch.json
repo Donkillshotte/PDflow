@@ -23,7 +23,7 @@
     },
     "power": {
       "ok": true,
-      "summary": "Chip IR 1.05 mV \u00b7 Sys droop 6.03 mV \u00b7 Zmax 9058.4 m\u03a9 \u00b7 IR meshes not comparable",
+      "summary": "Chip IR 1.05 mV \u00b7 transient 9.47 mV \u00b7 IR meshes not comparable",
       "ir_mesh_ledger": {
         "comparable": false,
         "n_meshes": 3

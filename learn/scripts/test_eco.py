@@ -101,6 +101,7 @@ def main() -> int:
     check("signoff_all" not in pkg and "chip_pdn_ir" not in pkg, "PKG hub does not host signoff_all or chip IR")
     check("power_chain" not in pkg, "PKG hub does not run the power chain")
     check("system_pdn" in pkg and "signoff_phase2" in pkg, "PKG hub keeps System PDN and Phase 2")
+    check('runAction("system_pdn"' in pkg, "PKG hub can run System PDN")
     pkg_page = (ROOT / "studio/src/app/pkg/page.tsx").read_text()
     check("/flow?phase=pkg" not in pkg, "PKG hub does not deep-link a FlowLab PKG phase")
     check("signoff_all" in pkg_page and "finish" in pkg_page, "PKG page points four-pillar close at finish")

@@ -93,7 +93,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   {
     id: "power",
     label: "Power",
-    description: "Activity → chip IR → system droop. System PDN / Phase 2 stay on /pkg.",
+    description: "Activity → chip IR. System PDN / Phase 2 stay on /pkg.",
     status: "active",
     orchestratorAction: "power_signoff",
     checks: [
@@ -137,14 +137,6 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         stampRel: ".dynamic_ir.ok",
       },
       {
-        id: "system_pdn",
-        label: "System PDN",
-        action: "system_pdn",
-        script: "learn/scripts/run_system_pdn.sh",
-        reportRel: "sim/reports/system_pdn_{variant}.json",
-        stampRel: ".system_pdn.ok",
-      },
-      {
         id: "mesh_export",
         label: "SPICE lab export",
         action: "export_spice_lab",
@@ -177,6 +169,15 @@ export const SIGNOFF_PLANNED_PILLARS: SignoffPillarDef[] = [
         action: "pkg_rdl",
         script: "learn/scripts/run_pkg_rdl.sh",
         reportRel: "sim/reports/pkg_rdl_{variant}.json",
+      },
+      {
+        id: "system_pdn",
+        label: "System PDN",
+        action: "system_pdn",
+        script: "learn/scripts/run_system_pdn.sh",
+        reportRel: "sim/reports/system_pdn_{variant}.json",
+        stampRel: ".system_pdn.ok",
+        suiteHookId: "system_pdn",
       },
     ],
   },

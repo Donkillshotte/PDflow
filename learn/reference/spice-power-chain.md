@@ -23,7 +23,7 @@
 | **Question** | Where on the die is there IR/droop? | Does VRM→board→pkg handle the load-step? |
 | **Netlist** | `write_pg_spice` (~5k R) | `system_pdn_hier.py` (~15 elements) |
 | **Sim** | PDNSim + `pdn_transient.py` | ngspice TRAN + AC |
-| **When** | Post-finish | Post-finish (I_die from activity) |
+| **When** | Post-finish | After four-pillar signoff (`/pkg`) |
 | **Doc** | [spice-chip-mesh.md](./spice-chip-mesh.md) | [spice-ngspice-primer.md](./spice-ngspice-primer.md) |
 
 ---
@@ -200,8 +200,8 @@ Static IR drop uses **post-route/finish** geometry, not placement alone.
 2. **`chip_pdn_ir`** → `pg_vdd_bumps.sp` + `pdn_chip_ir_*.json`
 3. **`vyges_em_ir`** → same mesh, binary CG + backward Euler (`vyges_em_ir_*.json`)
 4. **`dynamic_ir`** → I(t) per pin + heatmap (`dynamic_ir_*.json` + `.svg`)
-5. **`system_pdn`** → `system_pdn_*.json` (Zmax, droop)
-6. **`power_chain`** → runs activity → chip IR → system → lab export
+5. **`system_pdn`** → `/pkg` after four-pillar close (`system_pdn_*.json`)
+6. **`power_chain`** → convenience: activity → chip IR → system → export. Not `power_signoff`.
 
 ```bash
 FLOW_VARIANT=flowlab ./learn/scripts/run_power_chain.sh

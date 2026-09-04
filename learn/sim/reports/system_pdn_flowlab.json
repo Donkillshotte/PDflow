@@ -1319,6 +1319,8 @@
     ]
   },
   "summary": "System PDN \u00b7 die droop 6.03 mV (0.55%) \u00b7 Zmax 9058.36 m\u03a9 @ 2.239e+08 Hz \u00b7 Iavg 2.000 mA",
+  "ok": true,
+  "variant": "flowlab",
   "files": {
     "tran_netlist": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/system_pdn/tran.sp",
     "ac_netlist": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/system_pdn/ac.sp",

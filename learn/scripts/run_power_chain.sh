@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Full power integrity chain: activity → chip IR → System PDN → SPICE lab export.
+# Convenience chain: activity → chip IR → System PDN → SPICE lab export.
 #
-# Requires finish (6_final.odb). Chains all post-PD SPICE analyses.
+# Not the four-pillar cook. power_signoff is chip-only. System PDN is PKG
+# (run_system_pdn.sh / /pkg). This script still runs the ladder after chip IR
+# so a single CLI can refresh both reports.
 #
 # Usage: run_power_chain.sh
 # Env: FLOW_VARIANT=learn|flowlab

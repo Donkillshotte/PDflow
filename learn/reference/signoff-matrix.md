@@ -34,7 +34,7 @@ the lvsdb (Nangate split wells). This is educational FreePDK45, not foundry LVS.
 | **Timing (STA IR-aware)** | 07-finish | `sta_ir_aware` | `run_sta_ir_aware.sh` | `sim/reports/sta_ir_aware_{v}.json` | Educational NLDM × ITerm V (does not change WNS) |
 | **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
 | **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | KLayout match + leftover named |
-| **Power** | 03–07, finish | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | IR/droop/Zmax vs golden |
+| **Power** | 03–07, finish | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | chip IR vs golden |
 | **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | all 4 pillars (+ optional Phase 2 with `SIGNOFF_INCLUDE_PHASE2=1`) |
 
 Power sub-checks (inside `power` pillar):
@@ -46,8 +46,13 @@ Power sub-checks (inside `power` pillar):
 | Chip IR mesh | `chip_pdn_ir` | `pdn_chip_ir_{v}.json` + `.chip_pdn_ir.ok` |
 | vyges-em-ir | `vyges_em_ir` | `vyges_em_ir_{v}.json` + `.vyges_em_ir.ok` |
 | Dynamic IR I(t) | `dynamic_ir` | `dynamic_ir_{v}_direct.json` + `.svg` + `.dynamic_ir.ok` (gold 45.298 stays `dynamic_ir_{v}.json`) |
-| System PDN | `system_pdn` | `system_pdn_{v}.json` + `.system_pdn.ok` |
 | SPICE lab export | `export_spice_lab` | `sim/spice/INDEX_{v}.md` |
+
+PKG (after four-pillar close, on `/pkg`):
+
+| Check | Action | Artifact |
+|---|---|---|
+| System PDN | `system_pdn` | `system_pdn_{v}.json` + `.system_pdn.ok` |
 
 ---
 
@@ -77,8 +82,8 @@ All signoff actions require **`finish`** completed:
 | Equivalence | LVS | match (`CONGRATULATIONS`) · leftover must-connect 2 on DFF_X2 stays visible |
 | Power | Chip static IR | ≤ 15 mV |
 | Power | Chip transient droop | ≤ 120 mV |
-| Power | System droop | ≤ 20 mV |
-| Power | System Zmax | ≤ 15000 mΩ |
+| PKG | System droop | ≤ 20 mV |
+| PKG | System Zmax | ≤ 15000 mΩ |
 
 Tolerance: timing ±15%, power ±25%.
 
@@ -120,7 +125,7 @@ Quick post-`finish` checklist:
 - [ ] (opt.) `sta_ir_aware` → slack vs slack_ir on the worst path (educational; not Tempus)
 - [ ] `drc_signoff` → route DRC + GDS items = 0
 - [ ] `klayout_lvs` → `CONGRATULATIONS` + leftover object (DFF_X2)
-- [ ] `power_signoff` → IR/droop/system vs golden · IR meshes not comparable
+- [ ] `power_signoff` → chip IR vs golden · IR meshes not comparable
 - [ ] `signoff_all` → 4 pillars ok · leftover + IR ledger named
 - [ ] (opt.) Phase 2: `thermal_signoff`, `pkg_signoff`, `signoff_phase2`
 - [ ] UI: matrix visible on FlowLab **finish** (`/flow?phase=finish`). `/pkg` is System PDN + Phase 2 only.

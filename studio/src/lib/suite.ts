@@ -298,8 +298,8 @@ export async function getSuiteStatus() {
       label: "System PDN",
       group: "Power",
       ok:
-        fs.existsSync(path.join(resultsDir("flowlab"), ".system_pdn.ok")) ||
-        fs.existsSync(path.join(resultsDir("learn"), ".system_pdn.ok")),
+        signoffReportPass("flowlab", "system_pdn") ||
+        signoffReportPass("learn", "system_pdn"),
       detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · /pkg",
       action: "system_pdn",
       href: "/pkg",
@@ -382,7 +382,7 @@ export async function getSuiteStatus() {
       label: "SPICE chain",
       group: "Power",
       ok: powerChainOk(),
-      detail: "activity → chip IR → system → export",
+      detail: "activity → chip IR → export; System PDN is PKG",
       action: "power_chain",
       href: "/tools?tab=run&action=power_chain",
     },

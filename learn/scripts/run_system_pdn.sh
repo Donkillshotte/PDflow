@@ -65,6 +65,7 @@ print("F_ZMAX_Hz", r["impedance"]["f_at_zmax_hz"])
 print("DOMAINS", ",".join(r["domains"]))
 PY
 
+python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${REPORT}"
 date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
 echo "SYSTEM_PDN_DONE ${VARIANT}" | tee -a "${LOG}"
 echo "OK System PDN hierarchical ${VARIANT}"

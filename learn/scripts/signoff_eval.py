@@ -99,6 +99,7 @@ def evaluate_power(metrics: dict, golden: dict) -> dict:
     mapping = [
         ("chip_static_ir_mv", "chip_static_ir_mv_max", "Chip static IR (mV)"),
         ("chip_transient_droop_mv", "chip_transient_droop_mv_max", "Chip transient droop (mV)"),
+        # System droop / Zmax are PKG gates (run_pkg_signoff.sh), not four-pillar.
         ("system_droop_mv", "system_droop_mv_max", "System droop (mV)"),
         ("system_zmax_mohm", "system_zmax_mohm_max", "System Zmax (mΩ)"),
     ]

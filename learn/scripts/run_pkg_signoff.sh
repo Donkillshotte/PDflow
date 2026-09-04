@@ -14,6 +14,7 @@ echo "=== PKG SIGNOFF ${VARIANT} ===" | tee -a "${LOG}"
 
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_pkg_bump.sh" 2>&1 | tee -a "${LOG}"
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_pkg_rdl.sh" 2>&1 | tee -a "${LOG}"
+FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_system_pdn.sh" 2>&1 | tee -a "${LOG}"
 
 python3 - <<PY | tee -a "${LOG}"
 import json
@@ -29,9 +30,20 @@ bump = load("pkg_bump") or {}
 rdl = load("pkg_rdl") or {}
 sys = load("system_pdn") or {}
 
-sys_ok = sys.get("ok")
-if sys_ok is None and sys.get("summary"):
-    sys_ok = True
+golden = json.loads((root / "learn/signoff/golden-gcd.json").read_text())
+tol = float(golden["tolerance"]["power_pct"])
+gp = golden["power"]
+
+def within_min(actual, target, tol_pct):
+    slack = abs(target) * tol_pct if target else tol_pct
+    return actual <= target + slack
+
+droop = float((sys.get("transient") or {}).get("droop_mv") or 0)
+zmax = float((sys.get("impedance") or {}).get("z_max_mohm") or 0)
+droop_ok = within_min(droop, float(gp["system_droop_mv_max"]), tol)
+zmax_ok = within_min(zmax, float(gp["system_zmax_mohm_max"]), tol)
+# Engine-ran is not enough. Missing ok used to count a summary as a pass.
+sys_ok = sys.get("ok") is True and droop_ok and zmax_ok
 
 rdl_executed = bool((rdl.get("rdl") or {}).get("executed"))
 # Never treat "API documented" / GDS present as an RDL pass.
@@ -45,7 +57,12 @@ steps = {
     "status": rdl_status,
     "summary": rdl.get("summary"),
   },
-  "system_pdn": {"ok": bool(sys_ok), "summary": sys.get("summary")},
+  "system_pdn": {
+    "ok": sys_ok,
+    "summary": sys.get("summary"),
+    "droop_mv": droop,
+    "zmax_mohm": zmax,
+  },
 }
 # Executable pieces: bump mesh + system PDN. Dummy rdl_route is extra when it ran.
 executable_ok = bool(steps["pkg_bump"]["ok"]) and bool(steps["system_pdn"]["ok"])

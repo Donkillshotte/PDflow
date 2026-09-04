@@ -198,6 +198,7 @@ print("SUMMARY", summary)
 print("report →", out)
 PY
 
+python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${JSON}"
 date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
 echo "OK vyges-em-ir ${VARIANT}"
 echo "  log:    ${LOG}"

@@ -170,6 +170,8 @@ def main() -> int:
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_drc_signoff.sh").read_text(), "DRC cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_power_signoff.sh").read_text(), "power cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_chip_pdn_ir.sh").read_text(), "chip IR cook fails the shell when ok is not true")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_system_pdn.sh").read_text(), "system PDN cook fails the shell when ok is not true")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_vyges_em_ir.sh").read_text(), "vyges cook fails the shell when ok is not true")
     chip_ir = load("pdn_chip_ir_flowlab.json")
     check(chip_ir.get("ok") is True, "live chip IR report has ok")
     chip_hook = suite_src.split('id: "chip_pdn_ir"')[1].split("},")[0]
@@ -181,6 +183,21 @@ def main() -> int:
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_pkg_signoff.sh").read_text(), "pkg_signoff fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_pkg_bump.sh").read_text(), "pkg_bump fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_signoff_phase2.sh").read_text(), "signoff_phase2 re-reads stamped JSON ok")
+    pwr_sh = (ROOT / "learn/scripts/run_power_signoff.sh").read_text()
+    check('learn/scripts/run_system_pdn.sh' not in pwr_sh, "power_signoff does not cook System PDN")
+    check('"system_pdn"' not in pwr_sh, "power_signoff steps are chip-only")
+    pkg_sh = (ROOT / "learn/scripts/run_pkg_signoff.sh").read_text()
+    check("run_system_pdn.sh" in pkg_sh, "pkg_signoff cooks System PDN")
+    check("if sys_ok is None" not in pkg_sh, "pkg_signoff does not treat a summary as ok")
+    check("system_droop_mv_max" in pkg_sh, "pkg_signoff gates system droop against golden")
+    hier = (ROOT / "learn/scripts/system_pdn_hier.py").read_text()
+    check('report["ok"]' in hier, "system PDN JSON writes ok")
+    sig_ts = (ROOT / "studio/src/lib/signoff.ts").read_text()
+    power_checks = sig_ts.split('id: "power"')[1].split("SIGNOFF_PLANNED_PILLARS")[0]
+    pkg_checks = sig_ts.split('id: "pkg"')[1].split('id: "thermal"')[0]
+    check('id: "system_pdn"' not in power_checks, "power pillar checks do not include System PDN")
+    check('id: "system_pdn"' in pkg_checks, "PKG pillar checks include System PDN")
+    check("signoffReportPass" in sys_hook, "suite System PDN ok reads JSON, not only the stamp")
     ph2_ok = subprocess.run(
         [sys.executable, str(require), str(REPORTS / "signoff_phase2_flowlab.json")],
         capture_output=True,
@@ -329,6 +346,8 @@ def main() -> int:
     check(vyges.get("limits_met") is False, "vyges limits_met is false without emlimit")
     check("em_checked 0" in str(vyges.get("summary")), "vyges summary names em_checked 0")
     check("ir_met false" in str(vyges.get("summary")), "vyges summary names ir_met false")
+    sys_rep = load("system_pdn_flowlab.json")
+    check(sys_rep.get("ok") is True, "live system PDN report has ok")
     check("em_checked {em_checked}" in (ROOT / "learn/scripts/run_vyges_em_ir.sh").read_text(), "vyges cook stamps em_checked into summary")
     check("A gold + B SA-AMG" not in str((current.get("roles") or {}).get("this_engine")), "current_run this_engine is not A gold")
     check("current_run" in str((current.get("roles") or {}).get("this_engine")), "current_run this_engine names current_run")

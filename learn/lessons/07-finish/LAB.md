@@ -159,7 +159,7 @@ After `finish`, run the four pillars on Studio **finish** (`/flow?phase=finish#s
 - [ ] **STA IR-aware (optional):** `./learn/scripts/run_sta_ir_aware.sh` — per-cell ITerm V scales NLDM gate delay; does not change nominal WNS; not PrimeTime/Tempus
 - [ ] **DRC:** `./learn/scripts/run_drc_signoff.sh` — route DRC lines + GDS violations separate in JSON
 - [ ] **LVS:** `./learn/scripts/run_klayout_lvs.sh` — match required; read DFF_X2 must-connect leftover (educational FreePDK45)
-- [ ] **Power:** `./learn/scripts/run_power_signoff.sh` — activity → chip IR → system → export + IR/droop gate
+- [ ] **Power:** `./learn/scripts/run_power_signoff.sh` — activity → chip IR → export + IR gate. System PDN is `/pkg` after this close.
 - [ ] **Orchestrator:** `./learn/scripts/run_signoff_all.sh` — aggregated report `signoff_all_{v}.json`
 - [ ] In Studio: PASS/FAIL badge on matrix vs golden; API `GET /api/signoff?variant=learn`
 

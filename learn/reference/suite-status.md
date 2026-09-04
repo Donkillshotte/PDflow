@@ -238,21 +238,21 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | PD | pdn | ok | **WORKS** | `flowlab/2_4_floorplan_pdn.odb` |
 | PD | finish | ok | **WORKS** | `flowlab/6_final.gds` |
 | Power | gridcheck | ok | **WORKS*** | PSM-0040 · stamp after pass |
-| Power | system_pdn | ok | **WORKS*** | lumped ladder · no Touchstone |
+| Power | system_pdn | ok | **WORKS*** | lumped ladder · no Touchstone · `/pkg` |
 | Power | activity | ok | **WORKS** | gate VCD preferred |
 | Power | vectorless | ok | **WORKS*** | dynamic source gate VCD |
 | Power | chip_pdn_ir | ok | **WORKS*** | 1.05 / 9.47 mV |
 | Power | vyges_em_ir | ok | **WORKS*** | 15.1 / 86.0 mV · other mesh |
 | Power | dynamic_ir | ok | **WORKS*** | current_run `_direct.json` · gold 45.298 locked on another mesh |
 | Power | dse | ok | **WORKS*** | lab only · not a product win |
-| Power | power_chain | ok | **WORKS** | activity → chip → system |
+| Power | power_chain | ok | **WORKS*** | convenience; System PDN is PKG |
 | Power | spice_lab | ok | **WORKS** | `INDEX_flowlab.md` |
 | Signoff | klayout_drc | ok | **WORKS** | `6_final.gds` on flowlab |
 | Signoff | sta_signoff | ok | **WORKS** | WNS −0.02 · TNS −0.14 · 3 viol |
 | Signoff | sta_ir_aware | ok | **WORKS*** | educational, not Tempus |
 | Signoff | drc_signoff | ok | **WORKS** | 0 route · 0 GDS |
 | Signoff | lvs_signoff | ok | **WORKS*** | KLayout match · DFF_X2 must-connect 2 |
-| Signoff | power_signoff | ok | **WORKS*** | lumped board |
+| Signoff | power_signoff | ok | **WORKS*** | chip IR; System PDN is PKG |
 | Signoff | signoff_all | ok | **WORKS** | four pillars |
 | Signoff | eco | ok | **WORKS*** | propose only on flowlab |
 | Signoff | thermal_signoff | ok | **WORKS*** | HotSpot |

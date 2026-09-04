@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Power signoff pillar: activity → chip IR → system PDN → export + golden eval
+# Power signoff pillar: activity → chip IR → export + golden eval.
+# System PDN (VRM→board→pkg) is PKG, after this close (/pkg).
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -14,7 +15,6 @@ echo "=== POWER SIGNOFF ${VARIANT} ===" | tee -a "${LOG}"
 
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_activity_power.sh" 2>&1 | tee -a "${LOG}"
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_chip_pdn_ir.sh" 2>&1 | tee -a "${LOG}"
-FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_system_pdn.sh" 2>&1 | tee -a "${LOG}"
 FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/export_spice_lab.sh" 2>&1 | tee -a "${LOG}"
 
 python3 - <<PY | tee -a "${LOG}"
@@ -29,14 +29,11 @@ def load_json(p):
     return json.loads(p.read_text())
 
 chip = load_json(root / f"learn/sim/reports/pdn_chip_ir_{v}.json") or {}
-sys = load_json(root / f"learn/sim/reports/system_pdn_{v}.json") or {}
 
 metrics = {
   "power": {
     "chip_static_ir_mv": float(chip.get("static", {}).get("worst_ir", 0) or 0) * 1e3,
     "chip_transient_droop_mv": float(chip.get("transient", {}).get("worst_droop", 0) or 0) * 1e3,
-    "system_droop_mv": float(sys.get("transient", {}).get("droop_mv", 0) or 0),
-    "system_zmax_mohm": float(sys.get("impedance", {}).get("z_max_mohm", 0) or 0),
   }
 }
 mp = root / f"learn/sim/reports/.power_metrics_{v}.json"
@@ -60,8 +57,11 @@ out = {
   "power": pwr,
   "evaluation": ev,
   "ok": ev.get("ok"),
-  "summary": f"Chip IR {pwr['chip_static_ir_mv']:.2f} mV · Sys droop {pwr['system_droop_mv']:.2f} mV · Zmax {pwr['system_zmax_mohm']:.1f} mΩ",
-  "steps": ["activity_power", "chip_pdn_ir", "system_pdn", "export_spice_lab"],
+  "summary": (
+      f"Chip IR {pwr['chip_static_ir_mv']:.2f} mV · "
+      f"transient {pwr['chip_transient_droop_mv']:.2f} mV"
+  ),
+  "steps": ["activity_power", "chip_pdn_ir", "export_spice_lab"],
 }
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 print("POWER_SIGNOFF_JSON", "${OUT}")
