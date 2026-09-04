@@ -122,7 +122,7 @@ export function InspectPanel({
             onClick={() => void startWeb()}
             disabled={viewerBusy}
           >
-            {viewerBusy ? "Avvio…" : "Open Web Viewer"}
+            {viewerBusy ? "Starting…" : "Open Web Viewer"}
           </button>
           {viewerUrl && (
             <>

@@ -331,7 +331,7 @@ export function FlowLabLayoutCanvas({
               disabled={viewerBusy}
               onClick={() => void startViewer()}
             >
-              {viewerBusy ? "Avvio viewer…" : "Web Viewer"}
+              {viewerBusy ? "Starting viewer…" : "Web Viewer"}
             </button>
           )}
           {meta?.odbExists && (
@@ -341,7 +341,7 @@ export function FlowLabLayoutCanvas({
               disabled={regenBusy}
               onClick={() => void regenImage()}
             >
-              {regenBusy ? "Genero…" : "PNG da ODB"}
+              {regenBusy ? "Rendering…" : "PNG from ODB"}
             </button>
           )}
         </div>
