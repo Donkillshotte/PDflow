@@ -88,9 +88,11 @@ export function EcoPanel({
         <strong>ECO loop</strong>
         <p>
           Propose on the locked finish. Apply writes artifacts only on an
-          unlocked copy. Post-route size-up cannot legalize this GCD
-          (DRT-0206); apply restores the source and names leftover. Close
-          is <code>signoff_all</code> on that copy — ECO never skips it.
+          unlocked copy. Size-up wraps DPL in incremental GRT, then
+          detailed_route. If TritonRoute cannot connect (DRT-0206), apply
+          restores the source. A legal size-up may still leave setup open
+          — leftover is named. Close is <code>signoff_all</code> on that
+          copy — ECO never skips it.
         </p>
       </header>
       <ol className="fl-eco-loop" aria-label="ECO propose, apply, close">

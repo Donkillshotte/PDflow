@@ -37,10 +37,19 @@ if {[info commands set_propagated_clock] != "" && [info commands all_clocks] != 
 
 # Pin-swap / resize notify GRT. Without this, OpenROAD SIGSEGVs in
 # getPinGridPositions / addDirtyNet. BufferMove still hits RSZ-0074 on
-# this finished ODB — keep size-only, then detailed_route.
+# this finished ODB — keep size-only. A full global_route after size-up
+# fails pin coverage (GRT-0304) and TritonRoute DRT-0206; wrap DPL in
+# start/end incremental so only dirty nets re-route.
 set eco_grt 0
 if {[info exists ::env(ECO_FASTROUTE)] && $::env(ECO_FASTROUTE) != "" && [file exists $::env(ECO_FASTROUTE)]} {
   source $::env(ECO_FASTROUTE)
+}
+if {[info commands pin_access] != ""} {
+  if {[catch {pin_access} err]} {
+    puts "WARN ECO pin_access: $err"
+  } else {
+    puts "ECO_PIN_ACCESS"
+  }
 }
 if {[info commands global_route] != ""} {
   if {[catch {global_route -allow_congestion} err]} {
@@ -53,6 +62,14 @@ if {[info commands global_route] != ""} {
 
 if {[info commands remove_fillers] != ""} {
   remove_fillers
+}
+
+if {$eco_grt && [info commands global_route] != ""} {
+  if {[catch {global_route -start_incremental} err]} {
+    puts "WARN ECO global_route -start_incremental: $err"
+  } else {
+    puts "ECO_GRT start_incremental"
+  }
 }
 
 # Post-route size-only. Default BufferMove SIGSEGVs without GRT and
@@ -75,27 +92,22 @@ if {[info exists ::env(ECO_HOLD)] && $::env(ECO_HOLD) == "1"} {
     }
   }
 }
-if {[info commands report_wns] != ""} {
-  report_wns
-  report_tns
-}
 
 if {[info commands detailed_placement] != ""} {
   detailed_placement
 }
 
-if {[info commands filler_placement] != ""} {
-  set fills "FILLCELL_X1 FILLCELL_X2 FILLCELL_X4 FILLCELL_X8 FILLCELL_X16 FILLCELL_X32"
-  if {[info exists ::env(ECO_FILL)] && $::env(ECO_FILL) != ""} {
-    set fills $::env(ECO_FILL)
+if {$eco_grt && [info commands global_route] != ""} {
+  if {[catch {global_route -end_incremental -allow_congestion} err]} {
+    puts "WARN ECO global_route -end_incremental: $err"
+  } else {
+    puts "ECO_GRT end_incremental"
   }
-  filler_placement $fills
 }
 
-if {$eco_grt && [info commands global_route] != ""} {
-  if {[catch {global_route -allow_congestion} err]} {
-    puts "WARN ECO global_route after DPL: $err"
-  }
+if {[info commands report_wns] != ""} {
+  report_wns
+  report_tns
 }
 
 if {[info commands detailed_route] != ""} {
@@ -104,7 +116,7 @@ if {[info commands detailed_route] != ""} {
   if {[info exists ::env(ECO_DRC_OUT)] && $::env(ECO_DRC_OUT) != ""} {
     set drc_out $::env(ECO_DRC_OUT)
   }
-  if {[catch {detailed_route -verbose 1 -output_drc $drc_out} err]} {
+  if {[catch {detailed_route -verbose 1 -clean_patches -output_drc $drc_out} err]} {
     puts "WARN ECO detailed_route: $err"
   } else {
     puts "ECO_DRT $drc_out"
@@ -119,6 +131,16 @@ if {[info commands design_is_routed] != "" && ![design_is_routed]} {
   puts "ECO_RESTORE_SOURCE"
   puts "ECO_REPAIR_WROTE $::env(ECO_ODB_OUT)"
   exit 0
+}
+
+puts "ECO_ROUTED 1"
+
+if {[info commands filler_placement] != ""} {
+  set fills "FILLCELL_X1 FILLCELL_X2 FILLCELL_X4 FILLCELL_X8 FILLCELL_X16 FILLCELL_X32"
+  if {[info exists ::env(ECO_FILL)] && $::env(ECO_FILL) != ""} {
+    set fills $::env(ECO_FILL)
+  }
+  filler_placement $fills
 }
 
 write_db $::env(ECO_ODB_OUT)
@@ -155,7 +177,14 @@ if {[info exists ::env(ECO_SPEF_OUT)] && $::env(ECO_SPEF_OUT) != "" && [info exi
     extract_parasitics -ext_model_file $::env(ECO_RCX)
     write_spef $::env(ECO_SPEF_OUT)
     puts "ECO_REPAIR_WROTE_SPEF $::env(ECO_SPEF_OUT)"
+    read_spef $::env(ECO_SPEF_OUT)
   } rcx_err]} {
     puts "WARN ECO rcx: $rcx_err"
   }
+}
+
+if {[info commands report_wns] != ""} {
+  puts "ECO_POST_ROUTE_STA"
+  report_wns
+  report_tns
 }

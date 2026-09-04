@@ -268,13 +268,28 @@ def apply(variant: str) -> dict:
     log_text = chunks[0]
     restored = "ECO_RESTORE_SOURCE" in log_text
     leftover = None
+    routed = "ECO_ROUTED 1" in log_text and not restored
+    setup_open = "Unable to repair all setup violations" in log_text
     if restored:
         leftover = (
             "post-route size-up cannot close WNS; detailed_route failed "
             "connectivity; source ODB restored"
         )
+    elif routed and setup_open:
+        leftover = (
+            "size-up legalized (incremental GRT + detailed_route); "
+            "setup still open; signoff_all required"
+        )
     if ok and restored:
         summary = "ECO apply restored source · post-route repair cannot legalize · run signoff_all next"
+    elif ok and leftover:
+        summary = (
+            "ECO apply wrote "
+            + "+".join(rewrote)
+            + " · leftover "
+            + leftover
+            + " · run signoff_all next"
+        )
     elif ok:
         summary = "ECO apply wrote " + "+".join(rewrote) + " · run signoff_all next"
     else:

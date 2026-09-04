@@ -106,11 +106,13 @@ Educational FreePDK45, not foundry LVS.
 
 After signoff, ECO propose is allowed on `flowlab`. Apply only on an
 unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply loads
-SPEF, then size-only repair. BufferMove is unsafe on this finished ODB
-(SIGSEGV without GRT, RSZ-0074 with GRT). Size-up fails TritonRoute
-connectivity; apply restores the source `6_final` and names leftover.
-Then run `FLOW_VARIANT=<copy> ./learn/scripts/run_signoff_all.sh`. DSE
-does not run that script.
+SPEF, wraps size-only repair in incremental GRT, then `detailed_route`.
+BufferMove is unsafe on this finished ODB (SIGSEGV without GRT,
+RSZ-0074 with GRT). If TritonRoute cannot connect, apply restores the
+source `6_final`. A legal size-up may still leave the course 0.46 ns
+setup open; leftover is named. Then run
+`FLOW_VARIANT=<copy> ./learn/scripts/run_signoff_all.sh`. DSE does not
+run that script. Never writes `gcd/flowlab/`.
 
 ## Power & SPICE chain (recommended post-course module)
 

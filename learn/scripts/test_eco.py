@@ -85,6 +85,10 @@ def main() -> int:
     check(spef_cmd >= 0 and setup_cmd >= 0 and spef_cmd < setup_cmd, "repair tcl reads SPEF before setup repair")
     check("-skip_buffering" in tcl and "sizeup,swap" in tcl, "post-route ECO skips BufferMove (needs GRT)")
     check("ECO_FASTROUTE" in tcl and "global_route" in tcl, "repair tcl initializes GRT before size-up")
+    check("start_incremental" in tcl and "end_incremental" in tcl, "repair tcl wraps DPL in incremental GRT")
+    check("pin_access" in tcl, "repair tcl runs pin_access before GRT")
+    check("-clean_patches" in tcl, "repair tcl detailed_route uses clean_patches")
+    check("ECO_ROUTED 1" in tcl, "repair tcl stamps ECO_ROUTED when legal")
     check("detailed_route" in tcl and "design_is_routed" in tcl, "repair tcl detailed-routes before writing 6_final")
     check("ECO_RESTORE_SOURCE" in tcl, "repair tcl restores source ODB if size-up is not routed")
     check("file copy -force" in tcl, "unrouted restore copies the input ODB file (read_db cannot reload)")
@@ -247,6 +251,16 @@ def main() -> int:
         if scratch.get("repaired") is False:
             check(bool(scratch.get("leftover")), "unrepaired apply names leftover")
             check("signoff_all" in str(scratch.get("summary")), "unrepaired apply still requires signoff_all")
+        elif scratch.get("repaired") is True:
+            check(scratch.get("signoff") is False, "legal size-up still does not claim signoff")
+            check("signoff_all" in str(scratch.get("signoff_required")), "legal size-up still requires signoff_all")
+            if scratch.get("leftover"):
+                check(
+                    "setup still open" in str(scratch.get("leftover"))
+                    or "DRT-0206" in str(scratch.get("leftover"))
+                    or "restored" in str(scratch.get("leftover")),
+                    "legal size-up leftover names setup or restore",
+                )
         out_odb = Path(scratch.get("output_odb") or "")
         check(out_odb.is_file(), "scratch sidecar ODB exists")
         flowlab = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb"
