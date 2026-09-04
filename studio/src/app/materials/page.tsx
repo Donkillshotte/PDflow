@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { LeftoverSuiteStrip } from "@/components/LeftoverSuiteStrip";
+import { SurfaceRail } from "@/components/SurfaceRail";
 import { MATERIALS, WALKTHROUGHS } from "@/lib/materials-client";
 
 type Shot = { name: string; href: string; label: string };
@@ -49,12 +51,17 @@ export default function MaterialsPage() {
 
   return (
     <main>
+      <SurfaceRail />
       <header className="page-head">
         <h1>Materials</h1>
         <p>
           Search the course, open in-app documents, browse the GUI gallery.
-          Ctrl+K palette to jump to dashboards and Desktop viewer.
+          Ctrl+K palette to jump to dashboards and Desktop viewer. Leftover
+          named — setup, DFF_X2, no density, no MCMM — lives on the{" "}
+          <Link href="/flow?phase=finish#signoff">finish signoff matrix</Link>{" "}
+          and the <Link href="/tools#suite">suite</Link>, not in these notes.
         </p>
+        <LeftoverSuiteStrip compact href="/flow?phase=finish#signoff" />
       </header>
 
       <div className="search-bar">

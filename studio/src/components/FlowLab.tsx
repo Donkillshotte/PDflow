@@ -14,6 +14,7 @@ import {
   Square,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { LeftoverSuiteStrip } from "@/components/LeftoverSuiteStrip";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { InspectPanel } from "@/components/InspectPanel";
 import { useToast } from "@/components/ToastProvider";
@@ -548,7 +549,9 @@ export function FlowLab() {
             <code>eco_scratch</code> and still requires{" "}
             <code>signoff_all</code>. PKG is System PDN on{" "}
             <a href="/pkg">/pkg</a>, not a ninth signoff pillar. DSE proposes knobs.
+            Leftover stays named on finish.
           </p>
+          <LeftoverSuiteStrip compact href="/flow?phase=finish#signoff" />
         </div>
         <div className="fl-hero-stats">
           <div className="fl-progress-ring" style={{ "--pct": progressPct } as React.CSSProperties}>

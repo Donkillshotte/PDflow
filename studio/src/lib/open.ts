@@ -222,6 +222,34 @@ export function listOpenTargets(): {
     exists: true,
   });
   targets.push({
+    id: "dash-leftover",
+    label: "Finish · leftover named",
+    kind: "dashboard",
+    href: "/flow?phase=finish#signoff",
+    exists: true,
+  });
+  targets.push({
+    id: "dash-suite-leftover",
+    label: "Suite leftover named",
+    kind: "dashboard",
+    href: "/tools#suite",
+    exists: true,
+  });
+  targets.push({
+    id: "dash-lab",
+    label: "Lab surface",
+    kind: "dashboard",
+    href: "/lab",
+    exists: true,
+  });
+  targets.push({
+    id: "dash-product",
+    label: "Product surface",
+    kind: "dashboard",
+    href: "/product",
+    exists: true,
+  });
+  targets.push({
     id: "dash-flowlab",
     label: "FlowLab · RTL → GDSII",
     kind: "dashboard",

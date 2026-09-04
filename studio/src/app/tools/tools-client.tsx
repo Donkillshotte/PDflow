@@ -8,7 +8,9 @@ import { ResultsPanel } from "@/components/ResultsPanel";
 import { OpsDashboard } from "@/components/OpsDashboard";
 import { InspectPanel } from "@/components/InspectPanel";
 import { FlowLabLayoutCanvas } from "@/components/flowlab/FlowLabLayoutCanvas";
+import { LeftoverSuiteStrip } from "@/components/LeftoverSuiteStrip";
 import { SuiteHub } from "@/components/SuiteHub";
+import { SurfaceRail } from "@/components/SurfaceRail";
 import { useToast } from "@/components/ToastProvider";
 
 type Tool = { name: string; ok: boolean; detail: string };
@@ -159,14 +161,17 @@ export default function ToolsClient() {
 
   return (
     <main className="studio-pro-page">
+      <SurfaceRail />
       <header className="studio-pro-banner">
         <div>
           <p className="studio-pro-eyebrow">OpenROAD Studio · Tools</p>
           <h1>Toolchain and run console</h1>
           <p>
             Course variant <code>learn</code>. FlowLab variant{" "}
-            <code>flowlab</code>. Do not mix them.
+            <code>flowlab</code>. Do not mix them. Leftover named stays on
+            the suite, not hidden behind a green check.
           </p>
+          <LeftoverSuiteStrip compact />
         </div>
         <Link href="/flow" className="btn-primary">
           Open FlowLab →

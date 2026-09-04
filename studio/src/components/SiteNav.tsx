@@ -68,6 +68,9 @@ export function SiteNav() {
         <Link href="/flow?phase=finish#signoff" className="nav-leftover-link">
           leftover named
         </Link>
+        <span className="nav-kbd-hint" title="Command palette">
+          <kbd>Ctrl</kbd>+<kbd>K</kbd>
+        </span>
       </nav>
       <SurfaceRail compact />
     </header>

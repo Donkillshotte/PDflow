@@ -4766,6 +4766,68 @@ nextjs-portal,
   background: rgba(31, 122, 76, 0.1);
   color: var(--ok);
 }
+.leftover-chip-more {
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: var(--muted);
+}
+.leftover-chips-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.leftover-suite-strip {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+.leftover-suite-strip-head {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.leftover-suite-strip-note,
+.leftover-suite-strip-fallback {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+}
+.leftover-suite-strip-error {
+  color: var(--bad);
+}
+
+.fl-pro .leftover-chip,
+.fl-pro .leftover-chip-more {
+  background: rgba(240, 208, 144, 0.1);
+  color: #f0d090;
+  border: 1px solid #8a6a2a;
+}
+.fl-pro .leftover-chip.locked {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fl-muted);
+  border-color: var(--fl-border-strong);
+}
+.fl-pro .leftover-chip.gap {
+  background: rgba(248, 81, 73, 0.12);
+  color: var(--fl-bad);
+  border-color: rgba(248, 81, 73, 0.35);
+}
+.fl-pro .leftover-suite-strip-note,
+.fl-pro .leftover-suite-strip-fallback {
+  color: var(--fl-muted);
+}
+
+.nav-kbd-hint {
+  align-self: center;
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.nav-kbd-hint kbd {
+  font-family: var(--font-mono);
+  padding: 0.05rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
 
 .pill.leftover,
 .pill.gap {

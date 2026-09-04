@@ -12,10 +12,12 @@ export function LeftoverChips({
   ids,
   detail,
   compact,
+  href,
 }: {
   ids?: string[];
   detail?: string | null;
   compact?: boolean;
+  href?: string;
 }) {
   const fromIds = leftoverNamedIds(ids);
   const fromDetail = leftoverNamedIds(leftoverIdsFromText(detail));
@@ -27,17 +29,35 @@ export function LeftoverChips({
     ordered.push(id);
   }
   if (!ordered.length) return null;
-  return (
+  const cap = compact ? 8 : 16;
+  const shown = ordered.slice(0, cap);
+  const extra = ordered.length - shown.length;
+  const list = (
     <ul
       className={clsx("leftover-chips", compact && "leftover-chips-compact")}
       aria-label="Named leftovers"
     >
-      {ordered.map((id) => (
-        <li key={id} className={clsx("leftover-chip", leftoverTone(id))}>
+      {shown.map((id) => (
+        <li
+          key={id}
+          className={clsx("leftover-chip", leftoverTone(id))}
+          title={id}
+        >
           {leftoverLabel(id)}
         </li>
       ))}
+      {extra > 0 && (
+        <li className="leftover-chip leftover-chip-more" title={`${extra} more leftover named`}>
+          +{extra} more
+        </li>
+      )}
     </ul>
+  );
+  if (!href) return list;
+  return (
+    <a href={href} className="leftover-chips-link">
+      {list}
+    </a>
   );
 }
 

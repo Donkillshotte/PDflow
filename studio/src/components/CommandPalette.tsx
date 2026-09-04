@@ -192,7 +192,7 @@ export function CommandPalette() {
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Open dashboard, run, lesson, OpenROAD, web viewer…"
+            placeholder="Open leftover named, suite, lab, product, PKG…"
             aria-label="Search command"
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {
