@@ -394,12 +394,19 @@ function evaluateCheckGate(
     stampOk = fs.existsSync(path.join(resultsDir(variant), check.stampRel));
   }
   if (report && typeof report.ok === "boolean") {
+    let detail = String(report.summary ?? rel);
+    if (check.id === "vyges_em_ir" && !detail.includes("em_checked")) {
+      const vyges = (report.vyges as { em_checked?: number; ir_met?: boolean } | undefined) ?? {};
+      const em = Number(vyges.em_checked ?? 0);
+      detail += ` · em_checked ${em} (no foundry emlimit)`;
+      if (vyges.ir_met === false) detail += " · ir_met false";
+    }
     return {
       id: `${pillar}_${check.id}`,
       pillar,
       label: check.label,
       ok: report.ok === true,
-      detail: String(report.summary ?? rel),
+      detail,
       action: check.action,
     };
   }

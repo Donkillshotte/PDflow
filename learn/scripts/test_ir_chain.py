@@ -71,6 +71,8 @@ def main() -> int:
         em_checked = (blob.get("vyges") or {}).get("em_checked")
         if em_checked is not None:
             check(int(em_checked) == 0, "Nangate45 has no emlimit; EM stays unchecked")
+        check(blob.get("limits_met") is False, "vyges limits_met stays false without emlimit")
+        check("em_checked 0" in str(blob.get("summary")), "vyges summary names unchecked EM")
 
     print("ALL test_ir_chain PASSED")
     return 0

@@ -157,6 +157,10 @@ if d:
         + (f" @ {d.get('time_ns')} ns" if d.get("time_ns") is not None else "")
     )
 parts.append(f"nodes {raw.get('nodes')}")
+em_checked = int(raw.get("em_checked") or 0)
+parts.append(f"em_checked {em_checked} (no foundry emlimit)")
+if raw.get("ir_met") is False:
+    parts.append("ir_met false (educational 5% bound, not tapeout)")
 summary = " · ".join(parts)
 
 payload = {
@@ -183,6 +187,7 @@ payload = {
         "pads_are_ideal_vdd": True,
         "note": "Dynamic IR is a worst-case simultaneous-switch upper bound. Not correlated as a RedHawk drop-in. Static IR uses the same write_pg_spice mesh as pdn_transient.py.",
     },
+    "limits_met": bool(raw.get("ir_met")) and em_checked > 0,
     "summary": summary,
     "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
 }

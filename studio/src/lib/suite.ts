@@ -87,6 +87,28 @@ function currentRunDynamicIrPresent() {
   return false;
 }
 
+function vygesEmHookDetail() {
+  for (const variant of ["flowlab", "learn"]) {
+    const p = path.join(LEARN_ROOT, "sim/reports", `vyges_em_ir_${variant}.json`);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
+        vyges?: { em_checked?: number; ir_met?: boolean };
+        summary?: string;
+      };
+      const em = j.vyges?.em_checked;
+      const irMet = j.vyges?.ir_met;
+      if (em === 0 || irMet === false) {
+        return `engine ran · em_checked ${em ?? 0} (no emlimit) · ir_met ${irMet === false ? "false" : String(irMet)}`;
+      }
+      if (j.summary) return String(j.summary);
+    } catch {
+      /* ignore */
+    }
+  }
+  return "Apache-2.0 binary · CG + backward Euler · em_checked stays 0 without emlimit";
+}
+
 function thermalHookDetail() {
   for (const variant of ["flowlab", "learn"]) {
     const p = path.join(LEARN_ROOT, "sim/reports", `thermal_signoff_${variant}.json`);
@@ -331,7 +353,7 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "vyges_em_ir") ||
         signoffReportPass("learn", "vyges_em_ir"),
-      detail: "Apache-2.0 binary · CG + backward Euler on PDNSim mesh",
+      detail: vygesEmHookDetail(),
       action: "vyges_em_ir",
       href: "/tools?tab=run&action=vyges_em_ir",
     },

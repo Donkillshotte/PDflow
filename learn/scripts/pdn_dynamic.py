@@ -6,7 +6,7 @@ Architecture (what this file actually does — not a product claim):
   OpenROAD write_pg_spice  →  PDN graph (R mesh, bump V, I_avg)
   activity layer (STA arrival t50 in clock; VCD/SAIF name-join; else synthetic)
   current layer (triangle; CCS interpolator if tables+slew; ECSM |C dV/dt| if waveforms+c_load)
-  Solver A: direct backward-Euler + sparse LU (golden)
+  Solver A: direct backward-Euler + sparse LU (current_run; locked gold 45.298 is another mesh)
   Solver B: SA-AMG + CG on the same SPD companion operator
   Solver C: rational Krylov MOR — RC on δv, or descriptor RLC on x=[v; i_L]
   Solver D: restricted additive Schwarz (graph partition, local LU, GMRES)
@@ -2123,7 +2123,7 @@ def main() -> int:
             mor_scen.sort(key=lambda s: -s["droop_mv"])
             mor_meta["scenarios"] = mor_scen
             mor_meta["note"] = (
-                "Scenario ranking is Solver A gold. MOR is the reduced ODE for reuse, not ranking."
+                "Scenario ranking is Solver A DirectLU current_run. MOR is the reduced ODE for reuse, not ranking."
             )
     Vw = dyn.pop("V_worst")
     pts = heatmap_points(order, Vw, vdd, events)
@@ -2454,7 +2454,7 @@ def main() -> int:
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
             "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in); dual-rail VSS sink-pair + opt-in instance C_rr + opt-in overlapping-strap Cox",
             "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS/ECSM interpolators when tables exist — never from NLDM)",
-            "Solver A: direct backward-Euler sparse LU (golden) with R+L i_L history",
+            "Solver A: direct backward-Euler sparse LU (current_run) with R+L i_L history",
             "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
             "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
             "Solver D: restricted additive Schwarz on the BE operator (graph partition, local LU, GMRES)",
@@ -2479,7 +2479,7 @@ def main() -> int:
             "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, metal-graph ΔT (straps+vias) → R(T) N1 + Solver A TRAN restamp — not foundry hours, not gold",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
-            "this_engine": "A gold + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",
+            "this_engine": "A DirectLU current_run + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",
             "ngspice": "unit-test gold for BE on 1-node RC, 1-node series R+L, compact VRM+die, and 2-node C_rr / strap Cox",
             "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
         },
@@ -2498,7 +2498,7 @@ def main() -> int:
                 "status": "READY",
                 "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor + D_ras_schwarz + N4_descriptor",
                 "replaces": "HSpice TRAN on Calibre DSPF",
-                "via": "Solver A LU golden + B SA-AMG + C reduced ODE + D RAS Schwarz + native N4 on write_pg_spice",
+                "via": "Solver A LU current_run + B SA-AMG + C reduced ODE + D RAS Schwarz + native N4 on write_pg_spice",
                 "gold": "ngspice 1-node RC + series R+L companion + compact VRM+die + 2-node C_rr/Cox; A vs B vs C vs D on the chip mesh",
             },
             "commercial_not_used": {

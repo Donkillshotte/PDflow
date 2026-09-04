@@ -252,6 +252,18 @@ def main() -> int:
     check("9 FlowLab phases" not in chain, "spice-power-chain is eight close phases, not nine")
     lvs_hook = suite.split('id: "lvs_signoff"')[1].split("},")[0]
     check("leftover must-connect 2" in lvs_hook, "suite LVS hook names leftover")
+    vyges_hook = suite.split('id: "vyges_em_ir"')[1].split("},")[0]
+    check("vygesEmHookDetail" in vyges_hook, "suite vyges hook reads em_checked from the report")
+    check("CG + backward Euler on PDNSim mesh" not in vyges_hook, "suite vyges hook does not hide em_checked")
+    vyges = load("vyges_em_ir_flowlab.json")
+    check(vyges.get("ok") is True, "vyges ok means the engine ran")
+    check(vyges.get("limits_met") is False, "vyges limits_met is false without emlimit")
+    check("em_checked 0" in str(vyges.get("summary")), "vyges summary names em_checked 0")
+    check("ir_met false" in str(vyges.get("summary")), "vyges summary names ir_met false")
+    check("em_checked {em_checked}" in (ROOT / "learn/scripts/run_vyges_em_ir.sh").read_text(), "vyges cook stamps em_checked into summary")
+    check("A gold + B SA-AMG" not in str((current.get("roles") or {}).get("this_engine")), "current_run this_engine is not A gold")
+    check("current_run" in str((current.get("roles") or {}).get("this_engine")), "current_run this_engine names current_run")
+    check("A gold + B SA-AMG" not in (ROOT / "learn/scripts/pdn_dynamic.py").read_text(), "pdn_dynamic no longer stamps A gold as this_engine")
     therm = suite.split('id: "thermal_signoff"')[1].split("},")[0]
     check("thermalHookDetail" in therm, "Thermal hook reads t_max from the HotSpot report")
     check("HotSpot t_max °C" not in therm, "Thermal hook does not print a blank t_max")
