@@ -23,6 +23,7 @@ Index: [`docs/README.md`](../docs/README.md) · course: [`docs/course.md`](../do
 | `/tools` | Suite, jobs, run console, inspect, viewer |
 | `/pkg` | System PDN / package hub |
 | `/lab` | Lab proposer (DSE). Does not run `signoff_all` |
+| `/product` | Product wins (`win_rule.py`). Area / power / leakage / IR |
 | `/materials` | Docs and GUI shots |
 
 Course and FlowLab are different variants. Do not mix their artifacts.
@@ -58,6 +59,7 @@ ask for confirmation.
 | `GET /api/signoff?variant=` | four pillars vs `golden-gcd.json` |
 | `GET /api/suite` | hook matrix |
 | `GET /api/story` | three-surface snapshot |
+| `GET /api/product` | official-slot cooks vs `win_rule.py` |
 | `GET /api/inspect?stage=` | ODB / STA / Yosys |
 | `POST /api/viewer` | OpenROAD `-web` on port 43190 |
 | `GET/PUT /api/flowlab` | RTL + params |

@@ -2,7 +2,7 @@
 
 From routed layout to **deliverable**. Script: `density_fill.tcl`, `final_report.tcl`, merge KLayout.
 
-`learn` numbers: WNS **−0.04**, TNS **−0.60**, `period_min=0.50` ns (fmax ~2011 MHz), setup skew ~0, IR drop heatmap ~0–5 mV.
+`learn` numbers: WNS **−0.04**, TNS **−0.60**, `period_min=0.50` ns (fmax ~2011 MHz), setup skew ~0. The ORFS IR heatmap is a PDNSim picture, not gold 45.298 mV and not the chip PDN mesh.
 
 ---
 

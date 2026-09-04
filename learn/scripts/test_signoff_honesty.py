@@ -104,6 +104,12 @@ def main() -> int:
     check(ledger.get("comparable") is False, "power_signoff IR meshes are not comparable")
     ids = {m.get("id") for m in (ledger.get("meshes") or [])}
     check({"gold_dynamic_ir", "chip_pdn", "vyges_em_ir"} <= ids, "ledger names gold, chip, and vyges")
+    lesson07 = (ROOT / "learn/lessons/07-finish/README.md").read_text()
+    check("0–5.2 mV" not in lesson07 and "0-5.2 mV" not in lesson07, "lesson 07 does not quote a single 0–5.2 mV IR")
+    check("comparable: false" in lesson07 and "45.298" in lesson07, "lesson 07 names IR meshes not interchangeable")
+    golden = (ROOT / "learn/reference/golden-metrics.md").read_text()
+    check("0–5.2 mV" not in golden, "golden-metrics does not treat the ORFS PNG as the IR number")
+    check("not gold" in golden and "45.298" in golden, "golden-metrics points IR at the ledger")
 
     gate = load("gate_sim_flowlab.json")
     check(gate.get("ok") is True, "gate_sim report ok")

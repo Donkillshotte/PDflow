@@ -16,7 +16,8 @@ Native solvers: [`engine/README.md`](../engine/README.md).
 ## Entry
 
 Studio Lab bench: `/lab` (`GET /api/lab`). Physics ledger and DSE launch
-compare live there. FlowLab finish `#ir` is the GCD mesh, not this bench.
+compare live there. Product wins are `/product` (`GET /api/product`).
+FlowLab finish `#ir` is the GCD mesh ledger, not this bench.
 
 ```bash
 export PYTHONPATH=learn:learn/scripts

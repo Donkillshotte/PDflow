@@ -43,7 +43,7 @@ in this ORFS it is disabled).
 | Finish | `6_finish.rpt` | WNS / TNS / viol | **−0.04** / **−0.60** / **38** |
 | Finish | same | `period_min` / fmax | **0.50 ns** / ~**2011 MHz** |
 | Finish | same | setup skew | ~**0.00** |
-| IR drop | `orfs_final_ir_drop.png` | scale | ~**0–5.2 mV** |
+| IR drop | `orfs_final_ir_drop.png` | ORFS PDNSim picture | not gold **45.298 mV** · not chip PDN · see `power_signoff_*.json` |
 
 Required reading: **fmax finish (2.01 GHz) < 1/0.46 (2.17 GHz)**.
 `make finish` green ≠ timing closed at the SDC period.

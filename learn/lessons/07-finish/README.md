@@ -14,7 +14,11 @@ Numbers from a complete `learn` run (SDC 0.46 ns, util 35):
 
 The SDC period is 0.46 ns but `period_min` at signoff is 0.50 ns: **you have not closed** 2.17 GHz, you closed ~2.01 GHz. This is the narrative to put in the final project, not “make finish is green”.
 
-IR drop on the GCD: heatmap `orfs_final_ir_drop.png`, scale about **0–5.2 mV** (negligible; on a large core it would not be).
+IR is not one number. The ORFS finish heatmap (`orfs_final_ir_drop.png`)
+is a PDNSim picture — not gold Dynamic IR **45.298 mV**, not chip PDN
+(1.05 / 9.47 mV), and not current_run I(t) (~6.08 mV). Those meshes are
+stamped in `power_signoff_*.json` (`comparable: false`). EM `em_checked`
+is 0 (no foundry `emlimit`). FlowLab finish shows the ledger at `#ir`.
 
 Worst path overlay: `orfs_final_worst_path.png` (launch cyan, signal red, inst purple).
 

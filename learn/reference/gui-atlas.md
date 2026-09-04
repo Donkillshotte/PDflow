@@ -340,7 +340,9 @@ gcell grid: green = empty, red = full. Hot center, cold edges: same blob as plac
 
 ### IR drop (`orfs_final_ir_drop.png`)
 
-Scale in **mV** (on the GCD ~0–5 mV). If it were hundreds of mV, lesson 03 PDN is insufficient.
+Scale in **mV**. This PNG is an ORFS PDNSim picture, not gold Dynamic IR
+**45.298 mV** and not the chip PDN mesh. If it were hundreds of mV,
+lesson 03 PDN is insufficient.
 
 These four images close the 45-minute session: after `gui_final`, compare ORFS PNGs with the canvas.
 

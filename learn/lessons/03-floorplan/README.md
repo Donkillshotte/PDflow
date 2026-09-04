@@ -82,7 +82,9 @@ add_pdn_connect -layers {metal4 metal7}
 | strap M7 | backbone | thick pink bars |
 | `add_pdn_connect` | via stack between layers | visible when zooming crossings |
 
-Without PDN the cells have no legal power. IR drop at finish (`orfs_final_ir_drop.png`, scale ~0–5 mV on the GCD) is blind if the grid does not exist.
+Without PDN the cells have no legal power. Finish IR is several meshes
+(gold 45.298 mV, chip PDN, current_run I(t)). The ORFS PNG is one picture,
+not those numbers. Blind if the grid does not exist.
 
 `add_global_connection` connects instance `VDD`/`VSS` pins to power nets: that is why you do not hand-wire VDD on every NAND.
 

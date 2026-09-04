@@ -19,16 +19,15 @@ export default function HomePage() {
 
       <section className="home-rail">
         <div className="home-rail-head">
-          <h2 className="section-title">Interactive flow</h2>
+          <h2 className="section-title">RTL → finish → signoff_all</h2>
           <Link href="/flow" className="home-rail-cta">
-            FlowLab · RTL → PKG
+            FlowLab
           </Link>
         </div>
         <p className="footer-note" style={{ marginTop: "0.5rem" }}>
-          Power &amp; SPICE chain:{" "}
-          <Link href="/materials/reference/spice-power-chain.md">full guide</Link>
-          {" · "}
-          <Link href="/pkg">PKG hub</Link>
+          Four pillars: STA → DRC → LVS → power. Leftover must-connect on
+          DFF_X2 stays named. ECO close is <code>signoff_all</code> on a copy.
+          IR meshes are not interchangeable.
         </p>
         <div className="flow-steps">
           {[
@@ -39,33 +38,14 @@ export default function HomePage() {
             { n: "PL", t: "Place", d: "ITerm sink", ph: "place" },
             { n: "CTS", t: "Clock", d: "Switching", ph: "cts" },
             { n: "RT", t: "Route", d: "SPEF path", ph: "route" },
-            { n: "GDS", t: "Finish", d: "IR · power", ph: "finish" },
-            { n: "PKG", t: "System", d: "ngspice", ph: "pkg" },
+            { n: "GDS", t: "Finish", d: "STA · DRC · LVS · power", ph: "finish" },
+            { n: "PKG", t: "Package", d: "System PDN", ph: "pkg" },
           ].map((s) => (
             <Link key={s.n} href={`/flow?phase=${s.ph}`} className="flow-step flow-step-link">
               <span>{s.n}</span>
               <strong>{s.t}</strong>
               <em>{s.d}</em>
             </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="home-rail home-rail-lessons">
-        <h2 className="section-title">Course per lesson</h2>
-        <div className="flow-steps">
-          {[
-            { n: "01", t: "Theory", d: "Phase README" },
-            { n: "02", t: "LAB", d: "Checkable checklist" },
-            { n: "03", t: "Run", d: "Streaming log" },
-            { n: "04", t: "Results", d: "Artifacts + golden" },
-            { n: "05", t: "Close", d: "Progress saved" },
-          ].map((s) => (
-            <div key={s.n} className="flow-step">
-              <span>{s.n}</span>
-              <strong>{s.t}</strong>
-              <em>{s.d}</em>
-            </div>
           ))}
         </div>
       </section>
