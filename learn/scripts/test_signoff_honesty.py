@@ -317,6 +317,8 @@ def main() -> int:
     pwr_href = suite.split('id: "power_signoff"')[1].split("},")[0]
     all_href = suite.split('id: "signoff_all"')[1].split("},")[0]
     check("/flow?phase=finish#ir" in pwr_href, "suite power_signoff points at finish IR")
+    check("chip IR" in pwr_href, "suite power_signoff detail is chip IR, not the PKG ladder")
+    check("Power chain + golden gate" not in pwr_href, "suite power_signoff does not call itself a power chain")
     check("/flow?phase=finish#signoff" in all_href, "suite signoff_all points at finish")
     check('href: "/pkg"' not in pwr_href, "suite power_signoff is not on /pkg")
     check('href: "/pkg"' not in all_href, "suite signoff_all is not on /pkg")
@@ -360,6 +362,7 @@ def main() -> int:
     check("KLayout match" in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report names the compare")
     lab07 = (ROOT / "learn/lessons/07-finish/LAB.md").read_text()
     check("/pkg" not in lab07.split("Part 7")[1] if "Part 7" in lab07 else True, "LAB 07 signoff is on finish, not PKG")
+    check("activity → chip IR → export" in lab07, "LAB 07 power signoff is chip IR, not System PDN")
     check("foundry contract" not in lab07.lower() and "enterprise signoff" not in lab07.lower(), "LAB 07 signoff is educational")
     gaps_eval = (ROOT / "learn/reference/remaining-gaps-evaluation.md").read_text()
     check("Closed on FlowLab GCD compare" in gaps_eval, "LVS feasibility is closed")

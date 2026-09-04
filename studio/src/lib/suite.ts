@@ -445,7 +445,7 @@ export async function getSuiteStatus() {
       label: "Power signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "power_signoff") || signoffReportPass("learn", "power_signoff"),
-      detail: "Power chain + golden gate",
+      detail: "chip IR + golden gate",
       action: "power_signoff",
       href: "/flow?phase=finish#ir",
     },
