@@ -30,9 +30,9 @@ mkdir -p "${OUT_DIR}" "${WORK}"
 
 # Prefer finished design if present (for current estimate); not strictly required
 if [[ -f "${RES}/6_final.odb" ]]; then
-  echo "=== System PDN · finish ODB presente (${VARIANT}) ===" | tee -a "${LOG}"
+  echo "=== System PDN · finish ODB present (${VARIANT}) ===" | tee -a "${LOG}"
 else
-  echo "=== System PDN · ODB missing — uso I_DIE default/config ===" | tee -a "${LOG}"
+  echo "=== System PDN · ODB missing — using I_DIE default/config ===" | tee -a "${LOG}"
 fi
 
 echo "=== Hierarchical System PDN (ngspice) · VRM→board→pkg→die ===" | tee -a "${LOG}"

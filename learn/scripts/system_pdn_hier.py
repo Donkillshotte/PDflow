@@ -274,7 +274,7 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if subprocess.run(["which", "ngspice"], capture_output=True).returncode != 0:
-        print("FAIL: ngspice non installato (apt install ngspice)", file=sys.stderr)
+        print("FAIL: ngspice is not installed (apt install ngspice)", file=sys.stderr)
         return 2
 
     i_die = args.i_die if args.i_die > 0 else guess_die_current(repo, args.variant, 0.002)

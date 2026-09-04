@@ -215,6 +215,10 @@ def main() -> int:
     check("system_droop_mv_max" in pkg_sh, "pkg_signoff gates system droop against golden")
     hier = (ROOT / "learn/scripts/system_pdn_hier.py").read_text()
     check('report["ok"]' in hier, "system PDN JSON writes ok")
+    check("ngspice non installato" not in hier, "System PDN missing-ngspice message is English")
+    check("ODB presente" not in pwr_sh, "power_signoff log is not the old Italian System PDN banner")
+    sys_sh = (ROOT / "learn/scripts/run_system_pdn.sh").read_text()
+    check("ODB presente" not in sys_sh and "uso I_DIE" not in sys_sh, "System PDN log is English")
     sig_ts = (ROOT / "studio/src/lib/signoff.ts").read_text()
     power_checks = sig_ts.split('id: "power"')[1].split("SIGNOFF_PLANNED_PILLARS")[0]
     pkg_checks = sig_ts.split('id: "pkg"')[1].split('id: "thermal"')[0]
