@@ -4797,9 +4797,9 @@ nextjs-portal,
 
 .fl-pro .leftover-chip,
 .fl-pro .leftover-chip-more {
-  background: rgba(240, 208, 144, 0.1);
-  color: #f0d090;
-  border: 1px solid #8a6a2a;
+  background: rgba(240, 184, 80, 0.22);
+  color: #ffd789;
+  border: 1px solid #c9a14a;
 }
 .fl-pro .leftover-chip.locked {
   background: rgba(255, 255, 255, 0.06);
