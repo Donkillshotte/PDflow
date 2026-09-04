@@ -96,11 +96,11 @@ export const POWER_CHAIN: ChainNode[] = [
     phaseId: "pkg",
     label: "PKG / System",
     lessonIds: ["07-finish"],
-    produces: ["system_pdn_*.json", "Z(f)", "die droop", "power_signoff JSON"],
+    produces: ["system_pdn_*.json", "Z(f)", "die droop"],
     consumes: ["I_die activity/chip IR", "default.json"],
-    spice: "ngspice AC+TRAN · Xyce N4 · pkg_signoff · HotSpot",
-    doc: "/materials/reference/spice-ngspice-primer.md",
-    action: "power_signoff",
+    spice: "ngspice AC+TRAN · pkg_signoff · HotSpot — on /pkg, not a FlowLab phase",
+    doc: "/pkg",
+    action: "system_pdn",
   },
 ];
 

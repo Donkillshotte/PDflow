@@ -67,7 +67,6 @@ const ACTION_GROUPS: { label: string; items: ActionItem[] }[] = [
   {
     label: "Lab / probes",
     items: [
-      { id: "dse", label: "DSE (proposer)", hint: "Suggests knobs. Does not run signoff_all." },
       { id: "sta_ir_aware", label: "STA IR-aware", hint: "NLDM × ITerm V" },
       { id: "thermal_signoff", label: "Thermal (HotSpot)", hint: "t_max °C · Phase 2" },
       { id: "pkg_rdl", label: "PKG RDL (dummy)", hint: "sidecar rdl_route" },

@@ -121,14 +121,8 @@ export function FlowLab() {
 
   const phase = PHASES.find((p) => p.id === phaseId) ?? PHASES[0];
   const resultsStage =
-    phase.id === "rtl"
-      ? "synth"
-      : phase.id === "pdn"
-        ? "pdn"
-        : phase.id === "pkg"
-          ? "finish"
-          : phase.id;
-  const closeStages = stages.filter((s) => s.id !== "pkg");
+    phase.id === "rtl" ? "synth" : phase.id === "pdn" ? "pdn" : phase.id;
+  const closeStages = stages;
   const doneCount = closeStages.filter((s) => s.done).length;
   const progressPct = Math.round((doneCount / CLOSE_PHASES.length) * 100);
   const unlocked = phaseUnlocked(phaseId, stages);
@@ -688,7 +682,7 @@ export function FlowLab() {
               />
             </div>
             </>
-          ) : phase.id === "pdn" || phase.id === "pkg" ? (
+          ) : phase.id === "pdn" ? (
             <div className="fl-phase-workspace">
               <FlowLabPhaseVisual
                 phaseId={phaseId}
@@ -702,37 +696,16 @@ export function FlowLab() {
               />
               <div className="fl-phase-controls">
                 <div className="fl-analysis-card">
-                  <strong>
-                    {phase.id === "pdn" ? "Chip PDN" : "Design package"}
-                  </strong>
+                  <strong>Chip PDN</strong>
                   <p>{phase.help}</p>
-                  {phase.id === "pkg" && (
-                    <p>
-                      System PDN and Phase 2 only. Four-pillar close is on{" "}
-                      <a href="/flow?phase=finish&focus=signoff#signoff">finish</a>
-                      . Docs:{" "}
-                      <a href="/pkg">PKG hub</a> ·{" "}
-                      <a href="/materials/reference/spice-power-chain.md">SPICE chain</a> ·{" "}
-                      <a href="/materials/reference/spice-ngspice-primer.md">ngspice</a>
-                    </p>
-                  )}
-                  {phase.id === "pdn" && (
-                    <p>
-                      Docs:{" "}
-                      <a href="/materials/reference/spice-chip-mesh.md">Mesh SPICE</a> ·{" "}
-                      <a href="/materials/reference/spice-power-chain.md">Phase chain</a> ·{" "}
-                      chip IR post-finish in signoff
-                    </p>
-                  )}
+                  <p>
+                    Docs:{" "}
+                    <a href="/materials/reference/spice-chip-mesh.md">Mesh SPICE</a> ·{" "}
+                    <a href="/materials/reference/spice-power-chain.md">Phase chain</a> ·{" "}
+                    chip IR post-finish in signoff. System PDN is on{" "}
+                    <a href="/pkg">/pkg</a>.
+                  </p>
                 </div>
-                {phase.id === "pkg" && (
-                  <FlowLabSignoff
-                    mode="pkg"
-                    disabled={running}
-                    busy={signoffBusy}
-                    onRun={(a, long) => void runSignoff(a, long)}
-                  />
-                )}
               </div>
             </div>
           ) : (
@@ -937,7 +910,7 @@ export function FlowLab() {
         refreshKey={refreshKey}
         visible={phase.id !== "rtl"}
       />
-      {phaseId !== "finish" && phaseId !== "pkg" && (
+      {phaseId !== "finish" && (
         <FlowLabPowerChain phaseId={phaseId} compact />
       )}
       <FlowLabPhaseHistory phaseLabel={phase.label} runs={phaseRuns} />

@@ -94,13 +94,6 @@ export const FLOW_PHASES = [
     action: "finish" as const,
     hint: "SPEF · GDS · signoff",
   },
-  {
-    id: "pkg",
-    label: "PKG",
-    title: "Package · System PDN",
-    action: "system_pdn" as const,
-    hint: "VRM → board → pkg → die",
-  },
 ] as const;
 
 export type FlowPhaseId = (typeof FLOW_PHASES)[number]["id"];
@@ -279,18 +272,6 @@ export function getFlowlabStatus() {
         ready: fs.existsSync(odb),
         done: fs.existsSync(stamp),
         primary: ".gridcheck_pdn.ok",
-      };
-    }
-    if (ph.id === "pkg") {
-      const stamp = path.join(resultsRoot, ".system_pdn.ok");
-      const odb = path.join(resultsRoot, "6_final.odb");
-      return {
-        id: ph.id,
-        label: ph.label,
-        action: ph.action,
-        ready: fs.existsSync(odb),
-        done: fs.existsSync(stamp),
-        primary: ".system_pdn.ok",
       };
     }
     const primary =

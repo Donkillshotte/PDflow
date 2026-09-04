@@ -6,18 +6,18 @@ import { useToast } from "@/components/ToastProvider";
 
 type HookRow = { id: string; label: string; ok: boolean; detail: string };
 
-type SystemPreview = {
+export type SystemPreview = {
   summary?: string;
   transient?: { droop_mv?: number };
   impedance?: { z_max_mohm?: number };
 };
 
-type ThermalPreview = {
+export type ThermalPreview = {
   summary?: string;
   thermal?: { t_max_c?: number; engine?: string };
 };
 
-type PkgPreview = {
+export type PkgPreview = {
   summary?: string;
   steps?: { pkg_rdl?: { summary?: string; ok?: boolean } };
 };
@@ -30,12 +30,22 @@ const PKG_HOOKS = [
   "signoff_phase2",
 ];
 
-export function PkgHubPanel() {
+export function PkgHubPanel({
+  initialSystem = null,
+  initialThermal = null,
+  initialPkg = null,
+  initialHooks = [],
+}: {
+  initialSystem?: SystemPreview | null;
+  initialThermal?: ThermalPreview | null;
+  initialPkg?: PkgPreview | null;
+  initialHooks?: HookRow[];
+}) {
   const { push } = useToast();
-  const [hooks, setHooks] = useState<HookRow[]>([]);
-  const [systemReport, setSystemReport] = useState<SystemPreview | null>(null);
-  const [thermalReport, setThermalReport] = useState<ThermalPreview | null>(null);
-  const [pkgReport, setPkgReport] = useState<PkgPreview | null>(null);
+  const [hooks, setHooks] = useState<HookRow[]>(initialHooks);
+  const [systemReport, setSystemReport] = useState<SystemPreview | null>(initialSystem);
+  const [thermalReport, setThermalReport] = useState<ThermalPreview | null>(initialThermal);
+  const [pkgReport, setPkgReport] = useState<PkgPreview | null>(initialPkg);
   const [busy, setBusy] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {

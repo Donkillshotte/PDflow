@@ -127,11 +127,11 @@ export const LESSON_POWER_LINKS: LessonPowerLink[] = [
   },
   {
     lessonId: "07-finish",
-    flowlabPhases: ["finish", "pkg"],
+    flowlabPhases: ["finish"],
     anchor: "lesson-07-finish",
     title: "Finish, IR, and SPICE chain",
     summary:
-      "report_power + analyze_power_grid → chip IR mesh + System PDN ngspice (signoff FlowLab).",
+      "report_power + analyze_power_grid → chip IR mesh on finish. System PDN ngspice stays on /pkg.",
     orfsArtifacts: [
       "6_final.odb",
       "6_final.gds",

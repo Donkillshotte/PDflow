@@ -92,7 +92,7 @@ export function FlowLabPowerChain({
         </div>
       )}
 
-      {(phaseId === "finish" || phaseId === "pdn" || phaseId === "pkg") && (
+      {(phaseId === "finish" || phaseId === "pdn") && (
         <div className="fl-power-chain-extra">
           <span className="fl-power-chain-k">Linked SPICE analyses</span>
           <ul className="fl-power-chain-analyses">

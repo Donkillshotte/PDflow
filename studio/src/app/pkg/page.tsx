@@ -1,12 +1,33 @@
+import fs from "fs";
+import path from "path";
 import Link from "next/link";
-import { PkgHubPanel } from "@/components/PkgHubPanel";
+import {
+  PkgHubPanel,
+  type PkgPreview,
+  type SystemPreview,
+  type ThermalPreview,
+} from "@/components/PkgHubPanel";
+import { LEARN_ROOT } from "@/lib/course";
 
 export const metadata = {
   title: "PKG · System PDN · OpenROAD Studio",
   description: "System PDN ladder and Phase 2 (HotSpot, dummy RDL). Four-pillar signoff stays on finish.",
 };
 
+function readReport<T>(name: string): T | null {
+  const abs = path.join(LEARN_ROOT, "sim/reports", name);
+  if (!fs.existsSync(abs)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(abs, "utf8")) as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function PkgPage() {
+  const system = readReport<SystemPreview>("system_pdn_flowlab.json");
+  const thermal = readReport<ThermalPreview>("thermal_signoff_flowlab.json");
+  const pkg = readReport<PkgPreview>("pkg_signoff_flowlab.json");
   return (
     <main className="pkg-page">
       <header className="page-head">
@@ -20,7 +41,11 @@ export default function PkgPage() {
         </p>
       </header>
 
-      <PkgHubPanel />
+      <PkgHubPanel
+        initialSystem={system}
+        initialThermal={thermal}
+        initialPkg={pkg}
+      />
 
       <section className="pkg-hero-stack" aria-label="Stack die to board">
         <div className="pkg-layer board">VRM · regulator + Cout</div>

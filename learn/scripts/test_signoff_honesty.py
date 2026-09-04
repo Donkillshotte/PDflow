@@ -91,6 +91,11 @@ def main() -> int:
     flowlab = (ROOT / "studio/src/components/FlowLab.tsx").read_text()
     check("CLOSE_PHASES" in flowlab, "FlowLab close count excludes PKG")
     check('phases={CLOSE_PHASES}' in flowlab, "FlowLab pipeline omits PKG")
+    check('id: "pkg"' not in flowlab, "FlowLab workbench has no PKG phase")
+    phases_src = (ROOT / "studio/src/components/flowlab/phases.ts").read_text()
+    check('id: "pkg"' not in phases_src, "FlowLab PHASES is RTL → finish only")
+    flow_phases = (ROOT / "studio/src/lib/flowlab.ts").read_text().split("export const FLOW_PHASES")[1].split("export type FlowPhaseId")[0]
+    check('id: "pkg"' not in flow_phases, "FlowLab status API has no PKG stage")
     check("CLOSE_PHASES.findIndex" in flowlab, "next-phase walk is RTL → finish only")
     check("PHASE_IDS.indexOf(phaseId) + 1" not in flowlab, "next-phase walk does not step onto PKG")
     check("Open PKG" in flowlab, "finish next banner opens /pkg")

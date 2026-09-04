@@ -22,7 +22,7 @@ export function LessonPowerChainPanel({ lessonId }: { lessonId: string }) {
           <ul>
             {link.flowlabPhases.map((p) => (
               <li key={p}>
-                <Link href={`/flow?phase=${p}`}>{p}</Link>
+                <Link href={p === "pkg" ? "/pkg" : `/flow?phase=${p}`}>{p}</Link>
               </li>
             ))}
           </ul>

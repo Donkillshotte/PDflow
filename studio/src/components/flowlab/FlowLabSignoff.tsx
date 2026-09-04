@@ -62,25 +62,11 @@ const POWER_ACTIONS: SignoffAction[] = [
     long: false,
   },
   {
-    id: "system_pdn",
-    label: "System PDN",
-    hint: "Z(f) · die droop · ngspice",
-    icon: Layers,
-    long: false,
-  },
-  {
     id: "export_spice_lab",
     label: "Export SPICE lab",
     hint: "sim/spice/ netlist + stats",
     icon: Download,
     long: false,
-  },
-  {
-    id: "power_chain",
-    label: "SPICE chain",
-    hint: "activity → chip IR → system → lab",
-    icon: Activity,
-    long: true,
   },
   {
     id: "power_signoff",
@@ -237,51 +223,17 @@ function ActionGrid({
   );
 }
 
-const PKG_ACTIONS: SignoffAction[] = [
-  {
-    id: "system_pdn",
-    label: "System PDN",
-    hint: "Z(f) · die droop · ngspice",
-    icon: Layers,
-    long: false,
-  },
-  ...PHASE2_ACTIONS,
-];
-
 export function FlowLabSignoff({
   mode = "power",
   disabled,
   busy,
   onRun,
 }: {
-  mode?: "power" | "finish" | "full" | "pkg";
+  mode?: "power" | "finish" | "full";
   disabled?: boolean;
   busy?: string | null;
   onRun: (action: string, long: boolean) => void;
 }) {
-  if (mode === "pkg") {
-    return (
-      <div className="fl-signoff">
-        <div className="fl-signoff-head">
-          <strong>Package / system</strong>
-          <p>
-            System PDN and Phase 2 proxies (HotSpot, dummy RDL). The four
-            pillars and ECO close stay on{" "}
-            <a href="/flow?phase=finish&focus=signoff#signoff">finish</a>
-            {" "}(<code>signoff_all</code>). DSE stays on{" "}
-            <a href="/lab">/lab</a>.
-          </p>
-        </div>
-        <ActionGrid
-          actions={PKG_ACTIONS}
-          disabled={disabled}
-          busy={busy}
-          onRun={onRun}
-        />
-      </div>
-    );
-  }
-
   const showFinish = mode === "finish" || mode === "full";
   const showPower = mode === "power" || mode === "finish" || mode === "full";
 

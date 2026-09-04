@@ -1,4 +1,7 @@
+import { LONG_ACTIONS } from "@/lib/actions";
 import type { Phase } from "./types";
+
+export { LONG_ACTIONS };
 
 export const PHASES: Phase[] = [
   {
@@ -84,28 +87,14 @@ export const PHASES: Phase[] = [
     title: "Finish and signoff",
     action: "finish",
     hint: "GDS · SPEF",
-    help: "Generates GDSII, SPEF, final netlist, and reports. After finish: signoff matrix (STA/DRC/LVS/power) vs golden-gcd.json — actions sta_signoff, sta_ir_aware … signoff_all.",
+    help: "Generates GDSII, SPEF, final netlist, and reports. After finish: signoff matrix (STA/DRC/LVS/power) vs golden-gcd.json — actions sta_signoff, sta_ir_aware … signoff_all. System PDN / Phase 2 stay on /pkg.",
     tool: "OpenROAD finish + KLayout",
     icon: "layers",
     estTime: "1–3 min",
   },
-  {
-    id: "pkg",
-    label: "PKG",
-    title: "Package · System PDN",
-    action: "system_pdn",
-    hint: "VRM → board → pkg → die",
-    help: "System PDN ngspice: Z(f) and load-step VRM→board→pkg→die. Phase 2 proxies (HotSpot, dummy rdl_route). STA → DRC → LVS → power close stays on finish.",
-    tool: "ngspice · system_pdn_hier",
-    icon: "package",
-    estTime: "~5 s",
-  },
 ];
 
 export const PHASE_IDS = PHASES.map((p) => p.id);
-/** RTL → finish. PKG is System PDN on /pkg, not a signoff pillar. */
-export const CLOSE_PHASES = PHASES.filter((p) => p.id !== "pkg");
-import { LONG_ACTIONS } from "@/lib/actions";
-
-export { LONG_ACTIONS };
-export const ANALYSIS_PHASES = new Set(["pdn", "pkg"]);
+/** RTL → finish. System PDN lives on /pkg, not as a FlowLab phase. */
+export const CLOSE_PHASES = PHASES;
+export const ANALYSIS_PHASES = new Set(["pdn"]);

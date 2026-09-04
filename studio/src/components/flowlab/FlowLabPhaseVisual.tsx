@@ -159,23 +159,6 @@ export function FlowLabPhaseVisual({
     current_sources?: number;
     voltage_sources?: number;
   } | null>(null);
-  const [pdnReport, setPdnReport] = useState<{
-    summary?: string;
-    kind?: string;
-    engine?: string;
-    transient?: {
-      droop_mv?: number;
-      droop_pct?: number;
-      worst_droop?: number;
-      worst_droop_pct?: number;
-    };
-    impedance?: {
-      z_max_mohm?: number;
-      f_at_zmax_hz?: number;
-      z_target_mohm?: number;
-      pass_target?: boolean | null;
-    };
-  } | null>(null);
 
   const load = useCallback(async () => {
     if (phaseId === "rtl") return;
@@ -187,29 +170,6 @@ export function FlowLabPhaseVisual({
       ]);
       setInspect(ri.ok ? await ri.json() : null);
       setResults(rr.ok ? await rr.json() : null);
-      if (phaseId === "pkg") {
-        const paths = [
-          `sim/reports/system_pdn_${variant}.json`,
-          `sim/reports/pdn_chip_ir_${variant}.json`,
-          `sim/reports/pdn_transient_${variant}.json`,
-        ];
-        let loaded = null as typeof pdnReport;
-        for (const p of paths) {
-          const rp = await fetch(`/api/content?path=${encodeURIComponent(p)}`);
-          if (!rp.ok) continue;
-          const body = await rp.json();
-          try {
-            const parsed = JSON.parse(body.content);
-            loaded = parsed;
-            if (parsed?.kind === "system_pdn" || parsed?.engine === "ngspice-hierarchical") {
-              break;
-            }
-          } catch {
-            /* try next */
-          }
-        }
-        setPdnReport(loaded);
-      }
       if (phaseId === "pdn") {
         const rm = await fetch(
           `/api/content?path=${encodeURIComponent(`sim/spice/mesh_stats_${variant}.json`)}`,
@@ -259,10 +219,9 @@ export function FlowLabPhaseVisual({
         phaseId === "place" ||
         phaseId === "cts" ||
         phaseId === "route" ||
-        phaseId === "finish" ||
-        phaseId === "pkg") && (
+        phaseId === "finish") && (
         <FlowLabLayoutCanvas
-          phaseId={phaseId as "synth" | "floorplan" | "pdn" | "place" | "cts" | "route" | "finish" | "pkg"}
+          phaseId={phaseId as "synth" | "floorplan" | "pdn" | "place" | "cts" | "route" | "finish"}
           variant={variant}
           refreshKey={refreshKey}
           stageDone={stageDone}
@@ -397,51 +356,6 @@ export function FlowLabPhaseVisual({
         </div>
       )}
 
-      {phaseId === "pkg" && (
-        <div className="fl-vis-body fl-vis-pkg fl-vis-stats-only">
-          {pdnReport?.impedance || pdnReport?.kind === "system_pdn" ? (
-            <>
-              <div className="fl-vis-gauge-row">
-                <Gauge
-                  label="Die droop"
-                  value={pdnReport.transient?.droop_mv ?? null}
-                  min={0}
-                  max={100}
-                  unit=" mV"
-                  good="low"
-                />
-                <Gauge
-                  label="Zmax"
-                  value={pdnReport.impedance?.z_max_mohm ?? null}
-                  min={0}
-                  max={Math.max(100, (pdnReport.impedance?.z_target_mohm ?? 50) * 4)}
-                  unit=" mΩ"
-                  good="low"
-                />
-                <Gauge
-                  label="Droop %"
-                  value={pdnReport.transient?.droop_pct ?? null}
-                  min={0}
-                  max={10}
-                  unit="%"
-                  good="low"
-                />
-              </div>
-              <p className="fl-vis-meta">{pdnReport.summary}</p>
-            </>
-          ) : (
-            <p className="fl-vis-meta">
-              {stageDone
-                ? "System PDN report missing — rerun PKG"
-                : "Run PKG: System PDN VRM→board→pkg→die (ngspice)"}
-            </p>
-          )}
-          <p className="fl-vis-meta" id="dse">
-            DSE proposes knobs on <Link href="/lab">/lab</Link>. It does
-            not run <code>signoff_all</code>.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

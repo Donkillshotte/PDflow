@@ -242,6 +242,13 @@ export function listOpenTargets(): {
     href: "/pkg",
     exists: true,
   });
+  targets.push({
+    id: "dash-lab-dse",
+    label: "Lab · DSE (proposer)",
+    kind: "dashboard",
+    href: "/lab#dse",
+    exists: true,
+  });
 
   // Extended / analysis run actions (deep-link to LiveRunConsole)
   const runActions: { id: string; label: string; action: string }[] = [
@@ -253,7 +260,6 @@ export function listOpenTargets(): {
     { id: "run-chip-ir", label: "Run · chip IR mesh", action: "chip_pdn_ir" },
     { id: "run-vyges-em-ir", label: "Run · vyges-em-ir", action: "vyges_em_ir" },
     { id: "run-dynamic-ir", label: "Run · dynamic IR I(t)", action: "dynamic_ir" },
-    { id: "run-dse", label: "Run · DSE (proposer)", action: "dse" },
     { id: "run-power-chain", label: "Run · SPICE chain", action: "power_chain" },
     {
       id: "run-export-spice",

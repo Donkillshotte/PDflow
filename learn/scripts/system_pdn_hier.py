@@ -9,7 +9,7 @@ Outputs:
   - SPICE netlists (tran + ac)
   - AC impedance Z(f) seen at the die
   - Transient voltages under a die load-step
-  - JSON report for FlowLab PKG / system_pdn
+  - JSON report for /pkg System PDN / system_pdn
 
 Requires: ngspice
 """
