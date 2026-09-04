@@ -1,7 +1,8 @@
 # PDflow
 
-RTL → GDSII on OpenROAD / ORFS (Nangate45 / FreePDK45). Course, FlowLab GUI, and a
-physically-aware design-space loop share one tree — wins are decided only in product code.
+RTL → GDSII on OpenROAD / ORFS (Nangate45 / FreePDK45). Course, FlowLab, and
+DSE live in this repo. They are three surfaces. Wins are decided only in
+product code (`win_rule.py`).
 
 Three surfaces. Do not mix them.
 

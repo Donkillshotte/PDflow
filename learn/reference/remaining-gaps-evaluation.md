@@ -73,13 +73,11 @@ the ORFS public drop. The Si2 download requires an institutional request form.
 
 ### Root cause
 
-KLayout LVS log shows:
+Pre-fix KLayout log (historical). Current FlowLab GCD compare prints
+`CONGRATULATIONS! Netlists match`. Do not treat this block as live status.
+
 ```
 Flatten schematic circuit (no layout): TBUF_X1
-Flatten schematic circuit (no layout): TBUF_X16
-...
-Flatten schematic circuit (no layout): TINV_X1
-Flatten schematic circuit (no layout): TLAT_X1
 ...
 ERROR : Netlists don't match
 ```
@@ -342,17 +340,20 @@ Tried every closable item. Kept only what ran end-to-end.
 
 ## Recommended implementation order
 
-If we proceed with the closable items:
+LVS compare, FasterCap BEM, and the PTM CCS sidecar are **already shipped**
+on FlowLab GCD. Do not reopen LVS flatten experiments. Remaining must-connect
+on DFF_X2 is PDK-gated (`gaps.md`). Density and named ERC are **not** in
+`FreePDK45.lydrc` (antenna 300:1 is).
 
-| Priority | GAP | Why first |
+If we proceed with what is still closable here:
+
+| Priority | GAP | Why |
 |---|---|---|
-| 1 | **LVS investigation** | Low effort, high signal. May close the last red X in the signoff matrix. |
-| 2 | **FasterCap** | Low effort. Adds a real field solver to the PEX comparison. |
-| 3 | **CCS full-library** | Optional later. INV_X1 sidecar is already live. |
-| 4 | **Board S-parameter** | Medium effort. Adds real EM data to the System PDN. |
-| 5 | **Netgen LVS** | Low-medium. Adds a second LVS engine. Depends on LVS investigation results. |
-| 6 | **Magic `.tech`** | Medium. Enables Magic extraction but may not add much over KLayout. |
-| 7 | **sky130 elective** | High. Out of scope for the current course but valuable as a PDK comparison module. |
+| 1 | **CCS full-library** | Optional. 19-cell sidecar is live. Official `typical.lib` stays NLDM. |
+| 2 | **Netgen LVS** | Second engine. Needs a Magic extract or black-box CDL setup. |
+| 3 | **Magic `.tech`** | Enables Magic extract. May not beat KLayout DRC/LVS on this GCD. |
+| 4 | **Board S-parameter** | Form-gated TUHH data. Do not export the lumped ladder as `.sNp`. |
+| — | **sky130 elective** | Out of scope. Course stays Nangate45. |
 
 ---
 

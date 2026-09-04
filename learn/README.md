@@ -102,7 +102,7 @@ Use the **Desktop** button on the Cursor agent page ([cursor.com/agents](https:/
 Pixel-level guide (real Qt screenshots, anatomy A–G, synth→GDS gallery):
 [learn/reference/gui-atlas.md](./reference/gui-atlas.md).
 
-Physically-aware DSE (e-graph datapath + ABC BOiLS/SSK-GP + Dynamic IR oracle, not a flat box): [dse.md](./reference/dse.md) · `./learn/scripts/run_dse.sh`.
+DSE (proposer only; e-graph datapath + ABC + Dynamic IR oracle): [dse.md](./reference/dse.md) · `./learn/scripts/run_dse.sh`. DSE does not run `signoff_all`.
 
 Tutorial run metrics (WNS, `period_min`, area, DRC): [golden-metrics.md](./reference/golden-metrics.md).  
 Four-pillar signoff matrix (STA/DRC/LVS/power): [signoff-matrix.md](./reference/signoff-matrix.md) · thresholds in [`signoff/golden-gcd.json`](./signoff/golden-gcd.json).  
