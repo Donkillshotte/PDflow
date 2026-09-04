@@ -76,8 +76,11 @@ python3 "${ROOT}/learn/scripts/signoff_eval.py" --pillar timing --metrics "${MET
 
 python3 - <<PY
 import json
+import sys
 from pathlib import Path
 root = Path("${ROOT}")
+sys.path.insert(0, str(root / "learn/scripts"))
+from stamp_signoff_all import leftover_from_sta, with_setup_leftover_summary
 metrics = json.loads(Path("${METRICS}").read_text())
 evald = {}
 ep = Path("${OUT}.eval")
@@ -96,6 +99,10 @@ out = {
     "sta_log": "${STA_LOG}",
   },
 }
+setup = leftover_from_sta(out)
+if setup:
+    out["leftover"] = setup
+    out["summary"] = with_setup_leftover_summary(out.get("summary"), setup)
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 print("STA_SIGNOFF_JSON", "${OUT}")
 print(out["summary"])

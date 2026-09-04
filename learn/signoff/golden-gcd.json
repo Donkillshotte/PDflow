@@ -10,7 +10,7 @@
     "setup_violations_max": 45,
     "period_min_ns": 0.5,
     "fmax_mhz": 2002,
-    "setup_skew_ns": 0.01
+    "educational_note": "WNS ≥ -0.04 is the educational gate. WNS < 0 at 0.46 ns stays leftover setup open."
   },
   "geometry": {
     "route_drc_lines_max": 0,

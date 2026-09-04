@@ -42,9 +42,16 @@
     "ok": true
   },
   "ok": true,
-  "summary": "STA WNS -0.01 ns \u00b7 TNS -0.12 \u00b7 viol 16",
+  "summary": "STA WNS -0.01 ns \u00b7 TNS -0.12 \u00b7 viol 16 \u00b7 leftover setup open (WNS -0.01 at 0.46 ns)",
   "artifacts": {
     "finish_rpt": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/6_finish.rpt",
     "sta_log": "/workspace/learn/sim/reports/sta_signoff_eco_scratch.log"
+  },
+  "leftover": {
+    "setup_open": true,
+    "wns_ns": -0.01,
+    "setup_violations": 16,
+    "clock_ns": 0.46,
+    "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
   }
 }

@@ -4,7 +4,14 @@
   "pillars": {
     "timing": {
       "ok": true,
-      "summary": "STA WNS -0.01 ns \u00b7 TNS -0.12 \u00b7 viol 16"
+      "summary": "STA WNS -0.01 ns \u00b7 TNS -0.12 \u00b7 viol 16 \u00b7 leftover setup open (WNS -0.01 at 0.46 ns)",
+      "leftover": {
+        "setup_open": true,
+        "wns_ns": -0.01,
+        "setup_violations": 16,
+        "clock_ns": 0.46,
+        "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
+      }
     },
     "geometry": {
       "ok": true,
@@ -31,13 +38,20 @@
     }
   },
   "ok": true,
-  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok \u00b7 leftover must-connect 2 (DFF_X2) \u00b7 IR meshes not comparable",
+  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok \u00b7 leftover must-connect 2 (DFF_X2) \u00b7 leftover setup open (WNS -0.01 at 0.46 ns) \u00b7 IR meshes not comparable",
   "leftover": {
     "must_connect": 2,
     "circuits": [
       "DFF_X2"
     ],
     "note": "Nangate split wells. Compare still matches. Do not hide."
+  },
+  "setup_leftover": {
+    "setup_open": true,
+    "wns_ns": -0.01,
+    "setup_violations": 16,
+    "clock_ns": 0.46,
+    "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
   },
   "ir_mesh_ledger": {
     "comparable": false,

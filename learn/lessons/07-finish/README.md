@@ -102,7 +102,9 @@ Registry and matrix: [`signoff-matrix.md`](../../reference/signoff-matrix.md).
 FlowLab **finish** phase shows the matrix vs `golden-gcd.json`. LVS is a
 KLayout compare (filtered CDL + well→VDD/VSS + FILL/TAP `blank_circuit`).
 Read the report, including remaining DFF_X2 must-connect warnings.
-Educational FreePDK45, not foundry LVS.
+Educational FreePDK45, not foundry LVS. Timing PASS against golden
+WNS ≥ −0.04 is not MET: leftover setup open stays named while WNS < 0
+at the course 0.46 ns clock.
 
 After signoff, ECO propose is allowed on `flowlab`. Apply only on an
 unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply loads

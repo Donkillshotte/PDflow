@@ -30,7 +30,7 @@ the lvsdb (Nangate split wells). This is educational FreePDK45, not foundry LVS.
 
 | Pillar | Lesson | Studio action | Script | Report JSON | Main gate |
 |---|---|---|---|---|---|
-| **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden |
+| **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden · leftover setup open if WNS < 0 |
 | **Timing (STA IR-aware)** | 07-finish | `sta_ir_aware` | `run_sta_ir_aware.sh` | `sim/reports/sta_ir_aware_{v}.json` | Educational NLDM × ITerm V (does not change WNS) |
 | **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
 | **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | KLayout match + leftover named |
@@ -73,7 +73,7 @@ All signoff actions require **`finish`** completed:
 
 | Pillar | Metric | Target (learn ref) |
 |---|---|---|
-| Timing | WNS max | ≥ −0.04 ns |
+| Timing | WNS max | ≥ −0.04 ns (educational). WNS < 0 at 0.46 ns stays leftover setup open |
 | Timing | TNS max | ≥ −0.6 |
 | Timing | Setup violations | ≤ 45 |
 | Timing | period_min | ≥ 0.50 ns |

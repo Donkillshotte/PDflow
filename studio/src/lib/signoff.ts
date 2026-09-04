@@ -372,6 +372,30 @@ export function leftoverMustConnectDetail(
   return `leftover must-connect ${mc} (${named}, Nangate split wells)`;
 }
 
+/** Negative WNS at the course clock, even when golden WNS ≥ -0.04 still passes. */
+export function leftoverSetupOpenDetail(
+  report: Record<string, unknown> | null,
+): string | null {
+  if (!report) return null;
+  const leftover = (report.setup_leftover ?? report.leftover) as
+    | {
+        setup_open?: boolean;
+        wns_ns?: number;
+        clock_ns?: number;
+      }
+    | undefined;
+  const timing = report.timing as { wns_ns?: number } | undefined;
+  const wns = Number(leftover?.wns_ns ?? timing?.wns_ns);
+  const open =
+    leftover?.setup_open === true || (Number.isFinite(wns) && wns < 0);
+  if (!open) return null;
+  const clock = leftover?.clock_ns ?? 0.46;
+  const named = Number.isFinite(wns)
+    ? `leftover setup open (WNS ${wns} at ${clock} ns)`
+    : `leftover setup open at ${clock} ns`;
+  return `${named}; educational golden still ≥ -0.04`;
+}
+
 function readJsonReport(abs: string): Record<string, unknown> | null {
   try {
     if (!fs.existsSync(abs)) return null;
@@ -460,6 +484,12 @@ export function evaluateSignoffGates(variant = "flowlab"): {
     let detail = orchReport
       ? (orchReport.summary as string) || (pillarOk ? "report ok" : "golden thresholds")
       : "report missing — run signoff";
+    if (pillar.id === "timing" && orchReport) {
+      const leftover = leftoverSetupOpenDetail(orchReport);
+      if (leftover && !String(detail).includes("leftover setup open")) {
+        detail += ` · ${leftover}`;
+      }
+    }
     if (pillar.id === "equivalence" && orchReport) {
       const leftover = leftoverMustConnectDetail(orchReport);
       if (leftover && !String(detail).includes("leftover must-connect")) {
@@ -486,12 +516,19 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   const allReport = readJsonReport(
     path.join(LEARN_ROOT, `sim/reports/signoff_all_${variant}.json`),
   );
+  let allDetail = allReport ? String(allReport.summary ?? "signoff_all") : "not run";
+  if (allReport) {
+    const setup = leftoverSetupOpenDetail(allReport);
+    if (setup && !allDetail.includes("leftover setup open")) {
+      allDetail += ` · ${setup}`;
+    }
+  }
   gates.push({
     id: "signoff_all",
     pillar: "timing",
     label: "Full signoff",
     ok: allReport?.ok === true,
-    detail: allReport ? String(allReport.summary ?? "signoff_all") : "not run",
+    detail: allDetail,
     action: SIGNOFF_ORCHESTRATOR.action,
   });
 

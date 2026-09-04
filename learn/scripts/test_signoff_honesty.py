@@ -200,6 +200,14 @@ def main() -> int:
                 "viol 0" not in str(sta.get("summary")),
                 f"{name} STA does not hide OpenSTA violations as viol 0",
             )
+            check(
+                (sta.get("leftover") or {}).get("setup_open") is True,
+                f"{name} STA leftover names leftover setup open",
+            )
+            check(
+                "leftover setup open" in str(sta.get("summary")),
+                f"{name} STA summary names leftover setup open",
+            )
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_drc_signoff.sh").read_text(), "DRC cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_power_signoff.sh").read_text(), "power cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_chip_pdn_ir.sh").read_text(), "chip IR cook fails the shell when ok is not true")
@@ -280,6 +288,7 @@ def main() -> int:
     check("| Thermal | no tool in VM |" not in curric, "curriculum thermal is HotSpot, not missing")
     evidence = (ROOT / "learn/EVIDENCE.md").read_text()
     check("leftover must-connect 2 (DFF_X2)" in evidence, "EVIDENCE names LVS leftover")
+    check("leftover setup open" in evidence, "EVIDENCE names leftover setup open")
     check("Phase 1 complete" not in evidence, "EVIDENCE does not call Phase 1 complete")
     dyn_md = (ROOT / "learn/reference/dynamic-ir.md").read_text()
     check("Solver A gold + Solver B" not in dyn_md.splitlines()[0], "dynamic-ir title is current_run, not gold")
@@ -354,8 +363,17 @@ def main() -> int:
     check(int(leftover.get("must_connect") or 0) == 2, "signoff_all leftover must-connect is 2")
     check("DFF_X2" in (leftover.get("circuits") or []), "signoff_all leftover names DFF_X2")
     check("leftover must-connect 2" in str(signoff_all.get("summary")), "signoff_all summary names leftover")
+    setup = signoff_all.get("setup_leftover") or {}
+    check(setup.get("setup_open") is True, "signoff_all names leftover setup open")
+    check(float(setup.get("wns_ns") or 0) < 0, "signoff_all setup leftover WNS is negative")
+    check("leftover setup open" in str(signoff_all.get("summary")), "signoff_all summary names leftover setup")
+    sta_rep = load("sta_signoff_flowlab.json")
+    check((sta_rep.get("leftover") or {}).get("setup_open") is True, "STA report leftover is setup open")
+    check("leftover setup open" in str(sta_rep.get("summary")), "STA summary names leftover setup")
+    check(sta_rep.get("ok") is True, "educational STA golden still passes")
     matrix = (ROOT / "learn/reference/signoff-matrix.md").read_text()
     check("leftover must-connect 2 on DFF_X2" in matrix, "signoff-matrix names leftover")
+    check("leftover setup open" in matrix, "signoff-matrix names leftover setup open")
     check("dynamic_ir_{v}_direct.map.csv" in matrix, "signoff-matrix pins STA IR-aware to current_run map")
     check("LVS clean (educational)" not in matrix, "signoff-matrix does not call LVS clean")
     check("/flow?phase=finish" in matrix, "signoff-matrix points the matrix at finish")
@@ -388,6 +406,8 @@ def main() -> int:
     check("9 FlowLab phases" not in chain, "spice-power-chain is eight close phases, not nine")
     lvs_hook = suite.split('id: "lvs_signoff"')[1].split("},")[0]
     check("leftover must-connect 2" in lvs_hook, "suite LVS hook names leftover")
+    sta_hook = suite.split('id: "sta_signoff"')[1].split("},")[0]
+    check("staSignoffHookDetail" in sta_hook, "suite STA hook reads leftover setup from the report")
     vyges_hook = suite.split('id: "vyges_em_ir"')[1].split("},")[0]
     check("vygesEmHookDetail" in vyges_hook, "suite vyges hook reads em_checked from the report")
     check("em_checked" in (ROOT / "studio/src/lib/signoff.ts").read_text().split('check.id === "vyges_em_ir"')[1].split("return")[0], "signoff matrix names em_checked on the vyges check")
@@ -423,7 +443,7 @@ def main() -> int:
     check(int(ledger_all.get("n_meshes") or 0) >= 5, "signoff_all ledger has five meshes")
     check("stamp_signoff_all.py" in (ROOT / "learn/scripts/run_signoff_all.sh").read_text(), "signoff_all restamps leftover from pillar reports")
     check("leftover_from_lvs" in (ROOT / "learn/scripts/run_klayout_lvs.sh").read_text(), "LVS signoff writes leftover object")
-    from stamp_signoff_all import leftover_from_lvs, build, with_leftover_summary
+    from stamp_signoff_all import leftover_from_lvs, leftover_from_sta, build, with_leftover_summary, with_setup_leftover_summary
     parsed = leftover_from_lvs(lvs)
     check(parsed is not None and parsed["must_connect"] == 2, "stamp leftover_from_lvs reads LVS")
     check("DFF_X2" in parsed["circuits"], "stamp leftover_from_lvs names DFF_X2")
@@ -436,9 +456,23 @@ def main() -> int:
         == "LVS PASS · errors 0 · leftover must-connect 2 (DFF_X2)",
         "with_leftover_summary does not double-append",
     )
+    sta_parsed = leftover_from_sta(sta_rep)
+    check(sta_parsed is not None and sta_parsed.get("setup_open") is True, "stamp leftover_from_sta reads WNS")
+    check(
+        "leftover setup open (WNS -0.02 at 0.46 ns)"
+        in with_setup_leftover_summary("STA WNS -0.02 ns", sta_parsed),
+        "with_setup_leftover_summary appends leftover setup",
+    )
+    check(
+        with_setup_leftover_summary("STA WNS -0.02 ns · leftover setup open (WNS -0.02 at 0.46 ns)", sta_parsed)
+        == "STA WNS -0.02 ns · leftover setup open (WNS -0.02 at 0.46 ns)",
+        "with_setup_leftover_summary does not double-append",
+    )
     rebuilt = build("flowlab")
     check(rebuilt.get("ok") is True, "stamp rebuild is ok")
     check(int((rebuilt.get("leftover") or {}).get("must_connect") or 0) == 2, "stamp rebuild leftover")
+    check((rebuilt.get("setup_leftover") or {}).get("setup_open") is True, "stamp rebuild names leftover setup")
+    check("leftover setup open" in str(rebuilt.get("summary")), "stamp rebuild summary names leftover setup")
     pwr = load("power_signoff_flowlab.json")
     ledger = pwr.get("ir_mesh_ledger") or {}
     check(ledger.get("comparable") is False, "power_signoff IR meshes are not comparable")

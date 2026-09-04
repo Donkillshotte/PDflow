@@ -155,7 +155,7 @@ Optional checklist — does not block lesson completion if skipped.
 After `finish`, run the four pillars on Studio **finish** (`/flow?phase=finish#signoff`), not PKG:
 
 - [ ] Read [`signoff-matrix.md`](../../reference/signoff-matrix.md) and [`golden-gcd.json`](../../signoff/golden-gcd.json)
-- [ ] **STA:** `FLOW_VARIANT=learn ./learn/scripts/run_sta_signoff.sh` — compare WNS/TNS with golden-metrics
+- [ ] **STA:** `FLOW_VARIANT=learn ./learn/scripts/run_sta_signoff.sh` — compare WNS/TNS with golden-metrics; leftover setup open if WNS < 0 at 0.46 ns
 - [ ] **STA IR-aware (optional):** `./learn/scripts/run_sta_ir_aware.sh` — per-cell ITerm V scales NLDM gate delay; does not change nominal WNS; not PrimeTime/Tempus
 - [ ] **DRC:** `./learn/scripts/run_drc_signoff.sh` — route DRC lines + GDS violations separate in JSON
 - [ ] **LVS:** `./learn/scripts/run_klayout_lvs.sh` — match required; read DFF_X2 must-connect leftover (educational FreePDK45)
@@ -163,7 +163,7 @@ After `finish`, run the four pillars on Studio **finish** (`/flow?phase=finish#s
 - [ ] **Orchestrator:** `./learn/scripts/run_signoff_all.sh` — aggregated report `signoff_all_{v}.json`
 - [ ] In Studio: PASS/FAIL badge on matrix vs golden; API `GET /api/signoff?variant=learn`
 
-Signoff checklist — educational close. DFF_X2 must-connect leftover stays named. Not foundry signoff. Not required for `--status` if you skip long LVS.
+Signoff checklist — educational close. DFF_X2 must-connect leftover stays named. WNS < 0 at 0.46 ns stays leftover setup open even when golden ≥ −0.04 still passes. Not foundry signoff. Not required for `--status` if you skip long LVS.
 
 ---
 

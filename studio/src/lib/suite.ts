@@ -87,6 +87,29 @@ function currentRunDynamicIrPresent() {
   return false;
 }
 
+function staSignoffHookDetail() {
+  for (const variant of ["flowlab", "learn"]) {
+    const p = path.join(LEARN_ROOT, "sim/reports", `sta_signoff_${variant}.json`);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
+        leftover?: { setup_open?: boolean; wns_ns?: number; clock_ns?: number };
+        timing?: { wns_ns?: number };
+        summary?: string;
+      };
+      const wns = Number(j.leftover?.wns_ns ?? j.timing?.wns_ns);
+      if (j.leftover?.setup_open || (Number.isFinite(wns) && wns < 0)) {
+        const clock = j.leftover?.clock_ns ?? 0.46;
+        return `educational golden ≥ −0.04 · leftover setup open (WNS ${wns} at ${clock} ns)`;
+      }
+      if (j.summary) return String(j.summary);
+    } catch {
+      /* ignore */
+    }
+  }
+  return "WNS/TNS vs golden-gcd · run_sta_signoff.sh";
+}
+
 function vygesEmHookDetail() {
   for (const variant of ["flowlab", "learn"]) {
     const p = path.join(LEARN_ROOT, "sim/reports", `vyges_em_ir_${variant}.json`);
@@ -409,7 +432,7 @@ export async function getSuiteStatus() {
       label: "STA signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "sta_signoff") || signoffReportPass("learn", "sta_signoff"),
-      detail: "WNS/TNS vs golden-gcd · run_sta_signoff.sh",
+      detail: staSignoffHookDetail(),
       action: "sta_signoff",
       href: "/flow?phase=finish",
     },

@@ -30,6 +30,12 @@ type CloseReport = {
   ok?: boolean;
   summary?: string;
   leftover?: { must_connect?: number; circuits?: string[]; note?: string };
+  setup_leftover?: {
+    setup_open?: boolean;
+    wns_ns?: number;
+    clock_ns?: number;
+    note?: string;
+  };
   pillars?: Record<string, { ok?: boolean; summary?: string }>;
 };
 
@@ -43,6 +49,15 @@ function applyState(apply: EcoApplyReport | null): "ok" | "wait" | "fail" | "lef
   if (!apply) return "wait";
   if (apply.ok === false) return "fail";
   if (apply.repaired === false || apply.leftover) return "leftover";
+  return "ok";
+}
+
+function closeState(close: CloseReport | null): "ok" | "wait" | "fail" | "leftover" {
+  if (!close) return "wait";
+  if (close.ok === false) return "fail";
+  if (close.leftover?.must_connect || close.setup_leftover?.setup_open) {
+    return "leftover";
+  }
   return "ok";
 }
 
@@ -138,16 +153,19 @@ export function EcoPanel({
             </button>
           ) : null}
         </li>
-        <li data-state={stepState(close?.ok, Boolean(close))}>
+        <li data-state={closeState(close)}>
           <span>3 · Close on copy</span>
           <b>
             {close
-              ? `${close.summary ?? "signoff_all"}${close.ok ? " · ok" : " · not ok"}`
+              ? `${close.summary ?? "signoff_all"}${close.ok ? " · educational ok" : " · not ok"}`
               : "signoff_all not run on eco_scratch"}
           </b>
           <em>
             FLOW_VARIANT=eco_scratch ./learn/scripts/run_signoff_all.sh
             {closePillars ? ` · ${closePillars}` : ""}
+            {close?.setup_leftover?.setup_open
+              ? ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns)`
+              : ""}
             {close?.leftover?.must_connect
               ? ` · leftover must-connect ${close.leftover.must_connect}${
                   close.leftover.circuits?.length

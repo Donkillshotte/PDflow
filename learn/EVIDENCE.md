@@ -87,7 +87,7 @@ FLOW_VARIANT=learn SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
 
 | Pillar | Result | Summary |
 |---|---|---|
-| Timing | **PASS** | WNS −0.02 ns · TNS −0.14 · viol 16 (OpenSTA all negative-slack paths) |
+| Timing | **PASS** | WNS −0.02 ns · TNS −0.14 · viol 16 · leftover setup open at 0.46 ns (OpenSTA all negative-slack paths) |
 | Geometry | **PASS** | Route DRC 0 · GDS DRC 0 |
 | Equivalence | **PASS** | LVS PASS · errors 0 · leftover must-connect 2 (DFF_X2) |
 | Power | **PASS** | Chip IR 6.34 mV · Sys droop 10.16 mV |

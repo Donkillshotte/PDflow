@@ -207,6 +207,8 @@ def main() -> int:
     sig_ts = (ROOT / "studio/src/lib/signoff.ts").read_text()
     check("leftoverMustConnectDetail" in sig_ts, "equivalence pillar names leftover")
     check("Nangate split wells" in sig_ts, "leftover names the PDK cause")
+    check("leftoverSetupOpenDetail" in sig_ts, "timing pillar names leftover setup open")
+    check("educational golden still" in sig_ts, "setup leftover names the educational golden")
     check("IrMeshLedger" in finish, "finish power shows IR mesh ledger")
     check("DynamicIrHeatmap" in finish, "finish power shows Dynamic IR heatmap")
     check(
@@ -237,6 +239,9 @@ def main() -> int:
     check("showPhase2" in matrix, "signoff matrix can hide Phase 2")
     check("showPhase2={false}" in finish or "showPhase2 =" in matrix, "finish matrix defaults Phase 2 off")
     check("leftover must-connect" in panel, "EcoPanel close names leftover")
+    check("closeState" in panel, "EcoPanel close uses leftover/ok/fail states")
+    check("setup_leftover" in panel, "EcoPanel close reads setup leftover")
+    check("leftover setup open" in panel, "EcoPanel close names leftover setup open")
     check("applyState" in panel, "EcoPanel apply has leftover/ok/fail states")
     check("did not close timing" in panel, "EcoPanel apply names unrepaired timing")
     check("apply?.leftover" in panel, "EcoPanel apply shows leftover from the report")
@@ -299,6 +304,10 @@ def main() -> int:
                 leftover = sig.get("leftover") or {}
                 check(int(leftover.get("must_connect") or 0) == 2, "eco close leftover is 2")
                 check("DFF_X2" in (leftover.get("circuits") or []), "eco close leftover is DFF_X2")
+                setup = sig.get("setup_leftover") or {}
+                check(setup.get("setup_open") is True, "eco close names leftover setup open")
+                check(float(setup.get("wns_ns") or 0) < 0, "eco close setup leftover WNS is negative")
+                check("leftover setup open" in str(sig.get("summary")), "eco close summary names leftover setup")
                 check((sig.get("ir_mesh_ledger") or {}).get("comparable") is False, "eco close IR ledger not comparable")
                 check(scratch.get("signoff") is False, "apply still does not claim the close")
     print("ALL test_eco PASSED")
