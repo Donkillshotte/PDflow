@@ -140,6 +140,21 @@ def main() -> int:
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_drc_signoff.sh").read_text(), "DRC cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_power_signoff.sh").read_text(), "power cook fails the shell when ok is not true")
     check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_signoff_all.sh").read_text(), "signoff_all re-reads stamped JSON ok")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_pkg_signoff.sh").read_text(), "pkg_signoff fails the shell when ok is not true")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_pkg_bump.sh").read_text(), "pkg_bump fails the shell when ok is not true")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_signoff_phase2.sh").read_text(), "signoff_phase2 re-reads stamped JSON ok")
+    ph2_ok = subprocess.run(
+        [sys.executable, str(require), str(REPORTS / "signoff_phase2_flowlab.json")],
+        capture_output=True,
+        text=True,
+    )
+    check(ph2_ok.returncode == 0, "live signoff_phase2 still exits 0")
+    pkg_ok = subprocess.run(
+        [sys.executable, str(require), str(REPORTS / "pkg_signoff_flowlab.json")],
+        capture_output=True,
+        text=True,
+    )
+    check(pkg_ok.returncode == 0, "live pkg_signoff still exits 0")
     check("RTL→PKG chain" not in (ROOT / "learn/reference/README.md").read_text(), "reference index does not title the chain RTL→PKG")
     check("RTL→PKG phase linkage" not in (ROOT / "learn/sim/spice/README.md").read_text(), "spice README does not call the chain RTL→PKG")
     check("full RTL→PKG flow" not in (ROOT / "learn/reference/spice-ngspice-primer.md").read_text(), "ngspice primer does not call the close RTL→PKG")

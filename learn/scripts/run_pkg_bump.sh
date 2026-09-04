@@ -79,3 +79,4 @@ print(out["summary"])
 PY
 
 echo "PKG_BUMP_DONE ${VARIANT}"
+python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${OUT}"

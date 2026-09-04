@@ -59,4 +59,8 @@ print(out["summary"])
 PY
 
 echo "SIGNOFF_PHASE2_DONE ${VARIANT}"
+if ! python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${OUT}"; then
+  echo "FAIL signoff_phase2 JSON ok is not true" | tee -a "${LOG}"
+  FAIL=1
+fi
 [[ "${FAIL}" -eq 0 ]] || exit 1
