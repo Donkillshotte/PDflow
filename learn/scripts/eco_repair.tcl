@@ -74,10 +74,22 @@ if {$eco_grt && [info commands global_route] != ""} {
 
 # Post-route size-only. Default BufferMove SIGSEGVs without GRT and
 # RSZ-0074 with GRT on this netlist. Close is still signoff_all.
+#
+# The course SDC puts 20% of 0.46 ns on every I/O. OpenROAD then ranks
+# resp_msg[*] as WNS and spends size-up there. OpenSTA signoff WNS is
+# register-to-register (dpath.a_reg). Ignore output endpoints for this
+# session only — the SDC file is not rewritten.
 if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
   if {!$eco_grt} {
     puts "WARN ECO setup repair skipped — GRT not initialized"
   } elseif {[info commands repair_timing] != ""} {
+    if {[info commands set_false_path] != "" && [info commands all_outputs] != ""} {
+      if {[catch {set_false_path -to [all_outputs]} err]} {
+        puts "WARN ECO set_false_path outputs: $err"
+      } else {
+        puts "ECO_SETUP_FOCUS register-to-register (I/O false during size-up)"
+      }
+    }
     if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
       puts "WARN ECO setup repair: $err"
     } else {

@@ -84,6 +84,10 @@ def main() -> int:
     setup_cmd = tcl.find("repair_timing -setup")
     check(spef_cmd >= 0 and setup_cmd >= 0 and spef_cmd < setup_cmd, "repair tcl reads SPEF before setup repair")
     check("-skip_buffering" in tcl and "sizeup,swap" in tcl, "post-route ECO skips BufferMove (needs GRT)")
+    check("set_false_path -to [all_outputs]" in tcl, "size-up ignores I/O endpoints so RSZ hits the OpenSTA WNS path")
+    check("ECO_SETUP_FOCUS" in tcl, "repair tcl stamps register-to-register focus")
+    focus_cmd = tcl.find("set_false_path -to [all_outputs]")
+    check(focus_cmd >= 0 and setup_cmd >= 0 and focus_cmd < setup_cmd, "I/O false path is set before setup repair")
     check("ECO_FASTROUTE" in tcl and "global_route" in tcl, "repair tcl initializes GRT before size-up")
     check("start_incremental" in tcl and "end_incremental" in tcl, "repair tcl wraps DPL in incremental GRT")
     check("pin_access" in tcl, "repair tcl runs pin_access before GRT")
@@ -205,7 +209,13 @@ def main() -> int:
     check("Nangate split wells" in sig_ts, "leftover names the PDK cause")
     check("IrMeshLedger" in finish, "finish power shows IR mesh ledger")
     check("DynamicIrHeatmap" in finish, "finish power shows Dynamic IR heatmap")
-    check('id="ir"' in finish, "finish has the #ir power close")
+    check(
+        finish.split("Individual STA")[0].find("<DynamicIrHeatmap")
+        > finish.split("Individual STA")[0].find("<StaIrAwarePanel"),
+        "heatmap sits next to STA IR-aware, not under the power script dump",
+    )
+    check('id="ir"' in (ROOT / "studio/src/components/flowlab/DynamicIrHeatmap.tsx").read_text(), "heatmap is the #ir deep link")
+    check('id="ir"' not in finish, "finish does not put a second #ir on the power script head")
     check('mode === "pkg"' not in finish, "FlowLab signoff has no PKG workbench mode")
     power_block = finish.split("const POWER_ACTIONS")[1].split("const FINISH_ACTIONS")[0]
     check('"system_pdn"' not in power_block, "finish power scripts do not launch System PDN")

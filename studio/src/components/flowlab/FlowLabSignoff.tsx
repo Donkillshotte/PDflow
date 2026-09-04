@@ -259,6 +259,12 @@ export function FlowLabSignoff({
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
           <EcoPanel busy={busy} onRun={onRun} />
           <StaIrAwarePanel busy={busy} onRun={onRun} />
+          {showPower ? (
+            <>
+              <DynamicIrHeatmap />
+              <IrMeshLedger />
+            </>
+          ) : null}
           <details className="fl-signoff-more">
             <summary>Individual STA / DRC / LVS scripts</summary>
             <p>
@@ -278,19 +284,23 @@ export function FlowLabSignoff({
 
       {showPower && (
         <>
-          <div className="fl-signoff-head" id="ir">
+          {!showFinish ? (
+            <>
+              <DynamicIrHeatmap />
+              <IrMeshLedger />
+            </>
+          ) : null}
+          <div className="fl-signoff-head" id="power">
             <strong>Signoff power &amp; SPICE</strong>
             <p>
-              Chip IR, Dynamic IR I(t), and the five-mesh ledger live here with
-              the power pillar. System PDN / Phase 2 stay on{" "}
-              <a href="/pkg">PKG</a>. Docs{" "}
+              Chip IR and the five-mesh ledger stay with the power pillar.
+              Dynamic IR I(t) is <a href="#ir">#ir</a> next to STA IR-aware.
+              System PDN / Phase 2 stay on <a href="/pkg">PKG</a>. Docs{" "}
               <a href="/materials/reference/spice-power-chain.md">spice-power-chain</a>
               {" · "}
               <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>.
             </p>
           </div>
-          <IrMeshLedger />
-          <DynamicIrHeatmap />
           <details className="fl-signoff-more">
             <summary>Individual power / SPICE scripts</summary>
             <ActionGrid

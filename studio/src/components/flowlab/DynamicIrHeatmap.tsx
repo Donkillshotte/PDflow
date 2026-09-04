@@ -286,7 +286,7 @@ export function DynamicIrHeatmap({
   const odl = report?.extract?.on_die_l;
 
   return (
-    <section className="fl-dynir" aria-label="Dynamic IR heatmap">
+    <section className="fl-dynir" id="ir" aria-label="Dynamic IR heatmap">
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>

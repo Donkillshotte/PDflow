@@ -123,31 +123,34 @@ export function StaIrAwarePanel({
             </p>
           ) : null}
           {data.path_gates && data.path_gates.length > 0 && (
-            <table className="sta-ir-table">
-              <thead>
-                <tr>
-                  <th>Gate</th>
-                  <th>V</th>
-                  <th>IR</th>
-                  <th>Delay</th>
-                  <th>Delay IR</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.path_gates.map((g, i) => (
-                  <tr key={`${g.inst ?? "g"}-${i}`} className={g.joined ? undefined : "is-gap"}>
-                    <td>
-                      <code>{g.inst}</code>
-                      {g.cell ? <small> {g.cell}</small> : null}
-                    </td>
-                    <td>{g.v_inst != null ? `${g.v_inst.toFixed(4)} V` : "—"}</td>
-                    <td>{fmtMv(g.ir_mv)}</td>
-                    <td>{fmtNs(g.delay_ns)}</td>
-                    <td>{fmtNs(g.delay_ir_ns)}</td>
+            <details className="sta-ir-gates">
+              <summary>Per-gate IR overlay ({data.path_gates.length})</summary>
+              <table className="sta-ir-table">
+                <thead>
+                  <tr>
+                    <th>Gate</th>
+                    <th>V</th>
+                    <th>IR</th>
+                    <th>Delay</th>
+                    <th>Delay IR</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.path_gates.map((g, i) => (
+                    <tr key={`${g.inst ?? "g"}-${i}`} className={g.joined ? undefined : "is-gap"}>
+                      <td>
+                        <code>{g.inst}</code>
+                        {g.cell ? <small> {g.cell}</small> : null}
+                      </td>
+                      <td>{g.v_inst != null ? `${g.v_inst.toFixed(4)} V` : "—"}</td>
+                      <td>{fmtMv(g.ir_mv)}</td>
+                      <td>{fmtNs(g.delay_ns)}</td>
+                      <td>{fmtNs(g.delay_ir_ns)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
           )}
           {data.hottest_cells && data.hottest_cells.length > 0 && (
             <p className="sta-ir-hot">
