@@ -103,6 +103,8 @@ export const PHASES: Phase[] = [
 ];
 
 export const PHASE_IDS = PHASES.map((p) => p.id);
+/** RTL → finish. PKG is System PDN on /pkg, not a signoff pillar. */
+export const CLOSE_PHASES = PHASES.filter((p) => p.id !== "pkg");
 import { LONG_ACTIONS } from "@/lib/actions";
 
 export { LONG_ACTIONS };

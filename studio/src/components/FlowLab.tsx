@@ -26,7 +26,7 @@ import { FlowLabPipeline } from "@/components/flowlab/FlowLabPipeline";
 import { FlowLabRtlEditor } from "@/components/flowlab/FlowLabRtlEditor";
 import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
 import { FlowLabTerminal } from "@/components/flowlab/FlowLabTerminal";
-import { LONG_ACTIONS, PHASE_IDS, PHASES } from "@/components/flowlab/phases";
+import { CLOSE_PHASES, LONG_ACTIONS, PHASE_IDS, PHASES } from "@/components/flowlab/phases";
 import type {
   FlowlabParams,
   RightTab,
@@ -127,8 +127,9 @@ export function FlowLab() {
         : phase.id === "pkg"
           ? "finish"
           : phase.id;
-  const doneCount = stages.filter((s) => s.done).length;
-  const progressPct = Math.round((doneCount / PHASES.length) * 100);
+  const closeStages = stages.filter((s) => s.id !== "pkg");
+  const doneCount = closeStages.filter((s) => s.done).length;
+  const progressPct = Math.round((doneCount / CLOSE_PHASES.length) * 100);
   const unlocked = phaseUnlocked(phaseId, stages);
   const nextPhase = PHASES[PHASE_IDS.indexOf(phaseId) + 1] ?? null;
   const lineCount = useMemo(() => rtl.split("\n").length, [rtl]);
@@ -532,7 +533,8 @@ export function FlowLab() {
             Isolated GCD at <code>results/nangate45/gcd/flowlab</code>.
             Signoff is STA → DRC → LVS → power. ECO apply writes{" "}
             <code>eco_scratch</code> and still requires{" "}
-            <code>signoff_all</code>. DSE proposes knobs.
+            <code>signoff_all</code>. PKG is System PDN on{" "}
+            <a href="/pkg">/pkg</a>, not a ninth signoff pillar. DSE proposes knobs.
           </p>
         </div>
         <div className="fl-hero-stats">
@@ -551,8 +553,8 @@ export function FlowLab() {
             <span>{progressPct}%</span>
           </div>
           <div>
-            <strong>{doneCount} / {PHASES.length}</strong>
-            <span>phases completed</span>
+            <strong>{doneCount} / {CLOSE_PHASES.length}</strong>
+            <span>flow phases · RTL → finish</span>
           </div>
         </div>
       </header>

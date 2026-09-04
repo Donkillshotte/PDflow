@@ -54,7 +54,7 @@ export function FlowLabPipeline({
   const activeIdx = PHASE_IDS.indexOf(phaseId);
 
   return (
-    <nav className="fl-pipeline" aria-label="Pipeline RTL → GDSII">
+    <nav className="fl-pipeline" aria-label="Pipeline RTL → finish">
       <ol className="fl-pipeline-track">
         {phases.map((p, i) => {
           const st = stages.find((s) => s.id === p.id);
@@ -103,7 +103,9 @@ export function FlowLabPipeline({
                   )}
                 </span>
                 <span className="fl-pipeline-text">
-                  <span className="fl-pipeline-index">Phase {i + 1}</span>
+                  <span className="fl-pipeline-index">
+                    {p.id === "pkg" ? "After signoff" : `Phase ${i + 1}`}
+                  </span>
                   <strong>{p.label}</strong>
                   <em>{p.hint}</em>
                 </span>
