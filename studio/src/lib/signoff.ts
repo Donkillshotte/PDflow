@@ -432,6 +432,7 @@ function evaluateCheckGate(
 
 export function evaluateSignoffGates(variant = "flowlab"): {
   ok: boolean;
+  phase2Ok: boolean;
   gates: SignoffGate[];
   pillars: Record<string, { ok: boolean; report?: string }>;
 } {
@@ -528,11 +529,14 @@ export function evaluateSignoffGates(variant = "flowlab"): {
     action: SIGNOFF_PHASE2_ORCHESTRATOR.action,
   });
 
-  const pillarGates = gates.filter((g) =>
-    [...SIGNOFF_PILLARS, ...SIGNOFF_PLANNED_PILLARS].some((p) => p.id === g.id),
+  const closeGates = gates.filter((g) => SIGNOFF_PILLARS.some((p) => p.id === g.id));
+  const phase2Gates = gates.filter((g) =>
+    SIGNOFF_PLANNED_PILLARS.some((p) => p.id === g.id),
   );
+  const phase2Orch = gates.find((g) => g.id === "signoff_phase2");
   return {
-    ok: pillarGates.every((g) => g.ok) && allReport?.ok !== false,
+    ok: closeGates.every((g) => g.ok) && allReport?.ok !== false,
+    phase2Ok: phase2Gates.every((g) => g.ok) && phase2Orch?.ok === true,
     gates,
     pillars,
   };

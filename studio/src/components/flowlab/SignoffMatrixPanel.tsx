@@ -64,7 +64,7 @@ type EcoInfo = {
 
 type SignoffApi = {
   variant: string;
-  evaluation: { ok: boolean; gates: Gate[] };
+  evaluation: { ok: boolean; phase2Ok?: boolean; gates: Gate[] };
   pillars: PillarRow[];
   plannedPillars?: PillarRow[];
   orchestrator: { action: string; label: string; reportExists: boolean };
@@ -413,12 +413,21 @@ export function SignoffMatrixPanel({
 
       {data && (
         <p className="sig-summary">
-          Global status:{" "}
+          Four-pillar close:{" "}
           <span className={data.evaluation.ok ? "sig-ok-text" : "sig-fail-text"}>
             {data.evaluation.ok
               ? data.evaluation.gates.find((g) => g.id === "signoff_all")?.detail ||
                 "Four pillars ok"
               : "FAIL / incomplete"}
+          </span>
+        </p>
+      )}
+      {data && showPhase2 && (
+        <p className="sig-summary">
+          Phase 2 (after signoff):{" "}
+          <span className={data.evaluation.phase2Ok ? "sig-ok-text" : "sig-fail-text"}>
+            {data.evaluation.gates.find((g) => g.id === "signoff_phase2")?.detail ||
+              (data.evaluation.phase2Ok ? "thermal + PKG ok" : "not run")}
           </span>
         </p>
       )}
