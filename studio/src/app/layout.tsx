@@ -40,7 +40,7 @@ export default function RootLayout({
         <ToastProvider>
           <div className="shell">
             <SiteNav />
-            {children}
+            <div id="main">{children}</div>
           </div>
           <CommandPalette />
         </ToastProvider>

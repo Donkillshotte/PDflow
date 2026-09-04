@@ -663,6 +663,17 @@ def main() -> int:
     story = (ROOT / "studio/src/lib/story.ts").read_text()
     check("leftoverCatalog" in story, "home story uses catalog leftoverNamedBit")
     check("leftoverNamedBit" in story, "home leftover bit reads signoff_all, not only LVS")
+    leftover_ui = (ROOT / "studio/src/lib/leftoverUi.ts").read_text()
+    chips = (ROOT / "studio/src/components/LeftoverChips.tsx").read_text()
+    check("leftover no MCMM" in leftover_ui, "leftover UI labels leftover no MCMM")
+    check("LeftoverChips" in chips, "LeftoverChips component exists")
+    suite_hub = (ROOT / "studio/src/components/SuiteHub.tsx").read_text()
+    check("LeftoverChips" in suite_hub, "SuiteHub renders leftover chips")
+    check("hookVisualState" in suite_hub, "SuiteHub uses leftover visual state")
+    check("leftover-free" not in leftover_ui, "leftover UI does not claim leftover-free")
+    from leftover_catalog import catalog_ids
+    for lid in catalog_ids():
+        check(f'id: "{lid}"' in leftover_ui, f"leftover UI labels catalog id {lid}")
 
     print("ALL test_signoff_honesty PASSED")
     return 0

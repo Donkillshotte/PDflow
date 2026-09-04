@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Circle, XCircle } from "lucide-react";
+import { LeftoverChips } from "@/components/LeftoverChips";
 
 type Gate = {
   id: string;
@@ -242,6 +243,10 @@ export function SignoffMatrixPanel({
               {data?.evaluation.gates.find((g) => g.id === "timing")?.detail ??
                 "timing leftover not loaded"}
             </small>
+            <LeftoverChips
+              detail={data?.evaluation.gates.find((g) => g.id === "signoff_all")?.detail}
+              compact
+            />
           </li>
           <li data-kind="copy">
             <span>eco_scratch close</span>
@@ -253,6 +258,10 @@ export function SignoffMatrixPanel({
               {copy?.evaluation.gates.find((g) => g.id === "timing")?.detail ??
                 "timing leftover not loaded"}
             </small>
+            <LeftoverChips
+              detail={copy?.evaluation.gates.find((g) => g.id === "signoff_all")?.detail}
+              compact
+            />
           </li>
         </ol>
       )}
@@ -273,6 +282,7 @@ export function SignoffMatrixPanel({
               <div className="sig-row-body">
                 <strong>{g.label}</strong>
                 <small>{g.detail}</small>
+                <LeftoverChips detail={g.detail} compact />
                 {g.id === "timing" && data?.staIr && (
                   <small>
                     IR-aware slack {data.staIr.slack_ns?.toFixed(4) ?? "—"} →{" "}

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
+import { LeftoverChips, StatusTone } from "@/components/LeftoverChips";
+import { hookVisualState } from "@/lib/leftoverUi";
 
 type Hook = {
   id: string;
@@ -12,6 +14,7 @@ type Hook = {
   detail: string;
   action?: string;
   href?: string;
+  leftover?: { ids: string[] };
 };
 
 type Suite = {
@@ -72,8 +75,9 @@ export function SuiteHub() {
           <h2>Toolchain hook matrix</h2>
           <p className="muted">
             Environment, course artifacts, FlowLab reports, and product cooks
-            stay on their own contracts · {data.summary.hooksOk}/
-            {data.summary.hooksTotal} ok · lessons {data.summary.lessonsDone}/
+            stay on their own contracts. A green hook can still name leftover
+            · {data.summary.hooksOk}/{data.summary.hooksTotal} ok · leftover
+            named on signoff · lessons {data.summary.lessonsDone}/
             {data.summary.lessonsTotal} · pipeline {data.summary.pipelineReady}
             /6 · recent jobs {data.summary.recentJobs}
             {data.summary.viewerRunning ? " · web viewer on" : ""}
@@ -100,16 +104,17 @@ export function SuiteHub() {
           <ul className="suite-hooks">
             {data.hooks
               .filter((h) => h.group === g)
-              .map((h) => (
-                <li key={h.id} className={h.ok ? "ok" : "bad"}>
+              .map((h) => {
+                const state = hookVisualState(h.ok, h.leftover?.ids);
+                return (
+                <li key={h.id} className={clsx(h.ok ? "ok" : "bad", state === "leftover" && "leftover")}>
                   <div>
                     <strong>{h.label}</strong>
                     <em>{h.detail}</em>
+                    <LeftoverChips ids={h.leftover?.ids} detail={h.detail} compact />
                   </div>
                   <div className="suite-hook-actions">
-                    <span className={clsx("pill", h.ok ? "ok" : "bad")}>
-                      {h.ok ? "ok" : "gap"}
-                    </span>
+                    <StatusTone state={state} />
                     {h.href && (
                       <Link href={h.href} className="btn-ghost btn-tiny">
                         Open
@@ -125,7 +130,8 @@ export function SuiteHub() {
                     )}
                   </div>
                 </li>
-              ))}
+                );
+              })}
           </ul>
         </div>
       ))}

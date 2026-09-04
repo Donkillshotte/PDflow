@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { LeftoverChips } from "@/components/LeftoverChips";
 
 type EcoStep = {
   step?: string;
@@ -190,6 +191,7 @@ export function EcoPanel({
                 }`
               : ""}
           </em>
+          <LeftoverChips detail={close?.summary} compact />
           {onRun ? (
             <button
               type="button"

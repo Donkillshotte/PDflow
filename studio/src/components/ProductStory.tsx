@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import type { ProductStory as StoryData } from "@/lib/story";
+import { LeftoverChips } from "@/components/LeftoverChips";
 
 type Surface = {
   id: string;
@@ -122,6 +123,7 @@ export function ProductStory({
               <span className="story-step-n">{i + 1}</span>
               <strong>{step.label}</strong>
               <em>{step.detail}</em>
+              <LeftoverChips detail={step.detail} compact />
             </Link>
           </li>
         ))}
@@ -151,6 +153,7 @@ export function ProductStory({
               {data.signoff.passed}/{data.signoff.total}
             </strong>
             <em>{data.signoff.detail}</em>
+            <LeftoverChips detail={data.signoff.detail} compact />
           </article>
           <article>
             <span>STA IR-aware</span>

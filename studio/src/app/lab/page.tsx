@@ -1,5 +1,6 @@
 import { LabBench } from "@/components/LabBench";
 import { DsePanel } from "@/components/flowlab/DsePanel";
+import { SurfaceRail } from "@/components/SurfaceRail";
 
 export const metadata = {
   title: "Lab bench · OpenROAD Studio",
@@ -9,6 +10,7 @@ export const metadata = {
 export default function LabPage() {
   return (
     <main className="lab-page">
+      <SurfaceRail />
       <LabBench />
       <div id="dse" className="lab-dse-wrap">
         <DsePanel />

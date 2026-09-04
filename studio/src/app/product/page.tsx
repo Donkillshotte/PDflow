@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SurfaceRail } from "@/components/SurfaceRail";
 import { getProductSnapshot } from "@/lib/product";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export default function ProductPage() {
 
   return (
     <main className="product-page">
+      <SurfaceRail />
       <header className="product-page-head">
         <p className="eyebrow">Product surface</p>
         <h1>{data.title}</h1>

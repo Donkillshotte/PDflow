@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { HomeOpsStrip } from "@/components/HomeOpsStrip";
+import { LeftoverChips } from "@/components/LeftoverChips";
 import { ProductStory } from "@/components/ProductStory";
+import { SurfaceRail } from "@/components/SurfaceRail";
 import { getProductStory } from "@/lib/story";
 import { HomeHero } from "./home-hero";
 
@@ -12,9 +14,11 @@ export default function HomePage() {
   return (
     <main>
       <HomeHero />
+      <SurfaceRail />
 
       <section className="home-rail" id="story">
         <ProductStory initial={story} />
+        <LeftoverChips detail={story.signoff.detail} />
       </section>
 
       <section className="home-rail">

@@ -1,13 +1,20 @@
 import Link from "next/link";
+import { LeftoverChips } from "@/components/LeftoverChips";
+import { leftoverNamedIds } from "@/lib/leftoverUi";
 import { getSuiteStatus } from "@/lib/suite";
 
 /** Home shows counts only. The hook matrix stays on /tools#suite. */
 export async function HomeOpsStrip() {
   let counts = "Toolchain status lives on Tools.";
+  let leftoverIds: string[] = [];
   try {
     const suite = await getSuiteStatus();
     const s = suite.summary;
-    counts = `${s.hooksOk}/${s.hooksTotal} hooks ready · pipeline ${s.pipelineReady}/6 · lessons ${s.lessonsDone}/${s.lessonsTotal}`;
+    leftoverIds = leftoverNamedIds(
+      suite.hooks.flatMap((h) => h.leftover?.ids ?? []),
+    );
+    const leftoverN = leftoverIds.length;
+    counts = `${s.hooksOk}/${s.hooksTotal} hooks ready · ${leftoverN} leftover named · pipeline ${s.pipelineReady}/6 · lessons ${s.lessonsDone}/${s.lessonsTotal}`;
     if (s.viewerRunning) counts += " · web viewer on";
   } catch {
     /* keep fallback */
@@ -25,6 +32,7 @@ export async function HomeOpsStrip() {
         {counts}. Course, FlowLab, lab, and product keep their own contracts —
         this strip does not launch cooks.
       </p>
+      <LeftoverChips ids={leftoverIds} compact />
     </section>
   );
 }

@@ -7,6 +7,7 @@ import {
   type SystemPreview,
   type ThermalPreview,
 } from "@/components/PkgHubPanel";
+import { SurfaceRail } from "@/components/SurfaceRail";
 import { LEARN_ROOT } from "@/lib/course";
 
 export const metadata = {
@@ -30,6 +31,7 @@ export default function PkgPage() {
   const pkg = readReport<PkgPreview>("pkg_signoff_flowlab.json");
   return (
     <main className="pkg-page">
+      <SurfaceRail />
       <header className="page-head">
         <p className="eyebrow">Package</p>
         <h1>PKG · System PDN and Phase 2</h1>
