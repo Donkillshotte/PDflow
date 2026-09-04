@@ -17,7 +17,7 @@ OpenROAD Qt. Layout window after `gui_*.odb` (same labeled rectangles A–G in t
 
 **How to open:** **Desktop** button on cursor.com/agents (not Preview chat).
 
-**Also from Studio:** Ctrl+K → «OpenROAD · …», or **Open GUI** on `.odb` files.
+**Also from Studio:** Ctrl+K → OpenROAD · …, or **Open GUI** on `.odb` files.
 For **Web Viewer** (browser, without Qt): Tools → **Open Web Viewer**
 (`openroad -web`, see [tool-hooks.md](./tool-hooks.md)).
 

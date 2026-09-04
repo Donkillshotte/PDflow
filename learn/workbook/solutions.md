@@ -1,6 +1,6 @@
 # Workbook solutions — compare **after** trying
 
-Numbers in the «reference» column = run `learn` on this VM
+Numbers in the reference column = run `learn` on this VM
 (`CORE_UTILIZATION=35`, SDC 0.46 ns, OpenROAD/ORFS **26Q2**).
 Master table: [golden-metrics.md](../reference/golden-metrics.md).
 

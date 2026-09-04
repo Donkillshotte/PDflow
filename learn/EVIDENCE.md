@@ -72,7 +72,7 @@ The canvas **above the fold** on `/flow` is a lab viewport (wheel zoom, drag pan
 |---|---|
 | Floorplan / PDN | Die + VDD/VSS straps (`03_pdn*.png`) |
 | Place | Cells on rows + PDN (`05_place_dp.png`) · Place↔Route compare |
-| Route | M2/M3 metal «spaghetti» (`08_route_labeled.png`) · GRT↔DRT wipe · M2/M3 only |
+| Route | M2/M3 metal spaghetti (`08_route_labeled.png`) · GRT↔DRT wipe · M2/M3 only |
 | Finish | Final layout (`09_final.png`) |
 
 Filmstrip of related gui-shots + Display Control HUD (Nangate45 colors). OpenROAD Web Viewer is **opt-in**. Synth has no die: explicit message.

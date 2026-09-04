@@ -85,7 +85,7 @@ learn/
 3. Post-`make finish`: `./learn/scripts/run_power_chain.sh` (`learn` or `flowlab` variant)
 4. Explore netlists in `learn/sim/spice/` · hub [/pkg](http://127.0.0.1:43217/pkg)
 
-Each lesson README has a **«Power & SPICE chain»** section with a link to the corresponding section.
+Each lesson README has a **Power & SPICE chain** section with a link to the corresponding section.
 
 ## Two study modes
 

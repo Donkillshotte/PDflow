@@ -1195,6 +1195,15 @@ def _check_enterprise_docs(check, root: Path) -> None:
     learn_readme = (root / "learn/README.md").read_text()
     check("[RTL → PKG]" not in learn_readme, "learn README does not call FlowLab RTL → PKG")
     check("RTL → finish" in learn_readme, "learn README names FlowLab RTL → finish")
+    check("«" not in learn_readme and "»" not in learn_readme, "learn README has no brochure guillemets")
+    for rel in (
+        "learn/EVIDENCE.md",
+        "learn/reference/gui-openroad.md",
+        "learn/reference/debug-playbook.md",
+        "learn/workbook/solutions.md",
+    ):
+        text = (root / rel).read_text()
+        check("«" not in text and "»" not in text, f"{rel} has no brochure guillemets")
     check("1. Change PDK" not in learn_readme, "after-course does not lead with a sky130 switch")
     check("different PDK" in learn_readme, "after-course labels sky130 as a different PDK")
     contrib = (root / "CONTRIBUTING.md").read_text()

@@ -156,7 +156,7 @@ cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 gui_4_1_error.odb
 
-# Reset only one phase (copy entire command — never «make ...»)
+# Reset only one phase (copy entire command — never `make ...` alone)
 cd tools/OpenROAD-flow-scripts/flow
 make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
      FLOW_VARIANT=learn CORE_UTILIZATION=35 clean_cts
