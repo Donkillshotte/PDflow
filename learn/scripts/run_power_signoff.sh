@@ -68,4 +68,6 @@ print("POWER_SIGNOFF_JSON", "${OUT}")
 print(out["summary"])
 PY
 
+python3 "${ROOT}/learn/scripts/ir_mesh_ledger.py" --variant "${VARIANT}" --stamp | tee -a "${LOG}"
+
 echo "POWER_SIGNOFF_DONE ${VARIANT}"

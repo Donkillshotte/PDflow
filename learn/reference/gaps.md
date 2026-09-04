@@ -34,6 +34,7 @@ Do not mix them on a roadmap. A gated item is not a sprint.
 | ECO after finish | Propose on locked variants. Apply on an unlocked copy loads `typical.lib` + SDC + `setRC.tcl`, writes `6_final.{odb,def,v,cdl,gds}` (SPEF when OpenRCX works), and never calls `signoff_all`. |
 | Antenna in GDS DRC | Already in `FreePDK45.lydrc` (`antenna_check`, 300:1). |
 | DSE as flow controller | Not to build. DSE stays a proposer. See `learn/dse/flow_role.py`. |
+| IR mesh mixing | Built: `ir_mesh_ledger.py` stamps gold / current_run / chip / vyges / system into `power_signoff_*.json`. Numbers stay on their own meshes. |
 
 ## What this flow does not pretend to be
 

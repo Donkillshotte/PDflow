@@ -40,6 +40,24 @@ def main() -> int:
     check(pwr.get("ok") is True, "power signoff ok")
     sys_mv = float((pwr.get("power") or {}).get("system_droop_mv") or 0)
     check(sys_mv > 0, f"system droop {sys_mv:.3f} mV")
+    ledger = pwr.get("ir_mesh_ledger") or {}
+    check(ledger.get("comparable") is False, "IR mesh ledger is not comparable")
+    meshes = {m.get("id"): m for m in (ledger.get("meshes") or [])}
+    check("gold_dynamic_ir" in meshes, "ledger names gold Dynamic IR")
+    check(abs(float(meshes["gold_dynamic_ir"]["dynamic_mv"]) - GOLD_MV) < 0.02, "ledger gold is 45.298")
+    check(meshes["gold_dynamic_ir"].get("gold") is True, "ledger gold flag")
+    check("chip_pdn" in meshes, "ledger names chip PDN")
+    check(abs(float(meshes["chip_pdn"]["static_mv"]) - GOLD_MV) > 1.0, "ledger chip is not gold")
+    check("current_run_dynamic_ir" in meshes, "ledger names current_run")
+    check(meshes["current_run_dynamic_ir"].get("gold") is False, "current_run is not gold")
+    check("vyges_em_ir" in meshes, "ledger names vyges")
+    check(int(meshes["vyges_em_ir"].get("em_checked") or -1) == 0, "ledger EM stays unchecked")
+    check("system_pdn" in meshes, "ledger names system PDN")
+    gold_v = float(meshes["gold_dynamic_ir"]["dynamic_mv"])
+    chip_v = float(meshes["chip_pdn"]["static_mv"])
+    cur_v = float(meshes["current_run_dynamic_ir"]["dynamic_mv"])
+    vy_v = float(meshes["vyges_em_ir"]["static_mv"])
+    check(len({round(gold_v, 2), round(chip_v, 2), round(cur_v, 2), round(vy_v, 2)}) == 4, "ledger meshes stay distinct")
 
     em = REPORTS / "vyges_em_ir_flowlab.json"
     if em.is_file():

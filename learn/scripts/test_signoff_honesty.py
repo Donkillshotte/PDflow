@@ -74,6 +74,11 @@ def main() -> int:
     check(signoff_all.get("ok") is True, "signoff_all follows the four pillars")
     pillars = signoff_all.get("pillars") or {}
     check(all(pillars.get(k, {}).get("ok") for k in ("timing", "geometry", "equivalence", "power")), "four signoff pillars ok")
+    pwr = load("power_signoff_flowlab.json")
+    ledger = pwr.get("ir_mesh_ledger") or {}
+    check(ledger.get("comparable") is False, "power_signoff IR meshes are not comparable")
+    ids = {m.get("id") for m in (ledger.get("meshes") or [])}
+    check({"gold_dynamic_ir", "chip_pdn", "vyges_em_ir"} <= ids, "ledger names gold, chip, and vyges")
 
     gate = load("gate_sim_flowlab.json")
     check(gate.get("ok") is True, "gate_sim report ok")

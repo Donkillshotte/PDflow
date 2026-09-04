@@ -47,5 +47,47 @@
     "chip_pdn_ir",
     "system_pdn",
     "export_spice_lab"
-  ]
+  ],
+  "ir_mesh_ledger": {
+    "ok": true,
+    "variant": "eco_scratch",
+    "comparable": false,
+    "note": "These droop numbers are not interchangeable. Gold stays 45.298 mV. EM has no emlimit.",
+    "meshes": [
+      {
+        "id": "gold_dynamic_ir",
+        "mesh": "gold Dynamic IR reference_run",
+        "report": "sim/reports/dynamic_ir_flowlab.json",
+        "static_mv": null,
+        "dynamic_mv": 45.298,
+        "gold": true,
+        "em_checked": null,
+        "comparable_to": [],
+        "note": "LOCKED. Not current_run. Do not restamp."
+      },
+      {
+        "id": "chip_pdn",
+        "mesh": "write_pg_spice chip PDN",
+        "report": "sim/reports/pdn_chip_ir_eco_scratch.json",
+        "static_mv": 1.0535620881952923,
+        "dynamic_mv": 9.473257892617104,
+        "gold": false,
+        "em_checked": null,
+        "comparable_to": [],
+        "note": "Signoff power pillar uses this chip static + transient."
+      },
+      {
+        "id": "system_pdn",
+        "mesh": "lumped VRM\u2192board\u2192pkg\u2192die",
+        "report": "sim/reports/system_pdn_eco_scratch.json",
+        "static_mv": null,
+        "dynamic_mv": 6.025990000000148,
+        "gold": false,
+        "em_checked": null,
+        "zmax_mohm": 9058.35944,
+        "comparable_to": [],
+        "note": "Package/board ladder. Not on-die mesh IR."
+      }
+    ]
+  }
 }
