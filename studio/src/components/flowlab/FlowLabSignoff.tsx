@@ -299,10 +299,7 @@ export function FlowLabSignoff({
         <div id="signoff">
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
           <EcoPanel busy={busy} onRun={onRun} />
-          <details className="fl-signoff-more">
-            <summary>STA IR-aware overlay (lab · does not change WNS)</summary>
-            <StaIrAwarePanel busy={busy} onRun={onRun} />
-          </details>
+          <StaIrAwarePanel busy={busy} onRun={onRun} />
           <details className="fl-signoff-more">
             <summary>Individual STA / DRC / LVS scripts</summary>
             <p>

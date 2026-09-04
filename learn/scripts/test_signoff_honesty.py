@@ -52,6 +52,10 @@ def main() -> int:
     check("45.298" in studio_api, "studio API test keeps the gold sentinel")
     check("_direct.map.csv" in (ROOT / "studio/src/lib/story.ts").read_text(), "story STA IR names the current_run map")
     check("worst_cell_ir_mv" in (ROOT / "studio/src/components/flowlab/StaIrAwarePanel.tsx").read_text(), "STA panel shows worst cell IR")
+    finish = (ROOT / "studio/src/components/flowlab/FlowLabSignoff.tsx").read_text()
+    check("STA IR-aware overlay (lab" not in finish, "finish does not hide STA IR-aware behind a lab details")
+    check('closest("details")' in (ROOT / "studio/src/components/FlowLab.tsx").read_text(), "finish focus opens a parent details")
+    check("autonomous goal work" not in (ROOT / "learn/EVIDENCE.md").read_text(), "EVIDENCE is course evidence, not agent diary")
 
     lvs = load("lvs_signoff_flowlab.json")
     check(lvs.get("ok") is True, "LVS compare is a real KLayout match")

@@ -1,4 +1,4 @@
-# Completeness audit — OpenROAD course (goal)
+# Completeness audit — OpenROAD course
 
 **Requirement-by-requirement** verification of the `learn/` tree state.
 Run `./scripts/test_course.sh` after every structural change.

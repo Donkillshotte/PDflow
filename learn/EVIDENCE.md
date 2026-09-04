@@ -1,6 +1,7 @@
 # Verification evidence (course)
 
-Updated during autonomous goal work. Does not replace studying: certifies that **materials and the pipeline** exist and run.
+Course pipeline evidence. Does not replace studying: it records that the
+materials and the ORFS path exist and run.
 
 ## Structure (automatic test)
 

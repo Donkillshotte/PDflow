@@ -181,7 +181,9 @@ export function FlowLab() {
     const focus = search.get("focus") || window.location.hash.replace(/^#/, "");
     if (!focus) return;
     const t = window.setTimeout(() => {
-      document.getElementById(focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const el = document.getElementById(focus);
+      el?.closest("details")?.setAttribute("open", "");
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
     return () => window.clearTimeout(t);
   }, [loading, phaseId, search]);
