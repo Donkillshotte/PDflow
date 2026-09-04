@@ -136,6 +136,9 @@ def main() -> int:
     heatmap = (ROOT / "studio/src/components/flowlab/DynamicIrHeatmap.tsx").read_text()
     check("Solver / EM / activity (lab)" in heatmap, "Dynamic IR keeps solver gauges behind details")
     check("different extract" in heatmap, "Dynamic IR names gold as another mesh")
+    check("dynamic_ir_${variant}_direct.json" in heatmap, "heatmap loads current_run _direct.json")
+    check("dynamic_ir_${variant}.json" not in heatmap, "heatmap does not treat the gold sentinel as current_run")
+    check("Report missing" not in heatmap, "heatmap does not call gold-only a missing report")
     report_api = (ROOT / "studio/src/app/api/report/route.ts").read_text()
     check("power_signoff_flowlab.json" in report_api, "report API serves the IR mesh ledger")
 

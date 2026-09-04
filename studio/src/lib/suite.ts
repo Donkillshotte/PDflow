@@ -302,7 +302,7 @@ export async function getSuiteStatus() {
       ok: goldDynamicIrPresent(),
       detail: "Gold 45.298 mV LOCKED · current_run is a different mesh",
       action: "dynamic_ir",
-      href: "/tools?tab=run&action=dynamic_ir",
+      href: "/flow?phase=finish#ir",
     },
     {
       id: "dse",

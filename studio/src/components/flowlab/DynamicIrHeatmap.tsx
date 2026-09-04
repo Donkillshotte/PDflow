@@ -234,7 +234,7 @@ export function DynamicIrHeatmap({
 
   const load = useCallback(async () => {
     const res = await fetch(
-      `/api/content?path=sim/reports/dynamic_ir_${variant}.json`,
+      `/api/content?path=sim/reports/dynamic_ir_${variant}_direct.json`,
       { cache: "no-store" },
     );
     if (!res.ok) {
@@ -261,7 +261,7 @@ export function DynamicIrHeatmap({
   const tNs = (report?.dynamic?.worst_time_s ?? 0) * 1e9;
   const gold = report?.ngspice_gold;
   const goldRl = report?.ngspice_rl_gold;
-  const svgSrc = `/api/content?path=sim/reports/dynamic_ir_${variant}.svg`;
+  const svgSrc = `/api/content?path=sim/reports/dynamic_ir_${variant}_direct.svg`;
   const levels = report?.sim_levels;
   const win = levels?.L3_windowed?.windows?.[0];
   const plat = report?.platform;
@@ -296,7 +296,10 @@ export function DynamicIrHeatmap({
       </header>
       {missing || !report?.ok ? (
         <p className="fl-dynir-empty">
-          Report missing — run the <code>dynamic_ir</code> action after finish.
+          current_run I(t) is not on disk (
+          <code>dynamic_ir_*_direct.json</code>). Gold 45.298 mV is{" "}
+          <code>dynamic_ir_flowlab.json</code> on another extract — do not
+          restamp.
         </p>
       ) : (
         <>

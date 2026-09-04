@@ -188,7 +188,11 @@ function readJsonl(rel: string): CampRow[] {
 }
 
 function readReport(name: string): Record<string, unknown> | null {
-  const p = path.join(LEARN_ROOT, "sim/reports", `${name}_${STORY_VARIANT}.json`);
+  return readReportFile(`${name}_${STORY_VARIANT}.json`);
+}
+
+function readReportFile(fileName: string): Record<string, unknown> | null {
+  const p = path.join(LEARN_ROOT, "sim/reports", fileName);
   if (!fs.existsSync(p)) return null;
   try {
     return JSON.parse(fs.readFileSync(p, "utf8")) as Record<string, unknown>;
@@ -282,7 +286,13 @@ export function getProductStory(): ProductStory {
   const gold = readReport("dynamic_ir");
   const goldPresent =
     Boolean(gold?.gold) && Math.abs(Number(gold?.worst_droop_mv) - IR_GOLD_MV) < 0.02;
-  const liveMv = gold?.gold ? null : num(gold?.worst_droop_mv);
+  const currentRun = readReportFile(`dynamic_ir_${STORY_VARIANT}_direct.json`);
+  const currentFromField = num(currentRun?.worst_droop_mv);
+  const currentFromDyn = (() => {
+    const dyn = currentRun?.dynamic as { worst_droop?: number } | undefined;
+    return dyn?.worst_droop != null ? Number(dyn.worst_droop) * 1e3 : null;
+  })();
+  const liveMv = currentFromField ?? currentFromDyn;
   const currentPresent = liveMv != null && Math.abs(liveMv - IR_CURRENT_MV) < 0.5;
 
   const product = summarizeProduct(readJsonl("sim/dse/campaign_experiments.jsonl"));
@@ -397,10 +407,12 @@ export function getProductStory(): ProductStory {
     },
     ir: {
       goldMv: IR_GOLD_MV,
-      currentMv: currentPresent ? liveMv : goldPresent ? IR_CURRENT_MV : liveMv,
+      currentMv: currentPresent ? liveMv : null,
       goldPresent,
       currentPresent,
-      detail: `reference_run ${IR_GOLD_MV} mV · current_run ${IR_CURRENT_MV} mV · do not mix`,
+      detail: currentPresent
+        ? `reference_run ${IR_GOLD_MV} mV · current_run ${Number(liveMv).toFixed(3)} mV · do not mix`
+        : `reference_run ${IR_GOLD_MV} mV · current_run absent (dynamic_ir_*_direct.json)`,
     },
     staIr,
     product,
