@@ -160,14 +160,14 @@ export const PHASE_COMPARE: Partial<Record<LayoutPhaseId, ComparePair[]>> = {
 export const PHASE_LAYERS: Partial<Record<LayoutPhaseId, LayerSwatch[]>> = {
   floorplan: [
     { id: "die", name: "Die", color: "#6e7681", role: "Chip outline" },
-    { id: "rows", name: "Rows", color: "#3d4a5c", role: "Siti standard-cell" },
+    { id: "rows", name: "Rows", color: "#3d4a5c", role: "Standard-cell sites" },
     { id: "m1", name: "Metal1", color: "#4b8bff", role: "Rail VDD/VSS followpin" },
     { id: "pdn", name: "PDN straps", color: "#e6c84a", role: "VDD/VSS on M4/M7" },
   ],
   pdn: [
     { id: "m1", name: "Metal1", color: "#4b8bff", role: "Followpin on rows" },
-    { id: "m4", name: "Metal4", color: "#c8d44a", role: "Strap PDN verticali" },
-    { id: "m7", name: "Metal7", color: "#f0883e", role: "Strap PDN superiori" },
+    { id: "m4", name: "Metal4", color: "#c8d44a", role: "Vertical PDN straps" },
+    { id: "m7", name: "Metal7", color: "#f0883e", role: "Upper PDN straps" },
   ],
   place: [
     { id: "cells", name: "Cells", color: "#58a6ff", role: "Legalized LEF boxes" },
@@ -177,10 +177,10 @@ export const PHASE_LAYERS: Partial<Record<LayoutPhaseId, LayerSwatch[]>> = {
   cts: [
     { id: "clk", name: "Clock", color: "#f0883e", role: "Clock net + buffers" },
     { id: "cells", name: "Cells", color: "#58a6ff", role: "Stdcell + clock inverters" },
-    { id: "m2", name: "Metal2", color: "#e23d3d", role: "Spine clock (tipico)" },
+    { id: "m2", name: "Metal2", color: "#e23d3d", role: "Typical clock spine" },
   ],
   route: [
-    { id: "m1", name: "Metal1", color: "#4b8bff", role: "Rail + pin locali" },
+    { id: "m1", name: "Metal1", color: "#4b8bff", role: "Rails + local pins" },
     {
       id: "m2",
       name: "Metal2",
@@ -196,10 +196,10 @@ export const PHASE_LAYERS: Partial<Record<LayoutPhaseId, LayerSwatch[]>> = {
       soloShot: "win_layers_m2m3.png",
     },
     { id: "pdn", name: "PDN", color: "#e6c84a", role: "Power straps" },
-    { id: "via", name: "Via", color: "#a371f7", role: "Tagli tra metal" },
+    { id: "via", name: "Via", color: "#a371f7", role: "Cuts between metals" },
   ],
   finish: [
-    { id: "all", name: "All metal", color: "#58a6ff", role: "GDS composito" },
+    { id: "all", name: "All metal", color: "#58a6ff", role: "Composite GDS" },
     {
       id: "m2m3",
       name: "M2/M3",
@@ -210,7 +210,7 @@ export const PHASE_LAYERS: Partial<Record<LayoutPhaseId, LayerSwatch[]>> = {
     { id: "clk", name: "Clock", color: "#f0883e", role: "Clock nets", soloShot: "orfs_final_clocks.png" },
   ],
   pkg: [
-    { id: "ir", name: "IR drop", color: "#f85149", role: "Heatmap tensione" },
-    { id: "gds", name: "GDS", color: "#58a6ff", role: "Layout finale", soloShot: "09_final.png" },
+    { id: "ir", name: "IR drop", color: "#f85149", role: "Voltage heatmap" },
+    { id: "gds", name: "GDS", color: "#58a6ff", role: "Final layout", soloShot: "09_final.png" },
   ],
 };

@@ -306,13 +306,13 @@ export async function getSuiteStatus() {
     },
     {
       id: "dse",
-      label: "Physically-aware DSE",
-      group: "Power",
+      label: "DSE (proposer)",
+      group: "Lab",
       ok:
         signoffReportPass("flowlab", "dse") || signoffReportPass("learn", "dse"),
       detail: "Proposer only — does not run signoff_all",
       action: "dse",
-      href: "/tools?tab=run&action=dse",
+      href: "/lab",
     },
     {
       id: "power_chain",

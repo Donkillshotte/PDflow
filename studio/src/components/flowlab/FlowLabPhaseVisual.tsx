@@ -345,7 +345,7 @@ export function FlowLabPhaseVisual({
             {inspect?.odb && (
               <>
                 <div className="fl-vis-stat">
-                  <span>Istanze</span>
+                  <span>Instances</span>
                   <strong>{inspect.odb.instances}</strong>
                 </div>
                 <div className="fl-vis-stat">
@@ -417,11 +417,11 @@ export function FlowLabPhaseVisual({
             <div className="fl-vis-stat">
               <span>ODB PDN</span>
               <strong className={stageDone ? "ok" : ""}>
-                {inspect?.odb ? "OK" : stageDone ? "verificato" : "—"}
+                {inspect?.odb ? "OK" : stageDone ? "verified" : "—"}
               </strong>
             </div>
             <div className="fl-vis-stat">
-              <span>Istanze</span>
+              <span>Instances</span>
               <strong>{inspect?.odb?.instances ?? "—"}</strong>
             </div>
             <div className="fl-vis-stat">

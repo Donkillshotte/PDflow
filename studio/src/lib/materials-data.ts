@@ -28,7 +28,7 @@ export const MATERIALS: MaterialLink[] = [
   },
   {
     href: "/materials/reference/dse.md",
-    title: "Physically-aware DSE",
+    title: "DSE (proposer)",
     group: "Reference",
     description: "E-graph datapath, BOiLS SSK-GP, Pareto by level, Dynamic IR oracle.",
   },

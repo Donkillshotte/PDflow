@@ -26,7 +26,7 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "OpenROAD · Physical Design Studio",
   description:
-    "Graphical interface for the hands-on physical design course with OpenROAD and ORFS.",
+    "FlowLab course and signoff actions on OpenROAD / ORFS (Nangate45).",
 };
 
 export default function RootLayout({

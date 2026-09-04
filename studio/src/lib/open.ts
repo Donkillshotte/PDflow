@@ -253,7 +253,7 @@ export function listOpenTargets(): {
     { id: "run-chip-ir", label: "Run · chip IR mesh", action: "chip_pdn_ir" },
     { id: "run-vyges-em-ir", label: "Run · vyges-em-ir", action: "vyges_em_ir" },
     { id: "run-dynamic-ir", label: "Run · dynamic IR I(t)", action: "dynamic_ir" },
-    { id: "run-dse", label: "Run · Physically-aware DSE", action: "dse" },
+    { id: "run-dse", label: "Run · DSE (proposer)", action: "dse" },
     { id: "run-power-chain", label: "Run · SPICE chain", action: "power_chain" },
     {
       id: "run-export-spice",
