@@ -72,11 +72,14 @@ if {$eco_grt && [info commands global_route] != ""} {
   }
 }
 
-# Post-route size-only. Default BufferMove SIGSEGVs without GRT and
-# RSZ-0074 with GRT on this netlist. Close is still signoff_all.
+# Post-route setup. Size-up can use the source SPEF. BufferMove cannot:
+# with SPEF loaded, RSZ-0074 fails to build a GRT tree (pin grid vs SPEF).
+# After size-up, replace parasitics with estimate_parasitics -global_routing
+# and try a bounded BufferMove. Catch RSZ-0074 and keep the size-up netlist.
+# Close is still signoff_all.
 #
 # The course SDC puts 20% of 0.46 ns on every I/O. OpenROAD then ranks
-# resp_msg[*] as WNS and spends size-up there. OpenSTA signoff WNS is
+# resp_msg[*] as WNS and spends the budget there. OpenSTA signoff WNS is
 # register-to-register (dpath.a_reg). Ignore output endpoints for this
 # session only — the SDC file is not rewritten.
 if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
@@ -93,7 +96,19 @@ if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
     if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
       puts "WARN ECO setup repair: $err"
     } else {
-      puts "ECO_REPAIR_SETUP sizeup,swap (no BufferMove)"
+      puts "ECO_REPAIR_SETUP sizeup,swap"
+    }
+    if {[info commands estimate_parasitics] != ""} {
+      if {[catch {estimate_parasitics -global_routing} err]} {
+        puts "WARN ECO GRT parasitics: $err"
+      } else {
+        puts "ECO_PARASITICS GRT (BufferMove; SPEF caused RSZ-0074)"
+        if {[catch {repair_timing -setup -skip_gate_cloning -sequence "buffer" -max_buffer_percent 20 -verbose} err]} {
+          puts "WARN ECO buffer repair: $err"
+        } else {
+          puts "ECO_REPAIR_BUFFER"
+        }
+      }
     }
   }
 }

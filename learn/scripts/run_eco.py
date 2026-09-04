@@ -276,9 +276,15 @@ def apply(variant: str) -> dict:
             "connectivity; source ODB restored"
         )
     elif routed and setup_open:
+        extra = (
+            "buffers inserted on GRT parasitics; "
+            if "ECO_REPAIR_BUFFER" in log_text
+            else ""
+        )
         leftover = (
             "size-up legalized (incremental GRT + detailed_route); "
-            "setup still open; signoff_all required"
+            + extra
+            + "setup still open; signoff_all required"
         )
     if ok and restored:
         summary = "ECO apply restored source · post-route repair cannot legalize · run signoff_all next"

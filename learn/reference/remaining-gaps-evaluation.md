@@ -19,7 +19,7 @@ here because the user asked.
 |---|---|---|---|
 | **CCS tables** | **Closed (19-cell sidecar)** — PTM + ngspice | Done | `nangate45_ptm_ccs_sidecar.lib` · official typical.lib stays NLDM |
 | **LVS mismatch** | **Closed on FlowLab GCD compare** — unused CDL filter + FILL from DEF + well→VDD/VSS | Done | Must-connect warnings on DFF_X2 remain in lvsdb |
-| **ECO after finish** | **Closed as propose/apply + signoff_all on a copy** | Done | Apply refused on flowlab. Live apply: incremental GRT + detailed_route legalized size-up (DRT 0). DRT-0206 restore-source remains the fallback. Setup still open at 0.46 ns (eco_scratch WNS −0.01). `signoff_all` names leftover setup open even when the educational golden still passes. Close is `signoff_all`. |
+| **ECO after finish** | **Closed as propose/apply + signoff_all on a copy** | Done | Apply refused on flowlab. Live apply: size-up on SPEF, then BufferMove on GRT parasitics, then incremental GRT + detailed_route. DRT-0206 restore-source remains the fallback. Setup leftover stays named until OpenSTA WNS ≥ 0 at 0.46 ns. Close is `signoff_all`. |
 | **Raphael / StarRC** | **Not closable** — commercial | — | OpenRCX + analytical PEX stay the OSS path |
 | **FasterCap (field solver)** | **Closable** — build + 2-wire demo | Low | Compile FasterCap, run on existing analytical PEX geometry |
 | **Magic `.tech`** | **Partially closable** — write a minimal `.tech` | Medium | Write FreePDK45 `.tech` from the NCSU layer definitions |
