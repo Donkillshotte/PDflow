@@ -283,6 +283,8 @@ def main() -> int:
     check("!reports/dynamic_ir_flowlab_direct.json" in (ROOT / "learn/sim/.gitignore").read_text(), "current_run IR report is not gitignored")
     check("!reports/vyges_em_ir_flowlab.json" in (ROOT / "learn/sim/.gitignore").read_text(), "vyges EM report is not gitignored")
     check("Signoff · leftover named" in story, "home story labels leftover on the signoff step")
+    check('g.id === "signoff_all"' in story, "home leftover bit reads signoff_all, not only LVS")
+    check("leftoverSetupOpenDetail" in story, "home ECO names leftover setup from the copy close")
     check("Gold ${IR_GOLD_MV} mV (reference_run)" not in story, "story IR does not lead with gold as the live number")
     check("current_run ${liveMv" in story, "story IR leads with current_run")
     check("After signoff" in home, "home PKG chip is after signoff")

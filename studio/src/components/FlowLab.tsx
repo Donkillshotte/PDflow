@@ -805,8 +805,8 @@ export function FlowLab() {
               <div>
                 <strong>Finish completed</strong>
                 <p>
-                  Four-pillar close stays on this page. System PDN / Phase 2
-                  is on /pkg.
+                  Four-pillar close stays on this page. Leftover stays named.
+                  System PDN / Phase 2 is on /pkg.
                 </p>
               </div>
               <a className="fl-btn fl-btn-primary" href="/pkg">

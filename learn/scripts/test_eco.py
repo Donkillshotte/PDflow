@@ -165,6 +165,7 @@ def main() -> int:
     check("CLOSE_PHASES.findIndex" in flow, "next-phase walk is RTL → finish only")
     check("PHASE_IDS.indexOf(phaseId) + 1" not in flow, "next-phase walk does not step onto PKG")
     check("Open PKG" in flow and 'href="/pkg"' in flow, "finish next banner opens /pkg, not a FlowLab PKG phase")
+    check("Leftover stays named" in flow, "finish-completed banner does not call leftover-free")
     check("action === phase.action" in flow, "next banner only after the phase action, not ECO/STA")
     check('router.replace("/pkg")' in flow, "stale /flow?phase=pkg opens /pkg")
     check("CLOSE_PHASES" in flow, "FlowLab progress counts RTL → finish, not PKG")

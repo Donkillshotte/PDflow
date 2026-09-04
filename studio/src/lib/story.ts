@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 import { LEARN_ROOT, LESSONS, readProgress } from "./course";
 import { collectStageResults } from "./results";
-import { evaluateSignoffGates } from "./signoff";
+import { evaluateSignoffGates, leftoverSetupOpenDetail } from "./signoff";
 import { PIPELINE_STAGES } from "./jobs";
 
 export const STORY_VARIANT = "flowlab";
@@ -267,15 +267,21 @@ export function getProductStory(): ProductStory {
   const pillars = gates.gates.filter((g) => pillarIds.includes(g.id));
   const signoffPassed = pillars.filter((g) => g.ok).length;
   const leftoverBit = (() => {
+    const all = gates.gates.find((g) => g.id === "signoff_all")?.detail ?? "";
+    const at = all.indexOf("leftover");
+    if (at >= 0) return ` · ${all.slice(at)}`;
     const detail = gates.gates.find((g) => g.id === "equivalence")?.detail ?? "";
-    const at = detail.indexOf("leftover");
-    return at >= 0 ? ` · ${detail.slice(at)}` : "";
+    const eqAt = detail.indexOf("leftover");
+    return eqAt >= 0 ? ` · ${detail.slice(eqAt)}` : "";
   })();
   const ecoApply = readReportFile("eco_apply_eco_scratch.json");
   const ecoLeftover =
     typeof ecoApply?.leftover === "string" && ecoApply.leftover
       ? ecoApply.leftover
       : "";
+  const ecoCloseLeftover = leftoverSetupOpenDetail(
+    readReportFile("signoff_all_eco_scratch.json"),
+  );
 
   const staIrReport = readReport("sta_ir_aware");
   const staBlock = (staIrReport?.sta ?? null) as
@@ -370,7 +376,9 @@ export function getProductStory(): ProductStory {
       href: "/flow?phase=finish#eco",
       ready: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/eco_flowlab.json")),
       detail: ecoLeftover
-        ? `Propose on flowlab. Apply leftover: ${ecoLeftover}`
+        ? ecoCloseLeftover
+          ? `Propose on flowlab. Apply leftover: ${ecoLeftover}. Close leftover: ${ecoCloseLeftover}`
+          : `Propose on flowlab. Apply leftover: ${ecoLeftover}`
         : "Propose on flowlab. Apply and signoff_all close on eco_scratch only.",
     },
     {
