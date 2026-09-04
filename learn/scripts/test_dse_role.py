@@ -31,6 +31,10 @@ def main() -> int:
     check("dynamic_ir_current_path" in fid, "fidelity names the current_run helper")
     path = dynamic_ir_current_path("flowlab")
     check(path.name == "dynamic_ir_flowlab_direct.json", f"current path is _direct.json, got {path.name}")
+    helper = fid.split("def dynamic_ir_current_path")[1].split("def ")[0]
+    check('dynamic_ir_{variant}.json' not in helper, "current path never falls back to the gold sentinel")
+    check("_current_run_ir" in fid, "ingest refuses gold:true as current_run")
+    check('ir.get("gold") is True' in fid.split("def _current_run_ir")[1].split("def ")[0], "gold payload is dropped")
     tmp = Path(tempfile.mkdtemp(prefix="dse-ingest-")) / "m.jsonl"
     mem = DesignMemory(tmp)
     phys = ingest_physical("flowlab", mem, "gcd")

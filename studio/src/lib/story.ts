@@ -271,7 +271,15 @@ export function getProductStory(): ProductStory {
         n_gates?: number;
       }
     | null;
+  const staIrBlock = (staIrReport?.ir ?? null) as
+    | { worst_cell_ir_mv?: number; map?: string }
+    | null;
   const staIrReady = staIrReport?.ok === true && staBlock?.slack_ir_ns != null;
+  const staMap = String(staIrBlock?.map ?? "");
+  const staCurrent =
+    staMap.includes("_direct.map.csv") && staIrBlock?.worst_cell_ir_mv != null
+      ? ` · current_run ${Number(staIrBlock.worst_cell_ir_mv).toFixed(3)} mV`
+      : "";
   const staIr = {
     ready: staIrReady,
     slackNs: num(staBlock?.slack_ns),
@@ -279,8 +287,8 @@ export function getProductStory(): ProductStory {
     nJoined: num(staBlock?.n_joined),
     nGates: num(staBlock?.n_gates),
     detail: staIrReady
-      ? `slack ${Number(staBlock?.slack_ns).toFixed(4)} ns → IR ${Number(staBlock?.slack_ir_ns).toFixed(4)} ns · ${staBlock?.n_joined}/${staBlock?.n_gates} gates joined`
-      : "Educational NLDM × ITerm V — run sta_ir_aware after dynamic_ir",
+      ? `slack ${Number(staBlock?.slack_ns).toFixed(4)} ns → IR ${Number(staBlock?.slack_ir_ns).toFixed(4)} ns · ${staBlock?.n_joined}/${staBlock?.n_gates} gates joined${staCurrent}`
+      : "Educational NLDM × ITerm V — run sta_ir_aware after dynamic_ir current_run",
   };
 
   const gold = readReport("dynamic_ir");

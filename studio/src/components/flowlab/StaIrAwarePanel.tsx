@@ -30,6 +30,7 @@ type StaIr = {
   n_gates?: number | null;
   degradation_ps?: number | null;
   worst_cell_ir_mv?: number | null;
+  map?: string | null;
   path_gates?: GateRow[];
   hottest_cells?: CellRow[];
   note?: string;
@@ -83,8 +84,8 @@ export function StaIrAwarePanel({
         <strong>STA IR-aware</strong>
         <p>
           OpenSTA NLDM typical-V gate delay × (Vdd/V<sub>inst</sub>)<sup>α</sup> on ITerm-joined
-          cells. Nets stay nominal. Not PrimeTime / Tempus, not a second liberty at Vmin. Gold
-          Dynamic IR 45.298 mV is untouched.
+          cells from the current_run map. Nets stay nominal. Not PrimeTime / Tempus, not a second
+          liberty at Vmin. Gold Dynamic IR 45.298 mV is another extract.
         </p>
       </div>
       {err && <p className="sig-err">{err}</p>}
@@ -109,7 +110,16 @@ export function StaIrAwarePanel({
                 {data.n_joined ?? "—"}/{data.n_gates ?? "—"}
               </dd>
             </div>
+            <div>
+              <dt>Worst cell IR</dt>
+              <dd>{fmtMv(data.worst_cell_ir_mv)}</dd>
+            </div>
           </dl>
+          {data.map ? (
+            <p className="sta-ir-map">
+              current_run map <code>{data.map}</code>
+            </p>
+          ) : null}
           {data.path_gates && data.path_gates.length > 0 && (
             <table className="sta-ir-table">
               <thead>

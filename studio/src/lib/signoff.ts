@@ -309,6 +309,7 @@ export type StaIrAwareSummary = {
   n_gates?: number | null;
   degradation_ps?: number | null;
   worst_cell_ir_mv?: number | null;
+  map?: string | null;
   path_gates?: Record<string, unknown>[];
   hottest_cells?: Record<string, unknown>[];
   note?: string;
@@ -329,6 +330,7 @@ export function readStaIrAware(variant = "flowlab"): StaIrAwareSummary | null {
     n_gates: (sta.n_gates as number | null | undefined) ?? null,
     degradation_ps: (sta.degradation_ps as number | null | undefined) ?? null,
     worst_cell_ir_mv: (ir.worst_cell_ir_mv as number | null | undefined) ?? null,
+    map: (ir.map as string | null | undefined) ?? null,
     path_gates: (report.path_gates as Record<string, unknown>[] | undefined) ?? [],
     hottest_cells: (report.hottest_cells as Record<string, unknown>[] | undefined) ?? [],
     note: (report.note as string | undefined) ?? undefined,

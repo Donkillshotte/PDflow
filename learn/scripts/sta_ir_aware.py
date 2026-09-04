@@ -21,7 +21,14 @@ from pdn_extract import parse_pg_sinks
 VDD_DEFAULT = 1.1
 ALPHA_DEFAULT = 1.3
 GOLD_IR_MV = 45.298
+GOLD_MAP_NAME = "dynamic_ir_flowlab.map.csv"
 _REPO = Path(__file__).resolve().parents[2]
+
+
+def refuse_gold_map(map_csv: Path) -> None:
+    """Gold 45.298 mV map is a different extract. Do not scale STA from it."""
+    if map_csv.name == GOLD_MAP_NAME:
+        raise SystemExit("FAIL refuse: will not scale STA from locked gold Dynamic IR map")
 
 
 def _rel(path: Path) -> str:
@@ -238,6 +245,11 @@ def main() -> int:
             f"FAIL need spice+map for per-cell V ({args.spice} {args.map_csv})",
             file=sys.stderr,
         )
+        return 2
+    try:
+        refuse_gold_map(args.map_csv)
+    except SystemExit as exc:
+        print(str(exc), file=sys.stderr)
         return 2
     report = build_report(
         sta_json=args.sta,

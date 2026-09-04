@@ -109,7 +109,43 @@ def main() -> int:
         check(len(blob.get("path_gates") or []) == 18, "live path_gates")
         check(all(g.get("joined") for g in blob["path_gates"]), "live all path gates joined")
         check(abs(float(blob["ir"]["worst_cell_ir_mv"]) - 6.075) < 0.02, "live worst cell is current_run 6.075 mV")
+        check(str(blob["ir"]["map"]).endswith("dynamic_ir_flowlab_direct.map.csv"), "live map is current_run")
         check(not str(blob["sta"]["arrivals"]).startswith("/"), "report paths are repo-relative")
+    wrapper = (_SCRIPTS / "run_sta_ir_aware.sh").read_text()
+    check('dynamic_ir_${VARIANT}_direct.map.csv' in wrapper, "wrapper pins current_run map")
+    check('dynamic_ir_${VARIANT}.map.csv' not in wrapper, "wrapper has no gold map fallback")
+    with tempfile.TemporaryDirectory() as td:
+        tdir = Path(td)
+        gold_map = tdir / "dynamic_ir_flowlab.map.csv"
+        gold_map.write_text("node,x_dbu,y_dbu,v,ir_mv,seq\nn1,0,0,0.9,200,0\n")
+        sta_p = tdir / "sta.json"
+        spice_p = tdir / "pg.sp"
+        out_p = tdir / "out.json"
+        sta_p.write_text(json.dumps({"worst_path": wp, "pins": []}))
+        spice_p.write_text("* Sink\nI1 n1 0 DC 1e-6\n")
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(_SCRIPTS / "sta_ir_aware.py"),
+                "--sta",
+                str(sta_p),
+                "--spice",
+                str(spice_p),
+                "--map",
+                str(gold_map),
+                "--out",
+                str(out_p),
+                "--variant",
+                "fixture",
+            ],
+            cwd=str(ROOT),
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        check(proc.returncode == 2, f"refuses gold map exit 2 ({proc.returncode})")
+        check("will not scale STA from locked gold Dynamic IR map" in proc.stderr, "refuses gold map in stderr")
+        check(not out_p.is_file(), "gold map does not write a report")
     gold = json.loads((ROOT / "learn/sim/reports/dynamic_ir_flowlab.json").read_text())
     check(gold.get("gold") is True, "gold sentinel")
     check(abs(float(gold["worst_droop_mv"]) - GOLD_IR_MV) < 0.02, "gold 45.298 mV untouched")

@@ -57,7 +57,7 @@ All signoff actions require **`finish`** completed:
 | Action | Minimum files |
 |---|---|
 | `sta_signoff` | `6_final.v` |
-| `sta_ir_aware` | `6_final.v` + `sta_arrivals_{v}.json` + Dynamic IR `map.csv` |
+| `sta_ir_aware` | `6_final.v` + `sta_arrivals_{v}.json` + `dynamic_ir_{v}_direct.map.csv` (not gold) |
 | `drc_signoff`, `klayout_lvs` | `6_final.gds` |
 | `power_signoff`, `signoff_all` | `6_final.odb` |
 

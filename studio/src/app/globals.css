@@ -2692,7 +2692,8 @@ button.pipeline-node {
 .sta-ir-table td { padding: 0.2rem 0.35rem; text-align: left; border-bottom: 1px solid var(--fl-border); }
 .sta-ir-table tr.is-gap { opacity: 0.65; }
 .sta-ir-table small { color: var(--fl-muted); }
-.sta-ir-hot, .sta-ir-empty { margin: 0; font-size: 0.75rem; color: var(--fl-muted); }
+.sta-ir-hot, .sta-ir-empty, .sta-ir-map { margin: 0; font-size: 0.75rem; color: var(--fl-muted); }
+.sta-ir-map code { font-size: 0.72rem; }
 .sta-ir-hot code { font-size: 0.72rem; }
 
 .sig-planned-badge {

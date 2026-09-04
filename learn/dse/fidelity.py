@@ -120,12 +120,16 @@ def reports_dir(variant: str) -> Path:
 
 
 def dynamic_ir_current_path(variant: str) -> Path:
-    """Prefer current_run I(t). Gold 45.298 mV stays dynamic_ir_flowlab.json."""
-    rd = reports_dir(variant)
-    direct = rd / f"dynamic_ir_{variant}_direct.json"
-    if direct.is_file():
-        return direct
-    return rd / f"dynamic_ir_{variant}.json"
+    """Current_run I(t) only. Gold 45.298 mV stays dynamic_ir_flowlab.json."""
+    return reports_dir(variant) / f"dynamic_ir_{variant}_direct.json"
+
+
+def _current_run_ir(variant: str) -> dict:
+    """Layout I(t). Never the locked gold teacher."""
+    ir = _read_json(dynamic_ir_current_path(variant))
+    if not ir or ir.get("gold") is True:
+        return {}
+    return ir
 
 
 def orfs_logs(variant: str) -> Path:
@@ -150,7 +154,7 @@ def ingest_physical(variant: str, mem: DesignMemory, design_id: str = "gcd") -> 
     """F3+F4 observation of the *current* layout. Separate level from ABC search."""
     rd = reports_dir(variant)
     sta = _read_json(rd / f"sta_signoff_{variant}.json")
-    ir = _read_json(dynamic_ir_current_path(variant))
+    ir = _current_run_ir(variant)
     chip = _read_json(rd / f"pdn_chip_ir_{variant}.json")
     if not ir and not sta:
         return None
@@ -180,20 +184,11 @@ def ingest_physical(variant: str, mem: DesignMemory, design_id: str = "gcd") -> 
     q = QoR(
         wns_cost=wns_cost_from_slack_ns(slack),
         static_ir_mv=_mv(static.get("worst_ir"), static.get("worst_ir_mv")),
-        dynamic_ir_mv=_mv(
-            dyn.get("worst_droop"),
-            dyn.get("worst_droop_mv")
-            if dyn.get("worst_droop_mv") is not None
-            else (ir or {}).get("worst_droop_mv") if (ir or {}).get("gold") is True else None,
-        ),
+        dynamic_ir_mv=_mv(dyn.get("worst_droop"), dyn.get("worst_droop_mv")),
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4" if ir else "F3",
-        note=(
-            "ingested gold teacher — not current_run I(t)"
-            if (ir or {}).get("gold") is True
-            else "ingested layout oracles — current_run I(t), not gold 45.298"
-        ),
+        note="ingested layout oracles — current_run I(t), not gold 45.298",
     )
     rtl = design_rtl(design_id)
     c = Candidate(
@@ -214,7 +209,7 @@ def ingest_physical(variant: str, mem: DesignMemory, design_id: str = "gcd") -> 
 
 
 def ingest_pdn(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candidate | None:
-    ir = _read_json(dynamic_ir_current_path(variant))
+    ir = _current_run_ir(variant)
     if not ir:
         return None
     dyn = ir.get("dynamic") or {}
@@ -232,20 +227,11 @@ def ingest_pdn(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candi
     static = ir.get("static") or {}
     q = QoR(
         static_ir_mv=_mv(static.get("worst_ir"), static.get("worst_ir_mv")),
-        dynamic_ir_mv=_mv(
-            dyn.get("worst_droop"),
-            dyn.get("worst_droop_mv")
-            if dyn.get("worst_droop_mv") is not None
-            else ir.get("worst_droop_mv") if ir.get("gold") is True else None,
-        ),
+        dynamic_ir_mv=_mv(dyn.get("worst_droop"), dyn.get("worst_droop_mv")),
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4",
-        note=(
-            "PDN-level gold teacher — not current_run I(t)"
-            if ir.get("gold") is True
-            else "PDN-level observation on current_run I(t); gold 45.298 is another extract"
-        ),
+        note="PDN-level observation on current_run I(t); gold 45.298 is another extract",
     )
     c = Candidate(
         id=DesignMemory.new_id(),

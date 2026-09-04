@@ -51,6 +51,8 @@ type StaIr = {
   n_joined?: number | null;
   n_gates?: number | null;
   degradation_ps?: number | null;
+  worst_cell_ir_mv?: number | null;
+  map?: string | null;
 };
 
 type EcoInfo = {
@@ -238,6 +240,9 @@ export function SignoffMatrixPanel({
                     {data.staIr.slack_ir_ns?.toFixed(4) ?? "—"} ns
                     {data.staIr.n_joined != null && data.staIr.n_gates != null
                       ? ` · ${data.staIr.n_joined}/${data.staIr.n_gates} gates`
+                      : ""}
+                    {data.staIr.worst_cell_ir_mv != null
+                      ? ` · current_run ${data.staIr.worst_cell_ir_mv.toFixed(3)} mV`
                       : ""}
                   </small>
                 )}

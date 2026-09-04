@@ -13,22 +13,18 @@ OUT="${OUT_DIR}/sta_ir_aware_${VARIANT}.json"
 SPICE="${RES}/pdn/pg_vdd_bumps.sp"
 [[ -f "${SPICE}" ]] || SPICE="${RES}/pdn/pg_vdd.sp"
 
-MAP=""
-for cand in \
-  "${OUT_DIR}/dynamic_ir_${VARIANT}_direct.map.csv" \
-  "${OUT_DIR}/dynamic_ir_${VARIANT}.map.csv"
-do
-  if [[ -f "${cand}" ]]; then
-    MAP="${cand}"
-    break
-  fi
-done
+# current_run I(t) only. Gold 45.298 mV map is dynamic_ir_flowlab.map.csv.
+MAP="${OUT_DIR}/dynamic_ir_${VARIANT}_direct.map.csv"
 
 export PYTHONPATH="${ROOT}/learn/scripts:/usr/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 
 [[ -f "${STA}" ]] || { echo "FAIL missing ${STA} — run dynamic_ir or export_sta_arrivals first"; exit 1; }
 [[ -f "${SPICE}" ]] || { echo "FAIL missing ${SPICE} — run chip_pdn_ir / write_pg_spice first"; exit 1; }
-[[ -n "${MAP}" ]] || { echo "FAIL missing Dynamic IR map.csv — run dynamic_ir current_run first"; exit 1; }
+if [[ "$(basename "${MAP}")" == "dynamic_ir_flowlab.map.csv" ]]; then
+  echo "FAIL refuse: will not scale STA from locked gold Dynamic IR map"
+  exit 2
+fi
+[[ -f "${MAP}" ]] || { echo "FAIL missing ${MAP} — run dynamic_ir current_run first"; exit 1; }
 
 mkdir -p "${OUT_DIR}"
 python3 "${ROOT}/learn/scripts/sta_ir_aware.py" \
