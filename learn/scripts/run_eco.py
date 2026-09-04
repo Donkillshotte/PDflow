@@ -180,32 +180,55 @@ def apply(variant: str) -> dict:
     )
     log = obj / "eco_apply.log"
     chunks = [(proc.stdout or "") + "\n" + (proc.stderr or "")]
-    wrote = out.is_file() and proc.returncode == 0
-    wrote_v = wrote and v_out.is_file()
-    wrote_def = wrote and def_out.is_file()
-    wrote_cdl = wrote and cdl_out.is_file()
-    wrote_spef = wrote and spef_out.is_file()
+    log_text = chunks[0]
+    restored = "ECO_RESTORE_SOURCE" in log_text
     gds_out = obj / "eco_out.gds"
-    wrote_gds = False
-    if wrote and wrote_def:
-        lyt = FLOW / "objects/nangate45/gcd/flowlab/klayout.lyt"
-        if not lyt.is_file():
-            lyt = FLOW / "platforms/nangate45/FreePDK45.lyt"
-        cells = FLOW / "platforms/nangate45/gds/NangateOpenCellLibrary.gds"
-        g_env = os.environ.copy()
-        g_env["ECO_DEF"] = str(def_out)
-        g_env["ECO_GDS"] = str(gds_out)
-        g_env["ECO_LYT"] = str(lyt)
-        g_env["ECO_CELL_GDS"] = str(cells)
-        gds_proc = subprocess.run(
-            ["klayout", "-zz", "-rm", str(STREAM)],
-            capture_output=True,
-            text=True,
-            env=g_env,
-            timeout=180,
-        )
-        chunks.append((gds_proc.stdout or "") + "\n" + (gds_proc.stderr or ""))
-        wrote_gds = gds_out.is_file() and gds_proc.returncode == 0
+    if restored:
+        # Legal source copy. Do not stream GDS from a mutated DEF.
+        if src.is_file():
+            shutil.copy2(src, out)
+        for name, dest in (
+            ("6_final.def", def_out),
+            ("6_final.v", v_out),
+            ("6_final.cdl", cdl_out),
+            ("6_final.spef", spef_out),
+            ("6_final.gds", gds_out),
+        ):
+            side = src.parent / name
+            if side.is_file():
+                shutil.copy2(side, dest)
+        wrote = out.is_file() and proc.returncode == 0
+        wrote_v = wrote and v_out.is_file()
+        wrote_def = wrote and def_out.is_file()
+        wrote_cdl = wrote and cdl_out.is_file()
+        wrote_spef = wrote and spef_out.is_file()
+        wrote_gds = wrote and gds_out.is_file()
+    else:
+        wrote = out.is_file() and proc.returncode == 0
+        wrote_v = wrote and v_out.is_file()
+        wrote_def = wrote and def_out.is_file()
+        wrote_cdl = wrote and cdl_out.is_file()
+        wrote_spef = wrote and spef_out.is_file()
+        wrote_gds = False
+        if wrote and wrote_def:
+            lyt = FLOW / "objects/nangate45/gcd/flowlab/klayout.lyt"
+            if not lyt.is_file():
+                lyt = FLOW / "platforms/nangate45/FreePDK45.lyt"
+            cells = FLOW / "platforms/nangate45/gds/NangateOpenCellLibrary.gds"
+            g_env = os.environ.copy()
+            g_env["ECO_DEF"] = str(def_out)
+            g_env["ECO_GDS"] = str(gds_out)
+            g_env["ECO_LYT"] = str(lyt)
+            g_env["ECO_CELL_GDS"] = str(cells)
+            gds_proc = subprocess.run(
+                ["klayout", "-zz", "-rm", str(STREAM)],
+                capture_output=True,
+                text=True,
+                env=g_env,
+                timeout=180,
+            )
+            chunks.append((gds_proc.stdout or "") + "\n" + (gds_proc.stderr or ""))
+            wrote_gds = gds_out.is_file() and gds_proc.returncode == 0
     log.write_text("\n".join(chunks))
     err = None
     if proc.returncode < 0:

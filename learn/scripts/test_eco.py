@@ -87,6 +87,7 @@ def main() -> int:
     check("ECO_FASTROUTE" in tcl and "global_route" in tcl, "repair tcl initializes GRT before size-up")
     check("detailed_route" in tcl and "design_is_routed" in tcl, "repair tcl detailed-routes before writing 6_final")
     check("ECO_RESTORE_SOURCE" in tcl, "repair tcl restores source ODB if size-up is not routed")
+    check("file copy -force" in tcl, "unrouted restore copies the input ODB file (read_db cannot reload)")
     check("exit 1" not in tcl.split("design_is_routed")[1].split("write_db")[0], "unrouted size-up does not write a broken 6_final")
     check("ECO_RESTORE_SOURCE" in src, "apply report names a restored source")
     check("ECO_SPEF_IN" in src, "apply passes the source 6_final.spef")

@@ -113,8 +113,12 @@ if {[info commands detailed_route] != ""} {
 
 if {[info commands design_is_routed] != "" && ![design_is_routed]} {
   puts "WARN ECO design is not routed after size-up — restoring source ODB"
-  read_db $::env(ECO_ODB)
+  # read_db cannot reload a populated db (ORD-0047). Copy the input file
+  # and stop before write_def of the mutated netlist.
+  file copy -force $::env(ECO_ODB) $::env(ECO_ODB_OUT)
   puts "ECO_RESTORE_SOURCE"
+  puts "ECO_REPAIR_WROTE $::env(ECO_ODB_OUT)"
+  exit 0
 }
 
 write_db $::env(ECO_ODB_OUT)
