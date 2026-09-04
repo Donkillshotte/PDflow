@@ -52,6 +52,7 @@ After lessons 00–07, for end-to-end power integrity:
 
 - [suite-status.md](./suite-status.md) — live WORKS / FAIL / GAP table for the whole flow
 - [../../docs/rtl_to_signoff.md](../../docs/rtl_to_signoff.md) — living campaign: leftover-free **stopped**, not achieved
+- [../../docs/rtl_to_signoff_close_plan.md](../../docs/rtl_to_signoff_close_plan.md) — next action: leftover-named suite integrity (plan only)
 - [gaps.md](./gaps.md) — license/PDK gated vs to-build
 - [signoff-matrix.md](./signoff-matrix.md) — pillars, Phase 2 (HotSpot + dummy RDL)
 - [gap-close-paths.md](./gap-close-paths.md) — what is closable vs leftover on purpose

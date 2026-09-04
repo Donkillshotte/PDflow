@@ -11,6 +11,7 @@ DSE plan.** Do not fold this review into `tpe_plan.md`, `product.md`,
 | Branch | `cursor/complete-pd-flow-86b9` @ `3bb105d` |
 | Surface | Course / Studio only |
 | Verdict | **Stopped, not achieved.** Path is leftover-named and functional on the educational golden. It is **not leftover-free.** |
+| Next action | [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md) — leftover-named suite integrity. Plan only until a new implementation goal. |
 
 The leftover-free RTL-to-signoff goal ran ~17 h and was stopped on
 request. Green `signoff_all` still names leftovers. Do not redefine
@@ -202,6 +203,8 @@ PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_eco.py
 ## What a later resume may do
 
 Resume is a **new** goal, not a silent continuation of leftover-free.
+Authorized next work is the suite-integrity plan:
+[`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md).
 
 Allowed without a new PDK / SDC:
 

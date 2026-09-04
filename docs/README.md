@@ -37,6 +37,7 @@ stays 45.298 mV.
 
 1. [`course.md`](course.md)
 2. [`rtl_to_signoff.md`](rtl_to_signoff.md) — living campaign: leftover-free **stopped**, not achieved
+2b. [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md) — next action: leftover-named suite integrity (plan only)
 3. [`../learn/README.md`](../learn/README.md) · [`../learn/CURRICULUM.md`](../learn/CURRICULUM.md)
 4. [`../studio/README.md`](../studio/README.md)
 

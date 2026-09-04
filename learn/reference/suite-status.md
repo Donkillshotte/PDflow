@@ -79,6 +79,10 @@ real, but it is not the commercial / foundry object with the same name.
 
 ## Next honest closes (this goal)
 
+The six physical closes below are **done**. The leftover-free goal was
+stopped. Next action is leftover-named suite integrity (plan only):
+[`docs/rtl_to_signoff_close_plan.md`](../../docs/rtl_to_signoff_close_plan.md).
+
 Do all six. Do not fake a pass. Do not restamp gold IR **45.298 mV**.
 Course stays **0/8**. `gcd/flowlab/` baseline ODBs are not overwritten.
 
