@@ -226,7 +226,11 @@ def validate() -> dict:
         slack is not None
         and slack_ir is not None
         and float(slack_ir) <= float(slack) + 1e-12
-        and n_join == n_gates == 18
+        and n_join is not None
+        and n_gates is not None
+        and int(n_join) == int(n_gates)
+        and int(n_gates) >= 1
+        and float(slack) < 0
     )
     _check(
         checks,
@@ -235,8 +239,8 @@ def validate() -> dict:
         status="READY" if path_ok else "GAP",
         quantity="STA slack → slack_ir",
         value={"slack_ns": slack, "slack_ir_ns": slack_ir, "joined": f"{n_join}/{n_gates}"},
-        bound="slack_ir ≤ slack; 18/18 gates on the GCD worst max path",
-        note="NLDM typical-V scaled by (Vdd/V_inst)^1.3. Not Tempus, not a second liberty.",
+        bound="slack_ir ≤ slack; joined==gates on the SPEF WNS path (not ideal-RC MET)",
+        note="NLDM typical-V scaled by (Vdd/V_inst)^1.3. Same SPEF as sta_signoff. Not Tempus.",
     )
 
     gates = sta_ir.get("path_gates") or []

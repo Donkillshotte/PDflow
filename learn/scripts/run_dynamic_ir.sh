@@ -127,6 +127,9 @@ if ! command -v sta >/dev/null 2>&1; then
 fi
 echo "=== OpenSTA report_arrival → ${STA_JSON} ===" | tee -a "${LOG}"
 unset STA_OUT
+if [[ -f "${RES}/6_final.spef" ]]; then
+  export STA_SPEF="${RES}/6_final.spef"
+fi
 STA_LIB="${LIB}" STA_V="${RES}/6_final.v" STA_SDC="${SDC}" FLOW_VARIANT="${VARIANT}" \
   python3 "${ROOT}/learn/scripts/export_sta_arrivals.py" 2>&1 | tee -a "${LOG}"
 [[ -f "${STA_JSON}" ]] || { echo "FAIL missing ${STA_JSON}"; exit 1; }

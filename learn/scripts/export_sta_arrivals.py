@@ -164,6 +164,10 @@ def main() -> int:
     env["STA_V"] = str(v)
     env["STA_SDC"] = str(sdc)
     spef = os.environ.get("STA_SPEF")
+    if not spef:
+        candidate = res / "6_final.spef"
+        if candidate.is_file():
+            spef = str(candidate)
     if spef:
         env["STA_SPEF"] = spef
     proc = subprocess.run(
@@ -201,11 +205,11 @@ def main() -> int:
         "verilog": str(v),
         "sdc": str(sdc),
         "via": "OpenSTA report_arrival on output pins — t50 from rise arrival, not VCD",
-        "spef": os.environ.get("STA_SPEF") or None,
+        "spef": env.get("STA_SPEF") or None,
         "spef_note": (
-            "STA_SPEF was set — path/arrival include OpenRCX nets"
-            if os.environ.get("STA_SPEF")
-            else "no STA_SPEF — NLDM typical-V with ideal interconnect; net delay on the path is 0"
+            "path/arrival include OpenRCX nets from 6_final.spef (same parasitics as sta_signoff)"
+            if env.get("STA_SPEF")
+            else "no SPEF — NLDM typical-V with ideal interconnect; net delay on the path is 0"
         ),
         "pins": with_arr,
         "by_inst": by_inst,

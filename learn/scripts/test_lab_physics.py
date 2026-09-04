@@ -27,7 +27,7 @@ def main() -> int:
     check(abs(float(by["gold_sentinel"]["value"]) - GOLD_MV) < 0.02, "gold value")
     check(by["current_run_droop"]["ok"], "current_run ~6.075")
     check(by["gold_vs_current_split"]["ok"], "gold and current stay apart")
-    check(by["sta_ir_path"]["ok"], "STA IR 18/18")
+    check(by["sta_ir_path"]["ok"], "STA IR path is SPEF WNS, joined")
     check(by["sta_ir_reconstruct"]["ok"], "per-gate sum = slack − slack_ir")
     check(by["sta_ir_alpha_law"]["ok"], "α-law on joined gates")
     check(by["gcd_orfs_vs_dynamic"]["ok"], "ORFS static and TRAN same order on GCD")

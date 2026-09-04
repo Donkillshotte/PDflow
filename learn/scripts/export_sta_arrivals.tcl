@@ -44,6 +44,7 @@ foreach pin [get_pins -hierarchical *] {
   incr n
 }
 puts "STA_PATH_BEGIN"
+report_wns
 report_checks -path_delay max -fields {input_pin} -digits 6 -format full -group_path_count 1
 puts "STA_PATH_END"
 puts "STA_ARRIVALS_DONE n=$n"
