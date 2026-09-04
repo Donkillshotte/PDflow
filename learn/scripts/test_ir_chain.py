@@ -51,7 +51,7 @@ def main() -> int:
     check("current_run_dynamic_ir" in meshes, "ledger names current_run")
     check(meshes["current_run_dynamic_ir"].get("gold") is False, "current_run is not gold")
     check("vyges_em_ir" in meshes, "ledger names vyges")
-    check(int(meshes["vyges_em_ir"].get("em_checked") or -1) == 0, "ledger EM stays unchecked")
+    check(meshes["vyges_em_ir"].get("em_checked") == 0, "ledger EM stays unchecked")
     check("system_pdn" in meshes, "ledger names system PDN")
     gold_v = float(meshes["gold_dynamic_ir"]["dynamic_mv"])
     chip_v = float(meshes["chip_pdn"]["static_mv"])
