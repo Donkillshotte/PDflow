@@ -29,7 +29,8 @@ def main() -> int:
     current = load("dynamic_ir_flowlab_direct.json")
     check(current.get("ok") is True, "current_run direct report is ok")
     check(current.get("gold") is not True, "current_run is not the gold sentinel")
-    check(abs(float(current.get("worst_droop_mv") or 0) - 6.075) < 0.02, "current_run droop is ~6.075 mV")
+    cur_mv = float((current.get("dynamic") or {}).get("worst_droop") or 0) * 1e3
+    check(abs(cur_mv - 6.075) < 0.02, "current_run droop is ~6.075 mV")
     story = (ROOT / "studio/src/lib/story.ts").read_text()
     check("dynamic_ir_${STORY_VARIANT}_direct.json" in story, "story reads current_run from _direct.json")
     check("goldPresent ? IR_CURRENT_MV" not in story, "story does not invent current_run from the gold file")
