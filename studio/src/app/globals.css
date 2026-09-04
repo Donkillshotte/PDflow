@@ -2629,6 +2629,43 @@ button.pipeline-node {
   gap: 0.65rem;
 }
 .sig-matrix-head p { margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--fl-muted); }
+.sig-variant-compare {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.sig-variant-compare li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface);
+}
+.sig-variant-compare li[data-kind="locked"] {
+  border-color: rgba(210, 153, 34, 0.45);
+}
+.sig-variant-compare li[data-kind="copy"] {
+  border-color: rgba(46, 160, 67, 0.4);
+}
+.sig-variant-compare span {
+  font-size: 0.72rem;
+  color: var(--fl-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sig-variant-compare b {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.sig-variant-compare small {
+  font-size: 0.72rem;
+  color: var(--fl-muted);
+  line-height: 1.35;
+}
 .sig-err { color: #f85149; }
 .sig-pillar-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 .sig-pillar-list li {

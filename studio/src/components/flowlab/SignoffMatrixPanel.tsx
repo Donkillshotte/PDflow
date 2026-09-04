@@ -177,6 +177,7 @@ export function SignoffMatrixPanel({
   showPhase2?: boolean;
 }) {
   const [data, setData] = useState<SignoffApi | null>(null);
+  const [copy, setCopy] = useState<SignoffApi | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -186,6 +187,12 @@ export function SignoffMatrixPanel({
       if (!res.ok) throw new Error(`signoff ${res.status}`);
       setData(await res.json());
       setErr(null);
+      if (variant === "flowlab") {
+        const copyRes = await fetch("/api/signoff?variant=eco_scratch");
+        setCopy(copyRes.ok ? await copyRes.json() : null);
+      } else {
+        setCopy(null);
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Signoff error");
     }
@@ -211,12 +218,44 @@ export function SignoffMatrixPanel({
           {data && (
             <>
               {" "}
-              · variant <code>{data.variant}</code>
+              · matrix is locked <code>{data.variant}</code>
+              {copy ? (
+                <>
+                  {" "}
+                  · ECO close is <code>eco_scratch</code>
+                </>
+              ) : null}
             </>
           )}
         </p>
         {err && <p className="sig-err">{err}</p>}
       </div>
+      {variant === "flowlab" && (
+        <ol className="sig-variant-compare" aria-label="Locked baseline versus ECO copy">
+          <li data-kind="locked">
+            <span>Locked flowlab</span>
+            <b>
+              {data?.evaluation.gates.find((g) => g.id === "signoff_all")?.detail ??
+                "signoff_all not loaded"}
+            </b>
+            <small>
+              {data?.evaluation.gates.find((g) => g.id === "timing")?.detail ??
+                "timing leftover not loaded"}
+            </small>
+          </li>
+          <li data-kind="copy">
+            <span>eco_scratch close</span>
+            <b>
+              {copy?.evaluation.gates.find((g) => g.id === "signoff_all")?.detail ??
+                "signoff_all not run on eco_scratch"}
+            </b>
+            <small>
+              {copy?.evaluation.gates.find((g) => g.id === "timing")?.detail ??
+                "timing leftover not loaded"}
+            </small>
+          </li>
+        </ol>
+      )}
 
       <ul className="sig-pillar-list">
         {pillarGates.map((g) => {

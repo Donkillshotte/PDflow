@@ -125,6 +125,7 @@ def main() -> int:
     check("signoff_all" in panel, "EcoPanel names signoff_all as close")
     finish = (ROOT / "studio/src/components/flowlab/FlowLabSignoff.tsx").read_text()
     check("LabBench" not in finish, "finish loop does not mix LabBench")
+    check("matrix is the locked" in finish and "eco_scratch" in finish, "finish names matrix as locked baseline vs ECO copy")
     pkg = (ROOT / "studio/src/components/PkgHubPanel.tsx").read_text()
     check("LabBench" not in pkg and "DsePanel" not in pkg, "PKG hub does not embed Lab/DSE")
     check("sta_signoff" not in pkg and "drc_signoff" not in pkg and "lvs_signoff" not in pkg, "PKG hub does not list STA/DRC/LVS")
@@ -167,6 +168,10 @@ def main() -> int:
     check("action === phase.action" in flow, "next banner only after the phase action, not ECO/STA")
     check('router.replace("/pkg")' in flow, "stale /flow?phase=pkg opens /pkg")
     check("CLOSE_PHASES" in flow, "FlowLab progress counts RTL → finish, not PKG")
+    check(
+        "cook stages" in flow and "leftover named on signoff" in flow,
+        "progress ring is cook count, not leftover-free close",
+    )
     check("ninth signoff pillar" in flow, "FlowLab hero says PKG is not a signoff pillar")
     phases = (ROOT / "studio/src/components/flowlab/phases.ts").read_text()
     check("CLOSE_PHASES" in phases, "phases.ts exports CLOSE_PHASES without PKG")
@@ -233,6 +238,10 @@ def main() -> int:
     check("shared NAND2_X2 cone" in sig_ts, "timing leftover names why clone is not a missing ECO")
     check("appendSetupLeftover" in sig_ts, "signoff matrix keeps I/O leftover after leftover setup is already in the summary")
     check("educational golden still" in sig_ts, "setup leftover names the educational golden")
+    check(
+        'leftover.includes("educational golden still")' in sig_ts,
+        "appendSetupLeftover keeps the register leftover when leftover setup is already in the summary",
+    )
     check("IrMeshLedger" in finish, "finish power shows IR mesh ledger")
     check("DynamicIrHeatmap" in finish, "finish power shows Dynamic IR heatmap")
     check(
@@ -261,6 +270,10 @@ def main() -> int:
     check("readReport" in pkg_page, "PKG page reads reports before first paint")
     matrix = (ROOT / "studio/src/components/flowlab/SignoffMatrixPanel.tsx").read_text()
     check("showPhase2" in matrix, "signoff matrix can hide Phase 2")
+    check('variant === "flowlab"' in matrix and "eco_scratch" in matrix, "matrix loads locked flowlab and the ECO copy")
+    check("sig-variant-compare" in matrix, "matrix names locked baseline versus ECO copy")
+    check("Locked flowlab" in matrix and "eco_scratch close" in matrix, "matrix compare labels both leftovers")
+    check('g.id === "timing"' in matrix, "compare strip shows each leftover's timing clause")
     check("showPhase2={false}" in finish or "showPhase2 =" in matrix, "finish matrix defaults Phase 2 off")
     check("leftover must-connect" in panel, "EcoPanel close names leftover")
     check("closeState" in panel, "EcoPanel close uses leftover/ok/fail states")

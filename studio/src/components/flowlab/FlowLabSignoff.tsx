@@ -250,8 +250,9 @@ export function FlowLabSignoff({
         <strong>Loop</strong>
         <p>
           RTL → finish → <code>signoff_all</code> (STA · DRC · LVS · power).
-          ECO apply writes <code>eco_scratch</code> and still requires
-          that close. DSE only suggests knobs.
+          The matrix is the locked <code>flowlab</code> baseline. ECO apply
+          writes <code>eco_scratch</code> and still requires that close on
+          the copy. DSE only suggests knobs.
         </p>
       </div>
       {showFinish && (

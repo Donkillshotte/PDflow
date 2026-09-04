@@ -414,6 +414,12 @@ export function appendSetupLeftover(detail: string, leftover: string | null): st
   ) {
     return `${detail}; ${leftover.slice(leftover.indexOf("register-to-register MET"))}`;
   }
+  if (
+    leftover.includes("educational golden still") &&
+    !detail.includes("educational golden still")
+  ) {
+    return `${detail}; educational golden still ≥ -0.04`;
+  }
   return detail;
 }
 

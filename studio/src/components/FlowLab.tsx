@@ -567,7 +567,7 @@ export function FlowLab() {
           </div>
           <div>
             <strong>{doneCount} / {CLOSE_PHASES.length}</strong>
-            <span>flow phases · RTL → finish</span>
+            <span>cook stages · leftover named on signoff</span>
           </div>
         </div>
       </header>
