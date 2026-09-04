@@ -45,7 +45,7 @@ head -40 learn/sim/spice/pg_vdd_header_flowlab.sp
 
 ## Documentation
 
-- [spice-power-chain.md](../reference/spice-power-chain.md) — RTL→PKG phase linkage
+- [spice-power-chain.md](../reference/spice-power-chain.md) — RTL → finish · System PDN on /pkg
 - [spice-ngspice-primer.md](../reference/spice-ngspice-primer.md) — ngspice System PDN
 - [spice-chip-mesh.md](../reference/spice-chip-mesh.md) — write_pg_spice and cells
 

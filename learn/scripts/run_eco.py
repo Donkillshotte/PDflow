@@ -58,8 +58,12 @@ def _plan(sta: dict) -> list[dict]:
         {
             "step": "repair_timing",
             "args": "-setup",
-            "reason": f"WNS {wns} ns" if wns is not None else "STA WNS unavailable — propose setup repair",
-            "enabled": bool(setup or wns is None),
+            "reason": (
+                f"WNS {wns} ns"
+                if wns is not None
+                else "STA WNS unavailable — no setup repair without STA"
+            ),
+            "enabled": bool(setup),
         },
         {
             "step": "repair_timing",

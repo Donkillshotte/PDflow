@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -106,6 +109,40 @@ def main() -> int:
     check("DFF_X2" in ((lvs.get("leftover") or {}).get("circuits") or []), "LVS leftover object names DFF_X2")
     check("leftover must-connect 2" in str(lvs.get("summary")), "LVS summary names leftover (not PASS-only)")
     check("with_leftover_summary" in (ROOT / "learn/scripts/run_klayout_lvs.sh").read_text(), "LVS cook stamps leftover into summary")
+    require = ROOT / "learn/scripts/signoff_require_ok.py"
+    check(require.is_file(), "signoff_require_ok.py exists")
+    live_ok = subprocess.run(
+        [sys.executable, str(require), str(REPORTS / "lvs_signoff_flowlab.json")],
+        capture_output=True,
+        text=True,
+    )
+    check(live_ok.returncode == 0, "leftover-named LVS still exits 0 (compare matches)")
+    all_ok = subprocess.run(
+        [sys.executable, str(require), str(REPORTS / "signoff_all_flowlab.json")],
+        capture_output=True,
+        text=True,
+    )
+    check(all_ok.returncode == 0, "live signoff_all still exits 0")
+    with tempfile.TemporaryDirectory() as tmp:
+        fail = Path(tmp) / "fail.json"
+        fail.write_text(json.dumps({"ok": False, "summary": "LVS FAIL · missing FreePDK45.lylvs"}) + "\n")
+        fail_rc = subprocess.run(
+            [sys.executable, str(require), str(fail)],
+            capture_output=True,
+            text=True,
+        )
+        check(fail_rc.returncode == 1, "failed pillar JSON exits 1")
+        check("ok=False" in fail_rc.stdout, "failed pillar names ok=False")
+    lvs_sh = (ROOT / "learn/scripts/run_klayout_lvs.sh").read_text()
+    check("signoff_require_ok.py" in lvs_sh, "LVS cook fails the shell when ok is not true")
+    check("exit 0" not in lvs_sh.split("missing FreePDK45.lylvs")[1].split("fi")[0], "missing lylvs no longer exits 0")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_sta_signoff.sh").read_text(), "STA cook fails the shell when ok is not true")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_drc_signoff.sh").read_text(), "DRC cook fails the shell when ok is not true")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_power_signoff.sh").read_text(), "power cook fails the shell when ok is not true")
+    check("signoff_require_ok.py" in (ROOT / "learn/scripts/run_signoff_all.sh").read_text(), "signoff_all re-reads stamped JSON ok")
+    check("RTL→PKG chain" not in (ROOT / "learn/reference/README.md").read_text(), "reference index does not title the chain RTL→PKG")
+    check("RTL→PKG phase linkage" not in (ROOT / "learn/sim/spice/README.md").read_text(), "spice README does not call the chain RTL→PKG")
+    check("full RTL→PKG flow" not in (ROOT / "learn/reference/spice-ngspice-primer.md").read_text(), "ngspice primer does not call the close RTL→PKG")
     check("with_leftover_summary" in (ROOT / "learn/scripts/stamp_signoff_all.py").read_text(), "stamp writes leftover into LVS summary")
     panel = (ROOT / "studio/src/components/flowlab/SignoffMatrixPanel.tsx").read_text()
     check('{data.evaluation.ok ? "PASS"' not in panel, "signoff matrix does not print a bare PASS")

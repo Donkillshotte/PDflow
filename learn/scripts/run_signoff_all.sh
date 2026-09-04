@@ -37,6 +37,10 @@ if [[ "${INCLUDE_PHASE2}" == "1" ]]; then
 fi
 
 python3 "${ROOT}/learn/scripts/stamp_signoff_all.py" --variant "${VARIANT}" --stamp | tee -a "${LOG}"
+if ! python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${OUT}"; then
+  echo "FAIL signoff_all JSON ok is not true" | tee -a "${LOG}"
+  FAIL=1
+fi
 if [[ "${INCLUDE_PHASE2}" == "1" ]]; then
   python3 - <<PY | tee -a "${LOG}"
 import json

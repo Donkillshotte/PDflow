@@ -37,7 +37,7 @@ Estimated time **reference only**: 3–4 hours of active reading (not skimming).
 
 After lessons 00–07, for end-to-end power integrity:
 
-1. [spice-power-chain.md](./spice-power-chain.md) — **RTL→PKG chain** (read first)
+1. [spice-power-chain.md](./spice-power-chain.md) — **RTL → finish · System PDN on /pkg** (read first)
 2. [spice-chip-mesh.md](./spice-chip-mesh.md) — on-die mesh `write_pg_spice`
 3. [vyges-em-ir.md](./vyges-em-ir.md) — Apache-2.0 IR/EM engine on the GCD mesh
 4. [dynamic-ir.md](./dynamic-ir.md) — I(t) per pin + heatmap

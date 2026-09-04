@@ -71,3 +71,4 @@ PY
 python3 "${ROOT}/learn/scripts/ir_mesh_ledger.py" --variant "${VARIANT}" --stamp | tee -a "${LOG}"
 
 echo "POWER_SIGNOFF_DONE ${VARIANT}"
+python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${OUT}"

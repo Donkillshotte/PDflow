@@ -105,4 +105,4 @@ Standard **cells** are not simulated transistor-by-transistor: OpenROAD injects 
 
 ## Phase links
 
-See [spice-power-chain.md](./spice-power-chain.md) for the full RTL→PKG flow.
+See [spice-power-chain.md](./spice-power-chain.md) for RTL → finish and the System PDN ladder on `/pkg`.

@@ -85,3 +85,4 @@ print(out["summary"])
 PY
 
 echo "DRC_SIGNOFF_DONE ${VARIANT}"
+python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${OUT}"

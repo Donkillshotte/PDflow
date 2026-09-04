@@ -35,7 +35,8 @@ out = {
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 PY
   echo "LVS_SIGNOFF_DONE ${VARIANT}"
-  exit 0
+  python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${OUT}"
+  exit 1
 fi
 
 # Ensure ORFS platform path (tools/ may be gitignored clone)
@@ -154,3 +155,4 @@ else
   rm -f "${STAMP}"
 fi
 echo "LVS_SIGNOFF_DONE ${VARIANT}"
+python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${OUT}"

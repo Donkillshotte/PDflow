@@ -39,6 +39,14 @@ def main() -> int:
     check("run_signoff_all" in str(report.get("signoff_required")), "signoff_all required after ECO")
     check(report.get("locked") is True, "flowlab is locked")
     check(isinstance(report.get("proposed"), list) and report["proposed"], "proposed steps present")
+    sys.path.insert(0, str(SCRIPTS))
+    from run_eco import _plan
+
+    blind = next(s for s in _plan({}) if s.get("args") == "-setup")
+    check(blind.get("enabled") is False, "ECO does not propose setup repair without STA")
+    check("without STA" in str(blind.get("reason")), "ECO names the missing STA")
+    late = next(s for s in _plan({"timing": {"wns_ns": -0.02}}) if s.get("args") == "-setup")
+    check(late.get("enabled") is True, "ECO still proposes setup when WNS is negative")
 
     env["ECO_MODE"] = "apply"
     proc = subprocess.run(
