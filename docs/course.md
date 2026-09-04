@@ -22,8 +22,11 @@ RTL→GDS teaching. Does not decide product wins. ORFS variants `learn` and
 | [`learn/AUDIT.md`](../learn/AUDIT.md) | Requirement-by-requirement |
 | [`learn/reference/README.md`](../learn/reference/README.md) | Glossary, Tcl, IR, OSS |
 
-GCD tutorial: `FLOW_VARIANT=learn`. Green finish ≠ timing closed
+GCD tutorial: `FLOW_VARIANT=learn`. Green finish ≠ leftover-free
 (see `golden-metrics.md`). Tutorial SDC 0.46 ns is aggressive.
+Locked FlowLab leftover is setup open (WNS −0.02, 16 viol). The
+`eco_scratch` copy is register-to-register MET; leftover is course
+20% output delay on `resp_msg[14]`. Do not rewrite the SDC.
 
 ## Studio (`studio/`)
 

@@ -37,8 +37,10 @@ apply on `eco_scratch` stay available. Param knobs become display-only.
 
 1. RTL — Monaco, Icarus, VCD
 2. synth → finish — layout preview, phase log
-3. Signoff — STA → DRC → LVS → power (`signoff_all`)
-4. ECO — propose on `flowlab`; apply/close on `eco_scratch` only
+3. Signoff — STA → DRC → LVS → power (`signoff_all`). Leftover stays named
+4. ECO — propose on `flowlab`; apply/close on `eco_scratch` only.
+   Locked leftover is setup open (WNS −0.02, 16 viol). Copy leftover is
+   course output delay on `resp_msg[14]` (R2R MET)
 
 DSE proposes knobs on `/lab`. It is not a FlowLab finish step and does
 not run `signoff_all`.
@@ -84,7 +86,8 @@ PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_signoff_honesty.py
 | HTTP 412 | Run the previous phase |
 | HTTP 409 | Wait, or `DELETE /api/jobs?force=1` if the lock is stale |
 | GUI will not open | Headless: use Web Viewer or copy the command |
-| WNS −0.02 ns on FlowLab GCD | Expected vs `golden-metrics.md` |
+| WNS −0.02 ns on locked flowlab | Leftover setup open. Educational golden still ≥ −0.04. Path is open. |
+| WNS −0.01 ns on eco_scratch | R2R MET. Leftover is course 20% output delay on `resp_msg[14]`. Do not rewrite SDC. |
 | LVS must-connect on DFF_X2 | Educational leftover (Nangate split wells). Compare must still match |
 | Next.js “Issues” badge | Dev overlay only. ORFS errors are in the terminal digest |
 
