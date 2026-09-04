@@ -368,7 +368,7 @@ export function getProductStory(): ProductStory {
     {
       id: "product",
       label: "Product",
-      href: "/lab",
+      href: "/product",
       ready: product.wins > 0,
       detail: `${product.wins} wins · official netlist · fixed die`,
     },

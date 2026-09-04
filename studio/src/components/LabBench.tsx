@@ -173,8 +173,6 @@ export function LabBench({
     void refresh();
   }, [refresh, busy]);
 
-  const latest = data?.comparisons.filter((p) => p.versus === "base") ?? [];
-  const previous = data?.comparisons.filter((p) => p.versus === "previous") ?? [];
   const launches = data?.launches ?? [];
   const nGap = data?.physics?.gap?.length ?? 0;
   const folio = `${data?.physics?.nReady ?? "–"}/${data?.physics?.nChecks ?? "–"}`;
@@ -297,55 +295,12 @@ export function LabBench({
           </dl>
           <p className="lb-foot">Extra delay is Σ(delay_ir − delay). α = 1.3. Not Tempus.</p>
 
-          <h3 className="lb-h-gap">Last cook vs slot base</h3>
-          <p className="lb-sub">win_rule.py · same die · ±5 ps slack band</p>
-          <table className="lb-cmp">
-            <thead>
-              <tr>
-                <th>Slot</th>
-                <th>Verdict</th>
-                <th>ΔWNS</th>
-                <th>ΔIR</th>
-                <th>Δarea</th>
-              </tr>
-            </thead>
-            <tbody>
-              {latest.map((p) => (
-                <tr key={`${p.design}-${p.versus}`} className={`is-${p.verdict}`}>
-                  <td>
-                    {p.design}
-                    <small>{p.clockNs} ns</small>
-                  </td>
-                  <td>{p.verdict}</td>
-                  <td>{signed(p.delta.wnsPs, " ps")}</td>
-                  <td>{signed(p.delta.irPct, "%")}</td>
-                  <td>{signed(p.delta.areaPct, "%")}</td>
-                </tr>
-              ))}
-              {!latest.length && (
-                <tr>
-                  <td colSpan={5}>No finished cooks to compare.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-
-          {previous.length > 0 && (
-            <>
-              <h3 className="lb-h-gap">Latest finish vs the cook before it</h3>
-              <ul className="lb-prev">
-                {previous.map((p) => (
-                  <li key={`${p.design}-prev`}>
-                    <span>
-                      {p.design} · {p.verdict}
-                    </span>
-                    <span>{signed(p.delta.wnsPs, " ps")}</span>
-                    <span>{signed(p.delta.irPct, "% IR")}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          <h3 className="lb-h-gap">Product wins</h3>
+          <p className="lb-sub">
+            Official netlist, fixed die, area/power/leakage/IR together. Decided
+            only on <Link href="/product">/product</Link> by{" "}
+            <code>win_rule.py</code>. This bench does not host that table.
+          </p>
         </div>
       </div>
 

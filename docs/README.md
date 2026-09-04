@@ -12,6 +12,7 @@ this tree is for navigation. Do not rewrite I1–I5 or §5 P0–P7.
 | **Course / Studio** | RTL→GDS lessons, FlowLab, GUI | [`learn/README.md`](../learn/README.md) · [`studio/README.md`](../studio/README.md) |
 
 Studio home (`/#story`, `GET /api/story`) lists the three surfaces.
+Course is `/lessons`, lab IR is `/lab`, product wins are `/product`.
 They stay separate contracts. Wins stay in `win_rule.py`. Lab IR gold
 stays 45.298 mV.
 

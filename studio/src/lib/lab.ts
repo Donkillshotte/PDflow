@@ -62,6 +62,7 @@ export type AxisDelta = {
   wnsPs: number | null;
   areaPct: number | null;
   powerPct: number | null;
+  leakPct: number | null;
   irPct: number | null;
 };
 
@@ -69,8 +70,8 @@ export type ExperimentPair = {
   design: string;
   clockNs: number;
   verdict: string;
-  base: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null };
-  cook: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null; note?: string };
+  base: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null; leak: number | null };
+  cook: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null; leak: number | null; note?: string };
   versus: "base" | "previous";
   delta: AxisDelta;
 };
@@ -88,6 +89,7 @@ function axis(cand: CampRow, base: CampRow): AxisDelta {
     wnsPs: dw,
     areaPct: pct(cand.stdcell_um2, base.stdcell_um2),
     powerPct: pct(cand.power_w, base.power_w),
+    leakPct: pct(cand.leakage_w, base.leakage_w),
     irPct: pct(cand.ir_drop_v, base.ir_drop_v),
   };
 }
@@ -105,6 +107,7 @@ function pairOf(design: string, clockNs: number, cook: CampRow, ref: CampRow, ve
       irMv: ref.ir_drop_v != null ? Number(ref.ir_drop_v) * 1e3 : null,
       area: n(ref.stdcell_um2),
       power: n(ref.power_w),
+      leak: n(ref.leakage_w),
     },
     cook: {
       id: String(cook.id ?? cook.variant ?? "cook"),
@@ -113,6 +116,7 @@ function pairOf(design: string, clockNs: number, cook: CampRow, ref: CampRow, ve
       irMv: cook.ir_drop_v != null ? Number(cook.ir_drop_v) * 1e3 : null,
       area: n(cook.stdcell_um2),
       power: n(cook.power_w),
+      leak: n(cook.leakage_w),
       note: cook.notes,
     },
     delta: axis(cook, ref),
