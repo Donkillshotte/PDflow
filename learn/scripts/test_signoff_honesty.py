@@ -83,6 +83,12 @@ def main() -> int:
     matrix = (ROOT / "learn/reference/signoff-matrix.md").read_text()
     check("leftover must-connect 2 on DFF_X2" in matrix, "signoff-matrix names leftover")
     check("LVS clean (educational)" not in matrix, "signoff-matrix does not call LVS clean")
+    check('"label": "LVS clean"' not in (ROOT / "learn/scripts/signoff_eval.py").read_text(), "evaluator does not label LVS as clean")
+    check('"label": "LVS clean"' not in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report does not say LVS clean")
+    check("KLayout match" in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report names the compare")
+    lab07 = (ROOT / "learn/lessons/07-finish/LAB.md").read_text()
+    check("/pkg" not in lab07.split("Part 7")[1] if "Part 7" in lab07 else True, "LAB 07 signoff is on finish, not PKG")
+    check("foundry contract" not in lab07.lower() and "enterprise signoff" not in lab07.lower(), "LAB 07 signoff is educational")
     gaps_eval = (ROOT / "learn/reference/remaining-gaps-evaluation.md").read_text()
     check("Closed on FlowLab GCD compare" in gaps_eval, "LVS feasibility is closed")
     eq = pillars.get("equivalence") or {}

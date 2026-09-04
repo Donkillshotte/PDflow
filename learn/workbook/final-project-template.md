@@ -51,7 +51,7 @@ Point to the PNG in `learn/reference/gui-shots/` **or** describe the GUI (Deskto
 | Clock tree | `orfs_cts_clock_tree.png` | latency leaves ~ |
 | Route M2/M3 | `08_route_labeled.png` / `win_layers_m2m3.png` | colors |
 | Worst path | `orfs_final_worst_path.png` | start/end pin |
-| IR drop | `orfs_final_ir_drop.png` | mV scale |
+| IR drop | `orfs_final_ir_drop.png` | ORFS PDNSim picture (not gold 45.298, not chip PDN) |
 | Congestion | `orfs_final_congestion.png` | gcell |
 
 Inspector on net `clk` (post-route): Signal type ______, Wire type ______, NDR ______.

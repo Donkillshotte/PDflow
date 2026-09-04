@@ -142,7 +142,7 @@ After green `make finish`, connect end-to-end power integrity:
 FLOW_VARIANT=learn ./learn/scripts/run_power_chain.sh
 ```
 
-- [ ] Compare heatmap `orfs_final_ir_drop.png` with `pdn_chip_ir_*.json` (chip mesh)
+- [ ] Compare heatmap `orfs_final_ir_drop.png` with `pdn_chip_ir_*.json` — different meshes; do not treat the PNG scale as chip IR or gold 45.298 mV
 - [ ] Open `learn/sim/spice/` and count R/I in `mesh_stats_*.json`
 - [ ] FlowLab [PKG](/flow?phase=pkg) phase: droop and Zmax System PDN
 
@@ -152,7 +152,7 @@ Optional checklist — does not block lesson completion if skipped.
 
 ## Part 7 — Signoff 4 pillars (30–45 min)
 
-After `finish`, run enterprise signoff (matrix in Studio **finish** phase or [`/pkg`](/pkg)):
+After `finish`, run the four pillars on Studio **finish** (`/flow?phase=finish#signoff`), not PKG:
 
 - [ ] Read [`signoff-matrix.md`](../../reference/signoff-matrix.md) and [`golden-gcd.json`](../../signoff/golden-gcd.json)
 - [ ] **STA:** `FLOW_VARIANT=learn ./learn/scripts/run_sta_signoff.sh` — compare WNS/TNS with golden-metrics
@@ -163,7 +163,7 @@ After `finish`, run enterprise signoff (matrix in Studio **finish** phase or [`/
 - [ ] **Orchestrator:** `./learn/scripts/run_signoff_all.sh` — aggregated report `signoff_all_{v}.json`
 - [ ] In Studio: PASS/FAIL badge on matrix vs golden; API `GET /api/signoff?variant=learn`
 
-Signoff checklist — recommended to close the “foundry contract” narrative, not required for `--status` if you skip long LVS.
+Signoff checklist — educational close. DFF_X2 must-connect leftover stays named. Not foundry signoff. Not required for `--status` if you skip long LVS.
 
 ---
 

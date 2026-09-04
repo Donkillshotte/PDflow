@@ -83,7 +83,7 @@ def evaluate_equivalence(metrics: dict, golden: dict) -> dict:
         checks.append(
             {
                 "id": "lvs_pass",
-                "label": "LVS clean",
+                "label": "KLayout match",
                 "actual": ok,
                 "target": True,
                 "ok": ok,

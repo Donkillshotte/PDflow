@@ -10,7 +10,7 @@
     "checks": [
       {
         "id": "lvs_pass",
-        "label": "LVS clean",
+        "label": "KLayout match",
         "actual": true,
         "target": true,
         "ok": true,
