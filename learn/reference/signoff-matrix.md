@@ -76,7 +76,7 @@ All signoff actions require **`finish`** completed:
 | Timing | WNS max | ≥ −0.04 ns (educational). WNS < 0 at 0.46 ns stays leftover setup open |
 | Timing | TNS max | ≥ −0.6 |
 | Timing | Setup violations | ≤ 45 |
-| Timing | period_min | ≥ 0.50 ns |
+| Timing | period_min | ≥ 0.50 ns on the `learn` reference run. Live `flowlab` is 0.48 ns; `eco_scratch` is 0.46 ns (course SDC). Educational WNS ≥ −0.04 is the timing gate; negative WNS at 0.46 ns stays leftover setup open |
 | Geometry | Route DRC lines | 0 |
 | Geometry | GDS DRC items | 0 |
 | Equivalence | LVS | match (`CONGRATULATIONS`) · leftover must-connect 2 on DFF_X2 stays visible |

@@ -7,27 +7,13 @@ import path from "path";
 import { LEARN_ROOT, LESSONS, readProgress } from "./course";
 import { collectStageResults } from "./results";
 import { evaluateSignoffGates, leftoverSetupOpenDetail } from "./signoff";
+import { leftoverNamedBit } from "./leftoverCatalog";
 import { PIPELINE_STAGES } from "./jobs";
 
 export const STORY_VARIANT = "flowlab";
 export const IR_GOLD_MV = 45.298;
 
-/** Compact leftover list for the home story. Do not dump the full signoff_all line. */
-export function leftoverNamedBit(detail: string): string {
-  const bits: string[] = [];
-  const must = detail.match(/leftover must-connect \d+(?:\s*\([^)]+\))?/);
-  if (must) bits.push(must[0]);
-  const setup = detail.match(/leftover setup open \(WNS [^)]+\)/);
-  if (setup) bits.push(setup[0]);
-  const mcmm = detail.match(/leftover no MCMM \([^)]+\)/);
-  if (mcmm) bits.push(mcmm[0]);
-  if (detail.includes("leftover no density")) bits.push("leftover no density / named ERC");
-  if (!bits.length) {
-    const at = detail.indexOf("leftover");
-    return at >= 0 ? ` · ${detail.slice(at)}` : "";
-  }
-  return ` · ${bits.join(" · ")}`;
-}
+export { leftoverNamedBit };
 
 const SLACK_PS = 5.0;
 const METRIC_FRAC = 0.1;

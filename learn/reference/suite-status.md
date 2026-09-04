@@ -36,8 +36,17 @@ Three different things get mixed in Studio. Only the last two are real leftovers
 Studio now prefers `gcd/flowlab/` then `gcd/learn/`. Course lesson
 gates stay on `learn` so 0/8 is not stamped by FlowLab artifacts.
 
-LVS compare now matches. The remaining real leftover is the DFF_X2
-must-connect (Nangate split wells), plus commercial / form-gated GAPs.
+LVS compare matches. Leftovers that stay visible on purpose:
+
+- **Timing:** leftover setup open (locked `flowlab` WNS −0.02 · copy
+  `eco_scratch` WNS −0.01 on `resp_msg[14]`) · leftover no MCMM
+  (`typical.lib` only)
+- **Geometry:** antenna 300:1 in `FreePDK45.lydrc` · leftover no
+  density / named ERC
+- **Equivalence:** leftover must-connect 2 on `DFF_X2` · `VIA_*` flatten
+- **Power:** IR meshes not comparable · `em_checked` 0 (no emlimit)
+- **Commercial / form-gated GAPs:** official CCS, StarRC, Touchstone,
+  Magic/Netgen, sky130 as course PDK
 
 ### 2. LVS (KLayout compare)
 
@@ -128,14 +137,14 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 
 | Step | Status | Evidence | Leftover |
 |---|---|---|---|
-| STA | **WORKS** | WNS −0.02 ns · TNS −0.14 · 16 viol | Educational Nangate, not PrimeTime |
+| STA | **WORKS** | WNS −0.02 ns · TNS −0.14 · 16 viol | leftover setup open (WNS −0.02 at 0.46 ns) · leftover no MCMM (`typical.lib` only) |
 | STA IR-aware | **WORKS*** | `sta_ir_aware` ok · NLDM × ITerm V | Does not change official WNS |
-| DRC (route + GDS) | **WORKS** | 0 route lines · 0 GDS items | — |
+| DRC (route + GDS) | **WORKS** | 0 route lines · 0 GDS items | antenna 300:1 · leftover no density / named ERC |
 | LVS (KLayout) | **WORKS*** | Compare match on filtered CDL | FILL/TAP abstract. VIA flatten. DFF_X2 must-connect 2 |
 | LVS deep (filter + VTL) | **WORKS*** | same compare path | Black-box is labeled separately |
 | ECO | **WORKS*** | propose on flowlab; apply/close on eco_scratch | Does not skip `signoff_all`. Two OpenROAD processes: SPEF size-up, BufferMove without SPEF (29 buffers), `global_connect`. Copy OpenSTA: R2R MET, leftover WNS −0.01 on `resp_msg[14]` (course 20% output delay). Shared NAND2_X2 `_647_` also drives R2R; clone/size-up of that cone regresses R2R. Locked flowlab still has R2R leftover (do not overwrite). DRT-0206 restore-source is the fallback. |
-| Power signoff | **WORKS*** | Chip static **1.05 mV** · sys droop **6.03 mV** | Lumped board, not S-parameter |
-| `signoff_all` | **WORKS** | four pillars from their JSON | DSE never calls this script |
+| Power signoff | **WORKS*** | Chip static **1.05 mV** · transient **9.47 mV** | IR meshes not comparable · lumped board, not S-parameter |
+| `signoff_all` | **WORKS** | four pillars from their JSON | leftover must-connect · leftover setup open · leftover no MCMM · leftover no density / named ERC · IR meshes not comparable |
 
 ---
 

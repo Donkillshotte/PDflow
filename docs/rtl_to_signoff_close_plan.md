@@ -280,3 +280,18 @@ checkboxes only after evidence.
 Phase order is A → B → C → D → E → F. Do not skip A (catalog) and
 patch hook strings only: that is how home / finish / suite drifted
 apart last time.
+
+---
+
+## Implementation status (2026-09-04)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| A — leftover catalog | **done** | `learn/signoff/leftover_catalog.json` · `learn/scripts/leftover_catalog.py` |
+| B — suite hook details | **done** | `studio/src/lib/leftoverCatalog.ts` · `studio/src/lib/suite.ts` (`HookStatus.leftover`) |
+| C — suite / docs tables | **done** | `learn/reference/suite-status.md` · `learn/reference/signoff-matrix.md` (`period_min` note) |
+| D — tests | **done** | `test_signoff_honesty.py` · `test_dse_next.py` · `test_eco.py` · `scripts/test_studio_api.sh` |
+| E — validation | **done** | Three Python suites green · live `GET /api/suite` leftover-named |
+| F — audit | **done** | No gated leftover marked closed · SignoffMatrix default stays `flowlab` |
+
+Verdict unchanged: **leftover-named suite integrity**, not leftover-free silicon.

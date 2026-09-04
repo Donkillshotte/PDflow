@@ -282,10 +282,11 @@ def main() -> int:
     check('redirect("/pkg")' in flow_page, "server /flow?phase=pkg redirects to /pkg")
     check("!reports/dynamic_ir_flowlab_direct.json" in (ROOT / "learn/sim/.gitignore").read_text(), "current_run IR report is not gitignored")
     check("!reports/vyges_em_ir_flowlab.json" in (ROOT / "learn/sim/.gitignore").read_text(), "vyges EM report is not gitignored")
+    catalog_ts = (ROOT / "studio/src/lib/leftoverCatalog.ts").read_text()
     check("Signoff · leftover named" in story, "home story labels leftover on the signoff step")
     check("leftoverNamedBit" in story, "home leftover bit reads signoff_all, not only LVS")
-    check("leftover no MCMM" in story, "home leftover bit names leftover no MCMM")
-    check("leftover no density" in story, "home leftover bit names leftover no density")
+    check("leftover no MCMM" in catalog_ts, "home leftover bit names leftover no MCMM")
+    check("leftover no density" in catalog_ts, "home leftover bit names leftover no density")
     check("leftoverSetupOpenDetail" in story, "home ECO names leftover setup from the copy close")
     check("Gold ${IR_GOLD_MV} mV (reference_run)" not in story, "story IR does not lead with gold as the live number")
     check("current_run ${liveMv" in story, "story IR leads with current_run")
@@ -403,7 +404,7 @@ def main() -> int:
     pwr_href = suite.split('id: "power_signoff"')[1].split("},")[0]
     all_href = suite.split('id: "signoff_all"')[1].split("},")[0]
     check("/flow?phase=finish#ir" in pwr_href, "suite power_signoff points at finish IR")
-    check("chip IR" in pwr_href, "suite power_signoff detail is chip IR, not the PKG ladder")
+    check("powerSignoffHookDetail" in pwr_href, "suite power_signoff detail is chip IR from the report, not the PKG ladder")
     check("Power chain + golden gate" not in pwr_href, "suite power_signoff does not call itself a power chain")
     check("/flow?phase=finish#signoff" in all_href, "suite signoff_all points at finish")
     check('href: "/pkg"' not in pwr_href, "suite power_signoff is not on /pkg")
@@ -424,7 +425,7 @@ def main() -> int:
     check("RTL → PKG power chain" not in chain, "spice-power-chain title is not RTL → PKG")
     check("9 FlowLab phases" not in chain, "spice-power-chain is eight close phases, not nine")
     lvs_hook = suite.split('id: "lvs_signoff"')[1].split("},")[0]
-    check("leftover must-connect 2" in lvs_hook, "suite LVS hook names leftover")
+    check("lvsSignoffHookDetail" in lvs_hook, "suite LVS hook names leftover")
     sta_hook = suite.split('id: "sta_signoff"')[1].split("},")[0]
     check("staSignoffHookDetail" in sta_hook, "suite STA hook reads leftover setup from the report")
     vyges_hook = suite.split('id: "vyges_em_ir"')[1].split("},")[0]
@@ -611,6 +612,58 @@ def main() -> int:
     check(deep.get("well_to_rails") is True, "deep LVS maps wells to VDD/VSS")
     check(deep.get("fill_from_def") is True, "deep LVS injects FILL from DEF")
     check((ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/.lvs.ok").exists(), "transistor match may stamp .lvs.ok")
+
+    from leftover_catalog import catalog_ids, items_for_hook, load_catalog
+
+    catalog = load_catalog()
+    check(catalog.get("version") == 1, "leftover catalog version")
+    ids = catalog_ids()
+    for required in (
+        "setup_open_flowlab",
+        "setup_open_eco_io",
+        "must_connect_dff_x2",
+        "no_mcmm",
+        "no_density_erc",
+        "em_checked_0",
+        "ir_meshes_incomparable",
+        "lvs_match",
+        "eco_two_process",
+    ):
+        check(required in ids, f"catalog has {required}")
+
+    suite = (ROOT / "studio/src/lib/suite.ts").read_text()
+    check("leftoverCatalog.ts" in suite or "./leftoverCatalog" in suite, "suite imports leftover catalog helpers")
+    check("withLeftover" in suite, "suite attaches leftover ids to hooks")
+    check('leftover?: { ids: string[] }' in suite, "HookStatus carries leftover ids")
+
+    sta_hook = suite.split('id: "sta_signoff"')[1].split("},")[0]
+    drc_hook = suite.split('id: "drc_signoff"')[1].split("},")[0]
+    drc_kl = suite.split('id: "klayout_drc"')[1].split("},")[0]
+    pwr_hook = suite.split('id: "power_signoff"')[1].split("},")[0]
+    all_hook = suite.split('id: "signoff_all"')[1].split("},")[0]
+    lvs_hook = suite.split('id: "lvs_signoff"')[1].split("},")[0]
+    check("staSignoffHookDetail" in sta_hook, "suite STA hook reads leftover setup from the report")
+    check("leftover no MCMM" in catalog_ts, "catalog STA helper names leftover no MCMM")
+    check("drcSignoffHookDetail" in drc_hook, "suite DRC signoff hook reads deck leftover")
+    check("klayoutDrcHookDetail" in drc_kl, "suite KLayout DRC hook reads deck leftover")
+    check("powerSignoffHookDetail" in pwr_hook, "suite power_signoff hook reads IR mesh ledger")
+    check("signoffAllHookDetail" in all_hook, "suite signoff_all hook is leftover-named")
+    check("STA → DRC → LVS → power" not in all_hook, "suite signoff_all hook is not pillar-only")
+    check("lvsSignoffHookDetail" in lvs_hook, "suite LVS hook names leftover")
+    check("VIA_* flatten" in catalog_ts, "suite LVS helper names VIA flatten leftover")
+    for hook_id, needle in (
+        ("sta_signoff", "leftover no MCMM"),
+        ("drc_signoff", "leftover no density"),
+        ("signoff_all", "leftover must-connect"),
+        ("power_signoff", "IR meshes not comparable"),
+    ):
+        hooked = items_for_hook(hook_id)
+        check(any(needle in (item.get("detail_needles") or []) or needle in str(item) for item in hooked) or needle in catalog_ts, f"catalog maps {needle} to {hook_id}")
+
+    story = (ROOT / "studio/src/lib/story.ts").read_text()
+    check("leftoverCatalog" in story, "home story uses catalog leftoverNamedBit")
+    check("leftoverNamedBit" in story, "home leftover bit reads signoff_all, not only LVS")
+
     print("ALL test_signoff_honesty PASSED")
     return 0
 

@@ -1175,6 +1175,8 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "course.md",
         "script.md",
         "plans.md",
+        "rtl_to_signoff.md",
+        "rtl_to_signoff_close_plan.md",
         "win_rule.py",
     ):
         check(needle in index or needle.replace("docs/", "") in index, f"docs index cites {needle}")

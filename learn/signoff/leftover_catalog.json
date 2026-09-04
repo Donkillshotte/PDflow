@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "description": "Machine-readable leftover catalog for course RTL-to-signoff. Gated leftovers stay named; they are not closed on Nangate45.",
+  "items": [
+    {
+      "id": "setup_open_flowlab",
+      "kind": "gated",
+      "variant": "flowlab",
+      "report": "sim/reports/signoff_all_flowlab.json",
+      "json_pointer": "/setup_leftover",
+      "suite_hooks": ["sta_signoff", "signoff_all"],
+      "studio_surfaces": ["suite", "finish_signoff_matrix", "home_story"],
+      "detail_needles": ["leftover setup open", "leftover no MCMM"]
+    },
+    {
+      "id": "setup_open_eco_io",
+      "kind": "gated",
+      "variant": "eco_scratch",
+      "report": "sim/reports/signoff_all_eco_scratch.json",
+      "json_pointer": "/setup_leftover",
+      "suite_hooks": ["eco", "signoff_all"],
+      "studio_surfaces": ["finish_eco_panel", "variant_compare"],
+      "detail_needles": ["resp_msg[14]", "course output delay", "register-to-register MET"]
+    },
+    {
+      "id": "must_connect_dff_x2",
+      "kind": "gated",
+      "variant": "both",
+      "report": "sim/reports/signoff_all_flowlab.json",
+      "json_pointer": "/leftover",
+      "suite_hooks": ["lvs_signoff", "lvs_deep", "signoff_all"],
+      "studio_surfaces": ["suite", "finish_signoff_matrix", "home_story"],
+      "detail_needles": ["leftover must-connect 2", "DFF_X2"]
+    },
+    {
+      "id": "via_flatten",
+      "kind": "gated",
+      "variant": "both",
+      "suite_hooks": ["lvs_signoff", "lvs_deep"],
+      "studio_surfaces": ["suite-status"],
+      "detail_needles": ["VIA_* flatten", "blank_circuit"]
+    },
+    {
+      "id": "no_mcmm",
+      "kind": "gated",
+      "variant": "both",
+      "report": "sim/reports/lib_corner_coverage.json",
+      "json_pointer": "/mcmm",
+      "suite_hooks": ["sta_signoff", "signoff_all"],
+      "studio_surfaces": ["suite", "finish_signoff_matrix", "home_story"],
+      "detail_needles": ["leftover no MCMM", "typical.lib only"]
+    },
+    {
+      "id": "no_density_erc",
+      "kind": "gated",
+      "variant": "both",
+      "report": "sim/reports/drc_deck_coverage.json",
+      "json_pointer": "/density",
+      "suite_hooks": ["drc_signoff", "klayout_drc", "signoff_all"],
+      "studio_surfaces": ["suite", "finish_signoff_matrix", "home_story"],
+      "detail_needles": ["leftover no density", "named ERC", "antenna 300:1"]
+    },
+    {
+      "id": "em_checked_0",
+      "kind": "gated",
+      "variant": "both",
+      "report": "sim/reports/vyges_em_ir_flowlab.json",
+      "json_pointer": "/vyges/em_checked",
+      "suite_hooks": ["vyges_em_ir"],
+      "studio_surfaces": ["suite", "finish_signoff_matrix"],
+      "detail_needles": ["em_checked 0", "no emlimit"]
+    },
+    {
+      "id": "ir_meshes_incomparable",
+      "kind": "gated",
+      "variant": "both",
+      "report": "sim/reports/signoff_all_flowlab.json",
+      "json_pointer": "/ir_mesh_ledger/comparable",
+      "suite_hooks": ["power_signoff", "signoff_all"],
+      "studio_surfaces": ["suite", "finish_ir_ledger", "home_story"],
+      "detail_needles": ["IR meshes not comparable"]
+    },
+    {
+      "id": "no_ccs_official",
+      "kind": "gated",
+      "variant": "n/a",
+      "suite_hooks": ["ccs_char", "ccs_char_report"],
+      "studio_surfaces": ["suite"],
+      "detail_needles": ["official Nangate liberty stays NLDM"]
+    },
+    {
+      "id": "no_starrc",
+      "kind": "gated",
+      "variant": "n/a",
+      "suite_hooks": ["analytical_pex", "openrcx"],
+      "studio_surfaces": ["suite"],
+      "detail_needles": ["Raphael GAP", "not StarRC"]
+    },
+    {
+      "id": "no_sparam",
+      "kind": "gated",
+      "variant": "n/a",
+      "suite_hooks": ["system_pdn"],
+      "studio_surfaces": ["suite", "pkg"],
+      "detail_needles": ["no Touchstone", "lumped"]
+    },
+    {
+      "id": "no_magic_netgen",
+      "kind": "gated",
+      "variant": "n/a",
+      "suite_hooks": ["magic_netgen"],
+      "studio_surfaces": ["suite"],
+      "detail_needles": ["not installed", "no FreePDK45 .tech"]
+    },
+    {
+      "id": "no_sky130_course",
+      "kind": "gated",
+      "variant": "n/a",
+      "suite_hooks": [],
+      "studio_surfaces": ["suite-status"],
+      "detail_needles": ["Nangate45 only", "Different PDK"]
+    },
+    {
+      "id": "gold_ir_locked",
+      "kind": "locked",
+      "variant": "both",
+      "report": "sim/reports/dynamic_ir_flowlab.json",
+      "suite_hooks": ["dynamic_ir"],
+      "studio_surfaces": ["suite", "lab"],
+      "detail_needles": ["45.298", "gold", "locked"]
+    },
+    {
+      "id": "course_0_8",
+      "kind": "locked",
+      "variant": "n/a",
+      "suite_hooks": [],
+      "studio_surfaces": ["course_progress"],
+      "detail_needles": ["0/8"]
+    },
+    {
+      "id": "aes_row_locked",
+      "kind": "locked",
+      "variant": "n/a",
+      "suite_hooks": [],
+      "studio_surfaces": ["product"],
+      "detail_needles": ["febe6804241c"]
+    },
+    {
+      "id": "lvs_match",
+      "kind": "built",
+      "variant": "both",
+      "suite_hooks": ["lvs_signoff", "lvs_deep"],
+      "detail_needles": ["CONGRATULATIONS", "KLayout match"]
+    },
+    {
+      "id": "eco_two_process",
+      "kind": "built",
+      "variant": "eco_scratch",
+      "suite_hooks": ["eco"],
+      "detail_needles": ["two OpenROAD processes", "BufferMove without SPEF"]
+    },
+    {
+      "id": "dse_proposer",
+      "kind": "built",
+      "variant": "n/a",
+      "suite_hooks": ["dse"],
+      "detail_needles": ["Proposer only", "does not run signoff_all"]
+    },
+    {
+      "id": "gap_class",
+      "kind": "built",
+      "variant": "n/a",
+      "suite_hooks": [],
+      "detail_needles": ["license/PDK gated", "to-build"]
+    },
+    {
+      "id": "antenna_300",
+      "kind": "built",
+      "variant": "both",
+      "report": "sim/reports/drc_deck_coverage.json",
+      "suite_hooks": ["drc_signoff", "klayout_drc"],
+      "detail_needles": ["antenna 300:1", "FreePDK45.lydrc"]
+    },
+    {
+      "id": "ir_ledger",
+      "kind": "built",
+      "variant": "both",
+      "suite_hooks": ["power_signoff", "chip_pdn_ir"],
+      "detail_needles": ["ir_mesh_ledger"]
+    },
+    {
+      "id": "ccs_sidecar",
+      "kind": "built",
+      "variant": "both",
+      "suite_hooks": ["ccs_char"],
+      "detail_needles": ["PTM", "sidecar", "19"]
+    }
+  ],
+  "home_compact_phrases": [
+    "leftover must-connect",
+    "leftover setup open",
+    "leftover no MCMM",
+    "leftover no density",
+    "IR meshes not comparable"
+  ]
+}

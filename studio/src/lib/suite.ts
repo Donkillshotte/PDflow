@@ -6,6 +6,15 @@ import { artifactExists, detectDisplay, listOpenTargets, resultsDir } from "./op
 import { viewerStatus } from "./webviewer";
 import { listJobs, readLock, getPipelineStatus } from "./jobs";
 import { probeToolchain } from "./run";
+import {
+  drcSignoffHookDetail,
+  hookLeftoverIds,
+  klayoutDrcHookDetail,
+  lvsSignoffHookDetail,
+  powerSignoffHookDetail,
+  signoffAllHookDetail,
+  staSignoffHookDetail,
+} from "./leftoverCatalog";
 
 export type HookStatus = {
   id: string;
@@ -15,6 +24,7 @@ export type HookStatus = {
   detail: string;
   action?: string;
   href?: string;
+  leftover?: { ids: string[] };
 };
 
 function has(rel: string) {
@@ -87,27 +97,10 @@ function currentRunDynamicIrPresent() {
   return false;
 }
 
-function staSignoffHookDetail() {
-  for (const variant of ["flowlab", "learn"]) {
-    const p = path.join(LEARN_ROOT, "sim/reports", `sta_signoff_${variant}.json`);
-    if (!fs.existsSync(p)) continue;
-    try {
-      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
-        leftover?: { setup_open?: boolean; wns_ns?: number; clock_ns?: number };
-        timing?: { wns_ns?: number };
-        summary?: string;
-      };
-      const wns = Number(j.leftover?.wns_ns ?? j.timing?.wns_ns);
-      if (j.leftover?.setup_open || (Number.isFinite(wns) && wns < 0)) {
-        const clock = j.leftover?.clock_ns ?? 0.46;
-        return `educational golden ≥ −0.04 · leftover setup open (WNS ${wns} at ${clock} ns)`;
-      }
-      if (j.summary) return String(j.summary);
-    } catch {
-      /* ignore */
-    }
-  }
-  return "WNS/TNS vs golden-gcd · run_sta_signoff.sh";
+function withLeftover(hook: HookStatus): HookStatus {
+  const ids = hookLeftoverIds(hook.id, hook.detail);
+  if (!ids.length) return hook;
+  return { ...hook, leftover: { ids } };
 }
 
 function vygesEmHookDetail() {
@@ -323,7 +316,7 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "system_pdn") ||
         signoffReportPass("learn", "system_pdn"),
-      detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · /pkg",
+      detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · /pkg · no Touchstone",
       action: "system_pdn",
       href: "/pkg",
     },
@@ -423,7 +416,7 @@ export async function getSuiteStatus() {
       label: "KLayout DRC",
       group: "Signoff",
       ok: has("6_final.gds"),
-      detail: "run_klayout_drc.sh",
+      detail: klayoutDrcHookDetail(),
       action: "klayout_drc",
       href: "/tools?tab=run&action=klayout_drc",
     },
@@ -450,7 +443,7 @@ export async function getSuiteStatus() {
       label: "DRC signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "drc_signoff") || signoffReportPass("learn", "drc_signoff"),
-      detail: "Route DRC + KLayout GDS · run_drc_signoff.sh",
+      detail: drcSignoffHookDetail(),
       action: "drc_signoff",
       href: "/flow?phase=finish",
     },
@@ -459,7 +452,7 @@ export async function getSuiteStatus() {
       label: "LVS signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "lvs_signoff") || signoffReportPass("learn", "lvs_signoff"),
-      detail: "KLayout GDS vs filtered CDL · leftover must-connect 2 (DFF_X2)",
+      detail: lvsSignoffHookDetail(),
       action: "klayout_lvs",
       href: "/flow?phase=finish",
     },
@@ -468,7 +461,7 @@ export async function getSuiteStatus() {
       label: "Power signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "power_signoff") || signoffReportPass("learn", "power_signoff"),
-      detail: "chip IR + golden gate",
+      detail: powerSignoffHookDetail(),
       action: "power_signoff",
       href: "/flow?phase=finish#ir",
     },
@@ -477,7 +470,7 @@ export async function getSuiteStatus() {
       label: "Full signoff",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "signoff_all") || signoffReportPass("learn", "signoff_all"),
-      detail: "STA → DRC → LVS → power",
+      detail: signoffAllHookDetail(),
       action: "signoff_all",
       href: "/flow?phase=finish#signoff",
     },
@@ -632,8 +625,10 @@ export async function getSuiteStatus() {
     },
   ];
 
+  const hooksWithLeftover = hooks.map((hook) => withLeftover(hook));
+
   const lessonsDone = (progress.completed_lessons ?? []).length;
-  const readyHooks = hooks.filter((h) => h.ok).length;
+  const readyHooks = hooksWithLeftover.filter((h) => h.ok).length;
   // Core wiring (not full PD finish): environment + frontend + analysis + docs
   const coreIds = [
     "toolchain",
@@ -645,13 +640,13 @@ export async function getSuiteStatus() {
     "or-web",
     "docs",
   ];
-  const wired = coreIds.every((id) => hooks.find((h) => h.id === id)?.ok);
+  const wired = coreIds.every((id) => hooksWithLeftover.find((h) => h.id === id)?.ok);
 
   return {
     ready: wired,
     summary: {
       hooksOk: readyHooks,
-      hooksTotal: hooks.length,
+      hooksTotal: hooksWithLeftover.length,
       lessonsDone,
       lessonsTotal: LESSONS.length,
       lock,
@@ -661,7 +656,7 @@ export async function getSuiteStatus() {
       wired,
     },
     tools,
-    hooks,
+    hooks: hooksWithLeftover,
     pipeline,
     display,
     viewer,
