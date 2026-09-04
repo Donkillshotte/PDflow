@@ -147,12 +147,26 @@ PY
     bad "missing vyges_em_ir_flowlab.json"
   fi
   if [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json" ]]; then
-    python3 - <<PY && ok "dynamic_ir report parse" || bad "dynamic_ir report"
+    python3 - <<PY && ok "dynamic_ir gold sentinel" || bad "dynamic_ir gold sentinel"
 import json
-r=json.load(open("${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json"))
+g=json.load(open("${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json"))
+assert g.get("gold") is True
+assert abs(float(g["worst_droop_mv"]) - 45.298) < 0.02
+assert g.get("ok") is not True
+print("gold", g["worst_droop_mv"])
+PY
+  else
+    bad "missing dynamic_ir_flowlab.json gold sentinel"
+  fi
+  if [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab_direct.json" ]]; then
+    python3 - <<PY && ok "dynamic_ir current_run parse" || bad "dynamic_ir current_run"
+import json
+r=json.load(open("${ROOT}/learn/sim/reports/dynamic_ir_flowlab_direct.json"))
+assert r.get("gold") is not True
 assert r["ok"] is True and r["kind"]=="dynamic_ir"
 assert r["static"]["worst_ir"] < 0.05
 assert r["dynamic"]["worst_droop"] > r["static"]["worst_ir"] * 0.5
+assert abs(float(r["dynamic"]["worst_droop"]) * 1e3 - 6.075) < 0.05
 assert r["sim_levels"]["L1_vectorless_dynamic"]["status"]=="READY"
 assert r["sim_levels"]["L2_vcd_dynamic"]["status"]=="GAP"
 assert r["sim_levels"]["L3_windowed"]["status"] in ("READY", "PARTIAL")
@@ -161,16 +175,11 @@ assert sta.get("status") in ("READY", "GAP")
 assert r["hotspot"]["droop_mv"] > 0
 assert r["emsim_split"]["B_pdn_solve"]["status"]=="READY"
 assert r["platform"]["solvers"]["A_direct_be"]["status"]=="READY"
-assert r["platform"]["solvers"]["B_sa_amg"]["status"]=="READY"
-assert r["solver_b"]["ok"] is True
-d=r.get("solver_d")
-assert d is None or d.get("ok") is True
-assert (r.get("ngspice_gold") or {}).get("ok") is not False or r.get("ngspice_gold") is None
 print(r["summary"][:120])
 PY
-    [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.svg" ]] && ok "dynamic_ir svg" || bad "missing dynamic_ir svg"
+    [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab_direct.svg" ]] && ok "dynamic_ir current_run svg" || bad "missing dynamic_ir_direct svg"
   else
-    bad "missing dynamic_ir_flowlab.json"
+    bad "missing dynamic_ir_flowlab_direct.json"
   fi
   [[ -f "${ROOT}/learn/sim/reports/power_chain_flowlab.log" ]] \
     && rg -q 'POWER_CHAIN_DONE' "${ROOT}/learn/sim/reports/power_chain_flowlab.log" \

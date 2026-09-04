@@ -86,6 +86,7 @@ test -f learn/sim/reports/vectorless_flowlab.json
 test -f learn/sim/reports/yosys_equiv_flowlab.json
 test -f learn/sim/reports/vyges_em_ir_flowlab.json
 test -f learn/sim/reports/dynamic_ir_flowlab.json
+test -f learn/sim/reports/dynamic_ir_flowlab_direct.json
 test -f learn/platforms/nangate45/lvs/FreePDK45.lylvs
 ```
 
