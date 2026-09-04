@@ -254,6 +254,7 @@ def main() -> int:
     check("leftover must-connect 2" in lvs_hook, "suite LVS hook names leftover")
     vyges_hook = suite.split('id: "vyges_em_ir"')[1].split("},")[0]
     check("vygesEmHookDetail" in vyges_hook, "suite vyges hook reads em_checked from the report")
+    check("em_checked" in (ROOT / "studio/src/lib/signoff.ts").read_text().split('check.id === "vyges_em_ir"')[1].split("return")[0], "signoff matrix names em_checked on the vyges check")
     check("CG + backward Euler on PDNSim mesh" not in vyges_hook, "suite vyges hook does not hide em_checked")
     vyges = load("vyges_em_ir_flowlab.json")
     check(vyges.get("ok") is True, "vyges ok means the engine ran")
