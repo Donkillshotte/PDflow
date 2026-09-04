@@ -78,6 +78,12 @@ def main() -> int:
     check("own contracts" in suite_hub, "SuiteHub names the surface contracts")
     tools_client = (ROOT / "studio/src/app/tools/tools-client.tsx").read_text()
     check("<SuiteHub" in tools_client, "full hook matrix stays on /tools")
+    suite_src = (ROOT / "studio/src/lib/suite.ts").read_text()
+    magic = suite_src.split('id: "magic_netgen"')[1].split("},")[0]
+    check("apt install magic" not in magic, "Magic/Netgen gap is not an apt close for Nangate LVS")
+    check("no FreePDK45" in magic, "Magic/Netgen hook names the missing .tech")
+    css = (ROOT / "studio/src/app/globals.css").read_text()
+    check("scroll-margin-top" in css and "#suite" in css, "hash targets clear the sticky nav")
 
     lvs = load("lvs_signoff_flowlab.json")
     check(lvs.get("ok") is True, "LVS compare is a real KLayout match")

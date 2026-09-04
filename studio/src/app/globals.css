@@ -66,6 +66,15 @@ a {
   border-bottom: 1px solid transparent;
 }
 
+/* Deep links (#suite, #ir, #signoff) sit below the sticky nav. */
+#suite,
+#story,
+#ir,
+#signoff,
+#eco {
+  scroll-margin-top: 5.5rem;
+}
+
 .brand-mark {
   display: flex;
   flex-direction: column;

@@ -111,7 +111,7 @@ export async function getSuiteStatus() {
       ok: which("magic") && (which("netgen") || which("netgen-lvs")),
       detail: which("magic")
         ? "present · Nangate LVS stays on KLayout (no FreePDK45 .tech)"
-        : "apt install magic netgen-lvs",
+        : "not installed · Nangate LVS stays on KLayout (no FreePDK45 .tech)",
       action: "layout_tools",
     },
     {
