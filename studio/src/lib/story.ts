@@ -375,7 +375,7 @@ export function getProductStory(): ProductStory {
   ];
 
   return {
-    title: "RTL → GDS → signoff. Three surfaces, one tree.",
+    title: "RTL → GDS → signoff",
     lead:
       "Course teaches the flow. Lab measures IR on the same GCD. Product cooks physical knobs on the official netlist. DSE does not run signoff_all. Wins stay in win_rule.py.",
     variant: STORY_VARIANT,

@@ -116,7 +116,7 @@ const FINISH_ACTIONS: SignoffAction[] = [
   {
     id: "yosys_equiv",
     label: "Yosys equiv",
-    hint: "EQY-class RTL↔synth",
+    hint: "RTL ↔ synth",
     icon: ShieldCheck,
     long: false,
   },
@@ -130,7 +130,7 @@ const FINISH_ACTIONS: SignoffAction[] = [
   {
     id: "openrcx_report",
     label: "OpenRCX SPEF",
-    hint: "StarRC-class extract",
+    hint: "OpenRCX SPEF",
     icon: Layers,
     long: false,
   },
@@ -158,7 +158,7 @@ const FINISH_ACTIONS: SignoffAction[] = [
   {
     id: "klayout_drc",
     label: "KLayout DRC (GDS only)",
-    hint: "Legacy · use drc_signoff for unified",
+    hint: "Legacy GDS DRC · prefer drc_signoff",
     icon: ShieldCheck,
     long: true,
   },

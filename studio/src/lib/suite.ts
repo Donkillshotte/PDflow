@@ -466,7 +466,7 @@ export async function getSuiteStatus() {
     },
     {
       id: "yosys_equiv",
-      label: "Yosys equiv (EQY-class)",
+      label: "Yosys equiv",
       group: "Analysis",
       ok:
         signoffReportPass("flowlab", "yosys_equiv") ||
@@ -493,7 +493,7 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "openrcx") ||
         signoffReportPass("learn", "openrcx"),
-      detail: "StarRC-class extract · 6_final.spef",
+      detail: "OpenRCX SPEF · 6_final.spef",
       action: "openrcx_report",
       href: "/tools?tab=run&action=openrcx_report",
     },

@@ -264,9 +264,6 @@ export function DynamicIrHeatmap({
   const svgSrc = `/api/content?path=sim/reports/dynamic_ir_${variant}.svg`;
   const levels = report?.sim_levels;
   const win = levels?.L3_windowed?.windows?.[0];
-  const contrib = report?.hotspot?.contributors;
-  const seqPct = ((contrib?.seq_frac ?? 0) * 100).toFixed(0);
-  const comboPct = ((contrib?.combo_frac ?? 0) * 100).toFixed(0);
   const plat = report?.platform;
   const em = report?.em ?? plat?.em_thermal;
   const solvers = plat?.solvers;
@@ -292,12 +289,9 @@ export function DynamicIrHeatmap({
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
-          OpenROAD frontend. A = DirectLU current_run. B = SA-AMG.
-          C = Krylov MOR. D = RAS. Gold reference_run is 45.298 mV
-          (not this mesh). vyges is a bootstrap check.{" "}
+          current_run I(t) mesh. Gold reference_run is 45.298 mV on a
+          different extract — do not mix them.{" "}
           <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>
-          {" · "}
-          <a href="/materials/reference/dynamic-ir-landscape.md">landscape</a>
         </p>
       </header>
       {missing || !report?.ok ? (
@@ -329,6 +323,22 @@ export function DynamicIrHeatmap({
               <dt>Mode</dt>
               <dd>{report.mode ?? "—"}</dd>
             </div>
+          </dl>
+          {report.hotspot && (
+            <p className="fl-dynir-hotspot">
+              Hotspot {report.hotspot.node ?? "—"} · {report.hotspot.droop_mv?.toFixed(2)} mV @{" "}
+              {report.hotspot.t_ns?.toFixed(2)} ns
+            </p>
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="fl-dynir-svg"
+            src={svgSrc}
+            alt={`Heatmap dynamic IR ${variant} at worst droop instant`}
+          />
+          <details className="fl-signoff-more">
+            <summary>Solver / EM / activity (lab)</summary>
+          <dl className="fl-dynir-gauges">
             <div>
               <dt>ngspice gold</dt>
               <dd>
@@ -707,26 +717,6 @@ export function DynamicIrHeatmap({
               ]}
             />
           )}
-          {report.hotspot && (
-            <p className="fl-dynir-hotspot">
-              Hotspot {report.hotspot.node ?? "—"} · {report.hotspot.droop_mv?.toFixed(2)} mV @{" "}
-              {report.hotspot.t_ns?.toFixed(2)} ns · I seq {seqPct}% / combo {comboPct}%
-              {timing?.degradation_ps != null
-                ? pathT?.status === "READY"
-                  ? ` · path delay +${timing.degradation_ps.toFixed(2)} ps`
-                  : ` · delay +${timing.degradation_ps.toFixed(2)} ps`
-                : ""}
-              {pathT?.status === "READY" && pathT.slack_ir_ns != null
-                ? ` · slack IR ${pathT.slack_ir_ns.toFixed(3)} ns`
-                : ""}
-              {em?.hottest?.i_abs != null
-                ? ` · |I| ${(em.hottest.i_abs * 1e3).toFixed(2)} mA`
-                : ""}
-              {em?.j_absmax_a_m2 != null && em.n_with_j
-                ? ` · J ${em.j_absmax_a_m2.toExponential(2)} A/m²`
-                : ""}
-            </p>
-          )}
           {scenarios.length > 0 && (
             <ol className="fl-dynir-scenarios" aria-label="Scenario ranking">
               {scenarios.map((s) => (
@@ -744,12 +734,7 @@ export function DynamicIrHeatmap({
               not the current mode.
             </p>
           )}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="fl-dynir-svg"
-            src={svgSrc}
-            alt={`Heatmap dynamic IR ${variant} at worst droop instant`}
-          />
+          </details>
         </>
       )}
     </section>

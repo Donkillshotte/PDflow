@@ -278,7 +278,7 @@ export function inspectStage(
     },
     {
       id: "yosys-equiv",
-      label: "Yosys equiv (EQY-class)",
+      label: "Yosys equiv",
       detail: "run_yosys_equiv.sh · RTL ↔ synth",
     },
     {

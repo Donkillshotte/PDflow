@@ -272,7 +272,7 @@ export function listOpenTargets(): {
     },
     {
       id: "run-yosys-equiv",
-      label: "Run · Yosys equiv (EQY-class)",
+      label: "Run · Yosys equiv",
       action: "yosys_equiv",
     },
     {

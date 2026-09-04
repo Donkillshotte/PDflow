@@ -101,6 +101,9 @@ def main() -> int:
     console = (ROOT / "studio/src/components/LiveRunConsole.tsx").read_text()
     check("optgroup" in console and "run-picker" in console, "Tools runner is a grouped select")
     check("POST_FINISH_CHIPS" not in console, "chip wall list is gone")
+    heatmap = (ROOT / "studio/src/components/flowlab/DynamicIrHeatmap.tsx").read_text()
+    check("Solver / EM / activity (lab)" in heatmap, "Dynamic IR keeps solver gauges behind details")
+    check("different extract" in heatmap, "Dynamic IR names gold as another mesh")
     report_api = (ROOT / "studio/src/app/api/report/route.ts").read_text()
     check("power_signoff_flowlab.json" in report_api, "report API serves the IR mesh ledger")
 

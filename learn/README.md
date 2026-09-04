@@ -3,11 +3,9 @@
 This is the **course**. The product (knobs, fixed die, finish, `win_rule`)
 lives in [`docs/README.md`](../docs/README.md). Study guide: [`docs/course.md`](../docs/course.md).
 
-A **complete hands-on path** to learn every stage of digital physical design.
-This is not a 10-minute tutorial: it is structured for **20–28 hours of active study**
-(LAB + reference + workbook + GUI), with materials to read, exercises to run,
-GUIs to inspect, and workbook entries to complete. The `--auto` wrapper verifies tools;
-it does not replace studying.
+Course path for digital physical design on Nangate45 / FreePDK45.
+About **20–28 hours** of LAB + reference + workbook + GUI. The `--auto`
+wrapper verifies tools; it does not replace studying.
 
 ## Content levels
 
