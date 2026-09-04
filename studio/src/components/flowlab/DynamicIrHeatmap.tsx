@@ -36,6 +36,7 @@ type TimingPath = {
   endpoint?: string;
   slack_ns?: number;
   slack_ir_ns?: number;
+  slack_met?: boolean;
   n_gates?: number;
   n_joined?: number;
   gate_delay_ns?: number;
@@ -289,8 +290,10 @@ export function DynamicIrHeatmap({
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
-          current_run I(t) mesh. Gold reference_run is 45.298 mV on a
-          different extract — do not mix them.{" "}
+          current_run I(t) mesh. Path slack is the OpenSTA worst max path
+          with the finish SPEF (same parasitics as sta_signoff). A MET
+          overlay on ideal RC is not a WNS close. Gold reference_run is
+          45.298 mV on a different extract — do not mix them.{" "}
           <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>
         </p>
       </header>
@@ -590,6 +593,11 @@ export function DynamicIrHeatmap({
                 <dt>Path slack</dt>
                 <dd>
                   {pathT.slack_ns.toFixed(4)} ns STA
+                  {pathT.slack_met === false
+                    ? " VIOLATED"
+                    : pathT.slack_met === true
+                      ? " MET"
+                      : ""}
                   {pathT.slack_ir_ns != null
                     ? ` · ${pathT.slack_ir_ns.toFixed(4)} ns IR`
                     : ""}

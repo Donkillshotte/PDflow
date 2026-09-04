@@ -86,8 +86,14 @@ if [[ "${n_r}" -gt 20000 ]]; then
   exit 2
 fi
 
-if [[ ! -f "${STA}" ]]; then
-  echo "=== OpenSTA report_arrival ===" | tee -a "${LOG}"
+sta_has_spef() {
+  python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d.get('spef') else 1)" "$1" 2>/dev/null
+}
+if [[ ! -f "${STA}" ]] || ! sta_has_spef "${STA}"; then
+  echo "=== OpenSTA report_arrival (finish SPEF) ===" | tee -a "${LOG}"
+  if [[ -f "${SPEF}" ]]; then
+    export STA_SPEF="${SPEF}"
+  fi
   STA_LIB="${LIB}" STA_V="${RES}/6_final.v" STA_SDC="${SDC}" FLOW_VARIANT="${VARIANT}" \
     prlimit --as="${AS_BYTES}" --cpu="${CPU_S}" \
     python3 "${ROOT}/learn/scripts/export_sta_arrivals.py" 2>&1 | tee -a "${LOG}"

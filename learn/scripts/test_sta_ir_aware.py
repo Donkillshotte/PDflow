@@ -130,6 +130,12 @@ def main() -> int:
     panel = (ROOT / "studio/src/components/flowlab/StaIrAwarePanel.tsx").read_text()
     check("finish SPEF" in panel, "STA IR-aware panel names finish SPEF")
     check("not a WNS close" in panel, "STA IR-aware panel does not treat ideal-RC MET as close")
+    heatmap = (ROOT / "studio/src/components/flowlab/DynamicIrHeatmap.tsx").read_text()
+    check("finish SPEF" in heatmap, "heatmap path slack names finish SPEF")
+    check("not a WNS close" in heatmap, "heatmap does not treat ideal-RC MET as close")
+    check("slack_met" in heatmap, "heatmap labels MET vs VIOLATED from the SPEF path")
+    dyn_md = (ROOT / "learn/reference/dynamic-ir.md").read_text()
+    check("Dump STA by default **without SPEF**" not in dyn_md, "dynamic-ir.md default dump is SPEF")
     with tempfile.TemporaryDirectory() as td:
         tdir = Path(td)
         gold_map = tdir / "dynamic_ir_flowlab.map.csv"

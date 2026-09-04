@@ -34,6 +34,15 @@ def main() -> int:
     check(current.get("gold") is not True, "current_run is not the gold sentinel")
     cur_mv = float((current.get("dynamic") or {}).get("worst_droop") or 0) * 1e3
     check(abs(cur_mv - 6.075) < 0.02, "current_run droop is ~6.075 mV")
+    path = (current.get("timing_impact") or {}).get("path") or {}
+    arrivals = load("sta_arrivals_flowlab.json")
+    wp = arrivals.get("worst_path") or {}
+    slack = float(path.get("slack_ns") or 1)
+    check(bool(arrivals.get("spef")), "arrivals dump used 6_final.spef")
+    check(slack < 0, "current_run path slack is the SPEF WNS path, not ideal-RC MET")
+    check(path.get("slack_met") is not True, "current_run path is VIOLATED at 0.46 ns")
+    check(wp.get("slack_ns") is not None, "arrivals worst_path has slack")
+    check(abs(slack - float(wp["slack_ns"])) < 0.002, "heatmap path slack matches SPEF arrivals")
     story = (ROOT / "studio/src/lib/story.ts").read_text()
     check("dynamic_ir_${variant}_direct.json" in story, "story reads current_run from _direct.json")
     check("readCurrentRunDroopMv" in story, "story droop helper is the current_run reader")
@@ -274,6 +283,14 @@ def main() -> int:
     dyn_md = (ROOT / "learn/reference/dynamic-ir.md").read_text()
     check("Solver A gold + Solver B" not in dyn_md.splitlines()[0], "dynamic-ir title is current_run, not gold")
     check("_direct.json" in dyn_md, "dynamic-ir names current_run _direct.json")
+    check("Dump STA by default **without SPEF**" not in dyn_md, "dynamic-ir default STA dump is not ideal-RC")
+    check("6_final.spef" in dyn_md, "dynamic-ir names the finish SPEF")
+    check("not a WNS close" in dyn_md, "dynamic-ir does not treat ideal-RC MET as a WNS close")
+    check("finish SPEF" in heatmap, "finish heatmap names the finish SPEF on path slack")
+    check("not a WNS close" in heatmap, "finish heatmap does not treat ideal-RC MET as a WNS close")
+    cloud_ir = (ROOT / "scripts/run_dynamic_ir_cloud.sh").read_text()
+    check("STA_SPEF" in cloud_ir, "cloud dynamic IR dumps arrivals with finish SPEF")
+    check("sta_has_spef" in cloud_ir, "cloud dynamic IR refuses a leftover ideal-RC arrivals dump")
     tail = ((lvs.get("artifact_parse") or {}).get("log") or {}).get("tail") or []
     check(any("CONGRATULATIONS" in str(x) or "Netlists match" in str(x) for x in tail), "LVS log keeps the match line")
     check(not any("Netlists don't match" in str(x) for x in tail), "LVS log has no mismatch line")

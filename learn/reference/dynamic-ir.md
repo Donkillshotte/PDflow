@@ -15,7 +15,7 @@ inst_power_map.json             placement, seq vs combo (optional)
 pdn_dynamic.py
     per-ITerm triangle I(t)     clock: STA arrival t50; spatial/simultaneous synthetic
     VCD/SAIF name-join only     RTL tb_gcd → GAP (no silent pin map); SAIF idle-zeros TC=0
-    Path STA delay              OpenSTA worst max path, gate delays × (Vdd/V_inst)^α
+    Path STA delay              OpenSTA worst max path on finish SPEF, gate delays × (Vdd/V_inst)^α
     A = G + C/Δt                setup once (independent of I(t))
     Solver A: LU                current_run (`_direct.json`); gold 45.298 is another mesh
     Solver B: SA-AMG + CG       workhorse, |A−B| on the GCD < 1 µV
@@ -98,7 +98,7 @@ FLOW_VARIANT=flowlab ./learn/scripts/run_dynamic_ir.sh
 | Heatmap t_worst | **SVG + CSV** | no | no | static ORFS PNG |
 | Gold | ngspice 1-node RC + R+L series | — | — | — |
 
-This is not sign-off Ansys RedHawk / Cadence Voltus. Nangate45 does not have CCS current tables. RTL VCD (`tb_gcd`, 10 ns) **does not** name gate pins of the 0.46 ns netlist — no fake mapping. t50 clock = OpenSTA `report_arrival` (join on instance name). Dump STA by default **without SPEF** (ideal interconnect; `STA_SPEF` for OpenRCX). Path delay scales only gates NLDM typical-V, not a liberty at Vmin.
+This is not sign-off Ansys RedHawk / Cadence Voltus. Nangate45 does not have CCS current tables. RTL VCD (`tb_gcd`, 10 ns) **does not** name gate pins of the 0.46 ns netlist — no fake mapping. t50 clock = OpenSTA `report_arrival` (join on instance name). Dump STA by default **with** the finish `6_final.spef` (same parasitics as `sta_signoff`; unset `STA_SPEF` only for an ideal-RC experiment). Path delay scales only gates NLDM typical-V, not a liberty at Vmin. An ideal-RC MET overlay is not a WNS close.
 
 ## I(t) modes
 
@@ -146,7 +146,7 @@ GCD clock STA: \|I\|_max ≈ 2.25 mA (via / strap). \(J_\max\) ≈ \(1.48\times1
 | `learn/scripts/pdn_dynamic.py` `electrothermal_timestep_be` | one-shot Solver A TRAN on \(R(T)\) (not gold) |
 | `learn/scripts/pdn_current.py` | triangle + CCS and ECSM interpolators (never from NLDM) |
 | `learn/scripts/pdn_activity.py` | synthetic t50 + STA `report_arrival` + VCD/SAIF name-join + I_tot windows |
-| `learn/scripts/export_sta_arrivals.py` | OpenSTA → JSON `by_inst` (rise/fall ns) + `worst_path` (`report_checks -format full`) |
+| `learn/scripts/export_sta_arrivals.py` | OpenSTA → JSON `by_inst` (rise/fall ns) + `worst_path` (`report_checks -format full`); finish SPEF by default |
 | `learn/scripts/pdn_solvers.py` | A/B/C/D + N4 descriptor (libdpn ctypes + SciPy) |
 | `learn/scripts/run_dynamic_ir.sh` | GCD + stamp `.dynamic_ir.ok` |
 | `learn/scripts/pdn_vrm.py` | N4 descriptor: VRM + bump R+L + mesh |
