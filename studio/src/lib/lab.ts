@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import { LEARN_ROOT } from "./course";
-import { IR_CURRENT_MV, IR_GOLD_MV, productVerdict, type CampRow } from "./story";
+import { IR_GOLD_MV, productVerdict, readCurrentRunDroopMv, type CampRow } from "./story";
 
 const SLOTS: { id: string; clockNs: number }[] = [
   { id: "gcd", clockNs: 0.46 },
@@ -214,6 +214,7 @@ export function getLabSnapshot() {
   const dse = readJson("sim/reports/dse_flowlab.json");
   const staIr = readJson("sim/reports/sta_ir_aware_flowlab.json");
   const sta = (staIr?.sta ?? {}) as Record<string, unknown>;
+  const staIrMesh = (staIr?.ir ?? {}) as Record<string, unknown>;
   const rawLaunches = readJsonl("sim/dse/launch_compare.jsonl") as unknown as Record<string, unknown>[];
   const launches = rawLaunches.map(launchOf);
   const thisLaunch = launches.length ? launches[launches.length - 1]! : null;
@@ -222,7 +223,7 @@ export function getLabSnapshot() {
     title: "Lab bench",
     lead: "Numbers that survive a rail-scale and same-mesh check. Not foundry correlation.",
     goldMv: IR_GOLD_MV,
-    currentMv: IR_CURRENT_MV,
+    currentMv: readCurrentRunDroopMv("flowlab"),
     physics: physics
       ? {
           ok: physics.ok === true,
@@ -242,6 +243,8 @@ export function getLabSnapshot() {
       nJoined: n(sta.n_joined),
       nGates: n(sta.n_gates),
       degradationPs: n(sta.degradation_ps),
+      worstCellIrMv: n(staIrMesh.worst_cell_ir_mv),
+      map: typeof staIrMesh.map === "string" ? staIrMesh.map : null,
     },
     dse: dse
       ? {

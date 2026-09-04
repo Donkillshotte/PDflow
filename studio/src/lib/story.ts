@@ -201,6 +201,17 @@ function readReportFile(fileName: string): Record<string, unknown> | null {
   }
 }
 
+/** current_run I(t) from _direct.json. Never the locked gold teacher. */
+export function readCurrentRunDroopMv(variant = STORY_VARIANT): number | null {
+  const currentRun = readReportFile(`dynamic_ir_${variant}_direct.json`);
+  if (!currentRun || currentRun.gold === true) return null;
+  const top = num(currentRun.worst_droop_mv);
+  if (top != null) return top;
+  const dyn = currentRun.dynamic as { worst_droop?: number; worst_droop_mv?: number } | undefined;
+  if (dyn?.worst_droop_mv != null) return num(dyn.worst_droop_mv);
+  return dyn?.worst_droop != null ? Number(dyn.worst_droop) * 1e3 : null;
+}
+
 function summarizeProduct(rows: CampRow[]): ProductStory["product"] {
   const slots: StorySlot[] = OFFICIAL_SLOTS.map((slot) => {
     const same = rows.filter(
@@ -294,13 +305,7 @@ export function getProductStory(): ProductStory {
   const gold = readReport("dynamic_ir");
   const goldPresent =
     Boolean(gold?.gold) && Math.abs(Number(gold?.worst_droop_mv) - IR_GOLD_MV) < 0.02;
-  const currentRun = readReportFile(`dynamic_ir_${STORY_VARIANT}_direct.json`);
-  const currentFromField = num(currentRun?.worst_droop_mv);
-  const currentFromDyn = (() => {
-    const dyn = currentRun?.dynamic as { worst_droop?: number } | undefined;
-    return dyn?.worst_droop != null ? Number(dyn.worst_droop) * 1e3 : null;
-  })();
-  const liveMv = currentFromField ?? currentFromDyn;
+  const liveMv = readCurrentRunDroopMv(STORY_VARIANT);
   const currentPresent = liveMv != null && Math.abs(liveMv - IR_CURRENT_MV) < 0.5;
 
   const product = summarizeProduct(readJsonl("sim/dse/campaign_experiments.jsonl"));
@@ -347,9 +352,9 @@ export function getProductStory(): ProductStory {
       id: "ir",
       label: "Dynamic IR",
       href: "/flow?phase=finish&focus=ir#ir",
-      ready: goldPresent,
+      ready: goldPresent || currentPresent,
       detail: goldPresent
-        ? `Gold ${IR_GOLD_MV} mV (reference_run) · current_run ${IR_CURRENT_MV} mV`
+        ? `Gold ${IR_GOLD_MV} mV (reference_run) · current_run ${liveMv != null ? liveMv.toFixed(3) : "absent"} mV`
         : `Gold ${IR_GOLD_MV} mV is the frozen reference_run`,
     },
     {

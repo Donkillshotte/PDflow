@@ -56,7 +56,7 @@ type LabSnap = {
   title: string;
   lead: string;
   goldMv: number;
-  currentMv: number;
+  currentMv: number | null;
   physics: {
     ok: boolean;
     nReady: number;
@@ -73,6 +73,8 @@ type LabSnap = {
     nJoined: number | null;
     nGates: number | null;
     degradationPs: number | null;
+    worstCellIrMv?: number | null;
+    map?: string | null;
   };
   comparisons: Pair[];
   dse: { ok: boolean; summary: string; nCandidates: number } | null;
@@ -192,7 +194,7 @@ export function LabBench({
             gold <em>{data?.goldMv ?? 45.298}</em>
           </span>
           <span>
-            live <em>{data?.currentMv ?? 6.075}</em>
+            current_run <em>{data?.currentMv != null ? data.currentMv.toFixed(3) : "—"}</em>
           </span>
         </div>
       </header>
@@ -292,7 +294,20 @@ export function LabBench({
                 {data?.staIr.nJoined ?? "—"}/{data?.staIr.nGates ?? "—"}
               </dd>
             </div>
+            <div>
+              <dt>Worst cell</dt>
+              <dd>
+                {data?.staIr.worstCellIrMv != null
+                  ? `${data.staIr.worstCellIrMv.toFixed(3)} mV`
+                  : "—"}
+              </dd>
+            </div>
           </dl>
+          {data?.staIr.map ? (
+            <p className="lb-foot">
+              current_run map <code>{data.staIr.map}</code>
+            </p>
+          ) : null}
           <p className="lb-foot">Extra delay is Σ(delay_ir − delay). α = 1.3. Not Tempus.</p>
 
           <h3 className="lb-h-gap">Product wins</h3>
