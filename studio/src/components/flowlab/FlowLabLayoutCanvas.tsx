@@ -404,7 +404,7 @@ export function FlowLabLayoutCanvas({
                         {layer.soloAvailable ? (
                           <span className="fl-layer-solo">solo</span>
                         ) : (
-                          <span className="fl-layer-legend">legenda</span>
+                          <span className="fl-layer-legend">legend</span>
                         )}
                       </button>
                       <p>{layer.role}</p>
@@ -432,7 +432,7 @@ export function FlowLabLayoutCanvas({
               </button>
             )}
             {gallery.length > 1 && (
-              <div className="fl-filmstrip" role="list" aria-label="Screenshot correlati">
+              <div className="fl-filmstrip" role="list" aria-label="Related screenshots">
                 {gallery.map((shot) => (
                   <button
                     key={shot.file}

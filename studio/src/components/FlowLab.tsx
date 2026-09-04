@@ -27,6 +27,7 @@ import { FlowLabRtlEditor } from "@/components/flowlab/FlowLabRtlEditor";
 import { FlowLabSignoff } from "@/components/flowlab/FlowLabSignoff";
 import { FlowLabTerminal } from "@/components/flowlab/FlowLabTerminal";
 import { CLOSE_PHASES, LONG_ACTIONS, PHASE_IDS, PHASES } from "@/components/flowlab/phases";
+import { FLOWLAB_LOCKED_RECOOK } from "@/lib/actions";
 import type {
   FlowlabParams,
   RightTab,
@@ -126,6 +127,8 @@ export function FlowLab() {
   const doneCount = closeStages.filter((s) => s.done).length;
   const progressPct = Math.round((doneCount / CLOSE_PHASES.length) * 100);
   const unlocked = phaseUnlocked(phaseId, stages);
+  const finishDone = Boolean(stages.find((s) => s.id === "finish")?.done);
+  const recookBlocked = finishDone && FLOWLAB_LOCKED_RECOOK.has(phase.action);
   const nextPhase =
     CLOSE_PHASES[CLOSE_PHASES.findIndex((p) => p.id === phaseId) + 1] ?? null;
   const lineCount = useMemo(() => rtl.split("\n").length, [rtl]);
@@ -253,6 +256,7 @@ export function FlowLab() {
     key: K,
     value: FlowlabParams[K],
   ) {
+    if (finishDone) return;
     setParams((p) => {
       const next = { ...p, [key]: value };
       paramsRef.current = next;
@@ -262,12 +266,13 @@ export function FlowLab() {
   }
 
   function applyPreset(key: string) {
+    if (finishDone) return;
     const preset = PARAM_PRESETS[key];
     if (!preset) return;
     setParams(preset.params);
     paramsRef.current = preset.params;
     scheduleAutosave(rtlRef.current, preset.params);
-    push(`Profile «${preset.label}» applied`, "info");
+    push(`Profile "${preset.label}" applied`, "info");
   }
 
   async function resetGolden() {
@@ -412,12 +417,19 @@ export function FlowLab() {
       push("Complete the previous phase first", "bad");
       return;
     }
+    if (recookBlocked) {
+      push(
+        "flowlab finish is locked. Recook would overwrite gcd/flowlab.",
+        "bad",
+      );
+      return;
+    }
     if (LONG_ACTIONS.has(phase.action)) {
       setConfirmOpen(true);
       return;
     }
     void runAction();
-  }, [unlocked, phase.action, push, runAction]);
+  }, [unlocked, recookBlocked, phase.action, push, runAction]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -622,7 +634,10 @@ export function FlowLab() {
             <button
               type="button"
               className="fl-btn fl-btn-primary"
-              disabled={!unlocked && !stages.find((s) => s.id === phaseId)?.done}
+              disabled={
+                recookBlocked ||
+                (!unlocked && !stages.find((s) => s.id === phaseId)?.done)
+              }
               onClick={requestRun}
             >
               <Play size={16} aria-hidden />
@@ -634,8 +649,14 @@ export function FlowLab() {
 
       {!unlocked && (
         <div className="fl-lock-banner">
-          Phase locked — complete «{PHASES[PHASE_IDS.indexOf(phaseId) - 1]?.label}» to
+          Phase locked — complete {PHASES[PHASE_IDS.indexOf(phaseId) - 1]?.label} to
           unlock.
+        </div>
+      )}
+      {recookBlocked && (
+        <div className="fl-lock-banner">
+          flowlab finish is locked — this ORFS recook would overwrite{" "}
+          <code>gcd/flowlab</code>. Signoff and ECO apply stay available.
         </div>
       )}
 
@@ -723,6 +744,7 @@ export function FlowLab() {
               <div className="fl-phase-controls">
                 <FlowLabParamStudio
                   params={params}
+                  locked={finishDone}
                   onChange={updateParam}
                   onApplyPreset={applyPreset}
                 />
@@ -941,6 +963,7 @@ export function FlowLab() {
             void runAction(a);
             return;
           }
+          if (recookBlocked) return;
           void runAction();
         }}
       />

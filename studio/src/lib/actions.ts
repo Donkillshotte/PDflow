@@ -31,6 +31,16 @@ export function isSignoffAction(action: string): action is SignoffAction {
   return (SIGNOFF_ACTIONS as readonly string[]).includes(action);
 }
 
+/** ORFS make targets that would overwrite locked `gcd/flowlab/` artifacts. */
+export const FLOWLAB_LOCKED_RECOOK = new Set([
+  "synth",
+  "floorplan",
+  "place",
+  "cts",
+  "route",
+  "finish",
+]);
+
 export const LONG_ACTIONS = new Set([
   "cts",
   "route",

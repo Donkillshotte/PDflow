@@ -94,7 +94,7 @@ export function PkgHubPanel({
 
   async function runAction(action: string, long: boolean) {
     if (busy) return;
-    if (long && !window.confirm(`Start «${action}»? This may take several minutes.`)) {
+    if (long && !window.confirm(`Start ${action}? This may take several minutes.`)) {
       return;
     }
     setBusy(action);

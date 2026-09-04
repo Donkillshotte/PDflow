@@ -31,6 +31,9 @@ Course and FlowLab are different variants. Do not mix their artifacts.
 ## FlowLab (`/flow`)
 
 Isolated finish at `results/nangate45/gcd/flowlab`.
+ORFS recook (`synth` … `finish`) is refused while `6_final.gds` exists
+(HTTP 403). That baseline is not overwritten. Signoff, RTL sim, and ECO
+apply on `eco_scratch` stay available. Param knobs become display-only.
 
 1. RTL — Monaco, Icarus, VCD
 2. synth → finish — layout preview, phase log
@@ -48,6 +51,7 @@ Screenshots: `studio/docs/images/flowlab/`.
 One ORFS job at a time (`learn/.studio-run.lock`).
 Missing prior-phase artifacts return HTTP 412.
 A running job returns HTTP 409.
+A FlowLab ORFS recook against an existing `6_final.gds` returns HTTP 403.
 Long actions (`cts`, `route`, `finish`, `signoff_all`, ECO apply/close)
 ask for confirmation.
 

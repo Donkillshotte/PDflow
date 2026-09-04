@@ -11,8 +11,9 @@ Numbers from a complete `learn` run (SDC 0.46 ns, util 35):
 | CTS | −0.04 | 32 viol, skew setup ~0 |
 | GRT | −0.05 | 43 viol |
 | **Finish SPEF** | **−0.04** | TNS **−0.60**, 38 viol, `period_min=0.50` → fmax **~2.01 GHz** |
+| **OpenSTA signoff** | **−0.02** | TNS **−0.14**, **16 viol** (`engine: opensta`). Not the finish report. |
 
-The SDC period is 0.46 ns but `period_min` at signoff is 0.50 ns: **you have not closed** 2.17 GHz, you closed ~2.01 GHz. This is the narrative to put in the final project, not “make finish is green”.
+The SDC period is 0.46 ns but `period_min` at ORFS finish is 0.50 ns: **you have not closed** 2.17 GHz, you closed ~2.01 GHz. OpenSTA signoff on the same SPEF lists every negative-slack path (16), not the finish-report 38. This is the narrative to put in the final project, not “make finish is green”.
 
 IR is not one number. The ORFS finish heatmap (`orfs_final_ir_drop.png`)
 is a PDNSim picture — not gold Dynamic IR **45.298 mV**, not chip PDN

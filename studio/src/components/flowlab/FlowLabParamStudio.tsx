@@ -13,6 +13,7 @@ function SliderField({
   min,
   max,
   step,
+  disabled,
   onChange,
 }: {
   label: string;
@@ -22,6 +23,7 @@ function SliderField({
   min: number;
   max: number;
   step: number;
+  disabled?: boolean;
   onChange: (n: number) => void;
 }) {
   const pct = ((value - min) / (max - min)) * 100;
@@ -41,6 +43,7 @@ function SliderField({
           max={max}
           step={step}
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(Number(e.target.value))}
           style={{ "--pct": `${pct}%` } as React.CSSProperties}
         />
@@ -53,13 +56,21 @@ export function FlowLabParamStudio({
   params,
   onChange,
   onApplyPreset,
+  locked = false,
 }: {
   params: FlowlabParams;
   onChange: <K extends keyof FlowlabParams>(key: K, value: FlowlabParams[K]) => void;
   onApplyPreset: (key: string) => void;
+  locked?: boolean;
 }) {
   return (
-    <div className="fl-param-studio">
+    <div className={clsx("fl-param-studio", locked && "is-locked")}>
+      {locked ? (
+        <p className="fl-param-locked" role="status">
+          flowlab finish is locked — knobs are display-only. Recook would overwrite{" "}
+          <code>gcd/flowlab</code>.
+        </p>
+      ) : null}
       <div className="fl-preset-row">
         <span className="fl-preset-label">
           <SlidersHorizontal size={16} aria-hidden />
@@ -71,6 +82,7 @@ export function FlowLabParamStudio({
               key={key}
               type="button"
               className="fl-preset-chip"
+              disabled={locked}
               onClick={() => onApplyPreset(key)}
               title={preset.desc}
             >
@@ -84,19 +96,20 @@ export function FlowLabParamStudio({
         <div className="fl-param-card fl-param-card-select">
           <div className="fl-param-head">
             <div>
-              <strong>SDC · periodo clock</strong>
+              <strong>SDC · clock period</strong>
               <p>Timing constraints applied in synthesis and STA.</p>
             </div>
             <Zap size={18} className="fl-param-icon" aria-hidden />
           </div>
           <select
             value={params.sdcPreset}
+            disabled={locked}
             onChange={(e) =>
               onChange("sdcPreset", e.target.value as FlowlabParams["sdcPreset"])
             }
           >
             <option value="default">Default · 0.46 ns (course)</option>
-            <option value="relaxed">Relaxed · 2.0 ns (facile)</option>
+            <option value="relaxed">Relaxed · 2.0 ns (easy)</option>
             <option value="tight">Tight · 0.25 ns (stress)</option>
           </select>
         </div>
@@ -105,7 +118,7 @@ export function FlowLabParamStudio({
           <div className="fl-param-head">
             <div>
               <strong>ABC area / delay</strong>
-              <p>Trade-off mappatura logica in Yosys ABC.</p>
+              <p>Logic mapping trade-off in Yosys ABC.</p>
             </div>
             <Gauge size={18} className="fl-param-icon" aria-hidden />
           </div>
@@ -113,13 +126,14 @@ export function FlowLabParamStudio({
             {(
               [
                 [1, "Area", "Minimize cells"],
-                [0, "Delay", "Minimizza path"],
+                [0, "Delay", "Minimize path delay"],
               ] as const
             ).map(([v, title, sub]) => (
               <button
                 key={v}
                 type="button"
                 className={clsx("fl-toggle", params.abcArea === v && "fl-toggle-on")}
+                disabled={locked}
                 onClick={() => onChange("abcArea", v)}
               >
                 <strong>{title}</strong>
@@ -137,6 +151,7 @@ export function FlowLabParamStudio({
           min={20}
           max={55}
           step={1}
+          disabled={locked}
           onChange={(n) => onChange("coreUtilization", n)}
         />
 
@@ -148,6 +163,7 @@ export function FlowLabParamStudio({
           min={0.05}
           max={0.4}
           step={0.01}
+          disabled={locked}
           onChange={(n) => onChange("placeDensityAddon", n)}
         />
 
@@ -159,6 +175,7 @@ export function FlowLabParamStudio({
           min={0}
           max={100}
           step={5}
+          disabled={locked}
           onChange={(n) => onChange("tnsEndPercent", n)}
         />
       </div>

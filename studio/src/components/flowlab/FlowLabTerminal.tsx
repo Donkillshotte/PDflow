@@ -161,7 +161,7 @@ export function FlowLabTerminal({
         {empty ? (
           <div className="fl-terminal-empty">
             <p>
-              Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or «Run phase» to start.
+              Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or Run phase to start.
             </p>
             <p className="muted">
               stdout/stderr stream will appear here. Expected ORFS WARNINGs are no longer

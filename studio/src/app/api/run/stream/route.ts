@@ -75,7 +75,10 @@ export async function GET(req: Request) {
         dep: "dep" in pf ? pf.dep : undefined,
         missing: "missing" in pf ? pf.missing : undefined,
       },
-      { status: pf.code === "locked" ? 409 : 412 },
+      {
+        status:
+          pf.code === "locked" ? 409 : pf.code === "forbidden" ? 403 : 412,
+      },
     );
   }
 

@@ -1,4 +1,4 @@
-import { LONG_ACTIONS } from "./actions";
+import { FLOWLAB_LOCKED_RECOOK, LONG_ACTIONS } from "./actions";
 import fs from "fs";
 import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
@@ -379,6 +379,20 @@ export function preflightAction(
       : action === "eco_close"
         ? "eco_scratch"
         : (opts.variant ?? "learn");
+  if (variant === "flowlab" && FLOWLAB_LOCKED_RECOOK.has(action)) {
+    const gds = path.join(
+      /*turbopackIgnore: true*/ resultsDir("flowlab"),
+      "6_final.gds",
+    );
+    if (fs.existsSync(gds)) {
+      return {
+        ok: false,
+        code: "forbidden",
+        message:
+          "FLOW_VARIANT=flowlab finish is locked. Recook would overwrite gcd/flowlab. Use the course variant learn, or ECO apply on eco_scratch.",
+      };
+    }
+  }
   // Artifact gates for extended / analysis actions
   const needFile: Record<string, { rel: string; hint: string }> = {
     gridcheck: {
@@ -500,7 +514,7 @@ export function preflightAction(
       return {
         ok: false,
         code: "deps",
-        message: `Missing artifact «${need.rel}»: ${need.hint}.`,
+        message: `Missing artifact ${need.rel}: ${need.hint}.`,
         missing: [need.rel],
       };
     }
@@ -554,7 +568,7 @@ export function preflightAction(
     return {
       ok: false,
       code: "deps",
-      message: `Missing dependency: run «${dep.dep}» first (missing artifacts: ${dep.missing.join(", ") || "all"}).`,
+      message: `Missing dependency: run ${dep.dep} first (missing artifacts: ${dep.missing.join(", ") || "all"}).`,
       dep: dep.dep,
       missing: dep.missing,
     };

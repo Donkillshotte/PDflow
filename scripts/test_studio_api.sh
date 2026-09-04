@@ -431,6 +431,17 @@ code="$(curl -s --max-time 60 -o /tmp/studio-fl-rtl.sse -w '%{http_code}' \
 [[ "${code}" == "200" ]] && ok "flowlab rtl_sim → 200" || bad "flowlab rtl_sim → ${code}"
 rg -q 'RTL_SIM_PASS|"ok":true' /tmp/studio-fl-rtl.sse && ok "flowlab rtl_sim pass" || bad "flowlab rtl_sim fail"
 
+# Locked flowlab recook must not overwrite gcd/flowlab
+FLOWLAB_GDS="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
+if [[ -f "${FLOWLAB_GDS}" ]]; then
+  code="$(curl -s -o /tmp/studio-recook.json -w '%{http_code}' \
+    "${BASE}/api/run/stream?action=synth&mode=flowlab")"
+  [[ "${code}" == "403" ]] && ok "flowlab synth recook refused → 403" || bad "flowlab recook expected 403, got ${code}"
+  rg -q 'overwrite gcd/flowlab' /tmp/studio-recook.json && ok "recook names locked path" || bad "recook message missing lock"
+else
+  ok "skip flowlab recook refuse (no 6_final.gds)"
+fi
+
 # Artifact preflight for missing finish artifact
 if [[ ! -f "${RES_DIR}/6_final.gds" ]]; then
   code="$(curl -s -o /tmp/studio-kldrc.json -w '%{http_code}' \
