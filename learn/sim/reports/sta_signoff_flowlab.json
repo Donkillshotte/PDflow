@@ -50,11 +50,11 @@
   "ir_aware": {
     "report": "/workspace/learn/sim/reports/sta_ir_aware_flowlab.json",
     "ok": true,
-    "slack_ns": 0.004644,
-    "slack_ir_ns": 0.0040228722421615975,
+    "slack_ns": -0.019603,
+    "slack_ir_ns": -0.020240058251357957,
     "n_joined": 18,
     "n_gates": 18,
-    "degradation_ps": 0.6211277578384022,
+    "degradation_ps": 0.6370582513579581,
     "note": "educational NLDM \u00d7 ITerm V; does not change nominal WNS"
   }
 }

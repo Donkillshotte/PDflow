@@ -143,12 +143,12 @@
       "status": "READY",
       "quantity": "STA slack \u2192 slack_ir",
       "value": {
-        "slack_ns": 0.004644,
-        "slack_ir_ns": 0.0040228722421615975,
+        "slack_ns": -0.019603,
+        "slack_ir_ns": -0.020240058251357957,
         "joined": "18/18"
       },
-      "bound": "slack_ir \u2264 slack; 18/18 gates on the GCD worst max path",
-      "note": "NLDM typical-V scaled by (Vdd/V_inst)^1.3. Not Tempus, not a second liberty."
+      "bound": "slack_ir \u2264 slack; joined==gates on the SPEF WNS path (not ideal-RC MET)",
+      "note": "NLDM typical-V scaled by (Vdd/V_inst)^1.3. Same SPEF as sta_signoff. Not Tempus."
     },
     {
       "id": "sta_ir_reconstruct",
@@ -157,8 +157,8 @@
       "status": "READY",
       "quantity": "\u03a3(delay_ir \u2212 delay) vs slack \u2212 slack_ir",
       "value": {
-        "reconstructed_ns": 0.0006211277578384595,
-        "reported_ns": 0.0006211277578384022
+        "reconstructed_ns": 0.000637058251358083,
+        "reported_ns": 0.0006370582513579581
       },
       "bound": "equal to 1e-9 ns",
       "note": "The extra delay is exactly the sum of per-gate IR scales. No hidden pad."
@@ -179,7 +179,7 @@
       "ok": true,
       "status": "READY",
       "quantity": "extra delay / clock period",
-      "value": 0.135,
+      "value": 0.1385,
       "bound": "< 1% of 0.46 ns on this GCD",
       "note": "0.62 ps is 0.13% of the period. Slack stays MET. IR-aware STA is a perturbation, not a new timing close."
     },
