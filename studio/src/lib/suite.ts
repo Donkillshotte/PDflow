@@ -477,7 +477,7 @@ export async function getSuiteStatus() {
     },
     {
       id: "formal_gcd",
-      label: "Formal SAT (sby-class)",
+      label: "Formal SAT",
       group: "Analysis",
       ok:
         signoffReportPass("flowlab", "formal_gcd") ||

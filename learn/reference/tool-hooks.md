@@ -89,8 +89,8 @@ report_wns
 | `stat` | Cells / area | synth LAB + inspect |
 | `hierarchy -top` | Top module | course script |
 | `synth` / ORFS `1_2_yosys.v` | Gate-level netlist | synth stage |
-| `equiv_make` / `equiv_induct` | Equiv RTL↔synth (EQY-class) | action `yosys_equiv` |
-| `sat -tempinduct` | Formal safety (sby-class) | action `formal_gcd` |
+| `equiv_make` / `equiv_induct` | Equiv RTL↔synth | action `yosys_equiv` |
+| `sat -tempinduct` | Formal safety | action `formal_gcd` |
 | `-p "…"` | One-liner | `GET /api/inspect` |
 
 ## KLayout

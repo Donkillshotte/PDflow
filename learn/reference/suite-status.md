@@ -174,8 +174,8 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | PKG signoff | **WORKS*** | bump + RDL + system_pdn | Educational package |
 | HotSpot thermal | **WORKS*** | t_max **70.54 °C** | Architecture compact model |
 | Phase 2 signoff | **WORKS** | thermal + PKG ok | — |
-| Yosys equiv (EQY-class) | **WORKS** | RTL ↔ generic-synth PASS | CLI `eqy` absent (mapped) |
-| Formal SAT (sby-class) | **WORKS** | `reset → !resp_val` PASS | CLI `sby` absent (mapped) |
+| Yosys equiv | **WORKS** | RTL ↔ generic-synth PASS | CLI `eqy` absent; Yosys `equiv_*` |
+| Formal SAT | **WORKS** | `reset → !resp_val` PASS | CLI `sby` absent; Yosys `sat -tempinduct` |
 
 ---
 
@@ -261,8 +261,8 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Signoff | signoff_phase2 | ok | **WORKS** | thermal + PKG |
 | GUI | or-web | ok | **WORKS** | `POST /api/viewer` |
 | GUI | or-gui | ok | **WORKS*** | DISPLAY + flowlab ODB targets |
-| Analysis | yosys_equiv | ok | **WORKS** | EQY-class mapped |
-| Analysis | formal_gcd | ok | **WORKS** | sby-class mapped |
+| Analysis | yosys_equiv | ok | **WORKS** | Yosys `equiv_*` mapped |
+| Analysis | formal_gcd | ok | **WORKS** | Yosys `sat -tempinduct` |
 | Analysis | openrcx | ok | **WORKS** | 657 nets |
 | Analysis | analytical_pex | ok | **WORKS** | ST + FDM + FasterCap |
 | Analysis | ccs_char_report | ok | **WORKS*** | sidecar only |

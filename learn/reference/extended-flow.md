@@ -227,8 +227,8 @@ Honest leftover: architecture compact model, not Ansys/COMSOL, not foundry. IR+d
 | `power_chain` | activity → chip IR → system → lab export |
 | `activity_power` | `read_vcd` / `set_power_activity` + `report_power` |
 | `vectorless` | Vectorless vs dynamic IR (Najm + Kouroussis) |
-| `yosys_equiv` | Yosys equiv RTL↔synth (EQY-class) |
-| `formal_gcd` | Yosys sat tempinduct (sby-class) |
+| `yosys_equiv` | Yosys equiv RTL↔synth (`equiv_make` / `equiv_induct`) |
+| `formal_gcd` | Yosys `sat -tempinduct` |
 | `openrcx_report` | OpenRCX SPEF counts |
 | `analytical_pex` | Sakurai–Tamaru + FDM 2D + FasterCap BEM (when installed) |
 | `ccs_char` | PTM CCS sidecar on 19 GCD combo cells (`output_current`) · official Nangate stays NLDM |

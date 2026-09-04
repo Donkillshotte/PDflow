@@ -64,12 +64,13 @@ gold Dynamic IR 45.298 and not current_run 6.075.
 Four pillars on the existing finish (no new `make finish` for this
 note). STA / DRC / power evaluate ok. LVS is a KLayout compare on a
 filtered CDL (FILL from DEF, wells mapped to VDD/VSS). A pass requires
-`CONGRATULATIONS! Netlists match`. Must-connect warnings on XNOR2 stay
-in the lvsdb. This is educational FreePDK45, not foundry LVS.
-Physics ledger: 28/30 READY, 2 WATCH (ibex/aes ORFS IR), 0 GAP.
+`CONGRATULATIONS! Netlists match`. Must-connect warnings on DFF_X2 stay
+in the lvsdb (Nangate split wells). This is educational FreePDK45, not
+foundry LVS. Physics ledger: 28/30 READY, 2 WATCH (ibex/aes ORFS IR),
+0 GAP.
 
 Phase 2 (thermal proxy + PKG) is materialized on the same finish.
-Bump mesh and system PDN evaluate. `rdl_route` stays a labeled GAP
-(no bump LEF on Nangate GCD) — not a mock pass. Gold Dynamic IR
+Bump mesh and system PDN evaluate. Dummy `rdl_route` executed (4 bumps,
+36 wires) — educational, not C4. Gold Dynamic IR
 `learn/sim/reports/dynamic_ir_flowlab.json` is tracked and still
 `gold: true` / 45.298 mV.

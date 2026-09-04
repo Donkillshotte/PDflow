@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Yosys equivalence: RTL GCD vs Yosys generic synth (EQY-class, no commercial tool).
+# Yosys equivalence: RTL GCD vs Yosys generic synth (equiv_*; no commercial tool).
 # Optionally records the ORFS mapped netlist 1_2_yosys.v if present (Nangate cells).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -43,8 +43,8 @@ Path(${JSON@Q}).write_text(json.dumps({
   "rtl": ${RTL@Q},
   "mapped_netlist": str(mapped) if mapped.exists() else None,
   "mapped_exists": mapped.exists(),
-  "engine": "yosys equiv_make/simple/induct (EQY-class; eqy binary not required)",
-  "commercial_gap": "EQY CLI not installed — Yosys native equiv_* is the same engine",
+  "engine": "yosys equiv_make/simple/induct (eqy binary not required)",
+  "commercial_gap": "eqy CLI not installed — Yosys native equiv_* is the engine",
   "summary": "Yosys equiv RTL↔generic-synth " + ("PASS" if ok else "CHECK_LOG"),
   "log": ${OUT@Q},
 }, indent=2) + "\n")
