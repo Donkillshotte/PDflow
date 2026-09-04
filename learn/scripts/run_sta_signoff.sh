@@ -60,14 +60,30 @@ tns = first(r"tns max\s+([-\d.]+)", log) or first(r"tns max\s+([-\d.]+)", finish
 period = first(r"period_min\s*=\s*([\d.]+)", log) or first(r"period_min\s*=\s*([\d.]+)", finish)
 # Count from this OpenSTA run. A missing finish_rpt used to stamp viol 0.
 viol = sum(1 for line in log.splitlines() if "(VIOLATED)" in line)
-m = {
-  "timing": {
+endpoint = None
+kind = None
+for line in log.splitlines():
+    if "(VIOLATED)" not in line:
+        continue
+    endpoint = line.split()[0] if line.split() else None
+    if "(output)" in line or (endpoint or "").startswith(("resp_", "req_")):
+        kind = "output"
+        if endpoint and "(output)" not in endpoint:
+            endpoint = f"{endpoint} (output)"
+    else:
+        kind = "register"
+    break
+timing = {
     "wns_ns": float(wns or 0),
     "tns": float(tns or 0),
     "setup_violations": int(viol),
     "period_min_ns": float(period) if period else None,
-  }
 }
+if endpoint:
+    timing["worst_endpoint"] = endpoint
+if kind:
+    timing["wns_kind"] = kind
+m = {"timing": timing}
 Path("${METRICS}").write_text(json.dumps(m, indent=2))
 print("STA_PARSE", json.dumps(m["timing"]))
 PY

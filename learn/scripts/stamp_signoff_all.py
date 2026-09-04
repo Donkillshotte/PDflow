@@ -45,16 +45,39 @@ def leftover_from_sta(sta: dict | None) -> dict | None:
     if wns >= 0:
         return None
     viol = timing.get("setup_violations")
-    return {
+    endpoint = timing.get("worst_endpoint")
+    kind = timing.get("wns_kind")
+    if kind not in {"output", "register"}:
+        text = str(endpoint or "")
+        if "(output)" in text or text.startswith("resp_") or text.startswith("req_"):
+            kind = "output"
+        elif endpoint:
+            kind = "register"
+        else:
+            kind = None
+    if kind == "output":
+        named = endpoint or "outputs"
+        note = (
+            "Register-to-register is MET. Leftover is the course 20% output "
+            f"delay on {named}. Educational golden allows WNS ≥ -0.04. Do not hide."
+        )
+    else:
+        note = (
+            "Educational golden allows WNS ≥ -0.04. Path is still VIOLATED "
+            f"at the course {COURSE_CLOCK_NS} ns clock. Do not hide."
+        )
+    leftover = {
         "setup_open": True,
         "wns_ns": wns,
         "setup_violations": viol,
         "clock_ns": COURSE_CLOCK_NS,
-        "note": (
-            "Educational golden allows WNS ≥ -0.04. Path is still VIOLATED "
-            f"at the course {COURSE_CLOCK_NS} ns clock. Do not hide."
-        ),
+        "note": note,
     }
+    if endpoint:
+        leftover["worst_endpoint"] = endpoint
+    if kind:
+        leftover["wns_kind"] = kind
+    return leftover
 
 
 def leftover_from_lvs(lvs: dict | None) -> dict | None:

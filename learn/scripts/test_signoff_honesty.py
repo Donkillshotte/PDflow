@@ -468,6 +468,18 @@ def main() -> int:
         == "STA WNS -0.02 ns · leftover setup open (WNS -0.02 at 0.46 ns)",
         "with_setup_leftover_summary does not double-append",
     )
+    io_parsed = leftover_from_sta(
+        {
+            "timing": {
+                "wns_ns": -0.01,
+                "setup_violations": 1,
+                "worst_endpoint": "resp_msg[14] (output)",
+                "wns_kind": "output",
+            }
+        }
+    )
+    check(io_parsed is not None and io_parsed.get("wns_kind") == "output", "leftover_from_sta names an I/O WNS")
+    check("Register-to-register is MET" in str(io_parsed.get("note")), "I/O leftover note says R2R is MET")
     rebuilt = build("flowlab")
     check(rebuilt.get("ok") is True, "stamp rebuild is ok")
     check(int((rebuilt.get("leftover") or {}).get("must_connect") or 0) == 2, "stamp rebuild leftover")

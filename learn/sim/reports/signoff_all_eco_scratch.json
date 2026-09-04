@@ -4,13 +4,15 @@
   "pillars": {
     "timing": {
       "ok": true,
-      "summary": "STA WNS -0.01 ns \u00b7 TNS -0.12 \u00b7 viol 16 \u00b7 leftover setup open (WNS -0.01 at 0.46 ns)",
+      "summary": "STA WNS -0.01 ns \u00b7 TNS -0.01 \u00b7 viol 1 \u00b7 leftover setup open (WNS -0.01 at 0.46 ns)",
       "leftover": {
         "setup_open": true,
         "wns_ns": -0.01,
-        "setup_violations": 16,
+        "setup_violations": 1,
         "clock_ns": 0.46,
-        "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
+        "note": "Register-to-register is MET. Leftover is the course 20% output delay on resp_msg[14] (output). Educational golden allows WNS \u2265 -0.04. Do not hide.",
+        "worst_endpoint": "resp_msg[14] (output)",
+        "wns_kind": "output"
       }
     },
     "geometry": {
@@ -30,7 +32,7 @@
     },
     "power": {
       "ok": true,
-      "summary": "Chip IR 1.02 mV \u00b7 transient 9.33 mV \u00b7 IR meshes not comparable",
+      "summary": "Chip IR 1.06 mV \u00b7 transient 9.83 mV \u00b7 IR meshes not comparable",
       "ir_mesh_ledger": {
         "comparable": false,
         "n_meshes": 3
@@ -49,9 +51,11 @@
   "setup_leftover": {
     "setup_open": true,
     "wns_ns": -0.01,
-    "setup_violations": 16,
+    "setup_violations": 1,
     "clock_ns": 0.46,
-    "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
+    "note": "Register-to-register is MET. Leftover is the course 20% output delay on resp_msg[14] (output). Educational golden allows WNS \u2265 -0.04. Do not hide.",
+    "worst_endpoint": "resp_msg[14] (output)",
+    "wns_kind": "output"
   },
   "ir_mesh_ledger": {
     "comparable": false,

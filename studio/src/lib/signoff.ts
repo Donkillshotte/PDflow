@@ -382,6 +382,9 @@ export function leftoverSetupOpenDetail(
         setup_open?: boolean;
         wns_ns?: number;
         clock_ns?: number;
+        wns_kind?: string;
+        worst_endpoint?: string;
+        note?: string;
       }
     | undefined;
   const timing = report.timing as { wns_ns?: number } | undefined;
@@ -393,6 +396,10 @@ export function leftoverSetupOpenDetail(
   const named = Number.isFinite(wns)
     ? `leftover setup open (WNS ${wns} at ${clock} ns)`
     : `leftover setup open at ${clock} ns`;
+  if (leftover?.wns_kind === "output") {
+    const pin = leftover.worst_endpoint ? ` on ${leftover.worst_endpoint}` : "";
+    return `${named}; register-to-register MET, leftover is course output delay${pin}`;
+  }
   return `${named}; educational golden still ≥ -0.04`;
 }
 

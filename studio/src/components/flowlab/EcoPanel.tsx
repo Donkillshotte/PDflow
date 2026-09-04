@@ -35,6 +35,8 @@ type CloseReport = {
     wns_ns?: number;
     clock_ns?: number;
     note?: string;
+    wns_kind?: string;
+    worst_endpoint?: string;
   };
   pillars?: Record<string, { ok?: boolean; summary?: string }>;
 };
@@ -164,7 +166,9 @@ export function EcoPanel({
             FLOW_VARIANT=eco_scratch ./learn/scripts/run_signoff_all.sh
             {closePillars ? ` · ${closePillars}` : ""}
             {close?.setup_leftover?.setup_open
-              ? ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns)`
+              ? close.setup_leftover.wns_kind === "output"
+                ? ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns; register-to-register MET, leftover is course output delay)`
+                : ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns)`
               : ""}
             {close?.leftover?.must_connect
               ? ` · leftover must-connect ${close.leftover.must_connect}${
