@@ -19,7 +19,7 @@ here because the user asked.
 |---|---|---|---|
 | **CCS tables** | **Closed (19-cell sidecar)** — PTM + ngspice | Done | `nangate45_ptm_ccs_sidecar.lib` · official typical.lib stays NLDM |
 | **LVS mismatch** | **Closed on FlowLab GCD compare** — unused CDL filter + FILL from DEF + well→VDD/VSS | Done | Must-connect warnings on DFF_X2 remain in lvsdb |
-| **ECO after finish** | **Closed as propose/apply + signoff_all on a copy** | Done | Apply refused on flowlab. Live apply: SPEF size-up, then BufferMove with no SPEF (29 buffers), `global_connect` so LVS still matches. eco_scratch OpenSTA: register-to-register MET, leftover is course 20% output delay (WNS −0.01 on `resp_msg[14]`). `period_min` 0.46 ns. Close is `signoff_all`. |
+| **ECO after finish** | **Closed as propose/apply + signoff_all on a copy** | Done | Apply refused on flowlab. Live: SPEF size-up, BufferMove without SPEF (29 buffers), `global_connect`. eco_scratch OpenSTA: R2R MET, leftover is course 20% output delay (WNS −0.01 on `resp_msg[14]`). A further I/O `repair_timing` on that shared cone regresses R2R to WNS −0.02 — not applied. Leftover is SDC-gated. Close is `signoff_all`. |
 | **Raphael / StarRC** | **Not closable** — commercial | — | OpenRCX + analytical PEX stay the OSS path |
 | **FasterCap (field solver)** | **Closable** — build + 2-wire demo | Low | Compile FasterCap, run on existing analytical PEX geometry |
 | **Magic `.tech`** | **Partially closable** — write a minimal `.tech` | Medium | Write FreePDK45 `.tech` from the NCSU layer definitions |

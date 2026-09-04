@@ -22,7 +22,7 @@ if {[info exists ::env(ECO_RC)] && $::env(ECO_RC) != "" && [file exists $::env(E
   source $::env(ECO_RC)
 }
 
-# ECO_PHASE=sizeup|buffer|io|all (default all). Size-up and I/O need SPEF.
+# ECO_PHASE=sizeup|buffer|all (default all). Size-up needs SPEF.
 # BufferMove cannot: SPEF in the same OpenROAD session is RSZ-0074 even
 # after estimate_parasitics (live apply). Buffer runs in a fresh process
 # with no SPEF. Close is still signoff_all.
@@ -97,52 +97,35 @@ if {$eco_grt && [info commands global_route] != ""} {
 }
 
 # The course SDC puts 20% of 0.46 ns on every I/O. OpenROAD then ranks
-# resp_msg[*] as WNS and spends the budget there. OpenSTA register-to-
-# register (dpath.a_reg) is repaired first (sizeup + BufferMove) with
-# outputs false for that session. After R2R is MET, ECO_PHASE=io false-
-# paths register-to-register so size-up hits the leftover output path.
-# The SDC file is not rewritten.
+# resp_msg[*] as WNS and spends the budget there. OpenSTA signoff WNS is
+# register-to-register (dpath.a_reg). Ignore output endpoints for this
+# session only — the SDC file is not rewritten.
 if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
   if {!$eco_grt} {
     puts "WARN ECO setup repair skipped — GRT not initialized"
   } elseif {[info commands repair_timing] != ""} {
-    if {$eco_phase == "io"} {
-      if {[info commands set_false_path] != "" && [info commands all_registers] != ""} {
-        if {[catch {set_false_path -from [all_registers] -to [all_registers]} err]} {
-          puts "WARN ECO set_false_path registers: $err"
-        } else {
-          puts "ECO_SETUP_FOCUS outputs (R2R false during I/O repair)"
-        }
-      }
-      if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
-        puts "WARN ECO io repair: $err"
+    if {[info commands set_false_path] != "" && [info commands all_outputs] != ""} {
+      if {[catch {set_false_path -to [all_outputs]} err]} {
+        puts "WARN ECO set_false_path outputs: $err"
       } else {
-        puts "ECO_REPAIR_IO sizeup,swap"
+        puts "ECO_SETUP_FOCUS register-to-register (I/O false during repair)"
       }
-    } else {
-      if {[info commands set_false_path] != "" && [info commands all_outputs] != ""} {
-        if {[catch {set_false_path -to [all_outputs]} err]} {
-          puts "WARN ECO set_false_path outputs: $err"
-        } else {
-          puts "ECO_SETUP_FOCUS register-to-register (I/O false during repair)"
-        }
+    }
+    if {$eco_phase != "buffer"} {
+      if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
+        puts "WARN ECO setup repair: $err"
+      } else {
+        puts "ECO_REPAIR_SETUP sizeup,swap"
       }
-      if {$eco_phase != "buffer"} {
-        if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
-          puts "WARN ECO setup repair: $err"
+    }
+    if {$eco_phase != "sizeup"} {
+      if {$eco_read_spef} {
+        puts "WARN ECO buffer skipped — SPEF loaded (RSZ-0074); run ECO_PHASE=buffer in a fresh OpenROAD"
+      } else {
+        if {[catch {repair_timing -setup -skip_gate_cloning -sequence "buffer" -max_buffer_percent 20 -verbose} err]} {
+          puts "WARN ECO buffer repair: $err"
         } else {
-          puts "ECO_REPAIR_SETUP sizeup,swap"
-        }
-      }
-      if {$eco_phase == "buffer"} {
-        if {$eco_read_spef} {
-          puts "WARN ECO buffer skipped — SPEF loaded (RSZ-0074); run ECO_PHASE=buffer in a fresh OpenROAD"
-        } else {
-          if {[catch {repair_timing -setup -skip_gate_cloning -sequence "buffer" -max_buffer_percent 20 -verbose} err]} {
-            puts "WARN ECO buffer repair: $err"
-          } else {
-            puts "ECO_REPAIR_BUFFER"
-          }
+          puts "ECO_REPAIR_BUFFER"
         }
       }
     }

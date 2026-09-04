@@ -194,7 +194,6 @@ def apply(variant: str) -> dict:
     obj.mkdir(parents=True, exist_ok=True)
     work = obj / "eco_in.odb"
     size_out = obj / "eco_size.odb"
-    buf_out = obj / "eco_buf.odb"
     out = obj / "eco_out.odb"
     shutil.copy2(src, work)
     def_out = obj / "eco_out.def"
@@ -203,41 +202,25 @@ def apply(variant: str) -> dict:
     spef_out = obj / "eco_out.spef"
     spef_in = src.parent / "6_final.spef"
     # Size-up needs SPEF. BufferMove cannot share that OpenROAD session
-    # (RSZ-0074). I/O size-up is a third process with SPEF after R2R is
-    # repaired. Close is still signoff_all.
+    # (RSZ-0074). Two processes: sizeup with SPEF, then buffer with none.
     size_env = _eco_env(work, size_out, obj, phase="sizeup", spef_in=spef_in if spef_in.is_file() else None)
     size_proc = _openroad_repair(size_env)
     chunks = [_proc_text(size_proc)]
     proc = size_proc
     restored = "ECO_RESTORE_SOURCE" in chunks[0]
     size_routed = "ECO_ROUTED 1" in chunks[0] and not restored
-    buffer_routed = False
     if size_routed and size_out.is_file() and size_proc.returncode == 0:
-        buf_env = _eco_env(size_out, buf_out, obj, phase="buffer", spef_in=None)
+        buf_env = _eco_env(size_out, out, obj, phase="buffer", spef_in=None)
         buf_proc = _openroad_repair(buf_env)
         chunks.append(_proc_text(buf_proc))
         proc = buf_proc
         buf_text = chunks[-1]
-        buffer_routed = "ECO_ROUTED 1" in buf_text and "ECO_RESTORE_SOURCE" not in buf_text
-        if not buffer_routed or buf_proc.returncode != 0:
+        if "ECO_RESTORE_SOURCE" in buf_text or (
+            buf_proc.returncode != 0 and not (out.is_file() and "ECO_ROUTED 1" in buf_text)
+        ):
             _copy_repair_sidecars(size_out, out)
             chunks.append("ECO_KEEP_SIZEUP BufferMove did not legalize; keeping SPEF size-up")
             restored = False
-        else:
-            io_spef = buf_out.with_suffix(".spef")
-            if not io_spef.is_file():
-                io_spef = spef_in if spef_in.is_file() else None
-            io_env = _eco_env(buf_out, out, obj, phase="io", spef_in=io_spef)
-            io_proc = _openroad_repair(io_env)
-            chunks.append(_proc_text(io_proc))
-            proc = io_proc
-            io_text = chunks[-1]
-            if "ECO_RESTORE_SOURCE" in io_text or (
-                io_proc.returncode != 0 and not (out.is_file() and "ECO_ROUTED 1" in io_text)
-            ):
-                _copy_repair_sidecars(buf_out, out)
-                chunks.append("ECO_KEEP_BUFFER I/O size-up did not legalize; keeping buffered netlist")
-                restored = False
     elif restored:
         if src.is_file():
             shutil.copy2(src, out)
@@ -333,9 +316,7 @@ def apply(variant: str) -> dict:
         )
     elif routed and setup_open:
         extra = ""
-        if "ECO_REPAIR_IO" in log_text:
-            extra = "I/O size-up after R2R MET; "
-        elif "ECO_REPAIR_BUFFER" in log_text:
+        if "ECO_REPAIR_BUFFER" in log_text:
             extra = "buffers inserted on GRT parasitics; "
         elif "ECO_KEEP_SIZEUP" in log_text or "WARN ECO buffer" in log_text:
             extra = "BufferMove did not legalize; "
@@ -376,11 +357,7 @@ def apply(variant: str) -> dict:
         "log": str(log),
         "rc": proc.returncode,
         "error": err,
-        "repaired": bool(
-            "ECO_REPAIR_SETUP" in log_text
-            or "ECO_REPAIR_BUFFER" in log_text
-            or "ECO_REPAIR_IO" in log_text
-        )
+        "repaired": bool("ECO_REPAIR_SETUP" in log_text or "ECO_REPAIR_BUFFER" in log_text)
         and not restored,
         "leftover": leftover,
         "rewrote": rewrote,

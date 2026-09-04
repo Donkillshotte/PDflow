@@ -1,12 +1,12 @@
-# Constraint didattici per il corso (partenza conservativa).
-# Lezione 01 spiega ogni riga e propone varianti.
+# Course SDC (conservative start).
+# Lesson 01 explains each line and offers variants.
 
 current_design gcd
 
 set clk_name core_clock
 set clk_port_name clk
 
-# 0.46 ns ≈ 2.17 GHz — vincolo moderato per imparare senza overflow di area
+# 0.46 ns ≈ 2.17 GHz — moderate so the lesson is learnable without area overflow
 set clk_period 0.46
 set clk_io_pct 0.2
 
