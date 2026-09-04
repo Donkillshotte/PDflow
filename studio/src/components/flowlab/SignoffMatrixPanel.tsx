@@ -166,11 +166,13 @@ export function SignoffMatrixPanel({
   busy,
   onRun,
   showOrchestrator = true,
+  showPhase2 = false,
 }: {
   variant?: string;
   busy?: string | null;
   onRun?: (action: string, long: boolean) => void;
   showOrchestrator?: boolean;
+  showPhase2?: boolean;
 }) {
   const [data, setData] = useState<SignoffApi | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -296,7 +298,7 @@ export function SignoffMatrixPanel({
         })}
       </ul>
 
-      {data?.plannedPillars && data.plannedPillars.length > 0 && (
+      {showPhase2 && data?.plannedPillars && data.plannedPillars.length > 0 && (
         <div className="sig-planned">
           <strong>Phase 2 (HotSpot + dummy RDL)</strong>
           <ul className="sig-pillar-list">
@@ -379,14 +381,21 @@ export function SignoffMatrixPanel({
               {busy === "signoff_all" ? "Full signoff…" : "Full signoff (STA→DRC→LVS→Power)"}
             </button>
           )}
-          <button
-            type="button"
-            className="sig-all-btn sig-phase2-btn"
-            disabled={Boolean(busy)}
-            onClick={() => onRun("signoff_phase2", false)}
-          >
-            {busy === "signoff_phase2" ? "Phase 2…" : "Signoff Phase 2 (thermal + PKG)"}
-          </button>
+          {showPhase2 ? (
+            <button
+              type="button"
+              className="sig-all-btn sig-phase2-btn"
+              disabled={Boolean(busy)}
+              onClick={() => onRun("signoff_phase2", false)}
+            >
+              {busy === "signoff_phase2" ? "Phase 2…" : "Signoff Phase 2 (thermal + PKG)"}
+            </button>
+          ) : (
+            <p className="sig-summary">
+              Phase 2 (HotSpot + dummy RDL) stays on{" "}
+              <a href="/flow?phase=pkg">PKG</a>.
+            </p>
+          )}
         </div>
       )}
 
