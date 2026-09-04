@@ -100,16 +100,10 @@ cells).
 
 ### Feasibility
 
-**Partially closable.** Path:
-
-1. Filter CDL to only include cells instantiated in GCD synthesis (`grep '^\.' 6_final.v` to get the cell list, then filter the CDL).
-2. Add `connect_implicit` for NWELL→VDD and PWELL→VSS in the LVS runset.
-3. If 4→3 terminal mismatch persists, add a `MOS4To3NetlistSpiceReaderDelegate`.
-4. Re-run LVS and check if the remaining mismatches are real connectivity errors or just library-level issues.
-
-**Risk**: even after filtering and connecting wells, FreePDK45 tutorial layouts are sometimes not LVS-clean due to missing well taps, incomplete cell abstracts, or pin labeling issues. The KLayout FreePDK45 runset (`FreePDK45.lylvs` from [laurentc2/FreePDK45_for_KLayout](https://github.com/laurentc2/FreePDK45_for_KLayout)) is community-maintained and may need fixes.
-
-**Honest leftover**: if LVS passes after fixing the runset, it passes on the *educational* FreePDK45 flow, not on a foundry-qualified PDK. If it still fails on real connectivity issues (missing S/D connections, incomplete abstracts), that is an honest fail, not a mock.
+**Closed on FlowLab GCD compare.** Do not reopen flatten / unpin experiments.
+The remaining must-connect on DFF_X2 is PDK-gated (`gaps.md`). Nangate does
+not block LVS: KLayout prints `CONGRATULATIONS! Netlists match`. Switching
+the course to another std-cell library is out of scope.
 
 **Shipped (FlowLab GCD).** Filter unused CDL, inject FILLCELL from DEF, map
 wells to VDD/VSS, `blank_circuit` on empty FILL/TAP. KLayout prints

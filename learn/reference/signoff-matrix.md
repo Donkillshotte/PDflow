@@ -32,7 +32,7 @@ the lvsdb (Nangate split wells). This is educational FreePDK45, not foundry LVS.
 | **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden |
 | **Timing (STA IR-aware)** | 07-finish | `sta_ir_aware` | `run_sta_ir_aware.sh` | `sim/reports/sta_ir_aware_{v}.json` | Educational NLDM × ITerm V (does not change WNS) |
 | **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
-| **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | LVS clean (educational) |
+| **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | KLayout match + leftover named |
 | **Power / PKG** | 03–07, PKG hub | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | IR/droop/Zmax vs golden |
 | **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | all 4 pillars (+ optional Phase 2 with `SIGNOFF_INCLUDE_PHASE2=1`) |
 
@@ -73,7 +73,7 @@ All signoff actions require **`finish`** completed:
 | Timing | period_min | ≥ 0.50 ns |
 | Geometry | Route DRC lines | 0 |
 | Geometry | GDS DRC items | 0 |
-| Equivalence | LVS | clean (interpret report) |
+| Equivalence | LVS | match (`CONGRATULATIONS`) · leftover must-connect 2 on DFF_X2 stays visible |
 | Power | Chip static IR | ≤ 15 mV |
 | Power | Chip transient droop | ≤ 120 mV |
 | Power | System droop | ≤ 20 mV |
@@ -118,9 +118,9 @@ Quick post-`finish` checklist:
 - [ ] `sta_signoff` → WNS/TNS/viol vs golden
 - [ ] (opt.) `sta_ir_aware` → slack vs slack_ir on the worst path (educational; not Tempus)
 - [ ] `drc_signoff` → route DRC + GDS items = 0
-- [ ] `klayout_lvs` → `.lvsdb` report interpreted (educational)
-- [ ] `power_signoff` → IR/droop/system vs golden
-- [ ] `signoff_all` → aggregated 4 pillars ok
+- [ ] `klayout_lvs` → `CONGRATULATIONS` + leftover object (DFF_X2)
+- [ ] `power_signoff` → IR/droop/system vs golden · IR meshes not comparable
+- [ ] `signoff_all` → 4 pillars ok · leftover + IR ledger named
 - [ ] (opt.) Phase 2: `thermal_signoff`, `pkg_signoff`, `signoff_phase2`
 - [ ] UI: matrix visible on FlowLab **finish** and **/pkg** hub
 - [ ] Zero drift: `signoff.ts` ↔ `actions.ts` ↔ `run.ts` ↔ `jobs.ts` ↔ bash scripts
