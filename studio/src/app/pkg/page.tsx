@@ -2,21 +2,21 @@ import Link from "next/link";
 import { PkgHubPanel } from "@/components/PkgHubPanel";
 
 export const metadata = {
-  title: "PKG · Design package · OpenROAD Studio",
-  description:
-    "Hierarchical System PDN, chip mesh SPICE, power chain RTL→PKG.",
+  title: "PKG · System PDN · OpenROAD Studio",
+  description: "System PDN ladder and Phase 2 (HotSpot, dummy RDL). Four-pillar signoff stays on finish.",
 };
 
 export default function PkgPage() {
   return (
     <main className="pkg-page">
       <header className="page-head">
-        <p className="eyebrow">Design package</p>
-        <h1>PKG · Packaging &amp; System PDN</h1>
+        <p className="eyebrow">Package</p>
+        <h1>PKG · System PDN and Phase 2</h1>
         <p>
-          Full chain: <strong>RTL</strong> (VCD) → <strong>liberty/cells</strong> →{" "}
-          <strong>PDN grid</strong> → <strong>finish/report_power</strong> →{" "}
-          <strong>mesh SPICE on-die</strong> → <strong>System PDN ngspice</strong>.
+          Board / package ladder, HotSpot, and dummy RDL. Chip IR, STA, DRC,
+          and LVS close on{" "}
+          <Link href="/flow?phase=finish#signoff">finish</Link> via{" "}
+          <code>signoff_all</code>.
         </p>
       </header>
 
@@ -31,13 +31,13 @@ export default function PkgPage() {
 
       <div className="pkg-grid">
         <article className="pkg-card">
-          <h2>1. Chip PDN</h2>
+          <h2>1. Chip PDN (on finish)</h2>
           <p>
-            Gridcheck after floorplan. SPICE mesh post-finish:{" "}
-            <code>write_pg_spice</code> + <code>pdn_transient.py</code>.
+            Gridcheck after floorplan. The on-die mesh and IR ledger live with
+            the power pillar on finish, not here.
           </p>
-          <Link className="btn-primary" href="/flow?phase=pdn">
-            PDN phase
+          <Link className="btn-primary" href="/flow?phase=finish#ir">
+            Finish IR
           </Link>
         </article>
         <article className="pkg-card">
@@ -82,15 +82,17 @@ export default function PkgPage() {
           <h2>4. Commands</h2>
           <ul className="pkg-check">
             <li>
-              <code>run_power_chain.sh</code> — activity → chip IR → system → export
+              <code>run_system_pdn.sh</code> — Z(f) and die droop
             </li>
             <li>
-              <code>export_spice_lab.sh</code> — netlist in sim/spice/
+              <code>run_thermal_signoff.sh</code> — HotSpot compact model
             </li>
             <li>
-              <code>run_chip_pdn_ir.sh</code> — mesh on-die
+              <code>run_pkg_signoff.sh</code> — bump + dummy RDL
             </li>
-            <li>FlowLab signoff post-finish · SPICE chain</li>
+            <li>
+              <code>run_signoff_phase2.sh</code> — Phase 2 orchestrator
+            </li>
           </ul>
         </article>
       </div>

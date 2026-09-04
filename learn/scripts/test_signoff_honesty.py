@@ -83,6 +83,17 @@ def main() -> int:
     matrix = (ROOT / "learn/reference/signoff-matrix.md").read_text()
     check("leftover must-connect 2 on DFF_X2" in matrix, "signoff-matrix names leftover")
     check("LVS clean (educational)" not in matrix, "signoff-matrix does not call LVS clean")
+    check("/flow?phase=finish" in matrix, "signoff-matrix points the matrix at finish")
+    check("System PDN + Phase 2" in matrix, "signoff-matrix names PKG as System PDN + Phase 2")
+    check("Full matrix + power chain" not in matrix, "signoff-matrix does not claim PKG hosts the full matrix")
+    check("FlowLab finish/PKG" not in matrix, "signoff-matrix DoD does not still say finish/PKG")
+    suite = (ROOT / "studio/src/lib/suite.ts").read_text()
+    pwr_href = suite.split('id: "power_signoff"')[1].split("},")[0]
+    all_href = suite.split('id: "signoff_all"')[1].split("},")[0]
+    check("/flow?phase=finish#ir" in pwr_href, "suite power_signoff points at finish IR")
+    check("/flow?phase=finish#signoff" in all_href, "suite signoff_all points at finish")
+    check('href: "/pkg"' not in pwr_href, "suite power_signoff is not on /pkg")
+    check('href: "/pkg"' not in all_href, "suite signoff_all is not on /pkg")
     check('"label": "LVS clean"' not in (ROOT / "learn/scripts/signoff_eval.py").read_text(), "evaluator does not label LVS as clean")
     check('"label": "LVS clean"' not in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report does not say LVS clean")
     check("KLayout match" in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report names the compare")

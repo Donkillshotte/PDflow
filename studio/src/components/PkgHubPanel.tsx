@@ -6,48 +6,55 @@ import { useToast } from "@/components/ToastProvider";
 
 type HookRow = { id: string; label: string; ok: boolean; detail: string };
 
-type ReportPreview = {
+type SystemPreview = {
   summary?: string;
   transient?: { droop_mv?: number };
-  impedance?: { z_max_mohm?: number; pass_target?: boolean | null };
+  impedance?: { z_max_mohm?: number };
 };
+
+type ThermalPreview = {
+  summary?: string;
+  thermal?: { t_max_c?: number; engine?: string };
+};
+
+type PkgPreview = {
+  summary?: string;
+  steps?: { pkg_rdl?: { summary?: string; ok?: boolean } };
+};
+
+const PKG_HOOKS = [
+  "system_pdn",
+  "thermal_signoff",
+  "pkg_rdl",
+  "pkg_signoff",
+  "signoff_phase2",
+];
 
 export function PkgHubPanel() {
   const { push } = useToast();
   const [hooks, setHooks] = useState<HookRow[]>([]);
-  const [systemReport, setSystemReport] = useState<ReportPreview | null>(null);
-  const [chipReport, setChipReport] = useState<ReportPreview | null>(null);
+  const [systemReport, setSystemReport] = useState<SystemPreview | null>(null);
+  const [thermalReport, setThermalReport] = useState<ThermalPreview | null>(null);
+  const [pkgReport, setPkgReport] = useState<PkgPreview | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const [suite, sys, chip] = await Promise.all([
+    const [suite, sys, thermal, pkg] = await Promise.all([
       fetch("/api/suite").then((r) => r.json()),
       fetch("/api/content?path=sim/reports/system_pdn_flowlab.json").then((r) =>
         r.ok ? r.json() : null,
       ),
-      fetch("/api/content?path=sim/reports/pdn_chip_ir_flowlab.json").then((r) =>
+      fetch("/api/content?path=sim/reports/thermal_signoff_flowlab.json").then((r) =>
+        r.ok ? r.json() : null,
+      ),
+      fetch("/api/content?path=sim/reports/pkg_signoff_flowlab.json").then((r) =>
         r.ok ? r.json() : null,
       ),
     ]);
-    const powerHooks = (suite.hooks ?? []).filter((h: HookRow) =>
-      [
-        "activity",
-        "chip_pdn_ir",
-        "vyges_em_ir",
-        "dynamic_ir",
-        "system_pdn",
-        "power_chain",
-        "spice_lab",
-        "ngspice",
-        "sta_signoff",
-        "sta_ir_aware",
-        "drc_signoff",
-        "lvs_signoff",
-        "power_signoff",
-        "signoff_all",
-      ].includes(h.id),
+    const pkgHooks = (suite.hooks ?? []).filter((h: HookRow) =>
+      PKG_HOOKS.includes(h.id),
     );
-    setHooks(powerHooks);
+    setHooks(pkgHooks);
     if (sys?.content) {
       try {
         setSystemReport(JSON.parse(sys.content));
@@ -55,11 +62,18 @@ export function PkgHubPanel() {
         setSystemReport(null);
       }
     }
-    if (chip?.content) {
+    if (thermal?.content) {
       try {
-        setChipReport(JSON.parse(chip.content));
+        setThermalReport(JSON.parse(thermal.content));
       } catch {
-        setChipReport(null);
+        setThermalReport(null);
+      }
+    }
+    if (pkg?.content) {
+      try {
+        setPkgReport(JSON.parse(pkg.content));
+      } catch {
+        setPkgReport(null);
       }
     }
   }, []);
@@ -68,7 +82,7 @@ export function PkgHubPanel() {
     void refresh();
   }, [refresh]);
 
-  async function runSignoff(action: string, long: boolean) {
+  async function runAction(action: string, long: boolean) {
     if (busy) return;
     if (long && !window.confirm(`Start «${action}»? This may take several minutes.`)) {
       return;
@@ -110,9 +124,10 @@ export function PkgHubPanel() {
   return (
     <section className="pkg-hub-panel panel">
       <header className="pkg-hub-head">
-        <h2>Power chain status</h2>
+        <h2>System PDN and Phase 2</h2>
         <p>
-          FlowLab reports for the power chain. Signoff stays on{" "}
+          Package ladder, HotSpot, and dummy RDL. STA · DRC · LVS · chip IR
+          stay on{" "}
           <Link href="/flow?phase=finish#signoff">finish</Link>. DSE stays on{" "}
           <Link href="/lab">/lab</Link>.{" "}
           <Link href="/flow?phase=pkg">FlowLab PKG →</Link>
@@ -143,15 +158,21 @@ export function PkgHubPanel() {
               </p>
             </>
           ) : (
-            <p>Report missing — run system_pdn or power_chain.</p>
+            <p>Report missing — run system_pdn after finish.</p>
           )}
         </article>
         <article className="pkg-report-card">
-          <h3>Chip IR mesh</h3>
-          {(chipReport as { summary?: string } | null)?.summary ? (
-            <p>{(chipReport as { summary: string }).summary}</p>
+          <h3>Phase 2</h3>
+          {thermalReport?.summary || pkgReport?.summary ? (
+            <>
+              <p>{thermalReport?.summary ?? "HotSpot report missing."}</p>
+              <p className="pkg-metrics">
+                t_max {thermalReport?.thermal?.t_max_c?.toFixed(2) ?? "—"} °C ·{" "}
+                {pkgReport?.steps?.pkg_rdl?.summary ?? "dummy RDL not stamped"}
+              </p>
+            </>
           ) : (
-            <p>Report missing — run chip_pdn_ir after finish.</p>
+            <p>Reports missing — run thermal_signoff and pkg_signoff.</p>
           )}
         </article>
       </div>
@@ -161,9 +182,9 @@ export function PkgHubPanel() {
           type="button"
           className="btn-primary"
           disabled={Boolean(busy)}
-          onClick={() => void runSignoff("power_chain", true)}
+          onClick={() => void runAction("signoff_phase2", true)}
         >
-          {busy === "power_chain" ? "Running…" : "Run power chain"}
+          {busy === "signoff_phase2" ? "Running…" : "Run Phase 2"}
         </button>
       </p>
     </section>

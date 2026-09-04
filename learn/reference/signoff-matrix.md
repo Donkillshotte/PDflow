@@ -33,7 +33,7 @@ the lvsdb (Nangate split wells). This is educational FreePDK45, not foundry LVS.
 | **Timing (STA IR-aware)** | 07-finish | `sta_ir_aware` | `run_sta_ir_aware.sh` | `sim/reports/sta_ir_aware_{v}.json` | Educational NLDM × ITerm V (does not change WNS) |
 | **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items |
 | **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | KLayout match + leftover named |
-| **Power / PKG** | 03–07, PKG hub | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | IR/droop/Zmax vs golden |
+| **Power** | 03–07, finish | `power_signoff` | `run_power_signoff.sh` | `sim/reports/power_signoff_{v}.json` | IR/droop/Zmax vs golden |
 | **Orchestrator** | 07 LAB | `signoff_all` | `run_signoff_all.sh` | `sim/reports/signoff_all_{v}.json` | all 4 pillars (+ optional Phase 2 with `SIGNOFF_INCLUDE_PHASE2=1`) |
 
 Power sub-checks (inside `power` pillar):
@@ -101,7 +101,7 @@ SIGNOFF_INCLUDE_PHASE2=1 ./learn/scripts/run_signoff_all.sh
 
 ---
 
-## Definition of Done (enterprise deliverable)
+## Definition of Done
 
 Every pillar signoff is **complete** when all five artifacts exist:
 
@@ -111,7 +111,7 @@ Every pillar signoff is **complete** when all five artifacts exist:
 | **Report JSON** | `learn/sim/reports/*_signoff_{variant}.json` |
 | **Golden gate** | evaluation in report (`evaluation.checks` vs `signoff/golden-gcd.json`) |
 | **Test** | `scripts/test_all_phases.sh` · `scripts/test_studio_api.sh` |
-| **Doc** | this matrix · lesson 07 LAB Part 7 · FlowLab finish/PKG |
+| **Doc** | this matrix · lesson 07 LAB Part 7 · FlowLab finish |
 
 Quick post-`finish` checklist:
 
@@ -122,7 +122,7 @@ Quick post-`finish` checklist:
 - [ ] `power_signoff` → IR/droop/system vs golden · IR meshes not comparable
 - [ ] `signoff_all` → 4 pillars ok · leftover + IR ledger named
 - [ ] (opt.) Phase 2: `thermal_signoff`, `pkg_signoff`, `signoff_phase2`
-- [ ] UI: matrix visible on FlowLab **finish** and **/pkg** hub
+- [ ] UI: matrix visible on FlowLab **finish** (`/flow?phase=finish`). `/pkg` is System PDN + Phase 2 only.
 - [ ] Zero drift: `signoff.ts` ↔ `actions.ts` ↔ `run.ts` ↔ `jobs.ts` ↔ bash scripts
 
 ---
@@ -131,8 +131,10 @@ Quick post-`finish` checklist:
 
 | Surface | Content |
 |---|---|
-| FlowLab phase **finish** | 4-pillar matrix + STA/DRC/LVS actions |
-| FlowLab phase **PKG** / [`/pkg`](/pkg) | Full matrix + power chain |
+| FlowLab phase **finish** (`/flow?phase=finish`) | Four-pillar matrix, ECO, IR ledger, Dynamic IR heatmap |
+| `/pkg` | System PDN + Phase 2 only (no matrix, no ECO) |
+| `/product` | `win_rule` table (area / power / leakage / IR) |
+| `/lab` | Physics ledger + DSE proposer |
 | `/api/signoff` | JSON matrix + `evaluateSignoffGates()` |
 
 Cross-ref: [extended-flow.md](./extended-flow.md) · [spice-power-chain.md](./spice-power-chain.md)

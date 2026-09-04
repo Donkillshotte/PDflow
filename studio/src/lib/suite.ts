@@ -384,7 +384,7 @@ export async function getSuiteStatus() {
       ok: signoffReportPass("flowlab", "power_signoff") || signoffReportPass("learn", "power_signoff"),
       detail: "Power chain + golden gate",
       action: "power_signoff",
-      href: "/pkg",
+      href: "/flow?phase=finish#ir",
     },
     {
       id: "signoff_all",
@@ -393,7 +393,7 @@ export async function getSuiteStatus() {
       ok: signoffReportPass("flowlab", "signoff_all") || signoffReportPass("learn", "signoff_all"),
       detail: "STA → DRC → LVS → power",
       action: "signoff_all",
-      href: "/pkg",
+      href: "/flow?phase=finish#signoff",
     },
     {
       id: "eco",

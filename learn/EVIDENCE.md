@@ -59,7 +59,7 @@ Expected reports in `learn/sim/reports/`:
 | `signoff_phase2_{v}.json` | Phase 2 |
 
 Matrix and DoD: [signoff-matrix.md](./reference/signoff-matrix.md).  
-Studio UI: FlowLab **finish** stage, hub [/pkg](http://127.0.0.1:43217/pkg), `GET /api/signoff?variant=flowlab`.
+Studio UI: FlowLab **finish** (`/flow?phase=finish`) owns the four-pillar matrix. `/pkg` is System PDN + Phase 2 only. Product wins: `/product`. `GET /api/signoff?variant=flowlab`.
 
 Automatic smoke: `./scripts/test_all_phases.sh` (includes signoff hook in `test_studio_api.sh`).
 

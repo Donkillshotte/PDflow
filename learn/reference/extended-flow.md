@@ -103,7 +103,7 @@ Do not use `read_power_activities` (deprecated, broken arity in OpenSTA 26Q2).
 FLOW_VARIANT=learn ./learn/scripts/run_drc_signoff.sh
 ```
 
-**Study:** action `drc_signoff` · matrix in FlowLab finish / [`/pkg`](/pkg).  
+**Study:** action `drc_signoff` · matrix on FlowLab finish (`/flow?phase=finish`). `/pkg` is System PDN + Phase 2.  
 See [signoff-matrix.md](./signoff-matrix.md).
 
 ---
