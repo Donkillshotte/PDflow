@@ -87,6 +87,25 @@ function currentRunDynamicIrPresent() {
   return false;
 }
 
+function thermalHookDetail() {
+  for (const variant of ["flowlab", "learn"]) {
+    const p = path.join(LEARN_ROOT, "sim/reports", `thermal_signoff_${variant}.json`);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
+        thermal?: { t_max_c?: number };
+      };
+      const t = j.thermal?.t_max_c;
+      if (typeof t === "number" && Number.isFinite(t)) {
+        return `HotSpot t_max ${t.toFixed(2)} °C · architecture compact model`;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return "HotSpot architecture compact model · run_thermal_signoff.sh";
+}
+
 function powerReportOk(variant: string, name: string) {
   return fs.existsSync(path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.log`));
 }
@@ -432,7 +451,7 @@ export async function getSuiteStatus() {
       label: "Thermal (HotSpot)",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "thermal_signoff") || signoffReportPass("learn", "thermal_signoff"),
-      detail: "HotSpot t_max °C · IR+droop secondary · run_thermal_signoff.sh",
+      detail: thermalHookDetail(),
       action: "thermal_signoff",
       href: "/pkg",
     },
