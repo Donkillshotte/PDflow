@@ -161,11 +161,11 @@ export function OpsDashboard({
           <caption>Job history (last 25)</caption>
           <thead>
             <tr>
-              <th scope="col">Azione</th>
-              <th scope="col">Stato</th>
+              <th scope="col">Action</th>
+              <th scope="col">Status</th>
               <th scope="col">Duration</th>
-              <th scope="col">Inizio</th>
-              <th scope="col">Actions</th>
+              <th scope="col">Started</th>
+              <th scope="col">Log</th>
             </tr>
           </thead>
           <tbody>

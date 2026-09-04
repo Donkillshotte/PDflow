@@ -182,6 +182,11 @@ def main() -> int:
     check("| Dynamic IR I(t) | `dynamic_ir` | `dynamic_ir_{v}.json`" not in matrix, "signoff-matrix does not list gold as the Dynamic IR cook")
     check("currentRunDynamicIrPresent" in suite, "suite Dynamic IR status reads _direct.json")
     check("ok: goldDynamicIrPresent()" not in suite, "suite Dynamic IR ok is not the gold sentinel")
+    status = (ROOT / "learn/reference/suite-status.md").read_text()
+    check("gold 45.298 LOCKED counts as present" not in status, "suite-status does not treat gold as the Dynamic IR cook")
+    check("ok` from `_direct.json`" in status or "ok from `_direct.json`" in status or "from `_direct.json`" in status, "suite-status names current_run for the Dynamic IR hook")
+    chain = (ROOT / "learn/reference/spice-power-chain.md").read_text()
+    check("[`/pkg`](/pkg)" in chain or "](/pkg)" in chain, "spice-power-chain names the PKG hub")
     therm = suite.split('id: "thermal_signoff"')[1].split("},")[0]
     check("thermalHookDetail" in therm, "Thermal hook reads t_max from the HotSpot report")
     check("HotSpot t_max °C" not in therm, "Thermal hook does not print a blank t_max")

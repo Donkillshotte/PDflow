@@ -1236,6 +1236,8 @@ def _check_enterprise_docs(check, root: Path) -> None:
     dse_panel = (root / "studio/src/components/flowlab/DsePanel.tsx").read_text()
     check("Candidati" not in dse_panel, "DsePanel has no Italian Candidati")
     check("Fonte" not in dse_panel, "DsePanel has no Italian Fonte")
+    check("Azione" not in (root / "studio/src/components/OpsDashboard.tsx").read_text(), "job history is English")
+    check("Pronto" not in (root / "studio/src/components/flowlab/RtlWaveformVisual.tsx").read_text(), "RTL waveform is English")
     check("Lab IR highlights / raw tape" in dse_panel, "DSE IR chips stay behind details")
     check("does not run" in dse_panel and "signoff_all" in dse_panel, "DsePanel says it does not run signoff_all")
     intro = (root / "learn/lessons/00-intro/README.md").read_text()

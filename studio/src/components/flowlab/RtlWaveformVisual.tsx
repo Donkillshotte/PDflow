@@ -132,10 +132,10 @@ export function RtlWaveformVisual({
         </div>
         <div className="fl-vis-stat">
           <span>VCD</span>
-          <strong className={sim.vcdExists ? "ok" : ""}>{sim.vcdExists ? "Pronto" : "—"}</strong>
+          <strong className={sim.vcdExists ? "ok" : ""}>{sim.vcdExists ? "Ready" : "—"}</strong>
         </div>
         <div className="fl-vis-stat">
-          <span>Cursore</span>
+          <span>Cursor</span>
           <strong>{cursor == null ? "—" : ns(cursor)}</strong>
         </div>
       </div>
@@ -144,7 +144,7 @@ export function RtlWaveformVisual({
         <>
           <div className="fl-wave-toolbar">
             <span>
-              gcd.vcd · {vcd?.timescale} · finestra {ns(window0)}–{ns(window1)}
+              gcd.vcd · {vcd?.timescale} · window {ns(window0)}–{ns(window1)}
             </span>
             <button
               type="button"
@@ -154,7 +154,7 @@ export function RtlWaveformVisual({
                 setT1(tMax);
               }}
             >
-              Fit tempo
+              Fit time
             </button>
           </div>
           <svg

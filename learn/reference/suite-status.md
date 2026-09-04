@@ -83,7 +83,7 @@ Course stays **0/8**. `gcd/flowlab/` baseline ODBs are not overwritten.
 | # | Workstream | Status | Evidence |
 |---|---|---|---|
 | 1 | Studio paths | **done** | `preferredResultsVariant()` · course gates stay `learn` |
-| 2 | dynamic_ir hook | **done** | gold 45.298 LOCKED counts as present |
+| 2 | dynamic_ir hook | **done** | `ok` from `_direct.json` (current_run). Gold 45.298 stays locked on another mesh. |
 | 3 | Vectorless VCD | **done** | `gcd_gate.vcd` · `tb_gcd_gate/dut` |
 | 4 | gridcheck | **done** | PSM-0040 VDD+VSS · stamp only after pass |
 | 5 | Extra combo CCS | **done** | 19 cells / 38 tables · official lib NLDM |
