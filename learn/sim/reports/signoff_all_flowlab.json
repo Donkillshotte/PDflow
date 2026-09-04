@@ -12,13 +12,35 @@
     },
     "equivalence": {
       "ok": true,
-      "summary": "LVS PASS \u00b7 errors 0"
+      "summary": "LVS PASS \u00b7 errors 0 \u00b7 leftover must-connect 2 (DFF_X2)",
+      "leftover": {
+        "must_connect": 2,
+        "circuits": [
+          "DFF_X2"
+        ],
+        "note": "Nangate split wells. Compare still matches. Do not hide."
+      }
     },
     "power": {
       "ok": true,
-      "summary": "Chip IR 1.05 mV \u00b7 Sys droop 6.03 mV \u00b7 Zmax 9058.4 m\u03a9"
+      "summary": "Chip IR 1.05 mV \u00b7 Sys droop 6.03 mV \u00b7 Zmax 9058.4 m\u03a9 \u00b7 IR meshes not comparable",
+      "ir_mesh_ledger": {
+        "comparable": false,
+        "n_meshes": 5
+      }
     }
   },
   "ok": true,
-  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok"
+  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok \u00b7 leftover must-connect 2 (DFF_X2) \u00b7 IR meshes not comparable",
+  "leftover": {
+    "must_connect": 2,
+    "circuits": [
+      "DFF_X2"
+    ],
+    "note": "Nangate split wells. Compare still matches. Do not hide."
+  },
+  "ir_mesh_ledger": {
+    "comparable": false,
+    "n_meshes": 5
+  }
 }

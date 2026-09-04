@@ -36,60 +36,46 @@ if [[ "${INCLUDE_PHASE2}" == "1" ]]; then
   run_step "signoff_phase2" env FLOW_VARIANT="${VARIANT}" "${ROOT}/learn/scripts/run_signoff_phase2.sh"
 fi
 
-python3 - <<PY | tee -a "${LOG}"
+python3 "${ROOT}/learn/scripts/stamp_signoff_all.py" --variant "${VARIANT}" --stamp | tee -a "${LOG}"
+if [[ "${INCLUDE_PHASE2}" == "1" ]]; then
+  python3 - <<PY | tee -a "${LOG}"
 import json
 from pathlib import Path
 root = Path("${ROOT}")
 v = "${VARIANT}"
-include_phase2 = "${INCLUDE_PHASE2}" == "1"
-pillars = {}
-for kind, fname in [
-  ("timing", f"sta_signoff_{v}.json"),
-  ("geometry", f"drc_signoff_{v}.json"),
-  ("equivalence", f"lvs_signoff_{v}.json"),
-  ("power", f"power_signoff_{v}.json"),
-]:
-  p = root / "learn/sim/reports" / fname
-  if p.exists():
-    r = json.loads(p.read_text())
-    pillars[kind] = {"ok": r.get("ok"), "summary": r.get("summary")}
-  else:
-    pillars[kind] = {"ok": False, "summary": "missing"}
-
-phase2_pillars = {}
-if include_phase2:
-  for kind, fname in [
-    ("thermal", f"thermal_signoff_{v}.json"),
-    ("pkg", f"pkg_signoff_{v}.json"),
-  ]:
+out_path = root / "learn/sim/reports" / f"signoff_all_{v}.json"
+blob = json.loads(out_path.read_text()) if out_path.is_file() else {"kind": "signoff_all", "variant": v}
+phase2 = {}
+for kind, fname in (("thermal", f"thermal_signoff_{v}.json"), ("pkg", f"pkg_signoff_{v}.json")):
     p = root / "learn/sim/reports" / fname
     if p.exists():
-      r = json.loads(p.read_text())
-      phase2_pillars[kind] = {"ok": r.get("ok"), "summary": r.get("summary")}
+        r = json.loads(p.read_text())
+        phase2[kind] = {"ok": r.get("ok"), "summary": r.get("summary")}
     else:
-      phase2_pillars[kind] = {"ok": False, "summary": "missing"}
-
-all_ok = all(p.get("ok") for p in pillars.values() if p.get("ok") is not None)
-if include_phase2:
-  all_ok = all_ok and all(p.get("ok") for p in phase2_pillars.values())
-parts = [f"{k}:{'ok' if p.get('ok') else 'fail'}" for k, p in pillars.items()]
-if include_phase2:
-  parts.extend(f"{k}:{'ok' if p.get('ok') else 'fail'}" for k, p in phase2_pillars.items())
-out = {
-  "kind": "signoff_all",
-  "variant": v,
-  "pillars": pillars,
-  "ok": all_ok and int("${FAIL}") == 0,
-  "summary": " · ".join(parts),
-}
-if include_phase2:
-  out["phase2_pillars"] = phase2_pillars
-  out["include_phase2"] = True
-out_path = Path("${OUT}")
-out_path.write_text(json.dumps(out, indent=2) + "\\n")
+        phase2[kind] = {"ok": False, "summary": "missing"}
+blob["phase2_pillars"] = phase2
+blob["include_phase2"] = True
+if not all(p.get("ok") for p in phase2.values()):
+    blob["ok"] = False
+blob["summary"] = blob.get("summary", "") + " · " + " · ".join(
+    f"{k}:{'ok' if p.get('ok') else 'fail'}" for k, p in phase2.items()
+)
+out_path.write_text(json.dumps(blob, indent=2) + "\\n")
 print("SIGNOFF_ALL_JSON", out_path)
-print(out["summary"])
+print(blob["summary"])
 PY
+fi
+if [[ "${FAIL}" -ne 0 ]]; then
+  python3 - <<PY
+import json
+from pathlib import Path
+p = Path("${OUT}")
+if p.is_file():
+    blob = json.loads(p.read_text())
+    blob["ok"] = False
+    p.write_text(json.dumps(blob, indent=2) + "\\n")
+PY
+fi
 
 echo "SIGNOFF_ALL_DONE ${VARIANT}"
 [[ "${FAIL}" -eq 0 ]] || exit 1

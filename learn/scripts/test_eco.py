@@ -135,6 +135,10 @@ def main() -> int:
                 check(sig.get("kind") == "signoff_all", "eco_scratch close is signoff_all")
                 check(sig.get("ok") is True, "eco_scratch signoff_all ok")
                 check(sig.get("variant") == "eco_scratch", "close is not flowlab")
+                leftover = sig.get("leftover") or {}
+                check(int(leftover.get("must_connect") or 0) == 2, "eco close leftover is 2")
+                check("DFF_X2" in (leftover.get("circuits") or []), "eco close leftover is DFF_X2")
+                check((sig.get("ir_mesh_ledger") or {}).get("comparable") is False, "eco close IR ledger not comparable")
                 check(scratch.get("signoff") is False, "apply still does not claim the close")
     print("ALL test_eco PASSED")
     return 0

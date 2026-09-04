@@ -357,9 +357,14 @@ export function leftoverMustConnectDetail(
   report: Record<string, unknown> | null,
 ): string | null {
   if (!report) return null;
-  const mc = Number(report.must_connect ?? 0);
+  const leftover = report.leftover as
+    | { must_connect?: number; circuits?: string[] }
+    | undefined;
+  const mc = Number(leftover?.must_connect ?? report.must_connect ?? 0);
   if (!(mc > 0)) return null;
-  const cells = leftoverCircuitsFromReport(report);
+  const cells = leftover?.circuits?.length
+    ? leftover.circuits.map(String)
+    : leftoverCircuitsFromReport(report);
   const named = cells.length ? cells.join(", ") : "Nangate cell";
   return `leftover must-connect ${mc} (${named}, Nangate split wells)`;
 }

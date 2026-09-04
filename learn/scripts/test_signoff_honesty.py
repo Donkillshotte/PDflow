@@ -74,6 +74,23 @@ def main() -> int:
     check(signoff_all.get("ok") is True, "signoff_all follows the four pillars")
     pillars = signoff_all.get("pillars") or {}
     check(all(pillars.get(k, {}).get("ok") for k in ("timing", "geometry", "equivalence", "power")), "four signoff pillars ok")
+    leftover = signoff_all.get("leftover") or {}
+    check(int(leftover.get("must_connect") or 0) == 2, "signoff_all leftover must-connect is 2")
+    check("DFF_X2" in (leftover.get("circuits") or []), "signoff_all leftover names DFF_X2")
+    check("leftover must-connect 2" in str(signoff_all.get("summary")), "signoff_all summary names leftover")
+    eq = pillars.get("equivalence") or {}
+    check(int((eq.get("leftover") or {}).get("must_connect") or 0) == 2, "equivalence pillar carries leftover")
+    ledger_all = signoff_all.get("ir_mesh_ledger") or {}
+    check(ledger_all.get("comparable") is False, "signoff_all IR ledger not comparable")
+    check(int(ledger_all.get("n_meshes") or 0) >= 5, "signoff_all ledger has five meshes")
+    check("stamp_signoff_all.py" in (ROOT / "learn/scripts/run_signoff_all.sh").read_text(), "signoff_all restamps leftover from pillar reports")
+    from stamp_signoff_all import leftover_from_lvs, build
+    parsed = leftover_from_lvs(lvs)
+    check(parsed is not None and parsed["must_connect"] == 2, "stamp leftover_from_lvs reads LVS")
+    check("DFF_X2" in parsed["circuits"], "stamp leftover_from_lvs names DFF_X2")
+    rebuilt = build("flowlab")
+    check(rebuilt.get("ok") is True, "stamp rebuild is ok")
+    check(int((rebuilt.get("leftover") or {}).get("must_connect") or 0) == 2, "stamp rebuild leftover")
     pwr = load("power_signoff_flowlab.json")
     ledger = pwr.get("ir_mesh_ledger") or {}
     check(ledger.get("comparable") is False, "power_signoff IR meshes are not comparable")
