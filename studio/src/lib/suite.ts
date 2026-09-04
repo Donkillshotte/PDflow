@@ -48,17 +48,38 @@ function goldDynamicIrPresent() {
     if (!fs.existsSync(p)) continue;
     try {
       const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
-        ok?: boolean;
         gold?: boolean;
         worst_droop_mv?: number;
       };
-      if (j.ok === true) return true;
       if (
         j.gold === true &&
         Math.abs(Number(j.worst_droop_mv) - 45.298) < 0.02
       ) {
         return true;
       }
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
+}
+
+/** current_run I(t) cook. Never the gold sentinel. */
+function currentRunDynamicIrPresent() {
+  for (const variant of ["flowlab", "learn"]) {
+    const p = path.join(
+      LEARN_ROOT,
+      "sim/reports",
+      `dynamic_ir_${variant}_direct.json`,
+    );
+    if (!fs.existsSync(p)) continue;
+    try {
+      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
+        ok?: boolean;
+        gold?: boolean;
+      };
+      if (j.gold === true) continue;
+      if (j.ok === true) return true;
     } catch {
       /* ignore */
     }
@@ -238,9 +259,9 @@ export async function getSuiteStatus() {
       ok:
         fs.existsSync(path.join(resultsDir("flowlab"), ".system_pdn.ok")) ||
         fs.existsSync(path.join(resultsDir("learn"), ".system_pdn.ok")),
-      detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · PKG phase",
+      detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · /pkg",
       action: "system_pdn",
-      href: "/flow?phase=pkg",
+      href: "/pkg",
     },
     {
       id: "finish",
@@ -299,8 +320,10 @@ export async function getSuiteStatus() {
       id: "dynamic_ir",
       label: "Dynamic IR I(t)",
       group: "Power",
-      ok: goldDynamicIrPresent(),
-      detail: "Gold 45.298 mV LOCKED · current_run is a different mesh",
+      ok: currentRunDynamicIrPresent(),
+      detail: goldDynamicIrPresent()
+        ? "current_run _direct.json · gold 45.298 mV locked on another mesh"
+        : "current_run _direct.json · gold sentinel missing",
       action: "dynamic_ir",
       href: "/flow?phase=finish#ir",
     },

@@ -1211,6 +1211,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("STA · DRC · LVS · power" in home, "home finish step names the four pillars")
     check("SuiteHub" not in home, "home does not dump the toolchain hook matrix")
     check("HomeOpsStrip" in home, "home points toolchain status at a count strip")
+    check('href: "/pkg"' in home, "home Package chip opens the PKG hub")
     check("/tools#suite" in (root / "studio/README.md").read_text(), "studio README sends the hook matrix to /tools#suite")
     check("/product" in (root / "studio/README.md").read_text(), "studio README lists /product")
     story_ui = (root / "studio/src/components/ProductStory.tsx").read_text()

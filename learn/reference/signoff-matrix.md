@@ -1,7 +1,8 @@
 # GCD Nangate45 signoff matrix
 
 Single source of truth for the **four pillars** of signoff on the educational GCD:
-timing (STA), geometry (DRC), equivalence (LVS), power/PKG integrity.
+timing (STA), geometry (DRC), equivalence (LVS), power (IR). System PDN and
+Phase 2 stay on `/pkg`.
 
 TypeScript registry: `studio/src/lib/signoff.ts`  
 Numeric thresholds: `learn/signoff/golden-gcd.json` (derived from [golden-metrics.md](./golden-metrics.md))  
@@ -44,7 +45,7 @@ Power sub-checks (inside `power` pillar):
 | Vectorless / dynamic | `vectorless` | `vectorless_{v}.json` |
 | Chip IR mesh | `chip_pdn_ir` | `pdn_chip_ir_{v}.json` + `.chip_pdn_ir.ok` |
 | vyges-em-ir | `vyges_em_ir` | `vyges_em_ir_{v}.json` + `.vyges_em_ir.ok` |
-| Dynamic IR I(t) | `dynamic_ir` | `dynamic_ir_{v}.json` + `.svg` + `.dynamic_ir.ok` |
+| Dynamic IR I(t) | `dynamic_ir` | `dynamic_ir_{v}_direct.json` + `.svg` + `.dynamic_ir.ok` (gold 45.298 stays `dynamic_ir_{v}.json`) |
 | System PDN | `system_pdn` | `system_pdn_{v}.json` + `.system_pdn.ok` |
 | SPICE lab export | `export_spice_lab` | `sim/spice/INDEX_{v}.md` |
 
@@ -131,7 +132,7 @@ Quick post-`finish` checklist:
 
 | Surface | Content |
 |---|---|
-| FlowLab phase **finish** (`/flow?phase=finish`) | Four-pillar matrix, ECO, IR ledger, Dynamic IR heatmap |
+| FlowLab phase **finish** (`/flow?phase=finish`) | Four-pillar matrix, ECO, STA IR-aware, IR ledger, Dynamic IR heatmap |
 | `/pkg` | System PDN + Phase 2 only (no matrix, no ECO) |
 | `/product` | `win_rule` table (area / power / leakage / IR) |
 | `/lab` | Physics ledger + DSE proposer |

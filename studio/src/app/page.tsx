@@ -31,17 +31,17 @@ export default function HomePage() {
         </p>
         <div className="flow-steps">
           {[
-            { n: "RTL", t: "Verilog", d: "Editor · VCD", ph: "rtl" },
-            { n: "SYN", t: "Synthesis", d: "Yosys · .lib", ph: "synth" },
-            { n: "FP", t: "Floorplan", d: "Die · PDN", ph: "floorplan" },
-            { n: "PDN", t: "Gridcheck", d: "PSM-0040", ph: "pdn" },
-            { n: "PL", t: "Place", d: "ITerm sink", ph: "place" },
-            { n: "CTS", t: "Clock", d: "Switching", ph: "cts" },
-            { n: "RT", t: "Route", d: "SPEF path", ph: "route" },
-            { n: "GDS", t: "Finish", d: "STA · DRC · LVS · power", ph: "finish" },
-            { n: "PKG", t: "Package", d: "System PDN", ph: "pkg" },
+            { n: "RTL", t: "Verilog", d: "Editor · VCD", href: "/flow?phase=rtl" },
+            { n: "SYN", t: "Synthesis", d: "Yosys · .lib", href: "/flow?phase=synth" },
+            { n: "FP", t: "Floorplan", d: "Die · PDN", href: "/flow?phase=floorplan" },
+            { n: "PDN", t: "Gridcheck", d: "PSM-0040", href: "/flow?phase=pdn" },
+            { n: "PL", t: "Place", d: "ITerm sink", href: "/flow?phase=place" },
+            { n: "CTS", t: "Clock", d: "Switching", href: "/flow?phase=cts" },
+            { n: "RT", t: "Route", d: "SPEF path", href: "/flow?phase=route" },
+            { n: "GDS", t: "Finish", d: "STA · DRC · LVS · power", href: "/flow?phase=finish" },
+            { n: "PKG", t: "Package", d: "System PDN", href: "/pkg" },
           ].map((s) => (
-            <Link key={s.n} href={`/flow?phase=${s.ph}`} className="flow-step flow-step-link">
+            <Link key={s.n} href={s.href} className="flow-step flow-step-link">
               <span>{s.n}</span>
               <strong>{s.t}</strong>
               <em>{s.d}</em>

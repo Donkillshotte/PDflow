@@ -84,6 +84,15 @@ def main() -> int:
     check("no FreePDK45" in magic, "Magic/Netgen hook names the missing .tech")
     css = (ROOT / "studio/src/app/globals.css").read_text()
     check("scroll-margin-top" in css and "#suite" in css, "hash targets clear the sticky nav")
+    check('href: "/pkg"' in home, "home Package chip goes to /pkg, not FlowLab finish")
+    check('href: "/flow?phase=pkg"' not in home, "home does not treat Package as a FlowLab finish phase")
+    dyn_hook = suite_src.split('id: "dynamic_ir"')[1].split("},")[0]
+    check("currentRunDynamicIrPresent" in dyn_hook, "Dynamic IR hook ok is current_run, not gold")
+    check("goldDynamicIrPresent()" not in dyn_hook.split("ok:")[1].split("\n")[0], "Dynamic IR hook ok does not call gold")
+    check("_direct.json" in dyn_hook, "Dynamic IR hook names current_run _direct.json")
+    sys_hook = suite_src.split('id: "system_pdn"')[1].split("},")[0]
+    check('href: "/pkg"' in sys_hook, "System PDN hook opens /pkg")
+    check("/flow?phase=pkg" not in sys_hook, "System PDN hook is not the FlowLab pkg phase")
 
     lvs = load("lvs_signoff_flowlab.json")
     check(lvs.get("ok") is True, "LVS compare is a real KLayout match")
@@ -168,6 +177,11 @@ def main() -> int:
     check("Power / PKG" not in (ROOT / "studio/src/lib/signoff.ts").read_text(), "power pillar is not labeled Power / PKG")
     check("Power / PKG" not in (ROOT / "learn/lessons/07-finish/README.md").read_text(), "lesson 07 does not call the power pillar PKG")
     check("Power / PKG" not in matrix, "signoff-matrix does not call the power pillar PKG")
+    check("power/PKG" not in matrix, "signoff-matrix intro does not merge power with PKG")
+    check("dynamic_ir_{v}_direct.json" in matrix, "signoff-matrix names current_run Dynamic IR")
+    check("| Dynamic IR I(t) | `dynamic_ir` | `dynamic_ir_{v}.json`" not in matrix, "signoff-matrix does not list gold as the Dynamic IR cook")
+    check("currentRunDynamicIrPresent" in suite, "suite Dynamic IR status reads _direct.json")
+    check("ok: goldDynamicIrPresent()" not in suite, "suite Dynamic IR ok is not the gold sentinel")
     check('"label": "LVS clean"' not in (ROOT / "learn/scripts/signoff_eval.py").read_text(), "evaluator does not label LVS as clean")
     check('"label": "LVS clean"' not in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report does not say LVS clean")
     check("KLayout match" in (REPORTS / "lvs_signoff_flowlab.json").read_text(), "flowlab LVS report names the compare")
