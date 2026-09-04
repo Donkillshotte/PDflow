@@ -47,7 +47,7 @@ The course uses the **GCD** design because:
 - C: Tight clock (0.25 ns) + debug failure
 - D: GUI Endpoint Slack
 
-**Filess touched**
+**Files touched**
 - `constraint.sdc`, `constraint_relaxed.sdc`, `constraint_tight.sdc`
 - `config.mk`
 

@@ -91,7 +91,7 @@ Each lesson README has a **«Power & SPICE chain»** section with a link to the 
 
 | Mode | Tools |
 |---|---|
-| **Filess** | `config.mk`, `constraint.sdc`, logs, reports, ORFS Makefile |
+| **Files** | `config.mk`, `constraint.sdc`, logs, reports, ORFS Makefile |
 | **GUI** | `gui_*` targets, OpenROAD Qt, KLayout for GDS |
 
 ### Opening the GUI

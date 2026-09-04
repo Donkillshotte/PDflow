@@ -167,7 +167,7 @@ export function ProductStory({
             <em>{data.ir.detail}</em>
           </article>
           <article>
-            <span>Product DSE</span>
+            <span>Product</span>
             <strong>
               {data.product.wins} wins
             </strong>

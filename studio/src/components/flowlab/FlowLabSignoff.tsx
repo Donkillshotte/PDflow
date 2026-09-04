@@ -237,19 +237,53 @@ function ActionGrid({
   );
 }
 
+const PKG_ACTIONS: SignoffAction[] = [
+  {
+    id: "system_pdn",
+    label: "System PDN",
+    hint: "Z(f) · die droop · ngspice",
+    icon: Layers,
+    long: false,
+  },
+  ...PHASE2_ACTIONS,
+];
+
 export function FlowLabSignoff({
   mode = "power",
   disabled,
   busy,
   onRun,
 }: {
-  mode?: "power" | "finish" | "full";
+  mode?: "power" | "finish" | "full" | "pkg";
   disabled?: boolean;
   busy?: string | null;
   onRun: (action: string, long: boolean) => void;
 }) {
-  const isFinish = mode === "finish" || mode === "full";
-  const isPower = mode === "power" || mode === "full";
+  if (mode === "pkg") {
+    return (
+      <div className="fl-signoff">
+        <div className="fl-signoff-head">
+          <strong>Package / system</strong>
+          <p>
+            System PDN and Phase 2 proxies (HotSpot, dummy RDL). The four
+            pillars and ECO close stay on{" "}
+            <a href="/flow?phase=finish&focus=signoff#signoff">finish</a>
+            {" "}(<code>signoff_all</code>). DSE stays on{" "}
+            <a href="/lab">/lab</a>.
+          </p>
+        </div>
+        <ActionGrid
+          actions={PKG_ACTIONS}
+          disabled={disabled}
+          busy={busy}
+          onRun={onRun}
+        />
+      </div>
+    );
+  }
+
+  const showFinish = mode === "finish" || mode === "full";
+  const showPower = mode === "power" || mode === "finish" || mode === "full";
 
   return (
     <div className="fl-signoff">
@@ -261,16 +295,14 @@ export function FlowLabSignoff({
           that close. DSE only suggests knobs.
         </p>
       </div>
-      {(isFinish || isPower) && <IrMeshLedger />}
-      {isFinish && (
-        <>
-          <div id="signoff">
+      {showFinish && (
+        <div id="signoff">
           <SignoffMatrixPanel busy={busy} onRun={onRun} showOrchestrator />
+          <EcoPanel busy={busy} onRun={onRun} />
           <details className="fl-signoff-more">
             <summary>STA IR-aware overlay (lab · does not change WNS)</summary>
             <StaIrAwarePanel busy={busy} onRun={onRun} />
           </details>
-          <EcoPanel busy={busy} onRun={onRun} />
           <details className="fl-signoff-more">
             <summary>Individual STA / DRC / LVS scripts</summary>
             <p>
@@ -285,26 +317,23 @@ export function FlowLabSignoff({
               onRun={onRun}
             />
           </details>
-          </div>
-        </>
+        </div>
       )}
 
-      {isPower && (
+      {showPower && (
         <>
           <div className="fl-signoff-head" id="ir">
             <strong>Signoff power &amp; SPICE</strong>
             <p>
-              Chain: VCD/activity → <strong>vectorless</strong> → chip mesh → vyges-em-ir →{" "}
-              <strong>dynamic IR I(t)</strong> → System PDN. Docs{" "}
+              Chip IR, Dynamic IR I(t), and the five-mesh ledger live here with
+              the power pillar. System PDN / Phase 2 stay on{" "}
+              <a href="/flow?phase=pkg">PKG</a>. Docs{" "}
               <a href="/materials/reference/spice-power-chain.md">spice-power-chain</a>
-              {" · "}
-              <a href="/materials/reference/vectorless-power.md">vectorless-power</a>
-              {" · "}
-              <a href="/materials/reference/vyges-em-ir.md">vyges-em-ir</a>
               {" · "}
               <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>.
             </p>
           </div>
+          <IrMeshLedger />
           <DynamicIrHeatmap />
           <details className="fl-signoff-more">
             <summary>Individual power / SPICE scripts</summary>
@@ -315,26 +344,30 @@ export function FlowLabSignoff({
               onRun={onRun}
             />
           </details>
-          <p className="fl-signoff-lab">
-            DSE proposes knobs on <a href="/lab">/lab</a>. It does not run{" "}
-            <code>signoff_all</code>. Wins stay in <code>win_rule.py</code>.
-          </p>
-          {(mode === "full") && (
-            <details className="fl-signoff-more">
-              <summary>Phase 2 · PKG &amp; thermal (educational proxies)</summary>
-              <p>
-                Docs{" "}
-                <a href="/materials/reference/pkg-design-package.md">pkg-design-package</a>
-              </p>
-              <ActionGrid
-                actions={PHASE2_ACTIONS}
-                disabled={disabled}
-                busy={busy}
-                onRun={onRun}
-              />
-            </details>
-          )}
         </>
+      )}
+
+      {showFinish && (
+        <p className="fl-signoff-lab">
+          DSE proposes knobs on <a href="/lab">/lab</a>. It does not run{" "}
+          <code>signoff_all</code>. Wins stay in <code>win_rule.py</code>.
+        </p>
+      )}
+
+      {mode === "full" && (
+        <details className="fl-signoff-more">
+          <summary>Phase 2 · PKG &amp; thermal (educational proxies)</summary>
+          <p>
+            Docs{" "}
+            <a href="/materials/reference/pkg-design-package.md">pkg-design-package</a>
+          </p>
+          <ActionGrid
+            actions={PHASE2_ACTIONS}
+            disabled={disabled}
+            busy={busy}
+            onRun={onRun}
+          />
+        </details>
       )}
     </div>
   );

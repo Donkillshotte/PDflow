@@ -24,6 +24,7 @@ type EcoReport = {
 type CloseReport = {
   ok?: boolean;
   summary?: string;
+  leftover?: { must_connect?: number; circuits?: string[]; note?: string };
   pillars?: Record<string, { ok?: boolean; summary?: string }>;
 };
 
@@ -130,6 +131,13 @@ export function EcoPanel({
           <em>
             FLOW_VARIANT=eco_scratch ./learn/scripts/run_signoff_all.sh
             {closePillars ? ` · ${closePillars}` : ""}
+            {close?.leftover?.must_connect
+              ? ` · leftover must-connect ${close.leftover.must_connect}${
+                  close.leftover.circuits?.length
+                    ? ` (${close.leftover.circuits.join(", ")})`
+                    : ""
+                }`
+              : ""}
           </em>
           {onRun ? (
             <button

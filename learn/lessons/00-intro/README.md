@@ -85,10 +85,10 @@ Limit: you will not learn SRAM macros, hierarchical floorplan, or MCMM. That is 
 
 ## Two learning modes
 
-1. **Filess / Makefile** — understand input/output, change parameters, re-read reports
+1. **Files / Makefile** — understand input/output, change parameters, re-read reports
 2. **OpenROAD GUI** — visually inspect layout, timing paths, congestion, clock tree
 
-Both are required. Filess only = you do not “see” congestion. GUI only = you cannot reproduce.
+Both are required. Files only = you do not “see” congestion. GUI only = you cannot reproduce.
 
 > For the GUI use the **Desktop** button on [cursor.com/agents](https://cursor.com/agents) (not chat Preview cards). Details: `learn/reference/gui-openroad.md`.
 

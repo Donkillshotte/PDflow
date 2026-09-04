@@ -697,11 +697,12 @@ export function FlowLab() {
                   <p>{phase.help}</p>
                   {phase.id === "pkg" && (
                     <p>
-                      Theory:{" "}
+                      System PDN and Phase 2 only. Four-pillar close is on{" "}
+                      <a href="/flow?phase=finish&focus=signoff#signoff">finish</a>
+                      . Docs:{" "}
                       <a href="/pkg">PKG hub</a> ·{" "}
                       <a href="/materials/reference/spice-power-chain.md">SPICE chain</a> ·{" "}
-                      <a href="/materials/reference/spice-ngspice-primer.md">ngspice</a> ·{" "}
-                      <a href="/materials/sim/spice/README.md">Lab netlist</a>
+                      <a href="/materials/reference/spice-ngspice-primer.md">ngspice</a>
                     </p>
                   )}
                   {phase.id === "pdn" && (
@@ -715,7 +716,7 @@ export function FlowLab() {
                 </div>
                 {phase.id === "pkg" && (
                   <FlowLabSignoff
-                    mode="full"
+                    mode="pkg"
                     disabled={running}
                     busy={signoffBusy}
                     onRun={(a, long) => void runSignoff(a, long)}

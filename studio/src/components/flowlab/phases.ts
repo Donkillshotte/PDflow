@@ -95,7 +95,7 @@ export const PHASES: Phase[] = [
     title: "Package · System PDN",
     action: "system_pdn",
     hint: "VRM → board → pkg → die",
-    help: "System PDN ngspice: Z(f) and load-step VRM→board→pkg→die. PKG hub + signoff Phase 2 (HotSpot, dummy rdl_route, pkg_signoff). Chain: power_chain.",
+    help: "System PDN ngspice: Z(f) and load-step VRM→board→pkg→die. Phase 2 proxies (HotSpot, dummy rdl_route). STA → DRC → LVS → power close stays on finish.",
     tool: "ngspice · system_pdn_hier",
     icon: "package",
     estTime: "~5 s",

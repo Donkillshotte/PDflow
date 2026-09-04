@@ -233,6 +233,42 @@ function irChips(report: DseReport): { k: string; v: string }[] {
   return chips;
 }
 
+function fmtMv(n?: number | null): string | null {
+  return n != null ? `${n.toFixed(3)} mV` : null;
+}
+
+function fmtNs(n?: number | null): string | null {
+  return n != null ? `${n >= 0 ? "+" : ""}${n.toFixed(3)} ns` : null;
+}
+
+function irTapeRows(report: DseReport): { k: string; v: string }[] {
+  const rows: { k: string; v: string }[] = [];
+  const add = (k: string, v: string | null | undefined) => {
+    if (v) rows.push({ k, v });
+  };
+  add("winning IR", fmtMv(report.winning_ir_pdn_mv));
+  add("static", fmtMv(report.winning_static_mv));
+  add("AMG", fmtMv(report.ir_champ_amg_mv));
+  add("RAS", fmtMv(report.ir_champ_ras_mv));
+  add("Krylov", fmtMv(report.ir_champ_krylov_mv));
+  add("IR-cell WNS", fmtNs(report.ir_cell_champ_wns_ns));
+  add("IR-cell extract", fmtMv(report.ir_cell_champ_extract_mv));
+  add("IR-cell PDN", fmtMv(report.ir_cell_champ_pdn_mv));
+  add("IR cone WNS", fmtNs(report.ir_cell_champ_cone_wns_ns));
+  add("IR cone extract", fmtMv(report.ir_cell_champ_cone_extract_mv));
+  add("winning region", fmtMv(report.winning_ir_region_mv));
+  if (report.em_straps_j != null) {
+    add("EM straps", `${(report.em_straps_j / 1e9).toFixed(2)}e9 A/m²`);
+  }
+  if (report.refine?.length) {
+    for (const fr of report.refine) {
+      const mv = fr.catalog_mv ?? fr.pdn_mv ?? fr.extract_mv;
+      add(fr.label ?? `refine[${fr.depth}]`, mv != null ? `${mv.toFixed(3)} mV` : `n=${fr.n_cells ?? "?"}`);
+    }
+  }
+  return rows;
+}
+
 export function DsePanel() {
   const [report, setReport] = useState<DseReport | null>(null);
 
@@ -295,296 +331,24 @@ export function DsePanel() {
               ))}
             </ul>
           )}
-            <p className="fl-dynir-irloop" aria-label="IR-cell closed loop">
-              IR loop
-              {report.n_ir_cell != null ? ` · IR-c ${report.n_ir_cell}` : ""}
-              {report.ir_cell_champ_wns_ns != null
-                ? ` · IR-cc ${report.ir_cell_champ_modules ?? "dpath"} WNS ${report.ir_cell_champ_wns_ns >= 0 ? "+" : ""}${report.ir_cell_champ_wns_ns.toFixed(3)}`
-                : report.n_ir_cell_champ != null
-                  ? ` · IR-cc ${report.n_ir_cell_champ}`
-                  : ""}
-              {report.ir_cell_champ_extract_mv != null
-                ? ` · IR-cx ${report.ir_cell_champ_extract_mv.toFixed(3)} mV${
-                    report.ir_cell_champ_extract_residual_mv != null
-                      ? ` Δ=${report.ir_cell_champ_extract_residual_mv >= 0 ? "+" : ""}${report.ir_cell_champ_extract_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_ir_cell_champ_extract != null
-                  ? ` · IR-cx ${report.n_f4_ir_cell_champ_extract}`
-                  : ""}
-              {report.ir_cell_champ_pdn_mv != null
-                ? ` · IR-cp ${report.ir_cell_champ_pdn_name ?? "PDN"} ${report.ir_cell_champ_pdn_mv.toFixed(3)} mV${
-                    report.ir_cell_champ_pdn_vs_host_win_mv != null
-                      ? ` vs host-win ${report.ir_cell_champ_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.ir_cell_champ_pdn_vs_host_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_ir_cell_champ_pdn != null
-                  ? ` · IR-cp ${report.n_ir_cell_champ_pdn}`
-                  : ""}
-              {report.ir_cell_champ_cone_wns_ns != null
-                ? ` · IR-cn ${report.ir_cell_champ_cone_modules ?? "dpath"} WNS ${report.ir_cell_champ_cone_wns_ns >= 0 ? "+" : ""}${report.ir_cell_champ_cone_wns_ns.toFixed(3)}`
-                : report.n_ir_cell_champ_cone != null
-                  ? ` · IR-cn ${report.n_ir_cell_champ_cone}`
-                  : ""}
-              {report.ir_cell_champ_cone_extract_mv != null
-                ? ` · IR-cne ${report.ir_cell_champ_cone_extract_mv.toFixed(3)} mV${
-                    report.ir_cell_champ_cone_extract_residual_mv != null
-                      ? ` Δ=${report.ir_cell_champ_cone_extract_residual_mv >= 0 ? "+" : ""}${report.ir_cell_champ_cone_extract_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_ir_cell_champ_cone_extract != null
-                  ? ` · IR-cne ${report.n_f4_ir_cell_champ_cone_extract}`
-                  : ""}
-              {report.ir_cell_champ_cone_pdn_mv != null
-                ? ` · IR-cnp ${report.ir_cell_champ_cone_pdn_name ?? "PDN"} ${report.ir_cell_champ_cone_pdn_mv.toFixed(3)} mV${
-                    report.ir_cell_champ_cone_pdn_vs_host_win_mv != null
-                      ? ` vs host-win ${report.ir_cell_champ_cone_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.ir_cell_champ_cone_pdn_vs_host_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_ir_cell_champ_cone_pdn != null
-                  ? ` · IR-cnp ${report.n_ir_cell_champ_cone_pdn}`
-                  : ""}
-              {report.ir_cell_champ_cone_region_mv != null
-                ? ` · IR-cnr ${report.ir_cell_champ_cone_region_mv.toFixed(3)} mV${
-                    report.ir_cell_champ_cone_region_bin ? ` ${report.ir_cell_champ_cone_region_bin}` : ""
-                  }${
-                    report.ir_cell_champ_cone_region_residual_mv != null
-                      ? ` Δ=${report.ir_cell_champ_cone_region_residual_mv >= 0 ? "+" : ""}${report.ir_cell_champ_cone_region_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_ir_cell_champ_cone_region_extract != null
-                  ? ` · IR-cnr ${report.n_f4_ir_cell_champ_cone_region_extract}`
-                  : ""}
-              {report.ir_cell_champ_cone_region_pdn_mv != null
-                ? ` · IR-cnrp ${report.ir_cell_champ_cone_region_pdn_name ?? "PDN"} ${report.ir_cell_champ_cone_region_pdn_mv.toFixed(3)} mV${
-                    report.ir_cell_champ_cone_region_pdn_vs_host_win_mv != null
-                      ? ` vs host-win ${report.ir_cell_champ_cone_region_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.ir_cell_champ_cone_region_pdn_vs_host_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_ir_cell_champ_cone_region_pdn != null
-                  ? ` · IR-cnrp ${report.n_ir_cell_champ_cone_region_pdn}`
-                  : ""}
-              {report.winning_ir_region_mv != null
-                ? ` · IR-wr ${report.winning_ir_region_mv.toFixed(3)} mV${
-                    report.winning_ir_region_bin ? ` ${report.winning_ir_region_bin}` : ""
-                  }${
-                    report.winning_ir_region_residual_mv != null
-                      ? ` Δ=${report.winning_ir_region_residual_mv >= 0 ? "+" : ""}${report.winning_ir_region_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_winning_ir_region_extract != null
-                  ? ` · IR-wr ${report.n_f4_winning_ir_region_extract}`
-                  : ""}
-              {report.winning_ir_region_pdn_mv != null
-                ? ` · IR-wrp ${report.winning_ir_region_pdn_name ?? "PDN"} ${report.winning_ir_region_pdn_mv.toFixed(3)} mV${
-                    report.winning_ir_region_pdn_vs_host_win_mv != null
-                      ? ` vs host-win ${report.winning_ir_region_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.winning_ir_region_pdn_vs_host_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_winning_ir_region_pdn != null
-                  ? ` · IR-wrp ${report.n_winning_ir_region_pdn}`
-                  : ""}
-              {report.winning_ir_region_cell_wns_ns != null
-                ? ` · IR-wrc ${report.winning_ir_region_cell_modules ?? "dpath"} WNS ${report.winning_ir_region_cell_wns_ns >= 0 ? "+" : ""}${report.winning_ir_region_cell_wns_ns.toFixed(3)}`
-                : report.n_winning_ir_region_cell != null
-                  ? ` · IR-wrc ${report.n_winning_ir_region_cell}`
-                  : ""}
-              {report.winning_ir_region_cell_extract_mv != null
-                ? ` · IR-wrce ${report.winning_ir_region_cell_extract_mv.toFixed(3)} mV${
-                    report.winning_ir_region_cell_extract_residual_mv != null
-                      ? ` Δ=${report.winning_ir_region_cell_extract_residual_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_extract_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_winning_ir_region_cell_extract != null
-                  ? ` · IR-wrce ${report.n_f4_winning_ir_region_cell_extract}`
-                  : ""}
-              {report.winning_ir_region_cell_pdn_mv != null
-                ? ` · IR-wrcp ${report.winning_ir_region_cell_pdn_name ?? "PDN"} ${report.winning_ir_region_cell_pdn_mv.toFixed(3)} mV${
-                    report.winning_ir_region_cell_pdn_vs_host_win_mv != null
-                      ? ` vs host-win ${report.winning_ir_region_cell_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_pdn_vs_host_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_winning_ir_region_cell_pdn != null
-                  ? ` · IR-wrcp ${report.n_winning_ir_region_cell_pdn}`
-                  : ""}
-              {report.winning_ir_region_cell_leftover_wns_ns != null
-                ? ` · IR-wrl ${report.winning_ir_region_cell_leftover_modules ?? "dpath"} WNS ${report.winning_ir_region_cell_leftover_wns_ns >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover_wns_ns.toFixed(3)}`
-                : report.n_winning_ir_region_cell_leftover != null
-                  ? ` · IR-wrl ${report.n_winning_ir_region_cell_leftover}`
-                  : ""}
-              {report.winning_ir_region_cell_leftover_extract_mv != null
-                ? ` · IR-wrle ${report.winning_ir_region_cell_leftover_extract_mv.toFixed(3)} mV${
-                    report.winning_ir_region_cell_leftover_extract_residual_mv != null
-                      ? ` Δ=${report.winning_ir_region_cell_leftover_extract_residual_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover_extract_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_winning_ir_region_cell_leftover_extract != null
-                  ? ` · IR-wrle ${report.n_f4_winning_ir_region_cell_leftover_extract}`
-                  : ""}
-              {report.winning_ir_region_cell_leftover_pdn_mv != null
-                ? ` · IR-wrlp ${report.winning_ir_region_cell_leftover_pdn_name ?? "PDN"} ${report.winning_ir_region_cell_leftover_pdn_mv.toFixed(3)} mV${
-                    report.winning_ir_region_cell_leftover_pdn_vs_host_win_mv != null
-                      ? ` vs host-win ${report.winning_ir_region_cell_leftover_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover_pdn_vs_host_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_winning_ir_region_cell_leftover_pdn != null
-                  ? ` · IR-wrlp ${report.n_winning_ir_region_cell_leftover_pdn}`
-                  : ""}
-              {report.refine && report.refine.length
-                ? report.refine.map((fr) => {
-                    const mv = fr.catalog_mv ?? fr.pdn_mv ?? fr.extract_mv;
-                    const extra = mv != null ? ` ${mv.toFixed(3)} mV` : fr.n_cells != null ? ` n=${fr.n_cells}` : "";
-                    return ` · ${fr.label ?? `refine[${fr.depth}]`}${extra}`;
-                  }).join("")
-                : report.winning_ir_region_cell_leftover2_wns_ns != null
-                ? ` · IR-wrl2 ${report.winning_ir_region_cell_leftover2_modules ?? "dpath"} WNS ${report.winning_ir_region_cell_leftover2_wns_ns >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_wns_ns.toFixed(3)}`
-                : report.n_winning_ir_region_cell_leftover2 != null
-                  ? ` · IR-wrl2 ${report.n_winning_ir_region_cell_leftover2}`
-                  : ""}
-              {report.refine && report.refine.length
-                ? ""
-                : report.winning_ir_region_cell_leftover2_extract_mv != null
-                ? ` · IR-wrl2e ${report.winning_ir_region_cell_leftover2_extract_mv.toFixed(3)} mV${
-                    report.winning_ir_region_cell_leftover2_extract_residual_mv != null
-                      ? ` Δ=${report.winning_ir_region_cell_leftover2_extract_residual_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_extract_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_winning_ir_region_cell_leftover2_extract != null
-                  ? ` · IR-wrl2e ${report.n_f4_winning_ir_region_cell_leftover2_extract}`
-                  : ""}
-              {report.refine && report.refine.length
-                ? ""
-                : report.winning_ir_region_cell_leftover2_pdn_mv != null
-                ? ` · IR-wrl2p ${report.winning_ir_region_cell_leftover2_pdn_name ?? "PDN"} ${report.winning_ir_region_cell_leftover2_pdn_mv.toFixed(3)} mV${
-                    report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv != null
-                      ? ` vs host-win ${report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.winning_ir_region_cell_leftover2_pdn_vs_host_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_winning_ir_region_cell_leftover2_pdn != null
-                  ? ` · IR-wrl2p ${report.n_winning_ir_region_cell_leftover2_pdn}`
-                  : ""}
-              {report.ir_champ_amg_mv != null
-                ? ` · AMG-c ${report.ir_champ_amg_mv.toFixed(3)} mV${
-                    report.ir_champ_amg_vs_direct_mv != null
-                      ? ` Δ=${report.ir_champ_amg_vs_direct_mv >= 0 ? "+" : ""}${report.ir_champ_amg_vs_direct_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_amg_champ != null
-                  ? ` · AMG-c ${report.n_f4_amg_champ}`
-                  : ""}
-              {report.ir_champ_ras_mv != null
-                ? ` · RAS-c ${report.ir_champ_ras_mv.toFixed(3)} mV${
-                    report.ir_champ_ras_vs_direct_mv != null
-                      ? ` Δ=${report.ir_champ_ras_vs_direct_mv >= 0 ? "+" : ""}${report.ir_champ_ras_vs_direct_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_ras_champ != null
-                  ? ` · RAS-c ${report.n_f4_ras_champ}`
-                  : ""}
-              {report.ir_champ_krylov_mv != null
-                ? ` · Kry-c ${report.ir_champ_krylov_mv.toFixed(3)} mV${
-                    report.ir_champ_krylov_vs_direct_mv != null
-                      ? ` Δ=${report.ir_champ_krylov_vs_direct_mv >= 0 ? "+" : ""}${report.ir_champ_krylov_vs_direct_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_krylov_champ != null
-                  ? ` · Kry-c ${report.n_f4_krylov_champ}`
-                  : ""}
-              {report.static_ir_steer_mv != null
-                ? ` · SI ${report.static_ir_steer_name ?? "pkg_r"} ${report.static_ir_steer_mv.toFixed(3)} mV${
-                    report.static_ir_steer_vs_champ_mv != null
-                      ? ` Δ=${report.static_ir_steer_vs_champ_mv >= 0 ? "+" : ""}${report.static_ir_steer_vs_champ_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.winning_static_mv != null
-                  ? ` · SI-champ ${report.winning_static_mv.toFixed(3)} mV`
-                  : report.n_static_ir_steer != null
-                    ? ` · SI ${report.n_static_ir_steer}`
-                    : ""}
-              {report.static_mesh_mv != null
-                ? ` · SM ${report.static_mesh_name ?? "bumps"} ${report.static_mesh_mv.toFixed(3)} mV${
-                    report.static_mesh_vs_champ_mv != null
-                      ? ` Δ=${report.static_mesh_vs_champ_mv >= 0 ? "+" : ""}${report.static_mesh_vs_champ_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_static_mesh != null
-                  ? ` · SM ${report.n_static_mesh}`
-                  : ""}
-              {report.static_straps_mv != null
-                ? ` · ST ${report.static_straps_name ?? "straps"} ${report.static_straps_mv.toFixed(3)} mV${
-                    report.static_straps_vs_champ_mv != null
-                      ? ` Δ=${report.static_straps_vs_champ_mv >= 0 ? "+" : ""}${report.static_straps_vs_champ_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_static_straps != null
-                  ? ` · ST ${report.n_static_straps}`
-                  : ""}
-              {report.em_straps_j != null
-                ? ` · EM ${report.em_straps_name ?? "width"} ${(report.em_straps_j / 1e9).toFixed(2)}e9${
-                    report.em_straps_vs_strap_j != null
-                      ? ` Δstrap=${report.em_straps_vs_strap_j >= 0 ? "+" : ""}${(report.em_straps_vs_strap_j / 1e9).toFixed(2)}e9`
-                      : ""
-                  }${
-                    report.em_straps_vs_champ_j != null
-                      ? ` Δchamp=${report.em_straps_vs_champ_j >= 0 ? "+" : ""}${(report.em_straps_vs_champ_j / 1e9).toFixed(2)}e9`
-                      : ""
-                  }`
-                : report.n_em_straps != null
-                  ? ` · EM ${report.n_em_straps}`
-                  : ""}
-              {report.winning_ir_pdn_mv != null
-                ? ` · IR-w ${report.winning_ir_pdn_name ?? "catalog"} ${report.winning_ir_pdn_mv.toFixed(3)} mV${
-                    report.winning_ir_pdn_vs_champ_mv != null
-                      ? ` Δ=${report.winning_ir_pdn_vs_champ_mv >= 0 ? "+" : ""}${report.winning_ir_pdn_vs_champ_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_winning_ir_pdn != null
-                  ? ` · IR-w ${report.n_winning_ir_pdn}`
-                  : ""}
-              {report.ir_cell_extract_mv != null
-                ? ` · IR-x ${report.ir_cell_extract_mv.toFixed(3)} mV${
-                    report.ir_cell_extract_residual_mv != null
-                      ? ` Δ=${report.ir_cell_extract_residual_mv >= 0 ? "+" : ""}${report.ir_cell_extract_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_ir_cell_extract != null
-                  ? ` · IR-x ${report.n_f4_ir_cell_extract}`
-                  : ""}
-              {report.ir_cell_pdn_mv != null
-                ? ` · IR-p ${report.ir_cell_pdn_name ?? "PDN"} ${report.ir_cell_pdn_mv.toFixed(3)} mV`
-                : report.n_ir_cell_pdn != null
-                  ? ` · IR-p ${report.n_ir_cell_pdn}`
-                  : ""}
-              {report.ir_cell_region_mv != null
-                ? ` · IR-r ${report.ir_cell_region_mv.toFixed(3)} mV${
-                    report.ir_cell_region_bin ? ` ${report.ir_cell_region_bin}` : ""
-                  }${
-                    report.ir_cell_region_residual_mv != null
-                      ? ` Δ=${report.ir_cell_region_residual_mv >= 0 ? "+" : ""}${report.ir_cell_region_residual_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_ir_cell_region_extract != null
-                  ? ` · IR-r ${report.n_f4_ir_cell_region_extract}`
-                  : ""}
-              {report.ir_cell_region_pdn_mv != null
-                ? ` · IR-rp ${report.ir_cell_region_pdn_name ?? "PDN"} ${report.ir_cell_region_pdn_mv.toFixed(3)} mV${
-                    report.ir_cell_region_pdn_vs_host_win_mv != null
-                      ? ` vs host-win ${report.ir_cell_region_pdn_vs_host_win_mv >= 0 ? "+" : ""}${report.ir_cell_region_pdn_vs_host_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_ir_cell_region_pdn != null
-                  ? ` · IR-rp ${report.n_ir_cell_region_pdn}`
-                  : ""}
-              {report.ir_cell_iscale_champ_mv != null
-                ? ` · I×c ×${(report.ir_cell_iscale_champ_scale ?? 0).toFixed(2)} ${report.ir_cell_iscale_champ_mv.toFixed(3)} mV${
-                    report.ir_cell_iscale_champ_vs_win_mv != null
-                      ? ` vs I×w ${report.ir_cell_iscale_champ_vs_win_mv >= 0 ? "+" : ""}${report.ir_cell_iscale_champ_vs_win_mv.toFixed(3)}`
-                      : ""
-                  }`
-                : report.n_f4_iscale_champ != null
-                  ? ` · I×c ${report.n_f4_iscale_champ}`
-                  : ""}
-            </p>
+            {irTapeRows(report).length > 0 && (
+              <table className="fl-dynir-table" aria-label="Lab IR tape">
+                <thead>
+                  <tr>
+                    <th>Extract</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {irTapeRows(report).map((r) => (
+                    <tr key={r.k}>
+                      <td>{r.k}</td>
+                      <td>{r.v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
             </details>
           )}
           <ul className="fl-dynir-levels">
@@ -638,78 +402,7 @@ export function DsePanel() {
                 {report.n_f4 ?? 0}
                 {report.n_f4_extract != null ? ` · ext ${report.n_f4_extract}` : ""}
                 {report.n_f4_host_extract != null ? ` · host ${report.n_f4_host_extract}` : ""}
-                {report.n_f4_host_region_extract != null
-                  ? ` · host-r ${report.n_f4_host_region_extract}`
-                  : ""}
-                {report.n_f4_region_extract != null ? ` · r-ext ${report.n_f4_region_extract}` : ""}
                 {report.n_f4_amg != null ? ` · AMG ${report.n_f4_amg}` : ""}
-                {report.n_f4_iscale != null ? ` · I× ${report.n_f4_iscale}` : ""}
-                {report.n_f4_iscale_win != null ? ` · I×w ${report.n_f4_iscale_win}` : ""}
-                {report.n_f4_iscale_champ != null ? ` · I×c ${report.n_f4_iscale_champ}` : ""}
-                {report.n_f4_ir_cell_champ_extract != null ? ` · IR-cx ${report.n_f4_ir_cell_champ_extract}` : ""}
-                {report.n_ir_cell_champ_pdn != null ? ` · IR-cp ${report.n_ir_cell_champ_pdn}` : ""}
-                {report.n_f4_ir_cell_champ_cone_extract != null ? ` · IR-cne ${report.n_f4_ir_cell_champ_cone_extract}` : ""}
-                {report.n_ir_cell_champ_cone_pdn != null ? ` · IR-cnp ${report.n_ir_cell_champ_cone_pdn}` : ""}
-                {report.n_f4_ir_cell_champ_cone_region_extract != null
-                  ? ` · IR-cnr ${report.n_f4_ir_cell_champ_cone_region_extract}`
-                  : ""}
-                {report.n_ir_cell_champ_cone_region_pdn != null
-                  ? ` · IR-cnrp ${report.n_ir_cell_champ_cone_region_pdn}`
-                  : ""}
-                {report.n_f4_winning_ir_region_extract != null
-                  ? ` · IR-wr ${report.n_f4_winning_ir_region_extract}`
-                  : ""}
-                {report.n_winning_ir_region_pdn != null
-                  ? ` · IR-wrp ${report.n_winning_ir_region_pdn}`
-                  : ""}
-                {report.n_winning_ir_region_cell != null
-                  ? ` · IR-wrc ${report.n_winning_ir_region_cell}`
-                  : ""}
-                {report.n_f4_winning_ir_region_cell_extract != null
-                  ? ` · IR-wrce ${report.n_f4_winning_ir_region_cell_extract}`
-                  : ""}
-                {report.n_winning_ir_region_cell_pdn != null
-                  ? ` · IR-wrcp ${report.n_winning_ir_region_cell_pdn}`
-                  : ""}
-                {report.n_winning_ir_region_cell_leftover != null
-                  ? ` · IR-wrl ${report.n_winning_ir_region_cell_leftover}`
-                  : ""}
-                {report.n_f4_winning_ir_region_cell_leftover_extract != null
-                  ? ` · IR-wrle ${report.n_f4_winning_ir_region_cell_leftover_extract}`
-                  : ""}
-                {report.n_winning_ir_region_cell_leftover_pdn != null
-                  ? ` · IR-wrlp ${report.n_winning_ir_region_cell_leftover_pdn}`
-                  : ""}
-                {report.refine && report.refine.length
-                  ? report.refine.map((fr) => ` · ${fr.label ?? `refine[${fr.depth}]`}`).join("")
-                  : report.n_winning_ir_region_cell_leftover2 != null
-                    ? ` · IR-wrl2 ${report.n_winning_ir_region_cell_leftover2}`
-                    : ""}
-                {report.refine && report.refine.length
-                  ? ""
-                  : report.n_f4_winning_ir_region_cell_leftover2_extract != null
-                    ? ` · IR-wrl2e ${report.n_f4_winning_ir_region_cell_leftover2_extract}`
-                    : ""}
-                {report.refine && report.refine.length
-                  ? ""
-                  : report.n_winning_ir_region_cell_leftover2_pdn != null
-                    ? ` · IR-wrl2p ${report.n_winning_ir_region_cell_leftover2_pdn}`
-                    : ""}
-                {report.n_f4_amg_champ != null ? ` · AMG-c ${report.n_f4_amg_champ}` : ""}
-                {report.n_f4_ras_champ != null ? ` · RAS-c ${report.n_f4_ras_champ}` : ""}
-                {report.n_f4_krylov_champ != null ? ` · Kry-c ${report.n_f4_krylov_champ}` : ""}
-                {report.n_static_ir_steer != null ? ` · SI ${report.n_static_ir_steer}` : ""}
-                {report.n_static_mesh != null ? ` · SM ${report.n_static_mesh}` : ""}
-                {report.n_static_straps != null ? ` · ST ${report.n_static_straps}` : ""}
-                {report.n_em_straps != null ? ` · EM ${report.n_em_straps}` : ""}
-                {report.n_winning_ir_pdn != null ? ` · IR-w ${report.n_winning_ir_pdn}` : ""}
-                {report.n_f4_ir_cell_extract != null ? ` · IR-x ${report.n_f4_ir_cell_extract}` : ""}
-                {report.n_ir_cell_pdn != null ? ` · IR-p ${report.n_ir_cell_pdn}` : ""}
-                {report.n_f4_ir_cell_region_extract != null
-                  ? ` · IR-r ${report.n_f4_ir_cell_region_extract}`
-                  : ""}
-                {report.n_ir_cell_region_pdn != null ? ` · IR-rp ${report.n_ir_cell_region_pdn}` : ""}
-                {report.n_host_ir_steer != null ? ` · h-IR ${report.n_host_ir_steer}` : ""}
                 {report.n_f4_solve != null ? ` · solve ${report.n_f4_solve}` : ""}
               </dd>
             </div>
