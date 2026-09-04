@@ -101,7 +101,10 @@ python3 "${ROOT}/learn/scripts/signoff_eval.py" --pillar equivalence --metrics "
 
 python3 - <<PY
 import json
+import sys
 from pathlib import Path
+sys.path.insert(0, "${ROOT}/learn/scripts")
+from stamp_signoff_all import leftover_from_lvs
 metrics = json.loads(Path("${METRICS}").read_text())
 evald = json.loads(Path("${OUT}.eval").read_text()) if Path("${OUT}.eval").exists() else {}
 eq = metrics["equivalence"]
@@ -136,6 +139,9 @@ out = {
   "summary": f"LVS {'PASS' if eq['lvs_pass'] else 'FAIL'} · errors {eq['lvs_errors']}",
   "artifacts": {"lvsdb": "${LVSDB}", "log": "${LOG}"},
 }
+leftover = leftover_from_lvs(out)
+if leftover:
+    out["leftover"] = leftover
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 print("LVS_SIGNOFF_JSON", "${OUT}")
 print(out["summary"])

@@ -31,6 +31,8 @@ def main() -> int:
     check(int(lvs.get("must_connect") or 0) == 2, "LVS leftover must-connect stays 2")
     msgs = ((lvs.get("artifact_parse") or {}).get("lvsdb") or {}).get("messages") or []
     check(any("DFF_X2" in str(m) for m in msgs), "leftover messages name DFF_X2")
+    check(int((lvs.get("leftover") or {}).get("must_connect") or 0) == 2, "LVS leftover object is 2")
+    check("DFF_X2" in ((lvs.get("leftover") or {}).get("circuits") or []), "LVS leftover object names DFF_X2")
     tail = ((lvs.get("artifact_parse") or {}).get("log") or {}).get("tail") or []
     check(any("CONGRATULATIONS" in str(x) or "Netlists match" in str(x) for x in tail), "LVS log keeps the match line")
     check(not any("Netlists don't match" in str(x) for x in tail), "LVS log has no mismatch line")
@@ -84,6 +86,7 @@ def main() -> int:
     check(ledger_all.get("comparable") is False, "signoff_all IR ledger not comparable")
     check(int(ledger_all.get("n_meshes") or 0) >= 5, "signoff_all ledger has five meshes")
     check("stamp_signoff_all.py" in (ROOT / "learn/scripts/run_signoff_all.sh").read_text(), "signoff_all restamps leftover from pillar reports")
+    check("leftover_from_lvs" in (ROOT / "learn/scripts/run_klayout_lvs.sh").read_text(), "LVS signoff writes leftover object")
     from stamp_signoff_all import leftover_from_lvs, build
     parsed = leftover_from_lvs(lvs)
     check(parsed is not None and parsed["must_connect"] == 2, "stamp leftover_from_lvs reads LVS")

@@ -111,6 +111,14 @@ def stamp(variant: str = "flowlab") -> dict:
     blob = build(variant)
     out = REPORTS / f"signoff_all_{variant}.json"
     out.write_text(json.dumps(blob, indent=2) + "\n")
+    leftover = blob.get("leftover")
+    if leftover:
+        lvs_path = REPORTS / f"lvs_signoff_{variant}.json"
+        if lvs_path.is_file():
+            lvs = json.loads(lvs_path.read_text())
+            if lvs.get("leftover") != leftover:
+                lvs["leftover"] = leftover
+                lvs_path.write_text(json.dumps(lvs, indent=2) + "\n")
     return blob
 
 

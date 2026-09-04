@@ -61,5 +61,12 @@
   "artifacts": {
     "lvsdb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb",
     "log": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/eco_scratch/6_lvs.log"
+  },
+  "leftover": {
+    "must_connect": 2,
+    "circuits": [
+      "DFF_X2"
+    ],
+    "note": "Nangate split wells. Compare still matches. Do not hide."
   }
 }
