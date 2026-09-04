@@ -33,7 +33,7 @@ def main() -> int:
     check(current.get("ok") is True, "current_run direct report is ok")
     check(current.get("gold") is not True, "current_run is not the gold sentinel")
     cur_mv = float((current.get("dynamic") or {}).get("worst_droop") or 0) * 1e3
-    check(abs(cur_mv - 6.075) < 0.02, "current_run droop is ~6.075 mV")
+    check(abs(cur_mv - 5.173) < 0.02, "current_run droop is ~5.173 mV")
     path = (current.get("timing_impact") or {}).get("path") or {}
     arrivals = load("sta_arrivals_flowlab.json")
     wp = arrivals.get("worst_path") or {}
@@ -72,9 +72,10 @@ def main() -> int:
     check("readCurrentRunDroopMv" in story, "story names the current_run droop helper")
     lab_ts = (ROOT / "studio/src/lib/lab.ts").read_text()
     check("readCurrentRunDroopMv" in lab_ts, "lab bench reads current_run from _direct.json")
-    check("currentMv: IR_CURRENT_MV" not in lab_ts, "lab bench does not hardcode live IR as 6.075")
+    check("currentMv: IR_CURRENT_MV" not in lab_ts, "lab bench does not hardcode live IR as a magic mV")
     bench = (ROOT / "studio/src/components/LabBench.tsx").read_text()
-    check("?? 6.075" not in bench, "LabBench does not invent current_run 6.075")
+    check("?? 6.075" not in bench, "LabBench does not invent a stale current_run 6.075")
+    check("IR_CURRENT_MV" not in story, "story does not pin current_run to a magic mV")
     check("current_run" in bench, "LabBench labels the live number current_run")
     check("worstCellIrMv" in bench, "LabBench shows STA worst cell IR")
     home = (ROOT / "studio/src/app/page.tsx").read_text()
@@ -332,7 +333,7 @@ def main() -> int:
     sta_map = str((sta_ir.get("ir") or {}).get("map") or "")
     check(sta_map.endswith("dynamic_ir_flowlab_direct.map.csv"), "STA IR-aware uses current_run map")
     check("dynamic_ir_flowlab.map.csv" not in sta_map.replace("_direct.map.csv", ""), "STA IR-aware map is not the gold sentinel")
-    check(abs(float((sta_ir.get("ir") or {}).get("worst_cell_ir_mv") or 0) - 6.075) < 0.02, "STA IR-aware worst cell is current_run 6.075 mV")
+    check(abs(float((sta_ir.get("ir") or {}).get("worst_cell_ir_mv") or 0) - 5.173) < 0.02, "STA IR-aware worst cell is current_run 5.173 mV")
     sta_sh = (ROOT / "learn/scripts/run_sta_ir_aware.sh").read_text()
     check('MAP="${OUT_DIR}/dynamic_ir_${VARIANT}_direct.map.csv"' in sta_sh, "STA IR-aware wrapper pins current_run map")
     check('dynamic_ir_${VARIANT}.map.csv' not in sta_sh, "STA IR-aware wrapper does not fall back to gold map")

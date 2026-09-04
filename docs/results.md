@@ -57,7 +57,7 @@ Transfer success criterion (frozen in `arch_review.md` §6), live on
 4. Cover had already proposed `place_sparse_setup`.
 
 Method success. Sampler unchanged. Chip PDN transient is not
-gold Dynamic IR 45.298 and not current_run 6.075.
+gold Dynamic IR 45.298 and not current_run 5.173.
 
 ## Lab signoff (FlowLab GCD)
 

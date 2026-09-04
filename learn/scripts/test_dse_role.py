@@ -40,13 +40,13 @@ def main() -> int:
     phys = ingest_physical("flowlab", mem, "gcd")
     check(phys is not None, "ingest_physical returns a candidate")
     dmv = float(phys.qor.dynamic_ir_mv or 0)
-    check(abs(dmv - 6.075) < 0.02, f"ingest_physical uses current_run ~6.075, got {dmv}")
+    check(abs(dmv - 5.173) < 0.02, f"ingest_physical uses current_run ~5.173, got {dmv}")
     check(abs(dmv - 45.298) > 1.0, "ingest_physical does not ingest gold 45.298 as the layout")
     check("current_run" in (phys.qor.note or ""), "ingest_physical note names current_run")
     pdn = ingest_pdn("flowlab", DesignMemory(tmp.parent / "p.jsonl"), "gcd")
     check(pdn is not None, "ingest_pdn returns a candidate")
     pdn_mv = float(pdn.qor.dynamic_ir_mv or 0)
-    check(abs(pdn_mv - 6.075) < 0.02, f"ingest_pdn uses current_run ~6.075, got {pdn_mv}")
+    check(abs(pdn_mv - 5.173) < 0.02, f"ingest_pdn uses current_run ~5.173, got {pdn_mv}")
     print("ALL test_dse_role PASSED")
     return 0
 

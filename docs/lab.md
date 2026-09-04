@@ -41,7 +41,7 @@ Build solver: `./learn/scripts/build_dpn_engine.sh`.
 
 - Gold GCD Dynamic IR **45.298 mV**: never restamped
   (`learn/sim/reports/dynamic_ir_flowlab.json`).
-- Current FlowLab finish **6.075 mV** (worker `n_r` ~5816) = `current_run`,
+- Current FlowLab finish **5.173 mV** (worker `n_r` ~5816, finish SPEF t50) = `current_run`,
   not `reference_run`.
 - AES `learn/sim/dse/memory_aes.jsonl` row `febe6804241c` stays intact.
 - `QoR.area_um2` = stdcell area, not die.

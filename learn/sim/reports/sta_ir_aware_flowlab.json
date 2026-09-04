@@ -21,20 +21,20 @@
     "startpoint": "dpath.a_reg.out[2]$_DFFE_PP_",
     "endpoint": "dpath.a_reg.out[13]$_DFFE_PP_",
     "slack_ns": -0.019603,
-    "slack_ir_ns": -0.020240058251357957,
+    "slack_ir_ns": -0.020668868213402653,
     "n_gates": 18,
     "n_joined": 18,
     "gate_delay_ns": 0.4403190000000001,
-    "gate_delay_ir_ns": 0.4409560582513581,
-    "degradation_ps": 0.6370582513579581,
-    "frac_of_period": 0.0013849092420825176
+    "gate_delay_ir_ns": 0.4413848682134028,
+    "degradation_ps": 1.0658682134026543,
+    "frac_of_period": 0.0023171048117449004
   },
   "ir": {
     "n_inst_sta": 622,
     "n_inst_ir": 622,
     "n_joined_cells": 622,
-    "worst_cell_ir_mv": 6.075000000000053,
-    "mean_cell_ir_mv": 1.654509646302343,
+    "worst_cell_ir_mv": 5.173000000000094,
+    "mean_cell_ir_mv": 2.316418006430958,
     "map": "learn/sim/reports/dynamic_ir_flowlab_direct.map.csv",
     "spice": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp"
   },
@@ -42,24 +42,24 @@
     "status": "READY",
     "model": "OpenSTA NLDM typical-V gate delay * (Vdd/V_inst)^alpha; nets unscaled",
     "alpha": 1.3,
-    "vmin": 1.093925,
-    "scale": 1.001446810724402,
+    "vmin": 1.094827,
+    "scale": 1.0024206727699752,
     "delay_nom_ps": 440.31900000000013,
-    "degradation_ps": 0.6370582513579581,
+    "degradation_ps": 1.0658682134026543,
     "period_ns": 0.46,
-    "frac_of_period": 0.0013849092420825176,
+    "frac_of_period": 0.0023171048117449004,
     "note": "NLDM typical-V OpenSTA delays scaled by (Vdd/V_inst)^alpha on joined gates; not a second liberty at Vmin / CCS voltage-dependent delay",
     "path": {
       "status": "READY",
       "startpoint": "dpath.a_reg.out[2]$_DFFE_PP_",
       "endpoint": "dpath.a_reg.out[13]$_DFFE_PP_",
       "slack_ns": -0.019603,
-      "slack_ir_ns": -0.020240058251357957,
+      "slack_ir_ns": -0.020668868213402653,
       "slack_met": false,
       "n_gates": 18,
       "n_joined": 18,
       "gate_delay_ns": 0.4403190000000001,
-      "gate_delay_ir_ns": 0.4409560582513581,
+      "gate_delay_ir_ns": 0.4413848682134028,
       "via": "OpenSTA report_checks -format full worst max path",
       "stages": [
         {
@@ -83,10 +83,10 @@
           "delay_ns": 0.105002,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.09795,
+          "v_inst": 1.096459,
           "joined": true,
-          "delay_ir_ns": 0.10525693753562211,
-          "scale": 1.0024279302834433
+          "delay_ir_ns": 0.10544304675053028,
+          "scale": 1.0042003652361886
         },
         {
           "inst": "_479_",
@@ -109,10 +109,10 @@
           "delay_ns": 0.014001,
           "kind": "gate",
           "edge": "v",
-          "v_inst": 1.098002,
+          "v_inst": 1.096625,
           "joined": true,
-          "delay_ir_ns": 0.014034129374403709,
-          "scale": 1.0023662148706314
+          "delay_ir_ns": 0.014057042608594993,
+          "scale": 1.0040027575598167
         },
         {
           "inst": "_480_",
@@ -135,10 +135,10 @@
           "delay_ns": 0.016416,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.098006,
+          "v_inst": 1.096627,
           "joined": true,
-          "delay_ir_ns": 0.01645476585556278,
-          "scale": 1.0023614678096235
+          "delay_ir_ns": 0.016481670191522243,
+          "scale": 1.0040003771638792
         },
         {
           "inst": "_613_",
@@ -161,10 +161,10 @@
           "delay_ns": 0.01378,
           "kind": "gate",
           "edge": "v",
-          "v_inst": 1.098856,
+          "v_inst": 1.097742,
           "joined": true,
-          "delay_ir_ns": 0.013798652867669072,
-          "scale": 1.0013536188439094
+          "delay_ir_ns": 0.01381685955944023,
+          "scale": 1.0026748591756334
         },
         {
           "inst": "_614_",
@@ -187,10 +187,10 @@
           "delay_ns": 0.032472,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.099599,
+          "v_inst": 1.099128,
           "joined": true,
-          "delay_ir_ns": 0.032487395229982625,
-          "scale": 1.0004741078462251
+          "delay_ir_ns": 0.032505494405507276,
+          "scale": 1.0010314857571838
         },
         {
           "inst": "_678_",
@@ -213,10 +213,10 @@
           "delay_ns": 0.015444,
           "kind": "gate",
           "edge": "v",
-          "v_inst": 1.098949,
+          "v_inst": 1.098046,
           "joined": true,
-          "delay_ir_ns": 0.015463203951769937,
-          "scale": 1.0012434571205606
+          "delay_ir_ns": 0.015479737406533899,
+          "scale": 1.0023139993870693
         },
         {
           "inst": "_680_",
@@ -239,10 +239,10 @@
           "delay_ns": 0.018553,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.099511,
+          "v_inst": 1.099175,
           "joined": true,
-          "delay_ir_ns": 0.018563727431397208,
-          "scale": 1.0005782046783382
+          "delay_ir_ns": 0.018571104789795408,
+          "scale": 1.0009758416318335
         },
         {
           "inst": "rebuffer97",
@@ -265,10 +265,10 @@
           "delay_ns": 0.020987,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.099506,
+          "v_inst": 1.099177,
           "joined": true,
-          "delay_ir_ns": 0.02099925892321624,
-          "scale": 1.0005841198463925
+          "delay_ir_ns": 0.021007430297119167,
+          "scale": 1.0009734739181002
         },
         {
           "inst": "_704_",
@@ -291,10 +291,10 @@
           "delay_ns": 0.012789,
           "kind": "gate",
           "edge": "v",
-          "v_inst": 1.09949,
+          "v_inst": 1.099186,
           "joined": true,
-          "delay_ir_ns": 0.01279671239110227,
-          "scale": 1.0006030487999273
+          "delay_ir_ns": 0.012801313496397577,
+          "scale": 1.0009628193289215
         },
         {
           "inst": "_708_",
@@ -317,10 +317,10 @@
           "delay_ns": 0.015528,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.099483,
+          "v_inst": 1.099189,
           "joined": true,
-          "delay_ir_ns": 0.015537492738704669,
-          "scale": 1.0006113304163233
+          "delay_ir_ns": 0.015542895511078271,
+          "scale": 1.0009592678437835
         },
         {
           "inst": "rebuffer135",
@@ -343,10 +343,10 @@
           "delay_ns": 0.021221,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.098006,
+          "v_inst": 1.097684,
           "joined": true,
-          "delay_ir_ns": 0.02127111270838802,
-          "scale": 1.0023614678096235
+          "delay_ir_ns": 0.021279224769371163,
+          "scale": 1.0027437335361746
         },
         {
           "inst": "_750_",
@@ -369,10 +369,10 @@
           "delay_ns": 0.016502,
           "kind": "gate",
           "edge": "v",
-          "v_inst": 1.098428,
+          "v_inst": 1.098761,
           "joined": true,
-          "delay_ir_ns": 0.016532708179524874,
-          "scale": 1.0018608762286314
+          "delay_ir_ns": 0.016526194766700666,
+          "scale": 1.0014661717792186
         },
         {
           "inst": "_806_",
@@ -395,10 +395,10 @@
           "delay_ns": 0.020039,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.099409,
+          "v_inst": 1.098962,
           "joined": true,
-          "delay_ir_ns": 0.020053004983573926,
-          "scale": 1.0006988863503132
+          "delay_ir_ns": 0.02006360909189667,
+          "scale": 1.0012280598780712
         },
         {
           "inst": "_808_",
@@ -421,10 +421,10 @@
           "delay_ns": 0.050143,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.09844,
+          "v_inst": 1.098776,
           "joined": true,
-          "delay_ir_ns": 0.050235596463880504,
-          "scale": 1.001846647864717
+          "delay_ir_ns": 0.050215627059780436,
+          "scale": 1.001448398775112
         },
         {
           "inst": "_821_",
@@ -447,10 +447,10 @@
           "delay_ns": 0.016817,
           "kind": "gate",
           "edge": "v",
-          "v_inst": 1.099477,
+          "v_inst": 1.098065,
           "joined": true,
-          "delay_ir_ns": 0.01682740012118559,
-          "scale": 1.000618429041184
+          "delay_ir_ns": 0.016855535369802582,
+          "scale": 1.0022914532795733
         },
         {
           "inst": "_822_",
@@ -473,10 +473,10 @@
           "delay_ns": 0.016726,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.099794,
+          "v_inst": 1.09891,
           "joined": true,
-          "delay_ir_ns": 0.01673007289787316,
-          "scale": 1.000243506987514
+          "delay_ir_ns": 0.016747570708675462,
+          "scale": 1.00128965136168
         },
         {
           "inst": "_823_",
@@ -499,10 +499,10 @@
           "delay_ns": 0.01656,
           "kind": "gate",
           "edge": "v",
-          "v_inst": 1.099264,
+          "v_inst": 1.098084,
           "joined": true,
-          "delay_ir_ns": 0.01657441528062291,
-          "scale": 1.0008704879603207
+          "delay_ir_ns": 0.016597573117628144,
+          "scale": 1.0022689080693326
         },
         {
           "inst": "_826_",
@@ -525,10 +525,10 @@
           "delay_ns": 0.017339,
           "kind": "gate",
           "edge": "^",
-          "v_inst": 1.099977,
+          "v_inst": 1.097375,
           "joined": true,
-          "delay_ir_ns": 0.017339471316878477,
-          "scale": 1.0000271824717963
+          "delay_ir_ns": 0.01739293831302828,
+          "scale": 1.003110808756461
         },
         {
           "inst": "dpath.a_reg.out[13]$_DFFE_PP_",
@@ -547,8 +547,8 @@
       "note": "NLDM typical-V OpenSTA delays scaled by (Vdd/V_inst)^alpha on joined gates; not a second liberty at Vmin / CCS voltage-dependent delay"
     },
     "tap_fallback": {
-      "degradation_ps": 0.21676267171590435,
-      "scale": 1.0072254223905301,
+      "degradation_ps": 0.18440340735989658,
+      "scale": 1.0061467802453299,
       "delay_nom_ps": 30.0
     }
   },
@@ -558,318 +558,318 @@
       "cell": "DFF_X1",
       "pin": "Q",
       "delay_ns": 0.105002,
-      "delay_ir_ns": 0.10525693753562211,
-      "v_inst": 1.09795,
-      "ir_mv": 2.0500000000001073,
+      "delay_ir_ns": 0.10544304675053028,
+      "v_inst": 1.096459,
+      "ir_mv": 3.5410000000000164,
       "joined": true,
-      "scale": 1.0024279302834433
+      "scale": 1.0042003652361886
     },
     {
       "inst": "_479_",
       "cell": "INV_X2",
       "pin": "ZN",
       "delay_ns": 0.014001,
-      "delay_ir_ns": 0.014034129374403709,
-      "v_inst": 1.098002,
-      "ir_mv": 1.9980000000001663,
+      "delay_ir_ns": 0.014057042608594993,
+      "v_inst": 1.096625,
+      "ir_mv": 3.375000000000128,
       "joined": true,
-      "scale": 1.0023662148706314
+      "scale": 1.0040027575598167
     },
     {
       "inst": "_480_",
       "cell": "NAND2_X4",
       "pin": "ZN",
       "delay_ns": 0.016416,
-      "delay_ir_ns": 0.01645476585556278,
-      "v_inst": 1.098006,
-      "ir_mv": 1.9940000000000513,
+      "delay_ir_ns": 0.016481670191522243,
+      "v_inst": 1.096627,
+      "ir_mv": 3.3730000000000704,
       "joined": true,
-      "scale": 1.0023614678096235
+      "scale": 1.0040003771638792
     },
     {
       "inst": "_613_",
       "cell": "NAND2_X4",
       "pin": "ZN",
       "delay_ns": 0.01378,
-      "delay_ir_ns": 0.013798652867669072,
-      "v_inst": 1.098856,
-      "ir_mv": 1.1440000000000339,
+      "delay_ir_ns": 0.01381685955944023,
+      "v_inst": 1.097742,
+      "ir_mv": 2.2580000000000933,
       "joined": true,
-      "scale": 1.0013536188439094
+      "scale": 1.0026748591756334
     },
     {
       "inst": "_614_",
       "cell": "NOR2_X4",
       "pin": "ZN",
       "delay_ns": 0.032472,
-      "delay_ir_ns": 0.032487395229982625,
-      "v_inst": 1.099599,
-      "ir_mv": 0.4010000000000957,
+      "delay_ir_ns": 0.032505494405507276,
+      "v_inst": 1.099128,
+      "ir_mv": 0.8719999999999839,
       "joined": true,
-      "scale": 1.0004741078462251
+      "scale": 1.0010314857571838
     },
     {
       "inst": "_678_",
       "cell": "NAND2_X4",
       "pin": "ZN",
       "delay_ns": 0.015444,
-      "delay_ir_ns": 0.015463203951769937,
-      "v_inst": 1.098949,
-      "ir_mv": 1.0510000000001352,
+      "delay_ir_ns": 0.015479737406533899,
+      "v_inst": 1.098046,
+      "ir_mv": 1.9540000000000113,
       "joined": true,
-      "scale": 1.0012434571205606
+      "scale": 1.0023139993870693
     },
     {
       "inst": "_680_",
       "cell": "NAND2_X4",
       "pin": "ZN",
       "delay_ns": 0.018553,
-      "delay_ir_ns": 0.018563727431397208,
-      "v_inst": 1.099511,
-      "ir_mv": 0.48900000000018373,
+      "delay_ir_ns": 0.018571104789795408,
+      "v_inst": 1.099175,
+      "ir_mv": 0.8250000000000757,
       "joined": true,
-      "scale": 1.0005782046783382
+      "scale": 1.0009758416318335
     },
     {
       "inst": "rebuffer97",
       "cell": "BUF_X4",
       "pin": "Z",
       "delay_ns": 0.020987,
-      "delay_ir_ns": 0.02099925892321624,
-      "v_inst": 1.099506,
-      "ir_mv": 0.49399999999999444,
+      "delay_ir_ns": 0.021007430297119167,
+      "v_inst": 1.099177,
+      "ir_mv": 0.8230000000000182,
       "joined": true,
-      "scale": 1.0005841198463925
+      "scale": 1.0009734739181002
     },
     {
       "inst": "_704_",
       "cell": "NAND2_X4",
       "pin": "ZN",
       "delay_ns": 0.012789,
-      "delay_ir_ns": 0.01279671239110227,
-      "v_inst": 1.09949,
-      "ir_mv": 0.5100000000000104,
+      "delay_ir_ns": 0.012801313496397577,
+      "v_inst": 1.099186,
+      "ir_mv": 0.8140000000000924,
       "joined": true,
-      "scale": 1.0006030487999273
+      "scale": 1.0009628193289215
     },
     {
       "inst": "_708_",
       "cell": "NAND2_X4",
       "pin": "ZN",
       "delay_ns": 0.015528,
-      "delay_ir_ns": 0.015537492738704669,
-      "v_inst": 1.099483,
-      "ir_mv": 0.5170000000001007,
+      "delay_ir_ns": 0.015542895511078271,
+      "v_inst": 1.099189,
+      "ir_mv": 0.8110000000001172,
       "joined": true,
-      "scale": 1.0006113304163233
+      "scale": 1.0009592678437835
     },
     {
       "inst": "rebuffer135",
       "cell": "BUF_X4",
       "pin": "Z",
       "delay_ns": 0.021221,
-      "delay_ir_ns": 0.02127111270838802,
-      "v_inst": 1.098006,
-      "ir_mv": 1.9940000000000513,
+      "delay_ir_ns": 0.021279224769371163,
+      "v_inst": 1.097684,
+      "ir_mv": 2.3159999999999847,
       "joined": true,
-      "scale": 1.0023614678096235
+      "scale": 1.0027437335361746
     },
     {
       "inst": "_750_",
       "cell": "NAND2_X4",
       "pin": "ZN",
       "delay_ns": 0.016502,
-      "delay_ir_ns": 0.016532708179524874,
-      "v_inst": 1.098428,
-      "ir_mv": 1.5720000000001288,
+      "delay_ir_ns": 0.016526194766700666,
+      "v_inst": 1.098761,
+      "ir_mv": 1.23899999999999,
       "joined": true,
-      "scale": 1.0018608762286314
+      "scale": 1.0014661717792186
     },
     {
       "inst": "_806_",
       "cell": "NAND2_X4",
       "pin": "ZN",
       "delay_ns": 0.020039,
-      "delay_ir_ns": 0.020053004983573926,
-      "v_inst": 1.099409,
-      "ir_mv": 0.5910000000000082,
+      "delay_ir_ns": 0.02006360909189667,
+      "v_inst": 1.098962,
+      "ir_mv": 1.0380000000000944,
       "joined": true,
-      "scale": 1.0006988863503132
+      "scale": 1.0012280598780712
     },
     {
       "inst": "_808_",
       "cell": "AND2_X4",
       "pin": "ZN",
       "delay_ns": 0.050143,
-      "delay_ir_ns": 0.050235596463880504,
-      "v_inst": 1.09844,
-      "ir_mv": 1.5600000000000058,
+      "delay_ir_ns": 0.050215627059780436,
+      "v_inst": 1.098776,
+      "ir_mv": 1.2240000000001139,
       "joined": true,
-      "scale": 1.001846647864717
+      "scale": 1.001448398775112
     },
     {
       "inst": "_821_",
       "cell": "NAND2_X2",
       "pin": "ZN",
       "delay_ns": 0.016817,
-      "delay_ir_ns": 0.01682740012118559,
-      "v_inst": 1.099477,
-      "ir_mv": 0.5230000000000512,
+      "delay_ir_ns": 0.016855535369802582,
+      "v_inst": 1.098065,
+      "ir_mv": 1.93500000000002,
       "joined": true,
-      "scale": 1.000618429041184
+      "scale": 1.0022914532795733
     },
     {
       "inst": "_822_",
       "cell": "NAND2_X1",
       "pin": "ZN",
       "delay_ns": 0.016726,
-      "delay_ir_ns": 0.01673007289787316,
-      "v_inst": 1.099794,
-      "ir_mv": 0.2060000000001505,
+      "delay_ir_ns": 0.016747570708675462,
+      "v_inst": 1.09891,
+      "ir_mv": 1.0900000000000354,
       "joined": true,
-      "scale": 1.000243506987514
+      "scale": 1.00128965136168
     },
     {
       "inst": "_823_",
       "cell": "NAND2_X1",
       "pin": "ZN",
       "delay_ns": 0.01656,
-      "delay_ir_ns": 0.01657441528062291,
-      "v_inst": 1.099264,
-      "ir_mv": 0.7360000000000699,
+      "delay_ir_ns": 0.016597573117628144,
+      "v_inst": 1.098084,
+      "ir_mv": 1.9160000000000288,
       "joined": true,
-      "scale": 1.0008704879603207
+      "scale": 1.0022689080693326
     },
     {
       "inst": "_826_",
       "cell": "NAND2_X2",
       "pin": "ZN",
       "delay_ns": 0.017339,
-      "delay_ir_ns": 0.017339471316878477,
-      "v_inst": 1.099977,
-      "ir_mv": 0.02300000000010627,
+      "delay_ir_ns": 0.01739293831302828,
+      "v_inst": 1.097375,
+      "ir_mv": 2.6250000000000995,
       "joined": true,
-      "scale": 1.0000271824717963
+      "scale": 1.003110808756461
     }
   ],
   "hottest_cells": [
     {
-      "inst": "_558_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.11111932,
-      "v_inst": 1.093925,
-      "ir_mv": 6.075000000000053,
-      "joined": true,
-      "on_worst_path": false
-    },
-    {
-      "inst": "_559_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.13050564,
-      "v_inst": 1.093927,
-      "ir_mv": 6.072999999999995,
-      "joined": true,
-      "on_worst_path": false
-    },
-    {
-      "inst": "dpath.b_reg.out[6]$_DFFE_PP_",
+      "inst": "dpath.a_reg.out[15]$_DFFE_PP_",
       "cell": null,
       "pin": "Q",
-      "arrival_ns": 0.10339051,
-      "v_inst": 1.093927,
-      "ir_mv": 6.072999999999995,
+      "arrival_ns": 0.10177991,
+      "v_inst": 1.094827,
+      "ir_mv": 5.173000000000094,
       "joined": true,
       "on_worst_path": false
     },
     {
-      "inst": "rebuffer91",
+      "inst": "_868_",
       "cell": null,
       "pin": "Z",
-      "arrival_ns": 0.13883519,
-      "v_inst": 1.093991,
-      "ir_mv": 6.009000000000153,
+      "arrival_ns": 0.28253496,
+      "v_inst": 1.094897,
+      "ir_mv": 5.10300000000008,
       "joined": true,
       "on_worst_path": false
     },
     {
-      "inst": "_496_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.13122357,
-      "v_inst": 1.094021,
-      "ir_mv": 5.979000000000179,
-      "joined": true,
-      "on_worst_path": false
-    },
-    {
-      "inst": "_498_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.12825486,
-      "v_inst": 1.094021,
-      "ir_mv": 5.979000000000179,
-      "joined": true,
-      "on_worst_path": false
-    },
-    {
-      "inst": "_497_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.10277509,
-      "v_inst": 1.094422,
-      "ir_mv": 5.578000000000083,
-      "joined": true,
-      "on_worst_path": false
-    },
-    {
-      "inst": "_560_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.10398697,
-      "v_inst": 1.094422,
-      "ir_mv": 5.578000000000083,
-      "joined": true,
-      "on_worst_path": false
-    },
-    {
-      "inst": "rebuffer114",
+      "inst": "clkload1",
       "cell": null,
       "pin": "Z",
-      "arrival_ns": 0.18409318,
-      "v_inst": 1.094461,
-      "ir_mv": 5.539000000000183,
+      "arrival_ns": 0.09549009,
+      "v_inst": 1.094918,
+      "ir_mv": 5.082000000000031,
       "joined": true,
       "on_worst_path": false
     },
     {
-      "inst": "_775_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.39807326,
-      "v_inst": 1.094536,
-      "ir_mv": 5.464000000000135,
-      "joined": true,
-      "on_worst_path": false
-    },
-    {
-      "inst": "_607_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.14595231,
-      "v_inst": 1.094829,
-      "ir_mv": 5.171000000000037,
-      "joined": true,
-      "on_worst_path": false
-    },
-    {
-      "inst": "rebuffer151",
+      "inst": "input7",
       "cell": null,
       "pin": "Z",
-      "arrival_ns": 0.13644674,
-      "v_inst": 1.094864,
-      "ir_mv": 5.136000000000029,
+      "arrival_ns": 0.11074118,
+      "v_inst": 1.094919,
+      "ir_mv": 5.081000000000113,
+      "joined": true,
+      "on_worst_path": false
+    },
+    {
+      "inst": "_869_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.39710581,
+      "v_inst": 1.094973,
+      "ir_mv": 5.027000000000115,
+      "joined": true,
+      "on_worst_path": false
+    },
+    {
+      "inst": "clkbuf_2_2__f_clk",
+      "cell": null,
+      "pin": "Z",
+      "arrival_ns": 0.06994941,
+      "v_inst": 1.094974,
+      "ir_mv": 5.026000000000197,
+      "joined": true,
+      "on_worst_path": false
+    },
+    {
+      "inst": "clkbuf_2_3__f_clk",
+      "cell": null,
+      "pin": "Z",
+      "arrival_ns": 0.07000905,
+      "v_inst": 1.095335,
+      "ir_mv": 4.665000000000141,
+      "joined": true,
+      "on_worst_path": false
+    },
+    {
+      "inst": "_927_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.39335585,
+      "v_inst": 1.095382,
+      "ir_mv": 4.618000000000011,
+      "joined": true,
+      "on_worst_path": false
+    },
+    {
+      "inst": "_753_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.22377047,
+      "v_inst": 1.095383,
+      "ir_mv": 4.617000000000093,
+      "joined": true,
+      "on_worst_path": false
+    },
+    {
+      "inst": "_926_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.28562626,
+      "v_inst": 1.09543,
+      "ir_mv": 4.570000000000185,
+      "joined": true,
+      "on_worst_path": false
+    },
+    {
+      "inst": "place71",
+      "cell": null,
+      "pin": "Z",
+      "arrival_ns": 0.23617053,
+      "v_inst": 1.095454,
+      "ir_mv": 4.546000000000161,
+      "joined": true,
+      "on_worst_path": false
+    },
+    {
+      "inst": "clkload2",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.31078759,
+      "v_inst": 1.095485,
+      "ir_mv": 4.515000000000047,
       "joined": true,
       "on_worst_path": false
     }
@@ -880,8 +880,8 @@
       "cell": null,
       "pin": "Q",
       "arrival_ns": 0.10500208,
-      "v_inst": 1.09795,
-      "ir_mv": 2.0500000000001073,
+      "v_inst": 1.096459,
+      "ir_mv": 3.5410000000000164,
       "joined": true,
       "on_worst_path": true
     },
@@ -890,8 +890,8 @@
       "cell": null,
       "pin": "ZN",
       "arrival_ns": 0.1115819,
-      "v_inst": 1.098002,
-      "ir_mv": 1.9980000000001663,
+      "v_inst": 1.096625,
+      "ir_mv": 3.375000000000128,
       "joined": true,
       "on_worst_path": true
     },
@@ -900,148 +900,8 @@
       "cell": null,
       "pin": "ZN",
       "arrival_ns": 0.13585387,
-      "v_inst": 1.098006,
-      "ir_mv": 1.9940000000000513,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "rebuffer135",
-      "cell": null,
-      "pin": "Z",
-      "arrival_ns": 0.28843918,
-      "v_inst": 1.098006,
-      "ir_mv": 1.9940000000000513,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_750_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.30461624,
-      "v_inst": 1.098428,
-      "ir_mv": 1.5720000000001288,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_808_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.3767795,
-      "v_inst": 1.09844,
-      "ir_mv": 1.5600000000000058,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_613_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.15405987,
-      "v_inst": 1.098856,
-      "ir_mv": 1.1440000000000339,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_678_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.19346696,
-      "v_inst": 1.098949,
-      "ir_mv": 1.0510000000001352,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_823_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.41542974,
-      "v_inst": 1.099264,
-      "ir_mv": 0.7360000000000699,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_806_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.32633156,
-      "v_inst": 1.099409,
-      "ir_mv": 0.5910000000000082,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_821_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.38260034,
-      "v_inst": 1.099477,
-      "ir_mv": 0.5230000000000512,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_708_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.26713392,
-      "v_inst": 1.099483,
-      "ir_mv": 0.5170000000001007,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_704_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.24644798,
-      "v_inst": 1.09949,
-      "ir_mv": 0.5100000000000104,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "rebuffer97",
-      "cell": null,
-      "pin": "Z",
-      "arrival_ns": 0.23838834,
-      "v_inst": 1.099506,
-      "ir_mv": 0.49399999999999444,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_680_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.21729988,
-      "v_inst": 1.099511,
-      "ir_mv": 0.48900000000018373,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_614_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.18272689,
-      "v_inst": 1.099599,
-      "ir_mv": 0.4010000000000957,
-      "joined": true,
-      "on_worst_path": true
-    },
-    {
-      "inst": "_822_",
-      "cell": null,
-      "pin": "ZN",
-      "arrival_ns": 0.41375428,
-      "v_inst": 1.099794,
-      "ir_mv": 0.2060000000001505,
+      "v_inst": 1.096627,
+      "ir_mv": 3.3730000000000704,
       "joined": true,
       "on_worst_path": true
     },
@@ -1050,8 +910,148 @@
       "cell": null,
       "pin": "ZN",
       "arrival_ns": 0.44779226,
-      "v_inst": 1.099977,
-      "ir_mv": 0.02300000000010627,
+      "v_inst": 1.097375,
+      "ir_mv": 2.6250000000000995,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "rebuffer135",
+      "cell": null,
+      "pin": "Z",
+      "arrival_ns": 0.28843918,
+      "v_inst": 1.097684,
+      "ir_mv": 2.3159999999999847,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_613_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.15405987,
+      "v_inst": 1.097742,
+      "ir_mv": 2.2580000000000933,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_678_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.19346696,
+      "v_inst": 1.098046,
+      "ir_mv": 1.9540000000000113,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_821_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.38260034,
+      "v_inst": 1.098065,
+      "ir_mv": 1.93500000000002,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_823_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.41542974,
+      "v_inst": 1.098084,
+      "ir_mv": 1.9160000000000288,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_750_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.30461624,
+      "v_inst": 1.098761,
+      "ir_mv": 1.23899999999999,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_808_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.3767795,
+      "v_inst": 1.098776,
+      "ir_mv": 1.2240000000001139,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_822_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.41375428,
+      "v_inst": 1.09891,
+      "ir_mv": 1.0900000000000354,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_806_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.32633156,
+      "v_inst": 1.098962,
+      "ir_mv": 1.0380000000000944,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_614_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.18272689,
+      "v_inst": 1.099128,
+      "ir_mv": 0.8719999999999839,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_680_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.21729988,
+      "v_inst": 1.099175,
+      "ir_mv": 0.8250000000000757,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "rebuffer97",
+      "cell": null,
+      "pin": "Z",
+      "arrival_ns": 0.23838834,
+      "v_inst": 1.099177,
+      "ir_mv": 0.8230000000000182,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_704_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.24644798,
+      "v_inst": 1.099186,
+      "ir_mv": 0.8140000000000924,
+      "joined": true,
+      "on_worst_path": true
+    },
+    {
+      "inst": "_708_",
+      "cell": null,
+      "pin": "ZN",
+      "arrival_ns": 0.26713392,
+      "v_inst": 1.099189,
+      "ir_mv": 0.8110000000001172,
       "joined": true,
       "on_worst_path": true
     }

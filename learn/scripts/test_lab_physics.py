@@ -25,7 +25,7 @@ def main() -> int:
     check(rep["ok"] is True, "no FAIL checks")
     check(by["gold_sentinel"]["ok"], "gold 45.298")
     check(abs(float(by["gold_sentinel"]["value"]) - GOLD_MV) < 0.02, "gold value")
-    check(by["current_run_droop"]["ok"], "current_run ~6.075")
+    check(by["current_run_droop"]["ok"], "current_run ~5.173")
     check(by["gold_vs_current_split"]["ok"], "gold and current stay apart")
     check(by["sta_ir_path"]["ok"], "STA IR path is SPEF WNS, joined")
     check(by["sta_ir_reconstruct"]["ok"], "per-gate sum = slack − slack_ir")

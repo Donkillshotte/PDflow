@@ -45,8 +45,8 @@ run_dse.py / controller
     → DesignMemory JSONL
 ```
 
-Gold GCD Dynamic IR **45.298 mV** is `reference_run`. FlowLab finish **6.075 mV**
-is `current_run`. Do not confuse them. AES row `febe6804241c` stays intact.
+Gold GCD Dynamic IR **45.298 mV** is `reference_run`. FlowLab finish **5.173 mV**
+is `current_run` (finish SPEF t50). Do not confuse them. AES row `febe6804241c` stays intact.
 
 ## Do not move
 

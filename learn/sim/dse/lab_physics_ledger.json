@@ -4,7 +4,7 @@
   "vdd": 1.1,
   "alpha": 1.3,
   "gold_ir_mv": 45.298,
-  "current_ir_mv": 6.075,
+  "current_ir_mv": 5.173,
   "n_ready": 28,
   "n_checks": 30,
   "fail": [],
@@ -72,8 +72,8 @@
       "ok": true,
       "status": "READY",
       "quantity": "Dynamic IR current_run (finish mesh)",
-      "value": 6.075287930804363,
-      "bound": "~6.075 mV on this extract",
+      "value": 5.172667969430833,
+      "bound": "~5.173 mV on this extract",
       "note": "Same GCD, different extract/activity window than gold 45.298. Do not mix."
     },
     {
@@ -82,7 +82,7 @@
       "ok": true,
       "status": "READY",
       "quantity": "|gold \u2212 current|",
-      "value": 39.22271206919564,
+      "value": 40.12533203056917,
       "bound": "> 20 mV so the two runs stay distinct",
       "note": "If these collapsed, someone restamped gold or mixed extracts."
     },
@@ -92,9 +92,9 @@
       "ok": true,
       "status": "READY",
       "quantity": "current_run IR / Vdd",
-      "value": 0.552,
+      "value": 0.47,
       "bound": "(0, 5)% of 1.1 V for a bumped GCD",
-      "note": "6 mV on 1.1 V is ~0.55%. Typical on-die IR for this size, not a Voltus sign-off."
+      "note": "5.17 mV on 1.1 V is ~0.47%. Typical on-die IR for this size, not a Voltus sign-off."
     },
     {
       "id": "gold_ir_vs_vdd",
@@ -144,7 +144,7 @@
       "quantity": "STA slack \u2192 slack_ir",
       "value": {
         "slack_ns": -0.019603,
-        "slack_ir_ns": -0.020240058251357957,
+        "slack_ir_ns": -0.020668868213402653,
         "joined": "18/18"
       },
       "bound": "slack_ir \u2264 slack; joined==gates on the SPEF WNS path (not ideal-RC MET)",
@@ -157,8 +157,8 @@
       "status": "READY",
       "quantity": "\u03a3(delay_ir \u2212 delay) vs slack \u2212 slack_ir",
       "value": {
-        "reconstructed_ns": 0.000637058251358083,
-        "reported_ns": 0.0006370582513579581
+        "reconstructed_ns": 0.0010658682134027462,
+        "reported_ns": 0.0010658682134026543
       },
       "bound": "equal to 1e-9 ns",
       "note": "The extra delay is exactly the sum of per-gate IR scales. No hidden pad."
@@ -179,7 +179,7 @@
       "ok": true,
       "status": "READY",
       "quantity": "extra delay / clock period",
-      "value": 0.1385,
+      "value": 0.2317,
       "bound": "< 1% of 0.46 ns on this GCD",
       "note": "0.62 ps is 0.13% of the period. Slack stays MET. IR-aware STA is a perturbation, not a new timing close."
     },
@@ -259,7 +259,7 @@
       "ok": true,
       "status": "READY",
       "quantity": "ORFS static / Dynamic IR current_run",
-      "value": 1.097,
+      "value": 1.289,
       "bound": "within 3\u00d7 (same die, different engines)",
       "note": "6.67 mV PSM vs 6.08 mV TRAN is the same physical story at different fidelity."
     },

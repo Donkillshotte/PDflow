@@ -11,7 +11,6 @@ import { PIPELINE_STAGES } from "./jobs";
 
 export const STORY_VARIANT = "flowlab";
 export const IR_GOLD_MV = 45.298;
-export const IR_CURRENT_MV = 6.075;
 
 const SLACK_PS = 5.0;
 const METRIC_FRAC = 0.1;
@@ -311,7 +310,8 @@ export function getProductStory(): ProductStory {
   const goldPresent =
     Boolean(gold?.gold) && Math.abs(Number(gold?.worst_droop_mv) - IR_GOLD_MV) < 0.02;
   const liveMv = readCurrentRunDroopMv(STORY_VARIANT);
-  const currentPresent = liveMv != null && Math.abs(liveMv - IR_CURRENT_MV) < 0.5;
+  const currentPresent =
+    liveMv != null && Math.abs(liveMv - IR_GOLD_MV) > 1.0;
 
   const product = summarizeProduct(readJsonl("sim/dse/campaign_experiments.jsonl"));
   const progress = readProgress();

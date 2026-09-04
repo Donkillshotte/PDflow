@@ -26,7 +26,7 @@ MISSING_LAB = (
 VDD = 1.1
 ALPHA = 1.3
 GOLD_MV = 45.298
-CURRENT_MV = 6.075
+CURRENT_MV = 5.173
 PERIOD_GCD_NS = 0.46
 SLOTS = (
     ("gcd", 0.46),
@@ -155,7 +155,7 @@ def validate() -> dict:
             quantity="current_run IR / Vdd",
             value=round(frac * 100, 3),
             bound="(0, 5)% of 1.1 V for a bumped GCD",
-            note="6 mV on 1.1 V is ~0.55%. Typical on-die IR for this size, not a Voltus sign-off.",
+            note="5.17 mV on 1.1 V is ~0.47%. Typical on-die IR for this size, not a Voltus sign-off.",
         )
 
     if gold_mv is not None:

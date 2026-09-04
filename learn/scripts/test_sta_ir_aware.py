@@ -117,7 +117,7 @@ def main() -> int:
         check(all(g.get("joined") for g in blob["path_gates"]), "live all path gates joined")
         arrivals = json.loads((ROOT / "learn/sim/reports/sta_arrivals_flowlab.json").read_text())
         check(bool(arrivals.get("spef")), "arrivals used 6_final.spef")
-        check(abs(float(blob["ir"]["worst_cell_ir_mv"]) - 6.075) < 0.02, "live worst cell is current_run 6.075 mV")
+        check(abs(float(blob["ir"]["worst_cell_ir_mv"]) - 5.173) < 0.02, "live worst cell is current_run 5.173 mV")
         check(str(blob["ir"]["map"]).endswith("dynamic_ir_flowlab_direct.map.csv"), "live map is current_run")
         check(not str(blob["sta"]["arrivals"]).startswith("/"), "report paths are repo-relative")
     wrapper = (_SCRIPTS / "run_sta_ir_aware.sh").read_text()

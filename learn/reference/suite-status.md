@@ -68,7 +68,7 @@ Leftovers that stay visible:
 | Tapeout **C4 bumps / RDL** | Dummy bump LEF + sidecar `rdl_route` (4 bumps, 36 wires) | Educational OpenROAD pad test, not a package foundry. |
 | **PrimeTime / Tempus / Voltus** | OpenSTA + PDNSim + Xyce N4 compact | We do not claim sign-off equivalence. |
 | Course **8/8** | **0/8** | Student pace. Do not stamp `.progress.json`. |
-| A new gold Dynamic IR | **45.298 mV** stays | current_run (~6.075) and chip PDN are other meshes. Never restamp gold. |
+| A new gold Dynamic IR | **45.298 mV** stays | current_run (~5.173) and chip PDN are other meshes. Never restamp gold. |
 
 **WORKS\*** in the tables below means: the script ran and the number is
 real, but it is not the commercial / foundry object with the same name.
@@ -141,10 +141,10 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | Gate sim + name-join | **WORKS** | `GATE_SIM_PASS` · `gcd_gate.vcd` | Functional GLS, no SDF |
 | Activity → power | **WORKS** | `activity_power` / vectorless report | Prefer gate VCD scope |
 | Vectorless | **WORKS*** | P=4.9 mW · I_avg=4.45 mA · dynamic source gate VCD | GLS, no SDF |
-| Chip PDN (PDNSim mesh) | **WORKS*** | static **1.05 mV** · transient **9.47 mV** (`pdn_chip_ir`) | Not gold Dynamic IR. Companion static on the I(t) mesh is 3.09 mV |
+| Chip PDN (PDNSim mesh) | **WORKS*** | static **1.05 mV** · transient **9.47 mV** (`pdn_chip_ir`) | Not gold Dynamic IR. I(t) companion static is 1.05 mV on a different cook — do not mix |
 | vyges-em-ir | **WORKS*** | static 15.1 mV · droop 86.0 mV | Different mesh again |
 | Dynamic IR **gold** | **LOCKED** | **45.298 mV** · `gold: true` | Never restamp |
-| Dynamic IR current_run | **WORKS*** | ~**6.075 mV** | Not gold; not chip PDN |
+| Dynamic IR current_run | **WORKS*** | ~**5.173 mV** | Not gold; not chip PDN. Finish SPEF t50. |
 | System PDN | **WORKS*** | droop **6.03 mV** (power_signoff) | Lumped VRM→board→pkg. No Touchstone |
 | Board S-parameter | **GAP** | TUHH form-gated | Do not export the lumped ladder as `.sNp` |
 
@@ -208,8 +208,8 @@ Area, power, leakage, and IR. Honest win/lose.
 
 | Quantity | Value | Do not confuse with |
 |---|---|---|
-| Gold Dynamic IR | **45.298 mV** | current_run 6.075 · chip PDN |
-| Chip PDN static / transient | **1.05 / 9.47 mV** | gold · I(t) companion static 3.09 |
+| Gold Dynamic IR | **45.298 mV** | current_run 5.173 · chip PDN |
+| Chip PDN static / transient | **1.05 / 9.47 mV** | gold · I(t) companion static 1.05 (same order, not the same mesh) |
 | System PDN droop | **6.03 mV** | chip transient |
 | HotSpot t_max | **70.54 °C** | IR proxy mV |
 

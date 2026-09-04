@@ -84,7 +84,7 @@ def infer_scenario(
     """Name the I(t) source. Missing VCD/SAIF/STA stay ABSENT — never invented.
 
     ``source=None`` keeps today's finish path: STA file → ``sta_t50``, else
-    the triangle default. Explicit ``sta_t50`` is the GCD 6.075 mV run.
+    the triangle default. Explicit ``sta_t50`` is the GCD finish SPEF t50 path.
     """
     sta_s = str(sta) if sta else None
     wave_s = str(waveform) if waveform else None

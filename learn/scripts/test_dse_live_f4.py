@@ -30,15 +30,15 @@ def check_live_f4(check, *, root: Path) -> None:
             f"current finish mesh is not the 45.298 reference_run, got {base.get('worst_droop_mv')}",
         )
         check(
-            abs(float(base["worst_droop_mv"]) - 6.075) < 0.05,
-            f"current FlowLab DirectLU ~6.075 mV, got {base.get('worst_droop_mv')}",
+            abs(float(base["worst_droop_mv"]) - 5.173) < 0.05,
+            f"current FlowLab DirectLU ~5.173 mV, got {base.get('worst_droop_mv')}",
         )
         check(
             isinstance(base.get("solve"), dict) and base["solve"].get("role") == "reference",
             f"SolveResult stamps DirectLU as numerical reference, got {base.get('solve')}",
         )
         scen = base.get("current_scenario") or {}
-        check(scen.get("source") == "sta_t50", f"GCD 6.075 uses sta_t50 scenario, got {scen}")
+        check(scen.get("source") == "sta_t50", f"GCD SPEF sta_t50 scenario, got {scen}")
         check(
             ((base.get("solve") or {}).get("activity_via") or {}).get("scenario", {}).get("source") == "sta_t50",
             "SolveResult.activity_via points at the sta_t50 scenario",
