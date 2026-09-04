@@ -110,7 +110,9 @@ After signoff, ECO propose is allowed on `flowlab`. Apply only on an
 unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply is two
 OpenROAD processes: SPEF size-up (`sizeup,swap`), then BufferMove with
 no SPEF (GRT parasitics; SPEF in the same session is RSZ-0074).
-Incremental GRT + `detailed_route` on each process. If TritonRoute
+`global_connect` after repair so new cells get VDD/VSS (else write_cdl
+emits `_unconnected_` and LVS compare fails). Incremental GRT +
+`detailed_route` on each process. If TritonRoute
 cannot connect, apply restores the source `6_final` or keeps the
 size-up. A legal repair may still leave the course 0.46 ns setup open;
 leftover is named. Then run

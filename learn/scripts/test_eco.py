@@ -90,6 +90,7 @@ def main() -> int:
     check("ECO_PHASE" in tcl and "buffer" in tcl, "repair tcl has a buffer phase")
     check("ECO_SKIP_SPEF" in tcl, "buffer phase refuses SPEF in the same OpenROAD")
     check("RSZ-0074" in tcl, "repair tcl names why BufferMove cannot use SPEF")
+    check("global_connect" in tcl and "ECO_GLOBAL_CONNECT" in tcl, "repair tcl ties RSZ cells to VDD/VSS before write_cdl")
     check('phase="sizeup"' in src and 'phase="buffer"' in src, "apply launches size-up then BufferMove as two OpenROAD processes")
     check("ECO_KEEP_SIZEUP" in src, "apply keeps the SPEF size-up if BufferMove cannot legalize")
     check("set_false_path -to [all_outputs]" in tcl, "size-up ignores I/O endpoints so RSZ hits the OpenSTA WNS path")

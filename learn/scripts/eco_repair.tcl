@@ -139,6 +139,17 @@ if {[info exists ::env(ECO_HOLD)] && $::env(ECO_HOLD) == "1"} {
   }
 }
 
+# BufferMove / size-up cells are born without PG. write_cdl then emits
+# _unconnected_ on VDD/VSS and KLayout compare fails. Finish calls
+# global_connect for the same reason.
+if {[info commands global_connect] != ""} {
+  if {[catch {global_connect} err]} {
+    puts "WARN ECO global_connect: $err"
+  } else {
+    puts "ECO_GLOBAL_CONNECT"
+  }
+}
+
 if {[info commands detailed_placement] != ""} {
   detailed_placement
 }
