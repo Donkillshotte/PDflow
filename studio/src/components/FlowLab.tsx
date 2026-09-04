@@ -132,7 +132,8 @@ export function FlowLab() {
   const doneCount = closeStages.filter((s) => s.done).length;
   const progressPct = Math.round((doneCount / CLOSE_PHASES.length) * 100);
   const unlocked = phaseUnlocked(phaseId, stages);
-  const nextPhase = PHASES[PHASE_IDS.indexOf(phaseId) + 1] ?? null;
+  const nextPhase =
+    CLOSE_PHASES[CLOSE_PHASES.findIndex((p) => p.id === phaseId) + 1] ?? null;
   const lineCount = useMemo(() => rtl.split("\n").length, [rtl]);
 
   const load = useCallback(async () => {
@@ -373,7 +374,7 @@ export function FlowLab() {
             );
             if (ev.ok) {
               setRefreshKey((k) => k + 1);
-              setOfferNext(Boolean(nextPhase));
+              if (action === phase.action) setOfferNext(true);
               if (phase.id !== "rtl") setRightTab("artifacts");
               await load();
             }
@@ -782,6 +783,20 @@ export function FlowLab() {
               >
                 Continue → {nextPhase.label}
               </button>
+            </div>
+          )}
+          {offerNext && !nextPhase && phase.id === "finish" && ok && (
+            <div className="fl-next-banner">
+              <div>
+                <strong>Finish completed</strong>
+                <p>
+                  Four-pillar close stays on this page. System PDN / Phase 2
+                  is on /pkg.
+                </p>
+              </div>
+              <a className="fl-btn fl-btn-primary" href="/pkg">
+                Open PKG
+              </a>
             </div>
           )}
         </section>
