@@ -10,7 +10,7 @@
   "source_sta": {
     "report": "/workspace/learn/sim/reports/sta_signoff_flowlab.json",
     "ok": true,
-    "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16"
+    "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16 \u00b7 leftover setup open (WNS -0.02 at 0.46 ns)"
   },
   "proposed": [
     {
