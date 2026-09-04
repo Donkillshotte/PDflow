@@ -223,6 +223,7 @@ def main() -> int:
     check("leftoverSetupOpenDetail" in sig_ts, "timing pillar names leftover setup open")
     check("wns_kind" in sig_ts and "register-to-register MET" in sig_ts, "timing leftover names I/O vs register WNS")
     check("shared NAND2_X2 cone" in sig_ts, "timing leftover names why clone is not a missing ECO")
+    check("appendSetupLeftover" in sig_ts, "signoff matrix keeps I/O leftover after leftover setup is already in the summary")
     check("educational golden still" in sig_ts, "setup leftover names the educational golden")
     check("IrMeshLedger" in finish, "finish power shows IR mesh ledger")
     check("DynamicIrHeatmap" in finish, "finish power shows Dynamic IR heatmap")

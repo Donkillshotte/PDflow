@@ -403,6 +403,20 @@ export function leftoverSetupOpenDetail(
   return `${named}; educational golden still ≥ -0.04`;
 }
 
+export function appendSetupLeftover(detail: string, leftover: string | null): string {
+  if (!leftover) return detail;
+  if (!detail.includes("leftover setup open")) {
+    return `${detail} · ${leftover}`;
+  }
+  if (
+    leftover.includes("register-to-register MET") &&
+    !detail.includes("register-to-register MET")
+  ) {
+    return `${detail}; ${leftover.slice(leftover.indexOf("register-to-register MET"))}`;
+  }
+  return detail;
+}
+
 function readJsonReport(abs: string): Record<string, unknown> | null {
   try {
     if (!fs.existsSync(abs)) return null;
@@ -492,10 +506,7 @@ export function evaluateSignoffGates(variant = "flowlab"): {
       ? (orchReport.summary as string) || (pillarOk ? "report ok" : "golden thresholds")
       : "report missing — run signoff";
     if (pillar.id === "timing" && orchReport) {
-      const leftover = leftoverSetupOpenDetail(orchReport);
-      if (leftover && !String(detail).includes("leftover setup open")) {
-        detail += ` · ${leftover}`;
-      }
+      detail = appendSetupLeftover(String(detail), leftoverSetupOpenDetail(orchReport));
     }
     if (pillar.id === "equivalence" && orchReport) {
       const leftover = leftoverMustConnectDetail(orchReport);
@@ -525,10 +536,7 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   );
   let allDetail = allReport ? String(allReport.summary ?? "signoff_all") : "not run";
   if (allReport) {
-    const setup = leftoverSetupOpenDetail(allReport);
-    if (setup && !allDetail.includes("leftover setup open")) {
-      allDetail += ` · ${setup}`;
-    }
+    allDetail = appendSetupLeftover(allDetail, leftoverSetupOpenDetail(allReport));
   }
   gates.push({
     id: "signoff_all",

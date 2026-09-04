@@ -170,7 +170,7 @@ export function EcoPanel({
             {closePillars ? ` · ${closePillars}` : ""}
             {close?.setup_leftover?.setup_open
               ? close.setup_leftover.wns_kind === "output"
-                ? ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns; register-to-register MET, leftover is course output delay)`
+                ? ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns; register-to-register MET, leftover is course output delay; shared NAND2_X2 cone)`
                 : ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns)`
               : ""}
             {close?.leftover?.must_connect
