@@ -80,6 +80,11 @@ def main() -> int:
     check(int(leftover.get("must_connect") or 0) == 2, "signoff_all leftover must-connect is 2")
     check("DFF_X2" in (leftover.get("circuits") or []), "signoff_all leftover names DFF_X2")
     check("leftover must-connect 2" in str(signoff_all.get("summary")), "signoff_all summary names leftover")
+    matrix = (ROOT / "learn/reference/signoff-matrix.md").read_text()
+    check("leftover must-connect 2 on DFF_X2" in matrix, "signoff-matrix names leftover")
+    check("LVS clean (educational)" not in matrix, "signoff-matrix does not call LVS clean")
+    gaps_eval = (ROOT / "learn/reference/remaining-gaps-evaluation.md").read_text()
+    check("Closed on FlowLab GCD compare" in gaps_eval, "LVS feasibility is closed")
     eq = pillars.get("equivalence") or {}
     check(int((eq.get("leftover") or {}).get("must_connect") or 0) == 2, "equivalence pillar carries leftover")
     ledger_all = signoff_all.get("ir_mesh_ledger") or {}
