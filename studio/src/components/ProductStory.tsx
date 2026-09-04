@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
+import type { ProductStory as StoryData } from "@/lib/story";
 
 type Surface = {
   id: string;
@@ -58,14 +59,17 @@ export type StoryPayload = {
 export function ProductStory({
   compact,
   tone = "light",
+  initial,
 }: {
   compact?: boolean;
   tone?: "light" | "dark";
+  initial?: StoryData | StoryPayload | null;
 }) {
-  const [data, setData] = useState<StoryPayload | null>(null);
+  const [data, setData] = useState<StoryData | StoryPayload | null>(initial ?? null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initial) return;
     let alive = true;
     void fetch("/api/story")
       .then((r) => {
@@ -81,7 +85,7 @@ export function ProductStory({
     return () => {
       alive = false;
     };
-  }, []);
+  }, [initial]);
 
   if (error) {
     return (
