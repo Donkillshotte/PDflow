@@ -29,19 +29,38 @@ if {[info exists ::env(ECO_SPEF_IN)] && $::env(ECO_SPEF_IN) != "" && [file exist
   puts "ECO_READ_SPEF $::env(ECO_SPEF_IN)"
 }
 
+if {[info commands set_propagated_clock] != "" && [info commands all_clocks] != ""} {
+  if {[catch {set_propagated_clock [all_clocks]}]} {
+    puts "WARN ECO set_propagated_clock skipped"
+  }
+}
+
 if {[info commands remove_fillers] != ""} {
   remove_fillers
 }
 
+# Post-route size-only. Default BufferMove calls GRT getPinGridPositions and
+# SIGSEGVs on a finished ODB that never ran global_route in this session.
+# Inserting buffers here would also leave undetailed wires; close is signoff_all.
 if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
   if {[info commands repair_timing] != ""} {
-    repair_timing -setup
+    if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
+      puts "WARN ECO setup repair: $err"
+    } else {
+      puts "ECO_REPAIR_SETUP sizeup,swap (no BufferMove)"
+    }
   }
 }
 if {[info exists ::env(ECO_HOLD)] && $::env(ECO_HOLD) == "1"} {
   if {[info commands repair_timing] != ""} {
-    repair_timing -hold
+    if {[catch {repair_timing -hold -skip_buffering -skip_gate_cloning -verbose} err]} {
+      puts "WARN ECO hold repair: $err"
+    }
   }
+}
+if {[info commands report_wns] != ""} {
+  report_wns
+  report_tns
 }
 
 if {[info commands detailed_placement] != ""} {

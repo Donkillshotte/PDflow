@@ -83,6 +83,7 @@ def main() -> int:
     spef_cmd = tcl.find("read_spef $::env(ECO_SPEF_IN)")
     setup_cmd = tcl.find("repair_timing -setup")
     check(spef_cmd >= 0 and setup_cmd >= 0 and spef_cmd < setup_cmd, "repair tcl reads SPEF before setup repair")
+    check("-skip_buffering" in tcl and "sizeup,swap" in tcl, "post-route ECO skips BufferMove (needs GRT)")
     check("ECO_SPEF_IN" in src, "apply passes the source 6_final.spef")
     check((SCRIPTS / "eco_stream_gds.py").is_file(), "GDS stream helper exists")
     check("eco_stream_gds.py" in src, "apply streams GDS after DEF")
