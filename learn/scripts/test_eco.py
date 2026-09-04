@@ -144,6 +144,13 @@ def main() -> int:
     check("DieCanvas" not in vis, "unused die canvas is gone")
     flow = (ROOT / "studio/src/components/FlowLab.tsx").read_text()
     check('phase.id === "finish" && "is-finish"' in flow, "finish workbench is marked is-finish")
+    finish_ws = flow.split(') : phase.id === "finish" ? (')[1].split(") : (")[0]
+    check(
+        finish_ws.find("<FlowLabSignoff") >= 0
+        and finish_ws.find("<FlowLabPhaseVisual") >= 0
+        and finish_ws.find("<FlowLabSignoff") < finish_ws.find("<FlowLabPhaseVisual"),
+        "finish puts leftover/signoff above the GDS viewport",
+    )
     css = (ROOT / "studio/src/app/globals.css").read_text()
     check(".fl-workbench-grid.is-finish" in css, "finish workbench CSS exists")
     check(".fl-workbench-grid.is-finish .fl-phase-controls" in css, "finish controls are not height-clamped")
@@ -196,6 +203,7 @@ def main() -> int:
     check("eco_scratch copy is register-to-register MET" in inspect, "inspect names the ECO copy leftover vs locked flowlab")
     gaps = (ROOT / "learn/reference/gaps.md").read_text()
     check("NAND2_X2" in gaps and "clone" in gaps, "gaps names the shared NAND2 cone and clone leftover")
+    check("CLKBUF_X1" in gaps and "WNS −0.01" in gaps, "gaps names the I/O-only buffer swap leftover")
     check("ECO_PHASE=io or clone" in tcl, "repair tcl names why clone is not a third apply")
     layers = (ROOT / "studio/src/lib/layoutStudio.ts").read_text()
     check("Siti standard-cell" not in layers and "Heatmap tensione" not in layers, "layer roles are English")

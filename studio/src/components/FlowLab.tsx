@@ -730,6 +730,33 @@ export function FlowLab() {
                 </div>
               </div>
             </div>
+          ) : phase.id === "finish" ? (
+            <div className="fl-phase-workspace">
+              <div className="fl-phase-controls">
+                <FlowLabSignoff
+                  mode="finish"
+                  disabled={running}
+                  busy={signoffBusy}
+                  onRun={(a, long) => void runSignoff(a, long)}
+                />
+                <FlowLabParamStudio
+                  params={params}
+                  locked={finishDone}
+                  onChange={updateParam}
+                  onApplyPreset={applyPreset}
+                />
+              </div>
+              <FlowLabPhaseVisual
+                phaseId={phaseId}
+                stage={resultsStage}
+                variant="flowlab"
+                params={params}
+                refreshKey={refreshKey}
+                rtlLines={lineCount}
+                sim={sim}
+                stageDone={Boolean(stages.find((s) => s.id === phaseId)?.done)}
+              />
+            </div>
           ) : (
             <div className="fl-phase-workspace">
               <FlowLabPhaseVisual
@@ -749,14 +776,6 @@ export function FlowLab() {
                   onChange={updateParam}
                   onApplyPreset={applyPreset}
                 />
-                {phase.id === "finish" && (
-                  <FlowLabSignoff
-                    mode="finish"
-                    disabled={running}
-                    busy={signoffBusy}
-                    onRun={(a, long) => void runSignoff(a, long)}
-                  />
-                )}
               </div>
             </div>
           )}
