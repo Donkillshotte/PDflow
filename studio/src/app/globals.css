@@ -1821,6 +1821,21 @@ button.pipeline-node {
   overflow: visible;
   height: auto;
 }
+.fl-workbench-grid.is-finish {
+  height: auto;
+  min-height: 28rem;
+}
+.fl-workbench-grid.is-finish .fl-main-panel {
+  overflow: visible;
+  height: auto;
+}
+.fl-workbench-grid.is-finish .fl-phase-workspace {
+  grid-template-rows: minmax(18rem, 46vh) auto;
+}
+.fl-workbench-grid.is-finish .fl-phase-controls {
+  max-height: none;
+  overflow: visible;
+}
 .fl-workbench-grid.is-collapsed .fl-resize-handle,
 .fl-workbench-grid.is-collapsed .fl-side-panel {
   display: none;

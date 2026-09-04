@@ -665,6 +665,7 @@ export function FlowLab() {
           "fl-workbench-grid",
           sideCollapsed && "is-collapsed",
           phase.id === "rtl" && "is-rtl",
+          phase.id === "finish" && "is-finish",
         )}
         style={{ "--fl-side-w": `${sideWidth}px` } as React.CSSProperties}
       >
