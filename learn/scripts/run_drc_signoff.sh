@@ -56,7 +56,11 @@ python3 "${ROOT}/learn/scripts/signoff_eval.py" --pillar geometry --metrics "${M
 
 python3 - <<PY
 import json
+import sys
 from pathlib import Path
+root = Path("${ROOT}")
+sys.path.insert(0, str(root / "learn/scripts"))
+from stamp_signoff_all import leftover_from_deck, with_deck_leftover_summary
 metrics = json.loads(Path("${METRICS}").read_text())
 evald = json.loads(Path("${OUT}.eval").read_text()) if Path("${OUT}.eval").exists() else {}
 geom = metrics["geometry"]
@@ -79,6 +83,10 @@ out = {
   "summary": f"Route DRC {geom['route_drc_lines']} lines · GDS DRC {geom['gds_drc_violations']} items",
   "artifacts": {"route_drc": "${ROUTE_DRC}", "gds_lyrdb": "${LYRDB}"},
 }
+deck = leftover_from_deck()
+if deck:
+    out["leftover"] = deck
+    out["summary"] = with_deck_leftover_summary(out.get("summary"), deck)
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 print("DRC_SIGNOFF_JSON", "${OUT}")
 print(out["summary"])

@@ -38,6 +38,8 @@ apply on `eco_scratch` stay available. Param knobs become display-only.
 1. RTL — Monaco, Icarus, VCD
 2. synth → finish — layout preview, phase log
 3. Signoff — STA → DRC → LVS → power (`signoff_all`). Leftover stays named
+   (setup open, DFF_X2 must-connect, typical.lib only / no MCMM, no density
+   or named ERC in `FreePDK45.lydrc`)
 4. ECO — propose on `flowlab`; apply/close on `eco_scratch` only.
    Locked leftover is setup open (WNS −0.02, 16 viol). Copy leftover is
    course output delay on `resp_msg[14]` (R2R MET)

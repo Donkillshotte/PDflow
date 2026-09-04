@@ -35,6 +35,7 @@ reports/*
 !reports/lvs_signoff_eco_scratch.json
 !reports/power_signoff_eco_scratch.json
 !reports/drc_deck_coverage.json
+!reports/lib_corner_coverage.json
 reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/

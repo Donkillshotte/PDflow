@@ -45,9 +45,16 @@
     "path": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/6_drc.lyrdb"
   },
   "ok": true,
-  "summary": "Route DRC 0 lines \u00b7 GDS DRC 0 items",
+  "summary": "Route DRC 0 lines \u00b7 GDS DRC 0 items \u00b7 antenna 300:1 in FreePDK45.lydrc \u00b7 leftover no density / named ERC",
   "artifacts": {
     "route_drc": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/5_route_drc.rpt",
     "gds_lyrdb": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/6_drc.lyrdb"
+  },
+  "leftover": {
+    "antenna": true,
+    "antenna_ratio": "300:1",
+    "density": false,
+    "named_erc_section": false,
+    "note": "Antenna is in FreePDK45.lydrc. Density and named ERC are not. Do not invent rules."
   }
 }

@@ -96,7 +96,7 @@ import sys
 from pathlib import Path
 root = Path("${ROOT}")
 sys.path.insert(0, str(root / "learn/scripts"))
-from stamp_signoff_all import leftover_from_sta, with_setup_leftover_summary
+from stamp_signoff_all import leftover_from_lib_corners, leftover_from_sta, with_mcmm_leftover_summary, with_setup_leftover_summary
 metrics = json.loads(Path("${METRICS}").read_text())
 evald = {}
 ep = Path("${OUT}.eval")
@@ -119,6 +119,10 @@ setup = leftover_from_sta(out)
 if setup:
     out["leftover"] = setup
     out["summary"] = with_setup_leftover_summary(out.get("summary"), setup)
+mcmm = leftover_from_lib_corners()
+if mcmm:
+    out["mcmm_leftover"] = mcmm
+    out["summary"] = with_mcmm_leftover_summary(out.get("summary"), mcmm)
 Path("${OUT}").write_text(json.dumps(out, indent=2) + "\\n")
 print("STA_SIGNOFF_JSON", "${OUT}")
 print(out["summary"])

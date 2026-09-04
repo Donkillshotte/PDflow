@@ -31,7 +31,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   {
     id: "timing",
     label: "Timing (STA)",
-    description: "WNS/TNS/period_min vs golden-metrics post-SPEF; optional educational IR-aware overlay",
+    description: "WNS/TNS/period_min vs golden-metrics post-SPEF; typical.lib only (no MCMM); optional educational IR-aware overlay",
     status: "active",
     orchestratorAction: "sta_signoff",
     checks: [
@@ -408,12 +408,30 @@ export function leftoverDeckCoverageDetail(
   report: Record<string, unknown> | null,
 ): string | null {
   if (!report) return null;
-  const antenna = report.antenna === true;
-  const density = report.density === true;
-  const erc = report.named_erc_section === true;
+  const leftover = (report.deck_leftover ?? report.leftover) as
+    | {
+        antenna?: boolean;
+        antenna_ratio?: string | null;
+        density?: boolean;
+        named_erc_section?: boolean;
+      }
+    | undefined;
+  const antenna = leftover?.antenna === true || report.antenna === true;
+  const density = leftover?.density === true || report.density === true;
+  const erc =
+    leftover?.named_erc_section === true || report.named_erc_section === true;
+  const hasDeckFields =
+    leftover?.antenna !== undefined ||
+    leftover?.density !== undefined ||
+    leftover?.named_erc_section !== undefined ||
+    report.antenna !== undefined ||
+    report.density !== undefined ||
+    report.named_erc_section !== undefined;
+  if (!hasDeckFields) return null;
   if (antenna && density && erc) return null;
-  const ratio = report.antenna_ratio ? String(report.antenna_ratio) : "in deck";
-  const antennaBit = antenna ? `antenna ${ratio}` : "antenna not in deck";
+  const ratio = leftover?.antenna_ratio ?? report.antenna_ratio;
+  const ratioBit = ratio ? String(ratio) : "in deck";
+  const antennaBit = antenna ? `antenna ${ratioBit}` : "antenna not in deck";
   const missing: string[] = [];
   if (!density) missing.push("density");
   if (!erc) missing.push("named ERC");
@@ -421,11 +439,36 @@ export function leftoverDeckCoverageDetail(
   return `${antennaBit} in FreePDK45.lydrc · leftover no ${missing.join(" / ")}`;
 }
 
+/** Single typical.lib. Extra corners need the full kit or a foundry PDK. */
+export function leftoverMcmmDetail(
+  report: Record<string, unknown> | null,
+): string | null {
+  if (!report) return null;
+  const leftover = report.mcmm_leftover as
+    | { mcmm?: boolean; corners?: string[] }
+    | undefined;
+  const source = leftover ?? (report as { mcmm?: boolean; corners?: string[] });
+  if (source.mcmm === true) return null;
+  const corners = (source.corners ?? []).map(String).filter(Boolean);
+  const named = leftover
+    ? leftover.mcmm === false
+    : report.mcmm === false || (corners.length === 1 && !source.mcmm);
+  if (!named && leftover?.mcmm !== false) return null;
+  const cornerBit = corners.length ? corners.join(", ") : "typical";
+  return `leftover no MCMM (${cornerBit}.lib only)`;
+}
+
 export function appendDeckLeftover(detail: string, leftover: string | null): string {
   if (!leftover) return detail;
   if (detail.includes("leftover no density") || detail.includes("no density rules")) {
     return detail;
   }
+  return `${detail} · ${leftover}`;
+}
+
+export function appendMcmmLeftover(detail: string, leftover: string | null): string {
+  if (!leftover) return detail;
+  if (detail.includes("leftover no MCMM")) return detail;
   return `${detail} · ${leftover}`;
 }
 
@@ -539,6 +582,13 @@ export function evaluateSignoffGates(variant = "flowlab"): {
       : "report missing — run signoff";
     if (pillar.id === "timing" && orchReport) {
       detail = appendSetupLeftover(String(detail), leftoverSetupOpenDetail(orchReport));
+      detail = appendMcmmLeftover(
+        String(detail),
+        leftoverMcmmDetail(orchReport) ??
+          leftoverMcmmDetail(
+            readJsonReport(path.join(LEARN_ROOT, "sim/reports/lib_corner_coverage.json")),
+          ),
+      );
     }
     if (pillar.id === "equivalence" && orchReport) {
       const leftover = leftoverMustConnectDetail(orchReport);
@@ -549,9 +599,10 @@ export function evaluateSignoffGates(variant = "flowlab"): {
     if (pillar.id === "geometry") {
       detail = appendDeckLeftover(
         String(detail),
-        leftoverDeckCoverageDetail(
-          readJsonReport(path.join(LEARN_ROOT, "sim/reports/drc_deck_coverage.json")),
-        ),
+        leftoverDeckCoverageDetail(orchReport) ??
+          leftoverDeckCoverageDetail(
+            readJsonReport(path.join(LEARN_ROOT, "sim/reports/drc_deck_coverage.json")),
+          ),
       );
     }
     if (pillar.id === "power" && orchReport?.ir_mesh_ledger) {
@@ -577,11 +628,19 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   let allDetail = allReport ? String(allReport.summary ?? "signoff_all") : "not run";
   if (allReport) {
     allDetail = appendSetupLeftover(allDetail, leftoverSetupOpenDetail(allReport));
+    allDetail = appendMcmmLeftover(
+      allDetail,
+      leftoverMcmmDetail(allReport) ??
+        leftoverMcmmDetail(
+          readJsonReport(path.join(LEARN_ROOT, "sim/reports/lib_corner_coverage.json")),
+        ),
+    );
     allDetail = appendDeckLeftover(
       allDetail,
-      leftoverDeckCoverageDetail(
-        readJsonReport(path.join(LEARN_ROOT, "sim/reports/drc_deck_coverage.json")),
-      ),
+      leftoverDeckCoverageDetail(allReport) ??
+        leftoverDeckCoverageDetail(
+          readJsonReport(path.join(LEARN_ROOT, "sim/reports/drc_deck_coverage.json")),
+        ),
     );
   }
   gates.push({

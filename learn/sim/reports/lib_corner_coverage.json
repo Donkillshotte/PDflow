@@ -1,0 +1,12 @@
+{
+  "lib_dir": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lib",
+  "liberty": [
+    "NangateOpenCellLibrary_typical.lib"
+  ],
+  "corners": [
+    "typical"
+  ],
+  "mcmm": false,
+  "ok": true,
+  "summary": "Liberty corners: typical \u00b7 leftover no MCMM"
+}

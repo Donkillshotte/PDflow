@@ -374,15 +374,23 @@ def main() -> int:
     check(setup.get("setup_open") is True, "signoff_all names leftover setup open")
     check(float(setup.get("wns_ns") or 0) < 0, "signoff_all setup leftover WNS is negative")
     check("leftover setup open" in str(signoff_all.get("summary")), "signoff_all summary names leftover setup")
+    check((signoff_all.get("mcmm_leftover") or {}).get("mcmm") is False, "signoff_all names leftover no MCMM")
+    check("leftover no MCMM" in str(signoff_all.get("summary")), "signoff_all summary names leftover no MCMM")
+    check((signoff_all.get("deck_leftover") or {}).get("antenna") is True, "signoff_all names deck leftover")
+    check("leftover no density" in str(signoff_all.get("summary")), "signoff_all summary names leftover no density")
     sta_rep = load("sta_signoff_flowlab.json")
     check((sta_rep.get("leftover") or {}).get("setup_open") is True, "STA report leftover is setup open")
     check("leftover setup open" in str(sta_rep.get("summary")), "STA summary names leftover setup")
+    check((sta_rep.get("mcmm_leftover") or {}).get("mcmm") is False, "STA report names leftover no MCMM")
+    check("leftover no MCMM" in str(sta_rep.get("summary")), "STA summary names leftover no MCMM")
     check(sta_rep.get("ok") is True, "educational STA golden still passes")
     matrix = (ROOT / "learn/reference/signoff-matrix.md").read_text()
     check("leftover must-connect 2 on DFF_X2" in matrix, "signoff-matrix names leftover")
     check("leftover setup open" in matrix, "signoff-matrix names leftover setup open")
     check("leftover no density / named ERC" in matrix, "signoff-matrix names DRC deck leftover")
+    check("leftover no MCMM" in matrix, "signoff-matrix names leftover no MCMM")
     check("leftoverDeckCoverageDetail" in signoff_ts, "geometry gate reads FreePDK45.lydrc coverage")
+    check("leftoverMcmmDetail" in signoff_ts, "timing gate names leftover no MCMM")
     check("dynamic_ir_{v}_direct.map.csv" in matrix, "signoff-matrix pins STA IR-aware to current_run map")
     check("LVS clean (educational)" not in matrix, "signoff-matrix does not call LVS clean")
     check("/flow?phase=finish" in matrix, "signoff-matrix points the matrix at finish")
@@ -452,7 +460,17 @@ def main() -> int:
     check(int(ledger_all.get("n_meshes") or 0) >= 5, "signoff_all ledger has five meshes")
     check("stamp_signoff_all.py" in (ROOT / "learn/scripts/run_signoff_all.sh").read_text(), "signoff_all restamps leftover from pillar reports")
     check("leftover_from_lvs" in (ROOT / "learn/scripts/run_klayout_lvs.sh").read_text(), "LVS signoff writes leftover object")
-    from stamp_signoff_all import leftover_from_lvs, leftover_from_sta, build, with_leftover_summary, with_setup_leftover_summary
+    from stamp_signoff_all import (
+        leftover_from_lvs,
+        leftover_from_sta,
+        leftover_from_lib_corners,
+        leftover_from_deck,
+        build,
+        with_leftover_summary,
+        with_setup_leftover_summary,
+        with_mcmm_leftover_summary,
+        with_deck_leftover_summary,
+    )
     parsed = leftover_from_lvs(lvs)
     check(parsed is not None and parsed["must_connect"] == 2, "stamp leftover_from_lvs reads LVS")
     check("DFF_X2" in parsed["circuits"], "stamp leftover_from_lvs names DFF_X2")
@@ -489,11 +507,46 @@ def main() -> int:
     )
     check(io_parsed is not None and io_parsed.get("wns_kind") == "output", "leftover_from_sta names an I/O WNS")
     check("Register-to-register is MET" in str(io_parsed.get("note")), "I/O leftover note says R2R is MET")
+    mcmm_parsed = leftover_from_lib_corners()
+    check(mcmm_parsed is not None and mcmm_parsed.get("mcmm") is False, "stamp leftover_from_lib_corners names no MCMM")
+    check("typical" in (mcmm_parsed.get("corners") or []), "MCMM leftover names typical")
+    check(
+        "leftover no MCMM (typical.lib only)"
+        in with_mcmm_leftover_summary("STA WNS -0.02 ns", mcmm_parsed),
+        "with_mcmm_leftover_summary appends leftover no MCMM",
+    )
+    check(
+        with_mcmm_leftover_summary("STA WNS -0.02 ns · leftover no MCMM (typical.lib only)", mcmm_parsed)
+        == "STA WNS -0.02 ns · leftover no MCMM (typical.lib only)",
+        "with_mcmm_leftover_summary does not double-append",
+    )
+    deck_parsed = leftover_from_deck()
+    check(deck_parsed is not None and deck_parsed.get("antenna") is True, "stamp leftover_from_deck names antenna")
+    check(deck_parsed.get("density") is False, "deck leftover names no density")
+    check(deck_parsed.get("named_erc_section") is False, "deck leftover names no ERC")
+    check(
+        "leftover no density / named ERC"
+        in with_deck_leftover_summary("Route DRC 0 lines", deck_parsed),
+        "with_deck_leftover_summary appends leftover no density",
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        fake = Path(tmp)
+        (fake / "NangateOpenCellLibrary_typical.lib").write_text("library () {}\n")
+        (fake / "NangateOpenCellLibrary_slow.lib").write_text("library () {}\n")
+        from lib_corner_coverage import inspect as inspect_libs
+
+        multi = inspect_libs(fake)
+        check(multi.get("mcmm") is True, "two liberty corners are MCMM")
+        check(sorted(multi.get("corners") or []) == ["slow", "typical"], "inspect names both corners")
     rebuilt = build("flowlab")
     check(rebuilt.get("ok") is True, "stamp rebuild is ok")
     check(int((rebuilt.get("leftover") or {}).get("must_connect") or 0) == 2, "stamp rebuild leftover")
     check((rebuilt.get("setup_leftover") or {}).get("setup_open") is True, "stamp rebuild names leftover setup")
     check("leftover setup open" in str(rebuilt.get("summary")), "stamp rebuild summary names leftover setup")
+    check((rebuilt.get("mcmm_leftover") or {}).get("mcmm") is False, "stamp rebuild names leftover no MCMM")
+    check("leftover no MCMM" in str(rebuilt.get("summary")), "stamp rebuild summary names leftover no MCMM")
+    check((rebuilt.get("deck_leftover") or {}).get("antenna") is True, "stamp rebuild names deck leftover")
+    check("leftover no density" in str(rebuilt.get("summary")), "stamp rebuild summary names leftover no density")
     pwr = load("power_signoff_flowlab.json")
     ledger = pwr.get("ir_mesh_ledger") or {}
     check(ledger.get("comparable") is False, "power_signoff IR meshes are not comparable")

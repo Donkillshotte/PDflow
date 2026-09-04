@@ -44,7 +44,7 @@
     "ok": true
   },
   "ok": true,
-  "summary": "STA WNS -0.01 ns \u00b7 TNS -0.01 \u00b7 viol 1 \u00b7 leftover setup open (WNS -0.01 at 0.46 ns)",
+  "summary": "STA WNS -0.01 ns \u00b7 TNS -0.01 \u00b7 viol 1 \u00b7 leftover setup open (WNS -0.01 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only)",
   "artifacts": {
     "finish_rpt": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/eco_scratch/6_finish.rpt",
     "sta_log": "/workspace/learn/sim/reports/sta_signoff_eco_scratch.log"
@@ -57,5 +57,15 @@
     "note": "Register-to-register is MET. Leftover is the course 20% output delay on resp_msg[14] (output). Shared NAND2_X2 (_647_) also drives R2R; size-up, BUF_X4, and clone of that cone regress R2R. Educational golden allows WNS \u2265 -0.04. Do not hide.",
     "worst_endpoint": "resp_msg[14] (output)",
     "wns_kind": "output"
+  },
+  "mcmm_leftover": {
+    "mcmm": false,
+    "corners": [
+      "typical"
+    ],
+    "liberty": [
+      "NangateOpenCellLibrary_typical.lib"
+    ],
+    "note": "Nangate45 in ORFS ships one typical.lib. Extra corners need the full kit or a foundry PDK. Do not invent slow/fast."
   }
 }

@@ -30,7 +30,7 @@ the lvsdb (Nangate split wells). This is educational FreePDK45, not foundry LVS.
 
 | Pillar | Lesson | Studio action | Script | Report JSON | Main gate |
 |---|---|---|---|---|---|
-| **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden · leftover setup open if WNS < 0 (register or I/O) |
+| **Timing (STA)** | 07-finish | `sta_signoff` | `run_sta_signoff.sh` | `sim/reports/sta_signoff_{v}.json` | WNS/TNS/viol vs golden · leftover setup open if WNS < 0 (register or I/O) · leftover no MCMM (`typical.lib` only) |
 | **Timing (STA IR-aware)** | 07-finish | `sta_ir_aware` | `run_sta_ir_aware.sh` | `sim/reports/sta_ir_aware_{v}.json` | Educational NLDM × ITerm V (does not change WNS) |
 | **Geometry (DRC)** | 06-routing, 07 | `drc_signoff` | `run_drc_signoff.sh` | `sim/reports/drc_signoff_{v}.json` | route DRC lines + GDS items · antenna 300:1 in `FreePDK45.lydrc` · leftover no density / named ERC |
 | **Equivalence (LVS)** | 07-finish | `klayout_lvs` | `run_klayout_lvs.sh` | `sim/reports/lvs_signoff_{v}.json` | KLayout match + leftover named |
@@ -121,12 +121,12 @@ Every pillar signoff is **complete** when all five artifacts exist:
 
 Quick post-`finish` checklist:
 
-- [ ] `sta_signoff` → WNS/TNS/viol vs golden
+- [ ] `sta_signoff` → WNS/TNS/viol vs golden · leftover no MCMM (`typical.lib` only)
 - [ ] (opt.) `sta_ir_aware` → slack vs slack_ir on the worst path (educational; not Tempus)
 - [ ] `drc_signoff` → route DRC + GDS items = 0
 - [ ] `klayout_lvs` → `CONGRATULATIONS` + leftover object (DFF_X2)
 - [ ] `power_signoff` → chip IR vs golden · IR meshes not comparable
-- [ ] `signoff_all` → 4 pillars ok · leftover + IR ledger named
+- [ ] `signoff_all` → 4 pillars ok · leftover + IR ledger named · leftover no MCMM · leftover no density / named ERC
 - [ ] (opt.) Phase 2: `thermal_signoff`, `pkg_signoff`, `signoff_phase2`
 - [ ] UI: matrix visible on FlowLab **finish** (`/flow?phase=finish`). `/pkg` is System PDN + Phase 2 only.
 - [ ] Zero drift: `signoff.ts` ↔ `actions.ts` ↔ `run.ts` ↔ `jobs.ts` ↔ bash scripts

@@ -13,6 +13,7 @@ const ALLOWED = new Set([
   "signoff_all_flowlab.json",
   "signoff_all_eco_scratch.json",
   "drc_deck_coverage.json",
+  "lib_corner_coverage.json",
   "power_signoff_flowlab.json",
 ]);
 

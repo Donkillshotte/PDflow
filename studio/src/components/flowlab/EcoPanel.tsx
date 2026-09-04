@@ -38,6 +38,8 @@ type CloseReport = {
     wns_kind?: string;
     worst_endpoint?: string;
   };
+  mcmm_leftover?: { mcmm?: boolean; corners?: string[] };
+  deck_leftover?: { antenna?: boolean; density?: boolean; named_erc_section?: boolean };
   pillars?: Record<string, { ok?: boolean; summary?: string }>;
 };
 
@@ -58,6 +60,13 @@ function closeState(close: CloseReport | null): "ok" | "wait" | "fail" | "leftov
   if (!close) return "wait";
   if (close.ok === false) return "fail";
   if (close.leftover?.must_connect || close.setup_leftover?.setup_open) {
+    return "leftover";
+  }
+  if (close.mcmm_leftover?.mcmm === false) return "leftover";
+  if (
+    close.deck_leftover &&
+    (close.deck_leftover.density === false || close.deck_leftover.named_erc_section === false)
+  ) {
     return "leftover";
   }
   return "ok";

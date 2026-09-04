@@ -4,18 +4,35 @@
   "pillars": {
     "timing": {
       "ok": true,
-      "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16 \u00b7 leftover setup open (WNS -0.02 at 0.46 ns)",
+      "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16 \u00b7 leftover setup open (WNS -0.02 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only)",
       "leftover": {
         "setup_open": true,
         "wns_ns": -0.02,
         "setup_violations": 16,
         "clock_ns": 0.46,
         "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
+      },
+      "mcmm_leftover": {
+        "mcmm": false,
+        "corners": [
+          "typical"
+        ],
+        "liberty": [
+          "NangateOpenCellLibrary_typical.lib"
+        ],
+        "note": "Nangate45 in ORFS ships one typical.lib. Extra corners need the full kit or a foundry PDK. Do not invent slow/fast."
       }
     },
     "geometry": {
       "ok": true,
-      "summary": "Route DRC 0 lines \u00b7 GDS DRC 0 items"
+      "summary": "Route DRC 0 lines \u00b7 GDS DRC 0 items \u00b7 antenna 300:1 in FreePDK45.lydrc \u00b7 leftover no density / named ERC",
+      "leftover": {
+        "antenna": true,
+        "antenna_ratio": "300:1",
+        "density": false,
+        "named_erc_section": false,
+        "note": "Antenna is in FreePDK45.lydrc. Density and named ERC are not. Do not invent rules."
+      }
     },
     "equivalence": {
       "ok": true,
@@ -38,7 +55,7 @@
     }
   },
   "ok": true,
-  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok \u00b7 leftover must-connect 2 (DFF_X2) \u00b7 leftover setup open (WNS -0.02 at 0.46 ns) \u00b7 IR meshes not comparable",
+  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok \u00b7 leftover must-connect 2 (DFF_X2) \u00b7 leftover setup open (WNS -0.02 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only) \u00b7 antenna 300:1 in FreePDK45.lydrc \u00b7 leftover no density / named ERC \u00b7 IR meshes not comparable",
   "leftover": {
     "must_connect": 2,
     "circuits": [
@@ -52,6 +69,23 @@
     "setup_violations": 16,
     "clock_ns": 0.46,
     "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
+  },
+  "mcmm_leftover": {
+    "mcmm": false,
+    "corners": [
+      "typical"
+    ],
+    "liberty": [
+      "NangateOpenCellLibrary_typical.lib"
+    ],
+    "note": "Nangate45 in ORFS ships one typical.lib. Extra corners need the full kit or a foundry PDK. Do not invent slow/fast."
+  },
+  "deck_leftover": {
+    "antenna": true,
+    "antenna_ratio": "300:1",
+    "density": false,
+    "named_erc_section": false,
+    "note": "Antenna is in FreePDK45.lydrc. Density and named ERC are not. Do not invent rules."
   },
   "ir_mesh_ledger": {
     "comparable": false,
