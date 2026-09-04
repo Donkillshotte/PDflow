@@ -19,7 +19,7 @@ here because the user asked.
 |---|---|---|---|
 | **CCS tables** | **Closed (19-cell sidecar)** — PTM + ngspice | Done | `nangate45_ptm_ccs_sidecar.lib` · official typical.lib stays NLDM |
 | **LVS mismatch** | **Closed on FlowLab GCD compare** — unused CDL filter + FILL from DEF + well→VDD/VSS | Done | Must-connect warnings on DFF_X2 remain in lvsdb |
-| **ECO after finish** | **Closed as propose/apply + signoff_all on a copy** | Done | Apply refused on flowlab. `eco_scratch` wrote 6_final.* then four pillars ok. Apply does not call `signoff_all`. |
+| **ECO after finish** | **Closed as propose/apply + signoff_all on a copy** | Done | Apply refused on flowlab. SPEF size-up cannot legalize (DRT-0206); apply restores the source ODB and names leftover. Close is `signoff_all`. |
 | **Raphael / StarRC** | **Not closable** — commercial | — | OpenRCX + analytical PEX stay the OSS path |
 | **FasterCap (field solver)** | **Closable** — build + 2-wire demo | Low | Compile FasterCap, run on existing analytical PEX geometry |
 | **Magic `.tech`** | **Partially closable** — write a minimal `.tech` | Medium | Write FreePDK45 `.tech` from the NCSU layer definitions |

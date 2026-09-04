@@ -127,7 +127,7 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | DRC (route + GDS) | **WORKS** | 0 route lines · 0 GDS items | — |
 | LVS (KLayout) | **WORKS*** | Compare match on filtered CDL | FILL/TAP abstract. VIA flatten. DFF_X2 must-connect 2 |
 | LVS deep (filter + VTL) | **WORKS*** | same compare path | Black-box is labeled separately |
-| ECO | **WORKS*** | propose on flowlab; apply/close on eco_scratch | Does not skip `signoff_all` |
+| ECO | **WORKS*** | propose on flowlab; apply/close on eco_scratch | Does not skip `signoff_all`. Size-up cannot legalize (DRT-0206); source restored. OpenSTA WNS −0.02 ns |
 | Power signoff | **WORKS*** | Chip static **1.05 mV** · sys droop **6.03 mV** | Lumped board, not S-parameter |
 | `signoff_all` | **WORKS** | four pillars from their JSON | DSE never calls this script |
 

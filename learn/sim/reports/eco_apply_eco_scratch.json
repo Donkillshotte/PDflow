@@ -5,7 +5,7 @@
   "ok": true,
   "signoff": false,
   "signoff_required": "learn/scripts/run_signoff_all.sh",
-  "source_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb",
+  "source_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_final.odb",
   "output_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_out.odb",
   "output_verilog": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_out.v",
   "output_def": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_out.def",
@@ -16,6 +16,8 @@
   "log": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_apply.log",
   "rc": 0,
   "error": null,
+  "repaired": false,
+  "leftover": "post-route size-up cannot close WNS; detailed_route failed connectivity; source ODB restored",
   "rewrote": [
     "odb",
     "def",
@@ -25,5 +27,5 @@
     "gds"
   ],
   "not_rewritten": [],
-  "summary": "ECO apply wrote odb+def+verilog+cdl+spef+gds \u00b7 run signoff_all next"
+  "summary": "ECO apply restored source \u00b7 post-route repair cannot legalize \u00b7 run signoff_all next"
 }

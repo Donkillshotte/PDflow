@@ -104,10 +104,12 @@ Read the report, including remaining DFF_X2 must-connect warnings.
 Educational FreePDK45, not foundry LVS.
 
 After signoff, ECO propose is allowed on `flowlab`. Apply only on an
-unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply writes
-`6_final.{odb,def,v,cdl,gds}` on that copy. Then run
-`FLOW_VARIANT=<copy> ./learn/scripts/run_signoff_all.sh`. DSE does not
-run that script.
+unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply loads
+SPEF, then size-only repair. BufferMove is unsafe on this finished ODB
+(SIGSEGV without GRT, RSZ-0074 with GRT). Size-up fails TritonRoute
+connectivity; apply restores the source `6_final` and names leftover.
+Then run `FLOW_VARIANT=<copy> ./learn/scripts/run_signoff_all.sh`. DSE
+does not run that script.
 
 ## Power & SPICE chain (recommended post-course module)
 

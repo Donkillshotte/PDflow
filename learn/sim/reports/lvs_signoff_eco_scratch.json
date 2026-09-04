@@ -46,9 +46,9 @@
         "Flatten layout cell (no schematic): VIA_via1_2_960_340_1_3_300_300",
         "Writing netlist: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/gcd_extracted.cir ..",
         "Writing LVS database: /workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb ..",
-        "Total elapsed: 0.700s  Memory: 444.00M",
+        "Total elapsed: 0.660s  Memory: 444.00M",
         "CONGRATULATIONS! Netlists match.",
-        "LVS finished at : 23:37:31  -  LVS duration =  0 hrs. 0 min. 0 sec."
+        "LVS finished at : 7:36:14  -  LVS duration =  0 hrs. 0 min. 0 sec."
       ],
       "missing_lylvs": false,
       "netlists_match": true
@@ -56,7 +56,7 @@
   },
   "ok": true,
   "must_connect": 2,
-  "educational_note": "KLayout compare on filtered CDL + DEF fillers + well\u2192VDD/VSS. FILL/TAP/VIA are blank_circuit (empty Nangate CDL, no invented devices). XNOR2/MUX2/NAND3-4/OAI22/AND3 flatten. Remaining must-connect is DFF_X2 (Nangate split wells).",
+  "educational_note": "KLayout compare on filtered CDL + DEF fillers + well\u2192VDD/VSS. FILL/TAP/VIA are blank_circuit (empty Nangate CDL, no invented devices). XNOR2/MUX2/NAND3-4/OAI22/AND3 flatten. Remaining must-connect is DFF_X2 (Nangate split wells). Flatten-all before extract and flat extract both fail the compare.",
   "summary": "LVS PASS \u00b7 errors 0 \u00b7 leftover must-connect 2 (DFF_X2)",
   "artifacts": {
     "lvsdb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_lvs.lvsdb",
