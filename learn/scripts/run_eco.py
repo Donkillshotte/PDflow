@@ -113,6 +113,58 @@ def propose(variant: str) -> dict:
     }
 
 
+def _openroad_repair(env: dict) -> subprocess.CompletedProcess:
+    exe = shutil.which("openroad") or "openroad"
+    return subprocess.run(
+        [exe, "-exit", str(TCL)],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=420,
+    )
+
+
+def _eco_env(src_odb: Path, out_odb: Path, obj: Path, *, phase: str, spef_in: Path | None) -> dict:
+    env = os.environ.copy()
+    env["ECO_PHASE"] = phase
+    env["ECO_ODB"] = str(src_odb)
+    env["ECO_ODB_OUT"] = str(out_odb)
+    env["ECO_SETUP"] = "1"
+    env["ECO_HOLD"] = os.environ.get("ECO_HOLD", "0")
+    env["ECO_LIB"] = str(FLOW / "platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib")
+    env["ECO_SDC"] = str(FLOW / "designs/nangate45/gcd-tutorial/constraint.sdc")
+    env["ECO_RC"] = str(FLOW / "platforms/nangate45/setRC.tcl")
+    env["ECO_FILL"] = "FILLCELL_X1 FILLCELL_X2 FILLCELL_X4 FILLCELL_X8 FILLCELL_X16 FILLCELL_X32"
+    env["MIN_ROUTING_LAYER"] = "metal2"
+    env["MAX_ROUTING_LAYER"] = "metal10"
+    env["MIN_CLK_ROUTING_LAYER"] = "metal4"
+    env["ECO_FASTROUTE"] = str(FLOW / "platforms/nangate45/fastroute.tcl")
+    stem = out_odb.with_suffix("")
+    env["ECO_DEF_OUT"] = str(stem.with_suffix(".def"))
+    env["ECO_V_OUT"] = str(stem.with_suffix(".v"))
+    env["ECO_CDL_OUT"] = str(stem.with_suffix(".cdl"))
+    env["ECO_CDL_MASTERS"] = str(FLOW / "platforms/nangate45/cdl/NangateOpenCellLibrary.cdl")
+    env["ECO_SPEF_OUT"] = str(stem.with_suffix(".spef"))
+    env["ECO_RCX"] = str(FLOW / "platforms/nangate45/rcx_patterns.rules")
+    env["ECO_DRC_OUT"] = str(obj / f"eco_route_{phase}.drc")
+    env.pop("ECO_SPEF_IN", None)
+    if spef_in is not None and spef_in.is_file() and phase != "buffer":
+        env["ECO_SPEF_IN"] = str(spef_in)
+    return env
+
+
+def _proc_text(proc: subprocess.CompletedProcess) -> str:
+    return (proc.stdout or "") + "\n" + (proc.stderr or "")
+
+
+def _copy_repair_sidecars(src_odb: Path, dest_odb: Path) -> None:
+    shutil.copy2(src_odb, dest_odb)
+    for ext in (".def", ".v", ".cdl", ".spef"):
+        src_side = src_odb.with_suffix(ext)
+        if src_side.is_file():
+            shutil.copy2(src_side, dest_odb.with_suffix(ext))
+
+
 def apply(variant: str) -> dict:
     if is_locked_variant(variant):
         return {
@@ -141,70 +193,58 @@ def apply(variant: str) -> dict:
     obj = FLOW / "objects/nangate45/gcd" / variant
     obj.mkdir(parents=True, exist_ok=True)
     work = obj / "eco_in.odb"
+    size_out = obj / "eco_size.odb"
     out = obj / "eco_out.odb"
     shutil.copy2(src, work)
-    exe = shutil.which("openroad") or "openroad"
-    env = os.environ.copy()
-    env["ECO_ODB"] = str(work)
-    env["ECO_ODB_OUT"] = str(out)
-    env["ECO_SETUP"] = "1"
-    env["ECO_HOLD"] = os.environ.get("ECO_HOLD", "0")
-    env["ECO_LIB"] = str(FLOW / "platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib")
-    env["ECO_SDC"] = str(FLOW / "designs/nangate45/gcd-tutorial/constraint.sdc")
-    env["ECO_RC"] = str(FLOW / "platforms/nangate45/setRC.tcl")
-    env["ECO_FILL"] = "FILLCELL_X1 FILLCELL_X2 FILLCELL_X4 FILLCELL_X8 FILLCELL_X16 FILLCELL_X32"
-    env["MIN_ROUTING_LAYER"] = "metal2"
-    env["MAX_ROUTING_LAYER"] = "metal10"
-    env["MIN_CLK_ROUTING_LAYER"] = "metal4"
-    env["ECO_FASTROUTE"] = str(FLOW / "platforms/nangate45/fastroute.tcl")
     def_out = obj / "eco_out.def"
     v_out = obj / "eco_out.v"
     cdl_out = obj / "eco_out.cdl"
     spef_out = obj / "eco_out.spef"
-    env["ECO_DEF_OUT"] = str(def_out)
-    env["ECO_V_OUT"] = str(v_out)
-    env["ECO_CDL_OUT"] = str(cdl_out)
-    env["ECO_CDL_MASTERS"] = str(FLOW / "platforms/nangate45/cdl/NangateOpenCellLibrary.cdl")
-    env["ECO_SPEF_OUT"] = str(spef_out)
-    env["ECO_RCX"] = str(FLOW / "platforms/nangate45/rcx_patterns.rules")
-    env["ECO_DRC_OUT"] = str(obj / "eco_route.drc")
     spef_in = src.parent / "6_final.spef"
-    if spef_in.is_file():
-        env["ECO_SPEF_IN"] = str(spef_in)
-    proc = subprocess.run(
-        [exe, "-exit", str(TCL)],
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=420,
-    )
+    # Size-up needs SPEF. BufferMove cannot share that OpenROAD session
+    # (RSZ-0074). Two processes: sizeup with SPEF, then buffer with none.
+    size_env = _eco_env(work, size_out, obj, phase="sizeup", spef_in=spef_in if spef_in.is_file() else None)
+    size_proc = _openroad_repair(size_env)
+    chunks = [_proc_text(size_proc)]
+    proc = size_proc
+    restored = "ECO_RESTORE_SOURCE" in chunks[0]
+    size_routed = "ECO_ROUTED 1" in chunks[0] and not restored
+    if size_routed and size_out.is_file() and size_proc.returncode == 0:
+        buf_env = _eco_env(size_out, out, obj, phase="buffer", spef_in=None)
+        buf_proc = _openroad_repair(buf_env)
+        chunks.append(_proc_text(buf_proc))
+        proc = buf_proc
+        buf_text = chunks[-1]
+        if "ECO_RESTORE_SOURCE" in buf_text or (
+            buf_proc.returncode != 0 and not (out.is_file() and "ECO_ROUTED 1" in buf_text)
+        ):
+            _copy_repair_sidecars(size_out, out)
+            chunks.append("ECO_KEEP_SIZEUP BufferMove did not legalize; keeping SPEF size-up")
+            restored = False
+    elif restored:
+        if src.is_file():
+            shutil.copy2(src, out)
+        for ext, dest in ((".def", def_out), (".v", v_out), (".cdl", cdl_out), (".spef", spef_out)):
+            side = src.parent / f"6_final{ext}"
+            if side.is_file():
+                shutil.copy2(side, dest)
+    elif size_out.is_file() and not out.is_file():
+        _copy_repair_sidecars(size_out, out)
     log = obj / "eco_apply.log"
-    chunks = [(proc.stdout or "") + "\n" + (proc.stderr or "")]
-    log_text = chunks[0]
-    restored = "ECO_RESTORE_SOURCE" in log_text
     gds_out = obj / "eco_out.gds"
     if restored:
         # Legal source copy. Do not stream GDS from a mutated DEF.
-        if src.is_file():
-            shutil.copy2(src, out)
-        for name, dest in (
-            ("6_final.def", def_out),
-            ("6_final.v", v_out),
-            ("6_final.cdl", cdl_out),
-            ("6_final.spef", spef_out),
-            ("6_final.gds", gds_out),
-        ):
-            side = src.parent / name
-            if side.is_file():
-                shutil.copy2(side, dest)
-        wrote = out.is_file() and proc.returncode == 0
+        src_gds = src.parent / "6_final.gds"
+        if src_gds.is_file():
+            shutil.copy2(src_gds, gds_out)
+        wrote = out.is_file()
         wrote_v = wrote and v_out.is_file()
         wrote_def = wrote and def_out.is_file()
         wrote_cdl = wrote and cdl_out.is_file()
         wrote_spef = wrote and spef_out.is_file()
         wrote_gds = wrote and gds_out.is_file()
     else:
-        wrote = out.is_file() and proc.returncode == 0
+        wrote = out.is_file()
         wrote_v = wrote and v_out.is_file()
         wrote_def = wrote and def_out.is_file()
         wrote_cdl = wrote and cdl_out.is_file()
@@ -265,8 +305,7 @@ def apply(variant: str) -> dict:
     needed = {"odb", "def", "verilog", "gds"}
     ok = needed.issubset(set(rewrote))
     missing = sorted(needed - set(rewrote))
-    log_text = chunks[0]
-    restored = "ECO_RESTORE_SOURCE" in log_text
+    log_text = "\n".join(chunks)
     leftover = None
     routed = "ECO_ROUTED 1" in log_text and not restored
     setup_open = "Unable to repair all setup violations" in log_text
@@ -276,11 +315,11 @@ def apply(variant: str) -> dict:
             "connectivity; source ODB restored"
         )
     elif routed and setup_open:
-        extra = (
-            "buffers inserted on GRT parasitics; "
-            if "ECO_REPAIR_BUFFER" in log_text
-            else ""
-        )
+        extra = ""
+        if "ECO_REPAIR_BUFFER" in log_text:
+            extra = "buffers inserted on GRT parasitics; "
+        elif "ECO_KEEP_SIZEUP" in log_text or "WARN ECO buffer" in log_text:
+            extra = "BufferMove did not legalize; "
         leftover = (
             "size-up legalized (incremental GRT + detailed_route); "
             + extra
@@ -318,7 +357,8 @@ def apply(variant: str) -> dict:
         "log": str(log),
         "rc": proc.returncode,
         "error": err,
-        "repaired": bool("ECO_REPAIR_SETUP" in log_text) and not restored,
+        "repaired": bool("ECO_REPAIR_SETUP" in log_text or "ECO_REPAIR_BUFFER" in log_text)
+        and not restored,
         "leftover": leftover,
         "rewrote": rewrote,
         "not_rewritten": [k for k in ("spef", "cdl", "gds") if k not in rewrote],

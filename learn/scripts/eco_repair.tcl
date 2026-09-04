@@ -22,11 +22,25 @@ if {[info exists ::env(ECO_RC)] && $::env(ECO_RC) != "" && [file exists $::env(E
   source $::env(ECO_RC)
 }
 
-# Post-route slack. Without SPEF, repair_timing sees an ideal netlist
-# and prints "No setup violations" while OpenSTA+SPEF still has WNS < 0.
-if {[info exists ::env(ECO_SPEF_IN)] && $::env(ECO_SPEF_IN) != "" && [file exists $::env(ECO_SPEF_IN)]} {
-  read_spef $::env(ECO_SPEF_IN)
-  puts "ECO_READ_SPEF $::env(ECO_SPEF_IN)"
+# ECO_PHASE=sizeup|buffer|all (default all). Size-up needs SPEF.
+# BufferMove cannot: SPEF in the same OpenROAD session is RSZ-0074 even
+# after estimate_parasitics (live apply). Buffer runs in a fresh process
+# with no SPEF. Close is still signoff_all.
+set eco_phase "all"
+if {[info exists ::env(ECO_PHASE)] && $::env(ECO_PHASE) != ""} {
+  set eco_phase $::env(ECO_PHASE)
+}
+puts "ECO_PHASE $eco_phase"
+
+set eco_read_spef 0
+if {$eco_phase != "buffer"} {
+  if {[info exists ::env(ECO_SPEF_IN)] && $::env(ECO_SPEF_IN) != "" && [file exists $::env(ECO_SPEF_IN)]} {
+    read_spef $::env(ECO_SPEF_IN)
+    set eco_read_spef 1
+    puts "ECO_READ_SPEF $::env(ECO_SPEF_IN)"
+  }
+} else {
+  puts "ECO_SKIP_SPEF BufferMove (SPEF in-session is RSZ-0074)"
 }
 
 if {[info commands set_propagated_clock] != "" && [info commands all_clocks] != ""} {
@@ -36,10 +50,10 @@ if {[info commands set_propagated_clock] != "" && [info commands all_clocks] != 
 }
 
 # Pin-swap / resize notify GRT. Without this, OpenROAD SIGSEGVs in
-# getPinGridPositions / addDirtyNet. BufferMove still hits RSZ-0074 on
-# this finished ODB — keep size-only. A full global_route after size-up
-# fails pin coverage (GRT-0304) and TritonRoute DRT-0206; wrap DPL in
-# start/end incremental so only dirty nets re-route.
+# getPinGridPositions / addDirtyNet. A full global_route after size-up
+# can fail pin coverage (GRT-0304) and TritonRoute DRT-0206; wrap DPL in
+# start/end incremental so only dirty nets re-route. BufferMove is a
+# second OpenROAD with no SPEF (ECO_PHASE=buffer).
 set eco_grt 0
 if {[info exists ::env(ECO_FASTROUTE)] && $::env(ECO_FASTROUTE) != "" && [file exists $::env(ECO_FASTROUTE)]} {
   source $::env(ECO_FASTROUTE)
@@ -64,6 +78,16 @@ if {[info commands remove_fillers] != ""} {
   remove_fillers
 }
 
+# BufferMove matches the working probe: GRT parasitics before incremental,
+# no SPEF in the timing graph. Size-up keeps SPEF and skips BufferMove.
+if {$eco_phase == "buffer" && $eco_grt && [info commands estimate_parasitics] != ""} {
+  if {[catch {estimate_parasitics -global_routing} err]} {
+    puts "WARN ECO GRT parasitics: $err"
+  } else {
+    puts "ECO_PARASITICS GRT"
+  }
+}
+
 if {$eco_grt && [info commands global_route] != ""} {
   if {[catch {global_route -start_incremental} err]} {
     puts "WARN ECO global_route -start_incremental: $err"
@@ -72,12 +96,6 @@ if {$eco_grt && [info commands global_route] != ""} {
   }
 }
 
-# Post-route setup. Size-up can use the source SPEF. BufferMove cannot:
-# with SPEF loaded, RSZ-0074 fails to build a GRT tree (pin grid vs SPEF).
-# After size-up, replace parasitics with estimate_parasitics -global_routing
-# and try a bounded BufferMove. Catch RSZ-0074 and keep the size-up netlist.
-# Close is still signoff_all.
-#
 # The course SDC puts 20% of 0.46 ns on every I/O. OpenROAD then ranks
 # resp_msg[*] as WNS and spends the budget there. OpenSTA signoff WNS is
 # register-to-register (dpath.a_reg). Ignore output endpoints for this
@@ -90,19 +108,20 @@ if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
       if {[catch {set_false_path -to [all_outputs]} err]} {
         puts "WARN ECO set_false_path outputs: $err"
       } else {
-        puts "ECO_SETUP_FOCUS register-to-register (I/O false during size-up)"
+        puts "ECO_SETUP_FOCUS register-to-register (I/O false during repair)"
       }
     }
-    if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
-      puts "WARN ECO setup repair: $err"
-    } else {
-      puts "ECO_REPAIR_SETUP sizeup,swap"
-    }
-    if {[info commands estimate_parasitics] != ""} {
-      if {[catch {estimate_parasitics -global_routing} err]} {
-        puts "WARN ECO GRT parasitics: $err"
+    if {$eco_phase != "buffer"} {
+      if {[catch {repair_timing -setup -skip_buffering -skip_gate_cloning -sequence "sizeup,swap" -verbose} err]} {
+        puts "WARN ECO setup repair: $err"
       } else {
-        puts "ECO_PARASITICS GRT (BufferMove; SPEF caused RSZ-0074)"
+        puts "ECO_REPAIR_SETUP sizeup,swap"
+      }
+    }
+    if {$eco_phase != "sizeup"} {
+      if {$eco_read_spef} {
+        puts "WARN ECO buffer skipped — SPEF loaded (RSZ-0074); run ECO_PHASE=buffer in a fresh OpenROAD"
+      } else {
         if {[catch {repair_timing -setup -skip_gate_cloning -sequence "buffer" -max_buffer_percent 20 -verbose} err]} {
           puts "WARN ECO buffer repair: $err"
         } else {

@@ -107,12 +107,13 @@ WNS ≥ −0.04 is not MET: leftover setup open stays named while WNS < 0
 at the course 0.46 ns clock.
 
 After signoff, ECO propose is allowed on `flowlab`. Apply only on an
-unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply loads
-SPEF for size-up (`sizeup,swap`), then a bounded BufferMove on GRT
-parasitics (SPEF makes RSZ-0074). Incremental GRT + `detailed_route`.
-If TritonRoute cannot connect, apply restores the source `6_final`.
-A legal repair may still leave the course 0.46 ns setup open; leftover
-is named. Then run
+unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply is two
+OpenROAD processes: SPEF size-up (`sizeup,swap`), then BufferMove with
+no SPEF (GRT parasitics; SPEF in the same session is RSZ-0074).
+Incremental GRT + `detailed_route` on each process. If TritonRoute
+cannot connect, apply restores the source `6_final` or keeps the
+size-up. A legal repair may still leave the course 0.46 ns setup open;
+leftover is named. Then run
 `FLOW_VARIANT=<copy> ./learn/scripts/run_signoff_all.sh`. DSE does not
 run that script. Never writes `gcd/flowlab/`.
 
