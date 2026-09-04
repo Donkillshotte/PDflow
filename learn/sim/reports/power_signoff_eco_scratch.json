@@ -2,22 +2,22 @@
   "kind": "power_signoff",
   "variant": "eco_scratch",
   "power": {
-    "chip_static_ir_mv": 1.0103255026845392,
-    "chip_transient_droop_mv": 9.435049120309014
+    "chip_static_ir_mv": 1.0249313690995354,
+    "chip_transient_droop_mv": 9.330921146752935
   },
   "evaluation": {
     "checks": [
       {
         "id": "chip_static_ir_mv",
         "label": "Chip static IR (mV)",
-        "actual": 1.0103255026845392,
+        "actual": 1.0249313690995354,
         "target": 15.0,
         "ok": true
       },
       {
         "id": "chip_transient_droop_mv",
         "label": "Chip transient droop (mV)",
-        "actual": 9.435049120309014,
+        "actual": 9.330921146752935,
         "target": 120.0,
         "ok": true
       }
@@ -25,7 +25,7 @@
     "ok": true
   },
   "ok": true,
-  "summary": "Chip IR 1.01 mV \u00b7 transient 9.44 mV",
+  "summary": "Chip IR 1.02 mV \u00b7 transient 9.33 mV",
   "steps": [
     "activity_power",
     "chip_pdn_ir",
@@ -52,8 +52,8 @@
         "id": "chip_pdn",
         "mesh": "write_pg_spice chip PDN",
         "report": "sim/reports/pdn_chip_ir_eco_scratch.json",
-        "static_mv": 1.0103255026845392,
-        "dynamic_mv": 9.435049120309014,
+        "static_mv": 1.0249313690995354,
+        "dynamic_mv": 9.330921146752935,
         "gold": false,
         "em_checked": null,
         "comparable_to": [],

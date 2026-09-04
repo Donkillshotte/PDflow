@@ -5,7 +5,7 @@
   "ok": true,
   "signoff": false,
   "signoff_required": "learn/scripts/run_signoff_all.sh",
-  "source_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/eco_scratch/6_final.odb",
+  "source_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb",
   "output_odb": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_out.odb",
   "output_verilog": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_out.v",
   "output_def": "/workspace/tools/OpenROAD-flow-scripts/flow/objects/nangate45/gcd/eco_scratch/eco_out.def",
