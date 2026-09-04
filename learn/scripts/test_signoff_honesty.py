@@ -118,6 +118,17 @@ def main() -> int:
     sys_hook = suite_src.split('id: "system_pdn"')[1].split("},")[0]
     check('href: "/pkg"' in sys_hook, "System PDN hook opens /pkg")
     check("/flow?phase=pkg" not in sys_hook, "System PDN hook is not the FlowLab pkg phase")
+    dse_hook = suite_src.split('id: "dse"')[1].split("},")[0]
+    check("action:" not in dse_hook, "suite DSE hook has no Tools run action")
+    check('href: "/lab"' in dse_hook, "suite DSE hook opens /lab")
+    curric = (ROOT / "learn/CURRICULUM.md").read_text()
+    post = curric.split("Recommended extensions")[1].split("### Optional")[0]
+    check(post.find("Your own RTL") < post.find("sky130hd"), "post-course does not lead with a sky130 switch")
+    check("not a PDK switch to close LVS leftover" in post, "post-course names leftover as PDK-gated")
+    status = (ROOT / "learn/reference/suite-status.md").read_text()
+    dyn_row = next(l for l in status.splitlines() if "| dynamic_ir |" in l and "Power" in l)
+    check("_direct.json" in dyn_row, "suite-status dynamic_ir hook is current_run")
+    check("gold 45.298 present" not in dyn_row, "suite-status dynamic_ir hook is not the gold sentinel")
 
     lvs = load("lvs_signoff_flowlab.json")
     check(lvs.get("ok") is True, "LVS compare is a real KLayout match")

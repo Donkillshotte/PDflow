@@ -204,11 +204,14 @@ The `--auto` wrapper takes minutes: it is **not** the course. The course is LAB 
 
 ## Recommended extensions (post-course)
 
-1. **sky130hd/gcd** — more realistic PDK (finer geometry)
-2. **Your own RTL** — counter, UART, small RISC-V
-3. **Tcl scripting** — automate clock/utilization sweeps
-4. **OpenSTA standalone** — timing analysis outside the flow
-5. **KLayout DRC/LVS** — advanced geometric verification
+The eight lessons stay on Nangate45 / FreePDK45. These are after the
+course, not a PDK switch to close LVS leftover.
+
+1. **Your own RTL** — counter, UART, small RISC-V
+2. **Tcl scripting** — automate clock/utilization sweeps
+3. **OpenSTA standalone** — timing analysis outside the flow
+4. **KLayout DRC/LVS** — advanced geometric verification
+5. **sky130hd/gcd** — a different PDK. Post-course experiment only. See [`reference/gaps.md`](./reference/gaps.md).
 
 ### Optional modules already wired (Studio + scripts)
 

@@ -150,6 +150,11 @@ def main() -> int:
     details_at = dse_panel.find("Lab IR highlights / raw tape")
     check(chips_at > 0 and details_at > 0 and chips_at > details_at, "DSE IR chip wall is behind details")
     check('href: "/lab"' in (ROOT / "studio/src/lib/suite.ts").read_text(), "suite DSE points at /lab")
+    dse_hook = (ROOT / "studio/src/lib/suite.ts").read_text().split('id: "dse"')[1].split("},")[0]
+    check("action:" not in dse_hook, "suite DSE hook has no Tools run action")
+    hub = (ROOT / "studio/src/components/SuiteHub.tsx").read_text()
+    check('h.href !== "/lab"' in hub and 'h.href !== "/pkg"' in hub, "SuiteHub does not Run Lab/PKG hooks on Tools")
+    check("/tools?tab=run&action=${h.action}" in hub, "other hooks can still Run on Tools")
     check("fl-signoff-more" in finish, "individual STA/DRC/LVS scripts are behind details")
     check("STA IR-aware overlay (lab" not in finish, "STA IR-aware is on the finish close, not a collapsed lab details")
     check(

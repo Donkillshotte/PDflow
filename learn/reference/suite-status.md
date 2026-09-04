@@ -109,7 +109,7 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 
 | Step | Status | Evidence | Leftover |
 |---|---|---|---|
-| Synth (`1_synth.odb`) | **WORKS** | ODB on disk | Some Studio hooks look at another results path and show false-negative |
+| Synth (`1_synth.odb`) | **WORKS** | ODB on disk | — |
 | Floorplan | **WORKS** | `2_floorplan.odb` | — |
 | Place | **WORKS** | `3_place.odb` | — |
 | CTS | **WORKS** | `4_cts.odb` | — |
@@ -243,7 +243,7 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Power | vectorless | ok | **WORKS*** | dynamic source gate VCD |
 | Power | chip_pdn_ir | ok | **WORKS*** | 1.05 / 9.47 mV |
 | Power | vyges_em_ir | ok | **WORKS*** | 15.1 / 86.0 mV · other mesh |
-| Power | dynamic_ir | ok | **LOCKED** | gold 45.298 present |
+| Power | dynamic_ir | ok | **WORKS*** | current_run `_direct.json` · gold 45.298 locked on another mesh |
 | Power | dse | ok | **WORKS*** | lab only · not a product win |
 | Power | power_chain | ok | **WORKS** | activity → chip → system |
 | Power | spice_lab | ok | **WORKS** | `INDEX_flowlab.md` |

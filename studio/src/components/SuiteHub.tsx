@@ -115,7 +115,7 @@ export function SuiteHub() {
                         Open
                       </Link>
                     )}
-                    {h.action && (
+                    {h.action && h.href !== "/lab" && h.href !== "/pkg" && (
                       <Link
                         href={`/tools?tab=run&action=${h.action}`}
                         className="btn-ghost btn-tiny"

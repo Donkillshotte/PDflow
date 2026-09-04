@@ -375,7 +375,6 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "dse") || signoffReportPass("learn", "dse"),
       detail: "Proposer only — does not run signoff_all",
-      action: "dse",
       href: "/lab",
     },
     {
