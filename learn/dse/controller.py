@@ -65,6 +65,7 @@ from .fidelity import (
     ingest_physical,
     liberty_path,
     reports_dir,
+    dynamic_ir_current_path,
 )
 from .costs import estimated_cost_s
 from .fingerprint import knobs_fp
@@ -543,7 +544,7 @@ def run_controller(
     if pdn:
         step("ingest", level="pdn", id=pdn.id, fidelity=pdn.fidelity)
 
-    ir_json = reports_dir(variant) / f"dynamic_ir_{variant}.json"
+    ir_json = dynamic_ir_current_path(variant)
     attr = attribute_from_path(ir_json)
     focus = local_scope(attr)
     for c in (pdn, phys, f2):
