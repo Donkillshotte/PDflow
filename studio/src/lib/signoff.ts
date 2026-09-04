@@ -535,7 +535,7 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   );
   const phase2Orch = gates.find((g) => g.id === "signoff_phase2");
   return {
-    ok: closeGates.every((g) => g.ok) && allReport?.ok !== false,
+    ok: closeGates.every((g) => g.ok) && allReport?.ok === true,
     phase2Ok: phase2Gates.every((g) => g.ok) && phase2Orch?.ok === true,
     gates,
     pillars,

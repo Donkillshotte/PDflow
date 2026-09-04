@@ -335,11 +335,13 @@ export function getProductStory(): ProductStory {
       id: "signoff",
       label: leftoverBit ? "Signoff · leftover named" : "Signoff",
       href: "/flow?phase=finish&focus=signoff#signoff",
-      ready: pillars.length > 0 && signoffPassed === pillars.length,
+      ready: gates.ok,
       detail:
         pillars.length === 0
           ? "Four pillars: STA · DRC · LVS · power"
-          : `${signoffPassed}/${pillars.length} pillars ok${leftoverBit}`,
+          : gates.ok
+            ? `${signoffPassed}/${pillars.length} pillars ok${leftoverBit}`
+            : `${signoffPassed}/${pillars.length} pillars · signoff_all not close${leftoverBit}`,
     },
     {
       id: "sta-ir",
@@ -410,13 +412,15 @@ export function getProductStory(): ProductStory {
       finishReady,
     },
     signoff: {
-      ok: pillars.length ? signoffPassed === pillars.length : null,
+      ok: pillars.length ? gates.ok : null,
       passed: signoffPassed,
       total: Math.max(pillars.length, 4),
       detail:
         pillars.length === 0
           ? "Run finish, then the four signoff pillars"
-          : `${signoffPassed}/${pillars.length} pillars pass on ${STORY_VARIANT}${leftoverBit}`,
+          : gates.ok
+            ? `${signoffPassed}/${pillars.length} pillars pass on ${STORY_VARIANT}${leftoverBit}`
+            : `${signoffPassed}/${pillars.length} pillars · signoff_all not close${leftoverBit}`,
     },
     ir: {
       goldMv: IR_GOLD_MV,

@@ -418,7 +418,10 @@ export function SignoffMatrixPanel({
             {data.evaluation.ok
               ? data.evaluation.gates.find((g) => g.id === "signoff_all")?.detail ||
                 "Four pillars ok"
-              : "FAIL / incomplete"}
+              : data.evaluation.gates.find((g) => g.id === "signoff_all")?.detail ===
+                  "not run"
+                ? "signoff_all not run"
+                : "FAIL / incomplete"}
           </span>
         </p>
       )}

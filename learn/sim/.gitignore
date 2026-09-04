@@ -13,6 +13,8 @@ reports/*
 !reports/system_pdn_flowlab.json
 !reports/thermal_signoff_flowlab.json
 !reports/dynamic_ir_flowlab.json
+!reports/dynamic_ir_flowlab_direct.json
+!reports/vyges_em_ir_flowlab.json
 !reports/sta_ir_aware_flowlab.json
 !reports/pkg_bump_flowlab.json
 !reports/pkg_rdl_flowlab.json

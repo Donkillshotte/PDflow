@@ -1,0 +1,1667 @@
+{
+  "ok": true,
+  "kind": "dynamic_ir",
+  "engine": "studio-dynamic-ir",
+  "architecture": [
+    "OpenROAD write_pg_spice PDN (static R mesh) \u2014 frontend, not a PSM fork",
+    "replaceable extract layer (pdn_extract): SPICE + tech LEF; SPEF PG C from PG *D_NET; Grover on-die L (descriptor opt-in); dual-rail VSS sink-pair + opt-in instance C_rr + opt-in overlapping-strap Cox",
+    "replaceable activity (STA arrival t50 in clock mode, VCD/SAIF name-join, else synthetic) + current (triangle; CCS/ECSM interpolators when tables exist \u2014 never from NLDM)",
+    "Solver A: direct backward-Euler sparse LU (current_run) with R+L i_L history",
+    "Solver B: smoothed-aggregation AMG + CG on the SPD companion (workhorse)",
+    "Solver C: rational Krylov \u2014 RC on \u03b4v, or descriptor RLC on x=[v; i_L] matching i_L",
+    "Solver D: restricted additive Schwarz on the BE operator (graph partition, local LU, GMRES)",
+    "N4: native descriptor BE on E\u1e8b+Ax=u (VRM + bump R+L + die mesh); SparseLU, not AMG",
+    "EM: J=I/(w t) with w from RPERSQ\u00b7L/R; relative Black TTF; metal-graph thermal \u0394T (straps+vias) + N1 R(T) + one-shot Solver A TRAN restamp (not gold); skin depth reported",
+    "Native BE/MOR/RAS/N4 in libdpn (Index=int64); Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
+    "V(x,y) heatmap at t_worst + OpenSTA path delay scaled by local Vmin (NLDM typical-V, not a second liberty)"
+  ],
+  "not": [
+    "CCS/ECSM I(t) on Nangate45 (NLDM, no current tables \u2014 interpolators are tested on synthetic Liberty)",
+    "gate-level VCD pin times (RTL VCD names do not match ODB ITerms \u2014 no silent map)",
+    "foundry Black TTF hours / extracted strap WIDTH from LEF geometry",
+    "3D thermal FEM / Si substrate CFD (lumped Si + ILD k_ox is not that)",
+    "RedHawk / Voltus / Totem sign-off",
+    "vyges-em-ir fork",
+    "EMSim commercial flow (VCS/Calibre/PT-PX/HSpice)"
+  ],
+  "roles": {
+    "openroad": "physical frontend \u2014 ODB \u2192 PDN graph; do not fork PSM",
+    "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C READY only when *CAP is stamped",
+    "activity": "pdn_activity: OpenSTA report_arrival t50 (clock); VCD/SAIF name-join only; windowed BE",
+    "em": "pdn_em: J from RPERSQ\u00b7L/R, relative Black TTF, metal-graph \u0394T (straps+vias) \u2192 R(T) N1 + Solver A TRAN restamp \u2014 not foundry hours, not gold",
+    "emsim": "architectural split A (cell current \u2192 PWL) vs B (PDN TRAN) \u2014 not vendored, not run",
+    "vyges_em_ir": "bootstrap + simultaneous-switch validation \u2014 not the core",
+    "this_engine": "A DirectLU current_run + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",
+    "ngspice": "unit-test gold for BE on 1-node RC, 1-node series R+L, compact VRM+die, and 2-node C_rr / strap Cox",
+    "xyce": "GAP \u2014 future medium-scale gold, not the PDN-aware core"
+  },
+  "platform": {
+    "name": "hierarchical multi-fidelity power-integrity engine",
+    "slice": "native libdpn (A LU + B SA-AMG + C Krylov MOR + D RAS Schwarz + descriptor N4) + extract/EM layers + OpenROAD + triangle/CCS I(t)",
+    "native_index_bits": 64,
+    "native_index": {
+      "status": "READY",
+      "bits": 64,
+      "via": "libdpn Index = int64_t (Eigen StorageIndex + C API); SciPy fallback CSR may still be int32"
+    },
+    "do_not_fork": [
+      "vyges-em-ir",
+      "EMSim",
+      "OpenROAD PSM"
+    ],
+    "do_not_implement_this_slice": [
+      "silent RTL VCD \u2192 gate ITerm mapping (name-join only)",
+      "Ginkgo CPU/GPU backend",
+      "empty power-integrity/ tree"
+    ],
+    "ml": {
+      "status": "GAP",
+      "role": "scenario / window ranking only (MAVIREC, PowerNet, IR-Hunter)",
+      "not": "neural voltage map as sign-off"
+    },
+    "gpu": {
+      "status": "GAP",
+      "idea": "one LinearSolver API \u2192 CPU AMG / CPU Krylov / GPU AMG / GPU Krylov (Ginkgo)"
+    },
+    "gold": {
+      "tiny": {
+        "tool": "ngspice",
+        "status": "READY",
+        "scope": "1-node RC + 1-node series R+L companion + 2-node C_rr / strap Cox"
+      },
+      "medium": {
+        "tool": "Xyce",
+        "status": "GAP",
+        "scope": "parallel TRAN validation \u2014 not PDN-structure-aware core"
+      }
+    },
+    "solvers": {
+      "A_direct_be": {
+        "status": "READY",
+        "role": "golden reference",
+        "via": "(G + C/dt) Vnext = rhs \u00b7 sparse LU",
+        "not": "product workhorse"
+      },
+      "B_sa_amg": {
+        "status": "GAP",
+        "role": "full-chip workhorse",
+        "ref": "smoothed aggregation + Jacobi V-cycle + CG (ESPSim-class)",
+        "vs_A": null
+      },
+      "C_rational_krylov_mor": {
+        "status": "GAP",
+        "role": "multi-scenario reuse on the same PDN",
+        "via": "rational Krylov reduced ODE",
+        "killer_feature": "one reduced ODE, many current waveforms",
+        "m": null,
+        "vs_A": null,
+        "scenarios": null
+      },
+      "D_ras_schwarz": {
+        "status": "GAP",
+        "role": "domain decomposition on the BE operator and on unsymmetric descriptor K",
+        "via": "restricted additive Schwarz: undirected graph-grown subdomains, overlapping local SparseLU, RAS restriction, GMRES; kind=2 on descriptor K (never AMG)",
+        "not": "index stripes, CG (RAS is not SPD), AMG",
+        "vs_A": null
+      },
+      "VSS_return": {
+        "status": "GAP",
+        "role": "return-path TRAN on write_pg_spice VSS (block-diagonal default; C_rr / strap Cox opt-in)",
+        "via": "write_pg_spice -net VSS + Sink-for inst pair",
+        "not": "replacement of VDD gold; C_rr and strap Cox are not GCD default",
+        "meta": null
+      }
+    },
+    "network_levels": {
+      "N1_R": {
+        "status": "READY",
+        "eq": "G V = I",
+        "via": "solve_static on write_pg_spice"
+      },
+      "N2_RC": {
+        "status": "READY",
+        "eq": "G V + C dV/dt = I(t)",
+        "via": "lumped c_decap on ITerm nodes",
+        "c_decap": 5e-14,
+        "spef": "GAP"
+      },
+      "N3_RC_pkg": {
+        "status": "READY",
+        "eq": "RC + lumped package R+L companion at bumps",
+        "via": "g_eq=1/(R+L/\u0394t) on pad diagonals; i_L history on the RHS",
+        "pkg_r": 0.05,
+        "pkg_l": 2e-10,
+        "on_die_l": "READY",
+        "note": "Grover partial self on 5701 straps (\u03a3 14.611 nH is not loop L; 11655 mutual pairs, d\u22642 \u00b5m); default TRAN is still RC+pkg companion so AMG applies"
+      },
+      "N4_vrm": {
+        "status": "PARTIAL",
+        "eq": "on-die + package R+L + lumped VRM (descriptor BE)",
+        "via": "bumps as V sources in write_pg_spice; VRM ladder is system_pdn (not coupled TRAN)",
+        "vs_N3_mv": null,
+        "note": "\u00b5s VRM capacitors look stiff on a sub-ns GCD window"
+      }
+    },
+    "product_tiers": {
+      "FAST": {
+        "status": "PARTIAL",
+        "intended": "vectorless + SA-AMG + coarse timestep",
+        "this_slice": "STA arrival t50 (622 ITerms) + Solver B SA-AMG"
+      },
+      "ACCURATE": {
+        "status": "GAP",
+        "intended": "VCD/FSDB + CCS I(t) + AMG + adaptive timestep",
+        "this_slice": "adaptive BE with i_L history; CCS lagged I(slew,V^n) in Python TRAN when tables+slew; Nangate NLDM still GAP",
+        "adaptive": null
+      },
+      "SIGNOFF": {
+        "status": "GAP",
+        "intended": "RLC + MOR/Krylov + direct spot checks + EM + package"
+      }
+    },
+    "timing_impact": {
+      "status": "READY",
+      "model": "OpenSTA NLDM typical-V gate delay * (Vdd/V_inst)^alpha; nets unscaled",
+      "alpha": 1.3,
+      "vmin": 1.0939247120691957,
+      "scale": 1.001465670976448,
+      "delay_nom_ps": 423.779,
+      "degradation_ps": 0.6211205807281628,
+      "period_ns": 0.46,
+      "frac_of_period": 0.0013502621320177451,
+      "note": "NLDM typical-V OpenSTA delays scaled by (Vdd/V_inst)^alpha on joined gates; not a second liberty at Vmin / CCS voltage-dependent delay",
+      "path": {
+        "status": "READY",
+        "startpoint": "dpath.a_reg.out[2]$_DFFE_PP_",
+        "endpoint": "dpath.a_reg.out[13]$_DFFE_PP_",
+        "slack_ns": 0.004644,
+        "slack_ir_ns": 0.004022879419271837,
+        "slack_met": true,
+        "n_gates": 18,
+        "n_joined": 18,
+        "gate_delay_ns": 0.423779,
+        "gate_delay_ir_ns": 0.4244001205807282,
+        "via": "OpenSTA report_checks -format full worst max path",
+        "note": "NLDM typical-V OpenSTA delays scaled by (Vdd/V_inst)^alpha on joined gates; not a second liberty at Vmin / CCS voltage-dependent delay"
+      },
+      "tap_fallback": {
+        "degradation_ps": 0.2167730110364574,
+        "scale": 1.0072257670345486,
+        "delay_nom_ps": 30.0
+      }
+    },
+    "em_thermal": {
+      "status": "READY",
+      "model": "I=(Va-Vb)/R; w=max(RPERSQ\u00b7L/R, WIDTH_min); J=I/(w\u00b7t); TTF_rel=(Jref/J)^2.0 at 358 K; \u0394T from metal-graph G_th=kA/L (straps+vias) + ILD/Si + pad G_amb (lumped Rth comparison)",
+      "not": [
+        "foundry Black A / TTF hours",
+        "extracted strap width from LEF geometry (width from R, clamped to min WIDTH)",
+        "3D thermal FEM / package CFD (lumped Si + ILD is not that)",
+        "skin-effect stamp into G (reported, not restamped)"
+      ],
+      "n_branches": 5816,
+      "n_with_j": 5701,
+      "i_absmax_a": 0.00037142700558290173,
+      "j_absmax_a_m2": 19714647817.891327,
+      "dT_absmax_k": 0.00010395984880937768,
+      "dT_lumped_absmax_k": 0.00010395984880937768,
+      "dT_mesh_absmax_k": 0.16796176909909946,
+      "r_scale_hot": 1.0006550508994865,
+      "n_r_scaled": 5746,
+      "p_joule_w": 5.807561480698338e-06,
+      "ttf_rel_min": 0.2572894351361083,
+      "black_n": 2.0,
+      "ea_ev": 0.9,
+      "t_em_k": 358.15,
+      "j_ref_a_m2": 10000000000.0,
+      "hottest": {
+        "a": "Node_metal1_34110_22400",
+        "b": "Node_metal2_34280_22400",
+        "r_ohm": 1.666667,
+        "i_a": -0.00037142700558290173,
+        "i_abs": 0.00037142700558290173,
+        "p_w": 2.2993008011314165e-07,
+        "dT_mesh_k": 0.020984413597821723,
+        "dT_k": 0.020984413597821723,
+        "r_scale": 1.0000818392130315
+      },
+      "hottest_j": {
+        "a": "Node_metal1_48120_17140",
+        "b": "Node_metal1_48140_16800",
+        "r_ohm": 6.460034,
+        "i_a": 0.0001794032951428111,
+        "i_abs": 0.0001794032951428111,
+        "p_w": 2.0791969761875536e-07,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 1.7029386365926402e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 1.0017233375322843e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 19714647817.891327,
+        "dT_lumped_k": 0.00010395984880937768,
+        "dT_k": 0.023567877817097738,
+        "r_scale": 1.0000919147234866,
+        "ttf_rel": 0.2572894351361083,
+        "dT_mesh_k": 0.023567877817097738
+      },
+      "top": [
+        {
+          "a": "Node_metal1_34110_22400",
+          "b": "Node_metal2_34280_22400",
+          "r_ohm": 1.666667,
+          "i_a": -0.00037142700558290173,
+          "i_abs": 0.00037142700558290173,
+          "p_w": 2.2993008011314165e-07,
+          "dT_mesh_k": 0.020984413597821723,
+          "dT_k": 0.020984413597821723,
+          "r_scale": 1.0000818392130315
+        },
+        {
+          "a": "Node_metal2_34280_22400",
+          "b": "Node_metal3_34280_22400",
+          "r_ohm": 1.666667,
+          "i_a": -0.00037141809381882547,
+          "i_abs": 0.00037141809381882547,
+          "p_w": 2.2991904667714987e-07,
+          "dT_mesh_k": 0.018939665613251905,
+          "dT_k": 0.018939665613251905,
+          "r_scale": 1.0000738646958918
+        },
+        {
+          "a": "Node_metal3_34280_22400",
+          "b": "Node_metal4_34280_22400",
+          "r_ohm": 1.666667,
+          "i_a": -0.0003714086910881135,
+          "i_abs": 0.0003714086910881135,
+          "p_w": 2.2990740567444811e-07,
+          "dT_mesh_k": 0.012202694348935086,
+          "dT_k": 0.012202694348935086,
+          "r_scale": 1.0000475905079609
+        },
+        {
+          "a": "Node_metal1_33690_56000",
+          "b": "Node_metal2_34280_56000",
+          "r_ohm": 1.666667,
+          "i_a": -0.00029858480452309817,
+          "i_abs": 0.00029858480452309817,
+          "p_w": 1.4858817220445638e-07,
+          "dT_mesh_k": 0.019604350865653264,
+          "dT_k": 0.019604350865653264,
+          "r_scale": 1.000076456968376
+        },
+        {
+          "a": "Node_metal2_34280_56000",
+          "b": "Node_metal3_34280_56000",
+          "r_ohm": 1.666667,
+          "i_a": -0.00029857653184168077,
+          "i_abs": 0.00029857653184168077,
+          "p_w": 1.4857993866032546e-07,
+          "dT_mesh_k": 0.01694815463494236,
+          "dT_k": 0.01694815463494236,
+          "r_scale": 1.0000660978030762
+        },
+        {
+          "a": "Node_metal3_34280_56000",
+          "b": "Node_metal4_34280_56000",
+          "r_ohm": 1.666667,
+          "i_a": -0.000298566747950342,
+          "i_abs": 0.000298566747950342,
+          "p_w": 1.485702013501061e-07,
+          "dT_mesh_k": 0.011259721823664179,
+          "dT_k": 0.011259721823664179,
+          "r_scale": 1.0000439129151122
+        },
+        {
+          "a": "Node_metal1_33690_56000",
+          "b": "ITermNode_metal1_34000_55773",
+          "r_ohm": 0.001,
+          "i_a": 0.0002985023617174676,
+          "i_abs": 0.0002985023617174676,
+          "p_w": 8.910365995090585e-11,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 1.9211259719237568e-07,
+          "w_m": 7.300278693310275e-05,
+          "w_inferred_m": 7.300278693310275e-05,
+          "t_m": 1.3e-07,
+          "area_m2": 9.490362301303357e-12,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1042.896956187182,
+          "w_clamped": false,
+          "j_a_m2": 31453210.34545465,
+          "dT_lumped_k": 4.4551829975452925e-08,
+          "dT_k": 0.02017587675057355,
+          "r_scale": 1.0000786859193271,
+          "ttf_rel": 101081.11906921091,
+          "dT_mesh_k": 0.02017587675057355
+        },
+        {
+          "a": "Node_metal1_33270_16800",
+          "b": "Node_metal2_34280_16800",
+          "r_ohm": 1.666667,
+          "i_a": -0.0002590026434517242,
+          "i_abs": 0.0002590026434517242,
+          "p_w": 1.1180397121909137e-07,
+          "dT_mesh_k": 0.018581595270473983,
+          "dT_k": 0.018581595270473983,
+          "r_scale": 1.000072468221555
+        }
+      ],
+      "top_j": [
+        {
+          "a": "Node_metal1_48120_17140",
+          "b": "Node_metal1_48140_16800",
+          "r_ohm": 6.460034,
+          "i_a": 0.0001794032951428111,
+          "i_abs": 0.0001794032951428111,
+          "p_w": 2.0791969761875536e-07,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 1.7029386365926402e-07,
+          "w_m": 7e-08,
+          "w_inferred_m": 1.0017233375322843e-08,
+          "t_m": 1.3e-07,
+          "area_m2": 9.1e-15,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1.0,
+          "w_clamped": true,
+          "j_a_m2": 19714647817.891327,
+          "dT_lumped_k": 0.00010395984880937768,
+          "dT_k": 0.023567877817097738,
+          "r_scale": 1.0000919147234866,
+          "ttf_rel": 0.2572894351361083,
+          "dT_mesh_k": 0.023567877817097738
+        },
+        {
+          "a": "Node_metal1_48000_16460",
+          "b": "Node_metal1_48120_17140",
+          "r_ohm": 2.153345,
+          "i_a": 0.00017938550995441496,
+          "i_abs": 0.00017938550995441496,
+          "p_w": 6.929283583460431e-08,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 3.452535300326414e-07,
+          "w_m": 7e-08,
+          "w_inferred_m": 6.092676343660851e-08,
+          "t_m": 1.3e-07,
+          "area_m2": 9.1e-15,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1.0,
+          "w_clamped": true,
+          "j_a_m2": 19712693401.58406,
+          "dT_lumped_k": 3.464641791730215e-05,
+          "dT_k": 0.023106749294691826,
+          "r_scale": 1.0000901163222493,
+          "ttf_rel": 0.2573404556217471,
+          "dT_mesh_k": 0.023106749294691826
+        },
+        {
+          "a": "Node_metal1_32760_56000",
+          "b": "Node_metal1_32780_55660",
+          "r_ohm": 6.460034,
+          "i_a": -0.00015298121482746718,
+          "i_abs": 0.00015298121482746718,
+          "p_w": 1.5118580421253737e-07,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 1.7029386365926402e-07,
+          "w_m": 7e-08,
+          "w_inferred_m": 1.0017233375322843e-08,
+          "t_m": 1.3e-07,
+          "area_m2": 9.1e-15,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1.0,
+          "w_clamped": true,
+          "j_a_m2": 16811122508.512877,
+          "dT_lumped_k": 7.559290210626868e-05,
+          "dT_k": 0.021920402827442204,
+          "r_scale": 1.000085489571027,
+          "ttf_rel": 0.3538397128793643,
+          "dT_mesh_k": 0.021920402827442204
+        },
+        {
+          "a": "Node_metal1_48340_61600",
+          "b": "Node_metal1_48370_61260",
+          "r_ohm": 4.306689,
+          "i_a": 0.00014288387291466414,
+          "i_abs": 0.00014288387291466414,
+          "p_w": 8.792450619192314e-08,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 1.7066048165876012e-07,
+          "w_m": 7e-08,
+          "w_inferred_m": 1.5058199705232682e-08,
+          "t_m": 1.3e-07,
+          "area_m2": 9.1e-15,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1.0,
+          "w_clamped": true,
+          "j_a_m2": 15701524496.116938,
+          "dT_lumped_k": 4.396225309596157e-05,
+          "dT_k": 0.027904536672692652,
+          "r_scale": 1.0001088276930234,
+          "ttf_rel": 0.40561719540571184,
+          "dT_mesh_k": 0.027904536672692652
+        },
+        {
+          "a": "Node_metal1_51080_17140",
+          "b": "Node_metal1_51130_16525",
+          "r_ohm": 4.674025,
+          "i_a": 0.00013790641502903434,
+          "i_abs": 0.00013790641502903434,
+          "p_w": 8.889144553147574e-08,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 3.0851458636505337e-07,
+          "w_m": 7e-08,
+          "w_inferred_m": 2.508235253742123e-08,
+          "t_m": 1.3e-07,
+          "area_m2": 9.1e-15,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1.0,
+          "w_clamped": true,
+          "j_a_m2": 15154551102.091684,
+          "dT_lumped_k": 4.444572276573787e-05,
+          "dT_k": 0.022438296414022743,
+          "r_scale": 1.0000875093560146,
+          "ttf_rel": 0.43542548772361533,
+          "dT_mesh_k": 0.022438296414022743
+        },
+        {
+          "a": "Node_metal1_50990_16800",
+          "b": "Node_metal1_51080_17140",
+          "r_ohm": 1.435563,
+          "i_a": 0.00013787811928018642,
+          "i_abs": 0.00013787811928018642,
+          "p_w": 2.729059208046831e-08,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 1.7585505395068976e-07,
+          "w_m": 7e-08,
+          "w_inferred_m": 4.654962582712296e-08,
+          "t_m": 1.3e-07,
+          "area_m2": 9.1e-15,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1.0,
+          "w_clamped": true,
+          "j_a_m2": 15151441679.141365,
+          "dT_lumped_k": 1.3645296040234155e-05,
+          "dT_k": 0.024771201699238528,
+          "r_scale": 1.0000966076866271,
+          "ttf_rel": 0.4356042246334438,
+          "dT_mesh_k": 0.024771201699238528
+        },
+        {
+          "a": "Node_metal1_29120_27725",
+          "b": "Node_metal1_29140_28000",
+          "r_ohm": 5.225028,
+          "i_a": -0.0001301799826131406,
+          "i_abs": 0.0001301799826131406,
+          "p_w": 8.854765014842886e-08,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 1.3786315678962238e-07,
+          "w_m": 7e-08,
+          "w_inferred_m": 1.0026357673118021e-08,
+          "t_m": 1.3e-07,
+          "area_m2": 9.1e-15,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1.0,
+          "w_clamped": true,
+          "j_a_m2": 14305492594.850616,
+          "dT_lumped_k": 4.427382507421443e-05,
+          "dT_k": 0.021480731608458967,
+          "r_scale": 1.000083774853273,
+          "ttf_rel": 0.48864602048129824,
+          "dT_mesh_k": 0.021480731608458967
+        },
+        {
+          "a": "Node_metal1_29000_28200",
+          "b": "Node_metal1_29120_27725",
+          "r_ohm": 1.504175,
+          "i_a": -0.00013017715181838407,
+          "i_abs": 0.00013017715181838407,
+          "p_w": 2.548988621264183e-08,
+          "kind": "strap",
+          "layer": "metal1",
+          "L_m": 2.449617317051788e-07,
+          "w_m": 7e-08,
+          "w_inferred_m": 6.188472621069219e-08,
+          "t_m": 1.3e-07,
+          "area_m2": 9.1e-15,
+          "rpersq": 0.38,
+          "w_min_m": 7e-08,
+          "w_over_min": 1.0,
+          "w_clamped": true,
+          "j_a_m2": 14305181518.503744,
+          "dT_lumped_k": 1.2744943106320915e-05,
+          "dT_k": 0.021870589736803787,
+          "r_scale": 1.0000852952999735,
+          "ttf_rel": 0.48866727262290993,
+          "dT_mesh_k": 0.021870589736803787
+        }
+      ],
+      "package_i_L": [
+        {
+          "node": "Node_metal4_34280_22400",
+          "v_src": 1.1,
+          "i_L_a": 0.00028991799090924826
+        },
+        {
+          "node": "Node_metal4_34280_28000",
+          "v_src": 1.1,
+          "i_L_a": 0.00024193136207781266
+        },
+        {
+          "node": "Node_metal4_34280_16800",
+          "v_src": 1.1,
+          "i_L_a": 0.00024113233508342118
+        },
+        {
+          "node": "Node_metal4_34280_61600",
+          "v_src": 1.1,
+          "i_L_a": 0.00022124047414973644
+        },
+        {
+          "node": "Node_metal4_34280_39200",
+          "v_src": 1.1,
+          "i_L_a": 0.00020589753021918022
+        },
+        {
+          "node": "Node_metal4_34280_56000",
+          "v_src": 1.1,
+          "i_L_a": 0.00020116935765374146
+        },
+        {
+          "node": "Node_metal4_34280_11200",
+          "v_src": 1.1,
+          "i_L_a": 0.00019366223229041693
+        },
+        {
+          "node": "Node_metal4_34280_33600",
+          "v_src": 1.1,
+          "i_L_a": 0.00019177793859447936
+        }
+      ],
+      "pkg_r": 0.05,
+      "pkg_l": 2e-10,
+      "tech_path": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lef/NangateOpenCellLibrary.tech.lef",
+      "thermal_mesh": {
+        "status": "READY",
+        "n": 4393,
+        "n_metal": 4392,
+        "n_edges": 5746,
+        "n_straps": 5701,
+        "n_vias": 45,
+        "n_ild": 5701,
+        "n_si": 1,
+        "n_pads": 15,
+        "rth_pad": 50.0,
+        "g_amb": 0.02,
+        "g_ild_sum": 0.6931328852830436,
+        "g_vert": 0.23853445289733333,
+        "a_die_m2": 4.835157828999999e-07,
+        "t_si_m": 0.0003,
+        "p_cell_w": 0.0022904454099999883,
+        "p_total_w": 0.0022962529714806866,
+        "dT_absmax_k": 0.16796176909909946,
+        "dT_mean_k": 0.0234677481756557,
+        "dT_pad_max_k": 0.007661181818255453,
+        "dT_si_k": 0.017260059835544486,
+        "backend": "native",
+        "solver": "B_sa_amg",
+        "rel_res": 7.509123467186762e-09,
+        "via": "metal-graph G_th=kA/L + via HEIGHT/CUT + ILD k_ox A/HEIGHT to lumped Si (k_si A_die/t_wafer, t=300 \u00b5m); pad G_amb; not 3D FEM",
+        "note": "Steady metal-graph \u0394T; cell P=I_avg\u00b7Vdd at sinks + strap/via I\u00b2R. Via G_th from LEF HEIGHT/CUT. ILD k_ox A/HEIGHT to lumped Si (t_wafer=300 \u00b5m, not 3D FEM). Pad Rth=50 K/W C4-class. All heat exits G_amb; Si has no second ambient."
+      },
+      "skin": {
+        "status": "READY",
+        "f_hz": 2173913043.4782605,
+        "delta_m": 1.4173759216429666e-06,
+        "t_m": 1.3e-07,
+        "t_over_delta": 0.09171878681931403,
+        "rac_rdc": 1.0,
+        "via": "wide-sheet t/min(t,\u03b4); not Wheeler, not roughness, not PEEC",
+        "note": "Rac/Rdc\u22481 \u2014 metal thinner than skin depth at this f"
+      },
+      "note": "EM J from physics I(t) and LEF RPERSQ/thickness. metal-graph max \u0394T=1.6796e-01 K (lumped isolation max 1.0396e-04 K).",
+      "rT_static_ir_mv": 3.094767308990054,
+      "rT_delta_ir_mv": 0.00032079469836077124,
+      "rT_via": "one-shot N1 restamp R'=R(1+\u03b1\u0394T) from metal-graph T (cell P=I_avg\u00b7Vdd + strap/via I\u00b2R; ILD\u2192lumped Si; pad Rth=50 K/W); not 3D CFD",
+      "electrothermal": {
+        "status": "GAP",
+        "ok": false,
+        "reason": "skipped --no-electrothermal; N1 restamp still reported"
+      }
+    },
+    "extract": {
+      "status": "READY",
+      "backend": "write_pg_spice",
+      "spice": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
+      "n_r": 5816,
+      "n_i": 622,
+      "n_v": 15,
+      "n_layers": 10,
+      "tech": {
+        "status": "READY",
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lef/NangateOpenCellLibrary.tech.lef",
+        "dbu_per_um": 2000.0,
+        "via": "tech LEF WIDTH/THICKNESS/HEIGHT/RPERSQ + CUT WIDTH/R \u2014 strap w from R, via G_th from HEIGHT/CUT",
+        "n_routing_layers": 10,
+        "rpersq": {
+          "metal1": 0.38,
+          "metal2": 0.25,
+          "metal3": 0.25,
+          "metal4": 0.21,
+          "metal5": 0.21,
+          "metal6": 0.21,
+          "metal7": 0.075,
+          "metal8": 0.075,
+          "metal9": 0.03,
+          "metal10": 0.03
+        },
+        "thickness_um": {
+          "metal1": 0.13,
+          "metal2": 0.14,
+          "metal3": 0.14,
+          "metal4": 0.28,
+          "metal5": 0.28,
+          "metal6": 0.28,
+          "metal7": 0.8,
+          "metal8": 0.8,
+          "metal9": 2.0,
+          "metal10": 2.0
+        }
+      },
+      "spef": {
+        "status": "GAP",
+        "path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.spef",
+        "has_pg_net": false,
+        "n_pg_net": 0,
+        "n_stamped": 0,
+        "c_sum_f": 0.0,
+        "c_unit_f": 1e-12,
+        "via": "SPEF PG *D_NET *CAP name-joined onto write_pg_spice nodes",
+        "note": "signal SPEF (no VDD/VSS *D_NET) \u2014 not PDN capacitance; lumped c_decap remains"
+      },
+      "on_die_l": {
+        "status": "READY",
+        "n_stamped": 5701,
+        "n_r": 5816,
+        "L_sum_h": 1.4611183979473932e-08,
+        "L_max_h": 3.127107735301322e-11,
+        "L_p50_h": 1.1089738664090695e-13,
+        "n_mutual": 11655,
+        "M_max_h": 6.217869644648454e-13,
+        "k_max": 0.99,
+        "cutoff_m": 2e-06,
+        "by_layer": {
+          "metal1": {
+            "n": 5687,
+            "L_sum_h": 1.4591211952190654e-08,
+            "L_max_h": 3.127107735301322e-11
+          },
+          "metal4": {
+            "n": 14,
+            "L_sum_h": 1.9972027283706333e-11,
+            "L_max_h": 1.4265733774075952e-12
+          }
+        },
+        "via": "Grover partial self-L + cutoff partial mutual on same-layer write_pg_spice straps",
+        "note": "\u03a3 partial self is not loop L (mesh paths are parallel). Partial mutual is same-layer parallel filaments with overlapping projection and d\u22642 \u00b5m (spatial hash, k clamped to 0.99). No skin, no full PEEC. Vias stay resistive. Descriptor stamp is unsymmetric \u2014 not AMG. Default TRAN stays N3 RC+pkg companion unless --on-die-l."
+      },
+      "note": "OpenROAD write_pg_spice R mesh; LEF for EM J; SPEF PG C is GAP (never mapped from signal nets); Grover on-die L on 5701 straps"
+    }
+  },
+  "emsim_split": {
+    "upstream": "https://github.com/jinyier/EMSim",
+    "citation": "Ma et al., TIFS 2023 \u2014 EM emanation, not IR sign-off",
+    "A_cell_current": {
+      "status": "PARTIAL",
+      "replaces": "PrimeTime PX time-based power + logic_cell_modeling.py",
+      "pwl_sources": 622,
+      "shape": "triangle leak+switch",
+      "not": "CCS on this Nangate mesh / PT-PX current profiles / gate VCD"
+    },
+    "B_pdn_solve": {
+      "status": "READY",
+      "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor + D_ras_schwarz + N4_descriptor",
+      "replaces": "HSpice TRAN on Calibre DSPF",
+      "via": "Solver A LU current_run + B SA-AMG + C reduced ODE + D RAS Schwarz + native N4 on write_pg_spice",
+      "gold": "ngspice 1-node RC + series R+L companion + compact VRM+die + 2-node C_rr/Cox; A vs B vs C vs D on the chip mesh"
+    },
+    "commercial_not_used": {
+      "VCS": "GAP \u2014 Icarus RTL VCD does not name gate ITerms",
+      "Calibre_xRC": "MAPPED \u2014 OpenROAD write_pg_spice (R mesh, not DSPF)",
+      "PrimeTime_PX": "MAPPED \u2014 I_avg in the SPICE mesh, not time-based cell power",
+      "HSpice": "MAPPED \u2014 ngspice gold only; B is Solver A BE"
+    }
+  },
+  "pipeline": [
+    {
+      "id": 1,
+      "name": "PDN extraction",
+      "status": "READY",
+      "via": "write_pg_spice + tech LEF (READY); SPEF PG C GAP"
+    },
+    {
+      "id": 2,
+      "name": "Power model",
+      "status": "PARTIAL",
+      "via": "NLDM delay/slew only \u2014 no CCS/ECSM current tables; triangle from I_avg is not a substitute"
+    },
+    {
+      "id": 3,
+      "name": "Activity engine",
+      "status": "READY",
+      "via": "STA t50 622/622; VCD GAP; SAIF GAP; synthetic remainder 0"
+    },
+    {
+      "id": 4,
+      "name": "Current waveform",
+      "status": "PARTIAL",
+      "via": "per-ITerm triangle PWL (nldm)"
+    },
+    {
+      "id": 5,
+      "name": "Transient solver",
+      "status": "READY",
+      "via": "A LU gold + B SA-AMG + C descriptor RLC Krylov + D RAS Schwarz + native N4 descriptor BE"
+    },
+    {
+      "id": 6,
+      "name": "Analysis",
+      "status": "PARTIAL",
+      "via": "heatmap + windows + path STA delay + J=1.971e+10 A/m\u00b2 + relative Black TTF + metal-graph R(T) N1 restamp (TRAN skipped)"
+    }
+  ],
+  "sim_levels": {
+    "L0_static": {
+      "status": "READY",
+      "worst_ir_mv": 3.0944465142916933
+    },
+    "L1_vectorless_dynamic": {
+      "status": "READY",
+      "mode": "clock",
+      "t50_via": {
+        "synthetic": 0,
+        "sta_arrival": 622,
+        "vcd_name_join": 0
+      },
+      "note": "clock-mode t50 from OpenSTA report_arrival on 622/622 ITerms; I_avg not rescaled from activity Hz"
+    },
+    "L2_vcd_dynamic": {
+      "status": "GAP",
+      "kind": "missing",
+      "reason": "no VCD/SAIF/FSDB \u2014 synthetic or STA t50",
+      "n_matched": 0,
+      "saif_idle": 0
+    },
+    "L3_windowed": {
+      "status": "READY",
+      "windows": [
+        {
+          "t_start_ns": 0.04,
+          "t_end_ns": 0.09,
+          "t_peak_ns": 0.06,
+          "i_peak_a": 0.004928496647848004,
+          "threshold_frac": 0.5
+        },
+        {
+          "t_start_ns": 0.11,
+          "t_end_ns": 0.19,
+          "t_peak_ns": 0.12999999999999998,
+          "i_peak_a": 0.002817266757391193,
+          "threshold_frac": 0.5
+        }
+      ],
+      "n_windows": 1,
+      "collapsed_to_full": false,
+      "steps": 23,
+      "full_steps": 74,
+      "abs_err_vs_A_mv": 0.0,
+      "via": "prefix BE [0, t_cut] preserving i_L; not isolated restart",
+      "note": "pkg L/R=4.00 ns vs horizon 0.74 ns \u2014 UIC restart mid-window would drop inductor current"
+    }
+  },
+  "hotspot": {
+    "node": "ITermNode_metal1_70480_17026",
+    "x_dbu": 70480.0,
+    "y_dbu": 17026.0,
+    "t_ns": 0.12999999999999998,
+    "vmin": 1.0939247120691957,
+    "droop_mv": 6.075287930804363,
+    "seq": false,
+    "contributors": {
+      "seq_a": 0.00020885697896000013,
+      "combo_a": 0.002608409778431199,
+      "seq_frac": 0.07413461235506238,
+      "combo_frac": 0.9258653876449376
+    },
+    "timing": {
+      "degradation_ps": 0.6211205807281628,
+      "scale": 1.001465670976448,
+      "status": "READY",
+      "path_slack_ns": 0.004644,
+      "path_slack_ir_ns": 0.004022879419271837,
+      "n_joined": 18
+    }
+  },
+  "current_model": {
+    "status": "GAP",
+    "kind": "nldm",
+    "path": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib",
+    "ccs": false,
+    "ecsm": false,
+    "nldm_timing": true,
+    "n_ccs_tables": 0,
+    "n_ecsm_tables": 0,
+    "note": "NLDM delay/slew only \u2014 no CCS/ECSM current tables; triangle from I_avg is not a substitute",
+    "ccs_in_loop": false,
+    "ecsm_in_loop": false
+  },
+  "activity_model": {
+    "status": "GAP",
+    "kind": "missing",
+    "path": null,
+    "n_matched": 0,
+    "note": "no VCD/SAIF/FSDB \u2014 synthetic or STA t50",
+    "sta": {
+      "status": "READY",
+      "n_inst": 622,
+      "n_applied": 622,
+      "via": "OpenSTA report_arrival rise folded into the SDC period (clock mode only)",
+      "note": "clock-mode t50 from OpenSTA report_arrival on 622/622 ITerms; I_avg not rescaled from activity Hz",
+      "path": "/workspace/learn/sim/reports/sta_arrivals_flowlab.json",
+      "worst_path": {
+        "startpoint": "dpath.a_reg.out[2]$_DFFE_PP_",
+        "endpoint": "dpath.a_reg.out[13]$_DFFE_PP_",
+        "slack_ns": 0.004644,
+        "n_gates": 18,
+        "gate_delay_ns": 0.423779
+      }
+    },
+    "vcd": {
+      "status": "GAP",
+      "n_matched": 0,
+      "n_applied": 0,
+      "kind": "missing",
+      "note": "no VCD/SAIF/FSDB \u2014 synthetic or STA t50",
+      "path": null
+    },
+    "saif": {
+      "status": "GAP",
+      "n_matched": 0,
+      "n_idle": 0,
+      "n_joined": 0,
+      "kind": "missing",
+      "note": "no SAIF",
+      "path": null
+    },
+    "t50_via": {
+      "synthetic": 0,
+      "sta_arrival": 622,
+      "vcd_name_join": 0
+    },
+    "n_with_inst": 622
+  },
+  "spice": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
+  "vdd": 1.1,
+  "mode": "clock",
+  "period_ns": 0.46,
+  "dur_ns": 0.08,
+  "peak_factor": 8.0,
+  "events": 622,
+  "seq_events": 35,
+  "t50_span_ns": 0.39615335,
+  "i_tot_peak_a": 0.004928496647848004,
+  "static": {
+    "worst_voltage": 1.0969055534857084,
+    "worst_ir": 0.0030944465142916933,
+    "worst_ir_pct": 0.281313319481063,
+    "worst_node": "Node_metal1_86520_61600",
+    "total_current_a": 0.0020822231,
+    "nodes": 4453,
+    "resistors": 8020,
+    "loads": 622,
+    "sources": 15,
+    "solver": "spsolve",
+    "pkg_r": 0.0,
+    "pad": "ideal_bump"
+  },
+  "dynamic": {
+    "worst_voltage": 1.0939247120691957,
+    "worst_droop": 0.006075287930804363,
+    "worst_droop_pct": 0.5522989028003966,
+    "worst_time_s": 1.3e-10,
+    "worst_node_idx": 932,
+    "dt": 1e-11,
+    "t_end": 7.360000000000001e-10,
+    "steps": 74,
+    "solver": "A_direct_be",
+    "solver_setup_s": 0.003202754,
+    "solver_step_s": 0.007549910000000001,
+    "n_levels": 1,
+    "rel_res_max": 6.587701994487236e-11,
+    "backend": "native",
+    "timestep_loop": "native_hist",
+    "i_L_absmax": 0.00028991799090924826,
+    "i_L_worst": [
+      0.00014786935788306464,
+      0.00019366223229041693,
+      0.00024113233508342118,
+      0.00028991799090924826,
+      0.00024193136207781266,
+      0.00019177793859447936,
+      0.00020589753021918022,
+      0.0001864024694621513,
+      0.00019163133750523217,
+      0.00020116935765374146,
+      0.00022124047414973644,
+      0.00015839640050223884,
+      9.9079390192206e-05,
+      8.257630486992389e-05,
+      3.3632382707839234e-05
+    ],
+    "pkg_r": 0.05,
+    "pkg_l": 2e-10,
+    "c_decap": 5e-14,
+    "worst_node": "ITermNode_metal1_70480_17026"
+  },
+  "heatmap": {
+    "taps": 1138,
+    "svg": "/workspace/learn/sim/reports/dynamic_ir_flowlab_direct.svg",
+    "csv": "/workspace/learn/sim/reports/dynamic_ir_flowlab_direct.map.csv",
+    "hottest": [
+      {
+        "node": "ITermNode_metal1_70480_17026",
+        "x": 70480.0,
+        "y": 17026.0,
+        "v": 1.0939247120691957,
+        "ir_mv": 6.075287930804363,
+        "seq": false
+      },
+      {
+        "node": "ITermNode_metal1_68236_17029",
+        "x": 68236.0,
+        "y": 17029.0,
+        "v": 1.0939272302006613,
+        "ir_mv": 6.072769799338795,
+        "seq": false
+      },
+      {
+        "node": "ITermNode_metal1_69429_16545",
+        "x": 69429.0,
+        "y": 16545.0,
+        "v": 1.0939272493362404,
+        "ir_mv": 6.072750663759674,
+        "seq": true
+      },
+      {
+        "node": "ITermNode_metal1_77140_16800",
+        "x": 77140.0,
+        "y": 16800.0,
+        "v": 1.093930642743391,
+        "ir_mv": 6.069357256609065,
+        "seq": false
+      },
+      {
+        "node": "ITermNode_metal1_78660_16800",
+        "x": 78660.0,
+        "y": 16800.0,
+        "v": 1.0939314666601079,
+        "ir_mv": 6.0685333398922126,
+        "seq": false
+      }
+    ],
+    "ir_max_mv": 6.075287930804363
+  },
+  "waveform": "/workspace/learn/sim/reports/dynamic_ir_flowlab_direct.wave.csv",
+  "ngspice_gold": null,
+  "ngspice_rl_gold": null,
+  "ngspice_n4_gold": null,
+  "ngspice_rail_c_gold": null,
+  "extract": {
+    "status": "READY",
+    "backend": "write_pg_spice",
+    "spice": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
+    "n_r": 5816,
+    "n_i": 622,
+    "n_v": 15,
+    "n_layers": 10,
+    "tech": {
+      "status": "READY",
+      "path": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lef/NangateOpenCellLibrary.tech.lef",
+      "dbu_per_um": 2000.0,
+      "via": "tech LEF WIDTH/THICKNESS/HEIGHT/RPERSQ + CUT WIDTH/R \u2014 strap w from R, via G_th from HEIGHT/CUT",
+      "n_routing_layers": 10,
+      "rpersq": {
+        "metal1": 0.38,
+        "metal2": 0.25,
+        "metal3": 0.25,
+        "metal4": 0.21,
+        "metal5": 0.21,
+        "metal6": 0.21,
+        "metal7": 0.075,
+        "metal8": 0.075,
+        "metal9": 0.03,
+        "metal10": 0.03
+      },
+      "thickness_um": {
+        "metal1": 0.13,
+        "metal2": 0.14,
+        "metal3": 0.14,
+        "metal4": 0.28,
+        "metal5": 0.28,
+        "metal6": 0.28,
+        "metal7": 0.8,
+        "metal8": 0.8,
+        "metal9": 2.0,
+        "metal10": 2.0
+      }
+    },
+    "spef": {
+      "status": "GAP",
+      "path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.spef",
+      "has_pg_net": false,
+      "n_pg_net": 0,
+      "n_stamped": 0,
+      "c_sum_f": 0.0,
+      "c_unit_f": 1e-12,
+      "via": "SPEF PG *D_NET *CAP name-joined onto write_pg_spice nodes",
+      "note": "signal SPEF (no VDD/VSS *D_NET) \u2014 not PDN capacitance; lumped c_decap remains"
+    },
+    "on_die_l": {
+      "status": "READY",
+      "n_stamped": 5701,
+      "n_r": 5816,
+      "L_sum_h": 1.4611183979473932e-08,
+      "L_max_h": 3.127107735301322e-11,
+      "L_p50_h": 1.1089738664090695e-13,
+      "n_mutual": 11655,
+      "M_max_h": 6.217869644648454e-13,
+      "k_max": 0.99,
+      "cutoff_m": 2e-06,
+      "by_layer": {
+        "metal1": {
+          "n": 5687,
+          "L_sum_h": 1.4591211952190654e-08,
+          "L_max_h": 3.127107735301322e-11
+        },
+        "metal4": {
+          "n": 14,
+          "L_sum_h": 1.9972027283706333e-11,
+          "L_max_h": 1.4265733774075952e-12
+        }
+      },
+      "via": "Grover partial self-L + cutoff partial mutual on same-layer write_pg_spice straps",
+      "note": "\u03a3 partial self is not loop L (mesh paths are parallel). Partial mutual is same-layer parallel filaments with overlapping projection and d\u22642 \u00b5m (spatial hash, k clamped to 0.99). No skin, no full PEEC. Vias stay resistive. Descriptor stamp is unsymmetric \u2014 not AMG. Default TRAN stays N3 RC+pkg companion unless --on-die-l."
+    },
+    "note": "OpenROAD write_pg_spice R mesh; LEF for EM J; SPEF PG C is GAP (never mapped from signal nets); Grover on-die L on 5701 straps"
+  },
+  "em": {
+    "status": "READY",
+    "model": "I=(Va-Vb)/R; w=max(RPERSQ\u00b7L/R, WIDTH_min); J=I/(w\u00b7t); TTF_rel=(Jref/J)^2.0 at 358 K; \u0394T from metal-graph G_th=kA/L (straps+vias) + ILD/Si + pad G_amb (lumped Rth comparison)",
+    "not": [
+      "foundry Black A / TTF hours",
+      "extracted strap width from LEF geometry (width from R, clamped to min WIDTH)",
+      "3D thermal FEM / package CFD (lumped Si + ILD is not that)",
+      "skin-effect stamp into G (reported, not restamped)"
+    ],
+    "n_branches": 5816,
+    "n_with_j": 5701,
+    "i_absmax_a": 0.00037142700558290173,
+    "j_absmax_a_m2": 19714647817.891327,
+    "dT_absmax_k": 0.00010395984880937768,
+    "dT_lumped_absmax_k": 0.00010395984880937768,
+    "dT_mesh_absmax_k": 0.16796176909909946,
+    "r_scale_hot": 1.0006550508994865,
+    "n_r_scaled": 5746,
+    "p_joule_w": 5.807561480698338e-06,
+    "ttf_rel_min": 0.2572894351361083,
+    "black_n": 2.0,
+    "ea_ev": 0.9,
+    "t_em_k": 358.15,
+    "j_ref_a_m2": 10000000000.0,
+    "hottest": {
+      "a": "Node_metal1_34110_22400",
+      "b": "Node_metal2_34280_22400",
+      "r_ohm": 1.666667,
+      "i_a": -0.00037142700558290173,
+      "i_abs": 0.00037142700558290173,
+      "p_w": 2.2993008011314165e-07,
+      "dT_mesh_k": 0.020984413597821723,
+      "dT_k": 0.020984413597821723,
+      "r_scale": 1.0000818392130315
+    },
+    "hottest_j": {
+      "a": "Node_metal1_48120_17140",
+      "b": "Node_metal1_48140_16800",
+      "r_ohm": 6.460034,
+      "i_a": 0.0001794032951428111,
+      "i_abs": 0.0001794032951428111,
+      "p_w": 2.0791969761875536e-07,
+      "kind": "strap",
+      "layer": "metal1",
+      "L_m": 1.7029386365926402e-07,
+      "w_m": 7e-08,
+      "w_inferred_m": 1.0017233375322843e-08,
+      "t_m": 1.3e-07,
+      "area_m2": 9.1e-15,
+      "rpersq": 0.38,
+      "w_min_m": 7e-08,
+      "w_over_min": 1.0,
+      "w_clamped": true,
+      "j_a_m2": 19714647817.891327,
+      "dT_lumped_k": 0.00010395984880937768,
+      "dT_k": 0.023567877817097738,
+      "r_scale": 1.0000919147234866,
+      "ttf_rel": 0.2572894351361083,
+      "dT_mesh_k": 0.023567877817097738
+    },
+    "top": [
+      {
+        "a": "Node_metal1_34110_22400",
+        "b": "Node_metal2_34280_22400",
+        "r_ohm": 1.666667,
+        "i_a": -0.00037142700558290173,
+        "i_abs": 0.00037142700558290173,
+        "p_w": 2.2993008011314165e-07,
+        "dT_mesh_k": 0.020984413597821723,
+        "dT_k": 0.020984413597821723,
+        "r_scale": 1.0000818392130315
+      },
+      {
+        "a": "Node_metal2_34280_22400",
+        "b": "Node_metal3_34280_22400",
+        "r_ohm": 1.666667,
+        "i_a": -0.00037141809381882547,
+        "i_abs": 0.00037141809381882547,
+        "p_w": 2.2991904667714987e-07,
+        "dT_mesh_k": 0.018939665613251905,
+        "dT_k": 0.018939665613251905,
+        "r_scale": 1.0000738646958918
+      },
+      {
+        "a": "Node_metal3_34280_22400",
+        "b": "Node_metal4_34280_22400",
+        "r_ohm": 1.666667,
+        "i_a": -0.0003714086910881135,
+        "i_abs": 0.0003714086910881135,
+        "p_w": 2.2990740567444811e-07,
+        "dT_mesh_k": 0.012202694348935086,
+        "dT_k": 0.012202694348935086,
+        "r_scale": 1.0000475905079609
+      },
+      {
+        "a": "Node_metal1_33690_56000",
+        "b": "Node_metal2_34280_56000",
+        "r_ohm": 1.666667,
+        "i_a": -0.00029858480452309817,
+        "i_abs": 0.00029858480452309817,
+        "p_w": 1.4858817220445638e-07,
+        "dT_mesh_k": 0.019604350865653264,
+        "dT_k": 0.019604350865653264,
+        "r_scale": 1.000076456968376
+      },
+      {
+        "a": "Node_metal2_34280_56000",
+        "b": "Node_metal3_34280_56000",
+        "r_ohm": 1.666667,
+        "i_a": -0.00029857653184168077,
+        "i_abs": 0.00029857653184168077,
+        "p_w": 1.4857993866032546e-07,
+        "dT_mesh_k": 0.01694815463494236,
+        "dT_k": 0.01694815463494236,
+        "r_scale": 1.0000660978030762
+      },
+      {
+        "a": "Node_metal3_34280_56000",
+        "b": "Node_metal4_34280_56000",
+        "r_ohm": 1.666667,
+        "i_a": -0.000298566747950342,
+        "i_abs": 0.000298566747950342,
+        "p_w": 1.485702013501061e-07,
+        "dT_mesh_k": 0.011259721823664179,
+        "dT_k": 0.011259721823664179,
+        "r_scale": 1.0000439129151122
+      },
+      {
+        "a": "Node_metal1_33690_56000",
+        "b": "ITermNode_metal1_34000_55773",
+        "r_ohm": 0.001,
+        "i_a": 0.0002985023617174676,
+        "i_abs": 0.0002985023617174676,
+        "p_w": 8.910365995090585e-11,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 1.9211259719237568e-07,
+        "w_m": 7.300278693310275e-05,
+        "w_inferred_m": 7.300278693310275e-05,
+        "t_m": 1.3e-07,
+        "area_m2": 9.490362301303357e-12,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1042.896956187182,
+        "w_clamped": false,
+        "j_a_m2": 31453210.34545465,
+        "dT_lumped_k": 4.4551829975452925e-08,
+        "dT_k": 0.02017587675057355,
+        "r_scale": 1.0000786859193271,
+        "ttf_rel": 101081.11906921091,
+        "dT_mesh_k": 0.02017587675057355
+      },
+      {
+        "a": "Node_metal1_33270_16800",
+        "b": "Node_metal2_34280_16800",
+        "r_ohm": 1.666667,
+        "i_a": -0.0002590026434517242,
+        "i_abs": 0.0002590026434517242,
+        "p_w": 1.1180397121909137e-07,
+        "dT_mesh_k": 0.018581595270473983,
+        "dT_k": 0.018581595270473983,
+        "r_scale": 1.000072468221555
+      }
+    ],
+    "top_j": [
+      {
+        "a": "Node_metal1_48120_17140",
+        "b": "Node_metal1_48140_16800",
+        "r_ohm": 6.460034,
+        "i_a": 0.0001794032951428111,
+        "i_abs": 0.0001794032951428111,
+        "p_w": 2.0791969761875536e-07,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 1.7029386365926402e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 1.0017233375322843e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 19714647817.891327,
+        "dT_lumped_k": 0.00010395984880937768,
+        "dT_k": 0.023567877817097738,
+        "r_scale": 1.0000919147234866,
+        "ttf_rel": 0.2572894351361083,
+        "dT_mesh_k": 0.023567877817097738
+      },
+      {
+        "a": "Node_metal1_48000_16460",
+        "b": "Node_metal1_48120_17140",
+        "r_ohm": 2.153345,
+        "i_a": 0.00017938550995441496,
+        "i_abs": 0.00017938550995441496,
+        "p_w": 6.929283583460431e-08,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 3.452535300326414e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 6.092676343660851e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 19712693401.58406,
+        "dT_lumped_k": 3.464641791730215e-05,
+        "dT_k": 0.023106749294691826,
+        "r_scale": 1.0000901163222493,
+        "ttf_rel": 0.2573404556217471,
+        "dT_mesh_k": 0.023106749294691826
+      },
+      {
+        "a": "Node_metal1_32760_56000",
+        "b": "Node_metal1_32780_55660",
+        "r_ohm": 6.460034,
+        "i_a": -0.00015298121482746718,
+        "i_abs": 0.00015298121482746718,
+        "p_w": 1.5118580421253737e-07,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 1.7029386365926402e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 1.0017233375322843e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 16811122508.512877,
+        "dT_lumped_k": 7.559290210626868e-05,
+        "dT_k": 0.021920402827442204,
+        "r_scale": 1.000085489571027,
+        "ttf_rel": 0.3538397128793643,
+        "dT_mesh_k": 0.021920402827442204
+      },
+      {
+        "a": "Node_metal1_48340_61600",
+        "b": "Node_metal1_48370_61260",
+        "r_ohm": 4.306689,
+        "i_a": 0.00014288387291466414,
+        "i_abs": 0.00014288387291466414,
+        "p_w": 8.792450619192314e-08,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 1.7066048165876012e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 1.5058199705232682e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 15701524496.116938,
+        "dT_lumped_k": 4.396225309596157e-05,
+        "dT_k": 0.027904536672692652,
+        "r_scale": 1.0001088276930234,
+        "ttf_rel": 0.40561719540571184,
+        "dT_mesh_k": 0.027904536672692652
+      },
+      {
+        "a": "Node_metal1_51080_17140",
+        "b": "Node_metal1_51130_16525",
+        "r_ohm": 4.674025,
+        "i_a": 0.00013790641502903434,
+        "i_abs": 0.00013790641502903434,
+        "p_w": 8.889144553147574e-08,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 3.0851458636505337e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 2.508235253742123e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 15154551102.091684,
+        "dT_lumped_k": 4.444572276573787e-05,
+        "dT_k": 0.022438296414022743,
+        "r_scale": 1.0000875093560146,
+        "ttf_rel": 0.43542548772361533,
+        "dT_mesh_k": 0.022438296414022743
+      },
+      {
+        "a": "Node_metal1_50990_16800",
+        "b": "Node_metal1_51080_17140",
+        "r_ohm": 1.435563,
+        "i_a": 0.00013787811928018642,
+        "i_abs": 0.00013787811928018642,
+        "p_w": 2.729059208046831e-08,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 1.7585505395068976e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 4.654962582712296e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 15151441679.141365,
+        "dT_lumped_k": 1.3645296040234155e-05,
+        "dT_k": 0.024771201699238528,
+        "r_scale": 1.0000966076866271,
+        "ttf_rel": 0.4356042246334438,
+        "dT_mesh_k": 0.024771201699238528
+      },
+      {
+        "a": "Node_metal1_29120_27725",
+        "b": "Node_metal1_29140_28000",
+        "r_ohm": 5.225028,
+        "i_a": -0.0001301799826131406,
+        "i_abs": 0.0001301799826131406,
+        "p_w": 8.854765014842886e-08,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 1.3786315678962238e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 1.0026357673118021e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 14305492594.850616,
+        "dT_lumped_k": 4.427382507421443e-05,
+        "dT_k": 0.021480731608458967,
+        "r_scale": 1.000083774853273,
+        "ttf_rel": 0.48864602048129824,
+        "dT_mesh_k": 0.021480731608458967
+      },
+      {
+        "a": "Node_metal1_29000_28200",
+        "b": "Node_metal1_29120_27725",
+        "r_ohm": 1.504175,
+        "i_a": -0.00013017715181838407,
+        "i_abs": 0.00013017715181838407,
+        "p_w": 2.548988621264183e-08,
+        "kind": "strap",
+        "layer": "metal1",
+        "L_m": 2.449617317051788e-07,
+        "w_m": 7e-08,
+        "w_inferred_m": 6.188472621069219e-08,
+        "t_m": 1.3e-07,
+        "area_m2": 9.1e-15,
+        "rpersq": 0.38,
+        "w_min_m": 7e-08,
+        "w_over_min": 1.0,
+        "w_clamped": true,
+        "j_a_m2": 14305181518.503744,
+        "dT_lumped_k": 1.2744943106320915e-05,
+        "dT_k": 0.021870589736803787,
+        "r_scale": 1.0000852952999735,
+        "ttf_rel": 0.48866727262290993,
+        "dT_mesh_k": 0.021870589736803787
+      }
+    ],
+    "package_i_L": [
+      {
+        "node": "Node_metal4_34280_22400",
+        "v_src": 1.1,
+        "i_L_a": 0.00028991799090924826
+      },
+      {
+        "node": "Node_metal4_34280_28000",
+        "v_src": 1.1,
+        "i_L_a": 0.00024193136207781266
+      },
+      {
+        "node": "Node_metal4_34280_16800",
+        "v_src": 1.1,
+        "i_L_a": 0.00024113233508342118
+      },
+      {
+        "node": "Node_metal4_34280_61600",
+        "v_src": 1.1,
+        "i_L_a": 0.00022124047414973644
+      },
+      {
+        "node": "Node_metal4_34280_39200",
+        "v_src": 1.1,
+        "i_L_a": 0.00020589753021918022
+      },
+      {
+        "node": "Node_metal4_34280_56000",
+        "v_src": 1.1,
+        "i_L_a": 0.00020116935765374146
+      },
+      {
+        "node": "Node_metal4_34280_11200",
+        "v_src": 1.1,
+        "i_L_a": 0.00019366223229041693
+      },
+      {
+        "node": "Node_metal4_34280_33600",
+        "v_src": 1.1,
+        "i_L_a": 0.00019177793859447936
+      }
+    ],
+    "pkg_r": 0.05,
+    "pkg_l": 2e-10,
+    "tech_path": "/workspace/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/lef/NangateOpenCellLibrary.tech.lef",
+    "thermal_mesh": {
+      "status": "READY",
+      "n": 4393,
+      "n_metal": 4392,
+      "n_edges": 5746,
+      "n_straps": 5701,
+      "n_vias": 45,
+      "n_ild": 5701,
+      "n_si": 1,
+      "n_pads": 15,
+      "rth_pad": 50.0,
+      "g_amb": 0.02,
+      "g_ild_sum": 0.6931328852830436,
+      "g_vert": 0.23853445289733333,
+      "a_die_m2": 4.835157828999999e-07,
+      "t_si_m": 0.0003,
+      "p_cell_w": 0.0022904454099999883,
+      "p_total_w": 0.0022962529714806866,
+      "dT_absmax_k": 0.16796176909909946,
+      "dT_mean_k": 0.0234677481756557,
+      "dT_pad_max_k": 0.007661181818255453,
+      "dT_si_k": 0.017260059835544486,
+      "backend": "native",
+      "solver": "B_sa_amg",
+      "rel_res": 7.509123467186762e-09,
+      "via": "metal-graph G_th=kA/L + via HEIGHT/CUT + ILD k_ox A/HEIGHT to lumped Si (k_si A_die/t_wafer, t=300 \u00b5m); pad G_amb; not 3D FEM",
+      "note": "Steady metal-graph \u0394T; cell P=I_avg\u00b7Vdd at sinks + strap/via I\u00b2R. Via G_th from LEF HEIGHT/CUT. ILD k_ox A/HEIGHT to lumped Si (t_wafer=300 \u00b5m, not 3D FEM). Pad Rth=50 K/W C4-class. All heat exits G_amb; Si has no second ambient."
+    },
+    "skin": {
+      "status": "READY",
+      "f_hz": 2173913043.4782605,
+      "delta_m": 1.4173759216429666e-06,
+      "t_m": 1.3e-07,
+      "t_over_delta": 0.09171878681931403,
+      "rac_rdc": 1.0,
+      "via": "wide-sheet t/min(t,\u03b4); not Wheeler, not roughness, not PEEC",
+      "note": "Rac/Rdc\u22481 \u2014 metal thinner than skin depth at this f"
+    },
+    "note": "EM J from physics I(t) and LEF RPERSQ/thickness. metal-graph max \u0394T=1.6796e-01 K (lumped isolation max 1.0396e-04 K).",
+    "rT_static_ir_mv": 3.094767308990054,
+    "rT_delta_ir_mv": 0.00032079469836077124,
+    "rT_via": "one-shot N1 restamp R'=R(1+\u03b1\u0394T) from metal-graph T (cell P=I_avg\u00b7Vdd + strap/via I\u00b2R; ILD\u2192lumped Si; pad Rth=50 K/W); not 3D CFD",
+    "electrothermal": {
+      "status": "GAP",
+      "ok": false,
+      "reason": "skipped --no-electrothermal; N1 restamp still reported"
+    }
+  },
+  "solver_b": null,
+  "solver_c": null,
+  "solver_d": null,
+  "vss_rail": null,
+  "n4": null,
+  "on_die_l": {
+    "status": "READY",
+    "n_stamped": 5701,
+    "n_r": 5816,
+    "L_sum_h": 1.4611183979473932e-08,
+    "L_max_h": 3.127107735301322e-11,
+    "L_p50_h": 1.1089738664090695e-13,
+    "n_mutual": 11655,
+    "M_max_h": 6.217869644648454e-13,
+    "k_max": 0.99,
+    "cutoff_m": 2e-06,
+    "by_layer": {
+      "metal1": {
+        "n": 5687,
+        "L_sum_h": 1.4591211952190654e-08,
+        "L_max_h": 3.127107735301322e-11
+      },
+      "metal4": {
+        "n": 14,
+        "L_sum_h": 1.9972027283706333e-11,
+        "L_max_h": 1.4265733774075952e-12
+      }
+    },
+    "via": "Grover partial self-L + cutoff partial mutual on same-layer write_pg_spice straps",
+    "note": "\u03a3 partial self is not loop L (mesh paths are parallel). Partial mutual is same-layer parallel filaments with overlapping projection and d\u22642 \u00b5m (spatial hash, k clamped to 0.99). No skin, no full PEEC. Vias stay resistive. Descriptor stamp is unsymmetric \u2014 not AMG. Default TRAN stays N3 RC+pkg companion unless --on-die-l."
+  },
+  "adaptive": null,
+  "windowed": {
+    "n_windows_raw": 2,
+    "n_windows": 1,
+    "pad_s": 4.0000000000000004e-11,
+    "full_steps": 74,
+    "L_over_R_ns": 4.0,
+    "threshold_frac": 0.5,
+    "windows": [
+      {
+        "t_start_ns": 0.0,
+        "t_end_ns": 0.22999999999999998,
+        "t_peak_ns": 0.06,
+        "i_peak_a": 0.004928496647848004
+      }
+    ],
+    "status": "READY",
+    "collapsed_to_full": false,
+    "steps": 23,
+    "isolated": false,
+    "t_cut_ns": 0.22999999999999998,
+    "worst_droop_mv": 6.075287930804363,
+    "worst_time_ns": 0.12999999999999998,
+    "abs_err_vs_A_mv": 0.0,
+    "via": "prefix BE [0, t_cut] preserving i_L; not isolated restart",
+    "note": "pkg L/R=4.00 ns vs horizon 0.74 ns \u2014 UIC restart mid-window would drop inductor current"
+  },
+  "scenarios": null,
+  "timing_impact": {
+    "status": "READY",
+    "model": "OpenSTA NLDM typical-V gate delay * (Vdd/V_inst)^alpha; nets unscaled",
+    "alpha": 1.3,
+    "vmin": 1.0939247120691957,
+    "scale": 1.001465670976448,
+    "delay_nom_ps": 423.779,
+    "degradation_ps": 0.6211205807281628,
+    "period_ns": 0.46,
+    "frac_of_period": 0.0013502621320177451,
+    "note": "NLDM typical-V OpenSTA delays scaled by (Vdd/V_inst)^alpha on joined gates; not a second liberty at Vmin / CCS voltage-dependent delay",
+    "path": {
+      "status": "READY",
+      "startpoint": "dpath.a_reg.out[2]$_DFFE_PP_",
+      "endpoint": "dpath.a_reg.out[13]$_DFFE_PP_",
+      "slack_ns": 0.004644,
+      "slack_ir_ns": 0.004022879419271837,
+      "slack_met": true,
+      "n_gates": 18,
+      "n_joined": 18,
+      "gate_delay_ns": 0.423779,
+      "gate_delay_ir_ns": 0.4244001205807282,
+      "via": "OpenSTA report_checks -format full worst max path",
+      "note": "NLDM typical-V OpenSTA delays scaled by (Vdd/V_inst)^alpha on joined gates; not a second liberty at Vmin / CCS voltage-dependent delay"
+    },
+    "tap_fallback": {
+      "degradation_ps": 0.2167730110364574,
+      "scale": 1.0072257670345486,
+      "delay_nom_ps": 30.0
+    }
+  },
+  "summary": "clock \u00b7 static 3.094 mV \u00b7 dynamic droop 6.075 mV (0.552%) @ 0.13 ns \u00b7 I_peak 4.93 mA \u00b7 622 PWL \u00b7 t50 span 0.40 ns \u00b7 STA 622/622 \u00b7 J 1.971e+10 A/m\u00b2 TTF_rel 0.2572894351361083 \u00b7 \u0394T mesh 0.168 K (45 via) \u00b7 L3 |A\u2212W| 0.000 mV \u00b7 delay +0.62 ps"
+}

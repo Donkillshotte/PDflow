@@ -1,0 +1,76 @@
+{
+  "ok": true,
+  "kind": "vyges_em_ir",
+  "engine": "vyges-em-ir",
+  "license": "Apache-2.0",
+  "upstream": "https://github.com/vyges-tools/em-ir",
+  "version": "0.1.33",
+  "binary": "/workspace/tools/vyges-em-ir/vyges-em-ir",
+  "variant": "flowlab",
+  "spice": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
+  "job": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/vyges/gcd_flowlab.emir",
+  "pdn": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/vyges/gcd_flowlab.pdn",
+  "engine_json": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/vyges/vyges_engine.json",
+  "adapter": {
+    "spice": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
+    "vdd": 1.1,
+    "pads": 15,
+    "resistors": 5771,
+    "vias": 45,
+    "loads": 622,
+    "caps": 622,
+    "switches": 622,
+    "total_current_a": 0.007428198670000001,
+    "skipped_gnd_res": 0,
+    "dynamic": true,
+    "c_decap_f": 5e-14,
+    "peak_factor": 8.0,
+    "switch_t_ns": 1.0,
+    "switch_dur_ns": 0.08
+  },
+  "vyges": {
+    "report_path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/vyges/vyges_engine.json",
+    "design": "gcd_flowlab",
+    "vdd": 1.1,
+    "nodes": 4438,
+    "worst_ir": {
+      "node": "Node_metal1_83890_50400",
+      "voltage": 1.084898,
+      "drop": 0.015102,
+      "drop_pct": 1.3729
+    },
+    "dynamic": {
+      "node": "ITermNode_metal1_85690_50400",
+      "voltage": 1.013987,
+      "drop": 0.086013,
+      "drop_pct": 7.8194,
+      "time_ns": 1.016
+    },
+    "ir_met": false,
+    "em_checked": 0,
+    "em_worst_ratio": 0.0,
+    "pi_met": false,
+    "em_violations": []
+  },
+  "compare": {
+    "pdn_transient_static_ir_v": 0.015167211271880587,
+    "pdn_transient_static_ir_pct": 1.3788373883527805,
+    "pdn_transient_droop_v": 0.13824352902447767,
+    "vyges_static_ir_v": 0.015102,
+    "vyges_static_ir_pct": 1.3729,
+    "vyges_dynamic_droop_v": 0.086013,
+    "vyges_dynamic_droop_pct": 7.8194,
+    "static_ir_ratio_vyges_over_pdn_transient": 0.99570051008642
+  },
+  "limits": {
+    "simultaneous_switch": true,
+    "timestep_not_user_set": true,
+    "no_waveform_export": true,
+    "not_tapeout_signoff": true,
+    "pads_are_ideal_vdd": true,
+    "note": "Dynamic IR is a worst-case simultaneous-switch upper bound. Not correlated as a RedHawk drop-in. Static IR uses the same write_pg_spice mesh as pdn_transient.py."
+  },
+  "summary": "static IR 15.102 mV (1.373%) \u00b7 dynamic droop 86.013 mV (7.819%) @ 1.016 ns \u00b7 nodes 4438 \u00b7 em_checked 0 (no foundry emlimit) \u00b7 ir_met false (educational 5% bound, not tapeout)",
+  "generated_at": "2026-09-03T08:26:58Z",
+  "limits_met": false
+}
