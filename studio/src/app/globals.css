@@ -1376,7 +1376,6 @@ button.pipeline-node {
 /* —— Suite hub —— */
 .home-suite { margin: 1.5rem auto 2.5rem; width: min(1180px, calc(100% - 2rem)); }
 .suite-hub { display: grid; gap: 1rem; }
-.suite-hub-compact .suite-group:nth-child(n+4) { display: none; }
 .suite-group h3 {
   margin: 0.2rem 0 0.45rem;
   font-family: var(--font-display);

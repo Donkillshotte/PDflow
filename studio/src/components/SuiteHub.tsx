@@ -28,7 +28,7 @@ type Suite = {
   hooks: Hook[];
 };
 
-export function SuiteHub({ compact }: { compact?: boolean }) {
+export function SuiteHub() {
   const [data, setData] = useState<Suite | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,17 +66,17 @@ export function SuiteHub({ compact }: { compact?: boolean }) {
   const groups = Array.from(new Set(data.hooks.map((h) => h.group)));
 
   return (
-    <div className={clsx("suite-hub", compact && "suite-hub-compact")}>
+    <div className="suite-hub">
       <div className="ops-head">
         <div>
-          <h2>Toolchain hooks</h2>
+          <h2>Toolchain hook matrix</h2>
           <p className="muted">
-            Hooks for course, FlowLab, and product cooks ·{" "}
-            {data.summary.hooksOk}/{data.summary.hooksTotal} ok ·
-            lessons {data.summary.lessonsDone}/{data.summary.lessonsTotal} ·
-            pipeline {data.summary.pipelineReady}/6 · recent jobs{" "}
-            {data.summary.recentJobs}
-            {data.summary.viewerRunning ? " · web viewer ON" : ""}
+            Environment, course artifacts, FlowLab reports, and product cooks
+            stay on their own contracts · {data.summary.hooksOk}/
+            {data.summary.hooksTotal} ok · lessons {data.summary.lessonsDone}/
+            {data.summary.lessonsTotal} · pipeline {data.summary.pipelineReady}
+            /6 · recent jobs {data.summary.recentJobs}
+            {data.summary.viewerRunning ? " · web viewer on" : ""}
             {" · "}
             <Link href="/#story">story</Link>
           </p>

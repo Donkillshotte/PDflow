@@ -17,7 +17,7 @@ Index: [`docs/README.md`](../docs/README.md) · course: [`docs/course.md`](../do
 
 | Route | Role |
 |---|---|
-| `/` | Story (`GET /api/story`) · suite hooks · lesson progress |
+| `/` | Story (`GET /api/story`) · lesson progress · toolchain counts → `/tools#suite` |
 | `/flow` | FlowLab GCD (`FLOW_VARIANT=flowlab`) · RTL → finish → signoff |
 | `/lessons` | Course wizard on `learn` |
 | `/tools` | Suite, jobs, run console, inspect, viewer |

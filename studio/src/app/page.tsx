@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SuiteHub } from "@/components/SuiteHub";
+import { HomeOpsStrip } from "@/components/HomeOpsStrip";
 import { ProductStory } from "@/components/ProductStory";
 import { getProductStory } from "@/lib/story";
 import { HomeHero } from "./home-hero";
@@ -50,9 +50,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="panel home-suite" id="suite">
-        <SuiteHub compact />
-      </section>
+      <HomeOpsStrip />
     </main>
   );
 }
