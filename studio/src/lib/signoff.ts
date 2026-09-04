@@ -92,8 +92,8 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   },
   {
     id: "power",
-    label: "Power / PKG",
-    description: "Activity → chip IR → System PDN → export lab",
+    label: "Power",
+    description: "Activity → chip IR → system droop. System PDN / Phase 2 stay on /pkg.",
     status: "active",
     orchestratorAction: "power_signoff",
     checks: [

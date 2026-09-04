@@ -183,7 +183,7 @@ Static IR drop uses **post-route/finish** geometry, not placement alone.
 
 ## Lesson 07-finish {#lesson-07-finish}
 
-**Course:** `learn/lessons/07-finish/` · **FlowLab:** [finish](/flow?phase=finish) + signoff + [PKG](/flow?phase=pkg)
+**Course:** `learn/lessons/07-finish/` · **FlowLab:** [finish](/flow?phase=finish) owns STA · DRC · LVS · chip IR. [PKG](/flow?phase=pkg) is System PDN + Phase 2.
 
 ### ORFS deliverables
 
@@ -295,4 +295,4 @@ ngspice -b learn/sim/spice/system_pdn_tran_demo.sp
 | [golden-metrics.md](./golden-metrics.md) | IR heatmap vs report JSON |
 | [glossary.md](./glossary.md) | SPICE/ngspice terms |
 
-**UI:** FlowLab shows the chain below the pipeline · Lessons have «Power chain» panel · Post-finish signoff in GDSII phase.
+**UI:** Four-pillar close and chip IR are on FlowLab finish. `/pkg` is System PDN + Phase 2. Lessons have a Power chain panel.

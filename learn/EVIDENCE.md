@@ -52,7 +52,7 @@ Expected reports in `learn/sim/reports/`:
 | `sta_ir_aware_{v}.json` | Educational IR-aware STA (NLDM × ITerm V; not gold) |
 | `drc_signoff_{v}.json` | Geometry |
 | `lvs_signoff_{v}.json` | Equivalence |
-| `power_signoff_{v}.json` | Power / PKG |
+| `power_signoff_{v}.json` | Power |
 | `signoff_all_{v}.json` | Orchestrator |
 | `thermal_signoff_{v}.json` | Thermal proxy |
 | `pkg_signoff_{v}.json` | Packaging |

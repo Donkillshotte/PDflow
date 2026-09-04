@@ -95,7 +95,7 @@ Registry and matrix: [`signoff-matrix.md`](../../reference/signoff-matrix.md).
 | Timing (STA IR-aware) | `sta_ir_aware` | `run_sta_ir_aware.sh` |
 | Geometry (DRC) | `drc_signoff` | `run_drc_signoff.sh` |
 | Equivalence (LVS) | `klayout_lvs` | `run_klayout_lvs.sh` |
-| Power / PKG | `power_signoff` | `run_power_signoff.sh` |
+| Power | `power_signoff` | `run_power_signoff.sh` |
 | All | `signoff_all` | `run_signoff_all.sh` |
 
 FlowLab **finish** phase shows the matrix vs `golden-gcd.json`. LVS is a
