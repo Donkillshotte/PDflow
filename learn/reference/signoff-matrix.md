@@ -1,6 +1,6 @@
 # GCD Nangate45 signoff matrix
 
-Single source of truth for the **four pillars** of enterprise signoff on the educational GCD:
+Single source of truth for the **four pillars** of signoff on the educational GCD:
 timing (STA), geometry (DRC), equivalence (LVS), power/PKG integrity.
 
 TypeScript registry: `studio/src/lib/signoff.ts`  
@@ -20,8 +20,8 @@ Studio API: `GET /api/signoff?variant=flowlab`
 
 LVS is a KLayout compare on a prepared CDL (unused library cells dropped,
 FILLCELL from DEF, wells mapped to VDD/VSS). A pass requires
-`CONGRATULATIONS! Netlists match`. Must-connect warnings on XNOR2 stay in
-the lvsdb. This is educational FreePDK45, not foundry LVS.
+`CONGRATULATIONS! Netlists match`. Must-connect warnings on DFF_X2 stay in
+the lvsdb (Nangate split wells). This is educational FreePDK45, not foundry LVS.
 
 ---
 

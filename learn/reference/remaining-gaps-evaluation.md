@@ -258,9 +258,8 @@ Course is **pinned to Nangate45**. sky130 is a different PDK. Mixing them would 
 - Porting would require new golden metrics, new SDC, new config.mk, re-running all lessons.
 - AGENTS.md forbids mixing sky130 with FreePDK45.
 
-**What we could do**: add a **sky130 elective module** (parallel to the Nangate45 course) that demonstrates how the same flow runs on a different PDK. This does not close Nangate45 GAPs but shows the student the full-stack PDK comparison.
-
-**Verdict**: closable as a separate elective, not as a replacement for the Nangate45 course.
+**Verdict**: out of scope. The course stays Nangate45. Do not add a sky130
+module in this tree.
 
 ---
 

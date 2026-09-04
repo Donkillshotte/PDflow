@@ -13,7 +13,7 @@ Course progress `0/8` is student work, not a tool GAP.
 | HotSpot / compact thermal | **Yes, architecture-level** | Not Ansys/COMSOL, not foundry |
 | Xyce | **Yes, env install** | Dual-solver gold; ngspice already covers GCD PDN |
 | Nangate CCS tables | **No from the public lib** | Interpolator already real; tables are the missing IP |
-| LVS netlist match | **Maybe** — CDL vs GDS cell set | FreePDK45 tutorial is often not LVS-clean |
+| LVS netlist match | **Yes (compare match)** — filtered CDL + FILL from DEF + wells → VDD/VSS | DFF_X2 must-connect (2) stays. Flatten/unpin/flat-extract break the match. |
 | Raphael / StarRC | **No** — commercial | OpenRCX + analytical PEX stay the OSS path |
 | Magic / Netgen on Nangate | **No without a FreePDK45 `.tech`** | KLayout LVS stays the engine |
 
