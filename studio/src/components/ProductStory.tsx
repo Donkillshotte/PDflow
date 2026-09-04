@@ -117,7 +117,7 @@ export function ProductStory({
 
       <ol className="story-path">
         {data.path.map((step, i) => (
-          <li key={step.id} className={clsx("story-step", step.ready && "is-ready")}>
+          <li key={step.id} data-id={step.id} className={clsx("story-step", step.ready && "is-ready")}>
             <Link href={step.href}>
               <span className="story-step-n">{i + 1}</span>
               <strong>{step.label}</strong>

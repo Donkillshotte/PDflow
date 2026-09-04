@@ -123,10 +123,10 @@ a {
 
 .hero {
   position: relative;
-  min-height: calc(100vh - 5.5rem);
+  min-height: auto;
   display: grid;
-  align-content: end;
-  padding: 3.5rem 0 3rem;
+  align-content: start;
+  padding: 1.75rem 0 1.25rem;
   overflow: hidden;
 }
 
@@ -207,11 +207,11 @@ a {
 
 .hero-brand {
   font-family: var(--font-display);
-  font-size: clamp(3.6rem, 10vw, 6.8rem);
+  font-size: clamp(2.1rem, 5vw, 3.1rem);
   font-weight: 800;
   letter-spacing: -0.045em;
   line-height: 0.9;
-  margin: 0 0 1.1rem;
+  margin: 0 0 0.45rem;
   color: var(--ink);
 }
 
@@ -4230,10 +4230,14 @@ nextjs-portal,
 .story-path {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.55rem;
   margin: 0;
   padding: 0;
+}
+.story-step[data-id="signoff"],
+.story-step[data-id="eco"] {
+  grid-column: span 2;
 }
 .story-step a {
   display: grid;

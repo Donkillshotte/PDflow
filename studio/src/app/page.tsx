@@ -25,9 +25,11 @@ export default function HomePage() {
           </Link>
         </div>
         <p className="footer-note" style={{ marginTop: "0.5rem" }}>
-          Four pillars: STA → DRC → LVS → power. Leftover must-connect on
-          DFF_X2 stays named. ECO close is <code>signoff_all</code> on a copy.
-          IR meshes are not interchangeable.
+          Four pillars: STA → DRC → LVS → power. Leftover setup stays
+          named (locked flowlab WNS −0.02; eco_scratch I/O on{" "}
+          <code>resp_msg[14]</code>). Leftover must-connect on DFF_X2 stays
+          named. ECO close is <code>signoff_all</code> on a copy. IR meshes
+          are not interchangeable.
         </p>
         <div className="flow-steps">
           {[

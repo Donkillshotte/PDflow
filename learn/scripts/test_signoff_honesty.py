@@ -289,6 +289,7 @@ def main() -> int:
     check("current_run ${liveMv" in story, "story IR leads with current_run")
     check("After signoff" in home, "home PKG chip is after signoff")
     check("0 GAP" not in (ROOT / "docs/results.md").read_text(), "results.md does not claim 0 GAP")
+    check("«" not in (ROOT / "docs/results.md").read_text(), "results.md does not use brochure guillemets")
     curric = (ROOT / "learn/CURRICULUM.md").read_text()
     check("A gold + B SA-AMG" not in curric, "curriculum Dynamic IR is current_run, not A gold")
     check("| Thermal | no tool in VM |" not in curric, "curriculum thermal is HotSpot, not missing")

@@ -37,7 +37,8 @@ export function HomeHero() {
         <h1 className="hero-title">RTL → GDS on OpenROAD</h1>
         <p className="hero-lead">
           Nangate45 / FreePDK45. Signoff is STA → DRC → LVS → power.
-          DSE proposes knobs; wins stay in <code>win_rule.py</code>.
+          Leftover stays named. DSE proposes knobs; wins stay in{" "}
+          <code>win_rule.py</code>.
         </p>
         <div className="cta-row">
           <Link href="/flow" className="btn-primary">

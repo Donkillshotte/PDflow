@@ -46,7 +46,7 @@ Coordinator dry-run: **catalog holes empty**. Cheap-first would TPE gcd next. Fr
 
 `learn/dse/tune_transfer.py`: pad=2 and synth_hier are not recooked;
 up to 3 cross-design win mechanisms queued for TPE.
-«Sparser placement + setup margin» is a catalog recipe.
+Sparser placement + setup margin is a catalog recipe.
 
 Transfer success criterion (frozen in `arch_review.md` §6), live on
 `dynamic_node`:
