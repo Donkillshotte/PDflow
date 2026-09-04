@@ -108,7 +108,10 @@ export function EcoPanel({
           unlocked copy. Size-up wraps DPL in incremental GRT, then
           detailed_route. If TritonRoute cannot connect (DRT-0206), apply
           restores the source. A legal size-up may still leave setup open
-          — leftover is named. Close is <code>signoff_all</code> on that
+          — leftover is named. Apply is two OpenROAD processes (SPEF
+          size-up, then BufferMove without SPEF). A third clone or I/O
+          size-up on the shared NAND2_X2 cone regresses
+          register-to-register. Close is <code>signoff_all</code> on that
           copy — ECO never skips it.
         </p>
       </header>

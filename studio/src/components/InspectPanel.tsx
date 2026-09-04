@@ -202,9 +202,11 @@ export function InspectPanel({
           {data.sta.paths.length > 0 && (
             <>
               <p className="muted">
-              Finish golden on this GCD is WNS ≈ −0.04 ns. OpenSTA signoff
-              lists all negative-slack paths (WNS −0.02 ns, 16 viol). Neither
-              is a wrapper crash.
+              Finish golden on this GCD is WNS ≥ −0.04 ns. OpenSTA on locked
+              flowlab lists every negative-slack path (WNS −0.02 ns, 16 viol).
+              The eco_scratch copy is register-to-register MET; leftover is
+              course 20% output delay. Paths below are this variant&apos;s live
+              STA, not a wrapper crash.
               </p>
               <ul className="path-list">
                 {data.sta.paths.map((p) => (

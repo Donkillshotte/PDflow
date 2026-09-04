@@ -486,7 +486,7 @@ export async function getSuiteStatus() {
       label: "ECO loop",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "eco") || signoffReportPass("learn", "eco"),
-      detail: "Propose on flowlab. Apply/close only on eco_scratch. Incremental GRT legalizes size-up; leftover setup/DRT does not skip signoff_all.",
+      detail: "Propose on flowlab. Apply/close only on eco_scratch. Copy is R2R MET; leftover is course output delay. Does not skip signoff_all.",
       action: "eco",
       href: "/flow?phase=finish#eco",
     },

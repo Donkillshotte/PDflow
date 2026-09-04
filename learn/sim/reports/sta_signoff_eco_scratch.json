@@ -54,7 +54,7 @@
     "wns_ns": -0.01,
     "setup_violations": 1,
     "clock_ns": 0.46,
-    "note": "Register-to-register is MET. Leftover is the course 20% output delay on resp_msg[14] (output). Educational golden allows WNS \u2265 -0.04. Do not hide.",
+    "note": "Register-to-register is MET. Leftover is the course 20% output delay on resp_msg[14] (output). Shared NAND2_X2 (_647_) also drives R2R; size-up, BUF_X4, and clone of that cone regress R2R. Educational golden allows WNS \u2265 -0.04. Do not hide.",
     "worst_endpoint": "resp_msg[14] (output)",
     "wns_kind": "output"
   }

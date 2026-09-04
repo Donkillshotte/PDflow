@@ -69,6 +69,9 @@ in the lvsdb (Nangate split wells). This is educational FreePDK45, not
 foundry LVS. Physics ledger: 28/30 READY, 2 WATCH (ibex/aes ORFS IR).
 PDK-gated leftovers stay named: DFF_X2 must-connect 2, VIA flatten,
 `em_checked` 0, no density/named ERC, single `typical.lib` (no MCMM).
+The `eco_scratch` copy is register-to-register MET; leftover WNS −0.01
+is the course 20% output delay on `resp_msg[14]` (shared NAND2 cone).
+Locked `flowlab` still has register-to-register leftover.
 
 Phase 2 (thermal proxy + dummy RDL) runs after finish on `/pkg`.
 It is not a fifth signoff pillar.

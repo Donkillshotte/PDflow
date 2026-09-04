@@ -15,6 +15,8 @@ Numbers from a complete `learn` run (SDC 0.46 ns, util 35):
 
 The SDC period is 0.46 ns but `period_min` at ORFS finish is 0.50 ns: **you have not closed** 2.17 GHz, you closed ~2.01 GHz. OpenSTA signoff on the same SPEF lists every negative-slack path (16), not the finish-report 38. This is the narrative to put in the final project, not “make finish is green”.
 
+Locked `flowlab` OpenSTA is still −0.02 / 16 viol (register-to-register open). The `eco_scratch` copy after post-finish ECO is register-to-register MET; leftover is −0.01 on `resp_msg[14]` (course `clk_io_pct` 0.2). Do not overwrite `gcd/flowlab/`. Do not rewrite the SDC to hide the I/O leftover.
+
 IR is not one number. The ORFS finish heatmap (`orfs_final_ir_drop.png`)
 is a PDNSim picture — not gold Dynamic IR **45.298 mV**, not chip PDN
 (1.05 / 9.47 mV), and not current_run I(t) (~6.08 mV). Those meshes are

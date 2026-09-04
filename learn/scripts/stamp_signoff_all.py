@@ -59,7 +59,9 @@ def leftover_from_sta(sta: dict | None) -> dict | None:
         named = endpoint or "outputs"
         note = (
             "Register-to-register is MET. Leftover is the course 20% output "
-            f"delay on {named}. Educational golden allows WNS ≥ -0.04. Do not hide."
+            f"delay on {named}. Shared NAND2_X2 (_647_) also drives R2R; "
+            "size-up, BUF_X4, and clone of that cone regress R2R. "
+            "Educational golden allows WNS ≥ -0.04. Do not hide."
         )
     else:
         note = (

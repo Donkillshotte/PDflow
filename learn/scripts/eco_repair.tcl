@@ -97,9 +97,15 @@ if {$eco_grt && [info commands global_route] != ""} {
 }
 
 # The course SDC puts 20% of 0.46 ns on every I/O. OpenROAD then ranks
-# resp_msg[*] as WNS and spends the budget there. OpenSTA signoff WNS is
-# register-to-register (dpath.a_reg). Ignore output endpoints for this
-# session only — the SDC file is not rewritten.
+# resp_msg[*] as WNS and spends the budget there. OpenSTA signoff WNS after
+# the two-process apply is register-to-register MET; leftover is
+# resp_msg[14]. Ignore output endpoints for this session only — the SDC
+# file is not rewritten.
+#
+# Do not add ECO_PHASE=io or clone as a third apply. resp_msg[14] shares
+# NAND2_X2 _647_ with R2R (NAND2_X4 _809_). OpenSTA R2R slack is ~3 ps.
+# Size-up of that cone, BUF_X1→BUF_X4 on output42, RSZ clone/split, and a
+# manual clone of _647_ all regress R2R. Leftover is SDC-gated.
 if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
   if {!$eco_grt} {
     puts "WARN ECO setup repair skipped — GRT not initialized"

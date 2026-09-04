@@ -398,7 +398,7 @@ export function leftoverSetupOpenDetail(
     : `leftover setup open at ${clock} ns`;
   if (leftover?.wns_kind === "output") {
     const pin = leftover.worst_endpoint ? ` on ${leftover.worst_endpoint}` : "";
-    return `${named}; register-to-register MET, leftover is course output delay${pin}`;
+    return `${named}; register-to-register MET, leftover is course output delay${pin} (shared NAND2_X2 cone; clone/size-up regresses R2R)`;
   }
   return `${named}; educational golden still ≥ -0.04`;
 }

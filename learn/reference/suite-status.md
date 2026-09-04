@@ -127,7 +127,7 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | DRC (route + GDS) | **WORKS** | 0 route lines · 0 GDS items | — |
 | LVS (KLayout) | **WORKS*** | Compare match on filtered CDL | FILL/TAP abstract. VIA flatten. DFF_X2 must-connect 2 |
 | LVS deep (filter + VTL) | **WORKS*** | same compare path | Black-box is labeled separately |
-| ECO | **WORKS*** | propose on flowlab; apply/close on eco_scratch | Does not skip `signoff_all`. Live apply legalized size-up (DRT 0, `ECO_ROUTED`). Setup still open (OpenROAD WNS −0.04; OpenSTA −0.02 / 16 viol). DRT-0206 restore-source is the fallback. |
+| ECO | **WORKS*** | propose on flowlab; apply/close on eco_scratch | Does not skip `signoff_all`. Two OpenROAD processes: SPEF size-up, BufferMove without SPEF (29 buffers), `global_connect`. Copy OpenSTA: R2R MET, leftover WNS −0.01 on `resp_msg[14]` (course 20% output delay). Shared NAND2_X2 `_647_` also drives R2R; clone/size-up of that cone regresses R2R. Locked flowlab still has R2R leftover (do not overwrite). DRT-0206 restore-source is the fallback. |
 | Power signoff | **WORKS*** | Chip static **1.05 mV** · sys droop **6.03 mV** | Lumped board, not S-parameter |
 | `signoff_all` | **WORKS** | four pillars from their JSON | DSE never calls this script |
 
@@ -254,7 +254,7 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Signoff | lvs_signoff | ok | **WORKS*** | KLayout match · DFF_X2 must-connect 2 |
 | Signoff | power_signoff | ok | **WORKS*** | chip IR; System PDN is PKG |
 | Signoff | signoff_all | ok | **WORKS** | four pillars |
-| Signoff | eco | ok | **WORKS*** | propose only on flowlab |
+| Signoff | eco | ok | **WORKS*** | propose flowlab; apply/close eco_scratch · R2R MET · I/O leftover |
 | Signoff | thermal_signoff | ok | **WORKS*** | HotSpot |
 | Signoff | pkg_rdl | ok | **WORKS*** | dummy, not C4 |
 | Signoff | pkg_signoff | ok | **WORKS*** | bump + RDL + system |
@@ -279,7 +279,10 @@ ORFS pipeline UI follows `preferredResultsVariant()` (`flowlab` here).
 | Leftover | Why it stays |
 |---|---|
 | Course **0/8** | Student work |
+| Course 20% output delay on eco_scratch (`resp_msg[14]`, WNS −0.01) | R2R is MET (~3 ps). Shared NAND2_X2 `_647_` also drives R2R. Size-up / BUF_X4 / clone of that cone regress R2R. Do not rewrite SDC. Locked `flowlab` still has R2R leftover. |
 | DFF_X2 must-connect (2) | Nangate split wells; unpin or flatten-all-before-extract breaks match; flatten-after-extract raised count |
+| EM `em_checked` 0 | Nangate45 has no foundry `emlimit`. Do not invent one. |
+| Density / named ERC | Not in `FreePDK45.lydrc`. Antenna 300:1 is. |
 | Official Nangate CCS | `typical.lib` is NLDM |
 | CCS on DFF / MUX | Sequential / multi-arc not validated · AOI21/OAI21 combo shipped |
 | Board S-parameter | TUHH zip is form-gated |
