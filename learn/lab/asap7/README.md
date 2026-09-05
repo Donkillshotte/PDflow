@@ -41,6 +41,9 @@ Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.
 | FakeRAM designs | `riscv32i-mock-sram` | blackbox SRAM |
 
 6-track views (optional, not in git): `learn/scripts/fetch_asap7_sc6t.sh`.
+`minimal` skips `6_report` metrics (`SKIP_REPORT_METRICS=1`).
+`riscv32i-mock-sram` is FakeRAM + a real core — not a gcd-scale e2e.
+AES stays refused without `ALLOW_HEAVY_ANALYSIS=1`.
 
 IR on this track is a new mesh. `comparable_to_gold_ir` is false.
 Gold Dynamic IR stays **45.298 mV** on Nangate `gcd/flowlab`.
