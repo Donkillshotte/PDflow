@@ -228,9 +228,12 @@ def tier2() -> None:
 
 def main() -> None:
     tier1()
-    live = (result_dir(LabAsap7Spec(), ROOT) / "6_final.gds").is_file()
-    if not live:
-        print("ALL test_asap7_e2e PASSED (tier 1 only — no live GDS; run learn/scripts/run_asap7_e2e.py)")
+    folio = scan_folio(ROOT)
+    if len(folio) < 8:
+        print(
+            f"ALL test_asap7_e2e PASSED (tier 1 only — {len(folio)} live GDS; "
+            "tier 2 needs the full runner folio)"
+        )
         return
     tier2()
 
