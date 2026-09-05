@@ -33,11 +33,45 @@ def _rul_files(calibre: Path) -> list[str]:
     return sorted(str(p.relative_to(calibre)) for p in calibre.rglob("*.rul"))
 
 
+def _model_cards(pdk: Path) -> list[str]:
+    src = pdk / "models/hspice/7nm_TT_160803.pm"
+    if not src.is_file():
+        src = pdk / "models/hspice/7nm_TT.pm"
+    if not src.is_file():
+        return []
+    names: list[str] = []
+    for line in src.read_text(errors="replace").splitlines():
+        s = line.strip()
+        if s.lower().startswith(".model "):
+            parts = s.split()
+            if len(parts) >= 2:
+                names.append(parts[1])
+    return names
+
+
+def _corners(pms: list[str]) -> list[str]:
+    found: list[str] = []
+    for name, key in (("TT", "TT"), ("SS", "SS"), ("FF", "FF")):
+        if any(key in p for p in pms):
+            found.append(name)
+    return found
+
+
+def _cdslib_cells(pdk: Path) -> list[str]:
+    tech = pdk / "cdslib/asap7_TechLib_10"
+    if not tech.is_dir():
+        return []
+    return sorted(p.name for p in tech.iterdir() if p.is_dir() and not p.name.startswith("."))
+
+
 def inventory(root: Path = ROOT) -> dict:
     pdk = root / "learn/lab/asap7/pdk"
     calibre = pdk / "calibre"
     pms = _pm_files(pdk)
     ruls = _rul_files(calibre)
+    models = _model_cards(pdk)
+    corners = _corners(pms)
+    cells = _cdslib_cells(pdk)
     placeholder = False
     readme = calibre / "ruledirs/lvs/README.txt"
     if readme.is_file():
@@ -57,6 +91,12 @@ def inventory(root: Path = ROOT) -> dict:
         "pdk": str(pdk) if pdk.is_dir() else None,
         "n_pm": len(pms),
         "pm_files": pms,
+        "n_model": len(models),
+        "models": models,
+        "corners": corners,
+        "hspice_level": 72,
+        "xyce_level": 107,
+        "cdslib_cells": cells,
         "n_calibre_rul": len(ruls),
         "calibre_rul": ruls,
         "cdslib": (pdk / "cdslib/asap7_TechLib_10").is_dir(),
@@ -66,7 +106,7 @@ def inventory(root: Path = ROOT) -> dict:
             if not calibre_ready
             else "decks present; Calibre binary still required to run",
             "virtuoso": "cdslib is OA techlib; no Virtuoso in this image",
-            "spice": "HSpice BSIM-CMG cards; ngspice is the wrong first tool",
+            "spice": "HSpice BSIM-CMG level 72; Xyce leftover patch is level 107",
             "stamp": "never write .lvs.ok for ASAP7",
         },
         "note": "Layer-1 public PDK inventory. Not Calibre unless calibre_ready. "

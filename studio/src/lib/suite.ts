@@ -14,6 +14,7 @@ import {
   powerSignoffHookDetail,
   signoffAllHookDetail,
   staSignoffHookDetail,
+  asap7Layer1HookDetail,
 } from "./leftoverCatalog";
 
 export type HookStatus = {
@@ -597,6 +598,15 @@ export async function getSuiteStatus() {
       detail: "GCD-cell output_current from SPICE · not foundry CCS",
       action: "ccs_char",
       href: "/tools?tab=run&action=ccs_char",
+    },
+    {
+      id: "asap7_layer1",
+      label: "ASAP7 layer 1 (Lab)",
+      group: "Lab",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_pdk.json")),
+      detail: asap7Layer1HookDetail(),
+      action: "lab_asap7_pdk",
+      href: "/lab#asap7",
     },
     {
       id: "lvs_deep",

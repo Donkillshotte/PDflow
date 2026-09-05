@@ -301,6 +301,9 @@ function readAsap7Lab(): Record<string, unknown> | null {
   const qor = asap7QorOf(raw);
   const lvs = readJson("sim/reports/lab_asap7_lvs.json");
   const mmmc = readJson("sim/reports/lab_asap7_mmmc.json");
+  const pdk = readJson("sim/reports/lab_asap7_pdk.json");
+  const spice = readJson("sim/reports/lab_asap7_spice.json");
+  const spiceWave = (spice?.wave as Record<string, unknown>) || {};
   const setup = (mmmc?.setup as Record<string, unknown>) || {};
   const hold = (mmmc?.hold as Record<string, unknown>) || {};
   return {
@@ -334,6 +337,27 @@ function readAsap7Lab(): Record<string, unknown> | null {
           setupWnsPs: n(setup.wns_ps),
           holdWnsPs: n(hold.wns_ps),
           ok: mmmc.ok === true,
+        }
+      : null,
+    pdk: pdk
+      ? {
+          ok: pdk.ok === true,
+          nPm: n(pdk.n_pm),
+          nModel: n(pdk.n_model),
+          corners: Array.isArray(pdk.corners) ? pdk.corners : [],
+          calibreReady: pdk.calibre_ready === true,
+          calibrePlaceholder: pdk.calibre_placeholder === true,
+          drm: pdk.drm === true,
+          cdslib: pdk.cdslib === true,
+        }
+      : null,
+    spice: spice
+      ? {
+          ok: spice.ok === true,
+          patch: spice.patch ?? "level 72→107",
+          inverted: spiceWave.inverted === true,
+          voutWhenVinHigh: n(spiceWave.vout_when_vin_high),
+          voutWhenVinLow: n(spiceWave.vout_when_vin_low),
         }
       : null,
     note: raw?.note ?? "Live ASAP7 folio. Predictive FinFET. Not a product win.",

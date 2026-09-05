@@ -151,6 +151,18 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
     tone: "built",
     needles: ["PTM", "sidecar"],
   },
+  {
+    id: "asap7_calibre_gated",
+    label: "leftover ASAP7 Calibre",
+    tone: "leftover",
+    needles: ["leftover Calibre", "ASU encrypted tarball"],
+  },
+  {
+    id: "asap7_xyce_patch",
+    label: "ASAP7 Xyce level 72→107",
+    tone: "built",
+    needles: ["level 72→107", "leftover Xyce patch"],
+  },
 ];
 
 const BY_ID = new Map(LEFTOVER_CHIPS.map((c) => [c.id, c]));

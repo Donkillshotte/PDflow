@@ -245,6 +245,46 @@ export function lvsSignoffHookDetail(): string {
   return "KLayout GDS vs filtered CDL · leftover must-connect 2 (DFF_X2) · VIA_* flatten leftover";
 }
 
+export function asap7Layer1HookDetail(): string {
+  const pdkPath = path.join(LEARN_ROOT, "sim/reports/lab_asap7_pdk.json");
+  const spicePath = path.join(LEARN_ROOT, "sim/reports/lab_asap7_spice.json");
+  const bits: string[] = [];
+  try {
+    if (fs.existsSync(pdkPath)) {
+      const pdk = JSON.parse(fs.readFileSync(pdkPath, "utf8")) as {
+        n_pm?: number;
+        n_model?: number;
+        corners?: string[];
+        calibre_ready?: boolean;
+      };
+      bits.push(`public PDK · ${pdk.n_pm ?? 0} .pm · ${pdk.n_model ?? 0} models`);
+      if (pdk.corners?.length) bits.push(pdk.corners.join("/"));
+      if (pdk.calibre_ready === true) bits.push("Calibre decks present (binary still required)");
+      else bits.push("leftover Calibre · ASU encrypted tarball");
+    } else {
+      bits.push("layer-1 PDK not fetched · leftover Calibre · ASU encrypted tarball");
+    }
+  } catch {
+    bits.push("layer-1 inventory unreadable · leftover Calibre");
+  }
+  try {
+    if (fs.existsSync(spicePath)) {
+      const spice = JSON.parse(fs.readFileSync(spicePath, "utf8")) as {
+        ok?: boolean;
+        patch?: string;
+        wave?: { inverted?: boolean };
+      };
+      bits.push(spice.patch === "level 72→107" ? "level 72→107" : "leftover Xyce patch");
+      bits.push(spice.wave?.inverted ? "inverter switched" : "inverter leftover");
+    } else {
+      bits.push("leftover Xyce patch");
+    }
+  } catch {
+    bits.push("leftover Xyce patch");
+  }
+  return bits.join(" · ");
+}
+
 export function hookLeftoverIds(hookId: string, detail: string): string[] {
   return leftoverIdsMatchingDetail(detail, hookId);
 }

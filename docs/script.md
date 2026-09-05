@@ -60,6 +60,6 @@ Optuna **only** in `run_tpe.py`.
 | Signoff | `run_signoff_all.sh`, `run_sta_signoff.sh`, `run_sta_ir_aware.sh`, `run_drc_signoff.sh` |
 | Engine | `build_dpn_engine.sh` |
 | Lab PEX / CCS / LVS | `run_analytical_pex.py`, `char_nangate_ccs.py`, `run_lvs_deep.py`, `install_fastercap.sh` |
-| Lab ASAP7 | `lab_asap7_spec.py`, `lab_asap7_lvs.py`, `lab_asap7_mmmc.py`, `lab_asap7_pdk.py`, `test_asap7_lab.py`, `test_asap7_e2e.py`, `fetch_asap7_sc6t.sh`, `fetch_asap7_libextras.sh`, `fetch_asap7_pdk.sh` |
+| Lab ASAP7 | `lab_asap7_spec.py`, `lab_asap7_lvs.py`, `lab_asap7_mmmc.py`, `lab_asap7_pdk.py`, `lab_asap7_spice.py`, `run_lab_asap7_pdk.sh`, `test_asap7_lab.py`, `test_asap7_e2e.py`, `fetch_asap7_sc6t.sh`, `fetch_asap7_libextras.sh`, `fetch_asap7_pdk.sh` |
 
 One heavy job. `pkill -f` forbidden: kill by PID.

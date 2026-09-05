@@ -109,6 +109,23 @@ type LabSnap = {
     closedCount?: number;
     lvs?: { matchPct: number | null; nMatched: number | null; nLogic: number | null; calibre: boolean; closed: boolean } | null;
     mmmc?: { setupWnsPs: number | null; holdWnsPs: number | null; ok: boolean } | null;
+    pdk?: {
+      ok: boolean;
+      nPm: number | null;
+      nModel: number | null;
+      corners: string[];
+      calibreReady: boolean;
+      calibrePlaceholder: boolean;
+      drm: boolean;
+      cdslib: boolean;
+    } | null;
+    spice?: {
+      ok: boolean;
+      patch: string | null;
+      inverted: boolean;
+      voutWhenVinHigh: number | null;
+      voutWhenVinLow: number | null;
+    } | null;
     note: string | null;
   } | null;
 };
@@ -306,6 +323,32 @@ export function LabBench({
             <dd>
               {data?.asap7?.mmmc
                 ? `${fmt(data.asap7.mmmc.setupWnsPs)} / ${fmt(data.asap7.mmmc.holdWnsPs)} ps`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Layer 1 PDK</dt>
+            <dd>
+              {data?.asap7?.pdk
+                ? `${data.asap7.pdk.nPm ?? "—"} .pm · ${data.asap7.pdk.nModel ?? "—"} models · ${(data.asap7.pdk.corners ?? []).join("/") || "—"}`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Calibre decks</dt>
+            <dd>
+              {data?.asap7?.pdk
+                ? data.asap7.pdk.calibreReady
+                  ? "present · binary still required"
+                  : "leftover Calibre · ASU encrypted tarball"
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Xyce inverter</dt>
+            <dd>
+              {data?.asap7?.spice
+                ? `${data.asap7.spice.patch ?? "level 72→107"}${data.asap7.spice.inverted ? " · inverted" : " · leftover"}`
                 : "—"}
             </dd>
           </div>

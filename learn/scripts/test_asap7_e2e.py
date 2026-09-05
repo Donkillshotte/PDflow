@@ -151,6 +151,18 @@ def main() -> None:
     check(pdk.get("product_win") is False, "ASAP7 layer-1 is not a product win")
     check(int(pdk.get("n_pm") or 0) >= 3, f"ASAP7 layer-1 has HSpice cards ({pdk.get('n_pm')})")
     check("45.298" not in pdk_p.read_text(), "ASAP7 layer-1 inventory has no 45.298")
+    check(int(pdk.get("n_model") or 0) >= 8, f"ASAP7 layer-1 parsed models ({pdk.get('n_model')})")
+
+    spice_p = ROOT / "learn/sim/reports/lab_asap7_spice.json"
+    check(spice_p.is_file(), "ASAP7 leftover Xyce inverter report exists")
+    spice = json.loads(spice_p.read_text())
+    check(spice.get("ok") is True, "ASAP7 leftover Xyce inverter ran")
+    check(spice.get("product_win") is False, "ASAP7 Xyce is not a product win")
+    check(spice.get("comparable_to_gold_ir") is False, "ASAP7 Xyce is not gold IR")
+    check(spice.get("calibre") is False, "ASAP7 Xyce is not Calibre")
+    check(spice.get("patch") == "level 72→107", "ASAP7 Xyce names level 72→107")
+    check((spice.get("wave") or {}).get("inverted") is True, "ASAP7 leftover inverter switched")
+    check("45.298" not in spice_p.read_text(), "ASAP7 Xyce has no 45.298")
 
     folio = scan_folio(ROOT)
     check(len(folio) >= 8, f"folio has live cooks ({len(folio)})")

@@ -330,6 +330,11 @@ export function listOpenTargets(): {
       action: "ccs_char",
     },
     {
+      id: "run-lab-asap7-pdk",
+      label: "Run · ASAP7 layer 1 (Lab PDK + leftover Xyce)",
+      action: "lab_asap7_pdk",
+    },
+    {
       id: "run-lvs-deep",
       label: "Run · deep LVS (filtered CDL, well→VDD/VSS)",
       action: "lvs_deep",

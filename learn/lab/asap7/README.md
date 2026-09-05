@@ -60,8 +60,8 @@ Do not freeze numbers, do not copy `6_report.json` into `learn/sim/reports/`.
 Check live GDS with `python3 learn/scripts/test_asap7_e2e.py`.
 CCS/CDL extras (leftover-named, not Calibre): `learn/scripts/fetch_asap7_libextras.sh`.
 Layer-1 public PDK (HSpice `.pm`, placeholder Calibre):
-`learn/scripts/fetch_asap7_pdk.sh` then
-`python3 learn/scripts/lab_asap7_pdk.py`. Never `.lvs.ok`.
+`learn/scripts/run_lab_asap7_pdk.sh` (fetch + inventory + leftover
+Xyce inverter, `level 72→107`). Never `.lvs.ok`.
 Cell-vs-CDL: `python3 learn/scripts/lab_asap7_lvs.py` (never `.lvs.ok`).
 Setup WC / hold BC on one netlist: `python3 learn/scripts/lab_asap7_mmmc.py`.
 

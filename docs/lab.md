@@ -53,8 +53,8 @@ Build solver: `./learn/scripts/build_dpn_engine.sh`.
   `lab_asap7_mmmc.json` is setup WC / hold BC on one finish.
   Leftover close paths: [`asap7_close_plan.md`](asap7_close_plan.md).
   Layer 1 import: [`asap7_layer1_plan.md`](asap7_layer1_plan.md)
-  (`fetch_asap7_pdk.sh`, inventory `lab_asap7_pdk.py`). Calibre
-  decks stay gated.
+  (`run_lab_asap7_pdk.sh`, inventory `lab_asap7_pdk.py`, leftover
+  Xyce `lab_asap7_spice.py`). Calibre decks stay gated.
 - Gold GCD Dynamic IR **45.298 mV**: never restamped
   (`learn/sim/reports/dynamic_ir_flowlab.json`).
 - Current FlowLab finish **5.173 mV** (worker `n_r` ~5816, finish SPEF t50) = `current_run`,

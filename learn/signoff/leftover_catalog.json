@@ -194,6 +194,24 @@
       "variant": "both",
       "suite_hooks": ["ccs_char"],
       "detail_needles": ["PTM", "sidecar", "19"]
+    },
+    {
+      "id": "asap7_calibre_gated",
+      "kind": "gated",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_pdk.json",
+      "suite_hooks": ["asap7_layer1"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["leftover Calibre", "ASU encrypted tarball"]
+    },
+    {
+      "id": "asap7_xyce_patch",
+      "kind": "built",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_spice.json",
+      "suite_hooks": ["asap7_layer1"],
+      "studio_surfaces": ["lab"],
+      "detail_needles": ["level 72→107", "leftover Xyce patch"]
     }
   ],
   "home_compact_phrases": [

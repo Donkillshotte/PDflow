@@ -47,6 +47,7 @@ const RUN_ACTIONS = new Set([
   "openrcx_report",
   "analytical_pex",
   "ccs_char",
+  "lab_asap7_pdk",
   "lvs_deep",
   "layout_tools",
   "spice_engines",

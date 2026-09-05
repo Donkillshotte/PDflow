@@ -117,6 +117,23 @@ def main() -> None:
         check("45.298" not in pdk_rpt.read_text(), "layer-1 inventory has no 45.298")
         check(pdk.get("n_pm", 0) >= 3, f"layer-1 inventory has HSpice cards ({pdk.get('n_pm')})")
         check(pdk.get("calibre_ready") is False, "layer-1 inventory does not claim Calibre decks")
+        check(int(pdk.get("n_model") or 0) >= 8, f"layer-1 inventory parsed model cards ({pdk.get('n_model')})")
+        check(pdk.get("hspice_level") == 72, "layer-1 inventory names HSpice level 72")
+        check(pdk.get("xyce_level") == 107, "layer-1 inventory names Xyce level 107")
+    check((ROOT / "learn/scripts/lab_asap7_spice.py").is_file(), "leftover-named ASAP7 Xyce script exists")
+    check((ROOT / "learn/scripts/run_lab_asap7_pdk.sh").is_file(), "ASAP7 layer-1 wrapper exists")
+    from lab_asap7_spice import patch_hspice_cmg
+
+    patched = patch_hspice_cmg(".model nmos_rvt nmos level = 72\n+version = 107\n")
+    check("level=107" in patched, "Xyce patch retargets level 72→107")
+    check("level=72" not in patched, "Xyce patch drops HSpice level 72")
+    spice_rpt = ROOT / "learn/sim/reports/lab_asap7_spice.json"
+    if spice_rpt.is_file():
+        spice = json.loads(spice_rpt.read_text())
+        check(spice.get("product_win") is False, "layer-1 spice is not a product win")
+        check(spice.get("comparable_to_gold_ir") is False, "layer-1 spice is not gold IR")
+        check("45.298" not in spice_rpt.read_text(), "layer-1 spice has no 45.298")
+        check(spice.get("patch") == "level 72→107", "layer-1 spice names the Xyce patch")
 
     env = {**os.environ, "FLOW_VARIANT": "flowlab", "PYTHONPATH": f"{ROOT}/learn:{ROOT}/learn/scripts"}
     # Locked name cannot be forced: Python rebuilds the variant. Call wrapper with TRACK=6.

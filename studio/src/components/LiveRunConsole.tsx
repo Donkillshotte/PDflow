@@ -78,6 +78,7 @@ const ACTION_GROUPS: { label: string; items: ActionItem[] }[] = [
       { id: "openrcx_report", label: "OpenRCX SPEF", hint: "6_final.spef" },
       { id: "analytical_pex", label: "Analytical PEX", hint: "Sakurai + FDM + FasterCap BEM" },
       { id: "ccs_char", label: "CCS char", hint: "PTM sidecar, not foundry CCS" },
+      { id: "lab_asap7_pdk", label: "ASAP7 layer 1", hint: "public PDK + leftover Xyce · not Calibre" },
       { id: "lvs_deep", label: "Deep LVS", hint: "filtered CDL + well→VDD/VSS" },
       { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
       { id: "tool_matrix", label: "Tool matrix", hint: "all OSS checks" },
