@@ -92,7 +92,6 @@ type LabSnap = {
     gds: string | null;
     productWin: boolean;
     comparableToGoldIr: boolean;
-    goldIrMv: number;
     leftover: Record<string, unknown> | null;
     qor: { wns?: unknown; tns?: unknown; area?: unknown; power?: unknown } | null;
     note: string | null;

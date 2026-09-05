@@ -6,7 +6,6 @@
   "manufacturable": false,
   "product_win": false,
   "comparable_to_gold_ir": false,
-  "gold_ir_mv": 45.298,
   "variant": "lab_asap7_gcd_tc_rvt_nldm_7p5",
   "design": "gcd",
   "nickname": "gcd",
@@ -27,8 +26,7 @@
     "fake_mbff": false,
     "timing_open": true,
     "six_track": "fetch-gated, not a finish",
-    "drc": "community KLayout deck; not Calibre",
-    "drc_items": 33
+    "drc": "community KLayout deck; not Calibre"
   },
   "qor": {
     "wns_ps": -115.722,
@@ -41,7 +39,6 @@
     "ir_vdd_worst_v": 0.00365273,
     "util": 0.907592
   },
-  "note": "ASAP7 lab cook. Predictive FinFET. Not a product win. Do not compare IR to gold 45.298 mV.",
-  "exit_code": 0,
-  "drc_items": 33
+  "note": "ASAP7 lab cook. Predictive FinFET. Not a product win. Live metrics only \u2014 no gold stamp.",
+  "exit_code": 0
 }

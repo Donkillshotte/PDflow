@@ -264,7 +264,6 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
         "manufacturable": False,
         "product_win": False,
         "comparable_to_gold_ir": False,
-        "gold_ir_mv": 45.298,
         "variant": spec.variant,
         "design": spec.design,
         "nickname": spec.nickname,
@@ -290,7 +289,7 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
         "qor": metrics,
         "note": (
             "ASAP7 lab cook. Predictive FinFET. Not a product win. "
-            "Do not compare IR to gold 45.298 mV."
+            "Live metrics only — no gold stamp."
         ),
     }
     if extra:

@@ -37,7 +37,6 @@ reports/*
 !reports/drc_deck_coverage.json
 !reports/lib_corner_coverage.json
 !reports/lab_asap7.json
-!reports/lab_asap7_gcd_6_report.json
 reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/
