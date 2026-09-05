@@ -25,6 +25,7 @@ python3 learn/scripts/run_dse.py --campaign --wall-s=180
 python3 learn/scripts/test_dse.py          # one file at a time; F4 last
 python3 learn/scripts/validate_lab_physics.py
 python3 learn/scripts/test_asap7_lab.py
+python3 learn/scripts/test_asap7_e2e.py   # live GDS; no ASAP7 gold
 # ASAP7 RTL→GDS (gcd-scale, not AES). Predictive. Not a product win.
 ./scripts/run_lab_asap7.sh finish
 ```
