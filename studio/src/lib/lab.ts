@@ -262,22 +262,60 @@ export function getLabSnapshot() {
   };
 }
 
+type Asap7Qor = {
+  wnsPs: number | null;
+  areaUm2: number | null;
+  powerMw: number | null;
+  leakageNw: number | null;
+  irDropVddMv: number | null;
+  periodMinPs: number | null;
+  fmaxGhz: number | null;
+  timingClosed: boolean;
+};
+
+function asap7QorOf(raw: Record<string, unknown> | null): Asap7Qor | null {
+  if (!raw) return null;
+  const q = (raw.qor as Record<string, unknown>) || raw;
+  return {
+    wnsPs: n(q.wns_ps),
+    areaUm2: n(q.area_um2),
+    powerMw: n(q.power_mw) ?? (n(q.power_w) != null ? n(q.power_w)! * 1e3 : null),
+    leakageNw: n(q.leakage_nw) ?? (n(q.leakage_w) != null ? n(q.leakage_w)! * 1e9 : null),
+    irDropVddMv: n(q.ir_drop_vdd_mv) ?? (n(q.ir_vdd_worst_v) != null ? n(q.ir_vdd_worst_v)! * 1e3 : null),
+    periodMinPs: n(q.period_min_ps),
+    fmaxGhz: n(q.fmax_ghz),
+    timingClosed: q.timing_closed === true,
+  };
+}
+
+function readAsap7Folio(): Record<string, unknown>[] {
+  const raw = readJson("sim/reports/lab_asap7_folio.json");
+  const cooks = raw?.cooks;
+  return Array.isArray(cooks) ? (cooks as Record<string, unknown>[]) : [];
+}
+
 function readAsap7Lab(): Record<string, unknown> | null {
   const raw = readJson("sim/reports/lab_asap7.json");
-  if (!raw) return null;
+  const folio = readAsap7Folio();
+  if (!raw && !folio.length) return null;
+  const qor = asap7QorOf(raw);
   return {
-    ok: raw.ok === true,
-    variant: raw.variant ?? null,
-    design: raw.design ?? null,
-    corner: raw.corner ?? null,
-    vt: raw.vt ?? [],
-    libModel: raw.lib_model ?? null,
-    track: raw.track ?? null,
-    gds: raw.gds ?? null,
-    productWin: raw.product_win === true,
+    ok: raw?.ok === true,
+    variant: raw?.variant ?? null,
+    design: raw?.design ?? null,
+    corner: raw?.corner ?? null,
+    vt: raw?.vt ?? [],
+    libModel: raw?.lib_model ?? null,
+    track: raw?.track ?? null,
+    clkPs: n(raw?.clk_ps),
+    gds: raw?.gds ?? null,
+    productWin: false,
     comparableToGoldIr: false,
-    leftover: raw.leftover ?? null,
-    qor: raw.qor ?? null,
-    note: raw.note ?? null,
+    leftover: raw?.leftover ?? null,
+    qor,
+    folio,
+    cookCount: folio.length,
+    closedCount: folio.filter((r) => r.timing_closed === true).length,
+    note: raw?.note ?? "Live ASAP7 folio. Predictive FinFET. Not a product win.",
   };
 }

@@ -89,11 +89,24 @@ type LabSnap = {
     vt: string[];
     libModel: string | null;
     track: string | null;
+    clkPs?: number | null;
     gds: string | null;
     productWin: boolean;
     comparableToGoldIr: boolean;
     leftover: Record<string, unknown> | null;
-    qor: { wns?: unknown; tns?: unknown; area?: unknown; power?: unknown } | null;
+    qor: {
+      wnsPs: number | null;
+      areaUm2: number | null;
+      powerMw: number | null;
+      leakageNw: number | null;
+      irDropVddMv: number | null;
+      periodMinPs: number | null;
+      fmaxGhz: number | null;
+      timingClosed: boolean;
+    } | null;
+    folio?: { variant?: string; wns_ps?: number | null; timing_closed?: boolean; fmax_ghz?: number | null }[];
+    cookCount?: number;
+    closedCount?: number;
     note: string | null;
   } | null;
 };
@@ -231,18 +244,68 @@ export function LabBench({
             </dd>
           </div>
           <div>
-            <dt>GDS</dt>
-            <dd>{data?.asap7?.ok ? "yes" : "not cooked"}</dd>
+            <dt>WNS</dt>
+            <dd>
+              {data?.asap7?.qor?.wnsPs != null
+                ? `${data.asap7.qor.wnsPs.toFixed(1)} ps${data.asap7.qor.timingClosed ? " · closed" : " · open"}`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Area</dt>
+            <dd>{data?.asap7?.qor?.areaUm2 != null ? `${data.asap7.qor.areaUm2.toFixed(1)} µm²` : "—"}</dd>
+          </div>
+          <div>
+            <dt>Power</dt>
+            <dd>{data?.asap7?.qor?.powerMw != null ? `${data.asap7.qor.powerMw.toFixed(3)} mW` : "—"}</dd>
+          </div>
+          <div>
+            <dt>Leakage</dt>
+            <dd>{data?.asap7?.qor?.leakageNw != null ? `${data.asap7.qor.leakageNw.toFixed(1)} nW` : "—"}</dd>
+          </div>
+          <div>
+            <dt>IR VDD</dt>
+            <dd>
+              {data?.asap7?.qor?.irDropVddMv != null ? `${data.asap7.qor.irDropVddMv.toFixed(2)} mV` : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>fmax / period_min</dt>
+            <dd>
+              {data?.asap7?.qor?.fmaxGhz != null
+                ? `${data.asap7.qor.fmaxGhz.toFixed(2)} GHz · ${fmt(data.asap7.qor.periodMinPs)} ps`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Folio</dt>
+            <dd>
+              {data?.asap7?.cookCount ?? 0} cooks · {data?.asap7?.closedCount ?? 0} WNS≥0
+            </dd>
           </div>
           <div>
             <dt>Product win</dt>
             <dd>no</dd>
           </div>
           <div>
-            <dt>vs gold 45.298</dt>
+            <dt>vs 45.298 mV</dt>
             <dd>not comparable</dd>
           </div>
         </dl>
+        {(data?.asap7?.folio?.length ?? 0) > 0 && (
+          <ol className="lb-tape" aria-label="ASAP7 live folio">
+            {(data?.asap7?.folio ?? []).map((row, i) => (
+              <li key={`${row.variant ?? "cook"}-${i}`}>
+                <i>{row.timing_closed ? "closed" : "open"}</i>
+                <span>{row.variant ?? "—"}</span>
+                <em>
+                  {row.wns_ps != null ? `${Number(row.wns_ps).toFixed(1)} ps` : "—"}
+                  {row.fmax_ghz != null ? ` · ${Number(row.fmax_ghz).toFixed(2)} GHz` : ""}
+                </em>
+              </li>
+            ))}
+          </ol>
+        )}
         <p>{data?.asap7?.note ?? "Predictive FinFET track. Cook with ./scripts/run_lab_asap7.sh"}</p>
       </article>
 
