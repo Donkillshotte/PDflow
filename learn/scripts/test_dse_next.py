@@ -1160,6 +1160,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "docs/plans.md",
         "docs/asap7_research.md",
         "docs/asap7_close_plan.md",
+        "docs/asap7_layer1_plan.md",
         "AGENTS.md",
         "CONTRIBUTING.md",
         "scripts/README.md",
@@ -1186,6 +1187,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "sky130_integration.md",
         "asap7_research.md",
         "asap7_close_plan.md",
+        "asap7_layer1_plan.md",
         "win_rule.py",
     ):
         check(needle in index or needle.replace("docs/", "") in index, f"docs index cites {needle}")
@@ -1234,6 +1236,15 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("period_min" in close, "close plan names fmax / period_min not a 310 ps gold")
     check("Calibre" in close and "FakeRAM" in close, "close plan names Calibre and FakeRAM leftovers")
     check("Do not restamp" in close, "close plan refuses a gold restamp")
+    layer1 = (root / "docs/asap7_layer1_plan.md").read_text()
+    check("45.298" in layer1, "layer-1 plan protects gold Dynamic IR")
+    check("Do not write `.lvs.ok`" in layer1 or "Do not write .lvs.ok" in layer1, "layer-1 plan refuses .lvs.ok")
+    check("asap.asu.edu" in layer1, "layer-1 plan names the ASU Calibre download")
+    check("fetch_asap7_pdk.sh" in layer1, "layer-1 plan names the public PDK fetch")
+    check((root / "learn/scripts/fetch_asap7_pdk.sh").is_file(), "fetch_asap7_pdk.sh exists")
+    check((root / "learn/scripts/lab_asap7_pdk.py").is_file(), "lab_asap7_pdk.py inventory exists")
+    check("learn/lab/asap7/pdk/" in (root / ".gitignore").read_text(), "layer-1 PDK views are gitignored")
+    check("lab_asap7_pdk.py" in (root / "docs/script.md").read_text(), "script.md lists layer-1 inventory")
     check(
         "!reports/lab_asap7.json" not in (root / "learn/sim/.gitignore").read_text(),
         "ASAP7 last-cook report is not force-tracked",

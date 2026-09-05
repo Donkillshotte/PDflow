@@ -22,7 +22,7 @@ Checked on disk 2026-09-05 plus public sources named below.
 
 | Layer | What it is | Who ships it | In this VM? |
 |---|---|---|---|
-| **1. Full PDK** | Virtuoso techlib, HSpice BSIM-CMG (`.pm`), Calibre DRC/LVS/xACT | [asap7_pdk_r1p7](https://github.com/The-OpenROAD-Project/asap7_pdk_r1p7) + **Calibre tarball from [asap.asu.edu](https://asap.asu.edu/)** (not on GitHub) | No |
+| **1. Full PDK** | Virtuoso techlib, HSpice BSIM-CMG (`.pm`), Calibre DRC/LVS/xACT | [asap7_pdk_r1p7](https://github.com/The-OpenROAD-Project/asap7_pdk_r1p7) + **Calibre tarball from [asap.asu.edu](https://asap.asu.edu/)** (not on GitHub) | **Partial** — GitHub half via `fetch_asap7_pdk.sh`; Calibre decks **no** |
 | **2. Cell library** | 7.5T v28: LEF, GDS, Verilog, **CDL**, QRC, datasheets, NLDM+CCS as `.7z` | [asap7sc7p5t_28](https://github.com/The-OpenROAD-Project/asap7) | Partial (ORFS extracted views only) |
 | **3. Digital smoke pack** | LEF + Liberty + GDS + FakeRAM + KLayout + PDN | [ORFS `platforms/asap7`](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) | **Yes** — `tools/OpenROAD-flow-scripts/flow/platforms/asap7/` |
 
@@ -209,8 +209,13 @@ decks + 2017 tool. Do not treat KLayout 33 as a fail or a gold.
 ngspice is the wrong first tool. Xyce needs a model-card patch
 (already noted in `docs/asap7_research.md`).
 
-**Close path:** lab only, after PDK clone. Do not run Krylov on
-AES. Do not restamp gold IR.
+**On disk here:** GitHub half under `learn/lab/asap7/pdk/`
+(gitignored) after `fetch_asap7_pdk.sh`. Inventory:
+`lab_asap7_pdk.py`. Calibre `.rul` still missing. How to drop the
+ASU tarball: [`asap7_layer1_plan.md`](asap7_layer1_plan.md).
+
+**Close path:** lab only. Do not run Krylov on AES. Do not restamp
+gold IR. Do not treat a `.pm` on disk as transistor-level signoff.
 
 ### 10. AES / heavy designs
 

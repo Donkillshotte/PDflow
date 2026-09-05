@@ -113,7 +113,7 @@ axes — not just “we ran GCD on ASAP7”.
 | Project | What it adds |
 |---|---|
 | [The-OpenROAD-Project/asap7](https://github.com/The-OpenROAD-Project/asap7) | Umbrella. Submodules: PDK 1.7, 7.5T v28, 6T v26, placeholder SRAM. |
-| [asap7_pdk_r1p7](https://github.com/The-OpenROAD-Project/asap7_pdk_r1p7) | Full tech: HSpice BSIM-CMG, Calibre DRC/LVS/xACT, Virtuoso. Needed for transistor-level work. **Not in this VM.** |
+| [asap7_pdk_r1p7](https://github.com/The-OpenROAD-Project/asap7_pdk_r1p7) | Full tech: HSpice BSIM-CMG, placeholder Calibre, Virtuoso. GitHub half: `fetch_asap7_pdk.sh`. ASU Calibre tarball still gated. |
 | [asap7sc7p5t_28](https://github.com/The-OpenROAD-Project/asap7) | Current 7.5-track library (what ORFS uses). NLDM + CCS archives in the full clone. |
 | [asap7sc6t_26](https://github.com/The-OpenROAD-Project/asap7sc6t_26) | 6-track cells for density / track-height studies. Smaller cell set. Not in this ORFS platform. |
 | [asap7_sram_0p0](https://github.com/The-OpenROAD-Project/asap7) | Official SRAM macros. Minimal. Usually replaced by FakeRAM. |
@@ -171,8 +171,10 @@ Variants are `lab_asap7_*`. Default cook is gcd / TC / RVT / NLDM /
 4. IR / EM are a new mesh. `comparable_to_gold_ir` is false vs 45.298.
 5. FakeRAM and `*_FAKE.lib` stay named leftovers.
 6. 6-track is fetch-gated leftover (6.8 GB upstream). Not a finish.
-7. Full LVS/SPICE wants the PDK clone + Calibre or a patched Xyce
-   card. This Cloud image has neither.
+7. Full LVS/SPICE wants the ASU Calibre tarball + Calibre 2017 or
+   a patched Xyce card. This Cloud image can clone the GitHub PDK
+   (`learn/lab/asap7/pdk/`). It has neither Calibre decks nor a
+   2017 license. See [`asap7_layer1_plan.md`](asap7_layer1_plan.md).
 8. Do not launch AES finish “just to see”. GCD / `gcd-ccs` first.
 9. Do not import BPR/PowerVia or LLM proposers into product.
 

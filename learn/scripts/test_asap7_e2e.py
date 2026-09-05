@@ -142,6 +142,16 @@ def main() -> None:
     check(mmmc.get("hold", {}).get("wns_ps") is not None, "ASAP7 hold slack present")
     check("45.298" not in mmmc_p.read_text(), "ASAP7 MMMC has no 45.298")
 
+    pdk_p = ROOT / "learn/sim/reports/lab_asap7_pdk.json"
+    check(pdk_p.is_file(), "ASAP7 layer-1 PDK inventory exists")
+    pdk = json.loads(pdk_p.read_text())
+    check(pdk.get("ok") is True, "ASAP7 layer-1 public PDK is on disk")
+    check(pdk.get("calibre_ready") is False, "ASAP7 Calibre decks are still gated")
+    check(pdk.get("calibre_ran") is False, "ASAP7 layer-1 did not run Calibre")
+    check(pdk.get("product_win") is False, "ASAP7 layer-1 is not a product win")
+    check(int(pdk.get("n_pm") or 0) >= 3, f"ASAP7 layer-1 has HSpice cards ({pdk.get('n_pm')})")
+    check("45.298" not in pdk_p.read_text(), "ASAP7 layer-1 inventory has no 45.298")
+
     folio = scan_folio(ROOT)
     check(len(folio) >= 8, f"folio has live cooks ({len(folio)})")
     check(all("gold_ir_mv" not in row for row in folio), "folio has no gold_ir_mv")

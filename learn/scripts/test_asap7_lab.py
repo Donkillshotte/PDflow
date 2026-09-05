@@ -106,6 +106,17 @@ def main() -> None:
     check("if design ==" not in text, "wrapper has no design-name branch")
     check("Live metrics only" in (ROOT / "learn/dse/asap7_lab.py").read_text(), "lab report is live, not gold")
     check((ROOT / "learn/scripts/fetch_asap7_libextras.sh").is_file(), "CCS/CDL fetch script exists")
+    check((ROOT / "learn/scripts/fetch_asap7_pdk.sh").is_file(), "layer-1 PDK fetch script exists")
+    check((ROOT / "learn/scripts/lab_asap7_pdk.py").is_file(), "layer-1 PDK inventory script exists")
+    pdk_rpt = ROOT / "learn/sim/reports/lab_asap7_pdk.json"
+    if pdk_rpt.is_file():
+        pdk = json.loads(pdk_rpt.read_text())
+        check(pdk.get("product_win") is False, "layer-1 inventory is not a product win")
+        check(pdk.get("calibre_ran") is False, "layer-1 inventory did not run Calibre")
+        check(pdk.get("comparable_to_gold_ir") is False, "layer-1 inventory is not gold IR")
+        check("45.298" not in pdk_rpt.read_text(), "layer-1 inventory has no 45.298")
+        check(pdk.get("n_pm", 0) >= 3, f"layer-1 inventory has HSpice cards ({pdk.get('n_pm')})")
+        check(pdk.get("calibre_ready") is False, "layer-1 inventory does not claim Calibre decks")
 
     env = {**os.environ, "FLOW_VARIANT": "flowlab", "PYTHONPATH": f"{ROOT}/learn:{ROOT}/learn/scripts"}
     # Locked name cannot be forced: Python rebuilds the variant. Call wrapper with TRACK=6.

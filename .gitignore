@@ -44,6 +44,9 @@ learn/lab/asap7/sc6t/verilog/
 learn/lab/asap7/ccs/
 learn/lab/asap7/cdl/
 
+# ASAP7 layer-1 public PDK (asap7_pdk_r1p7). Calibre decks stay gated.
+learn/lab/asap7/pdk/
+
 # Cook leftovers: do not commit
 learn/sim/dse/memory_flowlab_nl.jsonl
 learn/sim/dse/memory_flowlab_nl.index.json
