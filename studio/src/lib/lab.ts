@@ -299,6 +299,10 @@ function readAsap7Lab(): Record<string, unknown> | null {
   const folio = readAsap7Folio();
   if (!raw && !folio.length) return null;
   const qor = asap7QorOf(raw);
+  const lvs = readJson("sim/reports/lab_asap7_lvs.json");
+  const mmmc = readJson("sim/reports/lab_asap7_mmmc.json");
+  const setup = (mmmc?.setup as Record<string, unknown>) || {};
+  const hold = (mmmc?.hold as Record<string, unknown>) || {};
   return {
     ok: raw?.ok === true,
     variant: raw?.variant ?? null,
@@ -316,6 +320,22 @@ function readAsap7Lab(): Record<string, unknown> | null {
     folio,
     cookCount: folio.length,
     closedCount: folio.filter((r) => r.timing_closed === true).length,
+    lvs: lvs
+      ? {
+          matchPct: n(lvs.match_pct),
+          nMatched: n(lvs.n_matched),
+          nLogic: n(lvs.n_logic),
+          calibre: lvs.calibre === true,
+          closed: lvs.lvs_closed === true,
+        }
+      : null,
+    mmmc: mmmc
+      ? {
+          setupWnsPs: n(setup.wns_ps),
+          holdWnsPs: n(hold.wns_ps),
+          ok: mmmc.ok === true,
+        }
+      : null,
     note: raw?.note ?? "Live ASAP7 folio. Predictive FinFET. Not a product win.",
   };
 }

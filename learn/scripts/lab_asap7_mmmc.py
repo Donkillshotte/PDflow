@@ -49,7 +49,7 @@ def _sta_wns(verilog: Path, spef: Path, sdc: Path, libs: list[Path], path_delay:
     missing = [str(p) for p in libs if not p.is_file()]
     if missing:
         return {"ok": False, "reason": f"liberty missing {missing[:2]}"}
-    tcl = Path("/tmp/lab_asap7_mmmc.tcl")
+    tcl = Path(f"/tmp/lab_asap7_mmmc_{path_delay}.tcl")
     lines = [f"read_liberty {p}" for p in libs]
     lines += [
         f"read_verilog {verilog}",
@@ -66,24 +66,25 @@ def _sta_wns(verilog: Path, spef: Path, sdc: Path, libs: list[Path], path_delay:
     text = (proc.stdout or "") + "\n" + (proc.stderr or "")
     wns = None
     tns = None
-    m = re.search(r"wns\s+(-?\d+(?:\.\d+)?)", text, re.I)
+    m = re.search(r"wns(?:\s+max)?\s+(-?\d+(?:\.\d+)?)", text, re.I)
     if m:
         wns = float(m.group(1))
-    m = re.search(r"tns\s+(-?\d+(?:\.\d+)?)", text, re.I)
+    m = re.search(r"tns(?:\s+max)?\s+(-?\d+(?:\.\d+)?)", text, re.I)
     if m:
         tns = float(m.group(1))
-    # OpenSTA often prints "wns -23.10" or a table. Also try slack of first path.
-    if wns is None:
-        slacks = [float(x) for x in re.findall(r"\bslack\s+(-?\d+(?:\.\d+)?)", text, re.I)]
-        if slacks:
-            wns = min(slacks) if path_delay == "max" else min(slacks)
+    slacks = [float(x) for x in re.findall(r"(-?\d+(?:\.\d+)?)\s+\((?:MET|VIOLATED)\)", text)]
+    if path_delay == "min" and slacks:
+        wns = min(slacks)
+    elif wns is None and slacks:
+        wns = min(slacks)
     return {
         "ok": proc.returncode == 0 and wns is not None,
         "exit_code": proc.returncode,
         "wns_ps": wns,
         "tns_ps": tns,
         "path_delay": path_delay,
-        "stderr_tail": (proc.stderr or "")[-800:],
+        "n_paths": len(slacks),
+        "stdout_tail": (proc.stdout or "")[-600:],
     }
 
 

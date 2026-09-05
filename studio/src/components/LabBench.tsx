@@ -107,6 +107,8 @@ type LabSnap = {
     folio?: { variant?: string; wns_ps?: number | null; timing_closed?: boolean; fmax_ghz?: number | null }[];
     cookCount?: number;
     closedCount?: number;
+    lvs?: { matchPct: number | null; nMatched: number | null; nLogic: number | null; calibre: boolean; closed: boolean } | null;
+    mmmc?: { setupWnsPs: number | null; holdWnsPs: number | null; ok: boolean } | null;
     note: string | null;
   } | null;
 };
@@ -290,6 +292,22 @@ export function LabBench({
           <div>
             <dt>vs 45.298 mV</dt>
             <dd>not comparable</dd>
+          </div>
+          <div>
+            <dt>LVS vs CDL</dt>
+            <dd>
+              {data?.asap7?.lvs
+                ? `${data.asap7.lvs.matchPct ?? "—"}% · not Calibre`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Setup WC / hold BC</dt>
+            <dd>
+              {data?.asap7?.mmmc
+                ? `${fmt(data.asap7.mmmc.setupWnsPs)} / ${fmt(data.asap7.mmmc.holdWnsPs)} ps`
+                : "—"}
+            </dd>
           </div>
         </dl>
         {(data?.asap7?.folio?.length ?? 0) > 0 && (

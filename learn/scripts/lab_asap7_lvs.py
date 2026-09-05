@@ -37,22 +37,22 @@ def _gds_cells(gds: Path) -> tuple[str | None, set[str]]:
     klayout = shutil.which("klayout")
     if not klayout:
         return None, set()
-    script = f"""
-import pya
-ly = pya.Layout()
-ly.read({str(gds)!r})
-top = ly.top_cell()
-print("TOP", top.name if top else "")
-seen = set()
-if top:
-    for inst in top.each_inst():
-        seen.add(inst.cell.name)
-for name in sorted(seen):
-    print("CELL", name)
-"""
+    script = Path("/tmp/lab_asap7_gds_cells.py")
+    script.write_text(
+        "import pya\n"
+        "ly = pya.Layout()\n"
+        f"ly.read({str(gds)!r})\n"
+        "top = ly.top_cell()\n"
+        'print("TOP", top.name if top else "")\n'
+        "seen = set()\n"
+        "if top:\n"
+        "    for inst in top.each_inst():\n"
+        "        seen.add(inst.cell.name)\n"
+        "for name in sorted(seen):\n"
+        '    print("CELL", name)\n'
+    )
     proc = subprocess.run(
-        [klayout, "-b", "-z", "-r", "/dev/stdin"],
-        input=script,
+        [klayout, "-b", "-zz", "-r", str(script)],
         text=True,
         capture_output=True,
         timeout=120,
@@ -82,15 +82,7 @@ def main() -> int:
     # but report filler separately. Leftover-named, not a gold.
     fillers = {c for c in cells if c.upper().startswith(("FILL", "TAP", "DECAP"))}
     logic = cells - fillers
-    sub_n = {_norm(s) for s in sub}
-    matched = {c for c in logic if _norm(c) in sub_n or any(_norm(c) in n or n in _norm(c) for n in sub_n)}
-    # ASAP7 GDS cells are like INVx1_ASAP7_75t_R; CDL often ASAP7_75t_R / INVx1_ASAP7_75t_R
-    loose = set()
-    for c in logic:
-        cn = _norm(c)
-        if any(cn == n or cn.endswith(n) or n.endswith(cn) or c.split("_ASAP7")[0].upper() in n for n in sub_n):
-            loose.add(c)
-    hit = matched | loose
+    hit = logic & sub
     pct = (100.0 * len(hit) / len(logic)) if logic else 0.0
     payload = {
         "ok": gds.is_file() and bool(sub) and bool(cells),
