@@ -11,13 +11,18 @@ from pathlib import Path
 from dse.asap7_lab import (
     LabAsap7Refuse,
     LabAsap7Spec,
+    collect_report,
     ccs_lib_files,
     ccs_make_assignment,
     ccs_ready,
-    collect_report,
+    default_plan_specs,
+    nangate_gold_status,
     result_dir,
     scan_folio,
     spec_from_env,
+    stage_ledger_at,
+    stopped_at,
+    uart_relaxed_spec,
     validate,
     write_constraint_sdc,
 )
@@ -148,10 +153,49 @@ def main() -> None:
 
     gold = ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     check(gold.is_file(), "gold IR report still on disk")
+    gold_st = nangate_gold_status(ROOT)
+    check(gold_st["ir_ok"] is True, "gold IR sha / 45.298 still intact")
     locked = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
-    check(locked.is_file(), "locked FlowLab GDS still on disk")
+    if locked.is_file():
+        check(gold_st["gds_ok"] is True, "locked FlowLab GDS sha unchanged")
+    else:
+        check(gold_st["nangate_lock_absent"] is True, "fresh clone names nangate lock absent")
+
+    src = (ROOT / "learn/dse/asap7_lab.py").read_text()
+    check("CCS_OK" not in src, "dead CCS_OK constant is gone")
+    check("stage_ledger" in src, "stage ledger helper exists")
+    check("nangate_lock_absent" in src, "nangate lock-absent is named")
+    check(len(default_plan_specs()) == 11, f"default plan has 11 static specs ({len(default_plan_specs())})")
+    uart_r = uart_relaxed_spec(ROOT)
+    check(uart_r.design == "uart" and uart_r.clk_ps is not None, "uart relaxed spec is tagged")
+    check(uart_r.variant.endswith(f"{int(uart_r.clk_ps)}ps"), uart_r.variant)
+
+    fake = ROOT / "learn/sim/dse/_asap7_ledger_fake"
+    res = fake / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5"
+    logs = fake / "tools/OpenROAD-flow-scripts/flow/logs/asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5"
+    res.mkdir(parents=True, exist_ok=True)
+    logs.mkdir(parents=True, exist_ok=True)
+    (res / "1_synth.v").write_text("x\n")
+    (res / "2_floorplan.odb").write_text("x\n")
+    led = stage_ledger_at("gcd", "lab_asap7_gcd_tc_rvt_nldm_7p5", fake)
+    check(led["synth"]["done"] is True, "ledger sees synth")
+    check(led["floorplan"]["done"] is True, "ledger sees floorplan")
+    check(led["place"]["done"] is False, "ledger place missing")
+    check(stopped_at(led, gds_live=False) == "place", f"stopped_at place, got {stopped_at(led, gds_live=False)}")
+    check(stopped_at(led, gds_live=True) is None, "stopped_at None when GDS live")
+    import shutil as _shutil
+
+    _shutil.rmtree(fake, ignore_errors=True)
+
+    from run_asap7_e2e import main as e2e_main
+
+    rc = e2e_main(["--dry-run"])
+    check(rc == 0, f"e2e dry-run exits 0 ({rc})")
 
     payload = collect_report(spec, root=ROOT)
+    check(payload.get("gds_live") is False or payload.get("gds_live") is True, "report has gds_live")
+    check("stages" in payload, "report has stages")
+    check(payload.get("nangate_lock_absent") in {True, False}, "report names nangate_lock_absent")
     check(payload["product_win"] is False, "report is not a product win")
     check(payload["comparable_to_gold_ir"] is False, "IR not comparable to Nangate gold")
     check("gold_ir_mv" not in payload, "report has no gold_ir_mv")

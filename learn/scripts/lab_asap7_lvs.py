@@ -8,22 +8,20 @@ Nangate IR reference 45.298 mV.
 
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import re
 import shutil
 import subprocess
-import sys
 from pathlib import Path
+
+from dse.asap7_lab import result_dir_for_variant
 
 ROOT = Path(__file__).resolve().parents[2]
 CDL_DIR = ROOT / "learn" / "lab" / "asap7" / "cdl"
 OUT = ROOT / "learn" / "sim" / "reports" / "lab_asap7_lvs.json"
-DEFAULT_GDS = (
-    ROOT
-    / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd"
-    / "lab_asap7_gcd_tc_rvt_nldm_7p5_480ps"
-    / "6_final.gds"
-)
+DEFAULT_VARIANT = "lab_asap7_gcd_tc_rvt_nldm_7p5_480ps"
 
 
 def _subckts(cdl: Path) -> set[str]:
@@ -72,9 +70,51 @@ def _norm(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "", name).upper()
 
 
-def main() -> int:
-    gds = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_GDS
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    h.update(path.read_bytes())
+    return h.hexdigest()
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description="Leftover-named ASAP7 cell-vs-CDL. Not Calibre.")
+    p.add_argument("gds", nargs="?", default="")
+    p.add_argument("--variant", default="")
+    args = p.parse_args(argv)
+    variant = args.variant or DEFAULT_VARIANT
+    if args.gds:
+        gds = Path(args.gds)
+        variant = gds.parent.name if gds.parent.name.startswith("lab_asap7_") else variant
+    else:
+        folder = result_dir_for_variant(variant, ROOT)
+        gds = (folder / "6_final.gds") if folder else (
+            ROOT / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd" / variant / "6_final.gds"
+        )
     cdl_paths = sorted(CDL_DIR.glob("asap7sc7p5t_28_*.cdl"))
+    if not cdl_paths:
+        payload = {
+            "ok": False,
+            "status": "GAP",
+            "surface": "lab",
+            "platform": "asap7",
+            "kind": "leftover_named_lvs",
+            "calibre": False,
+            "product_win": False,
+            "comparable_to_gold_ir": False,
+            "variant": variant,
+            "gds": str(gds) if gds.is_file() else None,
+            "lvs_closed": False,
+            "match_pct": 0,
+            "leftover": {
+                "calibre": "ASU tarball + Calibre 2017.3 not in this image",
+                "fetch": "learn/scripts/fetch_asap7_libextras.sh",
+            },
+            "note": "CDL not fetched. Cell-vs-CDL GAP. Not Calibre. Not a product win.",
+        }
+        OUT.parent.mkdir(parents=True, exist_ok=True)
+        OUT.write_text(json.dumps(payload, indent=2) + "\n")
+        print("lab_asap7_lvs GAP CDL not fetched", flush=True)
+        return 0
     sub = set()
     for p in cdl_paths:
         sub |= _subckts(p)
@@ -94,7 +134,9 @@ def main() -> int:
         "netgen": shutil.which("netgen") is not None or shutil.which("netgen-lvs") is not None,
         "product_win": False,
         "comparable_to_gold_ir": False,
+        "variant": variant,
         "gds": str(gds) if gds.is_file() else None,
+        "gds_sha256": _sha256(gds) if gds.is_file() else None,
         "top": top,
         "cdl_files": [str(p) for p in cdl_paths],
         "n_cdl_subckt": len(sub),

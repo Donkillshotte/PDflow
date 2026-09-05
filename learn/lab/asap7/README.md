@@ -6,6 +6,10 @@ Does not decide product wins. Does not replace the Nangate45 course.
 ## RTL → GDS
 
 ```bash
+# Serial e2e (resume live GDS). One heavy cook at a time.
+python3 learn/scripts/run_asap7_e2e.py --dry-run
+python3 learn/scripts/run_asap7_e2e.py --max-cooks 1
+
 # default: gcd, typical corner, RVT, NLDM, 7.5-track
 FLOW_VARIANT=lab_asap7_gcd_tc_rvt_nldm_7p5 \
   ./scripts/run_lab_asap7.sh finish
@@ -39,7 +43,7 @@ Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.
 |---|---|---|
 | `CORNER` | BC / TC / WC | — |
 | `ASAP7_USE_VT` | RVT LVT SLVT SRAM | — |
-| `LIB_MODEL` | NLDM / CCS | CCS TC/WC need fetched extras; LVT/SLVT CCS stays refused |
+| `LIB_MODEL` | NLDM / CCS | CCS TC/WC need fetched extras (`${CORNER}_CCS_LIB_FILES`); ORFS only defines `BC_CCS_LIB_FILES`; LVT/SLVT CCS stays refused |
 | `ASAP7_TRACK` | 7p5 / 6 | 6T is fetch-gated, not a finish |
 | `CLUSTER_FLOPS` | 0 / 1 | `*_FAKE.lib` |
 | FakeRAM designs | `riscv32i-mock-sram` | blackbox SRAM |

@@ -303,6 +303,22 @@ export function LabBench({
             </dd>
           </div>
           <div>
+            <dt>Stopped at</dt>
+            <dd>{data?.asap7?.stoppedAt ? String(data.asap7.stoppedAt) : "finish / none"}</dd>
+          </div>
+          <div>
+            <dt>Community DRC</dt>
+            <dd>
+              {data?.asap7?.drc
+                ? `${data.asap7.drc.nItems ?? "—"} items · not Calibre`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>6-track</dt>
+            <dd>{String((data?.asap7?.track6 as { status?: string } | undefined)?.status ?? "GAP")}</dd>
+          </div>
+          <div>
             <dt>Product win</dt>
             <dd>no</dd>
           </div>
@@ -367,7 +383,20 @@ export function LabBench({
             ))}
           </ol>
         )}
-        <p>{data?.asap7?.note ?? "Predictive FinFET track. Cook with ./scripts/run_lab_asap7.sh"}</p>
+        {(data?.asap7?.closureLadder as Record<string, { clk_ps?: number; timing_closed?: boolean }[]> | null) && (
+          <p>
+            Closure ladder:{" "}
+            {Object.entries(
+              (data?.asap7?.closureLadder as Record<string, { clk_ps?: number; timing_closed?: boolean }[]>) || {},
+            )
+              .map(
+                ([d, rows]) =>
+                  `${d} ${rows.map((r) => `${r.clk_ps ?? "?"}ps ${r.timing_closed ? "closed" : "open"}`).join(" → ")}`,
+              )
+              .join(" · ") || "—"}
+          </p>
+        )}
+        <p>{data?.asap7?.note ?? "Predictive FinFET track. Cook with python3 learn/scripts/run_asap7_e2e.py"}</p>
       </article>
 
       <div id="dse-compare" className="lb-faces">

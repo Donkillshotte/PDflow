@@ -1161,6 +1161,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "docs/asap7_research.md",
         "docs/asap7_close_plan.md",
         "docs/asap7_layer1_plan.md",
+        "docs/asap7_e2e_plan.md",
         "AGENTS.md",
         "CONTRIBUTING.md",
         "scripts/README.md",
@@ -1188,6 +1189,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "asap7_research.md",
         "asap7_close_plan.md",
         "asap7_layer1_plan.md",
+        "asap7_e2e_plan.md",
         "win_rule.py",
     ):
         check(needle in index or needle.replace("docs/", "") in index, f"docs index cites {needle}")
@@ -1242,6 +1244,14 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("asap.asu.edu" in layer1, "layer-1 plan names the ASU Calibre download")
     check("fetch_asap7_pdk.sh" in layer1, "layer-1 plan names the public PDK fetch")
     check("level 72" in layer1 and "107" in layer1, "layer-1 plan names the Xyce level 72→107 patch")
+    e2e_plan = (root / "docs/asap7_e2e_plan.md").read_text()
+    check("45.298" in e2e_plan, "asap7 e2e plan protects gold Dynamic IR")
+    check("product win" in e2e_plan, "asap7 e2e plan refuses a product win")
+    check("nangate45/gcd/flowlab" in e2e_plan, "asap7 e2e plan names the locked FlowLab path")
+    check("run_asap7_e2e.py" in e2e_plan, "asap7 e2e plan names the runner entry point")
+    check("stage ledger" in e2e_plan or "per-stage" in e2e_plan, "asap7 e2e plan names per-stage checkpoints")
+    check("Do not restamp" in e2e_plan, "asap7 e2e plan refuses a gold restamp")
+    check("One heavy cook at a time" in e2e_plan, "asap7 e2e plan keeps the one-job rule")
     check((root / "learn/scripts/fetch_asap7_pdk.sh").is_file(), "fetch_asap7_pdk.sh exists")
     check((root / "learn/scripts/lab_asap7_pdk.py").is_file(), "lab_asap7_pdk.py inventory exists")
     check("learn/lab/asap7/pdk/" in (root / ".gitignore").read_text(), "layer-1 PDK views are gitignored")
@@ -1334,6 +1344,15 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("leftover Calibre" in bench, "LabBench names leftover Calibre")
     check("Xyce inverter" in bench, "LabBench shows leftover Xyce inverter")
     check("asap7_layer1" in (root / "studio/src/lib/suite.ts").read_text(), "suite has ASAP7 layer-1 hook")
+    check("asap7_cook" in (root / "studio/src/lib/suite.ts").read_text(), "suite has ASAP7 cook hook")
+    check("asap7_drc" in (root / "studio/src/lib/suite.ts").read_text(), "suite has ASAP7 DRC hook")
+    check("asap7_lvs" in (root / "studio/src/lib/suite.ts").read_text(), "suite has ASAP7 LVS hook")
+    check("asap7_mmmc" in (root / "studio/src/lib/suite.ts").read_text(), "suite has ASAP7 MMMC hook")
+    check("run_asap7_e2e.py" in (root / "docs/script.md").read_text(), "script.md lists ASAP7 e2e runner")
+    check("lab_asap7_drc.py" in (root / "docs/script.md").read_text(), "script.md lists leftover-named ASAP7 DRC")
+    check((root / "learn/scripts/run_asap7_e2e.py").is_file(), "ASAP7 e2e runner exists")
+    check((root / "learn/scripts/lab_asap7_drc.py").is_file(), "leftover-named ASAP7 DRC script exists")
+    check("ASAP7 (Lab)" in (root / "learn/reference/suite-status.md").read_text(), "suite-status has ASAP7 section")
     check("lab_asap7_pdk" in (root / "studio/src/lib/run.ts").read_text(), "run.ts allows lab_asap7_pdk")
     check("asap7_calibre_gated" in (root / "learn/signoff/leftover_catalog.json").read_text(), "catalog names leftover ASAP7 Calibre")
     check("fmaxGhz" in bench or "fmax / period_min" in bench, "LabBench shows ASAP7 fmax")

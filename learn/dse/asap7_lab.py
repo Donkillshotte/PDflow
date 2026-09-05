@@ -6,12 +6,15 @@ Does not write nangate45/gcd/flowlab. Does not restamp gold 45.298 mV.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 import os
 import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from dse.flow_role import LOCKED_VARIANTS, is_locked_variant
 
@@ -31,8 +34,33 @@ VTS = ("RVT", "LVT", "SLVT", "SRAM")
 LIB_MODELS = ("NLDM", "CCS")
 TRACKS = ("7p5", "6")
 
-# CCS in this ORFS pack is RVT + FF only (see platforms/asap7/lib/CCS).
-CCS_OK = {("BC", "RVT")}
+STAGE_ORDER = ("synth", "floorplan", "place", "cts", "route", "finish")
+STAGE_HINTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    "synth": (("1_synth.v", "1_2_yosys.v", "1_synth.odb"), ("1_1_yosys.json", "1_synth.json")),
+    "floorplan": (
+        ("2_floorplan.odb", "2_1_floorplan.odb", "2_4_floorplan_pdn.odb"),
+        ("2_1_floorplan.json",),
+    ),
+    "place": (("3_place.odb", "3_5_place_dp.odb"), ("3_5_place_dp.json",)),
+    "cts": (("4_cts.odb", "4_1_cts.odb"), ("4_1_cts.json", "4_cts.json")),
+    "route": (("5_route.odb", "5_2_route.odb"), ("5_1_grt.json",)),
+    "finish": (("6_final.gds", "6_final.def", "6_final.odb"), ("6_report.json",)),
+}
+STAGE_PREFIX = {
+    "synth": "1_",
+    "floorplan": "2_",
+    "place": "3_",
+    "cts": "4_",
+    "route": "5_",
+    "finish": "6_",
+}
+
+GOLD_IR_REL = Path("learn/sim/reports/dynamic_ir_flowlab.json")
+GOLD_GDS_REL = Path("tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds")
+GOLD_RPT_REL = Path("tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/6_report.json")
+GOLD_IR_SHA = "938e122b1d25a3a4064134f0fa56a04357eb571d683ecedc67f089cf0dea850a"
+GOLD_GDS_SHA = "439f5eba0de2abd61d6c14328c8ac4d966dee085e9c51687b8ee09182244bcb3"
+GOLD_RPT_SHA = "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
 
 HEAVY_DESIGNS = frozenset(
     {"aes", "aes-block", "aes_lvt", "aes-mbff", "cva6", "swerv_wrapper", "ibex", "jpeg", "jpeg_lvt"}
@@ -287,6 +315,187 @@ def result_dir(spec: LabAsap7Spec, root: Path | None = None) -> Path:
     )
 
 
+def logs_dir(spec: LabAsap7Spec, root: Path | None = None) -> Path:
+    root = root or REPO
+    return (
+        root
+        / "tools/OpenROAD-flow-scripts/flow/logs/asap7"
+        / spec.nickname
+        / spec.variant
+    )
+
+
+def result_dir_for_variant(variant: str, root: Path | None = None) -> Path | None:
+    """Resolve results/asap7/<nick>/<variant> without reconstructing a spec."""
+    root = root or REPO
+    results = root / "tools/OpenROAD-flow-scripts/flow/results/asap7"
+    if not results.is_dir():
+        return None
+    hits = sorted(p for p in results.glob(f"*/{variant}") if p.is_dir())
+    return hits[0] if hits else None
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    h.update(path.read_bytes())
+    return h.hexdigest()
+
+
+def nangate_gold_status(root: Path | None = None) -> dict[str, Any]:
+    """Read-only gold check. Missing ORFS artifacts are a lock-absent warning."""
+    root = root or REPO
+    ir = root / GOLD_IR_REL
+    gds = root / GOLD_GDS_REL
+    rpt = root / GOLD_RPT_REL
+    ir_ok = ir.is_file() and _sha256(ir) == GOLD_IR_SHA and "45.298" in ir.read_text()
+    gds_ok = (not gds.is_file()) or _sha256(gds) == GOLD_GDS_SHA
+    rpt_ok = (not rpt.is_file()) or _sha256(rpt) == GOLD_RPT_SHA
+    return {
+        "ir_present": ir.is_file(),
+        "gds_present": gds.is_file(),
+        "rpt_present": rpt.is_file(),
+        "ir_ok": ir_ok,
+        "gds_ok": gds_ok,
+        "rpt_ok": rpt_ok,
+        "nangate_lock_absent": not gds.is_file(),
+        "untouched": ir_ok and gds_ok and rpt_ok,
+    }
+
+
+def assert_nangate_gold_untouched(root: Path | None = None, *, require_orfs: bool = False) -> dict[str, Any]:
+    st = nangate_gold_status(root)
+    if not st["ir_ok"]:
+        raise LabAsap7Refuse("REFUSED: Nangate gold IR missing or restamped")
+    if require_orfs and st["nangate_lock_absent"]:
+        raise LabAsap7Refuse("REFUSED: locked FlowLab GDS missing")
+    if not st["gds_ok"]:
+        raise LabAsap7Refuse("REFUSED: locked FlowLab GDS restamped")
+    if not st["rpt_ok"]:
+        raise LabAsap7Refuse("REFUSED: locked FlowLab 6_report restamped")
+    return st
+
+
+def _first_file(folder: Path, names: tuple[str, ...]) -> Path | None:
+    if not folder.is_dir():
+        return None
+    for name in names:
+        p = folder / name
+        if p.is_file():
+            return p
+    return None
+
+
+def _prefix_hit(folder: Path, prefix: str) -> Path | None:
+    if not folder.is_dir():
+        return None
+    hits = sorted(p for p in folder.iterdir() if p.is_file() and p.name.startswith(prefix))
+    return hits[0] if hits else None
+
+
+def stage_ledger_at(nickname: str, variant: str, root: Path | None = None) -> dict[str, Any]:
+    """Per-stage artifacts for one lab_asap7_* cook. No design-name branch."""
+    root = root or REPO
+    res = root / "tools/OpenROAD-flow-scripts/flow/results/asap7" / nickname / variant
+    logs = root / "tools/OpenROAD-flow-scripts/flow/logs/asap7" / nickname / variant
+    out: dict[str, Any] = {}
+    for name in STAGE_ORDER:
+        res_names, log_names = STAGE_HINTS[name]
+        art = _first_file(res, res_names) or _first_file(logs, log_names)
+        if art is None:
+            art = _prefix_hit(res, STAGE_PREFIX[name]) or _prefix_hit(logs, STAGE_PREFIX[name])
+        note: dict[str, Any] = {}
+        if name == "place":
+            dp = logs / "3_5_place_dp.json"
+            if dp.is_file():
+                from dse.f6_finish import parse_place_dp
+
+                note = parse_place_dp(dp)
+        elif name == "route":
+            grt = logs / "5_1_grt.json"
+            if grt.is_file():
+                from dse.f6_finish import parse_grt
+
+                note = parse_grt(grt)
+        out[name] = {
+            "done": art is not None,
+            "artifact": str(art) if art is not None else None,
+            "mtime": art.stat().st_mtime if art is not None else None,
+            "note": note,
+        }
+    return out
+
+
+def stage_ledger(spec: LabAsap7Spec, root: Path | None = None) -> dict[str, Any]:
+    return stage_ledger_at(spec.nickname, spec.variant, root)
+
+
+def stopped_at(ledger: dict[str, Any], *, gds_live: bool) -> str | None:
+    if gds_live:
+        return None
+    for name in STAGE_ORDER:
+        if not (ledger.get(name) or {}).get("done"):
+            return name
+    return None
+
+
+def default_plan_specs() -> list[LabAsap7Spec]:
+    """Cheap-first default cooks. uart relaxed is appended by the runner."""
+    return [
+        LabAsap7Spec(),
+        LabAsap7Spec(corner="BC"),
+        LabAsap7Spec(corner="WC"),
+        LabAsap7Spec(design="gcd-ccs", corner="BC", lib_model="CCS"),
+        LabAsap7Spec(lib_model="CCS", corner="TC"),
+        LabAsap7Spec(lib_model="CCS", corner="WC"),
+        LabAsap7Spec(vt=("RVT", "LVT")),
+        LabAsap7Spec(cluster_flops=True),
+        LabAsap7Spec(clk_ps=430),
+        LabAsap7Spec(clk_ps=480),
+        LabAsap7Spec(design="uart"),
+    ]
+
+
+def ceil_clk_10ps(period_min: float) -> int:
+    return int(math.ceil(float(period_min) / 10.0) * 10)
+
+
+def uart_relaxed_spec(root: Path | None = None) -> LabAsap7Spec:
+    smoke = LabAsap7Spec(design="uart")
+    qor = collect_report(smoke, root=root).get("qor") or {}
+    pmin = qor.get("period_min_ps")
+    clk = ceil_clk_10ps(float(pmin)) if pmin is not None else 290
+    if clk <= int(DESIGNS["uart"]["clk_ps"] or 270):
+        clk = 290
+    return LabAsap7Spec(design="uart", clk_ps=clk)
+
+
+def plan_refuse(spec: LabAsap7Spec, root: Path | None = None) -> str | None:
+    """Named refuse for the default plan. Does not cook."""
+    root = root or REPO
+    try:
+        validate(spec, root=root, allow_heavy=False)
+    except LabAsap7Refuse as exc:
+        return str(exc)
+    return None
+
+
+def closure_ladder(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    by: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        design = str(r.get("design") or "")
+        by.setdefault(design, []).append(
+            {
+                "variant": r.get("variant"),
+                "clk_ps": r.get("clk_ps"),
+                "wns_ps": r.get("wns_ps"),
+                "timing_closed": r.get("timing_closed"),
+            }
+        )
+    for items in by.values():
+        items.sort(key=lambda x: (x["clk_ps"] is None, float(x["clk_ps"] or 0)))
+    return by
+
+
 def flowlab_untouched(root: Path | None = None) -> bool:
     """Locked Nangate FlowLab tree still exists and is not our write target."""
     root = root or REPO
@@ -346,8 +555,21 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
     metrics["leakage_nw"] = (float(lk) * 1e9) if lk is not None else None
     metrics["ir_drop_vdd_mv"] = (float(ir) * 1e3) if ir is not None else None
     metrics["timing_closed"] = wns is not None and float(wns) >= 0
+    gds_live = gds.is_file()
+    extra = extra or {}
+    exit_code = extra.get("exit_code")
+    if exit_code is None:
+        ok = gds_live
+    else:
+        ok = bool(gds_live and int(exit_code) == 0)
+    ledger = stage_ledger(spec, root)
+    gold = nangate_gold_status(root)
     payload = {
-        "ok": gds.is_file(),
+        "ok": ok,
+        "gds_live": gds_live,
+        "stopped_at": stopped_at(ledger, gds_live=gds_live),
+        "stages": ledger,
+        "nangate_lock_absent": gold["nangate_lock_absent"],
         "surface": "lab",
         "platform": "asap7",
         "predictive": True,
@@ -453,6 +675,8 @@ def scan_folio(root: Path | None = None) -> list[dict]:
         pw = metrics.get("power_w")
         lk = metrics.get("leakage_w")
         ir = metrics.get("ir_vdd_worst_v")
+        ledger = stage_ledger_at(nickname, variant, root)
+        gds_live = True
         rows.append(
             {
                 "variant": variant,
@@ -467,6 +691,9 @@ def scan_folio(root: Path | None = None) -> list[dict]:
                 "period_min_ps": period_min,
                 "fmax_ghz": fmax,
                 "gds_bytes": gds.stat().st_size,
+                "gds_live": gds_live,
+                "stopped_at": stopped_at(ledger, gds_live=gds_live),
+                "stages": {k: {"done": v.get("done"), "artifact": v.get("artifact")} for k, v in ledger.items()},
             }
         )
     return rows
@@ -476,11 +703,17 @@ def write_folio(root: Path | None = None) -> Path:
     root = root or REPO
     dest = root / "learn" / "sim" / "reports" / "lab_asap7_folio.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
+    cooks = scan_folio(root)
     dest.write_text(
         json.dumps(
             {
                 "note": "Live folio — last cook is lab_asap7.json. No gold stamp.",
-                "cooks": scan_folio(root),
+                "cooks": cooks,
+                "closure_ladder": closure_ladder(cooks),
+                "track6": {
+                    "status": "GAP",
+                    "reason": "ASAP7_TRACK=6 refused until a second 6T platform exists",
+                },
             },
             indent=2,
         )
@@ -533,9 +766,9 @@ def cook(
     """Run scripts/run_lab_asap7.sh. One heavy cook at a time."""
     root = root or REPO
     spec = validate(spec or spec_from_env(), root=root)
+    extra: dict = {}
     if not flowlab_untouched(root):
-        # Course lock may be absent in a fresh clone; still refuse writing it.
-        pass
+        extra["nangate_lock_absent"] = True
     script = root / "scripts" / "run_lab_asap7.sh"
     proc = subprocess.run(
         ["bash", str(script), target],
@@ -545,7 +778,9 @@ def cook(
         capture_output=True,
         timeout=timeout_s,
     )
-    payload = collect_report(spec, root=root, extra={"exit_code": proc.returncode, "stderr_tail": (proc.stderr or "")[-2000:]})
+    extra["exit_code"] = proc.returncode
+    extra["stderr_tail"] = (proc.stderr or "")[-2000:]
+    payload = collect_report(spec, root=root, extra=extra)
     payload["ok"] = bool(payload.get("gds") and proc.returncode == 0)
     write_report(payload, root)
     if proc.returncode != 0:

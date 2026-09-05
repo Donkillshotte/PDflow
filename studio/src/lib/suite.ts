@@ -15,6 +15,10 @@ import {
   signoffAllHookDetail,
   staSignoffHookDetail,
   asap7Layer1HookDetail,
+  asap7CookHookDetail,
+  asap7DrcHookDetail,
+  asap7LvsHookDetail,
+  asap7MmmcHookDetail,
 } from "./leftoverCatalog";
 
 export type HookStatus = {
@@ -598,6 +602,38 @@ export async function getSuiteStatus() {
       detail: "GCD-cell output_current from SPICE · not foundry CCS",
       action: "ccs_char",
       href: "/tools?tab=run&action=ccs_char",
+    },
+    {
+      id: "asap7_cook",
+      label: "ASAP7 cooks (Lab)",
+      group: "Lab",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_folio.json")),
+      detail: asap7CookHookDetail(),
+      href: "/lab#asap7",
+    },
+    {
+      id: "asap7_drc",
+      label: "ASAP7 DRC (Lab)",
+      group: "Lab",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_drc.json")),
+      detail: asap7DrcHookDetail(),
+      href: "/lab#asap7",
+    },
+    {
+      id: "asap7_lvs",
+      label: "ASAP7 LVS (Lab)",
+      group: "Lab",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_lvs.json")),
+      detail: asap7LvsHookDetail(),
+      href: "/lab#asap7",
+    },
+    {
+      id: "asap7_mmmc",
+      label: "ASAP7 setup/hold (Lab)",
+      group: "Lab",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_mmmc.json")),
+      detail: asap7MmmcHookDetail(),
+      href: "/lab#asap7",
     },
     {
       id: "asap7_layer1",

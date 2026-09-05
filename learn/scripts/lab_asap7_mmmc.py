@@ -7,22 +7,20 @@ Same Verilog + SPEF + SDC. Two OpenSTA runs. Do not restamp 45.298.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
 import shutil
 import subprocess
-import sys
 from pathlib import Path
+
+from dse.asap7_lab import result_dir_for_variant
 
 ROOT = Path(__file__).resolve().parents[2]
 ORFS = ROOT / "tools/OpenROAD-flow-scripts/flow/platforms/asap7/lib/NLDM"
 OUT = ROOT / "learn" / "sim" / "reports" / "lab_asap7_mmmc.json"
-DEFAULT_DIR = (
-    ROOT
-    / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd"
-    / "lab_asap7_gcd_tc_rvt_nldm_7p5_480ps"
-)
+DEFAULT_VARIANT = "lab_asap7_gcd_tc_rvt_nldm_7p5_480ps"
 
 CORNER_LIBS = {
     "WC": (
@@ -88,8 +86,20 @@ def _sta_wns(verilog: Path, spef: Path, sdc: Path, libs: list[Path], path_delay:
     }
 
 
-def main() -> int:
-    res = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_DIR
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="ASAP7 setup WC / hold BC pair. Not a product win.")
+    parser.add_argument("res", nargs="?", default="")
+    parser.add_argument("--variant", default="")
+    args = parser.parse_args(argv)
+    variant = args.variant or DEFAULT_VARIANT
+    if args.res:
+        res = Path(args.res)
+        variant = res.name if res.name.startswith("lab_asap7_") else variant
+    else:
+        found = result_dir_for_variant(variant, ROOT)
+        res = found or (
+            ROOT / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd" / variant
+        )
     verilog = res / "6_final.v"
     spef = res / "6_final.spef"
     sdc = res / "6_final.sdc"
@@ -98,6 +108,16 @@ def main() -> int:
         return 1
     setup = _sta_wns(verilog, spef, sdc, [ORFS / n for n in CORNER_LIBS["WC"]], "max")
     hold = _sta_wns(verilog, spef, sdc, [ORFS / n for n in CORNER_LIBS["BC"]], "min")
+    setup_row = {"corner": "WC", "lib": "SS", "volt": 0.63, "temp_c": 100, **setup}
+    hold_row = {"corner": "BC", "lib": "FF", "volt": 0.77, "temp_c": 25, **hold}
+    by_variant = {}
+    if OUT.is_file():
+        try:
+            prev = json.loads(OUT.read_text())
+            by_variant = dict(prev.get("by_variant") or {})
+        except json.JSONDecodeError:
+            by_variant = {}
+    by_variant[variant] = {"setup": setup_row, "hold": hold_row, "ok": bool(setup.get("ok") and hold.get("ok"))}
     payload = {
         "ok": bool(setup.get("ok") and hold.get("ok")),
         "surface": "lab",
@@ -105,11 +125,13 @@ def main() -> int:
         "kind": "mmmc_pair",
         "product_win": False,
         "comparable_to_gold_ir": False,
+        "variant": variant,
         "netlist": str(verilog),
         "spef": str(spef),
         "sdc": str(sdc),
-        "setup": {"corner": "WC", "lib": "SS", "volt": 0.63, "temp_c": 100, **setup},
-        "hold": {"corner": "BC", "lib": "FF", "volt": 0.77, "temp_c": 25, **hold},
+        "setup": setup_row,
+        "hold": hold_row,
+        "by_variant": by_variant,
         "leftover": {
             "mmmc": "two serial OpenSTA runs, not a single MMMC session",
             "smoke_sdc": "SDC period is the cook SDC, not a 310 ps gold",

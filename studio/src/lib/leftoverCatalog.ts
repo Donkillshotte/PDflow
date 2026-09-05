@@ -245,6 +245,65 @@ export function lvsSignoffHookDetail(): string {
   return "KLayout GDS vs filtered CDL · leftover must-connect 2 (DFF_X2) · VIA_* flatten leftover";
 }
 
+export function asap7CookHookDetail(): string {
+  const folioPath = path.join(LEARN_ROOT, "sim/reports/lab_asap7_folio.json");
+  try {
+    if (!fs.existsSync(folioPath)) return "no live ASAP7 GDS · run learn/scripts/run_asap7_e2e.py";
+    const folio = JSON.parse(fs.readFileSync(folioPath, "utf8")) as {
+      cooks?: { timing_closed?: boolean }[];
+    };
+    const n = folio.cooks?.length ?? 0;
+    const closed = (folio.cooks ?? []).filter((r) => r.timing_closed).length;
+    return `${n} live cooks · ${closed} WNS≥0 · not a product win`;
+  } catch {
+    return "ASAP7 folio unreadable";
+  }
+}
+
+export function asap7DrcHookDetail(): string {
+  const p = path.join(LEARN_ROOT, "sim/reports/lab_asap7_drc.json");
+  try {
+    if (!fs.existsSync(p)) return "community KLayout DRC not run · leftover Calibre";
+    const d = JSON.parse(fs.readFileSync(p, "utf8")) as {
+      n_items?: number;
+      status?: string;
+    };
+    if (d.status === "GAP") return "ASAP7 DRC GAP · community deck leftover Calibre";
+    return `community KLayout · ${d.n_items ?? "?"} items · leftover Calibre`;
+  } catch {
+    return "ASAP7 DRC unreadable · leftover Calibre";
+  }
+}
+
+export function asap7LvsHookDetail(): string {
+  const p = path.join(LEARN_ROOT, "sim/reports/lab_asap7_lvs.json");
+  try {
+    if (!fs.existsSync(p)) return "cell-vs-CDL not run · leftover Calibre";
+    const d = JSON.parse(fs.readFileSync(p, "utf8")) as {
+      match_pct?: number;
+      status?: string;
+    };
+    if (d.status === "GAP") return "ASAP7 LVS GAP · fetch CDL · leftover Calibre";
+    return `cell-vs-CDL ${d.match_pct ?? "—"}% · leftover Calibre`;
+  } catch {
+    return "ASAP7 LVS unreadable · leftover Calibre";
+  }
+}
+
+export function asap7MmmcHookDetail(): string {
+  const p = path.join(LEARN_ROOT, "sim/reports/lab_asap7_mmmc.json");
+  try {
+    if (!fs.existsSync(p)) return "setup WC / hold BC not run";
+    const d = JSON.parse(fs.readFileSync(p, "utf8")) as {
+      setup?: { wns_ps?: number };
+      hold?: { wns_ps?: number };
+    };
+    return `setup WC ${d.setup?.wns_ps ?? "—"} / hold BC ${d.hold?.wns_ps ?? "—"} ps · not a product win`;
+  } catch {
+    return "ASAP7 MMMC unreadable";
+  }
+}
+
 export function asap7Layer1HookDetail(): string {
   const pdkPath = path.join(LEARN_ROOT, "sim/reports/lab_asap7_pdk.json");
   const spicePath = path.join(LEARN_ROOT, "sim/reports/lab_asap7_spice.json");
