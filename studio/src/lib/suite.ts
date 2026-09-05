@@ -19,6 +19,7 @@ import {
   asap7DrcHookDetail,
   asap7LvsHookDetail,
   asap7MmmcHookDetail,
+  asap7PkgHookDetail,
 } from "./leftoverCatalog";
 
 export type HookStatus = {
@@ -642,6 +643,15 @@ export async function getSuiteStatus() {
       ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_pdk.json")),
       detail: asap7Layer1HookDetail(),
       action: "lab_asap7_pdk",
+      href: "/lab#asap7",
+    },
+    {
+      id: "asap7_pkg",
+      label: "ASAP7 PKG (Lab)",
+      group: "Lab",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_pkg.json")),
+      detail: asap7PkgHookDetail(),
+      action: "lab_asap7_pkg",
       href: "/lab#asap7",
     },
     {

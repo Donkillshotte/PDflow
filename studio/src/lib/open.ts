@@ -335,6 +335,11 @@ export function listOpenTargets(): {
       action: "lab_asap7_pdk",
     },
     {
+      id: "run-lab-asap7-pkg",
+      label: "Run · ASAP7 leftover PKG (dummy bump + sidecar RDL)",
+      action: "lab_asap7_pkg",
+    },
+    {
       id: "run-lvs-deep",
       label: "Run · deep LVS (filtered CDL, well→VDD/VSS)",
       action: "lvs_deep",

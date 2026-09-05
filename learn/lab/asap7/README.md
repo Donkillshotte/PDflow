@@ -68,6 +68,10 @@ Layer-1 public PDK (HSpice `.pm`, placeholder Calibre):
 Xyce inverter, `level 72→107`). Never `.lvs.ok`.
 Cell-vs-CDL: `python3 learn/scripts/lab_asap7_lvs.py` (never `.lvs.ok`).
 Setup WC / hold BC on one netlist: `python3 learn/scripts/lab_asap7_mmmc.py`.
+Leftover-named PKG (dummy bump + sidecar RDL + compact VRM→board→pkg→die):
+`python3 learn/scripts/lab_asap7_pkg.py` (or `run_lab_asap7_pkg.sh`).
+Dummy, not C4. Lumped RLC, not Touchstone / Ansys CPA. Never writes
+`6_final.odb`. Models live in `learn/lab/asap7/pkg/`.
 
 See [`docs/asap7_research.md`](../../../docs/asap7_research.md).
 Close paths (three-layer kit, not leftover-free):

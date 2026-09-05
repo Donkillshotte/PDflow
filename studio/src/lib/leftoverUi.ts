@@ -163,6 +163,24 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
     tone: "built",
     needles: ["level 72→107", "leftover Xyce patch"],
   },
+  {
+    id: "asap7_dummy_bump",
+    label: "leftover ASAP7 dummy bump (not C4)",
+    tone: "leftover",
+    needles: ["dummy 2×2 bump", "not JEDEC C4"],
+  },
+  {
+    id: "asap7_sidecar_rdl",
+    label: "leftover ASAP7 sidecar RDL",
+    tone: "leftover",
+    needles: ["sidecar rdl_route", "never write 6_final"],
+  },
+  {
+    id: "asap7_compact_pkg",
+    label: "leftover ASAP7 compact PKG",
+    tone: "leftover",
+    needles: ["compact VRM", "not Ansys CPA"],
+  },
 ];
 
 const BY_ID = new Map(LEFTOVER_CHIPS.map((c) => [c.id, c]));

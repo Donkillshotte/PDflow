@@ -305,6 +305,11 @@ function readAsap7Lab(): Record<string, unknown> | null {
   const folioBlob = readJson("sim/reports/lab_asap7_folio.json");
   const pdk = readJson("sim/reports/lab_asap7_pdk.json");
   const spice = readJson("sim/reports/lab_asap7_spice.json");
+  const pkg = readJson("sim/reports/lab_asap7_pkg.json");
+  const pkgBump = (pkg?.bump as Record<string, unknown>) || {};
+  const pkgRdl = (pkg?.rdl as Record<string, unknown>) || {};
+  const pkgPdn = (pkg?.system_pdn as Record<string, unknown>) || {};
+  const pkgBumpPkg = (pkgBump.package as Record<string, unknown>) || {};
   const spiceWave = (spice?.wave as Record<string, unknown>) || {};
   const setup = (mmmc?.setup as Record<string, unknown>) || {};
   const hold = (mmmc?.hold as Record<string, unknown>) || {};
@@ -371,6 +376,19 @@ function readAsap7Lab(): Record<string, unknown> | null {
           inverted: spiceWave.inverted === true,
           voutWhenVinHigh: n(spiceWave.vout_when_vin_high),
           voutWhenVinLow: n(spiceWave.vout_when_vin_low),
+        }
+      : null,
+    pkg: pkg
+      ? {
+          ok: pkg.ok === true,
+          c4: pkg.c4 === true,
+          touchstone: pkg.touchstone === true,
+          nBumps: n(pkgBumpPkg.n_bumps),
+          rdlOk: pkgRdl.ok === true,
+          wroteFinal: pkgRdl.wrote_final === true,
+          vdd: n(pkgPdn.vdd),
+          droopMv: n(pkgPdn.droop_mv),
+          leftover: "dummy bump · sidecar RDL · compact VRM · not C4",
         }
       : null,
     note: raw?.note ?? "Live ASAP7 folio. Predictive FinFET. Not a product win.",

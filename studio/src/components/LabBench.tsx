@@ -368,6 +368,32 @@ export function LabBench({
                 : "—"}
             </dd>
           </div>
+          <div>
+            <dt>Dummy bump</dt>
+            <dd>
+              {data?.asap7?.pkg
+                ? `${data.asap7.pkg.nBumps ?? 4} · not C4`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Sidecar RDL</dt>
+            <dd>
+              {data?.asap7?.pkg
+                ? `${data.asap7.pkg.rdlOk ? "routed" : "leftover"} · never write 6_final`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Compact droop</dt>
+            <dd>
+              {data?.asap7?.pkg?.droopMv != null
+                ? `${data.asap7.pkg.droopMv.toFixed(2)} mV · ${data.asap7.pkg.vdd ?? 0.7} V · not Touchstone`
+                : data?.asap7?.pkg
+                  ? "compact VRM leftover · not Touchstone"
+                  : "—"}
+            </dd>
+          </div>
         </dl>
         {(data?.asap7?.folio?.length ?? 0) > 0 && (
           <ol className="lb-tape" aria-label="ASAP7 live runs">

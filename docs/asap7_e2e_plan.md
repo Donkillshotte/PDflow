@@ -25,7 +25,12 @@ rules it has today.
 
 Checked on disk 2026-09-05. Implementation of W1–W10 landed on this
 branch (`run_asap7_e2e.py`, stage ledger, leftover-named DRC, `--variant`
-on LVS/MMMC, suite hooks, two-tier e2e test). W11 stays a named GAP.
+on LVS/MMMC, suite hooks, two-tier e2e test). A leftover-named PKG
+workstream (dummy 2×2 bump LEF, sidecar `rdl_route`, compact
+VRM→board→pkg→die at 0.70 V) is attached to the runner, folio
+analysis, Studio `asap7_pkg` hook, leftover catalog, and LabBench.
+Dummy, not C4. Not Touchstone. Not Ansys CPA. Not a product win.
+W11 stays a named GAP.
 A fresh clone still passes tier 1 without GDS. On a toolchain
 machine the runner rebuilt all twelve cookable specs serially;
 `test_asap7_e2e.py` then passed tier 2. Live rows only (gitignored
@@ -586,7 +591,9 @@ what happens to pass first.
 4. **W4, W6, W7** (attach MMMC / LVS / layer-1 to the run).
 5. **W5** (DRC wiring — the only genuinely new analysis script).
 6. **W10** (suite-status, Studio hooks, docs, map check).
-7. **W11** stays a named GAP.
+7. **PKG leftover** (dummy bump + sidecar RDL + compact ladder) —
+   attached after W10; leftover-named, not a product win.
+8. **W11** stays a named GAP.
 
 Each lands as its own commit with its own test delta. Fast suite
 rules apply: synthetic or gcd-scale; one `test_dse.py` at a time;
@@ -606,6 +613,8 @@ live cooks last and only one at a time.
 | 6-track finish | second platform is a project (§5.11) |
 | ASAP7 gold numbers | forbidden by design — live rows only |
 | ASAP7 product win / course swap | forbidden (`AGENTS.md`, `asap7_research.md`) |
+| JEDEC C4 / µbump | leftover dummy 1.0 µm LEF on M9/M4 |
+| Touchstone / Ansys CPA | leftover compact lumped VRM→board→pkg→die |
 
 ---
 

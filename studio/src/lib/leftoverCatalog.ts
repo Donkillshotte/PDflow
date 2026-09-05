@@ -344,6 +344,41 @@ export function asap7Layer1HookDetail(): string {
   return bits.join(" · ");
 }
 
+export function asap7PkgHookDetail(): string {
+  const p = path.join(LEARN_ROOT, "sim/reports/lab_asap7_pkg.json");
+  try {
+    if (!fs.existsSync(p)) {
+      return (
+        "dummy 2×2 bump · sidecar rdl_route · never write 6_final · " +
+        "compact VRM not run · not JEDEC C4 · leftover no Touchstone · not Ansys CPA"
+      );
+    }
+    const d = JSON.parse(fs.readFileSync(p, "utf8")) as {
+      bump?: { package?: { n_bumps?: number } };
+      rdl?: { ok?: boolean; wrote_final?: boolean };
+      system_pdn?: { ok?: boolean; vdd?: number; droop_mv?: number | null };
+    };
+    const n = d.bump?.package?.n_bumps ?? 4;
+    const rdl = d.rdl?.ok ? "sidecar rdl_route ran" : "sidecar rdl_route leftover";
+    const droop = d.system_pdn?.droop_mv;
+    const vdd = d.system_pdn?.vdd ?? 0.7;
+    const pdn =
+      droop != null
+        ? `compact VRM ${vdd} V · droop ${droop} mV`
+        : `compact VRM ${vdd} V`;
+    const wrote = d.rdl?.wrote_final === true ? "wrote 6_final" : "never write 6_final";
+    return (
+      `dummy 2×2 bump (${n}) · ${rdl} · ${wrote} · ${pdn} · ` +
+      "not JEDEC C4 · leftover no Touchstone · not Ansys CPA"
+    );
+  } catch {
+    return (
+      "dummy 2×2 bump · sidecar rdl_route · never write 6_final · " +
+      "compact VRM unreadable · not JEDEC C4 · leftover no Touchstone · not Ansys CPA"
+    );
+  }
+}
+
 export function hookLeftoverIds(hookId: string, detail: string): string[] {
   return leftoverIdsMatchingDetail(detail, hookId);
 }

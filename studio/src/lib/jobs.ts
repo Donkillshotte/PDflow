@@ -53,6 +53,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   analytical_pex: null,
   ccs_char: null,
   lab_asap7_pdk: null,
+  lab_asap7_pkg: null,
   lvs_deep: "finish",
   layout_tools: null,
   spice_engines: null,
