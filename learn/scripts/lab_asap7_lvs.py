@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Leftover-named ASAP7 cell-vs-CDL check. Not Calibre. Not a product win.
+"""ASAP7 cell-vs-CDL check. Not Calibre. Not a product win.
 
 Compares GDS instance masters (KLayout) to .SUBCKT names in the fetched
-7.5T CDL. Expect <100%. Do not stamp .lvs.ok. Do not restamp 45.298.
+7.5T CDL. Expect <100%. Do not stamp .lvs.ok. Do not change the
+Nangate IR reference 45.298 mV.
 """
 
 from __future__ import annotations
@@ -79,7 +80,7 @@ def main() -> int:
         sub |= _subckts(p)
     top, cells = _gds_cells(gds)
     # Skip filler / tap / decap noise in the coverage numerator? Keep all,
-    # but report filler separately. Leftover-named, not a gold.
+    # but report filler separately. Not a gold number.
     fillers = {c for c in cells if c.upper().startswith(("FILL", "TAP", "DECAP"))}
     logic = cells - fillers
     hit = logic & sub
@@ -110,7 +111,7 @@ def main() -> int:
             "stamp": "never write .lvs.ok for ASAP7",
         },
         "note": (
-            "Leftover-named cell-vs-CDL. Not Calibre. Not a product win. "
+            "Cell-vs-CDL. Not Calibre. Not a product win. "
             "Live metrics only — no gold stamp."
         ),
     }

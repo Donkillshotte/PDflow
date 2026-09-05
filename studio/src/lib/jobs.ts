@@ -101,7 +101,7 @@ function writeHistory(data: HistoryFile) {
   fs.writeFileSync(HISTORY_PATH(), JSON.stringify(data, null, 2) + "\n");
 }
 
-/** Running rows with no live lock are leftovers from a crashed cook. */
+/** Running rows with no live lock are leftovers from a crashed run. */
 function reconcileOrphanJobs() {
   const lock = readLock();
   const data = readHistory();

@@ -112,8 +112,8 @@ def main() -> int:
     check('router.replace("/pkg")' in flowlab, "stale /flow?phase=pkg opens /pkg")
     check("doneCount / PHASES.length" not in flowlab, "progress ring does not divide by nine phases")
     check(
-        "cook stages" in flowlab and "leftover named on signoff" in flowlab,
-        "progress ring is cook count, not leftover-free close",
+        "RTL → finish" in flowlab and "open items stay listed on signoff" in flowlab,
+        "progress ring is stage count, not leftover-free close",
     )
     check('href: "/flow?phase=pkg"' not in home, "home does not treat Package as a FlowLab finish phase")
     vis = (ROOT / "studio/src/components/flowlab/FlowLabPhaseVisual.tsx").read_text()

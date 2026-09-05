@@ -9,7 +9,7 @@ const SURFACES = [
     id: "course",
     label: "Course",
     href: "/flow",
-    note: "FlowLab · leftover named",
+    note: "FlowLab · open items listed",
     match: (p: string) =>
       p === "/" ||
       p.startsWith("/flow") ||

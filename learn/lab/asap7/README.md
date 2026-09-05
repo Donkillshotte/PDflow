@@ -3,7 +3,7 @@
 Research track only. Predictive 7 nm FinFET. Not manufacturable.
 Does not decide product wins. Does not replace the Nangate45 course.
 
-## Cook (RTL → GDS)
+## RTL → GDS
 
 ```bash
 # default: gcd, typical corner, RVT, NLDM, 7.5-track
@@ -52,15 +52,15 @@ AES stays refused without `ALLOW_HEAVY_ANALYSIS=1`.
 IR on this track is a new mesh. `comparable_to_gold_ir` is false.
 Gold Dynamic IR stays **45.298 mV** on Nangate `gcd/flowlab`.
 
-## Live cooks (no gold stamp)
+## Live runs (no gold stamp)
 
-`learn/sim/reports/lab_asap7.json` is the last cook. It is gitignored.
+`learn/sim/reports/lab_asap7.json` is the last run. It is gitignored.
 `learn/sim/reports/lab_asap7_folio.json` lists every live `lab_asap7_*` GDS.
 Do not freeze numbers, do not copy `6_report.json` into `learn/sim/reports/`.
 Check live GDS with `python3 learn/scripts/test_asap7_e2e.py`.
-CCS/CDL extras (leftover-named, not Calibre): `learn/scripts/fetch_asap7_libextras.sh`.
+CCS/CDL extras (not Calibre): `learn/scripts/fetch_asap7_libextras.sh`.
 Layer-1 public PDK (HSpice `.pm`, placeholder Calibre):
-`learn/scripts/run_lab_asap7_pdk.sh` (fetch + inventory + leftover
+`learn/scripts/run_lab_asap7_pdk.sh` (fetch + inventory +
 Xyce inverter, `level 72→107`). Never `.lvs.ok`.
 Cell-vs-CDL: `python3 learn/scripts/lab_asap7_lvs.py` (never `.lvs.ok`).
 Setup WC / hold BC on one netlist: `python3 learn/scripts/lab_asap7_mmmc.py`.

@@ -87,16 +87,17 @@ files exist. Even then: no Calibre 2017 binary here means
 
 | After fetch | Can do | Cannot do |
 |---|---|---|
-| Three `.pm` cards | Read BSIM-CMG params; leftover **Xyce** inverter after a `level 72→107` patch | Drop into ngspice as-is. Run HSpice (not installed). Krylov on AES |
+| Three `.pm` cards | Read BSIM-CMG params; **Xyce** inverter after a `level 72→107` patch | Drop into ngspice as-is. Run HSpice (not installed). Krylov on AES |
 | `cdslib/` | Inventory transistor flavors | Open Virtuoso. Schematic → layout academic flow |
 | DRM PDF | Read rules that the community KLayout deck lags | Calibre DRC |
 | Placeholder `calibre/` | Prove the decks are missing | DRC / LVS / xACT |
 
-Live leftover spice (this image): `lab_asap7_spice.py` joins HSpice
+Live Xyce check (this image): `lab_asap7_spice.py` joins HSpice
 `+` cards, retargets **level 72 → 107** (Xyce BSIM-CMG v107), and
-runs a tiny RVT inverter. Not AES. Not gold 45.298. Studio `/lab`
-`#asap7` and suite hook `asap7_layer1` show the inventory + leftover
-Calibre + Xyce result. Wrapper: `run_lab_asap7_pdk.sh`.
+runs a tiny RVT inverter. Not AES. Not the Nangate IR reference
+45.298 mV. Studio `/lab` `#asap7` and suite hook `asap7_layer1`
+show the inventory, missing Calibre decks, and the Xyce result.
+Wrapper: `run_lab_asap7_pdk.sh`.
 
 ---
 

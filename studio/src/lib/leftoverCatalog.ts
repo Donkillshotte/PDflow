@@ -1,6 +1,6 @@
 /**
- * Machine-readable leftover catalog. Gated leftovers stay named; they are not
- * closed on Nangate45. See learn/signoff/leftover_catalog.json.
+ * Machine-readable catalog of items still open. Gated items stay listed;
+ * they are not closed on Nangate45. See learn/signoff/leftover_catalog.json.
  */
 import fs from "fs";
 import path from "path";

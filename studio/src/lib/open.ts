@@ -5,7 +5,7 @@ import { REPO_ROOT, LEARN_ROOT } from "./course";
 
 const DEFAULT_VARIANT = "learn";
 
-/** Prefer FlowLab when the physical cook is there. Course tree stays `learn`. */
+/** Prefer FlowLab when the physical finish is there. Course tree stays `learn`. */
 export function preferredResultsVariant(): "flowlab" | "learn" {
   const flowlab = resultsDir("flowlab");
   const learn = resultsDir("learn");

@@ -4,7 +4,7 @@ Next.js UI for the course and FlowLab. It launches the same scripts as
 the CLI (`learn/scripts/`). It does not decide product wins.
 
 Index: [`docs/README.md`](../docs/README.md) · course: [`docs/course.md`](../docs/course.md).
-`FLOW_VARIANT` in `{learn, flowlab, base}` is locked for product cooks.
+`FLOW_VARIANT` in `{learn, flowlab, base}` is locked for product runs.
 
 ## Run
 
@@ -31,14 +31,14 @@ Course and FlowLab are different variants. Do not mix their artifacts.
 ## FlowLab (`/flow`)
 
 Isolated finish at `results/nangate45/gcd/flowlab`.
-ORFS recook (`synth` … `finish`) is refused while `6_final.gds` exists
+ORFS re-run (`synth` … `finish`) is refused while `6_final.gds` exists
 (HTTP 403). That baseline is not overwritten. Signoff, RTL sim, and ECO
 apply on `eco_scratch` stay available. Param knobs become display-only.
 
 1. RTL — Monaco, Icarus, VCD
 2. synth → finish — layout preview, phase log
 3. Signoff — STA → DRC → LVS → power (`signoff_all`). Leftover stays named
-   (setup open, DFF_X2 must-connect, typical.lib only / no MCMM, no density
+   (setup still open, DFF_X2 must-connect, typical.lib only / no MCMM, no density
    or named ERC in `FreePDK45.lydrc`)
 4. ECO — propose on `flowlab`; apply/close on `eco_scratch` only.
    Locked leftover is setup open (WNS −0.02, 16 viol). Copy leftover is
@@ -55,7 +55,7 @@ Screenshots: `studio/docs/images/flowlab/`.
 One ORFS job at a time (`learn/.studio-run.lock`).
 Missing prior-phase artifacts return HTTP 412.
 A running job returns HTTP 409.
-A FlowLab ORFS recook against an existing `6_final.gds` returns HTTP 403.
+A FlowLab ORFS re-run against an existing `6_final.gds` returns HTTP 403.
 Long actions (`cts`, `route`, `finish`, `signoff_all`, ECO apply/close)
 ask for confirmation.
 
@@ -67,7 +67,7 @@ ask for confirmation.
 | `GET /api/signoff?variant=` | four pillars vs `golden-gcd.json` |
 | `GET /api/suite` | hook matrix |
 | `GET /api/story` | three-surface snapshot |
-| `GET /api/product` | official-slot cooks vs `win_rule.py` |
+| `GET /api/product` | official-slot runs vs `win_rule.py` |
 | `GET /api/inspect?stage=` | ODB / STA / Yosys |
 | `POST /api/viewer` | OpenROAD `-web` on port 43190 |
 | `GET/PUT /api/flowlab` | RTL + params |

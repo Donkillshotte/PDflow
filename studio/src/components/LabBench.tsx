@@ -161,7 +161,7 @@ function ShotFace({ shot, label }: { shot: Shot | null; label: string }) {
     <article className="lb-face">
       <header>
         <span>{label}</span>
-        <strong>{shot ? `${shot.role} · ${shot.designId}` : "no cook yet"}</strong>
+        <strong>{shot ? `${shot.role} · ${shot.designId}` : "no run yet"}</strong>
       </header>
       <dl>
         <div>
@@ -354,7 +354,7 @@ export function LabBench({
           </div>
         </dl>
         {(data?.asap7?.folio?.length ?? 0) > 0 && (
-          <ol className="lb-tape" aria-label="ASAP7 live folio">
+          <ol className="lb-tape" aria-label="ASAP7 live runs">
             {(data?.asap7?.folio ?? []).map((row, i) => (
               <li key={`${row.variant ?? "cook"}-${i}`}>
                 <i>{row.timing_closed ? "closed" : "open"}</i>
@@ -371,7 +371,7 @@ export function LabBench({
       </article>
 
       <div id="dse-compare" className="lb-faces">
-        <ShotFace shot={data?.prevLaunch ?? null} label="Cook before" />
+        <ShotFace shot={data?.prevLaunch ?? null} label="Previous run" />
         <ShotFace shot={data?.thisLaunch ?? null} label="This launch" />
         <aside className="lb-delta">
           <h3>This launch vs the one before</h3>

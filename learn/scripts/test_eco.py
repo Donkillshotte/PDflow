@@ -170,8 +170,8 @@ def main() -> int:
     check('router.replace("/pkg")' in flow, "stale /flow?phase=pkg opens /pkg")
     check("CLOSE_PHASES" in flow, "FlowLab progress counts RTL → finish, not PKG")
     check(
-        "cook stages" in flow and "leftover named on signoff" in flow,
-        "progress ring is cook count, not leftover-free close",
+        "RTL → finish" in flow and "open items stay listed on signoff" in flow,
+        "progress ring is stage count, not leftover-free close",
     )
     check("ninth signoff pillar" in flow, "FlowLab hero says PKG is not a signoff pillar")
     phases = (ROOT / "studio/src/components/flowlab/phases.ts").read_text()

@@ -54,10 +54,11 @@ Install profiles, versions, troubleshooting: [docs/install.md](docs/install.md).
 # FlowLab: http://127.0.0.1:43217/flow
 ```
 
-Monaco RTL editor, ORFS parameters, eight cook stages (RTL → finish),
-layout viewport, leftover-named signoff. Locked `flowlab` leftover is
-setup open (WNS −0.02). The `eco_scratch` copy is register-to-register
-MET; leftover is course output delay on `resp_msg[14]`.
+Monaco RTL editor, ORFS parameters, eight stages (RTL → finish),
+layout viewport, signoff that still lists open items. Locked `flowlab`
+setup is still open (WNS −0.02). The `eco_scratch` copy meets
+register-to-register timing; the remaining open item is course
+output delay on `resp_msg[14]`.
 Screenshots: [`studio/docs/images/flowlab/`](studio/docs/images/flowlab/).
 API and layout: [studio/README.md](studio/README.md).
 

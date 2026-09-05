@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Leftover-named ASAP7 inverter on patched Xyce BSIM-CMG cards.
+"""ASAP7 inverter on patched Xyce BSIM-CMG cards.
 
 HSpice ships level=72. Xyce 7.4 maps BSIM-CMG v107 to level=107.
-Tiny inverter only. Not AES. Not gold 45.298. Never writes .lvs.ok.
+Tiny inverter only. Not AES. Does not change the Nangate IR
+reference 45.298 mV. Never writes .lvs.ok.
 """
 
 from __future__ import annotations
@@ -140,7 +141,7 @@ def run_spice(root: Path = ROOT) -> dict:
             "calibre": "ASU encrypted tarball + Calibre 2017.3/2017.4 not in this image",
             "stamp": "never write .lvs.ok for ASAP7",
         },
-        "note": "Leftover-named ASAP7 Xyce inverter. Not a product win. "
+        "note": "ASAP7 Xyce inverter. Not a product win. "
         "Live metrics only — no gold stamp.",
     }
     if not src.is_file():
@@ -154,7 +155,7 @@ def run_spice(root: Path = ROOT) -> dict:
     pm.write_text(patched)
     models = parse_models(raw)
     net.write_text(
-        f"""* leftover-named ASAP7 inverter. Not gold 45.298. Not AES.
+        f"""* ASAP7 inverter on patched Xyce cards. Not the Nangate 45.298 mV IR. Not AES.
 .include {pm}
 Vdd vdd 0 0.7
 Vin in 0 PULSE(0 0.7 50p 10p 10p 200p 500p)

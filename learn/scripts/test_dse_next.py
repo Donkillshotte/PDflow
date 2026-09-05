@@ -1204,7 +1204,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("docs/README.md" in root_readme, "root README points at docs index")
     check("win_rule.py" in root_readme, "root README names win_rule")
     check("seven-phase" not in root_readme, "root README does not call FlowLab a seven-phase pipeline")
-    check("eight cook stages" in root_readme and "resp_msg[14]" in root_readme, "root README names leftover-named signoff")
+    check("eight stages" in root_readme and "resp_msg[14]" in root_readme, "root README names signoff that still lists open items")
     learn_readme = (root / "learn/README.md").read_text()
     check("[RTL → PKG]" not in learn_readme, "learn README does not call FlowLab RTL → PKG")
     check("RTL → finish" in learn_readme, "learn README names FlowLab RTL → finish")
