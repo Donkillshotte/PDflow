@@ -26,8 +26,12 @@ rules it has today.
 Checked on disk 2026-09-05. Implementation of W1–W10 landed on this
 branch (`run_asap7_e2e.py`, stage ledger, leftover-named DRC, `--variant`
 on LVS/MMMC, suite hooks, two-tier e2e test). W11 stays a named GAP.
-Live cooks remain resume-only: a fresh clone passes tier 1 without GDS.
-Evidence lines below name the file that proves each claim.
+A fresh clone still passes tier 1 without GDS. On a toolchain
+machine the runner rebuilt all twelve cookable specs serially;
+`test_asap7_e2e.py` then passed tier 2. Live rows only (gitignored
+folio) — not gold. uart 290 ps stayed open. Gold IR SHA intact;
+Nangate FlowLab GDS absent (`nangate_lock_absent`). Evidence lines
+below name the file that proves each claim.
 
 ---
 
