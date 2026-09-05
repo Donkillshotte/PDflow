@@ -240,10 +240,11 @@ Do one heavy cook at a time. No AES. No gold stamp.
 
 1. **Report fmax / `period_min`** on the live GDS (no recook). Done
    in `collect_report` + Studio `/lab` `#asap7`.
-2. **One relaxed-clock gcd TC** (`LAB_CLK_PS` ≈ 430) to show WNS ≥ 0
-   if we want a closed-timing *picture*. Variant is tagged `_430ps`
-   so it does not overwrite the 310 ps GDS. Honest leftover: different
-   SDC than ORFS smoke.
+2. **One relaxed-clock gcd TC** to show WNS ≥ 0. Live: 430 ps still
+   open (WNS −23 ps, `period_min` 453 ps) — a longer SDC changes
+   repair, so 310+116 is not a close. Next picture is `_480ps`.
+   Variant is tagged so it does not overwrite the 310 ps GDS.
+   Honest leftover: different SDC than ORFS smoke.
 3. **CCS extract** from `asap7sc7p5t_28` `.7z` when `p7zip` is
    present (`learn/scripts/fetch_asap7_libextras.sh`) — then the
    RVT+BC refuse drops because `ccs_ready` sees the files.

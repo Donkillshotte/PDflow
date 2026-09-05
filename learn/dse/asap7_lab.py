@@ -216,13 +216,24 @@ def validate(spec: LabAsap7Spec, *, root: Path | None = None, allow_heavy: bool 
         raise LabAsap7Refuse(f"REFUSED: lab variant must start with {VARIANT_PREFIX}")
     if "krylov" in variant.lower():
         raise LabAsap7Refuse("REFUSED: Krylov is not a lab ASAP7 variant")
-    if spec.lib_model == "CCS" and not ccs_ready(spec.corner, spec.primary_vt, root):
-        raise LabAsap7Refuse(
-            "REFUSED: CCS liberty missing for "
-            f"CORNER={spec.corner} VT={spec.primary_vt}. "
-            "Slim pack is RVT+BC only. Fetch extras with "
-            "learn/scripts/fetch_asap7_libextras.sh"
-        )
+    if spec.lib_model == "CCS":
+        # ORFS platforms/asap7/config.mk only defines BC_CCS_LIB_FILES.
+        # Fetched TT/SS extras are leftover-named until those variables exist.
+        if (spec.corner, spec.primary_vt) not in CCS_OK:
+            extra = (
+                "Extras may be on disk; ORFS still only wires BC_CCS_LIB_FILES. "
+                if ccs_ready(spec.corner, spec.primary_vt, root)
+                else ""
+            )
+            raise LabAsap7Refuse(
+                "REFUSED: CCS cook is RVT + BC in this ORFS pack. "
+                f"{extra}Got CORNER={spec.corner} VT={spec.primary_vt}"
+            )
+        if not ccs_ready(spec.corner, spec.primary_vt, root):
+            raise LabAsap7Refuse(
+                "REFUSED: CCS liberty missing for "
+                f"CORNER={spec.corner} VT={spec.primary_vt}"
+            )
     if spec.track == "6":
         raise LabAsap7Refuse(
             "REFUSED: 6-track is fetch-gated leftover. RTL→GDS uses 7.5-track. "

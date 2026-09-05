@@ -51,16 +51,14 @@ def main() -> None:
             raise SystemExit(f"FAIL expected refuse {bad}")
 
     wc_ccs = LabAsap7Spec(lib_model="CCS", corner="WC")
-    if ccs_ready("WC", "RVT", ROOT):
+    try:
         validate(wc_ccs, root=ROOT, allow_heavy=False)
-        check(True, "CCS WC accepted after leftover extras")
+    except LabAsap7Refuse as exc:
+        check("REFUSED" in str(exc), "CCS WC refused (ORFS wires BC_CCS only)")
     else:
-        try:
-            validate(wc_ccs, root=ROOT, allow_heavy=False)
-        except LabAsap7Refuse as exc:
-            check("REFUSED" in str(exc), "CCS WC refused without extras")
-        else:
-            raise SystemExit("FAIL expected CCS WC refuse without extras")
+        raise SystemExit("FAIL expected CCS WC refuse; ORFS has no WC_CCS_LIB_FILES")
+    if ccs_ready("TC", "RVT", ROOT):
+        check(True, "leftover CCS TT extras exist on disk")
 
     multi = validate(LabAsap7Spec(vt=("RVT", "LVT"), corner="WC"))
     check(multi.variant.endswith("wc_rvt+lvt_nldm_7p5"), multi.variant)
