@@ -289,6 +289,7 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
                 "310 ps + default 65% util can fail CTS legalization; "
                 "pass CORE_UTILIZATION for a larger die"
             ),
+            "uart_slang": "ORFS uart wants slang.so; pass SYNTH_HDL_FRONTEND= for Yosys",
         },
         "qor": metrics,
         "note": (

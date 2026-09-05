@@ -21,6 +21,10 @@ LAB_ASAP7_DESIGN=gcd-ccs CORNER=BC LIB_MODEL=CCS ./scripts/run_lab_asap7.sh fini
 
 # multi-bit FF clustering (uses *_FAKE.lib)
 CLUSTER_FLOPS=1 ./scripts/run_lab_asap7.sh finish
+
+# uart (slang.so leftover — Yosys default frontend, DATA_WIDTH already 8)
+LAB_ASAP7_DESIGN=uart SYNTH_HDL_FRONTEND= EQUIVALENCE_CHECK=0 \
+  ./scripts/run_lab_asap7.sh finish
 ```
 
 Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.

@@ -61,6 +61,13 @@ fi
 if [[ -n "${PLACE_DENSITY:-}" ]]; then
   MAKE_EXTRA+=( PLACE_DENSITY="${PLACE_DENSITY}" )
 fi
+# uart leftover: ORFS sets SYNTH_HDL_FRONTEND=slang; slang.so is not in this image.
+if [[ -n "${SYNTH_HDL_FRONTEND+x}" ]]; then
+  MAKE_EXTRA+=( SYNTH_HDL_FRONTEND="${SYNTH_HDL_FRONTEND}" )
+fi
+if [[ -n "${EQUIVALENCE_CHECK:-}" ]]; then
+  MAKE_EXTRA+=( EQUIVALENCE_CHECK="${EQUIVALENCE_CHECK}" )
+fi
 if [[ -n "${CLK_PS}" ]]; then
   # ASAP7 liberty time_unit is 1ps. Do not rewrite to the course 0.46 ns SDC.
   SDC_DIR="${ROOT}/learn/sim/dse/sdc"

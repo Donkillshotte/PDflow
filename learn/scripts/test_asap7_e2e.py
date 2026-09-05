@@ -106,10 +106,10 @@ def main() -> None:
         LabAsap7Spec(design="gcd-ccs", corner="BC", lib_model="CCS"),
         must_exist=True,
     )
-    wc = check_live_cook(LabAsap7Spec(corner="WC"), must_exist=False)
-    bc = check_live_cook(LabAsap7Spec(corner="BC"), must_exist=False)
-    lvt = check_live_cook(LabAsap7Spec(vt=("RVT", "LVT")), must_exist=False)
-    mbff = check_live_cook(LabAsap7Spec(cluster_flops=True), must_exist=False)
+    wc = check_live_cook(LabAsap7Spec(corner="WC"), must_exist=True)
+    bc = check_live_cook(LabAsap7Spec(corner="BC"), must_exist=True)
+    lvt = check_live_cook(LabAsap7Spec(vt=("RVT", "LVT")), must_exist=True)
+    mbff = check_live_cook(LabAsap7Spec(cluster_flops=True), must_exist=True)
     uart = check_live_cook(LabAsap7Spec(design="uart"), must_exist=False)
 
     stamped = ROOT / "learn/sim/reports/lab_asap7.json"
