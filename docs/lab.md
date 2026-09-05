@@ -46,7 +46,8 @@ Build solver: `./learn/scripts/build_dpn_engine.sh`.
 - Lab ASAP7 RTL→GDS is a **separate** track (`lab_asap7_*`,
   [`learn/lab/asap7/README.md`](../learn/lab/asap7/README.md)).
   Predictive FinFET. Not a product win. IR is not comparable to
-  gold 45.298 mV.
+  gold 45.298 mV. Live GDS only — no ASAP7 gold stamp.
+  `lab_asap7.json` is the last cook and is not committed.
 - Gold GCD Dynamic IR **45.298 mV**: never restamped
   (`learn/sim/reports/dynamic_ir_flowlab.json`).
 - Current FlowLab finish **5.173 mV** (worker `n_r` ~5816, finish SPEF t50) = `current_run`,

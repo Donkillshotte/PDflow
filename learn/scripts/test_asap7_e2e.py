@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 from dse.asap7_lab import LabAsap7Spec, collect_report, result_dir, validate
@@ -112,6 +113,14 @@ def main() -> None:
         live = json.loads(stamped.read_text())
         check("gold_ir_mv" not in live, "stamped lab report has no gold_ir_mv")
         check("45.298" not in stamped.read_text(), "stamped lab report has no 45.298")
+        check(live.get("note") and "no gold stamp" in str(live["note"]).lower(), "live note denies gold stamp")
+
+    tracked = subprocess.check_output(
+        ["git", "ls-files", "--", "learn/sim/reports/lab_asap7.json", "learn/sim/reports/lab_asap7_gcd_6_report.json"],
+        cwd=ROOT,
+        text=True,
+    ).strip()
+    check(tracked == "", "no ASAP7 report is tracked as a golden")
 
     assert_nangate_gold_untouched()
     print(

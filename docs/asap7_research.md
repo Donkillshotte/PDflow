@@ -195,6 +195,7 @@ win surface.
 Do not mix ASAP7 into the Nangate45 course. Do not recook locked
 `gcd/flowlab`. Do not restamp gold Dynamic IR **45.298 mV**.
 
-First lab cook (gcd / TC / RVT / NLDM / 7.5-track): GDS written,
-WNS −115.7 ps (open), area 53.0 µm², power 0.761 mW, leakage 45 nW,
-IR 3.65 mV on a new mesh. Report: `learn/sim/reports/lab_asap7.json`.
+Live lab cooks write GDS under `results/asap7/<design>/lab_asap7_*`.
+`learn/sim/reports/lab_asap7.json` is the last cook (gitignored).
+Do not freeze those numbers. Do not copy `6_report.json` into reports.
+Check with `learn/scripts/test_asap7_e2e.py`.

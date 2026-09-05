@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -1223,6 +1224,17 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("nangate45/gcd/flowlab" in asap7_inv, "asap7 investigation names the locked FlowLab path")
     check("product win" in asap7_inv, "asap7 investigation refuses a product win")
     check("FakeRAM" in asap7_inv, "asap7 investigation names FakeRAM leftover")
+    check("Do not freeze" in asap7_inv, "asap7 investigation refuses an ASAP7 gold")
+    check(
+        "!reports/lab_asap7.json" not in (root / "learn/sim/.gitignore").read_text(),
+        "ASAP7 last-cook report is not force-tracked",
+    )
+    tracked_asap7 = subprocess.check_output(
+        ["git", "ls-files", "--", "learn/sim/reports/lab_asap7.json", "learn/sim/reports/lab_asap7_gcd_6_report.json"],
+        cwd=root,
+        text=True,
+    ).strip()
+    check(tracked_asap7 == "", "no ASAP7 report is tracked as a golden")
     contrib = (root / "CONTRIBUTING.md").read_text()
     check("test_dse_next.py" in contrib, "CONTRIBUTING names the fast suite")
     check("45.298" in contrib, "CONTRIBUTING protects GCD IR gold")
