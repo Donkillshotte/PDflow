@@ -53,6 +53,7 @@ stays 45.298 mV.
 - [`../AGENTS.md`](../AGENTS.md) — operational rules for agents
 - [`../learn/reference/suite-status.md`](../learn/reference/suite-status.md) — live flow WORKS / FAIL / GAP table
 - [`../learn/reference/gaps.md`](../learn/reference/gaps.md) — license/PDK gated vs to-build
+- [`sky130_integration.md`](sky130_integration.md) — why the course stays Nangate45 (sky130 is a different PDK)
 
 ## Product code
 

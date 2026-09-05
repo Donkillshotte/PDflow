@@ -13,6 +13,10 @@ Next action (suite integrity, not leftover-free):
 
 Do **not** copy that review or plan into the frozen files below.
 
+sky130 vs Nangate45 (investigation, not a migration):
+[`sky130_integration.md`](sky130_integration.md). Do not mix sky130
+into the course.
+
 ## Product (from here on)
 
 | File | Role | Do not |

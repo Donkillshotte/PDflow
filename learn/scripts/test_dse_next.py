@@ -1177,6 +1177,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "plans.md",
         "rtl_to_signoff.md",
         "rtl_to_signoff_close_plan.md",
+        "sky130_integration.md",
         "win_rule.py",
     ):
         check(needle in index or needle.replace("docs/", "") in index, f"docs index cites {needle}")
@@ -1208,6 +1209,10 @@ def _check_enterprise_docs(check, root: Path) -> None:
         check("«" not in text and "»" not in text, f"{rel} has no brochure guillemets")
     check("1. Change PDK" not in learn_readme, "after-course does not lead with a sky130 switch")
     check("different PDK" in learn_readme, "after-course labels sky130 as a different PDK")
+    sky_inv = (root / "docs/sky130_integration.md").read_text()
+    check("Do not migrate" in sky_inv, "sky130 investigation does not migrate the course")
+    check("45.298" in sky_inv, "sky130 investigation protects gold Dynamic IR")
+    check("nangate45/gcd/flowlab" in sky_inv, "sky130 investigation names the locked FlowLab path")
     contrib = (root / "CONTRIBUTING.md").read_text()
     check("test_dse_next.py" in contrib, "CONTRIBUTING names the fast suite")
     check("45.298" in contrib, "CONTRIBUTING protects GCD IR gold")
