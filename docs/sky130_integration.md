@@ -112,3 +112,34 @@ base* for the work already on Nangate45.
 
 Do not mix sky130 into the Nangate45 course. Do not recook locked
 `gcd/flowlab`. Do not restamp gold Dynamic IR **45.298 mV**.
+
+---
+
+## Other open PDKs (is sky130 “the best”?)
+
+No. There is no single best open PDK. It depends on the job.
+Checked against this ORFS tree and public sources (2026-09-05).
+
+| Kit | What it is | Best for | Not best for |
+|---|---|---|---|
+| **sky130** (SkyWater + Google) | 130 nm CMOS. Manufacturable. | Digital + community + tapeout. Tiny Tapeout default (`sky130A`). OpenLane / LibreLane. ChipFoundry MPW. Most tutorials. | Analog/RF vs IHP. Corners vs gf180 in this tree. Official GitHub still says **not for production**; OK for test chips. Some analog model caveats (weak-inversion PFET notes). |
+| **gf180mcu** (GlobalFoundries + Google) | 180 nm MCU CMOS. | More liberty corners **in this ORFS tree** (`ff`/`ss`/`tt`, several temps, 1.8 / 3.3 / ~5 V). MCU / higher-voltage analog. Tiny Tapeout also supports it. | Older, larger node. Smaller community than sky130. Also labeled experimental preview. No `fs`/`sf` in this ORFS pack. |
+| **IHP SG13G2** | 130 nm **SiGe BiCMOS**. | Open **analog / RF**: HBTs ~350 GHz fT / ~450 GHz fmax. IHP Open PDK (Apache-2). Tiny Tapeout IHP shuttles exist. This ORFS tree has **slow/typ/fast** stdcell + SRAM liberty (more corners than sky130hd here). IHP’s 2025 MOS-AK talk compares SKY130 / SG13G2 / GF180. | Preview / alpha, not a finished production PDK. Digital community smaller than sky130. No CCS tables in this ORFS pack (NLDM `table_lookup`). Tiny Tapeout IHP chips are on **loan** (IHP property ~2 years); EU/CH shipping. |
+| **ASAP7** | Predictive **7 nm FinFET** (ASU / ARM). | Research and EDA benchmarking. FinFET teaching. **This ORFS tree ships a CCS folder** (the only platform here with `output_current`). | **Not manufacturable.** No MPW. Numbers are not a real 7 nm foundry. |
+| **Nangate45 / FreePDK45** | Academic 45 nm teaching kit. | **This** course, gold IR, product wins. | Not a foundry-open tapeout PDK. |
+| Commercial NDA PDKs | TSMC / GF / … | Industrially more complete. HEP 2025 (open vs commercial **on IHP**): open tools work for proto/teaching; commercial still wins area/power. | Not open. Not in this repo. |
+
+Public sources used: Tiny Tapeout FAQ and shuttle pages; google/skywater-pdk and google/gf180mcu-pdk READMEs; IHP Open PDK + Herman MOS-AK 2025; UCSC chip-tutorials ASAP7 page; ChipFoundry / efabless MPW notes; Analog Zoo gm/ID sky130 caveats.
+
+**Pick by job, not by hype:**
+
+- Best open **digital + community + tapeout access** → sky130.
+- Best open **analog / RF** → IHP SG13G2.
+- Best open **liberty corners / MCU voltages in this tree** → gf180.
+- Best **FinFET teaching** (no silicon) → ASAP7.
+- Best base **for this product/course** → still Nangate45.
+
+ORFS here already ships all four open platforms
+(`sky130hd`/`hs`, `gf180`, `asap7`, `ihp-sg13g2`). That is an
+after-course experiment path, not a reason to migrate the locked
+Nangate45 course.
