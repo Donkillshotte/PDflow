@@ -67,9 +67,13 @@ Create/update PRs with the agent PR tool.
 
 ## Cursor Cloud specific instructions
 
-Do **not** send progress videos or screen recordings unless the user
-explicitly asks for a demo. Validate with tests, logs, report JSON, and
-(when needed) `GET /api/suite`. Preferred gates:
+Do **not** launch computer-use / browser GUI subagents. Do **not**
+launch video-review subagents. Do **not** send progress videos or
+screen recordings unless the user explicitly asks for a demo.
+
+Validate with tests, logs, report JSON, `curl` against Studio, optional
+headless screenshots, and (when needed) `GET /api/suite`. Preferred
+gates:
 
 ```bash
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_signoff_honesty.py

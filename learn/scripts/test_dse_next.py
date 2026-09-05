@@ -1186,6 +1186,8 @@ def _check_enterprise_docs(check, root: Path) -> None:
     agents = (root / "AGENTS.md").read_text()
     check("Forbidden" in agents or "Refuse" in agents, "AGENTS.md has refuse rules")
     check("test_dse_next.py" in agents, "AGENTS.md names the fast suite")
+    check("computer-use" in agents, "AGENTS.md forbids Cloud computer-use subagents")
+    check("video-review" in agents, "AGENTS.md forbids Cloud video-review subagents")
     dse = (root / "learn/dse/README.md").read_text()
     check("win_rule.py" in dse, "dse README names win_rule")
     check("tune_transfer.py" in dse, "dse README names transfer")
