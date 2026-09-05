@@ -181,6 +181,12 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
     tone: "leftover",
     needles: ["compact VRM", "not Ansys CPA"],
   },
+  {
+    id: "asap7_chip_mesh",
+    label: "leftover ASAP7 chip PDN mesh",
+    tone: "leftover",
+    needles: ["tier B mesh", "not 45.298 mV"],
+  },
 ];
 
 const BY_ID = new Map(LEFTOVER_CHIPS.map((c) => [c.id, c]));

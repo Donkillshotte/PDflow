@@ -20,6 +20,7 @@ import {
   asap7LvsHookDetail,
   asap7MmmcHookDetail,
   asap7PkgHookDetail,
+  asap7ChipPdnHookDetail,
 } from "./leftoverCatalog";
 
 export type HookStatus = {
@@ -652,6 +653,15 @@ export async function getSuiteStatus() {
       ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_pkg.json")),
       detail: asap7PkgHookDetail(),
       action: "lab_asap7_pkg",
+      href: "/lab#asap7",
+    },
+    {
+      id: "asap7_chip_pdn",
+      label: "ASAP7 chip PDN mesh (Lab)",
+      group: "Lab",
+      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_chip_pdn.json")),
+      detail: asap7ChipPdnHookDetail(),
+      action: "lab_asap7_chip_pdn",
       href: "/lab#asap7",
     },
     {

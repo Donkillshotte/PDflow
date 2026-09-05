@@ -72,6 +72,9 @@ Leftover-named PKG (dummy bump + sidecar RDL + compact VRM→board→pkg→die):
 `python3 learn/scripts/lab_asap7_pkg.py` (or `run_lab_asap7_pkg.sh`).
 Dummy, not C4. Lumped RLC, not Touchstone / Ansys CPA. Never writes
 `6_final.odb`. Models live in `learn/lab/asap7/pkg/`.
+On-die chip PDN mesh (tier B: `write_pg_spice` + `pdn_transient.py`):
+`python3 learn/scripts/lab_asap7_chip_pdn.py` (or `run_lab_asap7_chip_pdn.sh`).
+Not tier C PKG. Not comparable to Nangate 45.298 mV. No `.chip_pdn_ir.ok`.
 
 See [`docs/asap7_research.md`](../../../docs/asap7_research.md).
 Close paths (three-layer kit, not leftover-free):

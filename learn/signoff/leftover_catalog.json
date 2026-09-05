@@ -257,6 +257,15 @@
       "suite_hooks": ["asap7_pkg"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["compact VRM", "not Ansys CPA"]
+    },
+    {
+      "id": "asap7_chip_mesh",
+      "kind": "gated",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_chip_pdn.json",
+      "suite_hooks": ["asap7_chip_pdn"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["tier B mesh", "not 45.298 mV", "map::at patched"]
     }
   ],
   "home_compact_phrases": [

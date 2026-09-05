@@ -306,6 +306,7 @@ function readAsap7Lab(): Record<string, unknown> | null {
   const pdk = readJson("sim/reports/lab_asap7_pdk.json");
   const spice = readJson("sim/reports/lab_asap7_spice.json");
   const pkg = readJson("sim/reports/lab_asap7_pkg.json");
+  const chipPdn = readJson("sim/reports/lab_asap7_chip_pdn.json");
   const pkgBump = (pkg?.bump as Record<string, unknown>) || {};
   const pkgRdl = (pkg?.rdl as Record<string, unknown>) || {};
   const pkgPdn = (pkg?.system_pdn as Record<string, unknown>) || {};
@@ -389,6 +390,18 @@ function readAsap7Lab(): Record<string, unknown> | null {
           vdd: n(pkgPdn.vdd),
           droopMv: n(pkgPdn.droop_mv),
           leftover: "dummy bump · sidecar RDL · compact VRM · not C4",
+        }
+      : null,
+    chipPdn: chipPdn
+      ? {
+          ok: chipPdn.ok === true,
+          tier: chipPdn.tier ?? "chip_mesh",
+          pdnsim6ReportMv: n(chipPdn.pdnsim_6_report_mv),
+          meshStaticMv: n(chipPdn.mesh_static_mv),
+          meshTransientMv: n(chipPdn.mesh_transient_droop_mv),
+          nR: n(chipPdn.n_r),
+          patched: (chipPdn.mesh_patch as Record<string, unknown> | undefined)?.patched === true,
+          leftover: "tier B mesh · not tier C PKG · not 45.298 mV",
         }
       : null,
     note: raw?.note ?? "Live ASAP7 folio. Predictive FinFET. Not a product win.",

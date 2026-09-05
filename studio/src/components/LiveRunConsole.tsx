@@ -80,6 +80,7 @@ const ACTION_GROUPS: { label: string; items: ActionItem[] }[] = [
       { id: "ccs_char", label: "CCS char", hint: "PTM sidecar, not foundry CCS" },
       { id: "lab_asap7_pdk", label: "ASAP7 layer 1", hint: "public PDK + leftover Xyce · not Calibre" },
       { id: "lab_asap7_pkg", label: "ASAP7 PKG", hint: "dummy bump + sidecar RDL + compact VRM · not C4" },
+      { id: "lab_asap7_chip_pdn", label: "ASAP7 chip PDN", hint: "write_pg_spice mesh + transient · tier B · not 45.298 mV" },
       { id: "lvs_deep", label: "Deep LVS", hint: "filtered CDL + well→VDD/VSS" },
       { id: "layout_tools", label: "Magic / Netgen probe", hint: "no FreePDK45 tech" },
       { id: "tool_matrix", label: "Tool matrix", hint: "all OSS checks" },

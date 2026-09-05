@@ -340,6 +340,11 @@ export function listOpenTargets(): {
       action: "lab_asap7_pkg",
     },
     {
+      id: "run-lab-asap7-chip-pdn",
+      label: "Run · ASAP7 chip PDN mesh (write_pg_spice + transient)",
+      action: "lab_asap7_chip_pdn",
+    },
+    {
       id: "run-lvs-deep",
       label: "Run · deep LVS (filtered CDL, well→VDD/VSS)",
       action: "lvs_deep",

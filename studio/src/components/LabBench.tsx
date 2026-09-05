@@ -394,6 +394,26 @@ export function LabBench({
                   : "—"}
             </dd>
           </div>
+          <div>
+            <dt>Chip mesh static</dt>
+            <dd>
+              {data?.asap7?.chipPdn?.meshStaticMv != null
+                ? `${data.asap7.chipPdn.meshStaticMv.toFixed(2)} mV · tier B · not 45.298 mV`
+                : data?.asap7?.chipPdn
+                  ? "chip mesh leftover · tier B"
+                  : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Chip mesh transient</dt>
+            <dd>
+              {data?.asap7?.chipPdn?.meshTransientMv != null
+                ? `${data.asap7.chipPdn.meshTransientMv.toFixed(2)} mV · vs 6_report ${data.asap7.chipPdn.pdnsim6ReportMv?.toFixed(2) ?? "—"} mV`
+                : data?.asap7?.chipPdn
+                  ? "transient mesh leftover"
+                  : "—"}
+            </dd>
+          </div>
         </dl>
         {(data?.asap7?.folio?.length ?? 0) > 0 && (
           <ol className="lb-tape" aria-label="ASAP7 live runs">

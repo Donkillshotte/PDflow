@@ -379,6 +379,42 @@ export function asap7PkgHookDetail(): string {
   }
 }
 
+export function asap7ChipPdnHookDetail(): string {
+  const p = path.join(LEARN_ROOT, "sim/reports/lab_asap7_chip_pdn.json");
+  try {
+    if (!fs.existsSync(p)) {
+      return (
+        "write_pg_spice mesh · pdn_transient · tier B on-die · " +
+        "not tier C PKG · not comparable to 45.298 mV · no .chip_pdn_ir.ok"
+      );
+    }
+    const d = JSON.parse(fs.readFileSync(p, "utf8")) as {
+      pdnsim_6_report_mv?: number | null;
+      mesh_static_mv?: number | null;
+      mesh_transient_droop_mv?: number | null;
+      n_r?: number;
+      mesh_patch?: { patched?: boolean };
+    };
+    const tierA = d.pdnsim_6_report_mv;
+    const tierB = d.mesh_static_mv;
+    const tr = d.mesh_transient_droop_mv;
+    const bits = [
+      `mesh ${d.n_r ?? 0} R`,
+      tierB != null ? `static ${tierB.toFixed(2)} mV` : "static leftover",
+      tierA != null ? `6_report ${tierA.toFixed(2)} mV` : "6_report unreadable",
+      tr != null ? `transient ${tr.toFixed(2)} mV` : "transient leftover",
+      d.mesh_patch?.patched ? "map::at patched" : "mesh complete",
+      "not 45.298 mV",
+    ];
+    return bits.join(" · ");
+  } catch {
+    return (
+      "write_pg_spice mesh · pdn_transient · tier B on-die · " +
+      "not tier C PKG · not comparable to 45.298 mV · no .chip_pdn_ir.ok"
+    );
+  }
+}
+
 export function hookLeftoverIds(hookId: string, detail: string): string[] {
   return leftoverIdsMatchingDetail(detail, hookId);
 }

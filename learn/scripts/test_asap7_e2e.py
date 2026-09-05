@@ -109,6 +109,7 @@ def tier1() -> None:
     check((ROOT / "learn/scripts/run_asap7_e2e.py").is_file(), "e2e runner exists")
     check((ROOT / "learn/scripts/lab_asap7_drc.py").is_file(), "leftover-named DRC script exists")
     check((ROOT / "learn/scripts/lab_asap7_pkg.py").is_file(), "leftover-named PKG script exists")
+    check((ROOT / "learn/scripts/lab_asap7_chip_pdn.py").is_file(), "leftover-named chip PDN script exists")
     check((ROOT / "learn/lab/asap7/pkg/dummy_bump_gcd.lef").is_file(), "ASAP7 dummy bump LEF exists")
     check((ROOT / "learn/lab/asap7/pkg/asap7_system_pdn.json").is_file(), "ASAP7 compact pkg model exists")
     pkg_cfg = json.loads((ROOT / "learn/lab/asap7/pkg/asap7_system_pdn.json").read_text())
@@ -218,6 +219,21 @@ def tier2() -> None:
     check(pdn.get("vdd") == 0.7 or pdn.get("vdd") == 0.70, f"ASAP7 system PDN Vdd {pdn.get('vdd')}")
     if pdn.get("ok"):
         check(pdn.get("droop_mv") is not None, f"ASAP7 compact droop {pdn.get('droop_mv')}")
+
+    chip_p = ROOT / "learn/sim/reports/lab_asap7_chip_pdn.json"
+    check(chip_p.is_file(), "leftover-named ASAP7 chip PDN report exists")
+    chip = json.loads(chip_p.read_text())
+    check(chip.get("product_win") is False, "ASAP7 chip PDN is not a product win")
+    check(chip.get("comparable_to_gold_ir") is False, "ASAP7 chip PDN is not gold IR")
+    check(chip.get("tier") == "chip_mesh", "ASAP7 chip PDN names tier B")
+    check(chip.get("pdnsim_6_report_mv") is not None, "ASAP7 chip PDN has tier-A baseline")
+    check(int(chip.get("n_r") or 0) > 0, f"ASAP7 chip mesh has R elements ({chip.get('n_r')})")
+    tier_a = chip.get("pdnsim_6_report_mv")
+    tier_b = chip.get("mesh_static_mv")
+    if tier_a is not None and tier_b is not None:
+        ratio = float(tier_b) / float(tier_a) if float(tier_a) > 0 else 0.0
+        check(0.2 <= ratio <= 5.0, f"mesh static {tier_b} mV vs 6_report {tier_a} mV same order ({ratio:.2f}×)")
+    check(chip.get("mesh_transient_droop_mv") is not None, "ASAP7 chip transient droop present")
 
     folio = scan_folio(ROOT)
     check(len(folio) >= 8, f"folio has live cooks ({len(folio)})")
