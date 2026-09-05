@@ -54,6 +54,15 @@ MAKE_EXTRA=(
 if [[ "${CLUSTER}" == "1" ]]; then
   MAKE_EXTRA+=( CLUSTER_FLOPS=1 )
 fi
+# CCS TC/WC: ORFS config.mk only defines BC_CCS_LIB_FILES. Pass extras when present.
+if [[ "${LIB_MODEL}" == "CCS" ]]; then
+  CCS_ASSIGN="$(python3 -c 'from dse.asap7_lab import ccs_make_assignment, spec_from_env, validate; s=validate(spec_from_env()); print(ccs_make_assignment(s.corner, s.primary_vt))')"
+  if [[ -z "${CCS_ASSIGN}" ]]; then
+    echo "REFUSED: CCS liberty list empty for CORNER=${CORNER} VT=${VT}" >&2
+    exit 2
+  fi
+  MAKE_EXTRA+=( "${CCS_ASSIGN}" )
+fi
 # Optional ORFS knobs. No design-name branch.
 # WC leftover: 65% die overflows CTS after setup repair. Default a larger die.
 if [[ -n "${CORE_UTILIZATION:-}" ]]; then

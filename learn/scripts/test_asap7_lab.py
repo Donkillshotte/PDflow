@@ -11,6 +11,8 @@ from pathlib import Path
 from dse.asap7_lab import (
     LabAsap7Refuse,
     LabAsap7Spec,
+    ccs_lib_files,
+    ccs_make_assignment,
     ccs_ready,
     collect_report,
     result_dir,
@@ -51,14 +53,20 @@ def main() -> None:
             raise SystemExit(f"FAIL expected refuse {bad}")
 
     wc_ccs = LabAsap7Spec(lib_model="CCS", corner="WC")
-    try:
+    if ccs_ready("WC", "RVT", ROOT):
         validate(wc_ccs, root=ROOT, allow_heavy=False)
-    except LabAsap7Refuse as exc:
-        check("REFUSED" in str(exc), "CCS WC refused (ORFS wires BC_CCS only)")
+        check(len(ccs_lib_files("WC", "RVT", ROOT)) == 5, "CCS WC has five families")
+        check(ccs_make_assignment("WC", "RVT", ROOT).startswith("WC_CCS_LIB_FILES="), "CCS WC make assignment")
     else:
-        raise SystemExit("FAIL expected CCS WC refuse; ORFS has no WC_CCS_LIB_FILES")
+        try:
+            validate(wc_ccs, root=ROOT, allow_heavy=False)
+        except LabAsap7Refuse as exc:
+            check("REFUSED" in str(exc), "CCS WC refused without extras")
+        else:
+            raise SystemExit("FAIL expected CCS WC refuse without extras")
     if ccs_ready("TC", "RVT", ROOT):
-        check(True, "leftover CCS TT extras exist on disk")
+        validate(LabAsap7Spec(lib_model="CCS", corner="TC"), root=ROOT, allow_heavy=False)
+        check(True, "CCS TC accepted when extras are on disk")
 
     multi = validate(LabAsap7Spec(vt=("RVT", "LVT"), corner="WC"))
     check(multi.variant.endswith("wc_rvt+lvt_nldm_7p5"), multi.variant)
@@ -85,6 +93,9 @@ def main() -> None:
     check("CORE_UTILIZATION" in text, "wrapper can pass a larger die without a design branch")
     check("CORE_UTILIZATION=40" in text, "wrapper defaults WC die to 40")
     check("slang.so" in text, "wrapper gates slang leftover on slang.so")
+    check("CCS_LIB_FILES" in text, "wrapper passes CCS liberty list for TC/WC")
+    check((ROOT / "learn/scripts/lab_asap7_lvs.py").is_file(), "leftover-named ASAP7 LVS script exists")
+    check((ROOT / "learn/scripts/lab_asap7_mmmc.py").is_file(), "ASAP7 setup/hold pair script exists")
     check("current_design gcd" not in text, "wrapper does not hardcode current_design gcd")
     check("write_constraint_sdc" in text, "wrapper writes SDC in Python under set -u")
     sdc = write_constraint_sdc(ROOT / "learn/sim/dse/sdc/_test_asap7_430.sdc", 430, "uart")

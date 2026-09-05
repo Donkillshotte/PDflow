@@ -170,28 +170,64 @@ def sc6t_ready(root: Path | None = None) -> bool:
     return lef.is_file()
 
 
-def ccs_ready(corner: str, vt: str, root: Path | None = None) -> bool:
-    """True when a CCS liberty exists for this corner × VT.
+CCS_FAMILIES = ("AO", "INVBUF", "OA", "SIMPLE", "SEQ")
 
-    Slim ORFS pack: RVT + FF (BC) only. Extra TT/SS / other VT files
-    may appear under learn/lab/asap7/ccs after fetch_asap7_libextras.sh.
-    """
+
+def _ccs_search_roots(root: Path | None = None) -> tuple[Path, ...]:
+    base = root or REPO
+    return (
+        base / "learn/lab/asap7/ccs",
+        base / "tools/OpenROAD-flow-scripts/flow/platforms/asap7/lib/CCS",
+    )
+
+
+def _ccs_plain(name: str) -> bool:
+    """ORFS uses *_ccs_*, not CCS-A / CCS-N."""
+    return bool(re.search(r"_ccs_\d", name.lower()))
+
+
+def ccs_lib_files(corner: str, vt: str, root: Path | None = None) -> list[Path]:
+    """One CCS liberty per family for this corner × VT, extras first."""
     if corner not in CORNERS:
-        return False
+        return []
     lib_tag = str(CORNERS[corner]["lib"]).upper()
     vt_u = vt.upper()
-    bases = (
-        (root or REPO) / "tools/OpenROAD-flow-scripts/flow/platforms/asap7/lib/CCS",
-        (root or REPO) / "learn/lab/asap7/ccs",
-    )
-    for base in bases:
-        if not base.is_dir():
-            continue
-        for path in base.rglob("*.lib"):
-            name = path.name.upper()
-            if "CCS" in name and f"_{vt_u}_" in name and f"_{lib_tag}_" in name:
-                return True
-    return False
+    picked: list[Path] = []
+    for fam in CCS_FAMILIES:
+        hit: Path | None = None
+        for base in _ccs_search_roots(root):
+            if not base.is_dir():
+                continue
+            cands = [
+                p
+                for p in base.rglob("*")
+                if p.is_file()
+                and _ccs_plain(p.name)
+                and f"_{fam}_" in p.name.upper()
+                and f"_{vt_u}_" in p.name.upper()
+                and f"_{lib_tag}_" in p.name.upper()
+                and (p.suffix == ".lib" or p.name.endswith(".lib.gz"))
+            ]
+            if cands:
+                hit = sorted(cands, key=lambda p: p.name)[0]
+                break
+        if hit is not None:
+            picked.append(hit)
+    return picked
+
+
+def ccs_ready(corner: str, vt: str, root: Path | None = None) -> bool:
+    """True when the five CCS families exist for this corner × VT."""
+    return len(ccs_lib_files(corner, vt, root)) >= len(CCS_FAMILIES)
+
+
+def ccs_make_assignment(corner: str, vt: str, root: Path | None = None) -> str:
+    """CORNER_CCS_LIB_FILES=... for the wrapper. Empty if not cookable."""
+    files = ccs_lib_files(corner, vt, root)
+    if len(files) < len(CCS_FAMILIES):
+        return ""
+    joined = " ".join(str(p) for p in files)
+    return f"{corner}_CCS_LIB_FILES={joined}"
 
 
 def cdl_ready(root: Path | None = None) -> bool:
@@ -216,24 +252,13 @@ def validate(spec: LabAsap7Spec, *, root: Path | None = None, allow_heavy: bool 
         raise LabAsap7Refuse(f"REFUSED: lab variant must start with {VARIANT_PREFIX}")
     if "krylov" in variant.lower():
         raise LabAsap7Refuse("REFUSED: Krylov is not a lab ASAP7 variant")
-    if spec.lib_model == "CCS":
-        # ORFS platforms/asap7/config.mk only defines BC_CCS_LIB_FILES.
-        # Fetched TT/SS extras are leftover-named until those variables exist.
-        if (spec.corner, spec.primary_vt) not in CCS_OK:
-            extra = (
-                "Extras may be on disk; ORFS still only wires BC_CCS_LIB_FILES. "
-                if ccs_ready(spec.corner, spec.primary_vt, root)
-                else ""
-            )
-            raise LabAsap7Refuse(
-                "REFUSED: CCS cook is RVT + BC in this ORFS pack. "
-                f"{extra}Got CORNER={spec.corner} VT={spec.primary_vt}"
-            )
-        if not ccs_ready(spec.corner, spec.primary_vt, root):
-            raise LabAsap7Refuse(
-                "REFUSED: CCS liberty missing for "
-                f"CORNER={spec.corner} VT={spec.primary_vt}"
-            )
+    if spec.lib_model == "CCS" and not ccs_ready(spec.corner, spec.primary_vt, root):
+        raise LabAsap7Refuse(
+            "REFUSED: CCS liberty missing for "
+            f"CORNER={spec.corner} VT={spec.primary_vt}. "
+            "Need AO/INVBUF/OA/SIMPLE/SEQ. Fetch extras with "
+            "learn/scripts/fetch_asap7_libextras.sh"
+        )
     if spec.track == "6":
         raise LabAsap7Refuse(
             "REFUSED: 6-track is fetch-gated leftover. RTL→GDS uses 7.5-track. "
@@ -343,9 +368,9 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
         "metrics_source": str(rep) if rep.is_file() else None,
         "leftover": {
             "sram": "FakeRAM2.0" if DESIGNS[spec.design].get("sram") else None,
-            "ccs_partial": spec.lib_model == "CCS" and not ccs_ready("TC", spec.primary_vt, root),
+            "ccs_partial": spec.lib_model == "CCS" and spec.corner != "BC",
             "lvs": (
-                "CDL on disk, leftover-named KLayout/netgen only"
+                "leftover-named cell-vs-CDL; not Calibre"
                 if cdl_ready(root)
                 else "no LVS in ORFS slim pack"
             ),
