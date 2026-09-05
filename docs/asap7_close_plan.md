@@ -242,9 +242,10 @@ Do one heavy cook at a time. No AES. No gold stamp.
    in `collect_report` + Studio `/lab` `#asap7`.
 2. **One relaxed-clock gcd TC** to show WNS ≥ 0. Live: 430 ps still
    open (WNS −23 ps, `period_min` 453 ps) — a longer SDC changes
-   repair, so 310+116 is not a close. Next picture is `_480ps`.
-   Variant is tagged so it does not overwrite the 310 ps GDS.
-   Honest leftover: different SDC than ORFS smoke.
+   repair, so 310+116 is not a close. `_480ps` is closed (WNS
+   **+5.38 ps**, area 46.0 µm², power 0.424 mW, leak 35.9 nW, IR
+   2.46 mV, fmax 2.08 GHz). Not a product win. Different SDC than
+   ORFS smoke. Does not overwrite the 310 ps GDS.
 3. **CCS extract** from `asap7sc7p5t_28` `.7z` when `p7zip` is
    present (`learn/scripts/fetch_asap7_libextras.sh`) — then the
    RVT+BC refuse drops because `ccs_ready` sees the files.

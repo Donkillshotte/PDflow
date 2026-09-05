@@ -26,7 +26,8 @@ CLUSTER_FLOPS=1 ./scripts/run_lab_asap7.sh finish
 LAB_ASAP7_DESIGN=uart ./scripts/run_lab_asap7.sh finish
 
 # relaxed clock (tags the variant so it does not overwrite the 310 ps GDS)
-LAB_CLK_PS=430 ./scripts/run_lab_asap7.sh finish
+# 430 ps stayed open (WNS −23). 480 ps closed on this image (WNS +5.4).
+LAB_CLK_PS=480 ./scripts/run_lab_asap7.sh finish
 ```
 
 Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.

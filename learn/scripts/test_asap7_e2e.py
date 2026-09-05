@@ -113,10 +113,12 @@ def main() -> None:
     lvt = check_live_cook(LabAsap7Spec(vt=("RVT", "LVT")), must_exist=True)
     mbff = check_live_cook(LabAsap7Spec(cluster_flops=True), must_exist=True)
     uart = check_live_cook(LabAsap7Spec(design="uart"), must_exist=True)
-    closed = check_live_cook(LabAsap7Spec(clk_ps=430), must_exist=True)
+    open430 = check_live_cook(LabAsap7Spec(clk_ps=430), must_exist=True)
+    check(open430 is not None, "430 ps gcd TC GDS is live (may still be open)")
+    closed = check_live_cook(LabAsap7Spec(clk_ps=480), must_exist=True)
     if closed is not None:
-        check(closed["qor"].get("timing_closed") is True, "430 ps gcd TC is timing-closed")
-        check(float(closed["qor"]["wns_ps"]) >= 0, f"430 ps WNS {closed['qor']['wns_ps']} >= 0")
+        check(closed["qor"].get("timing_closed") is True, "480 ps gcd TC is timing-closed")
+        check(float(closed["qor"]["wns_ps"]) >= 0, f"480 ps WNS {closed['qor']['wns_ps']} >= 0")
 
     folio = scan_folio(ROOT)
     check(len(folio) >= 8, f"folio has live cooks ({len(folio)})")
@@ -144,7 +146,7 @@ def main() -> None:
         f"(ccs={'yes' if ccs else 'pending'} wc={'yes' if wc else 'pending'} "
         f"bc={'yes' if bc else 'pending'} lvt={'yes' if lvt else 'pending'} "
         f"mbff={'yes' if mbff else 'pending'} uart={'yes' if uart else 'pending'} "
-        f"closed430={'yes' if closed else 'pending'})"
+        f"closed480={'yes' if closed else 'pending'})"
     )
 
 
