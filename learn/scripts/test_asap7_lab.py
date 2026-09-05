@@ -13,6 +13,7 @@ from dse.asap7_lab import (
     LabAsap7Spec,
     collect_report,
     result_dir,
+    scan_folio,
     spec_from_env,
     validate,
 )
@@ -57,6 +58,11 @@ def main() -> None:
     mb = validate(LabAsap7Spec(cluster_flops=True))
     check(mb.variant.endswith("mbff"), mb.variant)
 
+    closed = validate(LabAsap7Spec(clk_ps=430))
+    check(closed.variant == "lab_asap7_gcd_tc_rvt_nldm_7p5_430ps", closed.variant)
+    same_clk = validate(LabAsap7Spec(clk_ps=310))
+    check(same_clk.variant == "lab_asap7_gcd_tc_rvt_nldm_7p5", same_clk.variant)
+
     env_spec = spec_from_env({"CORNER": "BC", "ASAP7_USE_VT": "SLVT", "LIB_MODEL": "NLDM"})
     check(env_spec.corner == "BC" and env_spec.primary_vt == "SLVT", "env parse")
 
@@ -66,8 +72,13 @@ def main() -> None:
     check("run_signoff_all" not in text, "wrapper does not invoke the signoff orchestrator")
     check("nangate45/gcd-tutorial" not in text, "wrapper does not use Nangate tutorial")
     check("CORE_UTILIZATION" in text, "wrapper can pass a larger die without a design branch")
+    check("CORE_UTILIZATION=40" in text, "wrapper defaults WC die to 40")
+    check("slang.so" in text, "wrapper gates slang leftover on slang.so")
+    check("current_design gcd" not in text, "generated SDC is not hardcoded gcd")
+    check("NICKNAME" in text, "generated SDC uses spec nickname")
     check("if design ==" not in text, "wrapper has no design-name branch")
     check("Live metrics only" in (ROOT / "learn/dse/asap7_lab.py").read_text(), "lab report is live, not gold")
+    check((ROOT / "learn/scripts/fetch_asap7_libextras.sh").is_file(), "CCS/CDL fetch script exists")
 
     env = {**os.environ, "FLOW_VARIANT": "flowlab", "PYTHONPATH": f"{ROOT}/learn:{ROOT}/learn/scripts"}
     # Locked name cannot be forced: Python rebuilds the variant. Call wrapper with TRACK=6.
@@ -99,6 +110,12 @@ def main() -> None:
         if live.get("ok"):
             check(live.get("gds"), "cooked report names GDS")
             check(live.get("qor", {}).get("wns_ps") is not None, "cooked report has WNS")
+    gds = result_dir(spec, ROOT) / "6_final.gds"
+    if gds.is_file():
+        rows = scan_folio(ROOT)
+        check(any(r["variant"] == spec.variant for r in rows), "folio lists live default cook")
+        check(all("45.298" not in json.dumps(r) for r in rows), "folio has no 45.298")
+        check(all("gold_ir_mv" not in r for r in rows), "folio has no gold_ir_mv")
     print("ALL test_asap7_lab PASSED")
 
 

@@ -15,7 +15,7 @@ Repo index: [`docs/README.md`](README.md).
 | `cloud_agent_smoke.sh` | infra | versions |
 | `test_cloud_bootstrap.sh` | infra | static checks |
 | `run_design_finish.sh` | **product** | isolated `make finish`; refuses `flowlab`/`learn`/`base` |
-| `run_lab_asap7.sh` | **lab** | ASAP7 RTL→GDS (`lab_asap7_*`); corners / VT / CCS; not a product win |
+| `run_lab_asap7.sh` | **lab** | ASAP7 RTL→GDS (`lab_asap7_*`); WC die / Yosys defaults; not a product win |
 | `campaign_cook.sh` | product | campaign helper |
 | `p1_gcd_clock_sweep.sh` | product (historic P) | gcd clock sweep |
 | `p2_abc_speed.sh` | product (historic P) | ABC speed |
@@ -60,5 +60,6 @@ Optuna **only** in `run_tpe.py`.
 | Signoff | `run_signoff_all.sh`, `run_sta_signoff.sh`, `run_sta_ir_aware.sh`, `run_drc_signoff.sh` |
 | Engine | `build_dpn_engine.sh` |
 | Lab PEX / CCS / LVS | `run_analytical_pex.py`, `char_nangate_ccs.py`, `run_lvs_deep.py`, `install_fastercap.sh` |
+| Lab ASAP7 | `lab_asap7_spec.py`, `test_asap7_lab.py`, `test_asap7_e2e.py`, `fetch_asap7_sc6t.sh`, `fetch_asap7_libextras.sh` |
 
 One heavy job. `pkill -f` forbidden: kill by PID.

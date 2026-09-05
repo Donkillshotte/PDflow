@@ -8,7 +8,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from dse.asap7_lab import LabAsap7Spec, collect_report, result_dir, validate
+from dse.asap7_lab import LabAsap7Spec, collect_report, result_dir, scan_folio, validate
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLD_IR = ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
@@ -113,6 +113,16 @@ def main() -> None:
     lvt = check_live_cook(LabAsap7Spec(vt=("RVT", "LVT")), must_exist=True)
     mbff = check_live_cook(LabAsap7Spec(cluster_flops=True), must_exist=True)
     uart = check_live_cook(LabAsap7Spec(design="uart"), must_exist=True)
+    closed = check_live_cook(LabAsap7Spec(clk_ps=430), must_exist=True)
+    if closed is not None:
+        check(closed["qor"].get("timing_closed") is True, "430 ps gcd TC is timing-closed")
+        check(float(closed["qor"]["wns_ps"]) >= 0, f"430 ps WNS {closed['qor']['wns_ps']} >= 0")
+
+    folio = scan_folio(ROOT)
+    check(len(folio) >= 8, f"folio has live cooks ({len(folio)})")
+    check(all("gold_ir_mv" not in row for row in folio), "folio has no gold_ir_mv")
+    check(all("45.298" not in json.dumps(row) for row in folio), "folio has no 45.298")
+    check(any(row.get("timing_closed") for row in folio), "folio names a closed-timing cook")
 
     stamped = ROOT / "learn/sim/reports/lab_asap7.json"
     if stamped.is_file():
@@ -133,7 +143,8 @@ def main() -> None:
         "ALL test_asap7_e2e PASSED "
         f"(ccs={'yes' if ccs else 'pending'} wc={'yes' if wc else 'pending'} "
         f"bc={'yes' if bc else 'pending'} lvt={'yes' if lvt else 'pending'} "
-        f"mbff={'yes' if mbff else 'pending'} uart={'yes' if uart else 'pending'})"
+        f"mbff={'yes' if mbff else 'pending'} uart={'yes' if uart else 'pending'} "
+        f"closed430={'yes' if closed else 'pending'})"
     )
 
 

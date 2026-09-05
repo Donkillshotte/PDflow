@@ -40,6 +40,10 @@ learn/lab/asap7/sc6t/gds/
 learn/lab/asap7/sc6t/lib/
 learn/lab/asap7/sc6t/verilog/
 
+# ASAP7 CCS/CDL extras (layer-2 fetch). Not Calibre. Not a finish.
+learn/lab/asap7/ccs/
+learn/lab/asap7/cdl/
+
 # Cook leftovers: do not commit
 learn/sim/dse/memory_flowlab_nl.jsonl
 learn/sim/dse/memory_flowlab_nl.index.json

@@ -11,6 +11,7 @@ SPEC_JSON="$(python3 "${ROOT}/learn/scripts/lab_asap7_spec.py")"
 
 VARIANT="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["variant"])' "${SPEC_JSON}")"
 CONFIG_REL="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["config"])' "${SPEC_JSON}")"
+NICKNAME="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["nickname"])' "${SPEC_JSON}")"
 CORNER="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["corner"])' "${SPEC_JSON}")"
 VT="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["vt"])' "${SPEC_JSON}")"
 LIB_MODEL="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["lib_model"])' "${SPEC_JSON}")"
@@ -53,17 +54,34 @@ MAKE_EXTRA=(
 if [[ "${CLUSTER}" == "1" ]]; then
   MAKE_EXTRA+=( CLUSTER_FLOPS=1 )
 fi
-# Optional ORFS knobs (WC leftover: CTS repair can overflow the 65% die).
-# No design-name branch. Caller sets the env.
+# Optional ORFS knobs. No design-name branch.
+# WC leftover: 65% die overflows CTS after setup repair. Default a larger die.
 if [[ -n "${CORE_UTILIZATION:-}" ]]; then
   MAKE_EXTRA+=( CORE_UTILIZATION="${CORE_UTILIZATION}" )
+elif [[ "${CORNER}" == "WC" ]]; then
+  MAKE_EXTRA+=( CORE_UTILIZATION=40 )
 fi
 if [[ -n "${PLACE_DENSITY:-}" ]]; then
   MAKE_EXTRA+=( PLACE_DENSITY="${PLACE_DENSITY}" )
 fi
-# uart leftover: ORFS sets SYNTH_HDL_FRONTEND=slang; slang.so is not in this image.
+# Some configs set SYNTH_HDL_FRONTEND=slang. If slang.so is missing, use Yosys.
+# Capability / config-file gate — not a design-name branch.
 if [[ -n "${SYNTH_HDL_FRONTEND+x}" ]]; then
   MAKE_EXTRA+=( SYNTH_HDL_FRONTEND="${SYNTH_HDL_FRONTEND}" )
+elif grep -qE 'SYNTH_HDL_FRONTEND[[:space:]]*=[[:space:]]*slang' "${FLOW}/${CONFIG_REL}"; then
+  SLANG_SO=""
+  if command -v yosys-config >/dev/null 2>&1; then
+    YDAT="$(yosys-config --datdir 2>/dev/null || true)"
+    if [[ -n "${YDAT}" && -f "${YDAT}/plugins/slang.so" ]]; then
+      SLANG_SO=1
+    fi
+  fi
+  if [[ -z "${SLANG_SO}" ]]; then
+    MAKE_EXTRA+=( SYNTH_HDL_FRONTEND= )
+    if [[ -z "${EQUIVALENCE_CHECK:-}" ]]; then
+      MAKE_EXTRA+=( EQUIVALENCE_CHECK=0 )
+    fi
+  fi
 fi
 if [[ -n "${EQUIVALENCE_CHECK:-}" ]]; then
   MAKE_EXTRA+=( EQUIVALENCE_CHECK="${EQUIVALENCE_CHECK}" )
@@ -76,8 +94,9 @@ if [[ -n "${CLK_PS}" ]]; then
   python3 - <<PY
 from pathlib import Path
 clk = float("${CLK_PS}")
+nick = "${NICKNAME}"
 Path("${SDC_FILE}").write_text(
-    "current_design gcd\\n"
+    f"current_design {nick}\\n"
     "set clk_name core_clock\\n"
     "set clk_port_name clk\\n"
     f"set clk_period {clk}\\n"

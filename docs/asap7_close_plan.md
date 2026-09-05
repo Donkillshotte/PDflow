@@ -98,8 +98,8 @@ repair at 93% util. GDS only with `CORE_UTILIZATION=40`.
 that is not a 65% GCD smoke. ORFS GCD `CORE_UTILIZATION=65` is
 sized for BC/TC, not for a 312 ps pile of repair buffers.
 
-**Close path:** wrapper already passes `CORE_UTILIZATION` with no
-`if design ==`. Default WC lab cooks to 40. Leftover stays named:
+**Close path:** wrapper defaults `CORE_UTILIZATION=40` on WC when
+the caller does not set it. No `if design ==`. Leftover stays named:
 “310 ps + 65% die fails legalization at SS”.
 
 ### 3. LVS missing
@@ -182,10 +182,10 @@ is a new project.
 to pass `VERILOG_TOP_PARAMS = DATA_WIDTH 8`. The RTL default is
 already 8. `minimal` is “not included in CI”.
 
-**Close path (already live):**
-`SYNTH_HDL_FRONTEND= EQUIVALENCE_CHECK=0`. Optional: install
-yosys-slang if we want the official frontend. eqy is a separate
-leftover.
+**Close path (already live):** wrapper sees `SYNTH_HDL_FRONTEND=slang`
+in the config file and `slang.so` missing, then sets Yosys +
+`EQUIVALENCE_CHECK=0`. Optional: install yosys-slang if we want the
+official frontend. eqy is a separate leftover.
 
 ### 8. Community KLayout DRC (33 items on gcd)
 
@@ -238,14 +238,17 @@ on the same netlist, still not a product win.
 
 Do one heavy cook at a time. No AES. No gold stamp.
 
-1. **Report fmax / `period_min`** on the seven live GDS (no recook).
+1. **Report fmax / `period_min`** on the live GDS (no recook). Done
+   in `collect_report` + Studio `/lab` `#asap7`.
 2. **One relaxed-clock gcd TC** (`LAB_CLK_PS` ≈ 430) to show WNS ≥ 0
-   if we want a closed-timing *picture*. Honest leftover: different
+   if we want a closed-timing *picture*. Variant is tagged `_430ps`
+   so it does not overwrite the 310 ps GDS. Honest leftover: different
    SDC than ORFS smoke.
 3. **CCS extract** from `asap7sc7p5t_28` `.7z` when `p7zip` is
-   present — then drop the RVT+BC refuse.
-4. **CDL fetch** for a leftover-named KLayout/netgen LVS. Calibre
-   stays gated on the ASU tarball + 2017 license.
+   present (`learn/scripts/fetch_asap7_libextras.sh`) — then the
+   RVT+BC refuse drops because `ccs_ready` sees the files.
+4. **CDL fetch** (same script) for a leftover-named KLayout/netgen
+   LVS. Calibre stays gated on the ASU tarball + 2017 license.
 5. **6T platform** only if someone wants density studies. Not a
    finish on 7.5T PDN.
 6. FakeRAM, BPR/PowerVia, OpenRAM, LLM proposers: leftover /

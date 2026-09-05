@@ -10,8 +10,8 @@ Does not decide product wins. Does not replace the Nangate45 course.
 FLOW_VARIANT=lab_asap7_gcd_tc_rvt_nldm_7p5 \
   ./scripts/run_lab_asap7.sh finish
 
-# slow corner (310 ps + default 65% die overflows CTS legalization)
-CORNER=WC CORE_UTILIZATION=40 ./scripts/run_lab_asap7.sh finish
+# slow corner (wrapper defaults CORE_UTILIZATION=40; 65% overflows CTS)
+CORNER=WC ./scripts/run_lab_asap7.sh finish
 
 # multi-VT (primary + extra)
 ASAP7_USE_VT="RVT LVT" ./scripts/run_lab_asap7.sh finish
@@ -22,9 +22,11 @@ LAB_ASAP7_DESIGN=gcd-ccs CORNER=BC LIB_MODEL=CCS ./scripts/run_lab_asap7.sh fini
 # multi-bit FF clustering (uses *_FAKE.lib)
 CLUSTER_FLOPS=1 ./scripts/run_lab_asap7.sh finish
 
-# uart (slang.so leftover — Yosys default frontend, DATA_WIDTH already 8)
-LAB_ASAP7_DESIGN=uart SYNTH_HDL_FRONTEND= EQUIVALENCE_CHECK=0 \
-  ./scripts/run_lab_asap7.sh finish
+# uart (slang.so leftover — wrapper uses Yosys when slang.so is missing)
+LAB_ASAP7_DESIGN=uart ./scripts/run_lab_asap7.sh finish
+
+# relaxed clock (tags the variant so it does not overwrite the 310 ps GDS)
+LAB_CLK_PS=430 ./scripts/run_lab_asap7.sh finish
 ```
 
 Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.
@@ -51,8 +53,10 @@ Gold Dynamic IR stays **45.298 mV** on Nangate `gcd/flowlab`.
 ## Live cooks (no gold stamp)
 
 `learn/sim/reports/lab_asap7.json` is the last cook. It is gitignored.
+`learn/sim/reports/lab_asap7_folio.json` lists every live `lab_asap7_*` GDS.
 Do not freeze numbers, do not copy `6_report.json` into `learn/sim/reports/`.
 Check live GDS with `python3 learn/scripts/test_asap7_e2e.py`.
+CCS/CDL extras (leftover-named, not Calibre): `learn/scripts/fetch_asap7_libextras.sh`.
 
 See [`docs/asap7_research.md`](../../../docs/asap7_research.md).
 Close paths (three-layer kit, not leftover-free):

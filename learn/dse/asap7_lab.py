@@ -94,6 +94,11 @@ class LabAsap7Spec:
 
     @property
     def variant(self) -> str:
+        """Human recipe title, not a camp_* hash.
+
+        When LAB_CLK_PS differs from the ORFS smoke period, tag the variant
+        so a relaxed-clock cook does not overwrite the 310 ps / 270 ps GDS.
+        """
         vt_tag = "+".join(v.lower() for v in self.vt)
         bits = [
             "lab_asap7",
@@ -103,6 +108,11 @@ class LabAsap7Spec:
             self.lib_model.lower(),
             self.track,
         ]
+        default_clk = DESIGNS.get(self.design, {}).get("clk_ps")
+        if self.clk_ps is not None and (
+            default_clk is None or int(self.clk_ps) != int(default_clk)
+        ):
+            bits.append(f"{int(self.clk_ps)}ps")
         if self.cluster_flops:
             bits.append("mbff")
         if self.extra:
@@ -160,6 +170,35 @@ def sc6t_ready(root: Path | None = None) -> bool:
     return lef.is_file()
 
 
+def ccs_ready(corner: str, vt: str, root: Path | None = None) -> bool:
+    """True when a CCS liberty exists for this corner × VT.
+
+    Slim ORFS pack: RVT + FF (BC) only. Extra TT/SS / other VT files
+    may appear under learn/lab/asap7/ccs after fetch_asap7_libextras.sh.
+    """
+    if corner not in CORNERS:
+        return False
+    lib_tag = str(CORNERS[corner]["lib"]).upper()
+    vt_u = vt.upper()
+    bases = (
+        (root or REPO) / "tools/OpenROAD-flow-scripts/flow/platforms/asap7/lib/CCS",
+        (root or REPO) / "learn/lab/asap7/ccs",
+    )
+    for base in bases:
+        if not base.is_dir():
+            continue
+        for path in base.rglob("*.lib"):
+            name = path.name.upper()
+            if "CCS" in name and f"_{vt_u}_" in name and f"_{lib_tag}_" in name:
+                return True
+    return False
+
+
+def cdl_ready(root: Path | None = None) -> bool:
+    dest = (root or REPO) / "learn" / "lab" / "asap7" / "cdl"
+    return dest.is_dir() and any(dest.rglob("*.cdl"))
+
+
 def validate(spec: LabAsap7Spec, *, root: Path | None = None, allow_heavy: bool | None = None) -> LabAsap7Spec:
     root = root or REPO
     if spec.design not in DESIGNS:
@@ -177,10 +216,12 @@ def validate(spec: LabAsap7Spec, *, root: Path | None = None, allow_heavy: bool 
         raise LabAsap7Refuse(f"REFUSED: lab variant must start with {VARIANT_PREFIX}")
     if "krylov" in variant.lower():
         raise LabAsap7Refuse("REFUSED: Krylov is not a lab ASAP7 variant")
-    if spec.lib_model == "CCS" and (spec.corner, spec.primary_vt) not in CCS_OK:
+    if spec.lib_model == "CCS" and not ccs_ready(spec.corner, spec.primary_vt, root):
         raise LabAsap7Refuse(
-            "REFUSED: this ORFS pack has CCS only for RVT + BC (FF). "
-            f"Got CORNER={spec.corner} VT={spec.primary_vt}"
+            "REFUSED: CCS liberty missing for "
+            f"CORNER={spec.corner} VT={spec.primary_vt}. "
+            "Slim pack is RVT+BC only. Fetch extras with "
+            "learn/scripts/fetch_asap7_libextras.sh"
         )
     if spec.track == "6":
         raise LabAsap7Refuse(
@@ -256,12 +297,19 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
         except json.JSONDecodeError:
             qor = {}
     metrics = _metrics(qor)
-    clk = spec.clk_ps or DESIGNS[spec.design].get("clk_ps")
+    clk = spec.clk_ps if spec.clk_ps is not None else DESIGNS[spec.design].get("clk_ps")
     wns = metrics.get("wns_ps")
     if clk is not None and wns is not None:
         period_min = float(clk) + max(0.0, -float(wns))
         metrics["period_min_ps"] = period_min
         metrics["fmax_ghz"] = (1000.0 / period_min) if period_min > 0 else None
+    pw = metrics.get("power_w")
+    lk = metrics.get("leakage_w")
+    ir = metrics.get("ir_vdd_worst_v")
+    metrics["power_mw"] = (float(pw) * 1e3) if pw is not None else None
+    metrics["leakage_nw"] = (float(lk) * 1e9) if lk is not None else None
+    metrics["ir_drop_vdd_mv"] = (float(ir) * 1e3) if ir is not None else None
+    metrics["timing_closed"] = wns is not None and float(wns) >= 0
     payload = {
         "ok": gds.is_file(),
         "surface": "lab",
@@ -278,24 +326,29 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
         "lib_model": spec.lib_model,
         "track": spec.track,
         "cluster_flops": spec.cluster_flops,
-        "clk_ps": spec.clk_ps or DESIGNS[spec.design].get("clk_ps"),
+        "clk_ps": clk,
         "gds": str(gds) if gds.is_file() else None,
+        "gds_bytes": gds.stat().st_size if gds.is_file() else None,
         "metrics_source": str(rep) if rep.is_file() else None,
         "leftover": {
             "sram": "FakeRAM2.0" if DESIGNS[spec.design].get("sram") else None,
-            "ccs_partial": spec.lib_model == "CCS",
-            "lvs": "no LVS in ORFS slim pack",
-            "fake_mbff": spec.cluster_flops,
-            "timing_open": bool(
-                metrics.get("wns_ps") is not None and float(metrics["wns_ps"]) < 0
+            "ccs_partial": spec.lib_model == "CCS" and not ccs_ready("TC", spec.primary_vt, root),
+            "lvs": (
+                "CDL on disk, leftover-named KLayout/netgen only"
+                if cdl_ready(root)
+                else "no LVS in ORFS slim pack"
             ),
+            "fake_mbff": spec.cluster_flops,
+            "timing_open": bool(wns is not None and float(wns) < 0),
             "six_track": "fetch-gated, not a finish",
             "drc": "community KLayout deck; not Calibre",
             "wc_die": (
                 "310 ps + default 65% util can fail CTS legalization; "
-                "pass CORE_UTILIZATION for a larger die"
+                "wrapper defaults CORE_UTILIZATION=40 on WC"
             ),
-            "uart_slang": "ORFS uart wants slang.so; pass SYNTH_HDL_FRONTEND= for Yosys",
+            "uart_slang": (
+                "ORFS uart wants slang.so; wrapper uses Yosys when slang.so is missing"
+            ),
         },
         "qor": metrics,
         "note": (
@@ -313,7 +366,91 @@ def write_report(payload: dict, root: Path | None = None) -> Path:
     path = root / "learn" / "sim" / "reports" / "lab_asap7.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n")
+    write_folio(root)
     return path
+
+
+def _folio_clk_ps(variant: str, nickname: str) -> int | None:
+    tagged = re.search(r"_(\d+)ps(?:_|$)", variant)
+    if tagged:
+        return int(tagged.group(1))
+    for info in DESIGNS.values():
+        if info.get("nickname") == nickname:
+            clk = info.get("clk_ps")
+            return int(clk) if clk is not None else None
+    return None
+
+
+def scan_folio(root: Path | None = None) -> list[dict]:
+    """Live cooks already on disk. Last cook only is lab_asap7.json."""
+    root = root or REPO
+    results = root / "tools/OpenROAD-flow-scripts/flow/results/asap7"
+    rows: list[dict] = []
+    if not results.is_dir():
+        return rows
+    for gds in sorted(results.glob("*/*/6_final.gds")):
+        variant = gds.parent.name
+        if not variant.startswith(VARIANT_PREFIX):
+            continue
+        nickname = gds.parent.parent.name
+        log_rep = (
+            root
+            / "tools/OpenROAD-flow-scripts/flow/logs/asap7"
+            / nickname
+            / variant
+            / "6_report.json"
+        )
+        qor: dict = {}
+        if log_rep.is_file():
+            try:
+                qor = json.loads(log_rep.read_text())
+            except json.JSONDecodeError:
+                qor = {}
+        metrics = _metrics(qor)
+        clk = _folio_clk_ps(variant, nickname)
+        wns = metrics.get("wns_ps")
+        period_min = None
+        fmax = None
+        if clk is not None and wns is not None:
+            period_min = float(clk) + max(0.0, -float(wns))
+            fmax = (1000.0 / period_min) if period_min > 0 else None
+        pw = metrics.get("power_w")
+        lk = metrics.get("leakage_w")
+        ir = metrics.get("ir_vdd_worst_v")
+        rows.append(
+            {
+                "variant": variant,
+                "design": nickname,
+                "clk_ps": clk,
+                "wns_ps": wns,
+                "timing_closed": wns is not None and float(wns) >= 0,
+                "area_um2": metrics.get("area_um2"),
+                "power_mw": (float(pw) * 1e3) if pw is not None else None,
+                "leakage_nw": (float(lk) * 1e9) if lk is not None else None,
+                "ir_drop_vdd_mv": (float(ir) * 1e3) if ir is not None else None,
+                "period_min_ps": period_min,
+                "fmax_ghz": fmax,
+                "gds_bytes": gds.stat().st_size,
+            }
+        )
+    return rows
+
+
+def write_folio(root: Path | None = None) -> Path:
+    root = root or REPO
+    dest = root / "learn" / "sim" / "reports" / "lab_asap7_folio.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(
+        json.dumps(
+            {
+                "note": "Live folio — last cook is lab_asap7.json. No gold stamp.",
+                "cooks": scan_folio(root),
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    return dest
 
 
 def make_env(spec: LabAsap7Spec) -> dict[str, str]:
