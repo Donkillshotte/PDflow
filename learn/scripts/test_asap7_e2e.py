@@ -110,7 +110,7 @@ def main() -> None:
     bc = check_live_cook(LabAsap7Spec(corner="BC"), must_exist=True)
     lvt = check_live_cook(LabAsap7Spec(vt=("RVT", "LVT")), must_exist=True)
     mbff = check_live_cook(LabAsap7Spec(cluster_flops=True), must_exist=True)
-    uart = check_live_cook(LabAsap7Spec(design="uart"), must_exist=False)
+    uart = check_live_cook(LabAsap7Spec(design="uart"), must_exist=True)
 
     stamped = ROOT / "learn/sim/reports/lab_asap7.json"
     if stamped.is_file():
