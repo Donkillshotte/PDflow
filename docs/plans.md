@@ -17,6 +17,10 @@ sky130 vs Nangate45 (investigation, not a migration):
 [`sky130_integration.md`](sky130_integration.md). Do not mix sky130
 into the course.
 
+ASAP7 as Lab research kit (investigation, not a migration):
+[`asap7_research.md`](asap7_research.md). Do not mix ASAP7 into the
+course or promote an ASAP7 finish to a product win.
+
 ## Product (from here on)
 
 | File | Role | Do not |

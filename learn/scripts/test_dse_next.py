@@ -1178,6 +1178,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "rtl_to_signoff.md",
         "rtl_to_signoff_close_plan.md",
         "sky130_integration.md",
+        "asap7_research.md",
         "win_rule.py",
     ):
         check(needle in index or needle.replace("docs/", "") in index, f"docs index cites {needle}")
@@ -1213,6 +1214,12 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("Do not migrate" in sky_inv, "sky130 investigation does not migrate the course")
     check("45.298" in sky_inv, "sky130 investigation protects gold Dynamic IR")
     check("nangate45/gcd/flowlab" in sky_inv, "sky130 investigation names the locked FlowLab path")
+    asap7_inv = (root / "docs/asap7_research.md").read_text()
+    check("Do not migrate" in asap7_inv, "asap7 investigation does not migrate the course")
+    check("45.298" in asap7_inv, "asap7 investigation protects gold Dynamic IR")
+    check("nangate45/gcd/flowlab" in asap7_inv, "asap7 investigation names the locked FlowLab path")
+    check("product win" in asap7_inv, "asap7 investigation refuses a product win")
+    check("FakeRAM" in asap7_inv, "asap7 investigation names FakeRAM leftover")
     contrib = (root / "CONTRIBUTING.md").read_text()
     check("test_dse_next.py" in contrib, "CONTRIBUTING names the fast suite")
     check("45.298" in contrib, "CONTRIBUTING protects GCD IR gold")

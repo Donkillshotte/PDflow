@@ -23,6 +23,7 @@ Do not mix them on a roadmap. A gated item is not a sprint.
 | **MCMM** liberty (slow/fast) | Single `typical.lib` + one SDC | Nangate45 in ORFS ships one corner. Extra corners need the full kit or a foundry PDK. Not required for this educational close. |
 | **Magic + Netgen** on FreePDK45 | KLayout DRC/LVS | No verified FreePDK45 Magic `.tech` in this environment. |
 | **sky130** as the course PDK | Nangate45 only | Different PDK. Do not mix it into this course. Investigation: [`docs/sky130_integration.md`](../../docs/sky130_integration.md). |
+| **ASAP7** as the course or product PDK | ORFS `platforms/asap7` (CCS RVT-FF, FakeRAM, no LVS in the slim pack) | Predictive FinFET. Lab research only. Do not mix into the course or stamp a product win. Investigation: [`docs/asap7_research.md`](../../docs/asap7_research.md). |
 | **PrimeTime / Tempus / Voltus** | OpenSTA + PDNSim + Xyce N4 | Different tools. We do not claim equivalence. |
 | **EM current-density limits** | vyges-em-ir static/dynamic IR on the `write_pg_spice` mesh. `em_checked` is 0. | Nangate45 has no foundry `emlimit`. Adding a guessed limit would be a fake EM close. |
 | **LVS must-connect on DFF_X2** | KLayout compare matches. lvsdb lists 2 well-tie warnings on `DFF_X2`. | Nangate split wells. Unpin, flatten-after-extract, flatten-all-before-extract, and flat extract all fail to clear the leftover without breaking the match. |

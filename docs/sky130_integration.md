@@ -136,7 +136,8 @@ Public sources used: Tiny Tapeout FAQ and shuttle pages; google/skywater-pdk and
 - Best open **digital + community + tapeout access** → sky130.
 - Best open **analog / RF** → IHP SG13G2.
 - Best open **liberty corners / MCU voltages in this tree** → gf180.
-- Best **FinFET teaching** (no silicon) → ASAP7.
+- Best **FinFET / CCS / corner research** (no silicon) → ASAP7.
+  See [`asap7_research.md`](asap7_research.md).
 - Best base **for this product/course** → still Nangate45.
 
 ORFS here already ships all four open platforms
