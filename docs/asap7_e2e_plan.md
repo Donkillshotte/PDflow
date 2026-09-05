@@ -23,8 +23,11 @@ track into a serial, resumable, phase-checkpointed pipeline with
 one entry point, honest per-phase verdicts, and the same refuse
 rules it has today.
 
-Checked on disk 2026-09-05. No ASAP7 `make finish` was run for this
-plan. Evidence lines below name the file that proves each claim.
+Checked on disk 2026-09-05. Implementation of W1–W10 landed on this
+branch (`run_asap7_e2e.py`, stage ledger, leftover-named DRC, `--variant`
+on LVS/MMMC, suite hooks, two-tier e2e test). W11 stays a named GAP.
+Live cooks remain resume-only: a fresh clone passes tier 1 without GDS.
+Evidence lines below name the file that proves each claim.
 
 ---
 

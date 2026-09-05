@@ -301,6 +301,8 @@ function readAsap7Lab(): Record<string, unknown> | null {
   const qor = asap7QorOf(raw);
   const lvs = readJson("sim/reports/lab_asap7_lvs.json");
   const mmmc = readJson("sim/reports/lab_asap7_mmmc.json");
+  const drc = readJson("sim/reports/lab_asap7_drc.json");
+  const folioBlob = readJson("sim/reports/lab_asap7_folio.json");
   const pdk = readJson("sim/reports/lab_asap7_pdk.json");
   const spice = readJson("sim/reports/lab_asap7_spice.json");
   const spiceWave = (spice?.wave as Record<string, unknown>) || {};
@@ -319,6 +321,10 @@ function readAsap7Lab(): Record<string, unknown> | null {
     productWin: false,
     comparableToGoldIr: false,
     leftover: raw?.leftover ?? null,
+    stages: raw?.stages ?? null,
+    stoppedAt: raw?.stopped_at ?? null,
+    closureLadder: folioBlob?.closure_ladder ?? null,
+    track6: folioBlob?.track6 ?? { status: "GAP" },
     qor,
     folio,
     cookCount: folio.length,
@@ -337,6 +343,13 @@ function readAsap7Lab(): Record<string, unknown> | null {
           setupWnsPs: n(setup.wns_ps),
           holdWnsPs: n(hold.wns_ps),
           ok: mmmc.ok === true,
+        }
+      : null,
+    drc: drc
+      ? {
+          nItems: n(drc.n_items),
+          calibre: drc.calibre === true,
+          status: drc.status ?? null,
         }
       : null,
     pdk: pdk

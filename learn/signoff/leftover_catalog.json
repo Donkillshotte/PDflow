@@ -200,9 +200,27 @@
       "kind": "gated",
       "variant": "n/a",
       "report": "sim/reports/lab_asap7_pdk.json",
-      "suite_hooks": ["asap7_layer1"],
+      "suite_hooks": ["asap7_layer1", "asap7_drc", "asap7_lvs"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["leftover Calibre", "ASU encrypted tarball"]
+    },
+    {
+      "id": "asap7_community_drc",
+      "kind": "built",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_drc.json",
+      "suite_hooks": ["asap7_drc"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["community KLayout", "leftover Calibre"]
+    },
+    {
+      "id": "asap7_cell_cdl_lvs",
+      "kind": "built",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_lvs.json",
+      "suite_hooks": ["asap7_lvs"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["cell-vs-CDL", "leftover Calibre"]
     },
     {
       "id": "asap7_xyce_patch",

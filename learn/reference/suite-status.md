@@ -289,6 +289,29 @@ ORFS pipeline UI follows `preferredResultsVariant()` (`flowlab` here).
 
 ---
 
+## ASAP7 (Lab)
+
+Predictive FinFET track. Not a product win. Not comparable to gold Dynamic IR
+**45.298 mV**. Live GDS only — no ASAP7 gold. Runner:
+`python3 learn/scripts/run_asap7_e2e.py`. Plan:
+[`docs/asap7_e2e_plan.md`](../../docs/asap7_e2e_plan.md).
+
+| Phase | Status | Evidence | Leftover |
+|---|---|---|---|
+| Cook (gcd / gcd-ccs / uart) | **WORKS*** when GDS live; else GAP until runner | `results/asap7/<d>/lab_asap7_*/6_final.gds` · folio | 310 ps smoke is open by design |
+| Stage ledger (synth→finish) | **WORKS** | `collect_report()["stages"]` · `stopped_at` | — |
+| DRC (community KLayout) | **WORKS*** when run | `lab_asap7_drc.json` | not Calibre; via-width rules off |
+| LVS (cell-vs-CDL) | **WORKS*** when CDL fetched | `lab_asap7_lvs.json` · `lvs_closed: false` | never `.lvs.ok` · leftover Calibre |
+| MMMC pair (setup WC / hold BC) | **WORKS*** on closed finish | `lab_asap7_mmmc.json` | two OpenSTA jobs, not one MMMC session |
+| Layer-1 inventory | **WORKS*** when fetched | `lab_asap7_pdk.json` | Calibre decks **GAP** |
+| Xyce inverter | **WORKS*** when PDK present | `lab_asap7_spice.json` · level 72→107 | not gold IR |
+| 6-track finish | **GAP** | `ASAP7_TRACK=6` refused | second platform (W11) |
+| Calibre DRC/LVS | **GAP** | ASU tarball + 2017 license | leftover forever |
+| FakeRAM | leftover forever | `riscv32i-mock-sram` not in default plan | blackbox SRAM |
+| Product win / course swap | **LOCKED** forbidden | `product_win: false` | — |
+
+---
+
 ## What is still not functional (do not fake)
 
 | Leftover | Why it stays |
