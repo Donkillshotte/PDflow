@@ -308,6 +308,7 @@ Predictive FinFET track. Not a product win. Not comparable to gold Dynamic IR
 | Dummy bump (2×2 LEF) | **WORKS*** leftover-named | `lab_asap7_pkg.json` · `dummy_bump_gcd.lef` | not JEDEC C4 · 1.0 µm on M9/M4 |
 | Sidecar RDL | **WORKS*** leftover-named when OpenROAD routes | `lab_asap7_pkg_rdl.json` · sidecar ODB | never write `6_final.odb` |
 | Compact system PDN | **WORKS*** leftover-named when ngspice present | `lab_asap7_system_pdn.json` · Vdd 0.70 | not Touchstone · not Ansys CPA · not gold IR |
+| Chip PDN mesh (`write_pg_spice`) | **GAP** until W13 | plan: [`asap7_chip_pdn_plan.md`](../../docs/asap7_chip_pdn_plan.md) | tier B; not Nangate `run_chip_pdn_ir.sh` |
 | 6-track finish | **GAP** | `ASAP7_TRACK=6` refused | second platform (W11) |
 | Calibre DRC/LVS | **GAP** | ASU tarball + 2017 license | leftover forever |
 | FakeRAM | leftover forever | `riscv32i-mock-sram` not in default plan | blackbox SRAM |

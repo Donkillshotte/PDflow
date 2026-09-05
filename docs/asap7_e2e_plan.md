@@ -593,7 +593,10 @@ what happens to pass first.
 6. **W10** (suite-status, Studio hooks, docs, map check).
 7. **PKG leftover** (dummy bump + sidecar RDL + compact ladder) —
    attached after W10; leftover-named, not a product win.
-8. **W11** stays a named GAP.
+8. **W13** (on-die chip PDN mesh) — `write_pg_spice` +
+   `pdn_transient` on `lab_asap7_*`; plan:
+   [`asap7_chip_pdn_plan.md`](asap7_chip_pdn_plan.md).
+9. **W11** stays a named GAP.
 
 Each lands as its own commit with its own test delta. Fast suite
 rules apply: synthetic or gcd-scale; one `test_dse.py` at a time;
