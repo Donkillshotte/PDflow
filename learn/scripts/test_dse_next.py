@@ -1158,6 +1158,8 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "docs/course.md",
         "docs/script.md",
         "docs/plans.md",
+        "docs/asap7_research.md",
+        "docs/asap7_close_plan.md",
         "AGENTS.md",
         "CONTRIBUTING.md",
         "scripts/README.md",
@@ -1183,6 +1185,7 @@ def _check_enterprise_docs(check, root: Path) -> None:
         "rtl_to_signoff_close_plan.md",
         "sky130_integration.md",
         "asap7_research.md",
+        "asap7_close_plan.md",
         "win_rule.py",
     ):
         check(needle in index or needle.replace("docs/", "") in index, f"docs index cites {needle}")
@@ -1225,6 +1228,12 @@ def _check_enterprise_docs(check, root: Path) -> None:
     check("product win" in asap7_inv, "asap7 investigation refuses a product win")
     check("FakeRAM" in asap7_inv, "asap7 investigation names FakeRAM leftover")
     check("Do not freeze" in asap7_inv, "asap7 investigation refuses an ASAP7 gold")
+    close = (root / "docs/asap7_close_plan.md").read_text()
+    check("three layers" in close.lower() or "Three layers" in close, "close plan names the three-layer kit")
+    check("45.298" in close, "close plan protects gold Dynamic IR")
+    check("period_min" in close, "close plan names fmax / period_min not a 310 ps gold")
+    check("Calibre" in close and "FakeRAM" in close, "close plan names Calibre and FakeRAM leftovers")
+    check("Do not restamp" in close, "close plan refuses a gold restamp")
     check(
         "!reports/lab_asap7.json" not in (root / "learn/sim/.gitignore").read_text(),
         "ASAP7 last-cook report is not force-tracked",

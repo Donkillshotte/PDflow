@@ -18,8 +18,9 @@ sky130 vs Nangate45 (investigation, not a migration):
 into the course.
 
 ASAP7 as Lab research kit (investigation, not a migration):
-[`asap7_research.md`](asap7_research.md). Do not mix ASAP7 into the
-course or promote an ASAP7 finish to a product win.
+[`asap7_research.md`](asap7_research.md). Close paths for the open
+leftovers: [`asap7_close_plan.md`](asap7_close_plan.md). Do not mix
+ASAP7 into the course or promote an ASAP7 finish to a product win.
 
 ## Product (from here on)
 

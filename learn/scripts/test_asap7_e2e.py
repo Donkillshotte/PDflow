@@ -87,6 +87,8 @@ def check_live_cook(spec: LabAsap7Spec, *, must_exist: bool) -> dict | None:
     check(qor.get("power_w") is not None, f"{spec.variant} power {qor.get('power_w')}")
     check(qor.get("leakage_w") is not None, f"{spec.variant} leakage {qor.get('leakage_w')}")
     check(qor.get("ir_vdd_worst_v") is not None, f"{spec.variant} IR {qor.get('ir_vdd_worst_v')}")
+    check(qor.get("period_min_ps") is not None, f"{spec.variant} period_min {qor.get('period_min_ps')}")
+    check(qor.get("fmax_ghz") is not None, f"{spec.variant} fmax {qor.get('fmax_ghz')}")
     print(
         f"live {spec.variant}: WNS {qor['wns_ps']} ps area {qor['area_um2']} "
         f"power {qor['power_w']} leak {qor['leakage_w']} IR {qor['ir_vdd_worst_v']}"

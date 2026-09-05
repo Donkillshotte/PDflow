@@ -199,3 +199,6 @@ Live lab cooks write GDS under `results/asap7/<design>/lab_asap7_*`.
 `learn/sim/reports/lab_asap7.json` is the last cook (gitignored).
 Do not freeze those numbers. Do not copy `6_report.json` into reports.
 Check with `learn/scripts/test_asap7_e2e.py`.
+
+How the full academic kit is layered, and how to close (or name)
+each leftover: [`asap7_close_plan.md`](asap7_close_plan.md).

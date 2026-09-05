@@ -55,6 +55,7 @@ stays 45.298 mV.
 - [`../learn/reference/gaps.md`](../learn/reference/gaps.md) — license/PDK gated vs to-build
 - [`sky130_integration.md`](sky130_integration.md) — why the course stays Nangate45 (sky130 is a different PDK)
 - [`asap7_research.md`](asap7_research.md) — ASAP7 as Lab/FinFET research kit (not a course or product swap)
+- [`asap7_close_plan.md`](asap7_close_plan.md) — how the ASU/ORFS/Hammer kit is layered; leftover close paths (not leftover-free)
 
 ## Product code
 

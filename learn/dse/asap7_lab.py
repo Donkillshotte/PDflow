@@ -55,7 +55,7 @@ DESIGNS = {
     "uart": {
         "config": "designs/asap7/uart/config.mk",
         "nickname": "uart",
-        "clk_ps": None,
+        "clk_ps": 270,
         "sram": False,
     },
     "minimal": {
@@ -256,6 +256,12 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
         except json.JSONDecodeError:
             qor = {}
     metrics = _metrics(qor)
+    clk = spec.clk_ps or DESIGNS[spec.design].get("clk_ps")
+    wns = metrics.get("wns_ps")
+    if clk is not None and wns is not None:
+        period_min = float(clk) + max(0.0, -float(wns))
+        metrics["period_min_ps"] = period_min
+        metrics["fmax_ghz"] = (1000.0 / period_min) if period_min > 0 else None
     payload = {
         "ok": gds.is_file(),
         "surface": "lab",

@@ -55,3 +55,5 @@ Do not freeze numbers, do not copy `6_report.json` into `learn/sim/reports/`.
 Check live GDS with `python3 learn/scripts/test_asap7_e2e.py`.
 
 See [`docs/asap7_research.md`](../../../docs/asap7_research.md).
+Close paths (three-layer kit, not leftover-free):
+[`docs/asap7_close_plan.md`](../../../docs/asap7_close_plan.md).
