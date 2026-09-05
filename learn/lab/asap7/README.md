@@ -16,8 +16,9 @@ CORNER=WC ./scripts/run_lab_asap7.sh finish
 # multi-VT (primary + extra)
 ASAP7_USE_VT="RVT LVT" ./scripts/run_lab_asap7.sh finish
 
-# CCS (RVT + BC only in this ORFS pack)
+# CCS (RVT + BC in the slim pack; TC/WC when extras are fetched)
 LAB_ASAP7_DESIGN=gcd-ccs CORNER=BC LIB_MODEL=CCS ./scripts/run_lab_asap7.sh finish
+LIB_MODEL=CCS CORNER=TC ./scripts/run_lab_asap7.sh finish
 
 # multi-bit FF clustering (uses *_FAKE.lib)
 CLUSTER_FLOPS=1 ./scripts/run_lab_asap7.sh finish
@@ -58,6 +59,8 @@ Gold Dynamic IR stays **45.298 mV** on Nangate `gcd/flowlab`.
 Do not freeze numbers, do not copy `6_report.json` into `learn/sim/reports/`.
 Check live GDS with `python3 learn/scripts/test_asap7_e2e.py`.
 CCS/CDL extras (leftover-named, not Calibre): `learn/scripts/fetch_asap7_libextras.sh`.
+Cell-vs-CDL: `python3 learn/scripts/lab_asap7_lvs.py` (never `.lvs.ok`).
+Setup WC / hold BC on one netlist: `python3 learn/scripts/lab_asap7_mmmc.py`.
 
 See [`docs/asap7_research.md`](../../../docs/asap7_research.md).
 Close paths (three-layer kit, not leftover-free):

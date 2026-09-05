@@ -120,6 +120,28 @@ def main() -> None:
         check(closed["qor"].get("timing_closed") is True, "480 ps gcd TC is timing-closed")
         check(float(closed["qor"]["wns_ps"]) >= 0, f"480 ps WNS {closed['qor']['wns_ps']} >= 0")
 
+    ccs_tc = check_live_cook(LabAsap7Spec(lib_model="CCS", corner="TC"), must_exist=True)
+    ccs_wc = check_live_cook(LabAsap7Spec(lib_model="CCS", corner="WC"), must_exist=True)
+
+    lvs_p = ROOT / "learn/sim/reports/lab_asap7_lvs.json"
+    check(lvs_p.is_file(), "leftover-named ASAP7 LVS report exists")
+    lvs = json.loads(lvs_p.read_text())
+    check(lvs.get("lvs_closed") is False, "ASAP7 LVS is leftover-named, not closed")
+    check(lvs.get("calibre") is False, "ASAP7 LVS is not Calibre")
+    check(lvs.get("product_win") is False, "ASAP7 LVS is not a product win")
+    check("gold_ir_mv" not in lvs, "ASAP7 LVS has no gold_ir_mv")
+    check("45.298" not in lvs_p.read_text(), "ASAP7 LVS has no 45.298")
+    check(float(lvs.get("match_pct") or 0) > 0, f"ASAP7 LVS match {lvs.get('match_pct')}")
+
+    mmmc_p = ROOT / "learn/sim/reports/lab_asap7_mmmc.json"
+    check(mmmc_p.is_file(), "ASAP7 setup/hold pair report exists")
+    mmmc = json.loads(mmmc_p.read_text())
+    check(mmmc.get("ok") is True, "ASAP7 MMMC pair ran")
+    check(mmmc.get("product_win") is False, "ASAP7 MMMC is not a product win")
+    check(mmmc.get("setup", {}).get("wns_ps") is not None, "ASAP7 setup WNS present")
+    check(mmmc.get("hold", {}).get("wns_ps") is not None, "ASAP7 hold slack present")
+    check("45.298" not in mmmc_p.read_text(), "ASAP7 MMMC has no 45.298")
+
     folio = scan_folio(ROOT)
     check(len(folio) >= 8, f"folio has live cooks ({len(folio)})")
     check(all("gold_ir_mv" not in row for row in folio), "folio has no gold_ir_mv")
@@ -146,7 +168,8 @@ def main() -> None:
         f"(ccs={'yes' if ccs else 'pending'} wc={'yes' if wc else 'pending'} "
         f"bc={'yes' if bc else 'pending'} lvt={'yes' if lvt else 'pending'} "
         f"mbff={'yes' if mbff else 'pending'} uart={'yes' if uart else 'pending'} "
-        f"closed480={'yes' if closed else 'pending'})"
+        f"closed480={'yes' if closed else 'pending'} "
+        f"ccs_tc={'yes' if ccs_tc else 'pending'} ccs_wc={'yes' if ccs_wc else 'pending'})"
     )
 
 
