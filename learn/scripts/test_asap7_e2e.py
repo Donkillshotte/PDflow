@@ -108,6 +108,13 @@ def tier1() -> None:
     check(not frozen.is_file(), "no frozen ASAP7 6_report golden copy")
     check((ROOT / "learn/scripts/run_asap7_e2e.py").is_file(), "e2e runner exists")
     check((ROOT / "learn/scripts/lab_asap7_drc.py").is_file(), "leftover-named DRC script exists")
+    check((ROOT / "learn/scripts/lab_asap7_pkg.py").is_file(), "leftover-named PKG script exists")
+    check((ROOT / "learn/lab/asap7/pkg/dummy_bump_gcd.lef").is_file(), "ASAP7 dummy bump LEF exists")
+    check((ROOT / "learn/lab/asap7/pkg/asap7_system_pdn.json").is_file(), "ASAP7 compact pkg model exists")
+    pkg_cfg = json.loads((ROOT / "learn/lab/asap7/pkg/asap7_system_pdn.json").read_text())
+    check(pkg_cfg.get("product_win") is False, "compact pkg model is not a product win")
+    check(float(pkg_cfg.get("vdd") or 0) == 0.70, "compact pkg Vdd is ASAP7 TC 0.70")
+    check("45.298" not in json.dumps(pkg_cfg), "compact pkg model has no 45.298")
 
     rc = e2e_main(["--dry-run"])
     check(rc == 0, f"e2e dry-run exits 0 ({rc})")
@@ -196,6 +203,21 @@ def tier2() -> None:
     check(spice.get("patch") == "level 72→107", "ASAP7 Xyce names level 72→107")
     check((spice.get("wave") or {}).get("inverted") is True, "ASAP7 leftover inverter switched")
     check("45.298" not in spice_p.read_text(), "ASAP7 Xyce has no 45.298")
+
+    pkg_p = ROOT / "learn/sim/reports/lab_asap7_pkg.json"
+    check(pkg_p.is_file(), "leftover-named ASAP7 PKG report exists")
+    pkg = json.loads(pkg_p.read_text())
+    check(pkg.get("product_win") is False, "ASAP7 PKG is not a product win")
+    check(pkg.get("c4") is False, "ASAP7 PKG is not C4")
+    check(pkg.get("touchstone") is False, "ASAP7 PKG is not Touchstone")
+    check(pkg.get("comparable_to_gold_ir") is False, "ASAP7 PKG is not gold IR")
+    check("45.298" not in pkg_p.read_text(), "ASAP7 PKG has no 45.298")
+    check((pkg.get("bump") or {}).get("package", {}).get("n_bumps") == 4, "ASAP7 compact model has 4 dummy bumps")
+    check((pkg.get("rdl") or {}).get("wrote_final") is False, "ASAP7 RDL did not write 6_final")
+    pdn = pkg.get("system_pdn") or {}
+    check(pdn.get("vdd") == 0.7 or pdn.get("vdd") == 0.70, f"ASAP7 system PDN Vdd {pdn.get('vdd')}")
+    if pdn.get("ok"):
+        check(pdn.get("droop_mv") is not None, f"ASAP7 compact droop {pdn.get('droop_mv')}")
 
     folio = scan_folio(ROOT)
     check(len(folio) >= 8, f"folio has live cooks ({len(folio)})")

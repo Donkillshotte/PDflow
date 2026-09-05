@@ -117,7 +117,7 @@ def run_py(script: str, args: list[str]) -> int:
 
 
 def run_analysis(closed_variants: list[str], drc_specs: list[LabAsap7Spec]) -> dict:
-    analysis: dict = {"drc": {}, "lvs": {}, "mmmc": {}, "layer1": {}}
+    analysis: dict = {"drc": {}, "lvs": {}, "mmmc": {}, "layer1": {}, "pkg": {}}
     if not (ROOT / "learn/lab/asap7/pdk").is_dir():
         analysis["layer1"] = {
             "status": "GAP",
@@ -157,6 +157,21 @@ def run_analysis(closed_variants: list[str], drc_specs: list[LabAsap7Spec]) -> d
             rc = run_py("lab_asap7_mmmc.py", ["--variant", variant])
             mmmc[variant] = {"status": "ran" if rc == 0 else "fail"}
         analysis["mmmc"] = mmmc
+
+    pkg_variant = closed_variants[0] if closed_variants else ""
+    if not pkg_variant:
+        smoke = LabAsap7Spec()
+        if (result_dir(smoke, ROOT) / "6_final.gds").is_file():
+            pkg_variant = smoke.variant
+    if pkg_variant:
+        rc = run_py("lab_asap7_pkg.py", ["--variant", pkg_variant])
+        analysis["pkg"] = {
+            "status": "ran" if rc == 0 else "fail",
+            "variant": pkg_variant,
+            "report": (REPORTS / "lab_asap7_pkg.json").is_file(),
+        }
+    else:
+        analysis["pkg"] = {"status": "skip", "reason": "no live finish for leftover PKG"}
     return analysis
 
 
