@@ -194,3 +194,7 @@ win surface.
 
 Do not mix ASAP7 into the Nangate45 course. Do not recook locked
 `gcd/flowlab`. Do not restamp gold Dynamic IR **45.298 mV**.
+
+First lab cook (gcd / TC / RVT / NLDM / 7.5-track): GDS written,
+WNS −115.7 ps (open), area 53.0 µm², power 0.761 mW, leakage 45 nW,
+IR 3.65 mV on a new mesh. Report: `learn/sim/reports/lab_asap7.json`.

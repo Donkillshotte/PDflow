@@ -41,4 +41,20 @@ Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.
 IR on this track is a new mesh. `comparable_to_gold_ir` is false.
 Gold Dynamic IR stays **45.298 mV** on Nangate `gcd/flowlab`.
 
+## First cook (gcd, TC, RVT, NLDM, 7.5-track)
+
+Live ORFS finish, 2026-09-05. Predictive. **Not a product win.**
+
+| Axis | Value |
+|---|---|
+| GDS | `results/asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5/6_final.gds` |
+| Clock | 310 ps |
+| WNS / TNS | −115.7 ps / −3262 ps (48 setup viol) — **open** |
+| Area (stdcell / die) | 53.0 / 77.2 µm² |
+| Power / leakage | 0.761 mW / 45 nW |
+| IR drop VDD worst | 3.65 mV — **not** gold 45.298 mV |
+| Util | 91% |
+| LVS | leftover (no deck in slim pack) |
+| 6-track | leftover (fetch-gated) |
+
 See [`docs/asap7_research.md`](../../../docs/asap7_research.md).

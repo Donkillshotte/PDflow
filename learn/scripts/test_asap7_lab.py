@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -86,6 +87,18 @@ def main() -> None:
     check(payload["product_win"] is False, "report is not a product win")
     check(payload["comparable_to_gold_ir"] is False, "IR not comparable to 45.298")
     check(payload["gold_ir_mv"] == 45.298, "gold sentinel named")
+    stamped = ROOT / "learn/sim/reports/lab_asap7.json"
+    check(stamped.is_file(), "lab_asap7.json exists")
+    live = json.loads(stamped.read_text())
+    check(live.get("product_win") is False, "stamped report is not a product win")
+    check(live.get("gold_ir_mv") == 45.298, "stamped gold sentinel")
+    if live.get("ok"):
+        check(live.get("gds"), "cooked report names GDS")
+        check(live.get("qor", {}).get("wns_ps") is not None, "cooked report has WNS")
+        check(live.get("qor", {}).get("area_um2") is not None, "cooked report has area")
+        check(live.get("qor", {}).get("power_w") is not None, "cooked report has power")
+        check(live.get("qor", {}).get("leakage_w") is not None, "cooked report has leakage")
+        check(live.get("qor", {}).get("ir_vdd_worst_v") is not None, "cooked report has IR")
     print("ALL test_asap7_lab PASSED")
 
 

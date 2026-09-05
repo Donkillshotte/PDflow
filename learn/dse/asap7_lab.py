@@ -217,18 +217,45 @@ def flowlab_untouched(root: Path | None = None) -> bool:
     return locked.is_file()
 
 
+def _metrics(qor: dict) -> dict:
+    def g(*keys: str):
+        for k in keys:
+            if k in qor and qor[k] is not None:
+                return qor[k]
+        return None
+
+    return {
+        "wns_ps": g("finish__timing__setup__ws"),
+        "tns_ps": g("finish__timing__setup__tns"),
+        "setup_violations": g("finish__timing__drv__setup_violation_count"),
+        "area_um2": g("finish__design__instance__area__stdcell", "finish__design__instance__area"),
+        "die_um2": g("finish__design__die__area"),
+        "power_w": g("finish__power__total"),
+        "leakage_w": g("finish__power__leakage__total"),
+        "ir_vdd_worst_v": g("finish__design_powergrid__drop__worst__net:VDD__corner:default"),
+        "util": g("finish__design__instance__utilization"),
+    }
+
+
 def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict | None = None) -> dict:
     root = root or REPO
     out = result_dir(spec, root)
     gds = out / "6_final.gds"
-    rep = out / "6_report.json"
+    log_rep = (
+        root
+        / "tools/OpenROAD-flow-scripts/flow/logs/asap7"
+        / spec.nickname
+        / spec.variant
+        / "6_report.json"
+    )
+    rep = log_rep if log_rep.is_file() else out / "6_report.json"
     qor: dict = {}
     if rep.is_file():
         try:
             qor = json.loads(rep.read_text())
         except json.JSONDecodeError:
             qor = {}
-    finish = qor.get("finish") if isinstance(qor.get("finish"), dict) else qor
+    metrics = _metrics(qor)
     payload = {
         "ok": gds.is_file(),
         "surface": "lab",
@@ -248,18 +275,19 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
         "cluster_flops": spec.cluster_flops,
         "clk_ps": spec.clk_ps or DESIGNS[spec.design].get("clk_ps"),
         "gds": str(gds) if gds.is_file() else None,
+        "metrics_source": str(rep) if rep.is_file() else None,
         "leftover": {
             "sram": "FakeRAM2.0" if DESIGNS[spec.design].get("sram") else None,
             "ccs_partial": spec.lib_model == "CCS",
             "lvs": "no LVS in ORFS slim pack",
             "fake_mbff": spec.cluster_flops,
+            "timing_open": bool(
+                metrics.get("wns_ps") is not None and float(metrics["wns_ps"]) < 0
+            ),
+            "six_track": "fetch-gated, not a finish",
+            "drc": "community KLayout deck; not Calibre",
         },
-        "qor": {
-            "wns": finish.get("wns") if isinstance(finish, dict) else None,
-            "tns": finish.get("tns") if isinstance(finish, dict) else None,
-            "area": finish.get("design__instance__area") if isinstance(finish, dict) else None,
-            "power": finish.get("finish_design__power") if isinstance(finish, dict) else None,
-        },
+        "qor": metrics,
         "note": (
             "ASAP7 lab cook. Predictive FinFET. Not a product win. "
             "Do not compare IR to gold 45.298 mV."
