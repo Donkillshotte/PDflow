@@ -157,24 +157,24 @@ or default `nangate45`. A lab track means new wrappers, not a
 
 ---
 
-## If we open an ASAP7 lab track later
+## Lab track (open)
 
-Engineering cost, not slogans:
+Wrapper: `scripts/run_lab_asap7.sh`. Space: `learn/dse/asap7_lab.py`.
+Kit: [`learn/lab/asap7/README.md`](../learn/lab/asap7/README.md).
+Variants are `lab_asap7_*`. Default cook is gcd / TC / RVT / NLDM /
+7.5-track.
 
 1. Own variant name (not `flowlab`, not `learn`, not `base`).
 2. Do not call `signoff_all` from a cook. Do not write Nangate paths.
 3. CCS vs NLDM is a first-class knob (`LIB_MODEL`, `gcd-ccs`).
    Report which one. Partial CCS is leftover, not “CCS closed”.
-4. IR / EM are a new mesh. `comparable: false` vs gold 45.298.
+4. IR / EM are a new mesh. `comparable_to_gold_ir` is false vs 45.298.
 5. FakeRAM and `*_FAKE.lib` stay named leftovers.
-6. Full LVS/SPICE wants the PDK clone + Calibre or a patched Xyce
+6. 6-track is fetch-gated leftover (6.8 GB upstream). Not a finish.
+7. Full LVS/SPICE wants the PDK clone + Calibre or a patched Xyce
    card. This Cloud image has neither.
-7. Do not launch AES finish “just to see”. GCD / `gcd-ccs` first.
-8. Do not import BPR/PowerVia or LLM proposers into product.
-
-A cheap next measurement, if someone asks to cook: ORFS
-`DESIGN_CONFIG=./designs/asap7/gcd/config.mk` then `gcd-ccs`.
-One heavy cook at a time. Not this investigation.
+8. Do not launch AES finish “just to see”. GCD / `gcd-ccs` first.
+9. Do not import BPR/PowerVia or LLM proposers into product.
 
 ---
 

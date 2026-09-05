@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Lab ASAP7 kit: corners / VT / CCS refuses. Does not cook."""
+
+from __future__ import annotations
+
+import os
+import subprocess
+from pathlib import Path
+
+from dse.asap7_lab import (
+    LabAsap7Refuse,
+    LabAsap7Spec,
+    collect_report,
+    result_dir,
+    spec_from_env,
+    validate,
+)
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def check(cond: bool, msg: str) -> None:
+    if not cond:
+        raise SystemExit(f"FAIL {msg}")
+    print(f"ok  {msg}")
+
+
+def main() -> None:
+    spec = validate(LabAsap7Spec())
+    check(spec.variant.startswith("lab_asap7_"), f"default variant {spec.variant}")
+    check(spec.variant == "lab_asap7_gcd_tc_rvt_nldm_7p5", spec.variant)
+    check("flowlab" not in spec.variant, "variant is not flowlab")
+    check(str(result_dir(spec, ROOT)).endswith("asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5"), "write path is asap7")
+    check("nangate45/gcd/flowlab" not in str(result_dir(spec, ROOT)), "does not write locked FlowLab")
+
+    for bad in (
+        LabAsap7Spec(corner="XX"),
+        LabAsap7Spec(lib_model="CCS", corner="WC"),
+        LabAsap7Spec(lib_model="CCS", vt=("LVT",)),
+        LabAsap7Spec(track="6"),
+        LabAsap7Spec(design="aes"),
+    ):
+        try:
+            validate(bad, root=ROOT, allow_heavy=False)
+        except LabAsap7Refuse as exc:
+            check("REFUSED" in str(exc), f"refuse {bad}")
+        else:
+            raise SystemExit(f"FAIL expected refuse {bad}")
+
+    multi = validate(LabAsap7Spec(vt=("RVT", "LVT"), corner="WC"))
+    check(multi.variant.endswith("wc_rvt+lvt_nldm_7p5"), multi.variant)
+
+    ccs = validate(LabAsap7Spec(design="gcd-ccs", corner="BC", lib_model="CCS"))
+    check("ccs" in ccs.variant and ccs.nickname == "gcd-ccs", ccs.variant)
+
+    mb = validate(LabAsap7Spec(cluster_flops=True))
+    check(mb.variant.endswith("mbff"), mb.variant)
+
+    env_spec = spec_from_env({"CORNER": "BC", "ASAP7_USE_VT": "SLVT", "LIB_MODEL": "NLDM"})
+    check(env_spec.corner == "BC" and env_spec.primary_vt == "SLVT", "env parse")
+
+    wrap = ROOT / "scripts" / "run_lab_asap7.sh"
+    check(wrap.is_file(), "run_lab_asap7.sh exists")
+    text = wrap.read_text()
+    check("run_signoff_all" not in text, "wrapper does not invoke the signoff orchestrator")
+    check("nangate45/gcd-tutorial" not in text, "wrapper does not use Nangate tutorial")
+    check("45.298" in text or "45.298" in (ROOT / "learn/dse/asap7_lab.py").read_text(), "protects gold IR")
+
+    env = {**os.environ, "FLOW_VARIANT": "flowlab", "PYTHONPATH": f"{ROOT}/learn:{ROOT}/learn/scripts"}
+    # Locked name cannot be forced: Python rebuilds the variant. Call wrapper with TRACK=6.
+    r = subprocess.run(
+        ["bash", str(wrap), "finish"],
+        cwd=str(ROOT),
+        env={**os.environ, "ASAP7_TRACK": "6", "PYTHONPATH": f"{ROOT}/learn:{ROOT}/learn/scripts"},
+        text=True,
+        capture_output=True,
+    )
+    check(r.returncode == 2 and "REFUSED" in (r.stderr + r.stdout), f"wrapper refuses 6T ({r.returncode})")
+
+    gold = ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
+    check(gold.is_file(), "gold IR report still on disk")
+    locked = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
+    check(locked.is_file(), "locked FlowLab GDS still on disk")
+
+    payload = collect_report(spec, root=ROOT)
+    check(payload["product_win"] is False, "report is not a product win")
+    check(payload["comparable_to_gold_ir"] is False, "IR not comparable to 45.298")
+    check(payload["gold_ir_mv"] == 45.298, "gold sentinel named")
+    print("ALL test_asap7_lab PASSED")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,324 @@
+"""Lab-only ASAP7 research kit.
+
+Not the course. Not the product campaign. Does not decide wins.
+Does not write nangate45/gcd/flowlab. Does not restamp gold 45.298 mV.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+
+from dse.flow_role import LOCKED_VARIANTS, is_locked_variant
+
+REPO = Path(__file__).resolve().parents[2]
+ORFS_FLOW = REPO / "tools" / "OpenROAD-flow-scripts" / "flow"
+ASAP7_PLAT = ORFS_FLOW / "platforms" / "asap7"
+SC6T_ROOT = REPO / "learn" / "lab" / "asap7" / "sc6t"
+REPORT_PATH = REPO / "learn" / "sim" / "reports" / "lab_asap7.json"
+VARIANT_PREFIX = "lab_asap7_"
+
+CORNERS = {
+    "BC": {"lib": "FF", "temperature": "25C", "voltage": 0.77},
+    "TC": {"lib": "TT", "temperature": "0C", "voltage": 0.70},
+    "WC": {"lib": "SS", "temperature": "100C", "voltage": 0.63},
+}
+VTS = ("RVT", "LVT", "SLVT", "SRAM")
+LIB_MODELS = ("NLDM", "CCS")
+TRACKS = ("7p5", "6")
+
+# CCS in this ORFS pack is RVT + FF only (see platforms/asap7/lib/CCS).
+CCS_OK = {("BC", "RVT")}
+
+HEAVY_DESIGNS = frozenset(
+    {"aes", "aes-block", "aes_lvt", "aes-mbff", "cva6", "swerv_wrapper", "ibex", "jpeg", "jpeg_lvt"}
+)
+
+DESIGNS = {
+    "gcd": {
+        "config": "designs/asap7/gcd/config.mk",
+        "nickname": "gcd",
+        "clk_ps": 310,
+        "sram": False,
+    },
+    "gcd-ccs": {
+        "config": "designs/asap7/gcd-ccs/config.mk",
+        "nickname": "gcd-ccs",
+        "clk_ps": 310,
+        "sram": False,
+        "force_lib": "CCS",
+    },
+    "uart": {
+        "config": "designs/asap7/uart/config.mk",
+        "nickname": "uart",
+        "clk_ps": None,
+        "sram": False,
+    },
+    "minimal": {
+        "config": "designs/asap7/minimal/config.mk",
+        "nickname": "minimal",
+        "clk_ps": None,
+        "sram": False,
+    },
+    "riscv32i-mock-sram": {
+        "config": "designs/asap7/riscv32i-mock-sram/config.mk",
+        "nickname": "riscv32i-mock-sram",
+        "clk_ps": None,
+        "sram": True,
+    },
+}
+
+
+class LabAsap7Refuse(ValueError):
+    """Illegal lab ASAP7 combo or locked variant."""
+
+
+@dataclass(frozen=True)
+class LabAsap7Spec:
+    design: str = "gcd"
+    corner: str = "TC"
+    vt: tuple[str, ...] = ("RVT",)
+    lib_model: str = "NLDM"
+    track: str = "7p5"
+    cluster_flops: bool = False
+    clk_ps: int | None = None
+    extra: str = ""
+
+    @property
+    def primary_vt(self) -> str:
+        return self.vt[0]
+
+    @property
+    def variant(self) -> str:
+        vt_tag = "+".join(v.lower() for v in self.vt)
+        bits = [
+            "lab_asap7",
+            self.design.replace("-", "_"),
+            self.corner.lower(),
+            vt_tag,
+            self.lib_model.lower(),
+            self.track,
+        ]
+        if self.cluster_flops:
+            bits.append("mbff")
+        if self.extra:
+            bits.append(re.sub(r"[^a-z0-9]+", "_", self.extra.lower()).strip("_"))
+        return "_".join(bits)
+
+    @property
+    def config_rel(self) -> str:
+        return str(DESIGNS[self.design]["config"])
+
+    @property
+    def nickname(self) -> str:
+        return str(DESIGNS[self.design]["nickname"])
+
+
+def parse_vt(raw: str | tuple[str, ...] | list[str] | None) -> tuple[str, ...]:
+    if raw is None or raw == "":
+        return ("RVT",)
+    if isinstance(raw, (tuple, list)):
+        parts = [str(x).strip().upper() for x in raw if str(x).strip()]
+    else:
+        parts = [p.strip().upper() for p in re.split(r"[,\s+]+", str(raw)) if p.strip()]
+    if not parts:
+        return ("RVT",)
+    for p in parts:
+        if p not in VTS:
+            raise LabAsap7Refuse(f"REFUSED: unknown VT {p} (want {VTS})")
+    return tuple(parts)
+
+
+def spec_from_env(env: dict[str, str] | None = None) -> LabAsap7Spec:
+    e = env if env is not None else os.environ
+    design = e.get("LAB_ASAP7_DESIGN", e.get("DESIGN", "gcd"))
+    corner = e.get("CORNER", "TC").upper()
+    lib_model = e.get("LIB_MODEL", "").upper() or str(DESIGNS.get(design, {}).get("force_lib") or "NLDM")
+    track = e.get("ASAP7_TRACK", "7p5")
+    extra = e.get("LAB_ASAP7_EXTRA", "")
+    clk = e.get("LAB_CLK_PS")
+    cluster = e.get("CLUSTER_FLOPS", "0") in {"1", "true", "TRUE", "yes"}
+    return LabAsap7Spec(
+        design=design,
+        corner=corner,
+        vt=parse_vt(e.get("ASAP7_USE_VT", "RVT")),
+        lib_model=lib_model,
+        track=track,
+        cluster_flops=cluster,
+        clk_ps=int(clk) if clk else None,
+        extra=extra,
+    )
+
+
+def sc6t_ready(root: Path | None = None) -> bool:
+    base = (root or REPO) / "learn" / "lab" / "asap7" / "sc6t"
+    lef = base / "lef" / "asap7sc6t_26_R_1x_210923b.lef"
+    return lef.is_file()
+
+
+def validate(spec: LabAsap7Spec, *, root: Path | None = None, allow_heavy: bool | None = None) -> LabAsap7Spec:
+    root = root or REPO
+    if spec.design not in DESIGNS:
+        raise LabAsap7Refuse(f"REFUSED: unknown lab design {spec.design}")
+    if spec.corner not in CORNERS:
+        raise LabAsap7Refuse(f"REFUSED: CORNER={spec.corner} (want BC/TC/WC)")
+    if spec.lib_model not in LIB_MODELS:
+        raise LabAsap7Refuse(f"REFUSED: LIB_MODEL={spec.lib_model}")
+    if spec.track not in TRACKS:
+        raise LabAsap7Refuse(f"REFUSED: ASAP7_TRACK={spec.track}")
+    variant = spec.variant
+    if is_locked_variant(variant) or variant in LOCKED_VARIANTS:
+        raise LabAsap7Refuse(f"REFUSED: FLOW_VARIANT={variant} is locked")
+    if not variant.startswith(VARIANT_PREFIX):
+        raise LabAsap7Refuse(f"REFUSED: lab variant must start with {VARIANT_PREFIX}")
+    if "krylov" in variant.lower():
+        raise LabAsap7Refuse("REFUSED: Krylov is not a lab ASAP7 variant")
+    if spec.lib_model == "CCS" and (spec.corner, spec.primary_vt) not in CCS_OK:
+        raise LabAsap7Refuse(
+            "REFUSED: this ORFS pack has CCS only for RVT + BC (FF). "
+            f"Got CORNER={spec.corner} VT={spec.primary_vt}"
+        )
+    if spec.track == "6":
+        raise LabAsap7Refuse(
+            "REFUSED: 6-track is fetch-gated leftover. RTL→GDS uses 7.5-track. "
+            "Run learn/scripts/fetch_asap7_sc6t.sh to store views; do not claim a 6T finish."
+        )
+    heavy = allow_heavy
+    if heavy is None:
+        heavy = os.environ.get("ALLOW_HEAVY_ANALYSIS") == "1"
+    if spec.design in HEAVY_DESIGNS and not heavy:
+        raise LabAsap7Refuse(
+            f"REFUSED: {spec.design} is heavy. Set ALLOW_HEAVY_ANALYSIS=1 or use gcd."
+        )
+    cfg = root / "tools/OpenROAD-flow-scripts/flow" / spec.config_rel
+    if not cfg.is_file():
+        raise LabAsap7Refuse(f"REFUSED: missing {cfg}")
+    return spec
+
+
+def result_dir(spec: LabAsap7Spec, root: Path | None = None) -> Path:
+    root = root or REPO
+    return (
+        root
+        / "tools/OpenROAD-flow-scripts/flow/results/asap7"
+        / spec.nickname
+        / spec.variant
+    )
+
+
+def flowlab_untouched(root: Path | None = None) -> bool:
+    """Locked Nangate FlowLab tree still exists and is not our write target."""
+    root = root or REPO
+    locked = root / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
+    return locked.is_file()
+
+
+def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict | None = None) -> dict:
+    root = root or REPO
+    out = result_dir(spec, root)
+    gds = out / "6_final.gds"
+    rep = out / "6_report.json"
+    qor: dict = {}
+    if rep.is_file():
+        try:
+            qor = json.loads(rep.read_text())
+        except json.JSONDecodeError:
+            qor = {}
+    finish = qor.get("finish") if isinstance(qor.get("finish"), dict) else qor
+    payload = {
+        "ok": gds.is_file(),
+        "surface": "lab",
+        "platform": "asap7",
+        "predictive": True,
+        "manufacturable": False,
+        "product_win": False,
+        "comparable_to_gold_ir": False,
+        "gold_ir_mv": 45.298,
+        "variant": spec.variant,
+        "design": spec.design,
+        "nickname": spec.nickname,
+        "corner": spec.corner,
+        "vt": list(spec.vt),
+        "lib_model": spec.lib_model,
+        "track": spec.track,
+        "cluster_flops": spec.cluster_flops,
+        "clk_ps": spec.clk_ps or DESIGNS[spec.design].get("clk_ps"),
+        "gds": str(gds) if gds.is_file() else None,
+        "leftover": {
+            "sram": "FakeRAM2.0" if DESIGNS[spec.design].get("sram") else None,
+            "ccs_partial": spec.lib_model == "CCS",
+            "lvs": "no LVS in ORFS slim pack",
+            "fake_mbff": spec.cluster_flops,
+        },
+        "qor": {
+            "wns": finish.get("wns") if isinstance(finish, dict) else None,
+            "tns": finish.get("tns") if isinstance(finish, dict) else None,
+            "area": finish.get("design__instance__area") if isinstance(finish, dict) else None,
+            "power": finish.get("finish_design__power") if isinstance(finish, dict) else None,
+        },
+        "note": (
+            "ASAP7 lab cook. Predictive FinFET. Not a product win. "
+            "Do not compare IR to gold 45.298 mV."
+        ),
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def write_report(payload: dict, root: Path | None = None) -> Path:
+    root = root or REPO
+    path = root / "learn" / "sim" / "reports" / "lab_asap7.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+    return path
+
+
+def make_env(spec: LabAsap7Spec) -> dict[str, str]:
+    env = os.environ.copy()
+    env["DESIGN"] = spec.design
+    env["LAB_ASAP7_DESIGN"] = spec.design
+    env["FLOW_VARIANT"] = spec.variant
+    env["PLATFORM"] = "asap7"
+    env["CORNER"] = spec.corner
+    env["LIB_MODEL"] = spec.lib_model
+    env["ASAP7_USE_VT"] = " ".join(spec.vt)
+    env["ASAP7_TRACK"] = spec.track
+    env["CLUSTER_FLOPS"] = "1" if spec.cluster_flops else "0"
+    if spec.clk_ps is not None:
+        env["LAB_CLK_PS"] = str(spec.clk_ps)
+    return env
+
+
+def cook(
+    spec: LabAsap7Spec | None = None,
+    *,
+    target: str = "finish",
+    root: Path | None = None,
+    timeout_s: int | None = None,
+) -> dict:
+    """Run scripts/run_lab_asap7.sh. One heavy cook at a time."""
+    root = root or REPO
+    spec = validate(spec or spec_from_env(), root=root)
+    if not flowlab_untouched(root):
+        # Course lock may be absent in a fresh clone; still refuse writing it.
+        pass
+    script = root / "scripts" / "run_lab_asap7.sh"
+    proc = subprocess.run(
+        ["bash", str(script), target],
+        cwd=str(root),
+        env=make_env(spec),
+        text=True,
+        capture_output=True,
+        timeout=timeout_s,
+    )
+    payload = collect_report(spec, root=root, extra={"exit_code": proc.returncode, "stderr_tail": (proc.stderr or "")[-2000:]})
+    payload["ok"] = bool(payload.get("gds") and proc.returncode == 0)
+    write_report(payload, root)
+    if proc.returncode != 0:
+        raise LabAsap7Refuse(f"cook failed ({proc.returncode}): {proc.stderr[-800:]}")
+    return payload

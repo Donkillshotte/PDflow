@@ -382,6 +382,9 @@ def check_next_level(check, root: Path) -> None:
 
     wrapper = root / "scripts" / "run_design_finish.sh"
     check(wrapper.is_file(), "run_design_finish.sh exists")
+    check((root / "scripts/run_lab_asap7.sh").is_file(), "run_lab_asap7.sh exists")
+    check((root / "learn/dse/asap7_lab.py").is_file(), "asap7_lab space exists")
+    check((root / "learn/lab/asap7/README.md").is_file(), "asap7 lab kit readme exists")
     env = {**os.environ, "DESIGN": "gcd", "FLOW_VARIANT": "flowlab"}
     r = subprocess.run(["bash", str(wrapper)], cwd=root, env=env, capture_output=True, text=True)
     check(r.returncode == 2 and "locked" in (r.stderr + r.stdout).lower(), f"wrapper refuses flowlab ({r.returncode} {r.stderr})")

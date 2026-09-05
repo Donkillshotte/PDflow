@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Lab-only ASAP7 RTL→GDS. Never writes Nangate flowlab/learn/base.
+# Never runs the course signoff orchestrator. Never restamps gold Dynamic IR 45.298 mV.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
+TARGET="${1:-finish}"
+
+export PYTHONPATH="${ROOT}/learn:${ROOT}/learn/scripts${PYTHONPATH:+:$PYTHONPATH}"
+SPEC_JSON="$(python3 "${ROOT}/learn/scripts/lab_asap7_spec.py")"
+
+VARIANT="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["variant"])' "${SPEC_JSON}")"
+CONFIG_REL="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["config"])' "${SPEC_JSON}")"
+CORNER="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["corner"])' "${SPEC_JSON}")"
+VT="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["vt"])' "${SPEC_JSON}")"
+LIB_MODEL="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["lib_model"])' "${SPEC_JSON}")"
+TRACK="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["track"])' "${SPEC_JSON}")"
+CLUSTER="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["cluster"])' "${SPEC_JSON}")"
+CLK_PS="$(python3 -c 'import json,sys; v=json.loads(sys.argv[1])["clk_ps"]; print("" if v is None else v)' "${SPEC_JSON}")"
+
+LOCKED='^(flowlab|learn|base)$'
+if [[ "${VARIANT}" =~ ${LOCKED} ]]; then
+  echo "REFUSED: FLOW_VARIANT=${VARIANT} is locked." >&2
+  exit 2
+fi
+if [[ "${VARIANT}" != lab_asap7_* ]]; then
+  echo "REFUSED: lab ASAP7 variant must start with lab_asap7_" >&2
+  exit 2
+fi
+if [[ "${VARIANT}" == *krylov* ]]; then
+  echo "REFUSED: Krylov is not a lab ASAP7 variant." >&2
+  exit 2
+fi
+if [[ "${TRACK}" == "6" ]]; then
+  echo "REFUSED: 6-track cook is fetch-gated in this pass (views not wired into ORFS make yet)." >&2
+  echo "7.5-track is the RTL→GDS path. Fetch 6T with learn/scripts/fetch_asap7_sc6t.sh" >&2
+  exit 2
+fi
+
+[[ -f "${FLOW}/${CONFIG_REL}" ]] || { echo "FAIL missing ${FLOW}/${CONFIG_REL}" >&2; exit 1; }
+
+MAKE_EXTRA=(
+  DESIGN_CONFIG="./${CONFIG_REL}"
+  FLOW_VARIANT="${VARIANT}"
+  PLATFORM=asap7
+  CORNER="${CORNER}"
+  LIB_MODEL="${LIB_MODEL}"
+  ASAP7_USE_VT="${VT}"
+  OPENROAD_EXE="${OPENROAD_EXE:-$(command -v openroad)}"
+  OPENSTA_EXE="${OPENSTA_EXE:-$(command -v sta)}"
+  YOSYS_EXE="${YOSYS_EXE:-$(command -v yosys)}"
+)
+if [[ "${CLUSTER}" == "1" ]]; then
+  MAKE_EXTRA+=( CLUSTER_FLOPS=1 )
+fi
+if [[ -n "${CLK_PS}" ]]; then
+  # ASAP7 liberty time_unit is 1ps. Do not rewrite to the course 0.46 ns SDC.
+  SDC_DIR="${ROOT}/learn/sim/dse/sdc"
+  mkdir -p "${SDC_DIR}"
+  SDC_FILE="${SDC_DIR}/asap7_${VARIANT}.sdc"
+  python3 - <<PY
+from pathlib import Path
+clk = float("${CLK_PS}")
+Path("${SDC_FILE}").write_text(
+    "current_design gcd\\n"
+    "set clk_name core_clock\\n"
+    "set clk_port_name clk\\n"
+    f"set clk_period {clk}\\n"
+    "set clk_io_pct 0.2\\n"
+    "set clk_port [get_ports \\$clk_port_name]\\n"
+    "create_clock -name \\$clk_name -period \\$clk_period \\$clk_port\\n"
+    "set non_clock_inputs [all_inputs -no_clocks]\\n"
+    "set_input_delay  [expr \\$clk_period * \\$clk_io_pct] -clock \\$clk_name \\$non_clock_inputs\\n"
+    "set_output_delay [expr \\$clk_period * \\$clk_io_pct] -clock \\$clk_name [all_outputs]\\n"
+)
+PY
+  MAKE_EXTRA+=( SDC_FILE="${SDC_FILE}" )
+fi
+
+AS_BYTES="${PDN_AS_BYTES:-8589934592}"
+CPU_S="${PDN_CPU_S:-1800}"
+
+echo "lab asap7 ${TARGET}: variant=${VARIANT} config=${CONFIG_REL} corner=${CORNER} vt=${VT} lib=${LIB_MODEL} track=${TRACK}"
+
+cd "${FLOW}"
+set +e
+prlimit --as="${AS_BYTES}" --cpu="${CPU_S}" \
+  make \
+    "${MAKE_EXTRA[@]}" \
+    "${TARGET}"
+RC=$?
+set -e
+
+python3 - <<PY
+from dse.asap7_lab import collect_report, spec_from_env, validate, write_report
+spec = validate(spec_from_env())
+payload = collect_report(spec, extra={"exit_code": ${RC}})
+write_report(payload)
+print("lab_asap7 report", payload.get("gds"), "ok", payload.get("ok"))
+PY
+
+exit "${RC}"

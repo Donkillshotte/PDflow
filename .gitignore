@@ -34,6 +34,12 @@ tran_demo_out/
 # Local tuner DB
 learn/sim/dse/tpe_*.db
 
+# ASAP7 6-track fetch (up to 6.8G). Not a finish.
+learn/lab/asap7/sc6t/lef/
+learn/lab/asap7/sc6t/gds/
+learn/lab/asap7/sc6t/lib/
+learn/lab/asap7/sc6t/verilog/
+
 # Cook leftovers: do not commit
 learn/sim/dse/memory_flowlab_nl.jsonl
 learn/sim/dse/memory_flowlab_nl.index.json

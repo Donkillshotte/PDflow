@@ -15,6 +15,7 @@ Repo index: [`docs/README.md`](README.md).
 | `cloud_agent_smoke.sh` | infra | versions |
 | `test_cloud_bootstrap.sh` | infra | static checks |
 | `run_design_finish.sh` | **product** | isolated `make finish`; refuses `flowlab`/`learn`/`base` |
+| `run_lab_asap7.sh` | **lab** | ASAP7 RTL→GDS (`lab_asap7_*`); corners / VT / CCS; not a product win |
 | `campaign_cook.sh` | product | campaign helper |
 | `p1_gcd_clock_sweep.sh` | product (historic P) | gcd clock sweep |
 | `p2_abc_speed.sh` | product (historic P) | ABC speed |

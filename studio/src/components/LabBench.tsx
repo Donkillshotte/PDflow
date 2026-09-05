@@ -81,6 +81,22 @@ type LabSnap = {
   launches?: Shot[];
   thisLaunch?: Shot | null;
   prevLaunch?: Shot | null;
+  asap7?: {
+    ok: boolean;
+    variant: string | null;
+    design: string | null;
+    corner: string | null;
+    vt: string[];
+    libModel: string | null;
+    track: string | null;
+    gds: string | null;
+    productWin: boolean;
+    comparableToGoldIr: boolean;
+    goldIrMv: number;
+    leftover: Record<string, unknown> | null;
+    qor: { wns?: unknown; tns?: unknown; area?: unknown; power?: unknown } | null;
+    note: string | null;
+  } | null;
 };
 
 function fmt(v: unknown): string {
@@ -200,6 +216,36 @@ export function LabBench({
       </header>
 
       {err && <p className="lb-err">{err}</p>}
+
+      <article className="lb-face" id="asap7" aria-label="ASAP7 lab track">
+        <header>
+          <span>ASAP7 lab</span>
+          <strong>{data?.asap7?.variant ?? "no lab_asap7 cook yet"}</strong>
+        </header>
+        <dl>
+          <div>
+            <dt>Corner / VT / lib</dt>
+            <dd>
+              {data?.asap7
+                ? `${data.asap7.corner ?? "—"} · ${(data.asap7.vt ?? []).join("+") || "—"} · ${data.asap7.libModel ?? "—"}`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>GDS</dt>
+            <dd>{data?.asap7?.ok ? "yes" : "not cooked"}</dd>
+          </div>
+          <div>
+            <dt>Product win</dt>
+            <dd>no</dd>
+          </div>
+          <div>
+            <dt>vs gold 45.298</dt>
+            <dd>not comparable</dd>
+          </div>
+        </dl>
+        <p>{data?.asap7?.note ?? "Predictive FinFET track. Cook with ./scripts/run_lab_asap7.sh"}</p>
+      </article>
 
       <div id="dse-compare" className="lb-faces">
         <ShotFace shot={data?.prevLaunch ?? null} label="Cook before" />

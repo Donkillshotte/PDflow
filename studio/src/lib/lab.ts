@@ -258,5 +258,27 @@ export function getLabSnapshot() {
     launches,
     thisLaunch,
     prevLaunch,
+    asap7: readAsap7Lab(),
+  };
+}
+
+function readAsap7Lab(): Record<string, unknown> | null {
+  const raw = readJson("sim/reports/lab_asap7.json");
+  if (!raw) return null;
+  return {
+    ok: raw.ok === true,
+    variant: raw.variant ?? null,
+    design: raw.design ?? null,
+    corner: raw.corner ?? null,
+    vt: raw.vt ?? [],
+    libModel: raw.lib_model ?? null,
+    track: raw.track ?? null,
+    gds: raw.gds ?? null,
+    productWin: raw.product_win === true,
+    comparableToGoldIr: raw.comparable_to_gold_ir === true,
+    goldIrMv: raw.gold_ir_mv ?? IR_GOLD_MV,
+    leftover: raw.leftover ?? null,
+    qor: raw.qor ?? null,
+    note: raw.note ?? null,
   };
 }
