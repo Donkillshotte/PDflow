@@ -204,3 +204,178 @@ Check with `learn/scripts/test_asap7_e2e.py`.
 
 How the full academic kit is layered, and how to close (or name)
 each leftover: [`asap7_close_plan.md`](asap7_close_plan.md).
+
+---
+
+## Backside PDN forks (BPR / PowerVia) — how they fork, how we compare
+
+Living note (2026-09-05). Inspected clone of
+[`VLSIDA/asap7_bb_pdk`](https://github.com/VLSIDA/asap7_bb_pdk)
+(forked from [`YZU-EDALAB/asap7_bb_pdk`](https://github.com/YZU-EDALAB/asap7_bb_pdk)).
+Not a frozen plan. Lab only. Not a product win. Not a course swap.
+Do not restamp gold Dynamic IR **45.298 mV**.
+
+### Two paper lines on the same ASAP7 base
+
+| Line | Paper | Public fork | What changes vs ORFS 7.5T |
+|---|---|---|---|
+| **BPR + BSM** | Yang et al., APCCAS 2024 ([doi](https://doi.org/10.1109/apccas62602.2024.10808511)) | `asap7_bb_pdk` | Process tweaks + backside layers + **BPR6L** 6-track lib |
+| **PowerVia** | Yu et al., APCCAS 2025 ([doi](https://doi.org/10.1109/apccas67402.2025.11377494)) | **No public repo found** | Backside metal + PowerVia rules + **PV-6T / PV-5T** libs (241 cells each) |
+
+Both start from ASAP7 academic PDK (bb fork cites **r1p5**; this tree
+ships **r1p7** via ORFS). Neither is a drop-in knob on
+`platforms/asap7`. They are **DTCO forks**: new tech, new cells, new
+PDN scripts, usually a commercial P&R stack.
+
+`asap7sc6t_26` (upstream 6-track, `fetch_asap7_sc6t.sh`) is **not**
+the same as BPR6L: standard 6T cells without buried rails or backside
+metal. W11 (6-track ORFS platform) stays gated separately from this
+backside fork.
+
+### Three-layer fork anatomy (`asap7_bb_pdk`)
+
+Papers do not “add an analyzer at the end”. They replace three layers.
+
+**Layer 1 — Process / tech file**
+
+Fork README lists modifications on top of base ASAP7:
+
+- Single diffusion break (vs multi-break).
+- Fin depopulation (fin height 32 nm → 49 nm).
+- Contact over active gate (COAG).
+- Buried power rail (BPR) + backside metal (BSM).
+
+New layers in `tf/asap7_bb_TechLib.tf` (not in ORFS frontside stack):
+
+| Layer | Role |
+|---|---|
+| `BPR` | Buried power rail inside stdcell footprint |
+| `VBPR` | Via to BPR |
+| `BM1`, `BM2` | Backside metal stack |
+| `TSV` | Front↔back connection (StarRC `TSV.nxtgrd`) |
+
+Frontside M1–M9 + Pad remain for signals; VDD/VSS delivery moves to
+BPR → backside mesh.
+
+**Layer 2 — Standard cell library**
+
+```
+layout/asap7bb6t.gds    # BPR6L macro GDS
+layout/asap7bb6t.cdl    # 216 .SUBCKT entries (inspected 2026-09-05)
+```
+
+Cells are named `*_ASAP7_6t_fix` with BPR at top/bottom cell edges.
+This is a **new lib**, not a reskin of `asap7sc7p5t_28` or
+`asap7sc6t_26`.
+
+**Layer 3 — Flow + PDN scripts**
+
+Toolchain in the fork: **DC → ICC2 → StarRC → Calibre**. Not OpenROAD.
+
+ICC2 `run.tcl` builds backside PDN explicitly:
+
+1. PG **ring** on `BM2` / `BM1` (backside metals).
+2. PG **rails** on `BPR` (`create_pg_std_cell_conn_pattern -layers {BPR}`).
+3. PG **mesh/stripes** on `BM1`.
+4. Signal routing on frontside M1–M5.
+
+ORFS baseline (`openRoad/pdn/grid_strategy-M1-M2-M5-M6.tcl`) uses
+M1 followpins → M5/M6 straps on the **front**. That is the structural
+difference papers exploit for routability and IR.
+
+Supporting artifacts:
+
+| Path | Role |
+|---|---|
+| `ICC2/ASAP7_BPR_112.tluplus.gz` | Parasitics with backside layers |
+| `RC/layermap.map` | StarRC map includes BPR, BM1, TSV |
+| `calibre/calibreDRC.rul` | DRC (Innovus→ICC2 translation; README warns gaps) |
+| `models/model_card.pm` | Modified BSIM-CMG card |
+
+### Paper analysis methodology (what to copy)
+
+Both lines use the same **A/B chip study**, not a package ladder alone.
+
+**BPR/BSM (2024)** — same benchmark, baseline vs BPR6L:
+
+- Area −13.1%, WNS −9.4%, TNS −42%, wire length −5.8%, via −19.9%.
+
+**PowerVia (2025)** — adds explicit **max static IR drop**:
+
+- PV-6T: area −15–18%, IR −64–79%.
+- PV-5T: area −28–32%, IR −71–82%, util up to 94%, fmax ×1.39 avg.
+
+Common recipe:
+
+1. Same RTL / benchmark block.
+2. Two platforms: **7.5T frontside baseline** vs **6T/5T backside fork**.
+3. Same utilization target where possible.
+4. Report **area, WNS/TNS, wire length, vias, power, max static IR,
+   frequency** together — honest win/lose.
+5. IR from **on-die power grid analysis** (ICC2 / Voltus class), not
+   from an external lumped VRM→board ladder.
+
+Our `lab_asap7_pkg` compact ladder is **system/package** level. Paper
+IR numbers are **on-die backside grid** level. Keep them separate.
+
+### Three IR tiers for PDflow lab ASAP7
+
+| Tier | Question | This repo today | Paper fork |
+|---|---|---|---|
+| **On-die frontside** | M1/M5 grid droop on 7.5T cook? | `6_report` PDNSim (`ir_drop_vdd_mv` in folio) | Baseline in A/B |
+| **On-die backside** | BPR/BM mesh droop? | **GAP** (no bb platform) | ICC2 PG + static IR |
+| **System/package** | VRM→board→pkg bump? | `lab_asap7_pkg` lumped ladder | Not their focus |
+
+Do not compare tier-3 droop (~1.6 mV compact) to tier-2 paper claims
+(64–82% IR reduction). Different physics, different models.
+
+### What we can take from them (repo-law safe)
+
+**Now — inventory + methodology (no ICC2 cook required)**
+
+1. **Baseline row** — keep 7.5T gcd folio (310→430→480 ps ladder) with
+   area, power, leakage, IR, WNS from live `6_report`.
+2. **Fork inventory** — optional `fetch_asap7_bb_pdk.sh` →
+   `learn/lab/asap7/bb_pdk/` (gitignored), report layer diff vs ORFS,
+   cell count, tool requirements (ICC2, Calibre 2017, StarRC).
+3. **A/B schema in folio** — name a second platform slot
+   `lab_asap7_bb_*` as **GAP** until a real backside platform exists;
+   never fake paper IR numbers.
+4. **Metric bundle** — always report area, power, leakage, IR together
+   (same discipline as papers and `AGENTS.md`).
+5. **Leftover honesty** — `product_win: false`,
+   `comparable_to_gold_ir: false`, Calibre/ICC2 gated forever on this
+   image.
+
+**Later — W12 backside lab track (distinct from W11 standard 6T)**
+
+W11 = second ORFS platform for **standard** `asap7sc6t_26` (site,
+tracks, tapcell, frontside PDN). Still no BPR.
+
+W12 (proposed) = backside fork track:
+
+1. Inventory `asap7_bb_pdk` (layers, BPR6L CDL/GDS, ICC2 scripts).
+2. If ICC2 + Calibre available: cook gcd on BPR6L, static IR from
+   commercial PG analysis.
+3. If OpenROAD ever exposes backside layers: port PDN TCL analog
+   (BM ring, BPR followpins) — until then ICC2 is the honest path.
+4. Folio compares **7.5T frontside vs 6T BPR** on same RTL; report
+   deltas like the papers, live rows only, no gold stamp.
+5. Optional: `write_pg_spice` mesh to couple on-die backside with
+   `system_pdn_hier` — only after tier-2 mesh exists.
+
+**Do not**
+
+- Import BPR/PowerVia into product `win_rule.py`.
+- Swap course / FlowLab to backside ASAP7.
+- Treat `fetch_asap7_sc6t.sh` as BPR (it is standard 6T).
+- Claim paper IR cuts without a backside cook and grid analysis.
+
+### Sources (primary)
+
+- Yang et al., APCCAS 2024 — BPR + backside metal; `asap7_bb_pdk`.
+- Yu et al., APCCAS 2025 — PowerVia; no public kit found.
+- Tong et al., ISCAS 2025 — 4.5-track BPR library on extended ASAP7.
+- Repo close path: [`asap7_close_plan.md`](asap7_close_plan.md) §5 (6T)
+  and §BPR.
+- Live 7.5T e2e + package hook: [`asap7_e2e_plan.md`](asap7_e2e_plan.md).
