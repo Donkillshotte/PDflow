@@ -44,3 +44,4 @@ dse/tpe_*.db
 dse/arrivals/
 dse/sdf/
 dse/spef/
+dse/sdc/asap7_*.sdc

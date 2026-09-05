@@ -453,6 +453,24 @@ def write_folio(root: Path | None = None) -> Path:
     return dest
 
 
+def write_constraint_sdc(path: Path, clk_ps: float, nickname: str) -> Path:
+    """ORFS-style SDC. Liberty time_unit is 1ps. Not the course 0.46 ns file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f"current_design {nickname}\n"
+        "set clk_name core_clock\n"
+        "set clk_port_name clk\n"
+        f"set clk_period {float(clk_ps)}\n"
+        "set clk_io_pct 0.2\n"
+        "set clk_port [get_ports $clk_port_name]\n"
+        "create_clock -name $clk_name -period $clk_period $clk_port\n"
+        "set non_clock_inputs [all_inputs -no_clocks]\n"
+        "set_input_delay  [expr $clk_period * $clk_io_pct] -clock $clk_name $non_clock_inputs\n"
+        "set_output_delay [expr $clk_period * $clk_io_pct] -clock $clk_name [all_outputs]\n"
+    )
+    return path
+
+
 def make_env(spec: LabAsap7Spec) -> dict[str, str]:
     env = os.environ.copy()
     env["DESIGN"] = spec.design

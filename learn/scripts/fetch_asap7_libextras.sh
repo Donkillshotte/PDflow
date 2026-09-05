@@ -29,10 +29,17 @@ extracted_ccs=0
 if command -v 7z >/dev/null 2>&1 || command -v 7za >/dev/null 2>&1; then
   UNZIP="$(command -v 7z || command -v 7za)"
   mkdir -p "${DEST_CCS}"
-  while IFS= read -r -d '' archive; do
+  # Default: RVT TT/SS so CCS TC/WC stop being a refuse. Full dump is ASAP7_CCS_ALL=1.
+  if [[ "${ASAP7_CCS_ALL:-0}" == "1" ]]; then
+    mapfile -d '' archives < <(find "${SRC}" -path '*LIB*CCS*' -name '*.7z' -print0 2>/dev/null)
+  else
+    mapfile -d '' archives < <(find "${SRC}" -path '*LIB*CCS*' \( -name '*_RVT_TT_*.7z' -o -name '*_RVT_SS_*.7z' \) -print0 2>/dev/null)
+  fi
+  for archive in "${archives[@]+"${archives[@]}"}"; do
+    [[ -z "${archive}" ]] && continue
     "${UNZIP}" x -y -o"${DEST_CCS}" "${archive}" >/dev/null || true
     extracted_ccs=1
-  done < <(find "${SRC}" -path '*LIB*CCS*' -name '*.7z' -print0 2>/dev/null)
+  done
 else
   echo "leftover: p7zip/7z not installed; CCS .7z not extracted" >&2
 fi

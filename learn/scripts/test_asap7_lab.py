@@ -11,11 +11,13 @@ from pathlib import Path
 from dse.asap7_lab import (
     LabAsap7Refuse,
     LabAsap7Spec,
+    ccs_ready,
     collect_report,
     result_dir,
     scan_folio,
     spec_from_env,
     validate,
+    write_constraint_sdc,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +39,6 @@ def main() -> None:
 
     for bad in (
         LabAsap7Spec(corner="XX"),
-        LabAsap7Spec(lib_model="CCS", corner="WC"),
         LabAsap7Spec(lib_model="CCS", vt=("LVT",)),
         LabAsap7Spec(track="6"),
         LabAsap7Spec(design="aes"),
@@ -48,6 +49,18 @@ def main() -> None:
             check("REFUSED" in str(exc), f"refuse {bad}")
         else:
             raise SystemExit(f"FAIL expected refuse {bad}")
+
+    wc_ccs = LabAsap7Spec(lib_model="CCS", corner="WC")
+    if ccs_ready("WC", "RVT", ROOT):
+        validate(wc_ccs, root=ROOT, allow_heavy=False)
+        check(True, "CCS WC accepted after leftover extras")
+    else:
+        try:
+            validate(wc_ccs, root=ROOT, allow_heavy=False)
+        except LabAsap7Refuse as exc:
+            check("REFUSED" in str(exc), "CCS WC refused without extras")
+        else:
+            raise SystemExit("FAIL expected CCS WC refuse without extras")
 
     multi = validate(LabAsap7Spec(vt=("RVT", "LVT"), corner="WC"))
     check(multi.variant.endswith("wc_rvt+lvt_nldm_7p5"), multi.variant)
@@ -74,8 +87,13 @@ def main() -> None:
     check("CORE_UTILIZATION" in text, "wrapper can pass a larger die without a design branch")
     check("CORE_UTILIZATION=40" in text, "wrapper defaults WC die to 40")
     check("slang.so" in text, "wrapper gates slang leftover on slang.so")
-    check("current_design gcd" not in text, "generated SDC is not hardcoded gcd")
-    check("NICKNAME" in text, "generated SDC uses spec nickname")
+    check("current_design gcd" not in text, "wrapper does not hardcode current_design gcd")
+    check("write_constraint_sdc" in text, "wrapper writes SDC in Python under set -u")
+    sdc = write_constraint_sdc(ROOT / "learn/sim/dse/sdc/_test_asap7_430.sdc", 430, "uart")
+    sdc_txt = sdc.read_text()
+    check("current_design uart" in sdc_txt, "SDC uses the spec nickname")
+    check("set clk_period 430" in sdc_txt, "SDC period is 430 ps")
+    sdc.unlink()
     check("if design ==" not in text, "wrapper has no design-name branch")
     check("Live metrics only" in (ROOT / "learn/dse/asap7_lab.py").read_text(), "lab report is live, not gold")
     check((ROOT / "learn/scripts/fetch_asap7_libextras.sh").is_file(), "CCS/CDL fetch script exists")

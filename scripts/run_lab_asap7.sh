@@ -88,26 +88,12 @@ if [[ -n "${EQUIVALENCE_CHECK:-}" ]]; then
 fi
 if [[ -n "${CLK_PS}" ]]; then
   # ASAP7 liberty time_unit is 1ps. Do not rewrite to the course 0.46 ns SDC.
+  # Written in Python so bash set -u cannot expand $clk_port_name.
   SDC_DIR="${ROOT}/learn/sim/dse/sdc"
   mkdir -p "${SDC_DIR}"
   SDC_FILE="${SDC_DIR}/asap7_${VARIANT}.sdc"
-  python3 - <<PY
-from pathlib import Path
-clk = float("${CLK_PS}")
-nick = "${NICKNAME}"
-Path("${SDC_FILE}").write_text(
-    f"current_design {nick}\\n"
-    "set clk_name core_clock\\n"
-    "set clk_port_name clk\\n"
-    f"set clk_period {clk}\\n"
-    "set clk_io_pct 0.2\\n"
-    "set clk_port [get_ports \\$clk_port_name]\\n"
-    "create_clock -name \\$clk_name -period \\$clk_period \\$clk_port\\n"
-    "set non_clock_inputs [all_inputs -no_clocks]\\n"
-    "set_input_delay  [expr \\$clk_period * \\$clk_io_pct] -clock \\$clk_name \\$non_clock_inputs\\n"
-    "set_output_delay [expr \\$clk_period * \\$clk_io_pct] -clock \\$clk_name [all_outputs]\\n"
-)
-PY
+  python3 -c 'import os,sys; from pathlib import Path; from dse.asap7_lab import write_constraint_sdc; write_constraint_sdc(Path(sys.argv[1]), float(sys.argv[2]), sys.argv[3])' \
+    "${SDC_FILE}" "${CLK_PS}" "${NICKNAME}"
   MAKE_EXTRA+=( SDC_FILE="${SDC_FILE}" )
 fi
 
