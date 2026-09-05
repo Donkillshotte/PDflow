@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "surface": "lab",
+  "platform": "asap7",
+  "predictive": true,
+  "manufacturable": false,
+  "product_win": false,
+  "comparable_to_gold_ir": false,
+  "gold_ir_mv": 45.298,
+  "variant": "lab_asap7_gcd_tc_rvt_nldm_7p5",
+  "design": "gcd",
+  "nickname": "gcd",
+  "corner": "TC",
+  "vt": [
+    "RVT"
+  ],
+  "lib_model": "NLDM",
+  "track": "7p5",
+  "cluster_flops": false,
+  "clk_ps": 310,
+  "gds": "/workspace/tools/OpenROAD-flow-scripts/flow/results/asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5/6_final.gds",
+  "metrics_source": "/workspace/tools/OpenROAD-flow-scripts/flow/logs/asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5/6_report.json",
+  "leftover": {
+    "sram": null,
+    "ccs_partial": false,
+    "lvs": "no LVS in ORFS slim pack",
+    "fake_mbff": false,
+    "timing_open": true,
+    "six_track": "fetch-gated, not a finish",
+    "drc": "community KLayout deck; not Calibre",
+    "drc_items": 33
+  },
+  "qor": {
+    "wns_ps": -115.722,
+    "tns_ps": -3262.49,
+    "setup_violations": 48,
+    "area_um2": 52.9837,
+    "die_um2": 77.1938,
+    "power_w": 0.000761049,
+    "leakage_w": 4.50336e-08,
+    "ir_vdd_worst_v": 0.00365273,
+    "util": 0.907592
+  },
+  "note": "ASAP7 lab cook. Predictive FinFET. Not a product win. Do not compare IR to gold 45.298 mV.",
+  "exit_code": 0,
+  "drc_items": 33
+}
