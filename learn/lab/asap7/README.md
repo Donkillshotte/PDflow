@@ -10,8 +10,8 @@ Does not decide product wins. Does not replace the Nangate45 course.
 FLOW_VARIANT=lab_asap7_gcd_tc_rvt_nldm_7p5 \
   ./scripts/run_lab_asap7.sh finish
 
-# slow corner
-CORNER=WC ./scripts/run_lab_asap7.sh finish
+# slow corner (310 ps + default 65% die overflows CTS legalization)
+CORNER=WC CORE_UTILIZATION=40 ./scripts/run_lab_asap7.sh finish
 
 # multi-VT (primary + extra)
 ASAP7_USE_VT="RVT LVT" ./scripts/run_lab_asap7.sh finish

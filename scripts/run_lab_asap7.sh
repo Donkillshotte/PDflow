@@ -53,6 +53,14 @@ MAKE_EXTRA=(
 if [[ "${CLUSTER}" == "1" ]]; then
   MAKE_EXTRA+=( CLUSTER_FLOPS=1 )
 fi
+# Optional ORFS knobs (WC leftover: CTS repair can overflow the 65% die).
+# No design-name branch. Caller sets the env.
+if [[ -n "${CORE_UTILIZATION:-}" ]]; then
+  MAKE_EXTRA+=( CORE_UTILIZATION="${CORE_UTILIZATION}" )
+fi
+if [[ -n "${PLACE_DENSITY:-}" ]]; then
+  MAKE_EXTRA+=( PLACE_DENSITY="${PLACE_DENSITY}" )
+fi
 if [[ -n "${CLK_PS}" ]]; then
   # ASAP7 liberty time_unit is 1ps. Do not rewrite to the course 0.46 ns SDC.
   SDC_DIR="${ROOT}/learn/sim/dse/sdc"

@@ -104,9 +104,13 @@ def main() -> None:
 
     ccs = check_live_cook(
         LabAsap7Spec(design="gcd-ccs", corner="BC", lib_model="CCS"),
-        must_exist=False,
+        must_exist=True,
     )
     wc = check_live_cook(LabAsap7Spec(corner="WC"), must_exist=False)
+    bc = check_live_cook(LabAsap7Spec(corner="BC"), must_exist=False)
+    lvt = check_live_cook(LabAsap7Spec(vt=("RVT", "LVT")), must_exist=False)
+    mbff = check_live_cook(LabAsap7Spec(cluster_flops=True), must_exist=False)
+    uart = check_live_cook(LabAsap7Spec(design="uart"), must_exist=False)
 
     stamped = ROOT / "learn/sim/reports/lab_asap7.json"
     if stamped.is_file():
@@ -125,7 +129,9 @@ def main() -> None:
     assert_nangate_gold_untouched()
     print(
         "ALL test_asap7_e2e PASSED "
-        f"(ccs={'yes' if ccs else 'pending'} wc={'yes' if wc else 'pending'})"
+        f"(ccs={'yes' if ccs else 'pending'} wc={'yes' if wc else 'pending'} "
+        f"bc={'yes' if bc else 'pending'} lvt={'yes' if lvt else 'pending'} "
+        f"mbff={'yes' if mbff else 'pending'} uart={'yes' if uart else 'pending'})"
     )
 
 

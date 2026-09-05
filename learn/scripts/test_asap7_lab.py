@@ -65,6 +65,8 @@ def main() -> None:
     text = wrap.read_text()
     check("run_signoff_all" not in text, "wrapper does not invoke the signoff orchestrator")
     check("nangate45/gcd-tutorial" not in text, "wrapper does not use Nangate tutorial")
+    check("CORE_UTILIZATION" in text, "wrapper can pass a larger die without a design branch")
+    check("if design ==" not in text, "wrapper has no design-name branch")
     check("Live metrics only" in (ROOT / "learn/dse/asap7_lab.py").read_text(), "lab report is live, not gold")
 
     env = {**os.environ, "FLOW_VARIANT": "flowlab", "PYTHONPATH": f"{ROOT}/learn:{ROOT}/learn/scripts"}

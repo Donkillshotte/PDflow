@@ -285,6 +285,10 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
             ),
             "six_track": "fetch-gated, not a finish",
             "drc": "community KLayout deck; not Calibre",
+            "wc_die": (
+                "310 ps + default 65% util can fail CTS legalization; "
+                "pass CORE_UTILIZATION for a larger die"
+            ),
         },
         "qor": metrics,
         "note": (
