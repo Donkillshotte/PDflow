@@ -21,7 +21,9 @@ ASAP7 as Lab research kit (investigation, not a migration):
 [`asap7_research.md`](asap7_research.md). Close paths for the open
 leftovers: [`asap7_close_plan.md`](asap7_close_plan.md). Layer 1
 import (GitHub PDK vs ASU Calibre):
-[`asap7_layer1_plan.md`](asap7_layer1_plan.md). Do not mix
+[`asap7_layer1_plan.md`](asap7_layer1_plan.md). End-to-end
+consolidation (one runner, per-stage ledger, all phases):
+[`asap7_e2e_plan.md`](asap7_e2e_plan.md). Do not mix
 ASAP7 into the course or promote an ASAP7 finish to a product win.
 
 ## Product (from here on)

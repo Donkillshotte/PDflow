@@ -52,6 +52,8 @@ Build solver: `./learn/scripts/build_dpn_engine.sh`.
   `lab_asap7_lvs.json` is cell-vs-CDL (not Calibre; still open).
   `lab_asap7_mmmc.json` is setup WC / hold BC on one finish.
   Close paths that remain open: [`asap7_close_plan.md`](asap7_close_plan.md).
+  End-to-end consolidation plan (one runner, per-stage ledger, all
+  phases): [`asap7_e2e_plan.md`](asap7_e2e_plan.md).
   Layer 1 import: [`asap7_layer1_plan.md`](asap7_layer1_plan.md)
   (`run_lab_asap7_pdk.sh`, inventory `lab_asap7_pdk.py`,
   Xyce `lab_asap7_spice.py`). Calibre decks stay gated.

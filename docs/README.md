@@ -57,6 +57,7 @@ stays 45.298 mV.
 - [`asap7_research.md`](asap7_research.md) — ASAP7 as Lab/FinFET research kit (not a course or product swap)
 - [`asap7_close_plan.md`](asap7_close_plan.md) — how the ASU/ORFS/Hammer kit is layered; leftover close paths (not leftover-free)
 - [`asap7_layer1_plan.md`](asap7_layer1_plan.md) — how to import the academic PDK (GitHub half vs ASU Calibre)
+- [`asap7_e2e_plan.md`](asap7_e2e_plan.md) — consolidation plan: one runner, per-stage ledger, end-to-end for every phase (lab only)
 
 ## Product code
 
