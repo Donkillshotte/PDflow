@@ -39,7 +39,7 @@ Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.
 |---|---|---|
 | `CORNER` | BC / TC / WC | — |
 | `ASAP7_USE_VT` | RVT LVT SLVT SRAM | — |
-| `LIB_MODEL` | NLDM / CCS | CCS is RVT+FF only |
+| `LIB_MODEL` | NLDM / CCS | CCS TC/WC need fetched extras; LVT/SLVT CCS stays refused |
 | `ASAP7_TRACK` | 7p5 / 6 | 6T is fetch-gated, not a finish |
 | `CLUSTER_FLOPS` | 0 / 1 | `*_FAKE.lib` |
 | FakeRAM designs | `riscv32i-mock-sram` | blackbox SRAM |

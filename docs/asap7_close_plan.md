@@ -114,8 +114,10 @@ Cell **CDL** lives in `asap7sc7p5t_28/CDL/`. Hammer: Calibre
 device-LVS **159/208 (76%) MATCH** on RVT TT — leftover, not
 Calibre.
 
-**On disk here:** no `*.cdl`, no `*lvs*` under
-`platforms/asap7/`.
+**On disk here:** leftover-named CDL under `learn/lab/asap7/cdl/`
+(gitignored). No Calibre decks. `lab_asap7_lvs.py` compares GDS
+instance masters to `.SUBCKT` names (live ~79% on gcd 480 ps).
+Not a close. Never writes `.lvs.ok`.
 
 **Close path:**
 
@@ -142,7 +144,10 @@ extract TT/SS or LVT/SLVT CCS.
 other VT, point `platforms/asap7/config.mk` at them **or** keep
 them under `learn/lab/asap7/ccs/` (gitignored) and pass
 `LIB_DIR`. Then `LIB_MODEL=CCS CORNER=TC` stops being a refuse.
-Until those files exist, the refuse in `asap7_lab.py` stays.
+When the five families exist, the wrapper passes
+`${CORNER}_CCS_LIB_FILES`. `LIB_MODEL=CCS CORNER=TC` is then a
+cook, not a refuse. LVT/SLVT CCS stays refused until those
+archives are extracted.
 
 Do not use ASAP7 CCS to “close” the Nangate CCS leftover.
 
@@ -228,9 +233,9 @@ Hammer defaults:
 | `PVT_0P63V_100C` | setup | 0.63 V / 100 °C (our WC / SS) |
 | `PVT_0P77V_0C` | hold | 0.77 V / 0 °C (our BC / FF) |
 
-We cook **one** corner per variant. That is leftover vs MMMC, not
-vs “no corners”. Close path: report the pair (WC setup + BC hold)
-on the same netlist, still not a product win.
+We cook **one** corner per variant. Close path (live):
+`lab_asap7_mmmc.py` runs OpenSTA twice on one finish (Verilog +
+SPEF + SDC). Setup = WC/SS, hold = BC/FF. Still not a product win.
 
 ---
 
@@ -247,13 +252,17 @@ Do one heavy cook at a time. No AES. No gold stamp.
    2.46 mV, fmax 2.08 GHz). Not a product win. Different SDC than
    ORFS smoke. Does not overwrite the 310 ps GDS.
 3. **CCS extract** from `asap7sc7p5t_28` `.7z` when `p7zip` is
-   present (`learn/scripts/fetch_asap7_libextras.sh`) — then the
-   RVT+BC refuse drops because `ccs_ready` sees the files.
-4. **CDL fetch** (same script) for a leftover-named KLayout/netgen
-   LVS. Calibre stays gated on the ASU tarball + 2017 license.
-5. **6T platform** only if someone wants density studies. Not a
+   present (`learn/scripts/fetch_asap7_libextras.sh`). Live: RVT
+   TT/SS CCS is extracted (gitignored). CCS TC and CCS WC gcd
+   cooks exist. LVT/SLVT CCS stays refused.
+4. **CDL fetch** (same script) plus leftover-named
+   `lab_asap7_lvs.py` (~79% cell-vs-CDL on gcd 480 ps). Calibre
+   stays gated on the ASU tarball + 2017 license.
+5. **Setup WC / hold BC** on one finish: `lab_asap7_mmmc.py`
+   (two OpenSTA jobs). Live on the 480 ps netlist.
+6. **6T platform** only if someone wants density studies. Not a
    finish on 7.5T PDN.
-6. FakeRAM, BPR/PowerVia, OpenRAM, LLM proposers: leftover /
+7. FakeRAM, BPR/PowerVia, OpenRAM, LLM proposers: leftover /
    literature. `AGENTS.md` forbids LLM/RL/GNN as product.
 
 ---
