@@ -63,6 +63,18 @@ def orfs_logs(variant: str, *, design: str = "gcd", platform: str = "nangate45")
     return repo_root() / "tools/OpenROAD-flow-scripts/flow/logs" / platform / design / variant
 
 
+def flowlab_baseline_paths() -> tuple[Path, Path]:
+    logs = orfs_logs("flowlab") / "6_report.json"
+    odb = repo_root() / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb"
+    return logs, odb
+
+
+def flowlab_baseline_present() -> bool:
+    rep, odb = flowlab_baseline_paths()
+    return rep.is_file() and odb.is_file()
+
+
+
 def parse_6_report(path: Path | str) -> dict[str, Any]:
     """Last-key-wins JSON (ORFS duplicates instance count keys)."""
     raw = Path(path).read_text()

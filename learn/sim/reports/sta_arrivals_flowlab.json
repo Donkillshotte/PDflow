@@ -1,0 +1,18 @@
+{
+  "variant": "flowlab",
+  "kind": "sta_arrivals",
+  "spef": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.spef",
+  "verilog": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.v",
+  "sdc": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.sdc",
+  "period_ns": 0.46,
+  "n_pins": 622,
+  "worst_path": {
+    "startpoint": "dpath.a_reg.out[2]$_DFFE_PP_",
+    "endpoint": "dpath.a_reg.out[13]$_DFFE_PP_",
+    "slack_ns": -0.019603,
+    "slack_met": false,
+    "n_gates": 18,
+    "gate_delay_ns": 0.440319
+  },
+  "note": "Committed fixture aligned with dynamic_ir_flowlab_direct.json and sta_ir_aware_flowlab.json. Regenerate with learn/scripts/export_sta_arrivals.py after a live finish cook."
+}

@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 from .contracts import stamp_evidence
 from .equiv import equiv_rtl_pair
-from .f6_finish import assert_baseline_frozen, evaluate_f6, ingest_finish, parse_place_dp, refuse_locked_variant
+from .f6_finish import assert_baseline_frozen, evaluate_f6, flowlab_baseline_present, ingest_finish, parse_place_dp, refuse_locked_variant
 from .funnel import promote_or_reject
 from .memory import DesignMemory
 from .scheduler import Action, apply_rejection, next_action
@@ -30,7 +30,8 @@ def default_nl_memory(variant: str = "flowlab") -> Path:
 
 def seed_bakeoff(mem: DesignMemory) -> dict[str, Any]:
     """Ingest existing A/B/C finish logs. Does not launch ORFS."""
-    assert_baseline_frozen()
+    if flowlab_baseline_present():
+        assert_baseline_frozen()
     seeded = []
     for variant, geom in (
         ("flowlab", "product"),
