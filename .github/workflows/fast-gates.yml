@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build deps
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake g++
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake g++ libeigen3-dev libomp-dev
       - name: Build and run engine tests
         run: |
           cmake -S engine -B engine/build -DCMAKE_BUILD_TYPE=Release
