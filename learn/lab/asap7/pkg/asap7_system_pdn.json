@@ -1,0 +1,55 @@
+{
+  "name": "lab_asap7_gcd_compact_pkg",
+  "description": "Leftover-named compact chip-package ladder for lab ASAP7. Not C4. Not Touchstone. Not a product win. Vdd is ASAP7 TC (0.70 V), not Nangate 1.1 V.",
+  "surface": "lab",
+  "platform": "asap7",
+  "product_win": false,
+  "comparable_to_gold_ir": false,
+  "vdd": 0.70,
+  "vrm": {
+    "v_nom": 0.70,
+    "r_out": 0.020,
+    "l_out": 1.5e-9,
+    "c_out": 10.0e-6,
+    "esr_cout": 0.010
+  },
+  "board": {
+    "r_plane": 0.008,
+    "l_plane": 0.8e-9,
+    "c_bulk": 4.7e-6,
+    "esr_bulk": 0.015,
+    "c_hf": 220.0e-9,
+    "esr_hf": 0.025,
+    "l_via_to_pkg": 0.4e-9
+  },
+  "package": {
+    "r_pkg": 0.05,
+    "l_pkg": 0.25e-9,
+    "c_pkg": 40.0e-12,
+    "n_bumps": 4,
+    "r_bump": 0.008,
+    "l_bump": 0.04e-9
+  },
+  "die": {
+    "c_die": 20.0e-15,
+    "comment": "Educational lump for an ~9 µm ASAP7 gcd die. I_die comes from live finish power / Vdd."
+  },
+  "ac": {
+    "f_start": 1.0e3,
+    "f_stop": 1.0e9,
+    "points_per_decade": 20,
+    "z_target_mohm": 80
+  },
+  "tran": {
+    "t_step": 0.1e-9,
+    "t_stop": 200e-9,
+    "i_idle_factor": 0.3,
+    "i_peak_factor": 4.0,
+    "edge_ns": 2.0
+  },
+  "leftover": {
+    "c4": "dummy 2×2 bump LEF, not JEDEC C4",
+    "touchstone": "lumped RLC only; no board S-parameter",
+    "cpa": "compact ladder, not Ansys CPA / foundry package model"
+  }
+}
