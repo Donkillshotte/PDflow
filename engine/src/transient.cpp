@@ -188,7 +188,6 @@ TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const doub
   if (n <= 0 || dt <= 0.0) {
     return out;
   }
-  const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
   std::vector<double> V(static_cast<size_t>(n), vdd);
   if (v_init) {
     std::copy(v_init, v_init + n, V.begin());
@@ -204,10 +203,14 @@ TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const doub
   std::vector<double> Vnext(static_cast<size_t>(n));
   double res_max = 0.0;
   double t_solve = 0.0;
-  for (int s = 0; s < steps; ++s) {
-    const double t = static_cast<double>(s) * dt;
-    fill_idraw(n, t, leak, ev, n_ev, I.data());
-    cap_over_dt(n, C, Cmat, V.data(), dt, rhs.data());
+  double t = 0.0;
+  fill_idraw(n, t, leak, ev, n_ev, I.data());
+  record_step(out, t, V.data(), I.data(), n, vdd, n_rail0);
+  int accepted = 0;
+  while (t < t_end - 1e-18 * std::max(t_end, 1.0)) {
+    const double dt_use = std::min(dt, t_end - t);
+    fill_idraw(n, t + dt_use, leak, ev, n_ev, I.data());
+    cap_over_dt(n, C, Cmat, V.data(), dt_use, rhs.data());
     for (Index i = 0; i < n; ++i) {
       rhs[i] += -I[i] + pad[i];
     }
@@ -216,9 +219,11 @@ TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const doub
     t_solve += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     res_max = std::max(res_max, residual_rel(A, Vnext.data(), rhs.data()));
     V.swap(Vnext);
+    t += dt_use;
     record_step(out, t, V.data(), I.data(), n, vdd, n_rail0);
+    ++accepted;
   }
-  out.steps = steps;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   return out;
@@ -277,7 +282,6 @@ TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const
   }
   double g_eq = 0.0, hsc = 0.0;
   rl_companion(pkg_r, pkg_l, dt, &g_eq, &hsc);
-  const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
   std::vector<double> V(static_cast<size_t>(n), vref);
   if (v_init) {
     std::copy(v_init, v_init + n, V.begin());
@@ -294,10 +298,14 @@ TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const
   std::vector<double> i_L(static_cast<size_t>(std::max(n_bumps, 0)), 0.0);
   double res_max = 0.0;
   double t_solve = 0.0;
-  for (int s = 0; s < steps; ++s) {
-    const double t = static_cast<double>(s) * dt;
-    fill_idraw(n, t, leak, ev, n_ev, I.data());
-    cap_over_dt(n, C, Cmat, V.data(), dt, rhs.data());
+  double t = 0.0;
+  fill_idraw(n, t, leak, ev, n_ev, I.data());
+  record_step(out, t, V.data(), I.data(), n, vref, n_rail0);
+  int accepted = 0;
+  while (t < t_end - 1e-18 * std::max(t_end, 1.0)) {
+    const double dt_use = std::min(dt, t_end - t);
+    fill_idraw(n, t + dt_use, leak, ev, n_ev, I.data());
+    cap_over_dt(n, C, Cmat, V.data(), dt_use, rhs.data());
     for (Index i = 0; i < n; ++i) {
       rhs[i] -= I[i];
     }
@@ -324,13 +332,15 @@ TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const
     }
     i_L.swap(i_new);
     V.swap(Vnext);
+    t += dt_use;
     record_step(out, t, V.data(), I.data(), n, vref, n_rail0);
     if (out.worst_t == t) {
       out.i_L_worst = i_L;
       out.i_L_absmax = iabs;
     }
+    ++accepted;
   }
-  out.steps = steps;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   return out;
@@ -434,15 +444,15 @@ TranResult timestep_be_adaptive(const Csr& Gmesh, const double* C, const Index* 
     Vprev.swap(V);
     V.swap(Vnext);
     have_prev = 1;
+    t += dt_use;
     record_step(out, t, V.data(), I.data(), n, vref, 0);
     if (out.worst_t == t) {
       out.i_L_worst = i_L;
       out.i_L_absmax = iabs;
     }
-    t += dt_use;
     ++accepted;
   }
-  out.steps = accepted;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   return out;
@@ -464,7 +474,6 @@ TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double
   Csr Edt = scale(E, 1.0 / dt);
   Csr K = plus(A, Edt);
   auto solver = descriptor_solver(K, solver_kind);
-  const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
   std::vector<double> x(static_cast<size_t>(n), 0.0);
   for (int i = 0; i < n_v && static_cast<Index>(i) < n; ++i) {
     x[static_cast<size_t>(i)] = vdd;
@@ -472,10 +481,18 @@ TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double
   std::vector<double> rhs(static_cast<size_t>(n)), I(static_cast<size_t>(std::max(n_die_i, Index{1})));
   const auto t0 = std::chrono::steady_clock::now();
   double res_max = 0.0;
-  for (int s = 0; s < steps; ++s) {
-    const double t = static_cast<double>(s) * dt;
-    stamp_descriptor_u(n, n_die, die_idx, iv, n_iv, vdd, leak, u_const, ev, n_ev, t, rhs.data(),
-                       I.data());
+  double t = 0.0;
+  track_descriptor_vmin(out, x, n, n_die, die_idx, t, I.data(), vdd);
+  int accepted = 0;
+  while (t < t_end - 1e-18 * std::max(t_end, 1.0)) {
+    const double dt_use = std::min(dt, t_end - t);
+    if (std::abs(dt_use - dt) > 1e-18 * std::max(dt, 1.0)) {
+      Edt = scale(E, 1.0 / dt_use);
+      K = plus(A, Edt);
+      solver = descriptor_solver(K, solver_kind);
+    }
+    stamp_descriptor_u(n, n_die, die_idx, iv, n_iv, vdd, leak, u_const, ev, n_ev, t + dt_use,
+                       rhs.data(), I.data());
     std::vector<double> hist(static_cast<size_t>(n), 0.0);
     Edt.spmv(x.data(), hist.data());
     for (Index i = 0; i < n; ++i) {
@@ -485,9 +502,11 @@ TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double
     solver->solve(rhs.data(), xnext.data(), x.data());
     res_max = std::max(res_max, residual_rel(K, xnext.data(), rhs.data()));
     x.swap(xnext);
+    t += dt_use;
     track_descriptor_vmin(out, x, n, n_die, die_idx, t, I.data(), vdd);
+    ++accepted;
   }
-  out.steps = steps;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
   return out;
@@ -577,11 +596,11 @@ TranResult timestep_descriptor_adaptive(const Csr& A, const Csr& E, double dt0, 
     xprev.swap(x);
     x.swap(xnext);
     have_prev = 1;
-    track_descriptor_vmin(out, x, n, n_die, die_idx, t, I.data(), vdd);
     t += dt_use;
+    track_descriptor_vmin(out, x, n, n_die, die_idx, t, I.data(), vdd);
     ++accepted;
   }
-  out.steps = accepted;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   return out;
@@ -623,22 +642,27 @@ ThermalTranResult timestep_thermal_be(Solver& solver, const Csr& A, const double
     }
   }
   out.T_worst = T;
-  const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
-  std::vector<double> rhs(static_cast<size_t>(n));
-  std::vector<double> Tnext(static_cast<size_t>(n));
   const double inv_dt = 1.0 / dt;
   double res_max = 0.0;
   double t_solve = 0.0;
-  for (int s = 0; s < steps; ++s) {
-    const double t = static_cast<double>(s) * dt;
+  double t = 0.0;
+  out.wave_t.push_back(t);
+  out.wave_tmax.push_back(T[0]);
+  std::vector<double> rhs(static_cast<size_t>(n));
+  std::vector<double> Tnext(static_cast<size_t>(n));
+  int accepted = 0;
+  while (t < t_end - 1e-18 * std::max(t_end, 1.0)) {
+    const double dt_use = std::min(dt, t_end - t);
+    const double inv_dt_use = 1.0 / dt_use;
     for (Index i = 0; i < n; ++i) {
-      rhs[static_cast<size_t>(i)] = (C[i] * inv_dt) * T[static_cast<size_t>(i)] + P[i];
+      rhs[static_cast<size_t>(i)] = (C[i] * inv_dt_use) * T[static_cast<size_t>(i)] + P[i];
     }
     const auto t0s = std::chrono::steady_clock::now();
     solver.solve(rhs.data(), Tnext.data(), T.data());
     t_solve += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0s).count();
     res_max = std::max(res_max, residual_rel(A, Tnext.data(), rhs.data()));
     T.swap(Tnext);
+    t += dt_use;
     double tmax = T[0];
     Index imax = 0;
     for (Index i = 1; i < n0; ++i) {
@@ -655,8 +679,9 @@ ThermalTranResult timestep_thermal_be(Solver& solver, const Csr& A, const double
       out.worst_node = imax;
       out.T_worst = T;
     }
+    ++accepted;
   }
-  out.steps = steps;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   out.T_final = T;

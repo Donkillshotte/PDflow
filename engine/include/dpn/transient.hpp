@@ -15,6 +15,7 @@ struct TriangleSrc {
 };
 
 struct TranResult {
+  /* Wave sample count (fixed-Δt BE: UIC at t=0 + one per accepted advance). */
   int steps = 0;
   Index worst_node = 0;
   double worst_v = 0.0;
@@ -98,6 +99,7 @@ TranResult timestep_descriptor_adaptive(const Csr& A, const Csr& E, double dt0, 
    Tracks max ΔT on [0, n_track) (n_track<=0 → all nodes). Not electrical min-V.
    UIC T=T0 (nullable → 0). Thermal Δt is independent of IR TRAN Δt. */
 struct ThermalTranResult {
+  /* Wave sample count (UIC at t=0 + one per accepted advance). */
   int steps = 0;
   Index worst_node = 0;
   double worst_T = 0.0;
