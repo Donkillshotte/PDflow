@@ -8,8 +8,7 @@ The leftover-free RTL-to-signoff goal was **stopped on 2026-09-04,
 not achieved**. Done vs missing, live leftovers, and failed closes:
 [`rtl_to_signoff.md`](rtl_to_signoff.md).
 
-Leftover-named suite integrity A–F landed 2026-09-04. Next work is
-maintain honesty / park gated leftovers (not leftover-free):
+Next action (suite integrity, not leftover-free):
 [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md).
 
 Do **not** copy that review or plan into the frozen files below.
@@ -22,7 +21,11 @@ ASAP7 as Lab research kit (investigation, not a migration):
 [`asap7_research.md`](asap7_research.md). Close paths for the open
 leftovers: [`asap7_close_plan.md`](asap7_close_plan.md). Layer 1
 import (GitHub PDK vs ASU Calibre):
-[`asap7_layer1_plan.md`](asap7_layer1_plan.md). Do not mix
+[`asap7_layer1_plan.md`](asap7_layer1_plan.md). End-to-end
+consolidation (one runner, per-stage ledger, all phases):
+[`asap7_e2e_plan.md`](asap7_e2e_plan.md). On-die chip PDN mesh
+(`write_pg_spice` + `pdn_transient` on `lab_asap7_*`):
+[`asap7_chip_pdn_plan.md`](asap7_chip_pdn_plan.md). Do not mix
 ASAP7 into the course or promote an ASAP7 finish to a product win.
 
 ## Product (from here on)
