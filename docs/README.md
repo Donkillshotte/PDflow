@@ -13,8 +13,9 @@ this tree is for navigation. Do not rewrite I1–I5 or §5 P0–P7.
 
 Studio home (`/#story`, `GET /api/story`) lists the three surfaces.
 Course is `/lessons`, lab IR is `/lab`, product wins are `/product`.
-They stay separate contracts. Wins stay in `win_rule.py`. Lab IR gold
-stays 45.298 mV.
+They stay separate contracts. Wins stay in `win_rule.py`. Do not
+restamp the locked gold IR report file; gold mV is not a suite pass
+criterion.
 
 ## Reading order
 
@@ -37,7 +38,7 @@ stays 45.298 mV.
 
 1. [`course.md`](course.md)
 2. [`rtl_to_signoff.md`](rtl_to_signoff.md) — living campaign: leftover-free **stopped**, not achieved
-2b. [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md) — next action: keep the suite honest about items still open (plan only)
+2b. [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md) — leftover-named A–F landed (2026-09-04); next is maintain honesty / park gated leftovers (leftover-free stays stopped)
 3. [`../learn/README.md`](../learn/README.md) · [`../learn/CURRICULUM.md`](../learn/CURRICULUM.md)
 4. [`../studio/README.md`](../studio/README.md)
 

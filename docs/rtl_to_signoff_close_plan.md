@@ -1,6 +1,7 @@
 # RTL-to-signoff close plan (suite integration)
 
-Living action plan. **Plan only — not an implementation log.**
+Contract for leftover-named suite integrity, plus completed status.
+Phases **A–F landed** (2026-09-04). Not a leftover-free close.
 Not a frozen DSE plan. Do not fold this into `tpe_plan.md`,
 `product.md`, `arch_review.md`, `next_iteration_plan.md`, `PLAN.md`,
 `experiment_campaign_plan.md`, or `joint_recipe_plan.md`.
@@ -13,8 +14,9 @@ Campaign evidence: [`rtl_to_signoff.md`](rtl_to_signoff.md) ·
 |---|---|
 | Written | 2026-09-04 |
 | Surface | Course / Studio suite only |
-| This document | **Plan.** Do not treat it as a leftover-free close. |
-| Physical leftover-free | **Out of scope.** Stopped. Do not resume. |
+| This document | **Contract + completed status.** A–F landed. Not leftover-free. |
+| Physical leftover-free | **Out of scope.** Stopped 2026-09-04. Do not resume. |
+| Leftover-named A–F | **Landed** 2026-09-04. Next: maintain honesty / park gated leftovers. |
 
 ---
 
@@ -26,13 +28,15 @@ mode of the last campaign.
 | Kind | Conclude means | Who |
 |---|---|---|
 | **License / PDK / SDC gated** | Park it as a named leftover / GAP. `ok` stays true only when the real check ran. The leftover object stays on the report, the suite hook, and the tests. | This repo (naming + tests). A license, form, or different PDK if someone later wants the *physical* object. |
-| **To-build suite drift** | Make the leftover visible and consistent on every suite surface. Fix stale copy. Add tests that fail on drift or a silent green. | This repo, next implementation goal. |
+| **To-build suite drift** | Make the leftover visible and consistent on every suite surface. Fix stale copy. Add tests that fail on drift or a silent green. | This repo. A–F landed 2026-09-04; keep honest. |
 | **Already built** | Do not reopen. Tests already lock it. | — |
 
-Success of a later implementation goal is **leftover-named suite
-integrity**, not leftover-free silicon.
+Success of the A–F implementation goal was **leftover-named suite
+integrity**, not leftover-free silicon. That goal landed 2026-09-04.
+Next work is keep the catalog, hooks, and docs honest — not a new
+leftover-free campaign.
 
-A later close is done when:
+A–F is done when (met 2026-09-04):
 
 1. Every leftover in §1 has a stable `id`, a kind, a suite hook, a
    Studio surface, and a test needle.
@@ -51,7 +55,10 @@ A later close is done when:
 ## 1. Leftover catalog (every unclosed item)
 
 Authoritative live numbers stay in the JSON under
-`learn/sim/reports/`. This table is the work queue.
+`learn/sim/reports/`. This table is the park queue for gated leftovers.
+The “Suite hook today” / “Conclude later” columns are the pre-A–F
+snapshot; Phase B named those hook details. Do not treat omit-notes
+as still pending.
 
 ### 1.1 Must park (gated). Do not physically close.
 
@@ -70,7 +77,7 @@ Authoritative live numbers stay in the JSON under
 | `no_sparam` | Board S-parameter (Touchstone `.sNp`) | Form-gated. Lumped VRM→board→pkg only. | `system_pdn` leftover “no Touchstone”. | Park. Do not export the lump as `.sNp`. |
 | `no_magic_netgen` | No FreePDK45 Magic `.tech` | Wrong tool / missing tech. | `magic_netgen` GAP. | Park. Keep GAP. |
 | `no_sky130_course` | Course is Nangate45 | Different PDK. | `sky130` GAP. | Park. Do not mix. |
-| `gold_ir_locked` | Dynamic IR gold **45.298 mV** | Forbidden restamp. | `dynamic_ir` uses current_run; gold locked. | Park as LOCKED. |
+| `gold_ir_locked` | Locked gold Dynamic IR report file | Forbidden restamp / overwrite. | `dynamic_ir` uses the active current_run report; gold mV is not a pass criterion. | Park as LOCKED. |
 | `course_0_8` | Lessons 0/8 | Student pace. | Course progress LOCKED. | Park. Do not stamp `.progress.json`. |
 | `aes_row_locked` | `memory_aes.jsonl` row `febe6804241c` | Product invariant. | Product / Lab table. | Park. Do not overwrite. |
 
@@ -101,12 +108,15 @@ Default apply stays **two** OpenROAD processes. No third phase.
 
 ---
 
-## 2. Suite integration gaps (the real to-build)
+## 2. Suite integration gaps (closed in Phase B)
+
+Pre-A–F contract. Phase B closed these hook details. Do not treat the
+table as still pending.
 
 `GET /api/suite` is `ok` + a `detail` string
 (`studio/src/lib/suite.ts`). Leftover lives in JSON
-(`signoff_all_*.json`) and on finish / home, but several suite hooks
-still look leftover-free.
+(`signoff_all_*.json`) and on finish / home. Hooks below were the
+drift Phase B named.
 
 | Hook | `ok` today | Detail today | Required leftover phrase |
 |---|---|---|---|
@@ -128,21 +138,24 @@ catalog):
 - Finish EcoPanel + SignoffMatrix (`studio/src/lib/signoff.ts`)
 - Variant compare: locked `flowlab` vs `eco_scratch`
 
-Studio / docs drift to fix in the implementation goal (not now):
+Studio / docs drift that Phase C closed (keep named; do not reopen as
+a leftover-free sprint):
 
-- `learn/reference/suite-status.md` §1 still says the remaining leftover
-  is DFF_X2 only. Wrong. Must list setup / MCMM / deck / EM / meshes.
-- Signoff-pillar leftover column: STA says “not PrimeTime”; DRC is `—`;
-  `signoff_all` does not name leftovers.
+- `learn/reference/suite-status.md` leftover columns name setup / MCMM /
+  deck / EM / meshes (not DFF_X2 only).
+- Signoff-pillar leftover column is leftover-named (`signoff_all` lists
+  must-connect, setup open, no MCMM, no density/ERC, meshes).
 - `period_min` golden in `signoff-matrix.md` is ≥ 0.50 ns; live
   `eco_scratch` is 0.46 ns and `flowlab` is 0.48 ns. Do **not** rewrite
-  SDC. Document that the educational golden WNS ≥ −0.04 is the timing
-  gate, and `period_min` on the copy is leftover-named vs the 0.50
-  finish-era number.
+  SDC. Educational golden WNS ≥ −0.04 is the timing gate; `period_min`
+  on the copy is leftover-named vs the 0.50 finish-era number.
 
 ---
 
-## 3. Implementation phases (later goal — do not start here)
+## 3. Implementation phases (landed 2026-09-04)
+
+These phases are the contract that was executed. Do not treat them as
+still pending. Do not resume leftover-free.
 
 One heavy cook at a time. No AES finish. No recook of locked
 `gcd/flowlab/`. Kill by PID only.
@@ -259,7 +272,8 @@ fail the audit.
 
 - Resume leftover-free RTL-to-signoff on Nangate45.
 - Rewrite course SDC or overwrite `results/.../gcd/flowlab/`.
-- Restamp gold Dynamic IR 45.298 mV.
+- Restamp or overwrite the locked gold Dynamic IR report file. Gold mV
+  is not a suite pass criterion.
 - Invent `emlimit`, density rules, named ERC, or slow/fast liberty.
 - Mix sky130 into the course.
 - Add a third ECO apply phase or retry §1.3.
@@ -270,16 +284,15 @@ fail the audit.
 
 ---
 
-## 5. Suggested later `/goal` (implementation)
+## 5. After A–F (maintenance, not leftover-free)
 
-When this plan is accepted, a new goal may implement Phases A–F in
-order. That goal’s objective is leftover-named suite integrity, not
-leftover-free silicon. Keep this file as the contract; update status
-checkboxes only after evidence.
+Phases A–F landed 2026-09-04. Do not reopen them as an unimplemented
+goal. Next work is keep leftovers named when reports or Studio drift,
+and keep gated leftovers parked. Do not resume leftover-free.
 
-Phase order is A → B → C → D → E → F. Do not skip A (catalog) and
-patch hook strings only: that is how home / finish / suite drifted
-apart last time.
+If a later change adds a leftover, start from the catalog (Phase A
+contract). Do not patch hook strings only: that is how home / finish /
+suite drifted apart last time.
 
 ---
 

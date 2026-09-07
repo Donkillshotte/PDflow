@@ -8,7 +8,8 @@ The leftover-free RTL-to-signoff goal was **stopped on 2026-09-04,
 not achieved**. Done vs missing, live leftovers, and failed closes:
 [`rtl_to_signoff.md`](rtl_to_signoff.md).
 
-Next action (suite integrity, not leftover-free):
+Leftover-named suite integrity A–F landed 2026-09-04. Next work is
+maintain honesty / park gated leftovers (not leftover-free):
 [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md).
 
 Do **not** copy that review or plan into the frozen files below.
