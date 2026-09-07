@@ -11,7 +11,9 @@ student work (`0/8`).
 
 Studio prefers `gcd/flowlab/` then `gcd/learn/`. Live suite count is
 taken from `GET /api/suite` after the last signoff run. Magic/Netgen
-stays **GAP**. Gold Dynamic IR stays **LOCKED** at 45.298 mV.
+stays **GAP**. The suite analyzes **active reports** / relative vs
+base. Do not restamp or overwrite the locked gold IR report file.
+The suite does not use gold mV as a pass criterion.
 
 Gaps are split in [`gaps.md`](gaps.md): license/PDK gated vs to-build.
 
@@ -79,26 +81,32 @@ Leftovers that stay visible:
 | Tapeout **C4 bumps / RDL** | Dummy bump LEF + sidecar `rdl_route` (4 bumps, 36 wires) | Educational OpenROAD pad test, not a package foundry. |
 | **PrimeTime / Tempus / Voltus** | OpenSTA + PDNSim + Xyce N4 compact | We do not claim sign-off equivalence. |
 | Course **8/8** | **0/8** | Student pace. Do not stamp `.progress.json`. |
-| A new gold Dynamic IR | **45.298 mV** stays | current_run (~5.173) and chip PDN are other meshes. Never restamp gold. |
+| A new gold Dynamic IR number as a suite pin | Locked gold report file stays as-is | current_run and chip PDN are other meshes. Never restamp the gold file. Gold mV is not a pass criterion. |
 
 **WORKS\*** in the tables below means: the script ran and the number is
 real, but it is not the commercial / foundry object with the same name.
 
 ---
 
-## Next honest closes (this goal)
+## Already closed (physical + leftover-named A–F)
 
-The six physical closes below are **done**. The leftover-free goal was
-stopped. Next action is leftover-named suite integrity (plan only):
+The six physical closes below are **done**. Leftover-named suite
+integrity Phases **A–F landed** (2026-09-04). Evidence:
+`learn/signoff/leftover_catalog.json`, `learn/scripts/leftover_catalog.py`,
+leftover-named `GET /api/suite` details, and the honesty tests in
+`test_signoff_honesty.py`. The leftover-free goal remains **STOPPED
+2026-09-04** (not achieved). Next work is maintain honesty and park
+gated leftovers — not “plan only”, and not leftover-free:
 [`docs/rtl_to_signoff_close_plan.md`](../../docs/rtl_to_signoff_close_plan.md).
 
-Do all six. Do not fake a pass. Do not restamp gold IR **45.298 mV**.
+Do not fake a pass. Do not restamp or overwrite the locked gold IR
+report file. The suite does not use gold mV as a pass criterion.
 Course stays **0/8**. `gcd/flowlab/` baseline ODBs are not overwritten.
 
 | # | Workstream | Status | Evidence |
 |---|---|---|---|
 | 1 | Studio paths | **done** | `preferredResultsVariant()` · course gates stay `learn` |
-| 2 | dynamic_ir hook | **done** | `ok` from `_direct.json` (current_run). Gold 45.298 stays locked on another mesh. |
+| 2 | dynamic_ir hook | **done** | `ok` from `_direct.json` (current_run). Locked gold report file is not restamped; gold mV is not a pass criterion. |
 | 3 | Vectorless VCD | **done** | `gcd_gate.vcd` · `tb_gcd_gate/dut` |
 | 4 | gridcheck | **done** | PSM-0040 VDD+VSS · stamp only after pass |
 | 5 | Extra combo CCS | **done** | 19 cells / 38 tables · official lib NLDM |
@@ -158,8 +166,8 @@ Artifacts exist under `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/fl
 | Vectorless | **WORKS*** | P=4.9 mW · I_avg=4.45 mA · dynamic source gate VCD | GLS, no SDF |
 | Chip PDN (PDNSim mesh) | **WORKS*** | static **1.05 mV** · transient **9.47 mV** (`pdn_chip_ir`) | Not gold Dynamic IR. I(t) companion static is 1.05 mV on a different cook — do not mix |
 | vyges-em-ir | **WORKS*** | static 15.1 mV · droop 86.0 mV | Different mesh again |
-| Dynamic IR **gold** | **LOCKED** | **45.298 mV** · `gold: true` | Never restamp |
-| Dynamic IR current_run | **WORKS*** | ~**5.173 mV** | Not gold; not chip PDN. Finish SPEF t50. |
+| Dynamic IR **gold** | **LOCKED** | Locked gold report file (`gold: true`) | Never restamp. Gold mV is not a suite pass criterion. |
+| Dynamic IR current_run | **WORKS*** | from `_direct.json` (active report) | Not gold; not chip PDN. Finish SPEF t50. Snapshot, not a test pin. |
 | System PDN | **WORKS*** | droop **6.03 mV** (power_signoff) | Lumped VRM→board→pkg. No Touchstone |
 | Board S-parameter | **GAP** | TUHH form-gated | Do not export the lumped ladder as `.sNp` |
 
@@ -223,7 +231,7 @@ Area, power, leakage, and IR. Honest win/lose.
 
 | Quantity | Value | Do not confuse with |
 |---|---|---|
-| Gold Dynamic IR | **45.298 mV** | current_run 5.173 · chip PDN |
+| Gold Dynamic IR report file | **LOCKED** (do not restamp) | current_run / chip PDN (other meshes; not pass pins) |
 | Chip PDN static / transient | **1.05 / 9.47 mV** | gold · I(t) companion static 1.05 (same order, not the same mesh) |
 | System PDN droop | **6.03 mV** | chip transient |
 | HotSpot t_max | **70.54 °C** | IR proxy mV |
@@ -258,7 +266,7 @@ shows. `FN` = false-negative (artifact exists under `flowlab/`).
 | Power | vectorless | ok | **WORKS*** | dynamic source gate VCD |
 | Power | chip_pdn_ir | ok | **WORKS*** | 1.05 / 9.47 mV |
 | Power | vyges_em_ir | ok | **WORKS*** | 15.1 / 86.0 mV · other mesh |
-| Power | dynamic_ir | ok | **WORKS*** | current_run `_direct.json` · gold 45.298 locked on another mesh |
+| Power | dynamic_ir | ok | **WORKS*** | current_run `_direct.json` · locked gold report file not restamped; gold mV is not a pass criterion |
 | Power | dse | ok | **WORKS*** | lab only · not a product win |
 | Power | power_chain | ok | **WORKS*** | convenience; System PDN is PKG |
 | Power | spice_lab | ok | **WORKS** | `INDEX_flowlab.md` |
@@ -304,4 +312,4 @@ ORFS pipeline UI follows `preferredResultsVariant()` (`flowlab` here).
 | Raphael / StarRC | Commercial |
 | Magic / Netgen extract | No FreePDK45 `.tech` here |
 | sky130 | Different PDK · course pinned |
-| Gold Dynamic IR restamp | Forbidden · **45.298 mV** |
+| Gold Dynamic IR restamp | Forbidden · do not overwrite the locked gold report file. Gold mV is not a pass criterion. |
