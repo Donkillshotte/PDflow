@@ -4,6 +4,8 @@ RTL → GDSII on OpenROAD / ORFS (Nangate45 / FreePDK45). Course, FlowLab, and
 DSE live in this repo. They are three surfaces. Wins are decided only in
 product code (`win_rule.py`).
 
+License: [Apache-2.0](LICENSE) · Security: [SECURITY.md](SECURITY.md) · Changelog: [CHANGELOG.md](CHANGELOG.md)
+
 Three surfaces. Do not mix them.
 
 | Surface | What | Entry |
@@ -29,7 +31,7 @@ copy and still requires `signoff_all`. License-gated leftovers
 
 ```bash
 PD_FLOW_PROFILE=core EDA_JOBS=2 bash scripts/cloud_agent_install.sh
-./scripts/run_studio.sh          # http://127.0.0.1:43217
+./scripts/run_studio.sh          # http://127.0.0.1:43217  (Node 20+, see .nvmrc)
 ```
 
 Headless GCD flow:
@@ -39,6 +41,12 @@ Headless GCD flow:
 ```
 
 Fast honesty checks:
+
+```bash
+./scripts/ci_fast_gates.sh
+```
+
+Or run individually:
 
 ```bash
 PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_signoff_honesty.py

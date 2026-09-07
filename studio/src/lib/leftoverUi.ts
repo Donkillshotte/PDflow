@@ -158,6 +158,18 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
     needles: ["leftover Calibre", "ASU encrypted tarball"],
   },
   {
+    id: "asap7_community_drc",
+    label: "leftover ASAP7 community DRC",
+    tone: "built",
+    needles: ["community KLayout", "leftover Calibre"],
+  },
+  {
+    id: "asap7_cell_cdl_lvs",
+    label: "leftover ASAP7 cell-vs-CDL",
+    tone: "built",
+    needles: ["cell-vs-CDL", "leftover Calibre"],
+  },
+  {
     id: "asap7_xyce_patch",
     label: "ASAP7 Xyce level 72→107",
     tone: "built",

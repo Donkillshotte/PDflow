@@ -24,14 +24,30 @@ Do not commit leftovers:
 ## Minimum tests
 
 ```bash
-export PYTHONPATH=learn:learn/scripts
-python3 learn/scripts/test_dse_next.py    # product + docs map
-./scripts/test_cloud_bootstrap.sh         # if touching install
-./scripts/test_course.sh                  # if touching the course
+./scripts/ci_fast_gates.sh
 ```
 
-Lab: `python3 learn/scripts/test_dse.py` alone, never in the same process
-as the product suite.
+Product / docs map (when touching DSE or docs):
+
+```bash
+export PYTHONPATH=learn:learn/scripts
+python3 learn/scripts/test_dse_next.py
+```
+
+Lab-only (one script at a time; never mix with product suite in one process):
+
+```bash
+python3 learn/scripts/test_dse.py
+```
+
+Install smoke when touching bootstrap:
+
+```bash
+./scripts/test_cloud_bootstrap.sh
+./scripts/test_course.sh   # course surface only
+```
+
+Security reports: see [`SECURITY.md`](SECURITY.md).
 
 ## Forbidden
 
