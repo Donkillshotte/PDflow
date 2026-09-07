@@ -58,6 +58,17 @@ function signoffReportPass(variant: string, name: string) {
   }
 }
 
+function labReportOk(name: string) {
+  const p = path.join(LEARN_ROOT, "sim/reports", `${name}.json`);
+  if (!fs.existsSync(p)) return false;
+  try {
+    const j = JSON.parse(fs.readFileSync(p, "utf8")) as { ok?: boolean };
+    return j.ok === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Gold Dynamic IR is LOCKED at 45.298 mV and has no `ok` field. */
 function goldDynamicIrPresent() {
   for (const variant of ["flowlab", "learn"]) {
@@ -617,7 +628,7 @@ export async function getSuiteStatus() {
       id: "asap7_drc",
       label: "ASAP7 DRC (Lab)",
       group: "Lab",
-      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_drc.json")),
+      ok: labReportOk("lab_asap7_drc"),
       detail: asap7DrcHookDetail(),
       href: "/lab#asap7",
     },
@@ -625,7 +636,7 @@ export async function getSuiteStatus() {
       id: "asap7_lvs",
       label: "ASAP7 LVS (Lab)",
       group: "Lab",
-      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_lvs.json")),
+      ok: labReportOk("lab_asap7_lvs"),
       detail: asap7LvsHookDetail(),
       href: "/lab#asap7",
     },
@@ -633,7 +644,7 @@ export async function getSuiteStatus() {
       id: "asap7_mmmc",
       label: "ASAP7 setup/hold (Lab)",
       group: "Lab",
-      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_mmmc.json")),
+      ok: labReportOk("lab_asap7_mmmc"),
       detail: asap7MmmcHookDetail(),
       href: "/lab#asap7",
     },
@@ -650,7 +661,7 @@ export async function getSuiteStatus() {
       id: "asap7_pkg",
       label: "ASAP7 PKG (Lab)",
       group: "Lab",
-      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_pkg.json")),
+      ok: labReportOk("lab_asap7_pkg"),
       detail: asap7PkgHookDetail(),
       action: "lab_asap7_pkg",
       href: "/lab#asap7",
@@ -659,7 +670,7 @@ export async function getSuiteStatus() {
       id: "asap7_chip_pdn",
       label: "ASAP7 chip PDN mesh (Lab)",
       group: "Lab",
-      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_chip_pdn.json")),
+      ok: labReportOk("lab_asap7_chip_pdn"),
       detail: asap7ChipPdnHookDetail(),
       action: "lab_asap7_chip_pdn",
       href: "/lab#asap7",

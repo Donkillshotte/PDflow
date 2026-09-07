@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import { REPO_ROOT, LEARN_ROOT } from "./course";
+import { assertUnder, normalizeResultsVariant } from "./pathGuard";
 
 const DEFAULT_VARIANT = "learn";
 
@@ -35,9 +36,16 @@ export function artifactExists(rel: string, variant?: string): boolean {
 }
 
 export function resultsDir(variant: string = DEFAULT_VARIANT) {
-  return path.join(
-    /*turbopackIgnore: true*/ REPO_ROOT,
-    `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${variant}`,
+  const v = normalizeResultsVariant(variant);
+  if (v.startsWith("lab_asap7_")) {
+    return assertUnder(
+      path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow/results/asap7"),
+      path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd", v),
+    );
+  }
+  return assertUnder(
+    path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd"),
+    path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd", v),
   );
 }
 

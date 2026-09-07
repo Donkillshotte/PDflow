@@ -105,7 +105,7 @@ def main() -> None:
     check((ROOT / "learn/scripts/lab_asap7_chip_pdn.py").is_file(), "leftover-named ASAP7 chip PDN script exists")
     check((ROOT / "learn/scripts/run_lab_asap7_chip_pdn.sh").is_file(), "ASAP7 chip PDN wrapper exists")
     chip_src = (ROOT / "learn/scripts/lab_asap7_chip_pdn.py").read_text()
-    check('startswith("lab_asap7_")' in chip_src, "chip PDN enforces lab_asap7 prefix")
+    check('normalize_lab_variant' in (ROOT / "learn/scripts/lab_asap7_chip_pdn.py").read_text(), "chip PDN uses normalize_lab_variant")
     check("Never writes nangate45" in chip_src or "nangate45" in chip_src, "chip PDN documents nangate refuse")
     check("product_win" in chip_src and '"product_win": False' in chip_src, "chip PDN is not a product win")
     check("comparable_to_gold_ir" in chip_src, "chip PDN names gold incomparability")

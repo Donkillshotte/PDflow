@@ -17,8 +17,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from dse.asap7_lab import CORNERS, LabAsap7Refuse, result_dir_for_variant, scan_folio
-from dse.flow_role import is_locked_variant
+from dse.asap7_lab import CORNERS, LabAsap7Refuse, normalize_lab_variant, safe_result_dir, scan_folio
 
 ROOT = Path(__file__).resolve().parents[2]
 PKG_DIR = ROOT / "learn" / "lab" / "asap7" / "pkg"
@@ -34,17 +33,11 @@ DEFAULT_VARIANT = "lab_asap7_gcd_tc_rvt_nldm_7p5_480ps"
 
 
 def _refuse_variant(variant: str) -> None:
-    if not variant.startswith("lab_asap7_"):
-        raise LabAsap7Refuse(f"REFUSED: PKG variant must start with lab_asap7_ ({variant})")
-    if is_locked_variant(variant):
-        raise LabAsap7Refuse(f"REFUSED: locked variant {variant}")
+    normalize_lab_variant(variant)
 
 
 def _folder(variant: str) -> Path:
-    folder = result_dir_for_variant(variant, ROOT)
-    if folder is None:
-        return ROOT / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd" / variant
-    return folder
+    return safe_result_dir(variant, ROOT)
 
 
 def _vdd_of(payload: dict) -> float:
@@ -61,8 +54,15 @@ def run_bump(variant: str, folder: Path, cfg: dict) -> dict:
         v_sources = sum(1 for line in text.splitlines() if line.strip().startswith("V"))
         r_count = sum(1 for line in text.splitlines() if line.strip().startswith("R"))
     n_bumps = int(pkg.get("n_bumps") or 0)
+    lef_text = LEF.read_text(errors="replace") if LEF.is_file() else ""
+    bump_ok = (
+        n_bumps > 0
+        and LEF.is_file()
+        and "DUMMY_BUMP" in lef_text
+        and "MACRO" in lef_text
+    )
     payload = {
-        "ok": n_bumps > 0 and LEF.is_file(),
+        "ok": bump_ok,
         "kind": "leftover_named_pkg_bump",
         "surface": "lab",
         "platform": "asap7",
@@ -301,7 +301,7 @@ def main(argv: list[str] | None = None) -> int:
     rdl = run_rdl(variant, folder)
     pdn = run_system_pdn(variant, folder, cfg, live)
     payload = {
-        "ok": bool(bump.get("ok")) and bool(pdn.get("ok")),
+        "ok": bool(bump.get("ok")) and bool(rdl.get("ok")) and bool(pdn.get("ok")),
         "kind": "leftover_named_pkg",
         "surface": "lab",
         "platform": "asap7",
@@ -339,12 +339,14 @@ def main(argv: list[str] | None = None) -> int:
         f"c4=no variant={variant}",
         flush=True,
     )
-    # RDL wire count leftover does not fail the script. Missing compact ladder does.
+    # RDL + compact ladder must both succeed when bump config is valid.
     if not bump.get("ok"):
         return 1
     if pdn.get("status") == "GAP":
         return 0
-    return 0 if pdn.get("ok") else 2
+    if rdl.get("status") not in {"ran", "GAP"}:
+        return 2
+    return 0 if payload["ok"] else 2
 
 
 if __name__ == "__main__":

@@ -61,9 +61,13 @@ else
 fi
 
 if git remote get-url "${REMOTE}" >/dev/null 2>&1; then
-  git remote set-url "${REMOTE}" "https://x-access-token:${TOKEN}@github.com/${OWNER}/${REPO}.git"
+  git remote set-url "${REMOTE}" "https://github.com/${OWNER}/${REPO}.git"
 else
-  git remote add "${REMOTE}" "https://x-access-token:${TOKEN}@github.com/${OWNER}/${REPO}.git"
+  git remote add "${REMOTE}" "https://github.com/${OWNER}/${REPO}.git"
+fi
+
+if command -v gh >/dev/null 2>&1; then
+  gh auth setup-git >/dev/null 2>&1 || true
 fi
 
 git push -u "${REMOTE}" "${BRANCH}"

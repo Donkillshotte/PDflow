@@ -16,7 +16,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from dse.asap7_lab import result_dir_for_variant
+from dse.asap7_lab import LabAsap7Refuse, normalize_lab_variant, safe_result_dir
 
 ROOT = Path(__file__).resolve().parents[2]
 CDL_DIR = ROOT / "learn" / "lab" / "asap7" / "cdl"
@@ -81,15 +81,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("gds", nargs="?", default="")
     p.add_argument("--variant", default="")
     args = p.parse_args(argv)
-    variant = args.variant or DEFAULT_VARIANT
+    variant = normalize_lab_variant(args.variant or DEFAULT_VARIANT)
     if args.gds:
         gds = Path(args.gds)
-        variant = gds.parent.name if gds.parent.name.startswith("lab_asap7_") else variant
+        if gds.parent.name.startswith("lab_asap7_"):
+            variant = normalize_lab_variant(gds.parent.name)
     else:
-        folder = result_dir_for_variant(variant, ROOT)
-        gds = (folder / "6_final.gds") if folder else (
-            ROOT / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd" / variant / "6_final.gds"
-        )
+        gds = safe_result_dir(variant, ROOT) / "6_final.gds"
     cdl_paths = sorted(CDL_DIR.glob("asap7sc7p5t_28_*.cdl"))
     if not cdl_paths:
         payload = {

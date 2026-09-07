@@ -18,33 +18,21 @@ import subprocess
 import sys
 from pathlib import Path
 
-from dse.asap7_lab import CORNERS, LabAsap7Refuse, result_dir_for_variant, scan_folio
-from dse.flow_role import is_locked_variant
+from dse.asap7_lab import (
+    CORNERS,
+    LabAsap7Refuse,
+    nldm_lib_files,
+    normalize_lab_variant,
+    safe_result_dir,
+    scan_folio,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 ORFS = ROOT / "tools/OpenROAD-flow-scripts/flow"
-NLDM = ORFS / "platforms/asap7/lib/NLDM"
 PKG_CFG = ROOT / "learn/lab/asap7/pkg/asap7_system_pdn.json"
 OUT = ROOT / "learn/sim/reports/lab_asap7_chip_pdn.json"
 DEFAULT_VARIANT = "lab_asap7_gcd_tc_rvt_nldm_7p5_480ps"
-NLDM_FAMILIES = ("AO", "INVBUF", "OA", "SIMPLE", "SEQ")
 WORST_IR_RE = re.compile(r"Worstcase IR drop:\s+([0-9.eE+-]+)\s+V")
-
-
-def _refuse_variant(variant: str) -> None:
-    if not variant.startswith("lab_asap7_"):
-        raise LabAsap7Refuse(f"REFUSED: chip PDN variant must start with lab_asap7_ ({variant})")
-    if is_locked_variant(variant):
-        raise LabAsap7Refuse(f"REFUSED: locked variant {variant}")
-    if "nangate45" in variant:
-        raise LabAsap7Refuse(f"REFUSED: nangate path in variant {variant}")
-
-
-def _folder(variant: str) -> Path:
-    found = result_dir_for_variant(variant, ROOT)
-    if found is not None:
-        return found
-    return ORFS / "results/asap7/gcd" / variant
 
 
 def _corner_vt(variant: str) -> tuple[str, str]:
@@ -59,23 +47,6 @@ def _corner_vt(variant: str) -> tuple[str, str]:
             vt = tag
             break
     return corner, vt
-
-
-def _nldm_libs(corner: str, vt: str) -> list[Path]:
-    lib_tag = str(CORNERS[corner]["lib"]).upper()
-    picked: list[Path] = []
-    for fam in NLDM_FAMILIES:
-        prefix = f"asap7sc7p5t_{fam}_{vt}_{lib_tag}_nldm"
-        cands = [
-            p
-            for p in NLDM.iterdir()
-            if p.is_file()
-            and p.name.startswith(prefix)
-            and (p.suffix == ".lib" or p.name.endswith(".lib.gz"))
-        ]
-        if cands:
-            picked.append(sorted(cands, key=lambda p: p.name)[0])
-    return picked
 
 
 def _vdd(corner: str) -> float:
@@ -121,12 +92,16 @@ def _pdnsim_6_report_mv(variant: str, folder: Path) -> float | None:
     return float(val) * 1e3 if val is not None else None
 
 
+def _mesh_has_sources(text: str) -> bool:
+    has_v = any(line.strip().startswith("V") for line in text.splitlines())
+    has_i = any(line.strip().startswith("I") for line in text.splitlines())
+    return has_v and has_i
+
+
 def complete_asap7_mesh_spice(src: Path, dst: Path, vdd: float, i_total_a: float) -> dict:
     """ASAP7 write_pg_spice often stops at map::at before V/I. Complete honestly."""
     text = src.read_text(errors="replace")
-    has_v = any(line.strip().startswith("V") for line in text.splitlines())
-    has_i = any(line.strip().startswith("I") for line in text.splitlines())
-    if has_v and has_i:
+    if _mesh_has_sources(text):
         if src != dst:
             dst.write_text(text)
         return {"patched": False, "n_bpin": 0, "n_iterm": 0, "reason": "mesh already complete"}
@@ -146,6 +121,21 @@ def complete_asap7_mesh_spice(src: Path, dst: Path, vdd: float, i_total_a: float
             elif node.startswith("ITermNode_"):
                 iterm.add(node)
 
+    if not bpin:
+        return {
+            "patched": False,
+            "n_bpin": 0,
+            "n_iterm": len(iterm),
+            "reason": "no BPinNode in mesh",
+        }
+    if iterm and i_total_a <= 0.0:
+        return {
+            "patched": False,
+            "n_bpin": len(bpin),
+            "n_iterm": len(iterm),
+            "reason": "finish power missing — refuse zero ITerm load",
+        }
+
     extras: list[str] = []
     for idx, node in enumerate(sorted(bpin)):
         extras.append(f"V{idx} {node} 0 DC {vdd:.6f}")
@@ -153,14 +143,6 @@ def complete_asap7_mesh_spice(src: Path, dst: Path, vdd: float, i_total_a: float
     i_each = max(i_total_a, 0.0) / n_load
     for idx, node in enumerate(sorted(iterm)):
         extras.append(f"I{idx} {node} 0 DC {i_each:.9e}")
-
-    if not extras:
-        return {
-            "patched": False,
-            "n_bpin": 0,
-            "n_iterm": 0,
-            "reason": "no BPinNode or ITermNode in mesh",
-        }
 
     lines = text.splitlines()
     if lines and lines[-1].strip() == "* Sinks":
@@ -170,6 +152,14 @@ def complete_asap7_mesh_spice(src: Path, dst: Path, vdd: float, i_total_a: float
     body.extend(extras)
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text("\n".join(body) + "\n")
+    completed = dst.read_text(errors="replace")
+    if not _mesh_has_sources(completed):
+        return {
+            "patched": False,
+            "n_bpin": len(bpin),
+            "n_iterm": len(iterm),
+            "reason": "mesh patch did not add V/I sources",
+        }
     return {
         "patched": True,
         "n_bpin": len(bpin),
@@ -293,31 +283,44 @@ def run_transient(
         timeout=180,
     )
     blob: dict = {}
-    if out_json.is_file():
+    if out_json.is_file() and proc.returncode == 0:
         try:
             blob = json.loads(out_json.read_text())
         except json.JSONDecodeError:
             blob = {}
+    elif out_json.is_file():
+        try:
+            out_json.unlink()
+        except OSError:
+            pass
+    tr_ok = proc.returncode == 0 and bool(blob.get("ok"))
     return {
-        "ok": proc.returncode == 0 and bool(blob),
+        "ok": tr_ok,
         "exit_code": proc.returncode,
-        "report": blob,
+        "report": blob if tr_ok else {},
         "stdout_tail": (proc.stdout or "")[-400:],
         "stderr_tail": (proc.stderr or "")[-400:],
     }
+
+
+def _write_payload(payload: dict) -> None:
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(json.dumps(payload, indent=2) + "\n")
+    variant = str(payload.get("variant") or "")
+    if variant:
+        per_variant = ROOT / "learn/sim/reports" / f"lab_asap7_chip_pdn_{variant}.json"
+        per_variant.write_text(json.dumps(payload, indent=2) + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Leftover-named ASAP7 chip PDN mesh. Not a product win.")
     p.add_argument("--variant", default=DEFAULT_VARIANT)
     args = p.parse_args(argv)
-    variant = args.variant
-    _refuse_variant(variant)
-
-    folder = _folder(variant)
+    variant = normalize_lab_variant(args.variant)
+    folder = safe_result_dir(variant, ROOT)
     corner, vt = _corner_vt(variant)
     vdd = _vdd(corner)
-    libs = _nldm_libs(corner, vt)
+    libs = nldm_lib_files(corner, vt, ROOT)
     pdnsim_6_report_mv = _pdnsim_6_report_mv(variant, folder)
     power_w = _power_w(variant, folder)
     i_total = (power_w / vdd) if power_w is not None and vdd > 0 else 0.0
@@ -333,6 +336,7 @@ def main(argv: list[str] | None = None) -> int:
     spice_raw = Path(or_out.get("spice_raw") or (folder / "pdn/pg_vdd_bumps.sp"))
     spice_completed = folder / "pdn/pg_vdd_bumps_completed.sp"
     patch = {"patched": False, "reason": "no mesh"}
+    tr_out: dict = {"ok": False, "report": {}}
     transient_blob: dict = {}
     mesh_static_mv = None
     mesh_transient_mv = None
@@ -340,19 +344,29 @@ def main(argv: list[str] | None = None) -> int:
 
     if spice_raw.is_file() and or_out.get("n_r", 0) > 0:
         patch = complete_asap7_mesh_spice(spice_raw, spice_completed, vdd, i_total)
-        wave = ROOT / "learn/sim/reports" / f"lab_asap7_chip_pdn_{variant}.wave.csv"
-        detail_json = ROOT / "learn/sim/reports" / f"lab_asap7_chip_pdn_{variant}.json"
-        tr = run_transient(spice_completed, detail_json, wave, vdd, pkg_r, pkg_l)
-        transient_blob = tr.get("report") or {}
-        static = transient_blob.get("static") or {}
-        dyn = transient_blob.get("transient") or {}
-        mesh_static_mv = (static.get("worst_ir") or 0.0) * 1e3 if static else or_out.get("mesh_static_openroad_mv")
-        mesh_transient_mv = (dyn.get("worst_droop") or 0.0) * 1e3 if dyn else None
-        n_sources = int(static.get("sources") or 0)
+        if patch.get("patched") or _mesh_has_sources(spice_completed.read_text(errors="replace") if spice_completed.is_file() else ""):
+            wave = ROOT / "learn/sim/reports" / f"lab_asap7_chip_pdn_{variant}.wave.csv"
+            detail_json = ROOT / "learn/sim/reports" / f"lab_asap7_chip_pdn_{variant}.json"
+            tr_out = run_transient(spice_completed, detail_json, wave, vdd, pkg_r, pkg_l)
+            transient_blob = tr_out.get("report") or {}
+            static = transient_blob.get("static") or {}
+            dyn = transient_blob.get("transient") or {}
+            mesh_static_mv = (static.get("worst_ir") or 0.0) * 1e3 if static else or_out.get("mesh_static_openroad_mv")
+            mesh_transient_mv = (dyn.get("worst_droop") or 0.0) * 1e3 if dyn else None
+            n_sources = int(static.get("sources") or 0)
+
+    mesh_ready = spice_completed.is_file() and _mesh_has_sources(spice_completed.read_text(errors="replace"))
+    ran_ok = (
+        bool(or_out.get("ok"))
+        and bool(tr_out.get("ok"))
+        and mesh_ready
+        and patch.get("reason") != "finish power missing — refuse zero ITerm load"
+        and (patch.get("n_iterm", 0) == 0 or i_total > 0.0)
+    )
 
     payload = {
-        "ok": bool(or_out.get("ok")) and bool(transient_blob),
-        "status": "ran" if transient_blob else or_out.get("status", "GAP"),
+        "ok": ran_ok,
+        "status": "ran" if ran_ok else or_out.get("status", "GAP"),
         "kind": "leftover_named_chip_pdn",
         "tier": "chip_mesh",
         "surface": "lab",
@@ -386,6 +400,7 @@ def main(argv: list[str] | None = None) -> int:
         "openroad": or_out,
         "mesh_patch": patch,
         "transient": transient_blob,
+        "transient_run": tr_out,
         "leftover": {
             "gold_ir": "not comparable to Nangate 45.298 mV",
             "openroad_gap": "write_pg_spice map::at on ~9 µm die — mesh patched with BPin V + uniform ITerm I",
@@ -396,10 +411,7 @@ def main(argv: list[str] | None = None) -> int:
             "Live metrics only — no gold stamp."
         ),
     }
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(payload, indent=2) + "\n")
-    per_variant = ROOT / "learn/sim/reports" / f"lab_asap7_chip_pdn_{variant}.json"
-    per_variant.write_text(json.dumps(payload, indent=2) + "\n")
+    _write_payload(payload)
 
     print(
         "lab_asap7_chip_pdn",
@@ -409,17 +421,14 @@ def main(argv: list[str] | None = None) -> int:
         f"mesh_static_mv={mesh_static_mv}",
         f"mesh_transient_mv={mesh_transient_mv}",
         f"patched={patch.get('patched')}",
+        f"ok={payload['ok']}",
         f"product_win=false",
         flush=True,
     )
 
     if or_out.get("status") == "GAP":
         return 0
-    if not or_out.get("ok"):
-        return 2
-    if not transient_blob:
-        return 2
-    return 0
+    return 0 if ran_ok else 2
 
 
 if __name__ == "__main__":

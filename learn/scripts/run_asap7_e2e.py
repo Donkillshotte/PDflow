@@ -106,14 +106,40 @@ def cook_one(spec: LabAsap7Spec, *, force: bool) -> dict:
     }
 
 
-def run_py(script: str, args: list[str]) -> int:
+def run_py(script: str, args: list[str]) -> tuple[int, bool]:
     env = os.environ.copy()
     env["PYTHONPATH"] = f"{ROOT / 'learn'}:{ROOT / 'learn' / 'scripts'}"
-    return subprocess.run(
+    proc = subprocess.run(
         [sys.executable, str(SCRIPTS / script), *args],
         cwd=str(ROOT),
         env=env,
-    ).returncode
+    )
+    report_name = script.replace(".py", ".json")
+    report = REPORTS / report_name
+    ok = False
+    if report.is_file():
+        try:
+            ok = bool(json.loads(report.read_text()).get("ok"))
+        except json.JSONDecodeError:
+            ok = False
+    return proc.returncode, ok
+
+
+def _analysis_failed(analysis: dict) -> list[str]:
+    failed: list[str] = []
+    for key, val in analysis.items():
+        if not isinstance(val, dict):
+            continue
+        if any(k in val for k in ("status", "ok")):
+            if val.get("status") == "fail" or val.get("ok") is False:
+                failed.append(key)
+            continue
+        for sub_key, sub_val in val.items():
+            if isinstance(sub_val, dict) and (
+                sub_val.get("status") == "fail" or sub_val.get("ok") is False
+            ):
+                failed.append(f"{key}:{sub_key}")
+    return failed
 
 
 def run_analysis(closed_variants: list[str], drc_specs: list[LabAsap7Spec]) -> dict:
@@ -139,23 +165,23 @@ def run_analysis(closed_variants: list[str], drc_specs: list[LabAsap7Spec]) -> d
             "reason": "CDL not fetched — run learn/scripts/fetch_asap7_libextras.sh",
         }
     elif closed_variants:
-        run_py("lab_asap7_lvs.py", ["--variant", closed_variants[0]])
-        analysis["lvs"] = {"status": "ran", "variant": closed_variants[0]}
+        rc, ok = run_py("lab_asap7_lvs.py", ["--variant", closed_variants[0]])
+        analysis["lvs"] = {"status": "ran" if rc == 0 else "fail", "ok": ok, "variant": closed_variants[0]}
     else:
         analysis["lvs"] = {"status": "skip", "reason": "no closed finish yet"}
 
     for spec in drc_specs:
         if (result_dir(spec, ROOT) / "6_final.gds").is_file():
-            run_py("lab_asap7_drc.py", ["--variant", spec.variant])
-            analysis["drc"][spec.variant] = {"status": "ran"}
+            rc, ok = run_py("lab_asap7_drc.py", ["--variant", spec.variant])
+            analysis["drc"][spec.variant] = {"status": "ran" if rc == 0 else "fail", "ok": ok}
 
     if not closed_variants:
         analysis["mmmc"] = {"status": "skip", "reason": "no closed finish"}
     else:
         mmmc: dict = {}
         for variant in closed_variants:
-            rc = run_py("lab_asap7_mmmc.py", ["--variant", variant])
-            mmmc[variant] = {"status": "ran" if rc == 0 else "fail"}
+            rc, ok = run_py("lab_asap7_mmmc.py", ["--variant", variant])
+            mmmc[variant] = {"status": "ran" if rc == 0 else "fail", "ok": ok}
         analysis["mmmc"] = mmmc
 
     pkg_variant = closed_variants[0] if closed_variants else ""
@@ -164,9 +190,10 @@ def run_analysis(closed_variants: list[str], drc_specs: list[LabAsap7Spec]) -> d
         if (result_dir(smoke, ROOT) / "6_final.gds").is_file():
             pkg_variant = smoke.variant
     if pkg_variant:
-        rc = run_py("lab_asap7_pkg.py", ["--variant", pkg_variant])
+        rc, ok = run_py("lab_asap7_pkg.py", ["--variant", pkg_variant])
         analysis["pkg"] = {
             "status": "ran" if rc == 0 else "fail",
+            "ok": ok,
             "variant": pkg_variant,
             "report": (REPORTS / "lab_asap7_pkg.json").is_file(),
         }
@@ -179,9 +206,10 @@ def run_analysis(closed_variants: list[str], drc_specs: list[LabAsap7Spec]) -> d
         if (result_dir(smoke, ROOT) / "6_final.gds").is_file():
             chip_variant = smoke.variant
     if chip_variant:
-        rc = run_py("lab_asap7_chip_pdn.py", ["--variant", chip_variant])
+        rc, ok = run_py("lab_asap7_chip_pdn.py", ["--variant", chip_variant])
         analysis["chip_pdn"] = {
             "status": "ran" if rc == 0 else "fail",
+            "ok": ok,
             "variant": chip_variant,
             "report": (REPORTS / "lab_asap7_chip_pdn.json").is_file(),
         }
@@ -278,7 +306,10 @@ def main(argv: list[str] | None = None) -> int:
         flush=True,
     )
     failed = [r for r in results if r.get("action") == "cook" and not r.get("ok")]
-    return 1 if failed else 0
+    analysis_failed = _analysis_failed(analysis) if analysis else []
+    if analysis_failed:
+        print(f"analysis failed: {', '.join(analysis_failed)}", flush=True)
+    return 1 if failed or analysis_failed else 0
 
 
 if __name__ == "__main__":

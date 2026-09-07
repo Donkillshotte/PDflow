@@ -1,0 +1,32 @@
+name: fast-gates
+
+on:
+  push:
+    branches: ["cursor/**", "main"]
+  pull_request:
+
+jobs:
+  python-fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: ASAP7 lab smoke
+        run: PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_asap7_lab.py
+      - name: Review fix negatives
+        run: PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_review_fixes.py
+      - name: Signoff honesty gate
+        run: PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_signoff_honesty.py
+
+  engine-native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build engine tests
+        run: |
+          cmake -S engine -B engine/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build engine/build --target test_native -j"$(nproc)"
+      - name: Run engine tests
+        run: ./engine/build/test_native

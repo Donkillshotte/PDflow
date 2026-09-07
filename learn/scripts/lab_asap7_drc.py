@@ -14,7 +14,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from dse.asap7_lab import LabAsap7Refuse, result_dir_for_variant
+from dse.asap7_lab import LabAsap7Refuse, normalize_lab_variant, safe_result_dir
 
 ROOT = Path(__file__).resolve().parents[2]
 DECK = ROOT / "tools/OpenROAD-flow-scripts/flow/platforms/asap7/drc/asap7.lydrc"
@@ -23,10 +23,7 @@ DEFAULT_VARIANT = "lab_asap7_gcd_tc_rvt_nldm_7p5"
 
 
 def _gds_for(variant: str) -> Path:
-    folder = result_dir_for_variant(variant, ROOT)
-    if folder is None:
-        return ROOT / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd" / variant / "6_final.gds"
-    return folder / "6_final.gds"
+    return safe_result_dir(variant, ROOT) / "6_final.gds"
 
 
 def _count_rules(report: Path) -> dict:
@@ -45,9 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--variant", default=DEFAULT_VARIANT)
     p.add_argument("--gds", default="")
     args = p.parse_args(argv)
-    variant = args.variant
-    if not variant.startswith("lab_asap7_"):
-        raise LabAsap7Refuse(f"REFUSED: DRC variant must start with lab_asap7_ ({variant})")
+    variant = normalize_lab_variant(args.variant)
     gds = Path(args.gds) if args.gds else _gds_for(variant)
     klayout = shutil.which("klayout")
     report = ROOT / "learn/sim/reports" / f"lab_asap7_drc_{variant}.lyrdb"
@@ -84,8 +79,12 @@ def main(argv: list[str] | None = None) -> int:
         payload_status = "ran" if proc.returncode == 0 else "fail"
         reason = (proc.stderr or "")[-400:]
     counts = _count_rules(report)
+    klayout_ok = ran and exit_code == 0
+    drc_clean = counts["n_items"] == 0
     payload = {
-        "ok": ran and exit_code == 0,
+        "ok": klayout_ok and drc_clean,
+        "klayout_ok": klayout_ok,
+        "drc_clean": drc_clean,
         "status": payload_status,
         "surface": "lab",
         "platform": "asap7",
@@ -118,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
         flush=True,
     )
     # Nonzero DRC items do not fail the script. Only KLayout itself failing does.
-    if payload_status == "fail":
+    if not klayout_ok:
         return 1
     return 0
 

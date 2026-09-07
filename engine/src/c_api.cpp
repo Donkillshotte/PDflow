@@ -33,6 +33,26 @@ int n_ev_ok(int64_t n_events) {
   return static_cast<int>(n_events);
 }
 
+bool csr_ok(dpn::Index n, const int64_t* rowptr, int64_t nnz, const int64_t* col) {
+  if (n <= 0 || !rowptr || rowptr[0] != 0 || rowptr[n] != nnz) {
+    return false;
+  }
+  if (nnz > 0 && !col) {
+    return false;
+  }
+  for (dpn::Index i = 0; i < n; ++i) {
+    if (rowptr[i] > rowptr[i + 1] || rowptr[i + 1] > nnz) {
+      return false;
+    }
+    for (dpn::Index k = rowptr[i]; k < rowptr[i + 1]; ++k) {
+      if (col[k] < 0 || col[k] >= n) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 std::vector<dpn::TriangleSrc> pack_events(int64_t n_events, const int64_t* ev_idx, const double* ev_t50,
                                          const double* ev_dur, const double* ev_ipulse) {
   const int ne = n_ev_ok(n_events);
@@ -104,8 +124,8 @@ int run_descriptor_from_c(int64_t n, int64_t nnz, const int64_t* rowptr, const i
                           int64_t* worst_node, double* worst_v, double* worst_t, double* rel_res_max,
                           double* solve_s, int max_steps, double* wave_t, double* wave_vmin,
                           double* wave_itot, int64_t* n_steps) {
-  if (!rowptr || !eptr || n <= 0 || dt <= 0.0 || n_v <= 0 || rowptr[n] != nnz || eptr[n] != nnz_e ||
-      n_ev_ok(n_events) < 0) {
+  if (!csr_ok(static_cast<dpn::Index>(n), rowptr, nnz, col) || !csr_ok(static_cast<dpn::Index>(n), eptr, nnz_e, eidx) ||
+      n <= 0 || dt <= 0.0 || n_v <= 0 || n_ev_ok(n_events) < 0) {
     return -1;
   }
   if (nnz > 0 && (!col || !Aval)) {
@@ -155,7 +175,7 @@ int dpn_index_width(void) { return static_cast<int>(8 * sizeof(dpn::Index)); }
 
 DpnHandle* dpn_setup(int kind, int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
                      const double* val) {
-  if (!rowptr || n <= 0 || nnz < 0 || rowptr[n] != nnz) {
+  if (!csr_ok(static_cast<dpn::Index>(n), rowptr, nnz, col)) {
     return nullptr;
   }
   if (nnz > 0 && (!col || !val)) {
@@ -360,8 +380,8 @@ int dpn_timestep_be_adaptive(int64_t n, int64_t nnz, const int64_t* rowptr, cons
 DpnMor* dpn_mor_setup(int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
                       const double* Gval, const double* C, int n_starts, const double* starts,
                       int n_shifts, const double* shifts, int n_moments) {
-  if (!rowptr || !C || !starts || !shifts || n <= 0 || n_starts <= 0 || n_shifts <= 0 ||
-      rowptr[n] != nnz) {
+  if (!C || !starts || !shifts || n <= 0 || n_starts <= 0 || n_shifts <= 0 ||
+      !csr_ok(static_cast<dpn::Index>(n), rowptr, nnz, col)) {
     return nullptr;
   }
   if (nnz > 0 && (!col || !Gval)) {
@@ -381,8 +401,8 @@ DpnMor* dpn_mor_setup_rlc(int64_t n, int64_t nnz, const int64_t* rowptr, const i
                           const double* Gval, const double* C, const int64_t* bumps, int64_t n_bumps,
                           const double* bump_v, double pkg_r, double pkg_l, int n_starts,
                           const double* starts, int n_shifts, const double* shifts, int n_moments) {
-  if (!rowptr || !C || !starts || !shifts || n <= 0 || n_starts <= 0 || n_shifts <= 0 ||
-      n_bumps <= 0 || !bumps || !bump_v || rowptr[n] != nnz) {
+  if (!C || !starts || !shifts || n <= 0 || n_starts <= 0 || n_shifts <= 0 ||
+      n_bumps <= 0 || !bumps || !bump_v || !csr_ok(static_cast<dpn::Index>(n), rowptr, nnz, col)) {
     return nullptr;
   }
   if (nnz > 0 && (!col || !Gval)) {
@@ -440,7 +460,8 @@ int dpn_timestep_descriptor(int64_t n, int64_t nnz, const int64_t* rowptr, const
                             int64_t* worst_node, double* worst_v, double* worst_t,
                             double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
                             double* wave_vmin, double* wave_itot, int64_t* n_steps) {
-  if (!rowptr || !E || n <= 0 || dt <= 0.0 || n_v <= 0 || rowptr[n] != nnz || n_ev_ok(n_events) < 0) {
+  if (!E || n <= 0 || dt <= 0.0 || n_v <= 0 || !csr_ok(static_cast<dpn::Index>(n), rowptr, nnz, col) ||
+      n_ev_ok(n_events) < 0) {
     return -1;
   }
   if (nnz > 0 && (!col || !Aval)) {
@@ -520,8 +541,9 @@ DpnMor* dpn_mor_setup_gen(int64_t n, int64_t nnz, const int64_t* rowptr, const i
                           const double* eval, int n_v, int n_die, int64_t die_idx, int64_t n_iv,
                           const int64_t* iv, const double* u_const, int n_starts,
                           const double* starts, int n_shifts, const double* shifts, int n_moments) {
-  if (!rowptr || !eptr || !starts || !shifts || n <= 0 || n_v <= 0 || n_starts <= 0 || n_shifts <= 0 ||
-      rowptr[n] != nnz || eptr[n] != nnz_e) {
+  if (!starts || !shifts || n <= 0 || n_v <= 0 || n_starts <= 0 || n_shifts <= 0 ||
+      !csr_ok(static_cast<dpn::Index>(n), rowptr, nnz, col) ||
+      !csr_ok(static_cast<dpn::Index>(n), eptr, nnz_e, eidx)) {
     return nullptr;
   }
   if (nnz > 0 && (!col || !Aval)) {

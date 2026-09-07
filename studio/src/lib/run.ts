@@ -403,14 +403,27 @@ export function cancelJob(jobId: string): boolean {
   if (!job) return false;
   job.cancelled = true;
   try {
-    job.child.kill("SIGTERM");
-    setTimeout(() => {
+    const pid = job.child.pid;
+    if (pid) {
       try {
-        job.child.kill("SIGKILL");
+        process.kill(-pid, "SIGTERM");
       } catch {
-        /* ignore */
+        job.child.kill("SIGTERM");
       }
-    }, 2000);
+      setTimeout(() => {
+        try {
+          if (pid) {
+            process.kill(-pid, "SIGKILL");
+          } else {
+            job.child.kill("SIGKILL");
+          }
+        } catch {
+          /* ignore */
+        }
+      }, 2000);
+    } else {
+      job.child.kill("SIGTERM");
+    }
   } catch {
     return false;
   }
@@ -485,6 +498,7 @@ export async function* streamCourseAction(
   const child = spawn(/*turbopackIgnore: true*/ cmd, args, {
     cwd,
     env: { ...process.env, LEARN_AUTO: "1", FORCE_COLOR: "0", ...(env ?? {}) },
+    detached: process.platform !== "win32",
   });
   jobs.set(jobId, { id: jobId, child, startedAt, cancelled: false });
 
@@ -527,7 +541,20 @@ export async function* streamCourseAction(
   });
 
   const timer = setTimeout(() => {
-    child.kill("SIGTERM");
+    const pid = child.pid;
+    try {
+      if (pid) {
+        try {
+          process.kill(-pid, "SIGTERM");
+        } catch {
+          child.kill("SIGTERM");
+        }
+      } else {
+        child.kill("SIGTERM");
+      }
+    } catch {
+      /* ignore */
+    }
     const msg = "\n[timeout] process stopped\n";
     bufferJobLog(jobId, msg);
     push({ type: "stderr", chunk: msg });
@@ -536,7 +563,20 @@ export async function* streamCourseAction(
   const onAbort = () => {
     const j = jobs.get(jobId);
     if (j) j.cancelled = true;
-    child.kill("SIGTERM");
+    const pid = child.pid;
+    try {
+      if (pid) {
+        try {
+          process.kill(-pid, "SIGTERM");
+        } catch {
+          child.kill("SIGTERM");
+        }
+      } else {
+        child.kill("SIGTERM");
+      }
+    } catch {
+      /* ignore */
+    }
     const msg = "\n[cancelled]\n";
     bufferJobLog(jobId, msg);
     push({ type: "stderr", chunk: msg });

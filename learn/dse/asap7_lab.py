@@ -24,6 +24,8 @@ ASAP7_PLAT = ORFS_FLOW / "platforms" / "asap7"
 SC6T_ROOT = REPO / "learn" / "lab" / "asap7" / "sc6t"
 REPORT_PATH = REPO / "learn" / "sim" / "reports" / "lab_asap7.json"
 VARIANT_PREFIX = "lab_asap7_"
+LAB_VARIANT_RE = re.compile(r"^lab_asap7_[a-z0-9][a-z0-9_+.]*[a-z0-9]$")
+NLDM_FAMILIES = ("AO", "INVBUF", "OA", "SIMPLE", "SEQ")
 
 CORNERS = {
     "BC": {"lib": "FF", "temperature": "25C", "voltage": 0.77},
@@ -325,14 +327,101 @@ def logs_dir(spec: LabAsap7Spec, root: Path | None = None) -> Path:
     )
 
 
+def normalize_lab_variant(variant: str) -> str:
+    """Reject path traversal and non-lab names before touching result trees."""
+    if not isinstance(variant, str) or not variant.strip():
+        raise LabAsap7Refuse("REFUSED: empty lab variant")
+    v = variant.strip()
+    if not v.startswith(VARIANT_PREFIX):
+        raise LabAsap7Refuse(f"REFUSED: variant must start with {VARIANT_PREFIX} ({variant})")
+    if is_locked_variant(v):
+        raise LabAsap7Refuse(f"REFUSED: locked variant {v}")
+    if ".." in v or "/" in v or "\\" in v or ":" in v:
+        raise LabAsap7Refuse(f"REFUSED: illegal path token in variant ({variant})")
+    if not LAB_VARIANT_RE.match(v):
+        raise LabAsap7Refuse(f"REFUSED: variant charset ({variant})")
+    return v
+
+
+def _asap7_results_root(root: Path) -> Path:
+    return root / "tools/OpenROAD-flow-scripts/flow/results/asap7"
+
+
+def _assert_under_asap7_results(path: Path, root: Path) -> Path:
+    base = _asap7_results_root(root).resolve()
+    resolved = path.resolve()
+    if not resolved.is_relative_to(base):
+        raise LabAsap7Refuse(f"REFUSED: path escapes asap7 results ({resolved})")
+    return resolved
+
+
+def all_plan_variants(root: Path | None = None) -> list[LabAsap7Spec]:
+    root = root or REPO
+    specs = list(default_plan_specs())
+    try:
+        specs.append(uart_relaxed_spec(root))
+    except Exception:
+        pass
+    return specs
+
+
+def spec_for_variant(variant: str, root: Path | None = None) -> LabAsap7Spec:
+    v = normalize_lab_variant(variant)
+    for spec in all_plan_variants(root):
+        if spec.variant == v:
+            return spec
+    raise LabAsap7Refuse(f"REFUSED: unknown lab variant {v}")
+
+
+def nldm_lib_files(corner: str, vt: str, root: Path | None = None) -> list[Path]:
+    if corner not in CORNERS:
+        return []
+    lib_tag = str(CORNERS[corner]["lib"]).upper()
+    vt_u = vt.upper()
+    nldm = (root or REPO) / "tools/OpenROAD-flow-scripts/flow/platforms/asap7/lib/NLDM"
+    picked: list[Path] = []
+    for fam in NLDM_FAMILIES:
+        prefix = f"asap7sc7p5t_{fam}_{vt_u}_{lib_tag}_nldm"
+        cands = [
+            p
+            for p in nldm.iterdir()
+            if p.is_file()
+            and p.name.startswith(prefix)
+            and (p.suffix == ".lib" or p.name.endswith(".lib.gz"))
+        ]
+        if cands:
+            picked.append(sorted(cands, key=lambda p: p.name)[0])
+    return picked
+
+
+def safe_result_dir(variant: str, root: Path | None = None) -> Path:
+    """Canonical lab_asap7_* result folder under results/asap7/."""
+    v = normalize_lab_variant(variant)
+    root = root or REPO
+    found = result_dir_for_variant(v, root)
+    if found is not None:
+        return _assert_under_asap7_results(found, root)
+    spec = spec_for_variant(v, root)
+    return _assert_under_asap7_results(_asap7_results_root(root) / spec.nickname / v, root)
+
+
 def result_dir_for_variant(variant: str, root: Path | None = None) -> Path | None:
     """Resolve results/asap7/<nick>/<variant> without reconstructing a spec."""
     root = root or REPO
-    results = root / "tools/OpenROAD-flow-scripts/flow/results/asap7"
+    try:
+        v = normalize_lab_variant(variant)
+    except LabAsap7Refuse:
+        return None
+    results = _asap7_results_root(root)
     if not results.is_dir():
         return None
-    hits = sorted(p for p in results.glob(f"*/{variant}") if p.is_dir())
-    return hits[0] if hits else None
+    hits = sorted(p for p in results.glob(f"*/{v}") if p.is_dir())
+    if not hits:
+        return None
+    try:
+        return _assert_under_asap7_results(hits[0], root)
+    except LabAsap7Refuse:
+        return None
 
 
 def _sha256(path: Path) -> str:
