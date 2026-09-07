@@ -11,7 +11,7 @@ DSE plan.** Do not fold this review into `tpe_plan.md`, `product.md`,
 | Branch | `cursor/complete-pd-flow-86b9` @ `3bb105d` |
 | Surface | Course / Studio only |
 | Verdict | **Stopped, not achieved.** Path is leftover-named and functional on the educational golden. It is **not leftover-free.** |
-| Next action | [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md) — leftover-named suite integrity. Plan only until a new implementation goal. |
+| Next action | Leftover-named suite integrity **A–F landed** (2026-09-04). Maintain honesty / park gated leftovers. Leftover-free stays **STOPPED 2026-09-04**. See [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md). |
 
 The leftover-free RTL-to-signoff goal ran ~17 h and was stopped on
 request. Green `signoff_all` still names leftovers. Do not redefine
@@ -172,7 +172,8 @@ the source ODB (file copy). Never write `gcd/flowlab/`. Never call
   lab result to a product win.
 - Course stays **Nangate45**. Wrapper refuses `FLOW_VARIANT` in
   `{flowlab, learn, base}`.
-- Do not restamp gold GCD Dynamic IR **45.298 mV**.
+- Do not restamp or overwrite the locked gold GCD Dynamic IR report
+  file. The suite does not use gold mV as a pass criterion.
 - Do not overwrite `results/.../gcd/flowlab/` or
   `learn/sim/dse/memory_aes.jsonl` row `febe6804241c`.
 - Do not overwrite locked `gcd/flowlab/` artifacts. Live sha256 of
@@ -202,15 +203,17 @@ PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_eco.py
 
 ## What a later resume may do
 
-Resume is a **new** goal, not a silent continuation of leftover-free.
-Authorized next work is the suite-integrity plan:
+Resume of leftover-free is **not** authorized. A–F leftover-named
+integrity already landed. Next work is maintain honesty and park
+gated leftovers:
 [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md).
 
 Allowed without a new PDK / SDC:
 
 - Keep leftovers named when reports or Studio drift.
 - Product DSE on official netlists (not this course close).
-- Lab IR / F4 work that does not restamp 45.298 or overwrite FlowLab.
+- Lab IR / F4 work that does not overwrite the locked gold IR report
+  file or FlowLab. Gold mV is not a suite pass criterion.
 
 Not allowed as “finishing this campaign”:
 
