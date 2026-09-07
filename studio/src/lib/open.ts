@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import { REPO_ROOT, LEARN_ROOT } from "./course";
+import { assertUnder, normalizeResultsVariant } from "./pathGuard";
 
 const DEFAULT_VARIANT = "learn";
 
@@ -39,17 +40,30 @@ export function resultsDir(
   variant: string = DEFAULT_VARIANT,
   design: string = "gcd",
 ) {
+  const v = normalizeResultsVariant(variant);
+  const d = design || "gcd";
   // Lab ASAP7: results/asap7/<design>/<variant>
-  if (variant.startsWith("lab_asap7_")) {
-    const d = design || "gcd";
-    return path.join(
-      /*turbopackIgnore: true*/ REPO_ROOT,
-      `tools/OpenROAD-flow-scripts/flow/results/asap7/${d}/${variant}`,
+  if (v.startsWith("lab_asap7_")) {
+    return assertUnder(
+      path.join(
+        /*turbopackIgnore: true*/ REPO_ROOT,
+        "tools/OpenROAD-flow-scripts/flow/results/asap7",
+      ),
+      path.join(
+        /*turbopackIgnore: true*/ REPO_ROOT,
+        `tools/OpenROAD-flow-scripts/flow/results/asap7/${d}/${v}`,
+      ),
     );
   }
-  return path.join(
-    /*turbopackIgnore: true*/ REPO_ROOT,
-    `tools/OpenROAD-flow-scripts/flow/results/nangate45/${design}/${variant}`,
+  return assertUnder(
+    path.join(
+      /*turbopackIgnore: true*/ REPO_ROOT,
+      "tools/OpenROAD-flow-scripts/flow/results/nangate45",
+    ),
+    path.join(
+      /*turbopackIgnore: true*/ REPO_ROOT,
+      `tools/OpenROAD-flow-scripts/flow/results/nangate45/${d}/${v}`,
+    ),
   );
 }
 

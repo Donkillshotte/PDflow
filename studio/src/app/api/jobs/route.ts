@@ -5,6 +5,7 @@ import {
   getPipelineStatus,
   listJobs,
   readLock,
+  pidAlive,
 } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,13 @@ export async function GET(req: Request) {
 export async function DELETE(req: Request) {
   const url = new URL(req.url);
   if (url.searchParams.get("force") === "1") {
+    const lock = readLock();
+    if (lock?.pid && pidAlive(lock.pid)) {
+      return NextResponse.json(
+        { error: "job still running; cancel it first", lock },
+        { status: 409 },
+      );
+    }
     forceReleaseLock();
     return NextResponse.json({ ok: true, lock: null });
   }
