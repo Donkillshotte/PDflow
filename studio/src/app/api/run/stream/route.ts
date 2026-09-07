@@ -1,11 +1,17 @@
 import { isAllowedAction, streamCourseAction, type RunMode } from "@/lib/run";
 import { preflightAction } from "@/lib/jobs";
 import { FLOWLAB_VARIANT, normalizeParams, readParams } from "@/lib/flowlab";
+import { authorizeRunRequest } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 900;
 
 export async function GET(req: Request) {
+  const denied = authorizeRunRequest(req);
+  if (denied) {
+    return denied;
+  }
+
   const url = new URL(req.url);
   const action = url.searchParams.get("action") ?? "";
   if (!isAllowedAction(action)) {
