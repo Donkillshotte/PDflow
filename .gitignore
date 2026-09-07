@@ -9,6 +9,11 @@ studio/node_modules/
 studio/.next/
 studio/out/
 
+# Local secrets and env
+.env
+.env.*
+!.env.example
+
 # Temporary artifacts
 *.log
 terminals/
