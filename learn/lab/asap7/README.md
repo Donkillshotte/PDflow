@@ -6,6 +6,10 @@ Does not decide product wins. Does not replace the Nangate45 course.
 ## RTL → GDS
 
 ```bash
+# Serial e2e (resume live GDS). One heavy cook at a time.
+python3 learn/scripts/run_asap7_e2e.py --dry-run
+python3 learn/scripts/run_asap7_e2e.py --max-cooks 1
+
 # default: gcd, typical corner, RVT, NLDM, 7.5-track
 FLOW_VARIANT=lab_asap7_gcd_tc_rvt_nldm_7p5 \
   ./scripts/run_lab_asap7.sh finish
@@ -39,7 +43,7 @@ Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.
 |---|---|---|
 | `CORNER` | BC / TC / WC | — |
 | `ASAP7_USE_VT` | RVT LVT SLVT SRAM | — |
-| `LIB_MODEL` | NLDM / CCS | CCS TC/WC need fetched extras; LVT/SLVT CCS stays refused |
+| `LIB_MODEL` | NLDM / CCS | CCS TC/WC need fetched extras (`${CORNER}_CCS_LIB_FILES`); ORFS only defines `BC_CCS_LIB_FILES`; LVT/SLVT CCS stays refused |
 | `ASAP7_TRACK` | 7p5 / 6 | 6T is fetch-gated, not a finish |
 | `CLUSTER_FLOPS` | 0 / 1 | `*_FAKE.lib` |
 | FakeRAM designs | `riscv32i-mock-sram` | blackbox SRAM |
@@ -64,6 +68,13 @@ Layer-1 public PDK (HSpice `.pm`, placeholder Calibre):
 Xyce inverter, `level 72→107`). Never `.lvs.ok`.
 Cell-vs-CDL: `python3 learn/scripts/lab_asap7_lvs.py` (never `.lvs.ok`).
 Setup WC / hold BC on one netlist: `python3 learn/scripts/lab_asap7_mmmc.py`.
+Leftover-named PKG (dummy bump + sidecar RDL + compact VRM→board→pkg→die):
+`python3 learn/scripts/lab_asap7_pkg.py` (or `run_lab_asap7_pkg.sh`).
+Dummy, not C4. Lumped RLC, not Touchstone / Ansys CPA. Never writes
+`6_final.odb`. Models live in `learn/lab/asap7/pkg/`.
+On-die chip PDN mesh (tier B: `write_pg_spice` + `pdn_transient.py`):
+`python3 learn/scripts/lab_asap7_chip_pdn.py` (or `run_lab_asap7_chip_pdn.sh`).
+Not tier C PKG. Not comparable to Nangate 45.298 mV. No `.chip_pdn_ir.ok`.
 
 See [`docs/asap7_research.md`](../../../docs/asap7_research.md).
 Close paths (three-layer kit, not leftover-free):
