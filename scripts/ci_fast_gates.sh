@@ -39,13 +39,14 @@ else
   echo "SKIP Studio lint/build (npm not installed on this host)"
 fi
 
-if command -v cmake >/dev/null 2>&1 && command -v g++ >/dev/null 2>&1; then
+if command -v cmake >/dev/null 2>&1 && command -v g++ >/dev/null 2>&1 \
+  && { [[ -d /usr/include/eigen3 ]] || [[ -d /usr/local/include/eigen3 ]]; }; then
   echo "==> Engine: cmake + dpn_test"
   cmake -S engine -B engine/build -DCMAKE_BUILD_TYPE=Release
   cmake --build engine/build --target dpn_test -j"$(nproc 2>/dev/null || echo 2)"
   ./engine/build/dpn_test
 else
-  echo "SKIP engine dpn_test (cmake/g++ not installed on this host)"
+  echo "SKIP engine dpn_test (cmake/g++/Eigen3 not installed on this host)"
 fi
 
 echo "OK ci_fast_gates"
