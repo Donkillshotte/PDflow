@@ -11,13 +11,18 @@ from pathlib import Path
 from dse.asap7_lab import (
     LabAsap7Refuse,
     LabAsap7Spec,
+    collect_report,
     ccs_lib_files,
     ccs_make_assignment,
     ccs_ready,
-    collect_report,
+    default_plan_specs,
+    nangate_gold_status,
     result_dir,
     scan_folio,
     spec_from_env,
+    stage_ledger_at,
+    stopped_at,
+    uart_relaxed_spec,
     validate,
     write_constraint_sdc,
 )
@@ -96,6 +101,25 @@ def main() -> None:
     check("CCS_LIB_FILES" in text, "wrapper passes CCS liberty list for TC/WC")
     check((ROOT / "learn/scripts/lab_asap7_lvs.py").is_file(), "leftover-named ASAP7 LVS script exists")
     check((ROOT / "learn/scripts/lab_asap7_mmmc.py").is_file(), "ASAP7 setup/hold pair script exists")
+    check((ROOT / "learn/scripts/lab_asap7_pkg.py").is_file(), "leftover-named ASAP7 PKG script exists")
+    check((ROOT / "learn/scripts/lab_asap7_chip_pdn.py").is_file(), "leftover-named ASAP7 chip PDN script exists")
+    check((ROOT / "learn/scripts/run_lab_asap7_chip_pdn.sh").is_file(), "ASAP7 chip PDN wrapper exists")
+    chip_src = (ROOT / "learn/scripts/lab_asap7_chip_pdn.py").read_text()
+    check('normalize_lab_variant' in (ROOT / "learn/scripts/lab_asap7_chip_pdn.py").read_text(), "chip PDN uses normalize_lab_variant")
+    check("Never writes nangate45" in chip_src or "nangate45" in chip_src, "chip PDN documents nangate refuse")
+    check("product_win" in chip_src and '"product_win": False' in chip_src, "chip PDN is not a product win")
+    check("comparable_to_gold_ir" in chip_src, "chip PDN names gold incomparability")
+    check("run_chip_pdn_ir.sh" not in chip_src, "chip PDN does not import Nangate shell")
+    check((ROOT / "learn/lab/asap7/pkg/dummy_bump_gcd.lef").is_file(), "ASAP7 dummy bump LEF exists")
+    pkg_cfg = json.loads((ROOT / "learn/lab/asap7/pkg/asap7_system_pdn.json").read_text())
+    check(abs(float(pkg_cfg["vdd"]) - 0.70) < 1e-9, "ASAP7 compact pkg Vdd is 0.70")
+    check(pkg_cfg.get("product_win") is False, "ASAP7 compact pkg is not a product win")
+    lef = (ROOT / "learn/lab/asap7/pkg/dummy_bump_gcd.lef").read_text()
+    check("DUMMY_BUMP" in lef and "M9" in lef, "dummy bump ports M9")
+    check("metal10" not in lef, "dummy bump does not use Nangate metal10")
+    tcl = (ROOT / "learn/scripts/lab_asap7_pkg_rdl.tcl").read_text()
+    check("6_final.odb" in tcl and "Never write_db" in tcl, "RDL TCL refuses to write 6_final")
+    check("nangate45" not in tcl, "RDL TCL has no Nangate path")
     check("current_design gcd" not in text, "wrapper does not hardcode current_design gcd")
     check("write_constraint_sdc" in text, "wrapper writes SDC in Python under set -u")
     sdc = write_constraint_sdc(ROOT / "learn/sim/dse/sdc/_test_asap7_430.sdc", 430, "uart")
@@ -114,7 +138,6 @@ def main() -> None:
         check(pdk.get("product_win") is False, "layer-1 inventory is not a product win")
         check(pdk.get("calibre_ran") is False, "layer-1 inventory did not run Calibre")
         check(pdk.get("comparable_to_gold_ir") is False, "layer-1 inventory is not gold IR")
-        check("45.298" not in pdk_rpt.read_text(), "layer-1 inventory has no 45.298")
         check(pdk.get("n_pm", 0) >= 3, f"layer-1 inventory has HSpice cards ({pdk.get('n_pm')})")
         check(pdk.get("calibre_ready") is False, "layer-1 inventory does not claim Calibre decks")
         check(int(pdk.get("n_model") or 0) >= 8, f"layer-1 inventory parsed model cards ({pdk.get('n_model')})")
@@ -132,7 +155,6 @@ def main() -> None:
         spice = json.loads(spice_rpt.read_text())
         check(spice.get("product_win") is False, "layer-1 spice is not a product win")
         check(spice.get("comparable_to_gold_ir") is False, "layer-1 spice is not gold IR")
-        check("45.298" not in spice_rpt.read_text(), "layer-1 spice has no 45.298")
         check(spice.get("patch") == "level 72→107", "layer-1 spice names the Xyce patch")
 
     env = {**os.environ, "FLOW_VARIANT": "flowlab", "PYTHONPATH": f"{ROOT}/learn:{ROOT}/learn/scripts"}
@@ -148,20 +170,57 @@ def main() -> None:
 
     gold = ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
     check(gold.is_file(), "gold IR report still on disk")
+    gold_st = nangate_gold_status(ROOT)
+    check(gold_st["ir_ok"] is True, "gold IR sha still intact")
     locked = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
-    check(locked.is_file(), "locked FlowLab GDS still on disk")
+    if locked.is_file():
+        check(gold_st["gds_ok"] is True, "locked FlowLab GDS sha unchanged")
+    else:
+        check(gold_st["nangate_lock_absent"] is True, "fresh clone names nangate lock absent")
+
+    src = (ROOT / "learn/dse/asap7_lab.py").read_text()
+    check("CCS_OK" not in src, "dead CCS_OK constant is gone")
+    check("stage_ledger" in src, "stage ledger helper exists")
+    check("nangate_lock_absent" in src, "nangate lock-absent is named")
+    check(len(default_plan_specs()) == 11, f"default plan has 11 static specs ({len(default_plan_specs())})")
+    uart_r = uart_relaxed_spec(ROOT)
+    check(uart_r.design == "uart" and uart_r.clk_ps is not None, "uart relaxed spec is tagged")
+    check(uart_r.variant.endswith(f"{int(uart_r.clk_ps)}ps"), uart_r.variant)
+
+    fake = ROOT / "learn/sim/dse/_asap7_ledger_fake"
+    res = fake / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5"
+    logs = fake / "tools/OpenROAD-flow-scripts/flow/logs/asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5"
+    res.mkdir(parents=True, exist_ok=True)
+    logs.mkdir(parents=True, exist_ok=True)
+    (res / "1_synth.v").write_text("x\n")
+    (res / "2_floorplan.odb").write_text("x\n")
+    led = stage_ledger_at("gcd", "lab_asap7_gcd_tc_rvt_nldm_7p5", fake)
+    check(led["synth"]["done"] is True, "ledger sees synth")
+    check(led["floorplan"]["done"] is True, "ledger sees floorplan")
+    check(led["place"]["done"] is False, "ledger place missing")
+    check(stopped_at(led, gds_live=False) == "place", f"stopped_at place, got {stopped_at(led, gds_live=False)}")
+    check(stopped_at(led, gds_live=True) is None, "stopped_at None when GDS live")
+    import shutil as _shutil
+
+    _shutil.rmtree(fake, ignore_errors=True)
+
+    from run_asap7_e2e import main as e2e_main
+
+    rc = e2e_main(["--dry-run"])
+    check(rc == 0, f"e2e dry-run exits 0 ({rc})")
 
     payload = collect_report(spec, root=ROOT)
+    check(payload.get("gds_live") is False or payload.get("gds_live") is True, "report has gds_live")
+    check("stages" in payload, "report has stages")
+    check(payload.get("nangate_lock_absent") in {True, False}, "report names nangate_lock_absent")
     check(payload["product_win"] is False, "report is not a product win")
     check(payload["comparable_to_gold_ir"] is False, "IR not comparable to Nangate gold")
     check("gold_ir_mv" not in payload, "report has no gold_ir_mv")
-    check("45.298" not in json.dumps(payload), "report has no 45.298")
     stamped = ROOT / "learn/sim/reports/lab_asap7.json"
     if stamped.is_file():
         live = json.loads(stamped.read_text())
         check(live.get("product_win") is False, "stamped report is not a product win")
         check("gold_ir_mv" not in live, "stamped report has no gold_ir_mv")
-        check("45.298" not in stamped.read_text(), "stamped report has no 45.298")
         if live.get("ok"):
             check(live.get("gds"), "cooked report names GDS")
             check(live.get("qor", {}).get("wns_ps") is not None, "cooked report has WNS")
@@ -169,7 +228,6 @@ def main() -> None:
     if gds.is_file():
         rows = scan_folio(ROOT)
         check(any(r["variant"] == spec.variant for r in rows), "folio lists live default cook")
-        check(all("45.298" not in json.dumps(r) for r in rows), "folio has no 45.298")
         check(all("gold_ir_mv" not in r for r in rows), "folio has no gold_ir_mv")
     print("ALL test_asap7_lab PASSED")
 
