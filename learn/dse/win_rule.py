@@ -42,6 +42,17 @@ def _axes(cand: Any, base: Any) -> tuple[float | None, float | None, float | Non
     )
 
 
+def _metric_keys() -> tuple[str, ...]:
+    return ("stdcell_um2", "power_w", "leakage_w", "ir_drop_v")
+
+
+def _metrics_incomplete(cand: Any, base: Any) -> bool:
+    for key in _metric_keys():
+        if getattr(cand, key, None) is None or getattr(base, key, None) is None:
+            return True
+    return False
+
+
 def verdict(cand: Any, base: Any) -> str:
     """Return win / tie / lose / incomplete / wrong_die."""
     cw = getattr(cand, "finish_wns_ns", None)
@@ -50,10 +61,14 @@ def verdict(cand: Any, base: Any) -> str:
         return "incomplete"
     if moves_floorplan(cand, base):
         return "wrong_die"
+    if _metrics_incomplete(cand, base):
+        return "incomplete"
     dw_ps = (float(cw) - float(bw)) * 1000.0
     c_closed = float(cw) >= 0.0
     b_closed = float(bw) >= 0.0
     area, power, leak, ir = _axes(cand, base)
+    if any(x is None for x in (area, power, leak, ir)):
+        return "incomplete"
     worse = _bad(area) or _bad(power) or _bad(leak) or _bad(ir)
     better = _good(area) or _good(power) or _good(leak) or _good(ir)
     slack_ok = dw_ps >= -SLACK_PS
