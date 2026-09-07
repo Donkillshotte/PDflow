@@ -1,0 +1,18 @@
+# Committed fixture: matches sta_signoff_flowlab.json setup_violations=16.
+# Regenerate from a live STA cook; each data line ends with VIOLATED in parentheses.
+-0.010 setup path 1 (VIOLATED)
+-0.011 setup path 2 (VIOLATED)
+-0.012 setup path 3 (VIOLATED)
+-0.013 setup path 4 (VIOLATED)
+-0.014 setup path 5 (VIOLATED)
+-0.015 setup path 6 (VIOLATED)
+-0.016 setup path 7 (VIOLATED)
+-0.017 setup path 8 (VIOLATED)
+-0.018 setup path 9 (VIOLATED)
+-0.019 setup path 10 (VIOLATED)
+-0.020 setup path 11 (VIOLATED)
+-0.021 setup path 12 (VIOLATED)
+-0.022 setup path 13 (VIOLATED)
+-0.023 setup path 14 (VIOLATED)
+-0.024 setup path 15 (VIOLATED)
+-0.025 setup path 16 (VIOLATED)

@@ -561,7 +561,6 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   const pillars: Record<string, { ok: boolean; report?: string }> = {};
 
   for (const pillar of SIGNOFF_PILLARS) {
-    const orchRel = pillar.checks[0]?.reportRel.replace("{variant}", variant) ?? "";
     const orchReport =
       pillar.id === "timing"
         ? readJsonReport(path.join(LEARN_ROOT, `sim/reports/sta_signoff_${variant}.json`))

@@ -1,0 +1,54 @@
+name: fast-gates
+
+on:
+  push:
+    branches: ["cursor/**", "main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python-fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Fast Python gates
+        run: ./scripts/ci_fast_gates.sh
+
+  studio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: studio/package-lock.json
+      - name: Install Studio deps
+        working-directory: studio
+        run: npm ci
+      - name: Lint
+        working-directory: studio
+        run: npm run lint
+      - name: Build
+        working-directory: studio
+        run: npm run build
+      - name: npm audit (high+)
+        working-directory: studio
+        run: npm audit --audit-level=high
+
+  engine-native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build deps
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake g++ libeigen3-dev libomp-dev
+      - name: Build and run engine tests
+        run: |
+          cmake -S engine -B engine/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build engine/build --target dpn_test -j"$(nproc)"
+          ./engine/build/dpn_test

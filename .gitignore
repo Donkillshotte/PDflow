@@ -16,6 +16,8 @@ studio/out/
 
 # Temporary artifacts
 *.log
+!learn/sim/reports/sta_signoff_flowlab.log
+!learn/sim/reports/sta_signoff_eco_scratch.log
 terminals/
 
 # Native solver build

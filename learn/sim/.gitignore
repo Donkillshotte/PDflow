@@ -4,6 +4,9 @@ sim.log
 reports/*
 !reports/dse_*.json
 !reports/sta_signoff_flowlab.json
+!reports/sta_arrivals_flowlab.json
+!reports/sta_signoff_flowlab.log
+!reports/sta_signoff_eco_scratch.log
 !reports/drc_signoff_flowlab.json
 !reports/lvs_signoff_flowlab.json
 !reports/power_signoff_flowlab.json

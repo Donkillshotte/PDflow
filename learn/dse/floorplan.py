@@ -30,14 +30,21 @@ def official_def(design: str) -> Path | None:
 def official_box(design: str) -> dict[str, str] | None:
     """DIE_AREA / CORE_AREA strings for make. None if the DEF is missing."""
     p = official_def(design)
-    if p is None:
-        return None
-    g = parse_def_geometry(p)
-    die = g.get("die_area")
-    core = g.get("core_area")
-    if not die or not core:
-        return None
-    return {"DIE_AREA": str(die), "CORE_AREA": str(core)}
+    if p is not None:
+        g = parse_def_geometry(p)
+        die = g.get("die_area")
+        core = g.get("core_area")
+        if die and core:
+            return {"DIE_AREA": str(die), "CORE_AREA": str(core)}
+    if design == "gcd":
+        from .geometry import load_geometry_a
+
+        blob = load_geometry_a()
+        die = blob.get("die_area")
+        core = blob.get("core_area")
+        if die and core:
+            return {"DIE_AREA": str(die), "CORE_AREA": str(core)}
+    return None
 
 
 def uses_floorplan_def(design: str) -> bool:
@@ -48,7 +55,10 @@ def uses_floorplan_def(design: str) -> bool:
     """
     from .knob_catalog import config_mk_for
 
-    p = config_mk_for(design)
+    try:
+        p = config_mk_for(design)
+    except FileNotFoundError:
+        return False
     if not p.is_file():
         return False
     for line in p.read_text().splitlines():

@@ -2,11 +2,15 @@
   "name": "studio",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20 <23",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 43217",
     "build": "next build",
     "start": "next start -H 127.0.0.1 -p 43217",
-    "lint": "next lint",
+    "lint": "eslint .",
     "smoke": "npm run build"
   },
   "dependencies": {
