@@ -7,6 +7,7 @@ Same Verilog + SPEF + SDC. Two OpenSTA runs. Do not restamp 45.298.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -15,45 +16,39 @@ import subprocess
 import sys
 from pathlib import Path
 
+from dse.asap7_lab import nldm_lib_files, normalize_lab_variant, safe_result_dir, spec_for_variant
+
 ROOT = Path(__file__).resolve().parents[2]
-ORFS = ROOT / "tools/OpenROAD-flow-scripts/flow/platforms/asap7/lib/NLDM"
 OUT = ROOT / "learn" / "sim" / "reports" / "lab_asap7_mmmc.json"
-DEFAULT_DIR = (
-    ROOT
-    / "tools/OpenROAD-flow-scripts/flow/results/asap7/gcd"
-    / "lab_asap7_gcd_tc_rvt_nldm_7p5_480ps"
-)
-
-CORNER_LIBS = {
-    "WC": (
-        "asap7sc7p5t_AO_RVT_SS_nldm_211120.lib.gz",
-        "asap7sc7p5t_INVBUF_RVT_SS_nldm_220122.lib.gz",
-        "asap7sc7p5t_OA_RVT_SS_nldm_211120.lib.gz",
-        "asap7sc7p5t_SIMPLE_RVT_SS_nldm_211120.lib.gz",
-        "asap7sc7p5t_SEQ_RVT_SS_nldm_220123.lib",
-    ),
-    "BC": (
-        "asap7sc7p5t_AO_RVT_FF_nldm_211120.lib.gz",
-        "asap7sc7p5t_INVBUF_RVT_FF_nldm_220122.lib.gz",
-        "asap7sc7p5t_OA_RVT_FF_nldm_211120.lib.gz",
-        "asap7sc7p5t_SIMPLE_RVT_FF_nldm_211120.lib.gz",
-        "asap7sc7p5t_SEQ_RVT_FF_nldm_220123.lib",
-    ),
-}
+DEFAULT_VARIANT = "lab_asap7_gcd_tc_rvt_nldm_7p5_480ps"
 
 
-def _sta_wns(verilog: Path, spef: Path, sdc: Path, libs: list[Path], path_delay: str) -> dict:
+def _design_name(variant: str) -> str:
+    try:
+        return spec_for_variant(variant, ROOT).nickname
+    except Exception:
+        return "gcd"
+
+
+def _sta_wns(
+    verilog: Path,
+    spef: Path,
+    sdc: Path,
+    libs: list[Path],
+    path_delay: str,
+    design: str,
+) -> dict:
     sta = shutil.which("sta") or os.environ.get("OPENSTA_EXE")
     if not sta:
         return {"ok": False, "reason": "sta missing"}
     missing = [str(p) for p in libs if not p.is_file()]
     if missing:
         return {"ok": False, "reason": f"liberty missing {missing[:2]}"}
-    tcl = Path(f"/tmp/lab_asap7_mmmc_{path_delay}.tcl")
+    tcl = Path(f"/tmp/lab_asap7_mmmc_{path_delay}_{design}.tcl")
     lines = [f"read_liberty {p}" for p in libs]
     lines += [
         f"read_verilog {verilog}",
-        "link_design gcd",
+        f"link_design {design}",
         f"read_spef {spef}",
         f"source {sdc}",
         f"report_wns -digits 4",
@@ -88,16 +83,39 @@ def _sta_wns(verilog: Path, spef: Path, sdc: Path, libs: list[Path], path_delay:
     }
 
 
-def main() -> int:
-    res = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_DIR
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="ASAP7 setup WC / hold BC pair. Not a product win.")
+    parser.add_argument("res", nargs="?", default="")
+    parser.add_argument("--variant", default="")
+    args = parser.parse_args(argv)
+    variant = normalize_lab_variant(args.variant or DEFAULT_VARIANT)
+    if args.res:
+        res = Path(args.res)
+        if res.name.startswith("lab_asap7_"):
+            variant = normalize_lab_variant(res.name)
+    else:
+        res = safe_result_dir(variant, ROOT)
+    design = _design_name(variant)
     verilog = res / "6_final.v"
     spef = res / "6_final.spef"
     sdc = res / "6_final.sdc"
     if not (verilog.is_file() and spef.is_file() and sdc.is_file()):
         print(f"FAIL missing finish artifacts under {res}", file=sys.stderr)
         return 1
-    setup = _sta_wns(verilog, spef, sdc, [ORFS / n for n in CORNER_LIBS["WC"]], "max")
-    hold = _sta_wns(verilog, spef, sdc, [ORFS / n for n in CORNER_LIBS["BC"]], "min")
+    setup_libs = nldm_lib_files("WC", "RVT", ROOT)
+    hold_libs = nldm_lib_files("BC", "RVT", ROOT)
+    setup = _sta_wns(verilog, spef, sdc, setup_libs, "max", design)
+    hold = _sta_wns(verilog, spef, sdc, hold_libs, "min", design)
+    setup_row = {"corner": "WC", "lib": "SS", "volt": 0.63, "temp_c": 100, **setup}
+    hold_row = {"corner": "BC", "lib": "FF", "volt": 0.77, "temp_c": 25, **hold}
+    by_variant = {}
+    if OUT.is_file():
+        try:
+            prev = json.loads(OUT.read_text())
+            by_variant = dict(prev.get("by_variant") or {})
+        except json.JSONDecodeError:
+            by_variant = {}
+    by_variant[variant] = {"setup": setup_row, "hold": hold_row, "ok": bool(setup.get("ok") and hold.get("ok"))}
     payload = {
         "ok": bool(setup.get("ok") and hold.get("ok")),
         "surface": "lab",
@@ -105,11 +123,14 @@ def main() -> int:
         "kind": "mmmc_pair",
         "product_win": False,
         "comparable_to_gold_ir": False,
+        "variant": variant,
+        "design": design,
         "netlist": str(verilog),
         "spef": str(spef),
         "sdc": str(sdc),
-        "setup": {"corner": "WC", "lib": "SS", "volt": 0.63, "temp_c": 100, **setup},
-        "hold": {"corner": "BC", "lib": "FF", "volt": 0.77, "temp_c": 25, **hold},
+        "setup": setup_row,
+        "hold": hold_row,
+        "by_variant": by_variant,
         "leftover": {
             "mmmc": "two serial OpenSTA runs, not a single MMMC session",
             "smoke_sdc": "SDC period is the cook SDC, not a 310 ps gold",
