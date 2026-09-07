@@ -200,9 +200,27 @@
       "kind": "gated",
       "variant": "n/a",
       "report": "sim/reports/lab_asap7_pdk.json",
-      "suite_hooks": ["asap7_layer1"],
+      "suite_hooks": ["asap7_layer1", "asap7_drc", "asap7_lvs"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["leftover Calibre", "ASU encrypted tarball"]
+    },
+    {
+      "id": "asap7_community_drc",
+      "kind": "built",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_drc.json",
+      "suite_hooks": ["asap7_drc"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["community KLayout", "leftover Calibre"]
+    },
+    {
+      "id": "asap7_cell_cdl_lvs",
+      "kind": "built",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_lvs.json",
+      "suite_hooks": ["asap7_lvs"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["cell-vs-CDL", "leftover Calibre"]
     },
     {
       "id": "asap7_xyce_patch",
@@ -212,6 +230,42 @@
       "suite_hooks": ["asap7_layer1"],
       "studio_surfaces": ["lab"],
       "detail_needles": ["level 72→107", "leftover Xyce patch"]
+    },
+    {
+      "id": "asap7_dummy_bump",
+      "kind": "gated",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_pkg.json",
+      "suite_hooks": ["asap7_pkg"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["dummy 2×2 bump", "not JEDEC C4"]
+    },
+    {
+      "id": "asap7_sidecar_rdl",
+      "kind": "gated",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_pkg.json",
+      "suite_hooks": ["asap7_pkg"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["sidecar rdl_route", "never write 6_final"]
+    },
+    {
+      "id": "asap7_compact_pkg",
+      "kind": "gated",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_pkg.json",
+      "suite_hooks": ["asap7_pkg"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["compact VRM", "not Ansys CPA"]
+    },
+    {
+      "id": "asap7_chip_mesh",
+      "kind": "gated",
+      "variant": "n/a",
+      "report": "sim/reports/lab_asap7_chip_pdn.json",
+      "suite_hooks": ["asap7_chip_pdn"],
+      "studio_surfaces": ["lab", "suite"],
+      "detail_needles": ["tier B mesh", "not 45.298 mV", "map::at patched"]
     }
   ],
   "home_compact_phrases": [

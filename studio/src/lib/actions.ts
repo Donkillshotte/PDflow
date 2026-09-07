@@ -119,6 +119,8 @@ export const TOOL_MATRIX_ACTIONS = [
   "analytical_pex",
   "ccs_char",
   "lab_asap7_pdk",
+  "lab_asap7_pkg",
+  "lab_asap7_chip_pdn",
   "lvs_deep",
   "layout_tools",
   "spice_engines",

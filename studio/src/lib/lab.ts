@@ -301,8 +301,16 @@ function readAsap7Lab(): Record<string, unknown> | null {
   const qor = asap7QorOf(raw);
   const lvs = readJson("sim/reports/lab_asap7_lvs.json");
   const mmmc = readJson("sim/reports/lab_asap7_mmmc.json");
+  const drc = readJson("sim/reports/lab_asap7_drc.json");
+  const folioBlob = readJson("sim/reports/lab_asap7_folio.json");
   const pdk = readJson("sim/reports/lab_asap7_pdk.json");
   const spice = readJson("sim/reports/lab_asap7_spice.json");
+  const pkg = readJson("sim/reports/lab_asap7_pkg.json");
+  const chipPdn = readJson("sim/reports/lab_asap7_chip_pdn.json");
+  const pkgBump = (pkg?.bump as Record<string, unknown>) || {};
+  const pkgRdl = (pkg?.rdl as Record<string, unknown>) || {};
+  const pkgPdn = (pkg?.system_pdn as Record<string, unknown>) || {};
+  const pkgBumpPkg = (pkgBump.package as Record<string, unknown>) || {};
   const spiceWave = (spice?.wave as Record<string, unknown>) || {};
   const setup = (mmmc?.setup as Record<string, unknown>) || {};
   const hold = (mmmc?.hold as Record<string, unknown>) || {};
@@ -319,6 +327,10 @@ function readAsap7Lab(): Record<string, unknown> | null {
     productWin: false,
     comparableToGoldIr: false,
     leftover: raw?.leftover ?? null,
+    stages: raw?.stages ?? null,
+    stoppedAt: raw?.stopped_at ?? null,
+    closureLadder: folioBlob?.closure_ladder ?? null,
+    track6: folioBlob?.track6 ?? { status: "GAP" },
     qor,
     folio,
     cookCount: folio.length,
@@ -337,6 +349,13 @@ function readAsap7Lab(): Record<string, unknown> | null {
           setupWnsPs: n(setup.wns_ps),
           holdWnsPs: n(hold.wns_ps),
           ok: mmmc.ok === true,
+        }
+      : null,
+    drc: drc
+      ? {
+          nItems: n(drc.n_items),
+          calibre: drc.calibre === true,
+          status: drc.status ?? null,
         }
       : null,
     pdk: pdk
@@ -358,6 +377,31 @@ function readAsap7Lab(): Record<string, unknown> | null {
           inverted: spiceWave.inverted === true,
           voutWhenVinHigh: n(spiceWave.vout_when_vin_high),
           voutWhenVinLow: n(spiceWave.vout_when_vin_low),
+        }
+      : null,
+    pkg: pkg
+      ? {
+          ok: pkg.ok === true,
+          c4: pkg.c4 === true,
+          touchstone: pkg.touchstone === true,
+          nBumps: n(pkgBumpPkg.n_bumps),
+          rdlOk: pkgRdl.ok === true,
+          wroteFinal: pkgRdl.wrote_final === true,
+          vdd: n(pkgPdn.vdd),
+          droopMv: n(pkgPdn.droop_mv),
+          leftover: "dummy bump · sidecar RDL · compact VRM · not C4",
+        }
+      : null,
+    chipPdn: chipPdn
+      ? {
+          ok: chipPdn.ok === true,
+          tier: chipPdn.tier ?? "chip_mesh",
+          pdnsim6ReportMv: n(chipPdn.pdnsim_6_report_mv),
+          meshStaticMv: n(chipPdn.mesh_static_mv),
+          meshTransientMv: n(chipPdn.mesh_transient_droop_mv),
+          nR: n(chipPdn.n_r),
+          patched: (chipPdn.mesh_patch as Record<string, unknown> | undefined)?.patched === true,
+          leftover: "tier B mesh · not tier C PKG · not 45.298 mV",
         }
       : null,
     note: raw?.note ?? "Live ASAP7 folio. Predictive FinFET. Not a product win.",

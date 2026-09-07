@@ -158,10 +158,46 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
     needles: ["leftover Calibre", "ASU encrypted tarball"],
   },
   {
+    id: "asap7_community_drc",
+    label: "leftover ASAP7 community DRC",
+    tone: "built",
+    needles: ["community KLayout", "leftover Calibre"],
+  },
+  {
+    id: "asap7_cell_cdl_lvs",
+    label: "leftover ASAP7 cell-vs-CDL",
+    tone: "built",
+    needles: ["cell-vs-CDL", "leftover Calibre"],
+  },
+  {
     id: "asap7_xyce_patch",
     label: "ASAP7 Xyce level 72→107",
     tone: "built",
     needles: ["level 72→107", "leftover Xyce patch"],
+  },
+  {
+    id: "asap7_dummy_bump",
+    label: "leftover ASAP7 dummy bump (not C4)",
+    tone: "leftover",
+    needles: ["dummy 2×2 bump", "not JEDEC C4"],
+  },
+  {
+    id: "asap7_sidecar_rdl",
+    label: "leftover ASAP7 sidecar RDL",
+    tone: "leftover",
+    needles: ["sidecar rdl_route", "never write 6_final"],
+  },
+  {
+    id: "asap7_compact_pkg",
+    label: "leftover ASAP7 compact PKG",
+    tone: "leftover",
+    needles: ["compact VRM", "not Ansys CPA"],
+  },
+  {
+    id: "asap7_chip_mesh",
+    label: "leftover ASAP7 chip PDN mesh",
+    tone: "leftover",
+    needles: ["tier B mesh", "not 45.298 mV"],
   },
 ];
 

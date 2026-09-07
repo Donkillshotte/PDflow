@@ -94,6 +94,10 @@ type LabSnap = {
     productWin: boolean;
     comparableToGoldIr: boolean;
     leftover: Record<string, unknown> | null;
+    stages?: unknown;
+    stoppedAt?: string | null;
+    closureLadder?: Record<string, { clk_ps?: number; timing_closed?: boolean }[]> | null;
+    track6?: { status?: string } | null;
     qor: {
       wnsPs: number | null;
       areaUm2: number | null;
@@ -109,6 +113,7 @@ type LabSnap = {
     closedCount?: number;
     lvs?: { matchPct: number | null; nMatched: number | null; nLogic: number | null; calibre: boolean; closed: boolean } | null;
     mmmc?: { setupWnsPs: number | null; holdWnsPs: number | null; ok: boolean } | null;
+    drc?: { nItems: number | null; calibre: boolean; status: string | null } | null;
     pdk?: {
       ok: boolean;
       nPm: number | null;
@@ -125,6 +130,27 @@ type LabSnap = {
       inverted: boolean;
       voutWhenVinHigh: number | null;
       voutWhenVinLow: number | null;
+    } | null;
+    pkg?: {
+      ok: boolean;
+      c4: boolean;
+      touchstone: boolean;
+      nBumps: number | null;
+      rdlOk: boolean;
+      wroteFinal: boolean;
+      vdd: number | null;
+      droopMv: number | null;
+      leftover: string;
+    } | null;
+    chipPdn?: {
+      ok: boolean;
+      tier: string;
+      pdnsim6ReportMv: number | null;
+      meshStaticMv: number | null;
+      meshTransientMv: number | null;
+      nR: number | null;
+      patched: boolean;
+      leftover: string;
     } | null;
     note: string | null;
   } | null;
@@ -303,6 +329,22 @@ export function LabBench({
             </dd>
           </div>
           <div>
+            <dt>Stopped at</dt>
+            <dd>{data?.asap7?.stoppedAt ? String(data.asap7.stoppedAt) : "finish / none"}</dd>
+          </div>
+          <div>
+            <dt>Community DRC</dt>
+            <dd>
+              {data?.asap7?.drc
+                ? `${data.asap7.drc.nItems ?? "—"} items · not Calibre`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>6-track</dt>
+            <dd>{String((data?.asap7?.track6 as { status?: string } | undefined)?.status ?? "GAP")}</dd>
+          </div>
+          <div>
             <dt>Product win</dt>
             <dd>no</dd>
           </div>
@@ -352,6 +394,52 @@ export function LabBench({
                 : "—"}
             </dd>
           </div>
+          <div>
+            <dt>Dummy bump</dt>
+            <dd>
+              {data?.asap7?.pkg
+                ? `${data.asap7.pkg.nBumps ?? 4} · not C4`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Sidecar RDL</dt>
+            <dd>
+              {data?.asap7?.pkg
+                ? `${data.asap7.pkg.rdlOk ? "routed" : "leftover"} · never write 6_final`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Compact droop</dt>
+            <dd>
+              {data?.asap7?.pkg?.droopMv != null
+                ? `${data.asap7.pkg.droopMv.toFixed(2)} mV · ${data.asap7.pkg.vdd ?? 0.7} V · not Touchstone`
+                : data?.asap7?.pkg
+                  ? "compact VRM leftover · not Touchstone"
+                  : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Chip mesh static</dt>
+            <dd>
+              {data?.asap7?.chipPdn?.meshStaticMv != null
+                ? `${data.asap7.chipPdn.meshStaticMv.toFixed(2)} mV · tier B · not 45.298 mV`
+                : data?.asap7?.chipPdn
+                  ? "chip mesh leftover · tier B"
+                  : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Chip mesh transient</dt>
+            <dd>
+              {data?.asap7?.chipPdn?.meshTransientMv != null
+                ? `${data.asap7.chipPdn.meshTransientMv.toFixed(2)} mV · vs 6_report ${data.asap7.chipPdn.pdnsim6ReportMv?.toFixed(2) ?? "—"} mV`
+                : data?.asap7?.chipPdn
+                  ? "transient mesh leftover"
+                  : "—"}
+            </dd>
+          </div>
         </dl>
         {(data?.asap7?.folio?.length ?? 0) > 0 && (
           <ol className="lb-tape" aria-label="ASAP7 live runs">
@@ -367,7 +455,20 @@ export function LabBench({
             ))}
           </ol>
         )}
-        <p>{data?.asap7?.note ?? "Predictive FinFET track. Cook with ./scripts/run_lab_asap7.sh"}</p>
+        {(data?.asap7?.closureLadder as Record<string, { clk_ps?: number; timing_closed?: boolean }[]> | null) && (
+          <p>
+            Closure ladder:{" "}
+            {Object.entries(
+              (data?.asap7?.closureLadder as Record<string, { clk_ps?: number; timing_closed?: boolean }[]>) || {},
+            )
+              .map(
+                ([d, rows]) =>
+                  `${d} ${rows.map((r) => `${r.clk_ps ?? "?"}ps ${r.timing_closed ? "closed" : "open"}`).join(" → ")}`,
+              )
+              .join(" · ") || "—"}
+          </p>
+        )}
+        <p>{data?.asap7?.note ?? "Predictive FinFET track. Cook with python3 learn/scripts/run_asap7_e2e.py"}</p>
       </article>
 
       <div id="dse-compare" className="lb-faces">
