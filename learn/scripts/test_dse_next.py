@@ -635,12 +635,14 @@ def check_next_level(check, root: Path) -> None:
     check(prod_verdict(leak_win, base) == "win", f"leak −14% is a product win {prod_verdict(leak_win, base)}")
     leak_lose = _E(finish_wns_ns=-0.037, stdcell_um2=842.0, power_w=0.00343, leakage_w=3.00e-5, ir_drop_v=0.00615)
     check(prod_verdict(leak_lose, base) == "lose", f"leak +17% is a product lose {prod_verdict(leak_lose, base)}")
-    ir_worse = _E(finish_wns_ns=0.615, stdcell_um2=261.0, power_w=0.00030, ir_drop_v=0.00209)
-    spi_base = _E(finish_wns_ns=0.612, stdcell_um2=268.0, power_w=0.00030, ir_drop_v=0.00098)
+    ir_worse = _E(finish_wns_ns=0.615, stdcell_um2=261.0, power_w=0.00030, leakage_w=5.3e-6, ir_drop_v=0.00209)
+    spi_base = _E(finish_wns_ns=0.612, stdcell_um2=268.0, power_w=0.00030, leakage_w=5.3e-6, ir_drop_v=0.00098)
     check(prod_verdict(ir_worse, spi_base) == "lose", f"IR +100% is a product lose {prod_verdict(ir_worse, spi_base)}")
-    slack_win = _E(finish_wns_ns=0.042, stdcell_um2=30700.0, power_w=0.108, ir_drop_v=0.086)
-    ibex_base = _E(finish_wns_ns=0.022, stdcell_um2=30735.0, power_w=0.108, ir_drop_v=0.124)
+    slack_win = _E(finish_wns_ns=0.042, stdcell_um2=30700.0, power_w=0.108, leakage_w=4.3e-4, ir_drop_v=0.086)
+    ibex_base = _E(finish_wns_ns=0.022, stdcell_um2=30735.0, power_w=0.108, leakage_w=4.3e-4, ir_drop_v=0.124)
     check(prod_verdict(slack_win, ibex_base) == "win", f"slack+IR win {prod_verdict(slack_win, ibex_base)}")
+    missing_area = _E(finish_wns_ns=-0.0384, stdcell_um2=None, power_w=0.00343, leakage_w=2.20e-5, ir_drop_v=0.00615)
+    check(prod_verdict(missing_area, base) == "incomplete", f"missing area is incomplete not win {prod_verdict(missing_area, base)}")
 
     spi_state = {"wns_ns": 0.612, "tns_ns": 0.0, "setup_viol": 0, "density": 0.094, "repair_buffer": 22, "ir_worst_v": 0.001, "cells": 238}
     check(select_recipes(spi_state) == [], f"closed sparse state picks nothing {select_recipes(spi_state)}")
