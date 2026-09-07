@@ -34,10 +34,22 @@ export function artifactExists(rel: string, variant?: string): boolean {
   );
 }
 
-export function resultsDir(variant: string = DEFAULT_VARIANT) {
+/** Resolve ORFS results dir for the active variant/PDK/design. */
+export function resultsDir(
+  variant: string = DEFAULT_VARIANT,
+  design: string = "gcd",
+) {
+  // Lab ASAP7: results/asap7/<design>/<variant>
+  if (variant.startsWith("lab_asap7_")) {
+    const d = design || "gcd";
+    return path.join(
+      /*turbopackIgnore: true*/ REPO_ROOT,
+      `tools/OpenROAD-flow-scripts/flow/results/asap7/${d}/${variant}`,
+    );
+  }
   return path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
-    `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${variant}`,
+    `tools/OpenROAD-flow-scripts/flow/results/nangate45/${design}/${variant}`,
   );
 }
 
@@ -328,11 +340,6 @@ export function listOpenTargets(): {
       id: "run-ccs-char",
       label: "Run · PTM CCS char (GCD cells)",
       action: "ccs_char",
-    },
-    {
-      id: "run-lab-asap7-pdk",
-      label: "Run · ASAP7 layer 1 (Lab PDK + leftover Xyce)",
-      action: "lab_asap7_pdk",
     },
     {
       id: "run-lvs-deep",

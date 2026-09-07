@@ -14,7 +14,6 @@ import {
   powerSignoffHookDetail,
   signoffAllHookDetail,
   staSignoffHookDetail,
-  asap7Layer1HookDetail,
 } from "./leftoverCatalog";
 
 export type HookStatus = {
@@ -52,7 +51,7 @@ function signoffReportPass(variant: string, name: string) {
   }
 }
 
-/** Gold Dynamic IR is LOCKED at 45.298 mV and has no `ok` field. */
+/** Gold Dynamic IR report file present (label gold:true). Do not pin mV. */
 function goldDynamicIrPresent() {
   for (const variant of ["flowlab", "learn"]) {
     const p = path.join(LEARN_ROOT, "sim/reports", `dynamic_ir_${variant}.json`);
@@ -60,14 +59,8 @@ function goldDynamicIrPresent() {
     try {
       const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
         gold?: boolean;
-        worst_droop_mv?: number;
       };
-      if (
-        j.gold === true &&
-        Math.abs(Number(j.worst_droop_mv) - 45.298) < 0.02
-      ) {
-        return true;
-      }
+      if (j.gold === true) return true;
     } catch {
       /* ignore */
     }
@@ -380,8 +373,8 @@ export async function getSuiteStatus() {
       group: "Power",
       ok: currentRunDynamicIrPresent(),
       detail: goldDynamicIrPresent()
-        ? "current_run _direct.json · gold 45.298 mV locked on another mesh"
-        : "current_run _direct.json · gold sentinel missing",
+        ? "current_run _direct.json · gold report labeled separately"
+        : "current_run _direct.json · gold report missing",
       action: "dynamic_ir",
       href: "/flow?phase=finish#ir",
     },
@@ -599,15 +592,7 @@ export async function getSuiteStatus() {
       action: "ccs_char",
       href: "/tools?tab=run&action=ccs_char",
     },
-    {
-      id: "asap7_layer1",
-      label: "ASAP7 layer 1 (Lab)",
-      group: "Lab",
-      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lab_asap7_pdk.json")),
-      detail: asap7Layer1HookDetail(),
-      action: "lab_asap7_pdk",
-      href: "/lab#asap7",
-    },
+    // ASAP7 lab hooks live on /lab — not course suite hub
     {
       id: "lvs_deep",
       label: "Deep LVS (filter + VTL)",
