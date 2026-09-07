@@ -27,8 +27,9 @@ double dpn_setup_s(DpnHandle* h);
 const char* dpn_name(DpnHandle* h);
 void dpn_free(DpnHandle* h);
 
-/* Fixed-Δt BE loop on a factored handle. wave_* must hold max_steps entries.
-   Returns 0 on success. */
+/* Fixed-Δt BE loop on a factored handle. Records UIC at t=0 then advances to t_end
+   (I at t_{n+1}). n_steps is the wave length (UIC + accepted), not ceil(t_end/dt).
+   wave_* must hold max_steps entries. Returns 0 on success. */
 int dpn_timestep_be(DpnHandle* h, const double* C, const double* leak, const double* pad, double dt,
                     double t_end, double vdd, int64_t n_events, const int64_t* ev_idx,
                     const double* ev_t50, const double* ev_dur, const double* ev_ipulse,

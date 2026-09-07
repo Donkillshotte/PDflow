@@ -223,7 +223,7 @@ TranResult timestep_be(Solver& solver, const Csr& A, const double* C, const doub
     record_step(out, t, V.data(), I.data(), n, vdd, n_rail0);
     ++accepted;
   }
-  out.steps = accepted;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   return out;
@@ -340,7 +340,7 @@ TranResult timestep_be_hist(Solver& solver, const Csr& A, const double* C, const
     }
     ++accepted;
   }
-  out.steps = accepted;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   return out;
@@ -452,7 +452,7 @@ TranResult timestep_be_adaptive(const Csr& Gmesh, const double* C, const Index* 
     }
     ++accepted;
   }
-  out.steps = accepted;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   return out;
@@ -506,7 +506,7 @@ TranResult timestep_descriptor_gen(const Csr& A, const Csr& E, double dt, double
     track_descriptor_vmin(out, x, n, n_die, die_idx, t, I.data(), vdd);
     ++accepted;
   }
-  out.steps = accepted;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
   return out;
@@ -600,7 +600,7 @@ TranResult timestep_descriptor_adaptive(const Csr& A, const Csr& E, double dt0, 
     track_descriptor_vmin(out, x, n, n_die, die_idx, t, I.data(), vdd);
     ++accepted;
   }
-  out.steps = accepted;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   return out;
@@ -681,7 +681,7 @@ ThermalTranResult timestep_thermal_be(Solver& solver, const Csr& A, const double
     }
     ++accepted;
   }
-  out.steps = accepted;
+  out.steps = static_cast<int>(out.wave_t.size());
   out.rel_res_max = res_max;
   out.solve_s = t_solve;
   out.T_final = T;

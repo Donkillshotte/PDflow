@@ -90,7 +90,8 @@ int copy_tran(const dpn::TranResult& r, int64_t n, double* V_worst, int64_t* wor
       V_worst[i] = r.V_worst[static_cast<size_t>(i)];
     }
   }
-  const int ns = r.steps;
+  /* n_steps / max_steps are wave sample counts (UIC + accepted), not ceil(t_end/dt). */
+  const int ns = static_cast<int>(r.wave_t.size());
   if (max_steps < ns) {
     if (n_steps) {
       *n_steps = ns;
@@ -102,13 +103,13 @@ int copy_tran(const dpn::TranResult& r, int64_t n, double* V_worst, int64_t* wor
   }
   for (int i = 0; i < ns; ++i) {
     if (wave_t) {
-      wave_t[i] = r.wave_t[i];
+      wave_t[i] = r.wave_t[static_cast<size_t>(i)];
     }
     if (wave_vmin) {
-      wave_vmin[i] = r.wave_vmin[i];
+      wave_vmin[i] = r.wave_vmin[static_cast<size_t>(i)];
     }
     if (wave_itot) {
-      wave_itot[i] = r.wave_itot[i];
+      wave_itot[i] = r.wave_itot[static_cast<size_t>(i)];
     }
   }
   return 0;
@@ -610,7 +611,7 @@ int dpn_timestep_thermal_be(DpnHandle* h, const double* C, const double* P, doub
         T_worst[i] = r.T_worst[static_cast<size_t>(i)];
       }
     }
-    const int ns = r.steps;
+    const int ns = static_cast<int>(r.wave_t.size());
     if (max_steps < ns) {
       if (n_steps) {
         *n_steps = ns;

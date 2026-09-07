@@ -325,15 +325,26 @@ int main() {
                           Vw.data(), &worst_node, &worst_v, &worst_t, &rel, &ts, maxs, wt.data(),
                           wv.data(), wi.data(), &n_steps) == 0,
           "native timestep 1-node rc");
+    // Match fixed-Δt BE: UIC at t=0, I(t_{n+1}), step to t_end (no ceil(t_end/dt) phantom).
+    // n_steps is wave length = UIC + accepted advances (not ceil; FP can make ceil = N+1).
     double v = vdd, worst_cf = vdd;
-    const int steps = std::max(2, static_cast<int>(std::ceil(t_end / dt)));
-    for (int s = 0; s < steps; ++s) {
-      const double t = s * dt;
-      const double i = dpn::triangle(t, t50, dur, ipulse);
-      v = (g * vdd - i + (c / dt) * v) / a;
+    double t_cf = 0.0;
+    int accepted_cf = 0;
+    const double t_eps = 1e-18 * std::max(t_end, 1.0);
+    while (t_cf < t_end - t_eps) {
+      const double dt_use = std::min(dt, t_end - t_cf);
+      const double a_use = g + c / dt_use;
+      const double i = dpn::triangle(t_cf + dt_use, t50, dur, ipulse);
+      v = (g * vdd - i + (c / dt_use) * v) / a_use;
       worst_cf = std::min(worst_cf, v);
+      t_cf += dt_use;
+      ++accepted_cf;
     }
-    check(n_steps == steps, "native timestep step count");
+    check(n_steps == accepted_cf + 1, "native timestep step count");
+    check(wt[0] == 0.0, "native timestep wave starts at t=0");
+    check(std::abs(wt[static_cast<size_t>(n_steps - 1)] - t_end) <=
+              1e-12 * std::max(t_end, 1.0),
+          "native timestep wave ends at t_end");
     check(std::abs(worst_v - worst_cf) < 1e-12, "native timestep vs closed-form BE");
     dpn_free(h);
 
