@@ -22,7 +22,7 @@ function headingText(children: ReactNode): string {
 }
 
 function makeHeading(level: 1 | 2 | 3 | 4) {
-  return ({ children }: { children?: ReactNode }) => {
+  const Heading = ({ children }: { children?: ReactNode }) => {
     const text = headingText(children);
     const id = slugifyHeading(text);
     if (level === 1) return <h1 id={id}>{children}</h1>;
@@ -30,6 +30,8 @@ function makeHeading(level: 1 | 2 | 3 | 4) {
     if (level === 3) return <h3 id={id}>{children}</h3>;
     return <h4 id={id}>{children}</h4>;
   };
+  Heading.displayName = `MarkdownH${level}`;
+  return Heading;
 }
 
 function rewriteImageSrc(src?: string) {

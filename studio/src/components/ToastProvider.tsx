@@ -55,7 +55,7 @@ export function useToast() {
   const ctx = useContext(Ctx);
   if (!ctx) {
     return {
-      push: (_m: string, _t?: ToastTone) => undefined,
+      push: (() => undefined) as (message: string, tone?: ToastTone) => void,
     };
   }
   return ctx;

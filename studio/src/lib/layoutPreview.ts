@@ -187,64 +187,6 @@ export function resolveLayoutImageAbs(
   return null;
 }
 
-function generateInstMapSvg(
-  phaseId: LayoutPhaseId,
-  variant: string,
-  odbRel: string,
-): string | null {
-  const odbAbs = path.join(resultsDir(variant), odbRel);
-  if (!fs.existsSync(odbAbs)) return null;
-  const outDir = path.join(LEARN_ROOT, "sim/previews", variant);
-  const outAbs = path.join(outDir, `${phaseId}_instmap.svg`);
-  fs.mkdirSync(outDir, { recursive: true });
-
-  const py = `
-import odb
-db = odb.dbDatabase.create()
-odb.read_db(db, ${JSON.stringify(odbAbs)})
-block = db.getChip().getBlock()
-insts = block.getInsts()
-rects = []
-xs, ys = [], []
-for inst in insts:
-    bbox = inst.getBBox()
-    if bbox is None:
-        continue
-    x1, y1, x2, y2 = bbox.xMin(), bbox.yMin(), bbox.xMax(), bbox.yMax()
-    xs.extend([x1, x2]); ys.extend([y1, y2])
-    rects.append((x1, y1, x2 - x1, y2 - y1))
-if not rects:
-    raise SystemExit(1)
-min_x, max_x = min(xs), max(xs)
-min_y, max_y = min(ys), max(ys)
-pad = max(max_x - min_x, max_y - min_y) * 0.04 or 1000
-min_x -= pad; min_y -= pad; max_x += pad; max_y += pad
-w, h = max_x - min_x, max_y - min_y
-vw = 800
-vh = max(400, int(800 * h / w)) if w else 600
-def sx(x): return (x - min_x) / w * vw if w else 0
-def sy(y): return vh - (y - min_y) / h * vh if h else 0
-lines = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d">' % (vw, vh), '<rect width="%d" height="%d" fill="#0a0e14"/>' % (vw, vh)]
-for x, y, rw, rh in rects:
-    px, py = sx(x), sy(y + rh)
-    pw, ph = sx(x + rw) - sx(x), sy(y) - sy(y + rh)
-    if pw < 0.3 or ph < 0.3:
-        continue
-    lines.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="rgba(88,166,255,0.55)" stroke="rgba(88,166,255,0.25)" stroke-width="0.3"/>' % (px, py, pw, ph))
-lines.append('<text x="%.0f" y="%.0f" text-anchor="middle" fill="#8b949e" font-size="11">%d instances</text>' % (vw / 2, vh - 8, len(rects)))
-lines.append('</svg>')
-open(${JSON.stringify(outAbs)}, "w").write(chr(10).join(lines) + chr(10))
-print("WROTE", ${JSON.stringify(outAbs)})
-`;
-  const r = spawnSync("openroad", ["-python", "-no_init", "-exit"], {
-    input: py,
-    encoding: "utf8",
-    timeout: 90_000,
-  });
-  if (fs.existsSync(outAbs)) return outAbs;
-  return null;
-}
-
 export function generateLayoutFromOdb(
   phaseId: LayoutPhaseId,
   variant: string,

@@ -395,7 +395,7 @@ export function FlowLab() {
         tickRef.current = null;
       }
     }
-  }, [dirty, saveAll, phase, nextPhase, push, load]);
+  }, [dirty, saveAll, phase, push, load]);
 
   async function runSignoff(action: string, long: boolean) {
     if (running) return;
