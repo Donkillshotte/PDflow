@@ -3,7 +3,11 @@
 lab_tools_path() {
   local root="$1"
   export PATH="${root}/learn/tools/hotspot:${root}/learn/tools/fastercap:${root}/learn/tools/xyce/bin:${PATH}"
-  if [[ -d "${root}/learn/tools/xyce/lib" ]]; then
+  # The vlsida-eda Xyce archive carries an $ORIGIN/../lib RPATH.  Do not
+  # prepend that directory to the whole process: its bundled serial
+  # OpenBLAS can shadow the system BLAS and break Python/NumPy imports.
+  # Set PDflow_XYCE_USE_LD_LIBRARY_PATH=1 only for a non-RPATH build.
+  if [[ "${PDflow_XYCE_USE_LD_LIBRARY_PATH:-0}" == "1" && -d "${root}/learn/tools/xyce/lib" ]]; then
     export LD_LIBRARY_PATH="${root}/learn/tools/xyce/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   fi
 }

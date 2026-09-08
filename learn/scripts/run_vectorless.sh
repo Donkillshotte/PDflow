@@ -15,7 +15,7 @@ FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
 LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 ODB="${RES}/6_final.odb"
-SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
+SDC="${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc"
 OUT_DIR="${ROOT}/learn/sim/reports"
 SPICE="${RES}/pdn/pg_vdd_bumps.sp"
 INSTS="${RES}/pdn/inst_power_map.json"
@@ -23,8 +23,14 @@ mkdir -p "${OUT_DIR}" "${RES}/pdn"
 
 [[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB}"; exit 1; }
 
-openroad -python -no_init -exit \
-  "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}"
+if [[ -n "${OPENROAD_PYTHONPATH:-}" ]]; then
+  PYTHONPATH="${OPENROAD_PYTHONPATH}${PYTHONPATH:+:${PYTHONPATH}}" \
+    openroad -python -no_init -exit \
+    "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}"
+else
+  openroad -python -no_init -exit \
+    "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}"
+fi
 
 run_mode() {
   local mode="$1"

@@ -59,6 +59,22 @@ _REGION_BIN = re.compile(
 )
 
 
+def _openroad_python_env() -> dict[str, str]:
+    """Return a child env with an optional embedded-Python stdlib prefix.
+
+    User-space OpenROAD packages may ship Python extensions without the full
+    stdlib.  ``OPENROAD_PYTHONPATH`` is deliberately applied only to the
+    embedded ``openroad -python`` child, so the host Python keeps its own
+    version-matched stdlib and NumPy ABI.
+    """
+    env = os.environ.copy()
+    extra = env.get("OPENROAD_PYTHONPATH", "").strip()
+    if extra:
+        current = env.get("PYTHONPATH", "").strip()
+        env["PYTHONPATH"] = f"{extra}{os.pathsep}{current}" if current else extra
+    return env
+
+
 def region_blockage_tcl(
     *,
     x_dbu: float | None = None,
@@ -802,6 +818,7 @@ exit
             capture_output=True,
             text=True,
             timeout=min(30.0, timeout_s),
+            env=_openroad_python_env(),
         )
     except subprocess.TimeoutExpired:
         return {
@@ -948,6 +965,7 @@ exit
                 capture_output=True,
                 text=True,
                 timeout=min(30.0, timeout_s),
+                env=_openroad_python_env(),
             )
             if exp.returncode != 0 or not insts.is_file():
                 insts = Path(insts_src) if insts_src and Path(insts_src).is_file() else insts
@@ -1087,6 +1105,7 @@ exit
                 capture_output=True,
                 text=True,
                 timeout=min(30.0, timeout_s),
+                env=_openroad_python_env(),
             )
             if exp.returncode != 0 or not insts.is_file():
                 insts = Path(insts_src) if insts_src and Path(insts_src).is_file() else insts

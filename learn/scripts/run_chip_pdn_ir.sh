@@ -32,7 +32,7 @@ FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
 LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 ODB="${RES}/6_final.odb"
-SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
+SDC="${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc"
 
 [[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run finish first (variant=${VARIANT})"; exit 1; }
 [[ -f "${LIB}" ]] || { echo "FAIL missing liberty"; exit 1; }

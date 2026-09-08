@@ -67,13 +67,17 @@ export function classifyOrfsLine(line: string): ClassifiedLine {
     return { text: line, severity: "ok", code, noise: true };
   }
 
-  if (REAL_FAIL.test(line) && !/\[INFO\b/i.test(line)) {
-    return { text: line, severity: "error", code, noise: false };
-  }
-
+  // An explicitly tagged ORFS warning may mention an error as part of its
+  // diagnostic text (for example GUI-0076: "XCB error: 13").  The tag is
+  // authoritative here; do not promote the warning because REAL_FAIL sees
+  // the word "error" followed by a non-zero number.
   if (tag === "WARNING" || (code && NOISE_CODES.has(code))) {
     const noise = code ? NOISE_CODES.has(code) : false;
     return { text: line, severity: "warn", code, noise };
+  }
+
+  if (REAL_FAIL.test(line) && !/\[INFO\b/i.test(line)) {
+    return { text: line, severity: "error", code, noise: false };
   }
 
   if (/\[WARNING\b/i.test(line) || (/\bwarn(?:ing)?\b/i.test(line) && !BENIGN_FAIL.test(line))) {

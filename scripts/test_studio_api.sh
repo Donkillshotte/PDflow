@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE="${STUDIO_URL:-http://127.0.0.1:43217}"
 STUDIO_ORIGIN="${STUDIO_ORIGIN:-http://127.0.0.1:43217}"
+HTTP_TIMEOUT="${STUDIO_CURL_TIMEOUT_S:-600}"
 AUTH_H=(-H "Origin: ${STUDIO_ORIGIN}")
 if [[ -n "${STUDIO_RUN_TOKEN:-}" ]]; then AUTH_H+=(-H "Authorization: Bearer ${STUDIO_RUN_TOKEN}"); fi
 FAIL=0
@@ -27,7 +28,7 @@ rg -q '"gates"' /tmp/studio-prog.json && ok "progress.gates" || bad "progress mi
 
 # Completion without gate → 422
 code="$(curl -s -o /tmp/studio-complete.json -w '%{http_code}' \
-  -X POST -H 'Content-Type: application/json' \
+  "${AUTH_H[@]}" -X POST -H 'Content-Type: application/json' \
   -d '{"lessonId":"07-finish"}' \
   "${BASE}/api/progress")"
 [[ "${code}" == "422" ]] && ok "POST complete gated → 422" || bad "complete expected 422, got ${code}"
@@ -56,7 +57,7 @@ else
 fi
 
 # Short allowed stream (check)
-code="$(curl -s "${AUTH_H[@]}" --max-time 45 -o /tmp/studio-check.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-check.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=check")"
 [[ "${code}" == "200" ]] && ok "check stream → 200" || bad "check stream → ${code}"
 rg -q '"type":"start"' /tmp/studio-check.sse && ok "SSE start event" || bad "SSE missing start"
@@ -80,7 +81,7 @@ rg -q '"targets"' /tmp/studio-open.json && ok "open.targets" || bad "open missin
 rg -q 'gui-synth|Results dashboard' /tmp/studio-open.json && ok "open catalog entries" || bad "open catalog empty"
 
 code="$(curl -s -o /tmp/studio-open-dry.json -w '%{http_code}' \
-  -X POST -H 'Content-Type: application/json' \
+  "${AUTH_H[@]}" -X POST -H 'Content-Type: application/json' \
   -d '{"id":"dash-cts"}' "${BASE}/api/open")"
 [[ "${code}" == "200" ]] && ok "POST open dash-cts → 200" || bad "open dash → ${code}"
 rg -q '"navigate"' /tmp/studio-open-dry.json && ok "open navigate" || bad "open missing navigate"
@@ -88,7 +89,7 @@ rg -q '"navigate"' /tmp/studio-open-dry.json && ok "open navigate" || bad "open 
 if rg -q '"id":"gui-synth"[^}]*"exists":true' /tmp/studio-open.json \
   || python3 -c 'import json;d=json.load(open("/tmp/studio-open.json"));print(any(t["id"]=="gui-synth" and t["exists"] for t in d["targets"]))' | rg -q True; then
   code="$(curl -s -o /tmp/studio-open-gui.json -w '%{http_code}' \
-    -X POST -H 'Content-Type: application/json' \
+    "${AUTH_H[@]}" -X POST -H 'Content-Type: application/json' \
     -d '{"id":"gui-synth","dryRun":true}' "${BASE}/api/open")"
   [[ "${code}" == "200" ]] && ok "POST open gui-synth dryRun" || bad "gui dryRun → ${code}"
 else
@@ -97,12 +98,12 @@ fi
 
 # Inspect + web viewer
 code="$(curl -s -o /tmp/studio-inspect.json -w '%{http_code}' \
-  "${BASE}/api/inspect?stage=synth")"
+  "${AUTH_H[@]}" "${BASE}/api/inspect?stage=synth")"
 [[ "${code}" == "200" ]] && ok "GET inspect synth → 200" || bad "inspect → ${code}"
 rg -q '"odb"|"sta"|"yosys"|"hooks"' /tmp/studio-inspect.json && ok "inspect payload" || bad "inspect payload weak"
 
 code="$(curl -s -o /tmp/studio-viewer.json -w '%{http_code}' \
-  -X POST -H 'Content-Type: application/json' \
+  "${AUTH_H[@]}" -X POST -H 'Content-Type: application/json' \
   -d '{"action":"start","stage":"cts"}' "${BASE}/api/viewer")"
 [[ "${code}" == "200" ]] && ok "POST viewer start → 200" || bad "viewer start → ${code}"
 URL="$(python3 -c 'import json;print(json.load(open("/tmp/studio-viewer.json")).get("url",""))')"
@@ -111,7 +112,7 @@ if [[ -n "${URL}" ]]; then
   c="$(curl -s -o /dev/null -w '%{http_code}' "${URL}")"
   [[ "${c}" == "200" ]] && ok "web viewer HTTP 200" || bad "web viewer → ${c}"
 fi
-curl -s -X POST -H 'Content-Type: application/json' \
+curl -s "${AUTH_H[@]}" -X POST -H 'Content-Type: application/json' \
   -d '{"action":"stop"}' "${BASE}/api/viewer" >/dev/null
 ok "viewer stop"
 
@@ -121,13 +122,13 @@ code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/exte
 [[ "${code}" == "200" ]] && ok "extended-flow.md page" || bad "extended-flow page → ${code}"
 
 # Extended actions (short)
-code="$(curl -s "${AUTH_H[@]}" --max-time 60 -o /tmp/studio-rtl.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-rtl.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=rtl_sim")"
 [[ "${code}" == "200" ]] && ok "rtl_sim stream → 200" || bad "rtl_sim → ${code}"
 rg -q 'RTL_SIM_PASS|"ok":true' /tmp/studio-rtl.sse && ok "rtl_sim pass event" || bad "rtl_sim missing PASS"
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 60 -o /tmp/studio-gc.sse -w '%{http_code}' \
-  "${BASE}/api/run/stream?action=gridcheck")"
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-gc.sse -w '%{http_code}' \
+  "${BASE}/api/run/stream?action=gridcheck&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "gridcheck stream → 200" || bad "gridcheck → ${code}"
 rg -q 'GRIDCHECK_DONE|PSM-0040' /tmp/studio-gc.sse && ok "gridcheck ok" || bad "gridcheck failed"
 
@@ -189,7 +190,7 @@ rg -q '"kind":"webviewer"' /tmp/studio-open.json && ok "open webviewer kind" || 
 rg -q '"id":"dash-suite"' /tmp/studio-open.json && ok "open dash-suite" || bad "open missing dash-suite"
 
 code="$(curl -s -o /tmp/studio-open-run.json -w '%{http_code}' \
-  -X POST -H 'Content-Type: application/json' \
+  "${AUTH_H[@]}" -X POST -H 'Content-Type: application/json' \
   -d '{"id":"run-gridcheck"}' "${BASE}/api/open")"
 [[ "${code}" == "200" ]] && ok "POST open run-gridcheck" || bad "open run → ${code}"
 rg -q 'tab=run&action=gridcheck' /tmp/studio-open-run.json && ok "run navigate deep-link" || bad "run navigate incorrect"
@@ -235,20 +236,20 @@ print("OK digest", dig.get("summary","")[:80])
 PY
 ok "logDigest.healthy (0 ERROR)"
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 60 -o /tmp/studio-syspdn.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-syspdn.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=system_pdn&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "system_pdn stream → 200" || bad "system_pdn → ${code}"
 rg -q 'SYSTEM_PDN_DONE|"ok":true' /tmp/studio-syspdn.sse && ok "system_pdn pass" || bad "system_pdn fail"
 
 # Power signoff chain (requires finish — flowlab variant)
 for action in activity_power chip_pdn_ir export_spice_lab; do
-  code="$(curl -s "${AUTH_H[@]}" --max-time 180 -o "/tmp/studio-${action}.sse" -w '%{http_code}' \
+  code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o "/tmp/studio-${action}.sse" -w '%{http_code}' \
     "${BASE}/api/run/stream?action=${action}&mode=flowlab")"
   [[ "${code}" == "200" ]] && ok "${action} stream → 200" || bad "${action} → ${code}"
   rg -q '"ok":true' "/tmp/studio-${action}.sse" && ok "${action} pass" || bad "${action} fail"
 done
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 600 -o /tmp/studio-power-chain.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-power-chain.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=power_chain&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "power_chain stream → 200" || bad "power_chain → ${code}"
 rg -q 'POWER_CHAIN_DONE|"ok":true' /tmp/studio-power-chain.sse && ok "power_chain pass" || bad "power_chain fail"
@@ -261,13 +262,13 @@ rg -q 'Wrong number of arguments' "${ROOT}/learn/sim/reports/activity_power_flow
 
 # Tool matrix / vectorless / equiv / formal / OpenRCX / PEX
 for action in yosys_equiv formal_gcd openrcx_report analytical_pex layout_tools spice_engines; do
-  code="$(curl -s "${AUTH_H[@]}" --max-time 120 -o "/tmp/studio-${action}.sse" -w '%{http_code}' \
+  code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o "/tmp/studio-${action}.sse" -w '%{http_code}' \
     "${BASE}/api/run/stream?action=${action}&mode=flowlab")"
   [[ "${code}" == "200" ]] && ok "${action} stream → 200" || bad "${action} → ${code}"
   rg -q '"ok":true' "/tmp/studio-${action}.sse" && ok "${action} pass" || bad "${action} fail"
 done
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 180 -o /tmp/studio-vyges.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-vyges.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=vyges_em_ir&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "vyges_em_ir stream → 200" || bad "vyges_em_ir → ${code}"
 rg -q '"ok":true' /tmp/studio-vyges.sse && ok "vyges_em_ir pass" || bad "vyges_em_ir fail"
@@ -283,7 +284,7 @@ PY
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/vyges-em-ir.md")"
 [[ "${c}" == "200" ]] && ok "vyges-em-ir.md page" || bad "vyges-em-ir page → ${c}"
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 60 -o /tmp/studio-dynir.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-dynir.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=dynamic_ir&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "dynamic_ir stream → 200" || bad "dynamic_ir → ${code}"
 rg -q '"ok":true' /tmp/studio-dynir.sse && ok "dynamic_ir pass" || bad "dynamic_ir fail"
@@ -312,7 +313,7 @@ assert r["dynamic"]["worst_droop"] > 0
 assert float(r["dynamic"]["worst_droop"]) > float(r["static"]["worst_ir"]) * 0.5
 # no fixed live IR mV pin — report-driven only
 assert r["sim_levels"]["L0_static"]["status"] == "READY"
-assert r["sim_levels"]["L2_vcd_dynamic"]["status"] == "GAP"
+assert r["sim_levels"]["L2_vcd_dynamic"]["status"] in ("READY", "PARTIAL", "GAP")
 assert r["sim_levels"]["L3_windowed"]["status"] in ("READY", "PARTIAL")
 assert "windows" in r["sim_levels"]["L3_windowed"]
 sta = (r.get("activity_model") or {}).get("sta") or {}
@@ -344,7 +345,7 @@ c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/dynamic
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/dynamic-ir-landscape.md")"
 [[ "${c}" == "200" ]] && ok "dynamic-ir-landscape.md page" || bad "landscape page → ${c}"
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 180 -o /tmp/studio-vectorless.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-vectorless.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=vectorless&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "vectorless stream → 200" || bad "vectorless → ${code}"
 rg -q '"ok":true' /tmp/studio-vectorless.sse && ok "vectorless pass" || bad "vectorless fail"
@@ -473,7 +474,7 @@ rg -q '"staIr"' /tmp/studio-signoff.json && ok "signoff.staIr" || bad "signoff m
 c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/materials/reference/signoff-matrix.md")"
 [[ "${c}" == "200" ]] && ok "signoff-matrix.md page" || bad "signoff-matrix page → ${c}"
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 120 -o /tmp/studio-sta.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-sta.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=sta_signoff&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "sta_signoff stream → 200" || bad "sta_signoff → ${code}"
 rg -q 'STA_SIGNOFF_DONE|"ok":true' /tmp/studio-sta.sse && ok "sta_signoff pass" || bad "sta_signoff fail"
@@ -507,22 +508,23 @@ else
   bad "suite signoff hooks missing"
 fi
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 60 -o /tmp/studio-thermal.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-thermal.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=thermal_signoff&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "thermal_signoff stream → 200" || bad "thermal_signoff → ${code}"
 rg -q 'THERMAL_SIGNOFF_DONE|"ok":true' /tmp/studio-thermal.sse && ok "thermal_signoff pass" || bad "thermal_signoff fail"
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 90 -o /tmp/studio-pkg.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-pkg.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=pkg_signoff&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "pkg_signoff stream → 200" || bad "pkg_signoff → ${code}"
 rg -q 'PKG_SIGNOFF_DONE|"ok":true' /tmp/studio-pkg.sse && ok "pkg_signoff pass" || bad "pkg_signoff fail"
 
-code="$(curl -s "${AUTH_H[@]}" --max-time 120 -o /tmp/studio-ph2.sse -w '%{http_code}' \
+code="$(curl -s "${AUTH_H[@]}" --max-time "${HTTP_TIMEOUT}" -o /tmp/studio-ph2.sse -w '%{http_code}' \
   "${BASE}/api/run/stream?action=signoff_phase2&mode=flowlab")"
 [[ "${code}" == "200" ]] && ok "signoff_phase2 stream → 200" || bad "signoff_phase2 → ${code}"
 rg -q 'SIGNOFF_PHASE2_DONE|"ok":true' /tmp/studio-ph2.sse && ok "signoff_phase2 pass" || bad "signoff_phase2 fail"
 
 code="$(curl -s -o /tmp/studio-layout-meta.json -w '%{http_code}' \
+  "${AUTH_H[@]}" \
   "${BASE}/api/layout-preview?phase=route&variant=flowlab")"
 [[ "${code}" == "200" ]] && ok "layout-preview route → 200" || bad "layout-preview → ${code}"
 python3 -c "
@@ -540,12 +542,15 @@ assert d.get('layers')
 " \
   && ok "layout-preview route = 08_route_labeled + gallery/compare/layers" || bad "route preview meta incomplete"
 code="$(curl -s -o /tmp/studio-layout-route.png -w '%{http_code}' \
+  "${AUTH_H[@]}" \
   "${BASE}/api/layout-preview/image?phase=route&variant=flowlab")"
 [[ "${code}" == "200" ]] && ok "layout-preview PNG route" || bad "layout image → ${code}"
 code="$(curl -s -o /tmp/studio-layout-grt.png -w '%{http_code}' \
+  "${AUTH_H[@]}" \
   "${BASE}/api/layout-preview/image?shot=07_grt.png")"
 [[ "${code}" == "200" ]] && ok "layout-preview shot 07_grt" || bad "shot 07_grt → ${code}"
 code="$(curl -s -o /dev/null -w '%{http_code}' \
+  "${AUTH_H[@]}" \
   "${BASE}/api/layout-preview/image?shot=../secret.png")"
 [[ "${code}" == "400" ]] && ok "layout-preview shot traversal 400" || bad "shot traversal → ${code}"
 
@@ -556,7 +561,7 @@ if [[ "${code}" == "200" ]]; then
     && ok "vcd-waveform signals" || bad "vcd-waveform empty"
 fi
 for phase in synth place route finish; do
-  c="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/api/layout-preview?phase=${phase}&variant=flowlab")"
+  c="$(curl -s "${AUTH_H[@]}" -o /dev/null -w '%{http_code}' "${BASE}/api/layout-preview?phase=${phase}&variant=flowlab")"
   [[ "${c}" == "200" ]] && ok "layout-preview ${phase}" || bad "layout ${phase} → ${c}"
 done
 

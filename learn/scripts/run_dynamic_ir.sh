@@ -45,7 +45,7 @@ LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 LEF="${FLOW}/platforms/nangate45/lef/NangateOpenCellLibrary.tech.lef"
 SPEF="${RES}/6_final.spef"
 ODB="${RES}/6_final.odb"
-SDC="${FLOW}/designs/nangate45/gcd-tutorial/constraint.sdc"
+SDC="${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc"
 SPICE="${RES}/pdn/pg_vdd_bumps.sp"
 SPICE_VSS="${RES}/pdn/pg_vss_bumps.sp"
 INSTS="${RES}/pdn/inst_power_map.json"
@@ -86,9 +86,16 @@ fi
 
 if [[ ! -f "${INSTS}" ]]; then
   echo "=== export inst_power_map ===" | tee -a "${LOG}"
-  openroad -python -no_init -exit \
-    "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}" \
-    2>&1 | tee -a "${LOG}"
+  if [[ -n "${OPENROAD_PYTHONPATH:-}" ]]; then
+    PYTHONPATH="${OPENROAD_PYTHONPATH}${PYTHONPATH:+:${PYTHONPATH}}" \
+      openroad -python -no_init -exit \
+      "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}" \
+      2>&1 | tee -a "${LOG}"
+  else
+    openroad -python -no_init -exit \
+      "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}" \
+      2>&1 | tee -a "${LOG}"
+  fi
 fi
 
 write_pg_net() {
