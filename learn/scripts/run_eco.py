@@ -371,7 +371,9 @@ def main() -> int:
     mode = os.environ.get("ECO_MODE", "propose")
     report = apply(variant) if mode == "apply" else propose(variant)
     name = f"eco_apply_{variant}.json" if mode == "apply" else f"eco_{variant}.json"
-    out = _ROOT / "learn/sim/reports" / name
+    report_dir = Path(os.environ.get("PD_FLOW_REPORT_DIR", str(_ROOT / "learn/sim/reports")))
+    report_dir.mkdir(parents=True, exist_ok=True)
+    out = report_dir / name
     out.write_text(json.dumps(report, indent=2) + "\n")
     print(report["summary"])
     print("WROTE", out)

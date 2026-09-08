@@ -7,8 +7,13 @@ PORT="${PORT:-43217}"
 HOST="${HOST:-127.0.0.1}"
 
 if [[ ! -d node_modules ]]; then
-  echo "==> npm install in studio/"
-  npm install
+  if [[ -f package-lock.json ]]; then
+    echo "==> npm ci in studio/"
+    npm ci
+  else
+    echo "==> npm install in studio/ (no lockfile present)"
+    npm install
+  fi
 fi
 
 if [[ "${1:-}" == "--build" ]]; then

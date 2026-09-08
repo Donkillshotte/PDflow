@@ -177,7 +177,10 @@ export type LockInfo = {
   jobId: string;
   action: string;
   startedAt: string;
+  /** PID of the Studio owner process. Kept for backwards compatibility. */
   pid?: number;
+  /** PID/process-group leader of the actual EDA child. */
+  childPid?: number;
 };
 
 export function pidAlive(pid: number): boolean {
@@ -211,11 +214,53 @@ export function readLock(): LockInfo | null {
 export function acquireLock(
   info: LockInfo,
 ): { ok: true } | { ok: false; lock: LockInfo } {
-  const existing = readLock();
-  if (existing) return { ok: false, lock: existing };
   fs.mkdirSync(path.dirname(LOCK_PATH()), { recursive: true });
-  fs.writeFileSync(LOCK_PATH(), JSON.stringify(info, null, 2) + "\n");
-  return { ok: true };
+  const payload = JSON.stringify(info, null, 2) + "\n";
+  try {
+    const fd = fs.openSync(LOCK_PATH(), "wx");
+    try {
+      fs.writeFileSync(fd, payload, "utf8");
+    } finally {
+      fs.closeSync(fd);
+    }
+    return { ok: true };
+  } catch (e) {
+    if (!(e && typeof e === "object" && "code" in e && e.code === "EEXIST")) {
+      throw e;
+    }
+    const existing = readLock();
+    if (existing) return { ok: false, lock: existing };
+    // A stale lock may have been removed by readLock; retry once atomically.
+    const fd = fs.openSync(LOCK_PATH(), "wx");
+    try {
+      fs.writeFileSync(fd, payload, "utf8");
+    } finally {
+      fs.closeSync(fd);
+    }
+    return { ok: true };
+  }
+}
+
+export function updateLock(
+  jobId: string,
+  patch: Partial<LockInfo>,
+): boolean {
+  const existing = readLock();
+  if (!existing || existing.jobId !== jobId) return false;
+  const next = { ...existing, ...patch };
+  const tmp = `${LOCK_PATH()}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(next, null, 2) + "\n", "utf8");
+    fs.renameSync(tmp, LOCK_PATH());
+    return true;
+  } catch {
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
 }
 
 export function releaseLock(jobId?: string) {

@@ -6,6 +6,7 @@ import {
   resolveOpenTarget,
 } from "@/lib/open";
 import { startViewer } from "@/lib/webviewer";
+import { authorizeStudioMutation, rejectOversizedBody } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,14 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const denied = authorizeStudioMutation(req, "external tool launch");
+  if (denied) {
+    return denied;
+  }
+  const tooLarge = rejectOversizedBody(req, 16 * 1024);
+  if (tooLarge) {
+    return tooLarge;
+  }
   const body = (await req.json()) as {
     id?: string;
     artifact?: string;

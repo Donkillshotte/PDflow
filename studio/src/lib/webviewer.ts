@@ -8,6 +8,7 @@ import {
   resultsDir,
   STAGE_GUI_TARGETS,
 } from "./open";
+import { normalizeRelativeArtifact } from "./pathGuard";
 
 const LOCK = () => path.join(LEARN_ROOT, ".studio-web.lock");
 const DEFAULT_PORT = Number(process.env.STUDIO_OR_WEB_PORT || 43190);
@@ -99,9 +100,25 @@ export function startViewer(
   port?: number;
   artifact?: string;
 } {
-  const artifact = opts?.artifact ?? primaryArtifactForStage(stage);
+  const stageItems = STAGE_GUI_TARGETS[stage] ?? [];
+  const allowed = new Set(
+    stageItems
+      .filter((item) => item.kind === "openroad")
+      .map((item) => item.artifact),
+  );
+  let artifact: string | null;
+  try {
+    artifact = opts?.artifact
+      ? normalizeRelativeArtifact(opts.artifact)
+      : primaryArtifactForStage(stage);
+  } catch {
+    return { ok: false, message: "invalid viewer artifact" };
+  }
   if (!artifact) {
     return { ok: false, message: `unknown stage: ${stage}` };
+  }
+  if (!allowed.has(artifact)) {
+    return { ok: false, message: `artifact is not allowed for stage: ${stage}` };
   }
   const abs = path.join(
     /*turbopackIgnore: true*/ resultsDir(variant),

@@ -201,6 +201,15 @@ int main() {
     Index rp1[2] = {0, 1};
     DpnHandle* bad = dpn_setup(0, 1, 1, rp1, nullptr, nullptr);
     check(bad == nullptr, "c_api nnz>0 rejects null col/val");
+    Index col1[1] = {0};
+    double val1[1] = {1.0};
+    DpnHandle* bad_kind = dpn_setup(4, 1, 1, rp1, col1, val1);
+    check(bad_kind == nullptr, "c_api rejects unknown solver kind");
+    Index bad_rowptr[2] = {0, 2};
+    Index bad_col[2] = {0, 1};
+    double bad_val[2] = {1.0, 1.0};
+    DpnHandle* bad_index = dpn_setup(0, 1, 2, bad_rowptr, bad_col, bad_val);
+    check(bad_index == nullptr, "c_api rejects malformed CSR column bounds");
   }
   {
     Csr A = poisson_1d(8);
@@ -839,7 +848,8 @@ int main() {
                 gold.worst_v, std::abs(red.worst_v - gold.worst_v));
 
     const int maxs = 8192;
-    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(1);
+    // Descriptor/MOR V_worst is sized to the full state vector (n=4).
+    std::vector<double> wt(maxs), wv(maxs), wi(maxs), Vw(4);
     Index worst_node = 0, n_steps = 0;
     double worst_v = 0, worst_t = 0, rel = 0, ts = 0;
     Index ev_idx[1] = {0};

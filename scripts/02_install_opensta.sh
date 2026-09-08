@@ -10,6 +10,8 @@ SRC="${ROOT}/tools/src"
 CUDD_PREFIX="${ROOT}/tools/cudd"
 STA_PREFIX="${ROOT}/tools/opensta"
 JOBS="${EDA_JOBS}"
+CUDD_REF="${CUDD_REF:-d47718fedea39fa2ef7d4907432b92b032a8ff72}"
+OPENSTA_REF="${OPENSTA_REF:-2996e37a3aa7fdfd197b84842df719e70757657f}"
 
 echo "==> Installing build dependencies..."
 sudo apt-get install -y -qq build-essential cmake tcl8.6-dev swig bison flex \
@@ -22,6 +24,8 @@ if [[ ! -d "${SRC}/cudd" ]]; then
   echo "==> Cloning CUDD..."
   git clone --depth 1 https://github.com/The-OpenROAD-Project/cudd.git "${SRC}/cudd"
 fi
+git -C "${SRC}/cudd" fetch --depth 1 origin "${CUDD_REF}"
+git -C "${SRC}/cudd" checkout --detach "${CUDD_REF}"
 echo "==> Building CUDD..."
 (
   cd "${SRC}/cudd"
@@ -38,6 +42,8 @@ if [[ ! -d "${SRC}/OpenSTA" ]]; then
   echo "==> Cloning OpenSTA..."
   git clone --depth 1 https://github.com/parallaxsw/OpenSTA.git "${SRC}/OpenSTA"
 fi
+git -C "${SRC}/OpenSTA" fetch --depth 1 origin "${OPENSTA_REF}"
+git -C "${SRC}/OpenSTA" checkout --detach "${OPENSTA_REF}"
 echo "==> Building OpenSTA..."
 (
   cd "${SRC}/OpenSTA"

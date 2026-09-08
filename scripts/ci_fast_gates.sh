@@ -19,6 +19,10 @@ echo "==> Python: test_review_fixes"
 
 python3 learn/scripts/test_review_fixes.py
 
+echo "==> Python: test_studio_security"
+
+python3 learn/scripts/test_studio_security.py
+
 echo "==> Python: test_lab_physics"
 python3 learn/scripts/test_lab_physics.py
 

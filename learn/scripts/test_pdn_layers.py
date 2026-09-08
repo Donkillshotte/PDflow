@@ -928,6 +928,9 @@ quit
         / "lef"
         / "NangateOpenCellLibrary.tech.lef"
     )
+    if not lef.is_file():
+        print("SKIP tech/ORFS-dependent PDN layers (Nangate45 tech LEF absent)")
+        return 0
     from pdn_extract import extract_pdn, parse_spice, parse_tech_lef, probe_spef, stamp_spef_pg_c
     from pdn_em import em_thermal_snapshot
 

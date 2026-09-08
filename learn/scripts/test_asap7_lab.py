@@ -37,6 +37,10 @@ def check(cond: bool, msg: str) -> None:
 
 
 def main() -> None:
+    cfg = ROOT / "tools/OpenROAD-flow-scripts/flow/designs/asap7/gcd/config.mk"
+    if not cfg.is_file():
+        print("SKIP test_asap7_lab (ORFS ASAP7 design absent)")
+        return
     spec = validate(LabAsap7Spec())
     check(spec.variant.startswith("lab_asap7_"), f"default variant {spec.variant}")
     check(spec.variant == "lab_asap7_gcd_tc_rvt_nldm_7p5", spec.variant)

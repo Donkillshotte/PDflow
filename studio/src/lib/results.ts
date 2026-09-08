@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { REPO_ROOT } from "./course";
 import { digestOrfsLog, type LogDigest } from "./orfsLog";
+import { assertUnder, normalizeResultsVariant } from "./pathGuard";
 
 export type ArtifactInfo = {
   name: string;
@@ -40,22 +41,28 @@ const STAGE_LOG_GLOBS: Record<string, RegExp> = {
 const DEFAULT_VARIANT = "learn";
 
 function baseResults(variant = DEFAULT_VARIANT) {
-  return path.join(
+  const v = normalizeResultsVariant(variant);
+  const root = path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
-    `tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${variant}`,
+    "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd",
   );
+  return assertUnder(root, path.join(root, v));
 }
 function baseReports(variant = DEFAULT_VARIANT) {
-  return path.join(
+  const v = normalizeResultsVariant(variant);
+  const root = path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
-    `tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/${variant}`,
+    "tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd",
   );
+  return assertUnder(root, path.join(root, v));
 }
 function baseLogs(variant = DEFAULT_VARIANT) {
-  return path.join(
+  const v = normalizeResultsVariant(variant);
+  const root = path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
-    `tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/${variant}`,
+    "tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd",
   );
+  return assertUnder(root, path.join(root, v));
 }
 
 const STAGE_ARTIFACTS: Record<string, string[]> = {
@@ -194,6 +201,7 @@ export function collectStageResults(
   stage: string,
   variant: string = DEFAULT_VARIANT,
 ): StageResults {
+  variant = normalizeResultsVariant(variant);
   const names = STAGE_ARTIFACTS[stage] ?? [];
   const artifacts = names.map((n) => {
     // reports live under reports/ for some names

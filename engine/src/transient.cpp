@@ -642,7 +642,6 @@ ThermalTranResult timestep_thermal_be(Solver& solver, const Csr& A, const double
     }
   }
   out.T_worst = T;
-  const double inv_dt = 1.0 / dt;
   double res_max = 0.0;
   double t_solve = 0.0;
   double t = 0.0;

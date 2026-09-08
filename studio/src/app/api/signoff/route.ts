@@ -10,9 +10,10 @@ export async function GET(req: Request) {
     const matrix = signoffMatrixForUi(variant);
     return NextResponse.json(matrix);
   } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e) },
-      { status: 500 },
+      { error: message },
+      { status: message.startsWith("REFUSED:") ? 400 : 500 },
     );
   }
 }

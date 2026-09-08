@@ -43,17 +43,22 @@ def _boom(*_a, **_k):
 def main() -> int:
     gcd = resolve("gcd")
     aes = resolve("aes")
+    orfs_present = (REPO / "tools/OpenROAD-flow-scripts").is_dir()
     check(gcd.arch_extracts and gcd.has_cone("dpath") and gcd.has_cone("ctrl"), "GCD keeps cone fixtures")
     check(not aes.arch_extracts and not aes.has_cone("dpath") and not aes.has_cone("ctrl"),
           "aes has no dpath/ctrl cones")
     check(aes.top == "aes_cipher_top", f"aes top is aes_cipher_top, got {aes.top}")
-    check(aes.rtl.is_file() and len(aes.rtl_files) == 4, f"aes cipher-top closure is 4 files, got {aes.rtl_files}")
+    if orfs_present:
+        check(aes.rtl.is_file() and len(aes.rtl_files) == 4, f"aes cipher-top closure is 4 files, got {aes.rtl_files}")
+    else:
+        print("SKIP AES/SDC file presence checks (ORFS absent)")
     check(aes.clk_period_ns == 0.82 and gcd.clk_period_ns == 0.46,
           f"clock periods stay design-local, aes={aes.clk_period_ns} gcd={gcd.clk_period_ns}")
-    check(aes.constraint.is_file() and "aes" in str(aes.constraint) and "gcd" not in str(aes.constraint),
-          f"aes SDC is the 0.82 ns ORFS constraint, got {aes.constraint}")
-    check(gcd.constraint.is_file() and "gcd" in str(gcd.constraint),
-          f"GCD SDC stays the 0.46 ns ORFS constraint, got {gcd.constraint}")
+    if orfs_present:
+        check(aes.constraint.is_file() and "aes" in str(aes.constraint) and "gcd" not in str(aes.constraint),
+              f"aes SDC is the 0.82 ns ORFS constraint, got {aes.constraint}")
+        check(gcd.constraint.is_file() and "gcd" in str(gcd.constraint),
+              f"GCD SDC stays the 0.46 ns ORFS constraint, got {gcd.constraint}")
     check(all(p.name != "aes_inv_cipher_top.v" for p in aes.rtl_files), "aes F1 does not pull the inverse-cipher top")
     ibex = resolve("ibex")
     check(ibex.top == "ibex_core" and ibex.hdl == "systemverilog" and not ibex.f1_ready,
@@ -264,11 +269,14 @@ def main() -> int:
     from dse.openroad_f2 import evaluate_f5_drt as raw_f5
     aes_spec = resolve_design("aes")
     gcd_spec = resolve_design("gcd")
-    refuse = raw_f5(aes_spec.rtl, top=aes_spec.top, sdc=gcd_spec.constraint, timeout_s=1)
-    check(
-        refuse.get("status") == "fail" and "refusing gcd SDC" in str(refuse.get("reason")),
-        f"aes F5 refuses the GCD SDC, got {refuse}",
-    )
+    if orfs_present:
+        refuse = raw_f5(aes_spec.rtl, top=aes_spec.top, sdc=gcd_spec.constraint, timeout_s=1)
+        check(
+            refuse.get("status") == "fail" and "refusing gcd SDC" in str(refuse.get("reason")),
+            f"aes F5 refuses the GCD SDC, got {refuse}",
+        )
+    else:
+        print("SKIP live AES F5 refusal check (ORFS absent)")
 
 
     missing = attach_activity_flags(["worker"], variant="aes", design_id="aes")

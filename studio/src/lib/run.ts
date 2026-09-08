@@ -10,7 +10,9 @@ import {
   flushJobLog,
   getJob,
   preflightAction,
+  readLock,
   releaseLock,
+  updateLock,
   upsertJob,
   type JobRecord,
 } from "./jobs";
@@ -139,11 +141,19 @@ function ensureTutorialSymlink() {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   try {
     const st = fs.lstatSync(dest);
-    if (st.isSymbolicLink() || st.isDirectory() || st.isFile()) {
-      fs.rmSync(dest, { recursive: true, force: true });
+    if (!st.isSymbolicLink()) {
+      throw new Error(`REFUSED: tutorial destination is not a symlink: ${dest}`);
     }
+    try {
+      if (fs.realpathSync(dest) === fs.realpathSync(src)) {
+        return;
+      }
+    } catch {
+      // Broken symlink: it is safe to replace the link itself.
+    }
+    fs.unlinkSync(dest);
   } catch {
-    /* missing is fine */
+    if (fs.existsSync(dest)) throw new Error(`REFUSED: cannot replace tutorial link: ${dest}`);
   }
   fs.symlinkSync(src, dest);
 }
@@ -400,28 +410,30 @@ function defaultTimeout(action: string) {
 
 export function cancelJob(jobId: string): boolean {
   const job = jobs.get(jobId);
-  if (!job) return false;
-  job.cancelled = true;
+  const lock = readLock();
+  const childPid = job?.child.pid ?? (lock?.jobId === jobId ? lock.childPid : undefined);
+  if (!job && !childPid) return false;
+  if (job) job.cancelled = true;
   try {
-    const pid = job.child.pid;
+    const pid = childPid;
     if (pid) {
       try {
         process.kill(-pid, "SIGTERM");
       } catch {
-        job.child.kill("SIGTERM");
+        job?.child.kill("SIGTERM");
       }
       setTimeout(() => {
         try {
           if (pid) {
             process.kill(-pid, "SIGKILL");
           } else {
-            job.child.kill("SIGKILL");
+            job?.child.kill("SIGKILL");
           }
         } catch {
           /* ignore */
         }
       }, 2000);
-    } else {
+    } else if (job) {
       job.child.kill("SIGTERM");
     }
   } catch {
@@ -500,6 +512,7 @@ export async function* streamCourseAction(
     env: { ...process.env, LEARN_AUTO: "1", FORCE_COLOR: "0", ...(env ?? {}) },
     detached: process.platform !== "win32",
   });
+  updateLock(jobId, { childPid: child.pid ?? undefined });
   jobs.set(jobId, { id: jobId, child, startedAt, cancelled: false });
 
   yield { type: "start", jobId, command, action };

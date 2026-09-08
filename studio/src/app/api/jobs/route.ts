@@ -7,6 +7,7 @@ import {
   readLock,
   pidAlive,
 } from "@/lib/jobs";
+import { authorizeStudioMutation, rejectOversizedBody } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,19 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const denied = authorizeStudioMutation(req, "job lock mutation");
+  if (denied) {
+    return denied;
+  }
+  const tooLarge = rejectOversizedBody(req, 16 * 1024);
+  if (tooLarge) {
+    return tooLarge;
+  }
   const url = new URL(req.url);
   if (url.searchParams.get("force") === "1") {
     const lock = readLock();
-    if (lock?.pid && pidAlive(lock.pid)) {
+    const runningPid = lock?.childPid ?? lock?.pid;
+    if (runningPid && pidAlive(runningPid)) {
       return NextResponse.json(
         { error: "job still running; cancel it first", lock },
         { status: 409 },

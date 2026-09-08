@@ -3,6 +3,7 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { resultsDir } from "./open";
+import { normalizeRelativeArtifact, normalizeResultsVariant } from "./pathGuard";
 import {
   PHASE_COMPARE,
   PHASE_GALLERY,
@@ -120,7 +121,7 @@ export const PHYSICAL_LAYOUT_PHASES = new Set<LayoutPhaseId>([
 ]);
 
 function reportsDir(variant: string) {
-  return path.join(FLOW(), "reports/nangate45/gcd", variant);
+  return path.join(FLOW(), "reports/nangate45/gcd", normalizeResultsVariant(variant));
 }
 
 const GUI_SHOTS_DIR = () =>
@@ -148,13 +149,19 @@ function shotUrl(file: string) {
 }
 
 function cacheAbs(variant: string, phaseId: LayoutPhaseId) {
-  return path.join(LEARN_ROOT, "sim/previews", variant, `${phaseId}.png`);
+  return path.join(
+    LEARN_ROOT,
+    "sim/previews",
+    normalizeResultsVariant(variant),
+    `${phaseId}.png`,
+  );
 }
 
 export function resolveLayoutImageAbs(
   phaseId: LayoutPhaseId,
   variant: string,
 ): { abs: string; source: "cache" | "orfs" | "gui_shot" | "odb" } | null {
+  variant = normalizeResultsVariant(variant);
   const cfg = PHASE_LAYOUT[phaseId];
   // Pedagogical shots first: route must show metal spaghetti, not a blank iframe.
   if (cfg.guiShot) {
@@ -179,7 +186,7 @@ export function resolveLayoutImageAbs(
     const odbAbs = path.join(resultsDir(variant), cfg.odb);
     if (fs.existsSync(odbAbs)) {
       const generated = generateLayoutFromOdb(phaseId, variant, cfg.odb);
-      if (generated && fs.existsSync(generated)) {
+      if (generated && fs.existsSync(/*turbopackIgnore: true*/ generated)) {
         return { abs: generated, source: "odb" };
       }
     }
@@ -192,7 +199,8 @@ export function generateLayoutFromOdb(
   variant: string,
   odbRel: string,
 ): string | null {
-  const odbAbs = path.join(resultsDir(variant), odbRel);
+  variant = normalizeResultsVariant(variant);
+  const odbAbs = path.join(resultsDir(variant), normalizeRelativeArtifact(odbRel));
   if (!fs.existsSync(odbAbs)) return null;
 
   const outDir = path.join(LEARN_ROOT, "sim/previews", variant);
@@ -226,6 +234,7 @@ export function generateLayoutFromOdb(
 }
 
 export function layoutPreviewMeta(phaseId: LayoutPhaseId, variant: string) {
+  variant = normalizeResultsVariant(variant);
   const cfg = PHASE_LAYOUT[phaseId];
   const odbAbs = cfg.odb ? path.join(resultsDir(variant), cfg.odb) : null;
   const image = resolveLayoutImageAbs(phaseId, variant);

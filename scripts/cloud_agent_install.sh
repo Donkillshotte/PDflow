@@ -41,7 +41,7 @@ log "System packages (build deps + auxiliary tools)"
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update -qq
 APT_PKGS=(
-  build-essential cmake g++-13 git curl ca-certificates pkg-config
+  build-essential cmake g++-13 git curl ca-certificates pkg-config ripgrep
   tcl8.6-dev swig bison flex libreadline-dev tcl-tclreadline
   automake autotools-dev libtool libtool-bin m4
   zlib1g-dev libffi-dev python3-dev tcl-dev

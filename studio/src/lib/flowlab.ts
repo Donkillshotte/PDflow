@@ -102,16 +102,21 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
 }
 
+function finiteOr(value: unknown, fallback: number) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 export function normalizeParams(raw: Partial<FlowlabParams> | null): FlowlabParams {
   const p = { ...DEFAULT_PARAMS, ...(raw ?? {}) };
   const sdc =
     p.sdcPreset === "relaxed" || p.sdcPreset === "tight" ? p.sdcPreset : "default";
   return {
-    coreUtilization: clamp(Number(p.coreUtilization) || 35, 20, 60),
-    placeDensityAddon: clamp(Number(p.placeDensityAddon) || 0.2, 0.05, 0.45),
+    coreUtilization: clamp(finiteOr(p.coreUtilization, 35), 20, 60),
+    placeDensityAddon: clamp(finiteOr(p.placeDensityAddon, 0.2), 0.05, 0.45),
     abcArea: p.abcArea === 0 ? 0 : 1,
     sdcPreset: sdc,
-    tnsEndPercent: clamp(Number(p.tnsEndPercent) || 100, 0, 100),
+    tnsEndPercent: clamp(finiteOr(p.tnsEndPercent, 100), 0, 100),
   };
 }
 

@@ -34,16 +34,21 @@ Scripts require `sudo` for apt packages:
 ./scripts/04_setup_orfs.sh         # clone ORFS + build yosys
 ```
 
-The ORFS script derives the quarterly tag from the installed OpenROAD version
-(for example `26Q2-...` → `26Q2`). Override with `ORFS_TAG=...`.
+The installers are pinned by default: OpenROAD `26Q2-1164-g08f67ee5ec`,
+KLayout `0.30.11`, CUDD/OpenSTA commit IDs, and ORFS `26Q2` commit
+`036d106273e66855cd5214d49518fd0f0df7de61`. The binary installers verify
+size and checksums before invoking `apt`. Deliberate upgrades must provide
+`OPENROAD_VERSION` + `OPENROAD_SHA256`, or `KLAYOUT_VERSION` +
+`KLAYOUT_SHA256`; source refs can be overridden with `CUDD_REF`,
+`OPENSTA_REF`, and `ORFS_COMMIT`.
 
 ## Tool versions (reference)
 
 | Tool | Version | Source |
 |---|---|---|
-| [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) | 26Q2 | Precision Innovations `.deb` ([VaultLink](https://vaultlink.precisioninno.com/)) |
+| [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) | 26Q2-1164-g08f67ee5ec | Precision Innovations `.deb` ([VaultLink](https://vaultlink.precisioninno.com/)) |
 | [OpenSTA](https://github.com/parallaxsw/OpenSTA) | 3.1.0 | built from source (with CUDD) |
-| [ORFS](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) | 26Q2 | tag aligned to OpenROAD |
+| [ORFS](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) | 26Q2 @ `036d106` | pinned tag commit |
 | [Yosys](https://github.com/YosysHQ/yosys) | 0.63 | submodule from ORFS |
 | [KLayout](https://www.klayout.de/) | 0.30.11 | official `.deb` |
 
@@ -106,7 +111,7 @@ GUI (needs X11 / Desktop):
 | Floorplan 412 in Studio | Run synth first; verify `results/.../flowlab/` |
 | Timing fail @ 0.46 ns | Normal on aggressive GCD tutorial; relax SDC in FlowLab |
 | Lock `.studio-run.lock` | `./scripts/test_studio_api.sh` cleans it; or remove manually if stale |
-| ORFS tag mismatch | `ORFS_TAG` aligned to `openroad -version` (26Q2) |
+| ORFS tag mismatch | `ORFS_TAG`/ `ORFS_COMMIT` are pinned to the tested 26Q2 pair |
 
 ## Notes
 

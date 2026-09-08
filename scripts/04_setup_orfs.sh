@@ -11,8 +11,12 @@ source "${ROOT}/scripts/lib/jobs.sh"
 ORFS="${ROOT}/tools/OpenROAD-flow-scripts"
 YOSYS_PREFIX="${ROOT}/tools/yosys"
 JOBS="${EDA_JOBS}"
-OPENROAD_RELEASE="$(openroad -version | awk '{print $1}')"
-ORFS_TAG="${ORFS_TAG:-${OPENROAD_RELEASE%%-*}}"
+ORFS_TAG="${ORFS_TAG:-26Q2}"
+if [[ "${ORFS_TAG}" == "26Q2" ]]; then
+  ORFS_COMMIT="${ORFS_COMMIT:-036d106273e66855cd5214d49518fd0f0df7de61}"
+else
+  ORFS_COMMIT="${ORFS_COMMIT:-}"
+fi
 
 echo "==> Installing yosys build dependencies..."
 sudo apt-get install -y -qq build-essential cmake bison flex time libreadline-dev \
@@ -28,6 +32,20 @@ else
     cd "${ORFS}"
     git fetch --depth 1 --force origin "refs/tags/${ORFS_TAG}:refs/tags/${ORFS_TAG}"
     git checkout --detach "${ORFS_TAG}"
+  )
+fi
+
+if [[ -n "${ORFS_COMMIT}" ]]; then
+  (
+    cd "${ORFS}"
+    if ! git cat-file -e "${ORFS_COMMIT}^{commit}" 2>/dev/null; then
+      git fetch --depth 1 origin "${ORFS_COMMIT}"
+    fi
+    git checkout --detach "${ORFS_COMMIT}"
+    [[ "$(git rev-parse HEAD)" == "${ORFS_COMMIT}" ]] || {
+      echo "ERROR: ORFS commit verification failed" >&2
+      exit 1
+    }
   )
 fi
 

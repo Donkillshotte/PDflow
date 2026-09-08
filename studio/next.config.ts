@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+const scriptSrc = ["'self'", "'unsafe-inline'"];
+if (process.env.NODE_ENV !== "production") {
+  // Next's development client/evaluator needs this; production does not.
+  scriptSrc.push("'unsafe-eval'");
+}
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -12,7 +18,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      `script-src ${scriptSrc.join(" ")}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",

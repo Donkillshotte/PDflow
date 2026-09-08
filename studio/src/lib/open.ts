@@ -2,7 +2,11 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import { REPO_ROOT, LEARN_ROOT } from "./course";
-import { assertUnder, normalizeResultsVariant } from "./pathGuard";
+import {
+  assertUnder,
+  normalizeRelativeArtifact,
+  normalizeResultsVariant,
+} from "./pathGuard";
 
 const DEFAULT_VARIANT = "learn";
 
@@ -26,12 +30,18 @@ export function preferredResultsVariant(): "flowlab" | "learn" {
 }
 
 export function artifactExists(rel: string, variant?: string): boolean {
+  let name: string;
+  try {
+    name = normalizeRelativeArtifact(rel);
+  } catch {
+    return false;
+  }
   if (variant) {
-    return fs.existsSync(path.join(resultsDir(variant), rel));
+    return fs.existsSync(path.join(resultsDir(variant), name));
   }
   return (
-    fs.existsSync(path.join(resultsDir("flowlab"), rel)) ||
-    fs.existsSync(path.join(resultsDir("learn"), rel))
+    fs.existsSync(path.join(resultsDir("flowlab"), name)) ||
+    fs.existsSync(path.join(resultsDir("learn"), name))
   );
 }
 
@@ -510,7 +520,12 @@ export function resolveArtifactOpen(
   artifact: string,
   variant: string = preferredResultsVariant(),
 ): OpenTarget | null {
-  const name = path.basename(artifact);
+  let name: string;
+  try {
+    name = normalizeRelativeArtifact(artifact);
+  } catch {
+    return null;
+  }
   const abs = absArtifact(name, variant);
   if (!fs.existsSync(abs)) return null;
   if (name.endsWith(".gds") || name.endsWith(".oas")) {

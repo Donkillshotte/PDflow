@@ -18,7 +18,9 @@ int dpn_index_width(void);
 DpnHandle* dpn_setup(int kind, int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
                      const double* val);
 
-/* Solve A x = b. x0 may be NULL. Returns 0 on success. relres may be NULL. */
+/* Solve A x = b. x0 may be NULL. Returns 0 when relres <= 1e-8, 1 when the
+   solver produced a non-converged result, -1 on invalid arguments, and -3 on
+   a solver exception. */
 int dpn_solve(DpnHandle* h, const double* b, double* x, const double* x0, double* relres);
 
 int64_t dpn_n(DpnHandle* h);

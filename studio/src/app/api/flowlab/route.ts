@@ -8,6 +8,7 @@ import {
   writeRtl,
   type FlowlabParams,
 } from "@/lib/flowlab";
+import { authorizeStudioMutation, rejectOversizedBody } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,14 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  const denied = authorizeStudioMutation(req, "FlowLab write");
+  if (denied) {
+    return denied;
+  }
+  const tooLarge = rejectOversizedBody(req, 1024 * 1024);
+  if (tooLarge) {
+    return tooLarge;
+  }
   try {
     const body = (await req.json()) as {
       rtl?: string;

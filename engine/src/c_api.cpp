@@ -7,7 +7,9 @@
 
 #include <algorithm>
 #include <climits>
+#include <cmath>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <new>
 #include <vector>
@@ -34,7 +36,7 @@ int n_ev_ok(int64_t n_events) {
 }
 
 bool csr_ok(dpn::Index n, const int64_t* rowptr, int64_t nnz, const int64_t* col) {
-  if (n <= 0 || !rowptr || rowptr[0] != 0 || rowptr[n] != nnz) {
+  if (n <= 0 || nnz < 0 || !rowptr || rowptr[0] != 0 || rowptr[n] != nnz) {
     return false;
   }
   if (nnz > 0 && !col) {
@@ -176,6 +178,9 @@ int dpn_index_width(void) { return static_cast<int>(8 * sizeof(dpn::Index)); }
 
 DpnHandle* dpn_setup(int kind, int64_t n, int64_t nnz, const int64_t* rowptr, const int64_t* col,
                      const double* val) {
+  if (kind < 0 || kind > 3) {
+    return nullptr;
+  }
   if (!csr_ok(static_cast<dpn::Index>(n), rowptr, nnz, col)) {
     return nullptr;
   }
@@ -204,11 +209,22 @@ int dpn_solve(DpnHandle* h, const double* b, double* x, const double* x0, double
   if (!h || !h->solver || !b || !x) {
     return -1;
   }
-  h->solver->solve(b, x, x0);
-  if (relres) {
-    *relres = h->solver->last_relres();
+  try {
+    h->solver->solve(b, x, x0);
+    const double residual = h->solver->last_relres();
+    if (relres) {
+      *relres = residual;
+    }
+    if (!std::isfinite(residual) || residual > 1e-8) {
+      return 1;  // a numerical result exists, but it did not converge tightly enough
+    }
+    return 0;
+  } catch (...) {
+    if (relres) {
+      *relres = std::numeric_limits<double>::infinity();
+    }
+    return -3;
   }
-  return 0;
 }
 
 int64_t dpn_n(DpnHandle* h) { return h && h->solver ? static_cast<int64_t>(h->solver->n()) : 0; }
@@ -295,7 +311,8 @@ int dpn_timestep_be_hist_cmat(DpnHandle* h, const double* C, int64_t nnz_c, cons
     return -1;
   }
   const int64_t n = h->solver->n();
-  if (nnz_c > 0 && (!cptr || cptr[n] != nnz_c || (nnz_c > 0 && (!cidx || !cval)))) {
+  if (nnz_c > 0 &&
+      (!csr_ok(static_cast<dpn::Index>(n), cptr, nnz_c, cidx) || !cval)) {
     return -1;
   }
   try {
@@ -350,10 +367,14 @@ int dpn_timestep_be_adaptive(int64_t n, int64_t nnz, const int64_t* rowptr, cons
                              double* V_worst, int64_t* worst_node, double* worst_v, double* worst_t,
                              double* rel_res_max, double* solve_s, int max_steps, double* wave_t,
                              double* wave_vmin, double* wave_itot, int64_t* n_steps) {
-  if (!rowptr || !C || !leak || n <= 0 || dt0 <= 0.0 || n_ev_ok(n_events) < 0) {
+  if (!C || !leak || n <= 0 || dt0 <= 0.0 || n_ev_ok(n_events) < 0 ||
+      !csr_ok(static_cast<dpn::Index>(n), rowptr, nnz, col)) {
     return -1;
   }
   if (nnz > 0 && (!col || !Gval)) {
+    return -1;
+  }
+  if (n_bumps < 0 || (n_bumps > 0 && !bumps)) {
     return -1;
   }
   if (n_bumps > static_cast<int64_t>(INT_MAX)) {

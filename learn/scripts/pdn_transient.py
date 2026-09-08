@@ -64,6 +64,58 @@ def build_system(resistors, currents, voltages):
     return order, idx, G
 
 
+def _floating_nodes(G, free_idx, fixed_idx):
+    """Return free nodes in components with no DC reference.
+
+    A component is anchored by a connection to a fixed bump, an explicit
+    conductance to ground (diagonal greater than the off-diagonal conductance
+    sum), or a package Thevenin stamp. Only genuinely floating components need
+    the tiny numerical shunt used by the static fallback.
+    """
+    free_set = set(free_idx)
+    fixed_set = set(fixed_idx)
+    adjacency = {i: [] for i in free_idx}
+    anchored = set()
+    csr = G.tocsr()
+    for i in free_idx:
+        diag = 0.0
+        off_sum = 0.0
+        for p in range(csr.indptr[i], csr.indptr[i + 1]):
+            j = int(csr.indices[p])
+            value = float(csr.data[p])
+            if j == i:
+                diag += abs(value)
+                continue
+            off_sum += abs(value)
+            if j in free_set:
+                adjacency[i].append(j)
+            elif j in fixed_set and abs(value) > 0.0:
+                anchored.add(i)
+        # For a resistor network, a positive diagonal excess is a path to
+        # ground rather than only Laplacian coupling to other free nodes.
+        if diag - off_sum > max(1e-18, 1e-12 * max(diag, off_sum, 1e-12)):
+            anchored.add(i)
+
+    floating = []
+    seen = set()
+    for start in free_idx:
+        if start in seen:
+            continue
+        stack = [start]
+        component = []
+        seen.add(start)
+        while stack:
+            node = stack.pop()
+            component.append(node)
+            for neighbour in adjacency[node]:
+                if neighbour not in seen:
+                    seen.add(neighbour)
+                    stack.append(neighbour)
+        if not any(node in anchored for node in component):
+            floating.extend(component)
+    return floating
+
+
 def solve_static(G, idx, order, currents, voltages, vdd, pkg_r=0.0):
     """On-die DC IR. pkg_r>0 stamps a Thevenin pad (same DC limit as assemble_be).
 
@@ -102,9 +154,12 @@ def solve_static(G, idx, order, currents, voltages, vdd, pkg_r=0.0):
     if fixed_idx:
         V[fixed_idx] = Vfix[fixed_idx]
 
-    # Regularize floating islands (tiny shunt to a reference)
-    for i in free_idx:
-        Gwork[i, i] += 1e-8
+    # Regularize only genuinely floating islands. Adding a shunt to every free
+    # node changes the DC solution even when an ideal bump already anchors it.
+    floating_idx = _floating_nodes(Gwork.tocsr(), free_idx, fixed_idx)
+    regularization_g = 1e-8
+    for i in floating_idx:
+        Gwork[i, i] += regularization_g
     Gwork = Gwork.tocsr()
 
     Gff = Gwork[free_idx][:, free_idx].tocsc()
@@ -130,6 +185,8 @@ def solve_static(G, idx, order, currents, voltages, vdd, pkg_r=0.0):
         "loads": len(currents),
         "sources": len(voltages),
         "solver": "spsolve",
+        "regularized_nodes": len(floating_idx),
+        "regularization_g": regularization_g if floating_idx else 0.0,
         "pkg_r": pkg,
         "pad": "thevenin" if pkg > 0 and bump else "ideal_bump",
     }

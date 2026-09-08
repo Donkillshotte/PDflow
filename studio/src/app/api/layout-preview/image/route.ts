@@ -7,6 +7,8 @@ import {
   resolveNamedGuiShot,
   type LayoutPhaseId,
 } from "@/lib/layoutPreview";
+import { normalizeResultsVariant } from "@/lib/pathGuard";
+import { authorizeStudioMutation } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -34,6 +36,10 @@ function sendFile(abs: string, extra: Record<string, string> = {}) {
 }
 
 export async function GET(req: Request) {
+  const denied = authorizeStudioMutation(req, "layout preview process");
+  if (denied) {
+    return denied;
+  }
   const url = new URL(req.url);
   const shot = url.searchParams.get("shot");
   if (shot) {
@@ -55,7 +61,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "invalid phase" }, { status: 400 });
   }
 
-  const resolved = resolveLayoutImageAbs(phase, variant);
+  let resolved;
+  try {
+    resolved = resolveLayoutImageAbs(phase, normalizeResultsVariant(variant));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
   if (!resolved) {
     return NextResponse.json(
       { error: "Preview missing — run the phase or generate from ODB" },

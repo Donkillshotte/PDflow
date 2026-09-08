@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { resultsDir } from "./open";
+import { normalizeResultsVariant } from "./pathGuard";
 
 export type SignoffPillarId = "timing" | "geometry" | "equivalence" | "power" | "pkg" | "thermal";
 
@@ -235,6 +236,7 @@ export function signoffPillar(id: SignoffPillarId): SignoffPillarDef | undefined
 }
 
 export function reportPathForCheck(check: SignoffCheckDef, variant: string): string {
+  variant = normalizeResultsVariant(variant);
   return path.join(LEARN_ROOT, check.reportRel.replace("{variant}", variant));
 }
 
@@ -259,6 +261,7 @@ export type SignoffGate = {
 };
 
 function pillarReportPath(pillarId: SignoffPillarId, variant: string): string {
+  variant = normalizeResultsVariant(variant);
   const map: Partial<Record<SignoffPillarId, string>> = {
     timing: `sim/reports/sta_signoff_${variant}.json`,
     geometry: `sim/reports/drc_signoff_${variant}.json`,
@@ -318,6 +321,7 @@ export type StaIrAwareSummary = {
 };
 
 export function readStaIrAware(variant = "flowlab"): StaIrAwareSummary | null {
+  variant = normalizeResultsVariant(variant);
   const abs = path.join(LEARN_ROOT, `sim/reports/sta_ir_aware_${variant}.json`);
   const report = readJsonReport(abs);
   if (!report) return null;
@@ -506,6 +510,7 @@ function evaluateCheckGate(
   pillar: SignoffPillarId,
   variant: string,
 ): SignoffGate {
+  variant = normalizeResultsVariant(variant);
   const rel = check.reportRel.replace("{variant}", variant);
   const abs = path.join(LEARN_ROOT, rel);
   const exists = fs.existsSync(abs);
@@ -557,6 +562,7 @@ export function evaluateSignoffGates(variant = "flowlab"): {
   gates: SignoffGate[];
   pillars: Record<string, { ok: boolean; report?: string }>;
 } {
+  variant = normalizeResultsVariant(variant);
   const gates: SignoffGate[] = [];
   const pillars: Record<string, { ok: boolean; report?: string }> = {};
 
@@ -700,6 +706,7 @@ export function evaluateSignoffGates(variant = "flowlab"): {
 }
 
 export function signoffMatrixForUi(variant = "flowlab") {
+  variant = normalizeResultsVariant(variant);
   return {
     variant,
     golden: readGoldenGcd(),

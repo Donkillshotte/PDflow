@@ -85,6 +85,9 @@ def main() -> int:
 
     if live.is_file():
         mem_l = DesignMemory(live)
+        live_rows_before = len(mem_l)
+        check(live_rows_before >= 113,
+              f"live memory retains the historical minimum, got {live_rows_before}")
         lchamp = _champ(mem_l)
         check(lchamp is not None and lchamp.qor.dynamic_ir_mv is not None
               and abs(float(lchamp.qor.dynamic_ir_mv) - CHAMP_MV) < 0.001,
@@ -115,7 +118,10 @@ def main() -> int:
             winning_host_pdn=_boom,
         )
         check(not paid, "dispatch does not spend when the chain is closed")
-        check(len(mem_l) == 113, f"live memory is not restamped, got {len(mem_l)}")
+        check(
+            len(mem_l) == live_rows_before,
+            f"live memory is not restamped, started with {live_rows_before}, got {len(mem_l)}",
+        )
 
     if FAILS:
         print(f"{len(FAILS)} FAILED")

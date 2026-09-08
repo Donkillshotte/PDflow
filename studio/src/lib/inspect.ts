@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { REPO_ROOT } from "./course";
 import { preferredResultsVariant, resultsDir } from "./open";
+import { normalizeRelativeArtifact, normalizeResultsVariant } from "./pathGuard";
 
 const FLOW = () => path.join(REPO_ROOT, "tools/OpenROAD-flow-scripts/flow");
 const LIB = () =>
@@ -82,7 +83,10 @@ export function inspectOdb(
   artifact: string,
   variant: string = preferredResultsVariant(),
 ): OdbStats | null {
-  const abs = path.join(resultsDir(variant), artifact);
+  const abs = path.join(
+    resultsDir(normalizeResultsVariant(variant)),
+    normalizeRelativeArtifact(artifact),
+  );
   if (!fs.existsSync(abs)) return null;
   const py = `
 import odb
@@ -122,11 +126,21 @@ export function inspectSta(opts: {
   variant?: string;
 }): StaSummary | null {
   const variant = opts.variant ?? preferredResultsVariant();
-  const v = opts.verilog ? path.join(resultsDir(variant), opts.verilog) : null;
+  const v = opts.verilog
+    ? path.join(
+        resultsDir(normalizeResultsVariant(variant)),
+        normalizeRelativeArtifact(opts.verilog),
+      )
+    : null;
   if (!v || !fs.existsSync(v)) return null;
   if (!fs.existsSync(LIB()) || !fs.existsSync(SDC())) return null;
 
-  const spefAbs = opts.spef ? path.join(resultsDir(variant), opts.spef) : null;
+  const spefAbs = opts.spef
+    ? path.join(
+        resultsDir(normalizeResultsVariant(variant)),
+        normalizeRelativeArtifact(opts.spef),
+      )
+    : null;
   const spefLine =
     spefAbs && fs.existsSync(spefAbs) ? `read_spef ${spefAbs}` : "";
 
@@ -179,7 +193,10 @@ export function inspectYosys(
   verilogRel: string,
   variant: string = preferredResultsVariant(),
 ): YosysStat | null {
-  const abs = path.join(resultsDir(variant), verilogRel);
+  const abs = path.join(
+    resultsDir(normalizeResultsVariant(variant)),
+    normalizeRelativeArtifact(verilogRel),
+  );
   if (!fs.existsSync(abs)) return null;
   const r = runCapture(
     "yosys",

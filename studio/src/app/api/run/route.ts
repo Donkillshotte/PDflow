@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { isAllowedAction, runCourseAction } from "@/lib/run";
+import { authorizeStudioMutation, rejectOversizedBody } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 900;
 
 export async function POST(req: Request) {
+  const denied = authorizeStudioMutation(req, "run");
+  if (denied) {
+    return denied;
+  }
+  const tooLarge = rejectOversizedBody(req, 128 * 1024);
+  if (tooLarge) {
+    return tooLarge;
+  }
   const body = (await req.json()) as { action?: string };
   const action = body.action ?? "";
   if (!isAllowedAction(action)) {

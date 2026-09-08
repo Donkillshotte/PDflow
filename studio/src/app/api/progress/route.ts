@@ -10,6 +10,7 @@ import {
   markLessonComplete,
 } from "@/lib/course";
 import { evaluateLessonGates } from "@/lib/jobs";
+import { authorizeStudioMutation, rejectOversizedBody } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,14 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = authorizeStudioMutation(req, "progress write");
+  if (denied) {
+    return denied;
+  }
+  const tooLarge = rejectOversizedBody(req, 256 * 1024);
+  if (tooLarge) {
+    return tooLarge;
+  }
   const body = (await req.json()) as {
     lessonId?: string;
     action?: string;

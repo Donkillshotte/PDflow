@@ -25,6 +25,7 @@ from __future__ import annotations
 import ctypes
 import os
 import sys
+import sys as _python_sys
 import time
 from pathlib import Path
 
@@ -1130,7 +1131,7 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
             ilw.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         )
         if rc != 0:
-            print(f"dpn_timestep_be_hist_cmat rc={rc}; not using diagonal-C hist", file=sys.stderr)
+            print(f"dpn_timestep_be_hist_cmat rc={rc}; not using diagonal-C hist", file=_python_sys.stderr)
             return None
         loop = "native_hist_cmat"
         extra = {
@@ -1191,7 +1192,7 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
             loop = "native_hist"
             extra = {"i_L_absmax": float(ilabs.value), "i_L_worst": ilw.copy()}
         else:
-            print(f"dpn_timestep_be_hist rc={rc}; falling back to memoryless BE", file=sys.stderr)
+            print(f"dpn_timestep_be_hist rc={rc}; falling back to memoryless BE", file=_python_sys.stderr)
     if rc != 0:
         pad = np.ascontiguousarray(sys["pad"], dtype=np.float64)
         rc = lib.dpn_timestep_be(
@@ -1222,7 +1223,7 @@ def native_timestep(solver, sys, events, vdd: float, t_end: float):
         loop = "native"
         extra = {}
     if rc != 0:
-        print(f"dpn_timestep_be rc={rc}", file=sys.stderr)
+        print(f"dpn_timestep_be rc={rc}", file=_python_sys.stderr)
         return None
     return _tran_result(
         kw,

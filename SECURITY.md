@@ -25,5 +25,11 @@ We will acknowledge receipt, triage severity, and coordinate a fix and disclosur
 
 ## Safe defaults
 
-- Set `STUDIO_RUN_TOKEN` when Studio is reachable beyond localhost; the run stream API honors Bearer auth.
+- Set `STUDIO_RUN_TOKEN` when Studio is reachable beyond localhost. Process
+  launches, writes, cancellation, viewer control, inspection, and layout
+  generation require either the bearer token or a same-origin browser
+  Origin/Referer; cross-site requests are refused.
+- Keep Studio on localhost or behind a reverse proxy that preserves the
+  Host/Origin relationship. The bearer token is a shared operator secret, not
+  a user/session system.
 - Keep `.env*` local (gitignored). Never commit `GITHUB_TOKEN`, ORFS licenses, or foundry keys.

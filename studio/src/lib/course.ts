@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { assertUnder } from "./pathGuard";
 
 export const REPO_ROOT = path.resolve(process.cwd(), "..");
 export const LEARN_ROOT = path.join(REPO_ROOT, "learn");
@@ -192,12 +193,15 @@ const ALLOWED_CONTENT_PREFIXES = [
 ];
 
 export function resolveLearnContent(rel: string) {
-  const cleaned = rel.replace(/^\/+/, "").replace(/\.\./g, "");
+  const cleaned = rel.replace(/^\/+/, "");
+  if (!cleaned || cleaned.includes("\0") || cleaned.includes("..") || path.isAbsolute(cleaned)) {
+    return null;
+  }
   if (!ALLOWED_CONTENT_PREFIXES.some((p) => cleaned === p || cleaned.startsWith(p))) {
     return null;
   }
-  const abs = path.join(LEARN_ROOT, cleaned);
-  if (!abs.startsWith(LEARN_ROOT) || !fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+  const abs = assertUnder(LEARN_ROOT, path.join(LEARN_ROOT, cleaned));
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
     return null;
   }
   return abs;

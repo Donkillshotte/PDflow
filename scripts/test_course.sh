@@ -499,7 +499,7 @@ if [[ -d "${ROOT}/studio/node_modules" ]]; then
     && ok "studio build" \
     || { bad "studio build failed"; tail -20 /tmp/studio-build-smoke.log; }
 else
-  bad "studio/node_modules missing — run npm install in studio/"
+  bad "studio/node_modules missing — run npm ci in studio/"
 fi
 rg -q 'run_studio.sh' "${ROOT}/README.md" && ok "root README cites Studio" || bad "README without Studio"
 rg -q 'gate|single-flight|Ops' "${ROOT}/studio/README.md" && ok "studio README enterprise" || bad "studio README without enterprise"
