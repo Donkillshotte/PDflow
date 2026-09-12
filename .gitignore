@@ -23,6 +23,10 @@ studio/public/monaco/
 .env
 .env.*
 !.env.example
+# Operator-generated SSH material must never be staged from the checkout.
+/.sshkey.swp
+/sshkey
+/sshkey.pub
 
 # Temporary artifacts
 *.log

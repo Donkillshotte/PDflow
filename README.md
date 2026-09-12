@@ -22,6 +22,20 @@ The contract is documented in
 
 ## Quick start
 
+For a new Linux workstation, use the native installer once:
+
+```bash
+./install.sh --yes
+pdflow
+```
+
+The installer provisions the native toolchain and creates the single-command
+desktop launcher. Read [`docs/installer.md`](docs/installer.md) before using
+custom prefixes or a non-interactive host. It never installs Docker as a
+runtime substitute for EDA.
+
+For an already prepared checkout:
+
 ```bash
 ./scripts/run_studio.sh                 # http://127.0.0.1:43217
 ./scripts/learn_physical_design.sh --check

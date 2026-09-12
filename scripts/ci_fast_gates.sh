@@ -10,6 +10,9 @@ export PYTHONPATH="${ROOT}/learn:${ROOT}/learn/scripts"
 echo "==> Python: test_events"
 python3 learn/scripts/test_events.py
 
+echo "==> Installer: offline contracts"
+bash scripts/test_installer.sh
+
 echo "==> Python: test_registry"
 python3 learn/scripts/test_registry.py
 

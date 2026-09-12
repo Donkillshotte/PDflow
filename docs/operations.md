@@ -2,6 +2,17 @@
 
 Use the local machine for reproducible, run-scoped analysis.
 
+On a new workstation, the supported bootstrap is one command from the
+repository root:
+
+```bash
+./install.sh --yes
+pdflow
+```
+
+See [`installer.md`](installer.md) for the native dependency matrix and
+recovery procedures.
+
 PDflow's certified execution mode is native Linux host execution. Start every
 shell session with the native environment and verify the six required EDA
 tools before running a flow:

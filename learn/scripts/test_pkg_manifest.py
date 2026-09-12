@@ -15,6 +15,7 @@ class PackageManifestTests(unittest.TestCase):
     def test_variant_validation_is_allowlisted(self) -> None:
         self.assertEqual(validate_variant("flowlab"), "flowlab")
         self.assertEqual(validate_variant("enterprise-e2e"), "enterprise-e2e")
+        self.assertEqual(validate_variant("installer-e2e"), "installer-e2e")
         self.assertEqual(
             validate_variant("lab_asap7_gcd_tc_rvt_nldm_7p5_320ps"),
             "lab_asap7_gcd_tc_rvt_nldm_7p5_320ps",

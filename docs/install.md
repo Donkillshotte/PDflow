@@ -1,5 +1,10 @@
 # Native installation
 
+> New users should start with [`installer.md`](installer.md): from the
+> repository root, `./install.sh --yes` installs the native toolchain and
+> creates the `pdflow` launcher. The lower-level commands below remain useful
+> for diagnostics, controlled source rebuilds, and older workstations.
+
 PDflow is certified for a Linux-first, native-host deployment. The runtime
 does not use Docker as a substitute for the EDA toolchain: OpenROAD, OpenSTA,
 KLayout, Yosys, Icarus Verilog and ngspice are launched as host processes by
@@ -49,8 +54,8 @@ server and starts both that server and the Python agent as local processes:
 source scripts/native_eda_env.sh
 export PD_FLOW_NODE=/absolute/path/to/node
 source "$HOME/.cargo/env" 2>/dev/null || true
-cd studio/src-tauri
-../../scripts/run_resource_job.sh studio-tauri-build cargo tauri build
+cd studio
+../scripts/run_resource_job.sh studio-tauri-build cargo tauri build
 ```
 
 ### Rootless native desktop build dependencies

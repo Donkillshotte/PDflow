@@ -11,12 +11,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-if ! "${ROOT}/scripts/resource_guard.sh"; then
+if ! "${REPO_ROOT}/scripts/resource_guard.sh"; then
   exec "${REPO_ROOT}/scripts/run_resource_job.sh" build-openroad \
     bash "${BASH_SOURCE[0]}" "$@"
 fi
-OPENROAD_ROOT="${PDFLOW_OPENROAD_ROOT:-${REPO_ROOT}/tools/OpenROAD-flow-scripts/tools/OpenROAD}"
 PREFIX="${PD_FLOW_EDA_PREFIX:-${HOME:-/home/kalishot}/.local/pdflow-eda}"
+if [[ -n "${PDFLOW_OPENROAD_ROOT:-}" ]]; then
+  OPENROAD_ROOT="${PDFLOW_OPENROAD_ROOT}"
+elif [[ -d "${PREFIX}/src/openroad-26q3" ]]; then
+  OPENROAD_ROOT="${PREFIX}/src/openroad-26q3"
+else
+  OPENROAD_ROOT="${REPO_ROOT}/tools/OpenROAD-flow-scripts/tools/OpenROAD"
+fi
 BAZELISK="${PDFLOW_BAZELISK:-${PREFIX}/bin/bazelisk}"
 JOBS="${PDFLOW_OPENROAD_BUILD_JOBS:-4}"
 TIMEOUT_SECONDS="${PDFLOW_OPENROAD_BUILD_TIMEOUT:-1800}"

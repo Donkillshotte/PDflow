@@ -3,6 +3,22 @@
 Root launchers. Surface catalog: [`docs/script.md`](../docs/script.md).
 Repo index: [`docs/README.md`](../docs/README.md).
 
+## New workstation installer
+
+Use the repository-root wrapper for a complete native Linux setup:
+
+```bash
+./install.sh --yes
+pdflow
+```
+
+`install_pdflow.sh` is the implementation. It installs only native host
+dependencies, pins Node/Bazelisk with checksums, preserves dirty source
+checkouts, routes builds through the shared resource executor, and publishes
+the AppImage only after a successful guarded build. Use `./install.sh --check`
+for a read-only audit. Detailed operator instructions are in
+[`../docs/installer.md`](../docs/installer.md).
+
 ## Legacy system-wide installers
 
 ```bash

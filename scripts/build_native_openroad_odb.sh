@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-if ! "${ROOT}/scripts/resource_guard.sh"; then
+if ! "${REPO_ROOT}/scripts/resource_guard.sh"; then
   exec "${REPO_ROOT}/scripts/run_resource_job.sh" build-openroad-odb \
     bash "${BASH_SOURCE[0]}" "$@"
 fi
@@ -50,11 +50,13 @@ mkdir -p "${DEST}"
 install -m 0644 "${ODB_BUILD}/odb.py" "${DEST}/odb.py"
 install -m 0755 "${ODB_BUILD}/_odb.so" "${DEST}/_odb.so"
 
+PD_FLOW_ODB_SMOKE_ARTIFACT="${PD_FLOW_ODB_SMOKE_ARTIFACT:-}" \
 PYTHONPATH="${DEST}${PYTHONPATH:+:${PYTHONPATH}}" python3 - <<'PY'
 import odb
+import os
 from pathlib import Path
 
-candidate = Path("/home/kalishot/PDflow/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb")
+candidate = Path(os.environ.get("PD_FLOW_ODB_SMOKE_ARTIFACT", ""))
 if candidate.exists():
     db = odb.dbDatabase.create()
     odb.read_db(db, str(candidate))

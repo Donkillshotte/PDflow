@@ -28,6 +28,10 @@ PDK setup are present.
 
 ## Prefix and environment
 
+New workstations should use [`installer.md`](installer.md) and run
+`./install.sh --yes`; the installer creates the prefix and performs the native
+verification gate. The commands below are for an existing or custom prefix.
+
 The default per-user prefix is `~/.local/pdflow-eda`. Source the environment
 before invoking a shell flow, a local agent, or a native GUI:
 

@@ -126,6 +126,13 @@ def main() -> int:
     check("6_final.spef" in export_py, "arrivals default to the finish SPEF")
     dyn_sh = (_SCRIPTS / "run_dynamic_ir.sh").read_text()
     check("STA_SPEF" in dyn_sh, "dynamic_ir passes finish SPEF into arrivals")
+    sta_sh = (_SCRIPTS / "run_sta_ir_aware.sh").read_text()
+    check("current-run generated workspace" in sta_sh, "IR-aware STA prefers current-run arrivals")
+    check("GENERATED_STA=\"${GENERATED_ROOT}/mesh/sta_arrivals.json\"" in sta_sh,
+          "IR-aware STA resolves the dynamic IR arrivals artifact")
+    check("compatibility path" in sta_sh, "IR-aware STA keeps an explicit report-root compatibility path")
+    check("${GENERATED_ROOT}/mesh/pg_vdd_bumps.sp" in sta_sh,
+          "IR-aware STA prefers the current-run Dynamic IR SPICE mesh")
     panel = (ROOT / "studio/src/components/flowlab/StaIrAwarePanel.tsx").read_text()
     check("finish SPEF" in panel, "STA IR-aware panel names finish SPEF")
     check("not a WNS close" in panel, "STA IR-aware panel does not treat ideal-RC MET as close")

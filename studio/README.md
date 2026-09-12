@@ -8,6 +8,19 @@ is the only process owner for EDA binaries.
 
 ## Run
 
+For a new workstation, install and launch the native desktop shell from the
+repository root:
+
+```bash
+./install.sh --yes
+pdflow
+```
+
+See [`../docs/installer.md`](../docs/installer.md) for prerequisites,
+resource limits, recovery, and alternate prefixes.
+
+For an already provisioned checkout:
+
 ```bash
 ./scripts/run_studio.sh
 (cd studio && ../scripts/run_resource_job.sh studio-npm-ci npm ci)
@@ -16,7 +29,7 @@ is the only process owner for EDA binaries.
 
 # Native desktop shell (requires Rust/Cargo and WebKitGTK development files)
 source "$HOME/.cargo/env" 2>/dev/null || true
-(cd studio/src-tauri && ../../scripts/run_resource_job.sh studio-tauri-build cargo tauri build)
+(cd studio && ../scripts/run_resource_job.sh studio-tauri-build cargo tauri build)
 ```
 
 `run_studio.sh` is intended for interactive development. The first Next.js

@@ -74,7 +74,10 @@ fi
 echo "==> Initializing yosys submodule..."
 (
   cd "${ORFS}"
-  git submodule update --init --depth 1 --recursive tools/yosys
+  # The OpenROAD source is needed when the installer builds the matching
+  # native 26Q3 executable.  Initialize both explicit dependencies without
+  # touching a dirty submodule checkout.
+  git submodule update --init --depth 1 --recursive tools/OpenROAD tools/yosys
 )
 
 echo "==> Building yosys..."

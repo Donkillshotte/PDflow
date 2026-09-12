@@ -15,6 +15,15 @@ Prerequisites for a local desktop build:
 - Node.js/npm for the Studio frontend;
 - Python 3 and the configured local EDA tools.
 
+For a complete new-workstation setup, use the repository installer and the
+single-command launcher instead of assembling these prerequisites manually:
+
+```bash
+cd ../..
+./install.sh --yes
+pdflow
+```
+
 The checked-in build is native-host only. `build_tauri_frontend.sh` creates a
 Next standalone server and bundles the selected native Node runtime; Tauri
 starts that server as a local process in release builds and starts the Python
@@ -27,8 +36,8 @@ From the repository root, build with:
 source scripts/native_eda_env.sh
 export PD_FLOW_NODE=/path/to/node
 source "$HOME/.cargo/env" 2>/dev/null || true
-cd studio/src-tauri
-../../scripts/run_resource_job.sh studio-tauri-build cargo tauri build
+cd studio
+../scripts/run_resource_job.sh studio-tauri-build cargo tauri build
 ```
 
 For a checkout outside the current working directory, set

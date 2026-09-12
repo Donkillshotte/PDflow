@@ -6,6 +6,8 @@ current results are derived from the current invocation only.
 
 ## Surfaces
 
+- [`installer.md`](installer.md) — one-command native Linux installation,
+  launcher, resource policy, troubleshooting, and repository boundaries.
 - [`course.md`](course.md) — course and Studio workflow.
 - [`lab.md`](lab.md) — multi-fidelity DSE and physics experiments.
 - [`product.md`](product.md) — same-invocation product comparison contract.

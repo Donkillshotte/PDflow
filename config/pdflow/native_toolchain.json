@@ -6,7 +6,8 @@
   "default_prefix": "~/.local/pdflow-eda",
   "container_execution": false,
   "runtime_policy": "native-process-only",
-  "install_prefix": "/home/kalishot/.local/pdflow-eda",
+  "install_prefix": null,
+  "install_prefix_policy": "resolve PD_FLOW_EDA_PREFIX, otherwise use the current user's ~/.local/pdflow-eda",
   "tools": {
     "openroad": {
       "source": "https://github.com/The-OpenROAD-Project/OpenROAD",
@@ -16,8 +17,8 @@
       "source_commit": "a9147cf3aebe65e058bb3fa89c1f9e524488dbb8",
       "odb_schema_minor": 134,
       "installed_version": "26Q3",
-      "installed_binary": "/home/kalishot/.local/pdflow-eda/native-openroad/openroad",
-      "native_odb_python": "/home/kalishot/.local/pdflow-eda/native-openroad/python",
+      "installed_binary": "native-openroad/openroad",
+      "native_odb_python": "native-openroad/python",
       "native_odb_binding": "src/odb:_odb.so"
     },
     "opensta": {
@@ -27,7 +28,7 @@
       "source_ref": "26Q3",
       "source_commit": "a9147cf3aebe65e058bb3fa89c1f9e524488dbb8",
       "installed_version": "OpenSTA 2.7.0",
-      "installed_binary": "/home/kalishot/.local/pdflow-eda/native-openroad/bin/sta"
+      "installed_binary": "native-openroad/bin/sta"
     },
     "klayout": {
       "source": "https://www.klayout.de/build.html",

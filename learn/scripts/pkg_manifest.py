@@ -27,7 +27,7 @@ LAB_VARIANT_RE = re.compile(r"^lab_asap7_[a-z0-9][a-z0-9_+.]*[a-z0-9]$")
 # Isolated native acceptance runs use a Nangate45 result tree with a
 # user-visible variant name. Keep the namespace deliberately narrow so a
 # package request cannot turn the variant into an arbitrary path component.
-E2E_VARIANT_RE = re.compile(r"^(?:e2e|enterprise-e2e|native-e2e)[a-z0-9_.-]*$")
+E2E_VARIANT_RE = re.compile(r"^(?:e2e|enterprise-e2e|native-e2e|installer-e2e)[a-z0-9_.-]*$")
 
 
 def validate_variant(value: str) -> str:
