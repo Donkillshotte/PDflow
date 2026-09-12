@@ -1,27 +1,9 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Syne, Figtree, IBM_Plex_Mono } from "next/font/google";
-import { SiteNav } from "@/components/SiteNav";
 import { ToastProvider } from "@/components/ToastProvider";
-import { CommandPalette } from "@/components/CommandPalette";
+import { AppShell } from "@/components/AppShell";
 import "./globals.css";
-
-const display = Syne({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["600", "700", "800"],
-});
-
-const body = Figtree({
-  subsets: ["latin"],
-  variable: "--font-body",
-  weight: ["400", "500", "600", "700"],
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  weight: ["400", "500"],
-});
+import "./workbench.css";
 
 export const metadata: Metadata = {
   title: "OpenROAD · Physical Design Studio",
@@ -36,13 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${body.variable} ${mono.variable}`}>
+      <body>
         <ToastProvider>
-          <div className="shell">
-            <SiteNav />
-            <div id="main">{children}</div>
-          </div>
-          <CommandPalette />
+          <Suspense fallback={<div className="app-shell-loading" aria-busy="true">Loading PDflow workspace…</div>}>
+            <AppShell>{children}</AppShell>
+          </Suspense>
         </ToastProvider>
       </body>
     </html>

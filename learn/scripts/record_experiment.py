@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Append one campaign experiment from on-disk ORFS logs (or mark failure).
+"""Record one experiment from the current invocation's on-disk ORFS logs.
 
-Never launches make finish. Never writes FLOW_VARIANT=flowlab/learn/base.
+Never launches make finish and never reads a previous experiment to decide the
+result. Pass ``--jsonl`` when several records belong to the same invocation.
 
 Usage:
     PYTHONPATH=learn python3 learn/scripts/record_experiment.py \
-        --phase P0 --design spi --variant camp_spi_base --role base --clock 1.0
+        --phase P0 --design spi --variant live_spi_base --role base --clock 1.0
 """
 from __future__ import annotations
 
@@ -25,7 +26,7 @@ from dse.experiments import (  # noqa: E402
     ExperimentLog,
     fill_from_logs,
     new_id,
-    refuse_locked_variant,
+    validate_variant,
 )
 
 
@@ -46,10 +47,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--extra", default=None, help="JSON object stored on Experiment.extra")
     p.add_argument("--status", default=None, help="override (timeout/refused/oom/…)")
     p.add_argument("--jsonl", type=Path, default=None)
-    p.add_argument("--freeze", type=Path, default=None)
     args = p.parse_args(argv)
 
-    refuse_locked_variant(args.variant)
+    validate_variant(args.variant)
     cat = DESIGN_CATALOG.get(args.design, {})
     clock = float(args.clock if args.clock is not None else cat.get("clk_ns") or 0.0)
     exp = Experiment(
@@ -69,58 +69,16 @@ def main(argv: list[str] | None = None) -> int:
         extra=json.loads(args.extra) if args.extra else {},
     )
     fill_from_logs(exp, root=_ROOT)
-    if args.status in ("timeout", "refused", "oom", "missing_logs", "frozen", "stopped_by_policy"):
+    if args.status in ("timeout", "refused", "oom", "missing_logs", "stopped_by_policy"):
         exp.status = args.status
     elif exp.finish_wns_ns is None:
         exp.status = args.status or ("failed" if args.exit_code else "missing_logs")
     else:
         exp.status = "done"
     log = ExperimentLog(args.jsonl)
-    existing = [e for e in log.all() if e.variant == exp.variant and e.phase == exp.phase]
-    kept = [e for e in existing if e.status in ("done", "stopped_by_policy", "frozen")]
-    if kept:
-        print(json.dumps({"skipped": True, "variant": exp.variant, "phase": exp.phase}))
-        return 0
-    if existing:
-        log._rows = [e for e in log._rows if not (e.variant == exp.variant and e.phase == exp.phase)]
-        log.rewrite()
     log.append(exp)
-    freeze = {
-        "kind": "campaign_freeze",
-        "id": exp.id,
-        "phase": exp.phase,
-        "design": exp.design,
-        "variant": exp.variant,
-        "role": exp.role,
-        "status": exp.status,
-        "clock_ns": exp.clock_ns,
-        "sha256_6_report": exp.sha256_6_report,
-        "finish_wns_ns": exp.finish_wns_ns,
-        "finish_tns_ns": exp.finish_tns_ns,
-        "place_wns_ns": exp.place_wns_ns,
-        "stdcell_um2": exp.stdcell_um2,
-        "stdcell_count": exp.stdcell_count,
-        "power_w": exp.power_w,
-        "leakage_w": exp.leakage_w,
-        "internal_power_w": exp.internal_power_w,
-        "switching_power_w": exp.switching_power_w,
-        "ir_drop_v": exp.ir_drop_v,
-        "ir_mean_v": exp.ir_mean_v,
-        "cong_wl_per_um2": exp.cong_wl_per_um2,
-        "fmax_hz": exp.fmax_hz,
-        "setup_violation_count": exp.setup_violation_count,
-        "grt_wl": exp.grt_wl,
-        "core_um2": exp.core_um2,
-        "util": exp.util,
-        "repair_buffer": exp.repair_buffer,
-        "die_um2": exp.die_um2,
-        "place_promoted": exp.place_promoted,
-        "notes": exp.notes,
-    }
-    dest = args.freeze or (_LEARN / "dse" / f"freeze_{exp.variant}.json")
-    dest.write_text(json.dumps(freeze, indent=2) + "\n")
-    print(json.dumps({"ok": exp.status == "done", "freeze": str(dest), **freeze}, default=str))
-    return 0 if exp.status in ("done", "frozen", "timeout", "refused", "oom", "missing_logs", "stopped_by_policy") else 1
+    print(json.dumps({"ok": exp.status == "done", "experiment": exp.to_dict()}, default=str))
+    return 0 if exp.status in ("done", "timeout", "refused", "oom", "missing_logs", "stopped_by_policy") else 1
 
 
 if __name__ == "__main__":

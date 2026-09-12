@@ -50,6 +50,7 @@ export const LONG_ACTIONS = new Set([
   "klayout_lvs",
   "drc_signoff",
   "power_chain",
+  "power_grid_em",
   "chip_pdn_ir",
   "power_signoff",
   "signoff_all",
@@ -58,9 +59,13 @@ export const LONG_ACTIONS = new Set([
   "thermal_signoff",
   "pkg_signoff",
   "signoff_phase2",
+  "lab_asap7_flow",
+  "lab_asap7_pkg",
+  "lab_asap7_chip_pdn",
+  "lab_asap7_pdk",
 ]);
 
-/** Actions that may exceed 5 minutes — extended SSE timeout. */
+/** Actions that may need the full local ten-minute execution window. */
 export const EXTENDED_TIMEOUT_ACTIONS = new Set([
   "finish",
   "route",
@@ -69,6 +74,7 @@ export const EXTENDED_TIMEOUT_ACTIONS = new Set([
   "klayout_lvs",
   "drc_signoff",
   "power_chain",
+  "power_grid_em",
   "chip_pdn_ir",
   "power_signoff",
   "signoff_all",
@@ -77,12 +83,16 @@ export const EXTENDED_TIMEOUT_ACTIONS = new Set([
   "pkg_signoff",
   "signoff_phase2",
   "tool_matrix",
+  "lab_asap7_flow",
+  "lab_asap7_pkg",
+  "lab_asap7_chip_pdn",
+  "lab_asap7_pdk",
 ]);
 
 export function defaultActionTimeoutMs(action: string): number {
-  if (action === "signoff_all" || action === "eco_close") return 1_200_000;
+  if (action === "signoff_all" || action === "eco_close") return 600_000;
   if (action === "eco_apply") return 600_000;
-  return EXTENDED_TIMEOUT_ACTIONS.has(action) ? 900_000 : 300_000;
+  return EXTENDED_TIMEOUT_ACTIONS.has(action) ? 600_000 : 600_000;
 }
 
 export function isLongAction(action: string): boolean {
@@ -98,6 +108,7 @@ export const POWER_ACTIONS = [
   "activity_power",
   "vectorless",
   "chip_pdn_ir",
+  "power_grid_em",
   "vyges_em_ir",
   "dynamic_ir",
   "system_pdn",

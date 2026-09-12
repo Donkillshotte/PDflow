@@ -2,67 +2,89 @@
   "kind": "sta_signoff",
   "variant": "flowlab",
   "engine": "opensta",
+  "status": "FAIL",
+  "execution_status": "COMPLETED",
+  "evidence_status": "PASS",
+  "requirement_status": "FAIL",
+  "signoff_status": "FAIL",
+  "product_signoff": false,
   "timing": {
-    "wns_ns": -0.02,
-    "tns": -0.14,
-    "setup_violations": 16,
-    "period_min_ns": 0.48
+    "wns_ns": -0.15,
+    "tns": -5.06,
+    "setup_violations": 43,
+    "period_min_ns": 0.61,
+    "worst_endpoint": "dpath.b_reg.out[5]$_DFFE_PP_/D",
+    "wns_kind": "register"
   },
   "evaluation": {
+    "basis": "live-run",
+    "status": "FAIL",
     "checks": [
       {
         "id": "wns_ns",
-        "label": "WNS max (ns)",
-        "actual": -0.02,
-        "target": -0.04,
-        "ok": true
+        "label": "WNS (ns)",
+        "actual": -0.15,
+        "target": 0.0,
+        "evidence_ok": true,
+        "requirement_ok": false,
+        "status": "FAIL",
+        "ok": false,
+        "note": "WNS and TNS must meet the declared timing target"
       },
       {
         "id": "tns",
-        "label": "TNS max",
-        "actual": -0.14,
-        "target": -0.6,
-        "ok": true
+        "label": "TNS",
+        "actual": -5.06,
+        "target": 0.0,
+        "evidence_ok": true,
+        "requirement_ok": false,
+        "status": "FAIL",
+        "ok": false,
+        "note": "WNS and TNS must meet the declared timing target"
       },
       {
         "id": "setup_violations",
         "label": "Setup violations",
-        "actual": 16.0,
-        "target": 45.0,
-        "ok": true
+        "actual": 43,
+        "target": 0,
+        "evidence_ok": true,
+        "requirement_ok": false,
+        "status": "FAIL",
+        "ok": false,
+        "note": "mandatory setup violations must meet the configured maximum"
       },
       {
         "id": "period_min_ns",
         "label": "period_min (ns)",
-        "actual": 0.48,
-        "target": 0.5,
-        "ok": true
+        "actual": 0.61,
+        "target": 0.0,
+        "evidence_ok": true,
+        "requirement_ok": true,
+        "status": "PASS",
+        "ok": true,
+        "note": "period_min qualifies only against the selected policy"
       }
     ],
-    "ok": true
+    "evidence_ok": true,
+    "requirement_ok": false,
+    "ok": false,
+    "policy_source": "config/pdflow/requirements.json"
   },
-  "ok": true,
-  "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16 \u00b7 leftover setup open (WNS -0.02 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only)",
+  "ok": false,
+  "summary": "STA WNS -0.15 ns \u00b7 TNS -5.06 \u00b7 viol 43 \u00b7 leftover setup open (WNS -0.15 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only)",
   "artifacts": {
-    "finish_rpt": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/6_finish.rpt",
-    "sta_log": "/workspace/learn/sim/reports/sta_signoff_flowlab.log"
-  },
-  "ir_aware": {
-    "report": "/workspace/learn/sim/reports/sta_ir_aware_flowlab.json",
-    "ok": true,
-    "slack_ns": -0.019603,
-    "slack_ir_ns": -0.020240058251357957,
-    "n_joined": 18,
-    "n_gates": 18,
-    "degradation_ps": 0.6370582513579581,
-    "note": "educational NLDM \u00d7 ITerm V; does not change nominal WNS"
+    "finish_rpt": "/home/kalishot/PDflow/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/6_finish.rpt",
+    "sta_log": "/home/kalishot/PDflow/learn/sim/reports/sta_signoff_flowlab.log",
+    "sdc": "/home/kalishot/PDflow/learn/designs/nangate45/gcd-tutorial/constraint.sdc"
   },
   "leftover": {
     "setup_open": true,
-    "wns_ns": -0.02,
-    "setup_violations": 16,
+    "wns_ns": -0.15,
+    "setup_violations": 43,
+    "note": "Current invocation reports a VIOLATED path at the active SDC clock. Do not hide.",
     "clock_ns": 0.46,
-    "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
+    "worst_endpoint": "dpath.b_reg.out[5]$_DFFE_PP_/D",
+    "wns_kind": "register"
   },
   "mcmm_leftover": {
     "mcmm": false,
@@ -73,5 +95,15 @@
       "NangateOpenCellLibrary_typical.lib"
     ],
     "note": "Nangate45 in ORFS ships one typical.lib. Extra corners need the full kit or a foundry PDK. Do not invent slow/fast."
+  },
+  "ir_aware": {
+    "report": "/home/kalishot/PDflow/learn/sim/reports/sta_ir_aware_flowlab.json",
+    "ok": true,
+    "slack_ns": -0.146185,
+    "slack_ir_ns": -0.14700865328341794,
+    "n_joined": 26,
+    "n_gates": 26,
+    "degradation_ps": 0.8236532834179355,
+    "note": "current-run NLDM \u00d7 ITerm V; does not change nominal WNS"
   }
 }

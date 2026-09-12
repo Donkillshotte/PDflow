@@ -23,6 +23,10 @@ const securityHeaders = [
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
       "connect-src 'self'",
+      // Monaco creates its language workers from local blob URLs. Keep the
+      // runtime self-hosted while allowing those workers to start under the
+      // desktop CSP.
+      "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -31,11 +35,22 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // The desktop builder packages the standalone Next server beside the
+  // Tauri shell. Browser development keeps the normal Next layout.
+  output: process.env.PD_FLOW_DESKTOP_BUILD === "1" ? "standalone" : undefined,
   // Studio reads markdown and spawns course scripts from the parent repo.
   serverExternalPackages: [],
   // Hide Next.js DevTools "N Issues" badge — students confuse it with ORFS errors.
   // Real ORFS health is shown in FlowLabTerminal digest (0 ERROR · N WARNING).
   devIndicators: false,
+  // Keep Next's worker pool within the four-CPU heavy-job budget. This is
+  // deliberately explicit because the host may expose many more CPUs than
+  // the PDflow cgroup is allowed to consume.
+  experimental: {
+    cpus: 4,
+    memoryBasedWorkersCount: false,
+    staticGenerationMaxConcurrency: 4,
+  },
   async headers() {
     return [
       {

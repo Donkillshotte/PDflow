@@ -1,13 +1,12 @@
-"""Budgeted Dynamic IR restamp. Solver A on a write_pg_spice extract.
+"""Budgeted Dynamic IR solve. Solver A on a write_pg_spice extract.
 
 The PI stack (system SciPy) is isolated in `learn/scripts/dse_f4_worker.py`
 so DSE's NumPy 2 never imports the 1.x scipy.sparse extension.
 
-Default: same finish mesh as the gold run. Pass spice/insts for a
-*candidate* extract (place_pins+GPL+DP+pdngen). Knobs (c_decap, pkg L)
-or I(t)×F3 power may change.
-
-This is a *candidate* F4 observation — never written over gold 45.298 mV.
+Default: the current finish mesh. Pass spice/insts for a live candidate
+extract (place_pins+GPL+DP+pdngen). Knobs (c_decap, pkg L) or I(t)×F3
+power may change. Every result is scoped to the extract and scenario used
+by that invocation.
 """
 
 from __future__ import annotations
@@ -22,7 +21,6 @@ REPO = Path(__file__).resolve().parents[1].parent
 SCRIPTS = REPO / "learn" / "scripts"
 ORFS = REPO / "tools/OpenROAD-flow-scripts/flow"
 WORKER = SCRIPTS / "dse_f4_worker.py"
-GOLD_MV = 45.298
 _DIST = "/usr/lib/python3/dist-packages"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
@@ -51,8 +49,8 @@ def solver_devices() -> dict:
         "cuda": cuda,
         "default_solver": "direct",
         "via": "f4_oracle.solver_devices",
-        "note": why if not cuda else f"CUDA visible ({why}) — DirectLU remains the default F4 solver, gold unrestamped",
-        "not": "a GPU voltage map / gold restamp",
+        "note": why if not cuda else f"CUDA visible ({why}) — DirectLU remains the default F4 solver",
+        "not": "a GPU voltage map",
     }
 
 
@@ -96,47 +94,24 @@ def extract_ready(spice: Path | str | None, insts: Path | str | None) -> bool:
     return bool(spice and insts and Path(spice).is_file() and Path(insts).is_file() and WORKER.is_file())
 
 
-def ir_run_labels(payload: dict | None = None) -> dict:
-    """Name the two IR numbers. current_run is this solve; reference_run is historical gold.
-
-    Never restamps ``dynamic_ir_flowlab.json``. Missing gold file falls back to
-    the documented ``GOLD_MV`` already used as ``gold_ref_mv``.
-    """
-    current = None
+def live_run_labels(payload: dict | None = None) -> dict:
+    """Return the measured value from this invocation, if it is present."""
+    value = None
     if payload is not None and payload.get("worst_droop_mv") is not None:
         try:
-            current = float(payload["worst_droop_mv"])
+            value = float(payload["worst_droop_mv"])
         except (TypeError, ValueError):
-            current = None
-    gold_p = REPO / "learn" / "sim" / "reports" / "dynamic_ir_flowlab.json"
-    ref = None
-    if gold_p.is_file():
-        try:
-            data = json.loads(gold_p.read_text())
-            raw = data.get("worst_droop_mv")
-            if raw is None:
-                dyn = data.get("dynamic") or {}
-                raw = dyn.get("worst_droop_mv")
-                if raw is None and dyn.get("worst_droop") is not None:
-                    raw = float(dyn["worst_droop"]) * 1e3
-            if raw is not None:
-                ref = float(raw)
-        except (OSError, json.JSONDecodeError, TypeError, ValueError):
-            ref = None
-    if ref is None:
-        ref = float(GOLD_MV)
-    return {"current_run_mv": current, "reference_run_mv": ref}
+            value = None
+    return {"run_mv": value}
 
 
 def _stamp_solve(payload: dict, *, backend_requested: str = "cpu", fallback_reason: str | None = None) -> dict:
-    payload.setdefault("gold", False)
     payload["backend_requested"] = backend_requested
     if fallback_reason and not payload.get("fallback_reason"):
         payload["fallback_reason"] = fallback_reason
-    labels = ir_run_labels(payload)
-    if labels["current_run_mv"] is not None:
-        payload.setdefault("current_run_mv", labels["current_run_mv"])
-    payload.setdefault("reference_run_mv", labels["reference_run_mv"])
+    labels = live_run_labels(payload)
+    if labels["run_mv"] is not None:
+        payload.setdefault("run_mv", labels["run_mv"])
     payload["solve"] = normalize_solve(
         payload,
         backend_requested=backend_requested,
@@ -262,7 +237,7 @@ def solve_f4(
     c_decap: float = 50e-15,
     i_scale: float = 1.0,
     dt_ps: float = 10.0,
-    timeout_s: float = 90.0,
+    timeout_s: float = 600.0,
     spice: Path | str | None = None,
     insts: Path | str | None = None,
     extract_kind: str = "finish",
@@ -274,7 +249,7 @@ def solve_f4(
     n_nodes: int | None = None,
     scenario: object | None = None,
 ) -> dict:
-    """Named extract + named solver (direct/amg/bicg/ras/krylov). Not gold.
+    """Named extract + named solver (direct/amg/bicg/ras/krylov).
 
     PDN_SOLVE_TIMEOUT_S overrides timeout_s when set. That raises the worker
     wall-clock; it does not add Cloud Agent VM RAM.
@@ -287,7 +262,6 @@ def solve_f4(
             {
                 "status": "GAP",
                 "reason": scenario.gap or CCS_GAP,
-                "gold": False,
                 "via": "f4_oracle",
                 "current_scenario": scenario.to_dict(),
             },
@@ -301,8 +275,7 @@ def solve_f4(
             return _stamp_solve(
                 {
                     "status": gate.get("status") or "GAP",
-                    "reason": gate.get("reason") or "no CUDA device — not claiming a GPU solve, not gold",
-                    "gold": False,
+                    "reason": gate.get("reason") or "no CUDA device — live GPU solve unavailable",
                     "via": "f4_oracle",
                     "device": gate.get("backend_actual") or "cpu",
                     "backend_actual": gate.get("backend_actual") or "cpu",
@@ -321,7 +294,6 @@ def solve_f4(
             {
                 "status": gate.get("status") or "REFUSED",
                 "reason": gate.get("reason") or "admit_solve refused",
-                "gold": False,
                 "via": "f4_oracle",
                 "admit": gate,
                 "n_r": n_r,
@@ -340,7 +312,6 @@ def solve_f4(
                 {
                     "status": "GAP",
                     "reason": "candidate write_pg_spice / inst map missing — not launching finish",
-                    "gold": False,
                     "extract": "candidate",
                     "via": "f4_oracle",
                 },
@@ -351,7 +322,6 @@ def solve_f4(
             {
                 "status": "GAP",
                 "reason": "cached write_pg_spice / STA arrivals missing — not a new extract",
-                "gold": False,
                 "extract": "finish",
                 "via": "f4_oracle",
             },
@@ -388,7 +358,6 @@ def solve_f4(
             {
                 "status": "fail",
                 "reason": f"F4 worker timeout {timeout_s}s",
-                "gold": False,
                 "via": "f4_oracle",
             },
             backend_requested=requested,
@@ -409,13 +378,11 @@ def solve_f4(
             {
                 "status": "fail",
                 "reason": err,
-                "gold": False,
                 "via": "f4_oracle",
                 "rc": proc.returncode,
             },
             backend_requested=requested,
         )
-    payload.setdefault("gold", False)
     payload.setdefault("extract", kind)
     payload["admit"] = gate
     if n_r is not None:

@@ -1,11 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { execFileSync } from "child_process";
 import { LEARN_ROOT, REPO_ROOT, LESSONS, readProgress } from "./course";
 import { artifactExists, detectDisplay, listOpenTargets, resultsDir } from "./open";
 import { viewerStatus } from "./webviewer";
 import { listJobs, readLock, getPipelineStatus } from "./jobs";
 import { probeToolchain } from "./run";
+import { isCurrentReport, isCurrentRunArtifact } from "./liveReports";
 import {
   drcSignoffHookDetail,
   hookLeftoverIds,
@@ -21,6 +21,8 @@ export type HookStatus = {
   label: string;
   group: string;
   ok: boolean;
+  /** Normalized report state when this hook is backed by a live report. */
+  status?: "PASS" | "FAIL" | "WARN" | "PARTIAL" | "PROXY" | "GAP" | "NOT_RUN";
   detail: string;
   action?: string;
   href?: string;
@@ -31,18 +33,9 @@ function has(rel: string) {
   return artifactExists(rel);
 }
 
-function which(bin: string) {
-  try {
-    execFileSync("which", [bin], { encoding: "utf8" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function signoffReportPass(variant: string, name: string) {
   const p = path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.json`);
-  if (!fs.existsSync(p)) return false;
+  if (!isCurrentReport(p)) return false;
   try {
     const j = JSON.parse(fs.readFileSync(p, "utf8")) as { ok?: boolean };
     return j.ok === true;
@@ -51,44 +44,67 @@ function signoffReportPass(variant: string, name: string) {
   }
 }
 
-/** Gold Dynamic IR report file present (label gold:true). Do not pin mV. */
-function goldDynamicIrPresent() {
+type LiveReport = {
+  status?: unknown;
+  ok?: unknown;
+  summary?: unknown;
+  reason?: unknown;
+};
+
+const REPORT_STATUSES = new Set([
+  "PASS",
+  "FAIL",
+  "WARN",
+  "PARTIAL",
+  "PROXY",
+  "GAP",
+  "NOT_RUN",
+]);
+
+function readCurrentReport(relativePath: string): LiveReport | null {
+  const reportPath = path.join(LEARN_ROOT, "sim/reports", relativePath);
+  if (!isCurrentReport(reportPath)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(reportPath, "utf8")) as unknown;
+    return raw && typeof raw === "object" ? (raw as LiveReport) : null;
+  } catch {
+    return null;
+  }
+}
+
+function reportStatus(report: LiveReport | null): HookStatus["status"] | undefined {
+  if (!report) return undefined;
+  const value = String(report.status || "").toUpperCase();
+  if (REPORT_STATUSES.has(value)) return value as HookStatus["status"];
+  return report.ok === true ? "PASS" : undefined;
+}
+
+function reportDetail(report: LiveReport | null, fallback: string): string {
+  const status = reportStatus(report);
+  const text = String(report?.summary || report?.reason || "").trim();
+  if (!status) return fallback;
+  if (!text) return `${status} · ${fallback}`;
+  return text.toUpperCase().includes(status) ? text : `${status} · ${text}`;
+}
+
+/** Current-run I(t) result for at least one supported design variant. */
+function currentRunDynamicIrPresent() {
   for (const variant of ["flowlab", "learn"]) {
-    const p = path.join(LEARN_ROOT, "sim/reports", `dynamic_ir_${variant}.json`);
-    if (!fs.existsSync(p)) continue;
-    try {
-      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
-        gold?: boolean;
-      };
-      if (j.gold === true) return true;
-    } catch {
-      /* ignore */
-    }
+    const report = readCurrentReport(`dynamic_ir_${variant}_direct.json`);
+    if (report?.ok === true) return true;
   }
   return false;
 }
 
-/** current_run I(t) cook. Never the gold sentinel. */
-function currentRunDynamicIrPresent() {
+function currentReportFor(
+  names: (variant: string) => string,
+): { report: LiveReport; status: NonNullable<HookStatus["status"]> } | null {
   for (const variant of ["flowlab", "learn"]) {
-    const p = path.join(
-      LEARN_ROOT,
-      "sim/reports",
-      `dynamic_ir_${variant}_direct.json`,
-    );
-    if (!fs.existsSync(p)) continue;
-    try {
-      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
-        ok?: boolean;
-        gold?: boolean;
-      };
-      if (j.gold === true) continue;
-      if (j.ok === true) return true;
-    } catch {
-      /* ignore */
-    }
+    const report = readCurrentReport(names(variant));
+    const status = reportStatus(report);
+    if (report && status) return { report, status };
   }
-  return false;
+  return null;
 }
 
 function withLeftover(hook: HookStatus): HookStatus {
@@ -99,10 +115,10 @@ function withLeftover(hook: HookStatus): HookStatus {
 
 function vygesEmHookDetail() {
   for (const variant of ["flowlab", "learn"]) {
-    const p = path.join(LEARN_ROOT, "sim/reports", `vyges_em_ir_${variant}.json`);
-    if (!fs.existsSync(p)) continue;
+    const report = readCurrentReport(`vyges_em_ir_${variant}.json`);
+    if (!report) continue;
     try {
-      const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
+      const j = report as LiveReport & {
         vyges?: { em_checked?: number; ir_met?: boolean };
         summary?: string;
       };
@@ -111,7 +127,7 @@ function vygesEmHookDetail() {
       if (em === 0 || irMet === false) {
         return `engine ran · em_checked ${em ?? 0} (no emlimit) · ir_met ${irMet === false ? "false" : String(irMet)}`;
       }
-      if (j.summary) return String(j.summary);
+      if (j.summary) return reportDetail(report, String(j.summary));
     } catch {
       /* ignore */
     }
@@ -122,7 +138,7 @@ function vygesEmHookDetail() {
 function thermalHookDetail() {
   for (const variant of ["flowlab", "learn"]) {
     const p = path.join(LEARN_ROOT, "sim/reports", `thermal_signoff_${variant}.json`);
-    if (!fs.existsSync(p)) continue;
+    if (!isCurrentReport(p)) continue;
     try {
       const j = JSON.parse(fs.readFileSync(p, "utf8")) as {
         thermal?: { t_max_c?: number };
@@ -139,13 +155,33 @@ function thermalHookDetail() {
 }
 
 function powerReportOk(variant: string, name: string) {
-  return fs.existsSync(path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.log`));
+  return isCurrentRunArtifact(
+    path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.log`),
+    variant,
+  );
+}
+
+function systemPdnHookDetail(): string {
+  for (const variant of ["flowlab", "learn"]) {
+    const report = readCurrentReport(`system_pdn_${variant}.json`);
+    if (!report) continue;
+    try {
+      const system = report as LiveReport & Record<string, unknown>;
+      if (system.status === "GAP") {
+        return `GAP System PDN · ${String(system.reason ?? "optional engine unavailable")}`;
+      }
+      if (typeof system.summary === "string" && system.summary.trim()) return reportDetail(report, system.summary);
+    } catch {
+      // Try the other supported variant.
+    }
+  }
+  return "System PDN status is read from the current report";
 }
 
 function powerChainOk() {
   for (const v of ["flowlab", "learn"]) {
     const log = path.join(LEARN_ROOT, `sim/reports/power_chain_${v}.log`);
-    if (fs.existsSync(log)) {
+    if (isCurrentRunArtifact(log, v)) {
       try {
         const text = fs.readFileSync(log, "utf8");
         if (text.includes("POWER_CHAIN_DONE")) return true;
@@ -159,8 +195,10 @@ function powerChainOk() {
 
 export async function getSuiteStatus() {
   const tools = await probeToolchain();
+  const toolOk = (name: string) =>
+    tools.tools.some((tool) => tool.name === name && tool.ok);
   const display = detectDisplay();
-  const viewer = viewerStatus();
+  const viewer = await viewerStatus();
   const lock = readLock();
   const jobs = listJobs(5);
   const pipeline = getPipelineStatus();
@@ -180,37 +218,37 @@ export async function getSuiteStatus() {
       id: "magic_netgen",
       label: "Magic / Netgen",
       group: "Environment",
-      ok: which("magic") && (which("netgen") || which("netgen-lvs")),
-      detail: which("magic")
+      ok: toolOk("magic") && (toolOk("netgen") || toolOk("netgen-lvs")),
+      detail: toolOk("magic")
         ? "present · Nangate LVS stays on KLayout (no FreePDK45 .tech)"
-        : "not installed · Nangate LVS stays on KLayout (no FreePDK45 .tech)",
+        : "not registered · Nangate LVS stays on KLayout (no FreePDK45 .tech)",
       action: "layout_tools",
     },
     {
       id: "ngspice",
       label: "ngspice (System PDN)",
       group: "Environment",
-      ok: which("ngspice"),
-      detail: which("ngspice")
-        ? which("Xyce") || which("xyce") || fs.existsSync(path.join(LEARN_ROOT, "tools/xyce/bin/Xyce"))
+      ok: toolOk("ngspice"),
+      detail: toolOk("ngspice")
+        ? toolOk("xyce")
           ? "ngspice present · Xyce READY"
           : "ngspice present · Xyce install via install_xyce.sh"
-        : "apt install ngspice",
+        : "GAP ngspice · optional System PDN is unavailable until the engine is installed",
       action: "system_pdn",
     },
     {
       id: "iverilog",
       label: "Icarus (RTL + gate sim)",
       group: "Environment",
-      ok: which("iverilog"),
-      detail: which("iverilog") ? "iverilog present" : "install iverilog",
+      ok: toolOk("iverilog"),
+      detail: toolOk("iverilog") ? "iverilog present" : "install iverilog",
       action: "rtl_sim",
     },
     {
       id: "hotspot",
       label: "HotSpot (thermal)",
       group: "Environment",
-      ok: which("hotspot") || fs.existsSync(path.join(LEARN_ROOT, "tools/hotspot/hotspot")),
+      ok: toolOk("hotspot"),
       detail: "UVA HotSpot architecture compact model",
       action: "thermal_signoff",
     },
@@ -218,10 +256,7 @@ export async function getSuiteStatus() {
       id: "fastercap",
       label: "FasterCap (PEX BEM)",
       group: "Environment",
-      ok:
-        which("FasterCap") ||
-        which("fastercap") ||
-        fs.existsSync(path.join(LEARN_ROOT, "tools/fastercap/FasterCap")),
+      ok: toolOk("fastercap"),
       detail: "LGPL 3D BEM · 2-wire educational extract, not Raphael",
       action: "analytical_pex",
     },
@@ -257,7 +292,7 @@ export async function getSuiteStatus() {
       id: "rtl_sim",
       label: "RTL sim + VCD",
       group: "Frontend",
-      ok: which("iverilog") && fs.existsSync(path.join(LEARN_ROOT, "sim/gcd/tb_gcd.v")),
+      ok: toolOk("iverilog") && fs.existsSync(path.join(LEARN_ROOT, "sim/gcd/tb_gcd.v")),
       detail: "run_rtl_sim.sh · rtl_sim action · lesson 00",
       action: "rtl_sim",
       href: "/tools?tab=run&action=rtl_sim",
@@ -267,7 +302,7 @@ export async function getSuiteStatus() {
       label: "Gate sim + VCD name-join",
       group: "Frontend",
       ok:
-        which("iverilog") &&
+        toolOk("iverilog") &&
         fs.existsSync(path.join(LEARN_ROOT, "sim/gcd/tb_gcd_gate.v")) &&
         fs.existsSync(path.join(LEARN_ROOT, "platforms/nangate45/verilog/NangateOpenCellLibrary.v")),
       detail: "run_gate_sim.sh · 6_final.v + Nangate .v · prefers gcd_gate.vcd",
@@ -310,7 +345,8 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "system_pdn") ||
         signoffReportPass("learn", "system_pdn"),
-      detail: "ngspice VRM→board→pkg→die · Z(f)+load-step · /pkg · no Touchstone",
+      status: currentReportFor((variant) => `system_pdn_${variant}.json`)?.status,
+      detail: systemPdnHookDetail(),
       action: "system_pdn",
       href: "/pkg",
     },
@@ -352,7 +388,11 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "pdn_chip_ir") ||
         signoffReportPass("learn", "pdn_chip_ir"),
-      detail: "write_pg_spice · pdn_transient · finish IR ledger",
+      status: currentReportFor((variant) => `pdn_chip_ir_${variant}.json`)?.status,
+      detail: reportDetail(
+        currentReportFor((variant) => `pdn_chip_ir_${variant}.json`)?.report ?? null,
+        "write_pg_spice · pdn_transient · finish IR ledger",
+      ),
       action: "chip_pdn_ir",
       href: "/flow?phase=finish#ir",
     },
@@ -363,6 +403,7 @@ export async function getSuiteStatus() {
       ok:
         signoffReportPass("flowlab", "vyges_em_ir") ||
         signoffReportPass("learn", "vyges_em_ir"),
+      status: currentReportFor((variant) => `vyges_em_ir_${variant}.json`)?.status,
       detail: vygesEmHookDetail(),
       action: "vyges_em_ir",
       href: "/flow?phase=finish#ir",
@@ -372,9 +413,11 @@ export async function getSuiteStatus() {
       label: "Dynamic IR I(t)",
       group: "Power",
       ok: currentRunDynamicIrPresent(),
-      detail: goldDynamicIrPresent()
-        ? "current_run _direct.json · gold report labeled separately"
-        : "current_run _direct.json · gold report missing",
+      status: currentReportFor((variant) => `dynamic_ir_${variant}_direct.json`)?.status,
+      detail: reportDetail(
+        currentReportFor((variant) => `dynamic_ir_${variant}_direct.json`)?.report ?? null,
+        "current-run _direct.json · solver deltas use the same live mesh",
+      ),
       action: "dynamic_ir",
       href: "/flow?phase=finish#ir",
     },
@@ -400,7 +443,10 @@ export async function getSuiteStatus() {
       id: "spice_lab",
       label: "SPICE lab export",
       group: "Power",
-      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/spice/INDEX_flowlab.md")),
+      ok: isCurrentRunArtifact(
+        path.join(LEARN_ROOT, "sim/spice/INDEX_flowlab.md"),
+        "flowlab",
+      ),
       detail: "export_spice_lab · mesh_stats + netlist",
       action: "export_spice_lab",
       href: "/tools?tab=run&action=export_spice_lab",
@@ -473,7 +519,7 @@ export async function getSuiteStatus() {
       label: "ECO loop",
       group: "Signoff",
       ok: signoffReportPass("flowlab", "eco") || signoffReportPass("learn", "eco"),
-      detail: "Propose on flowlab. Apply/close only on eco_scratch. Copy is R2R MET; leftover is course output delay. Does not skip signoff_all.",
+      detail: "Propose on flowlab. Apply/close only on eco_scratch. Copy and leftover status come from the current signoff report. Does not skip signoff_all.",
       action: "eco",
       href: "/flow?phase=finish#eco",
     },
@@ -518,7 +564,7 @@ export async function getSuiteStatus() {
       label: "SPICE engines",
       group: "Environment",
       ok: signoffReportPass("flowlab", "spice_engines") || signoffReportPass("learn", "spice_engines"),
-      detail: "ngspice + Xyce N4 gold · run_spice_engines.sh",
+      detail: "ngspice + Xyce N4 same-run reference · run_spice_engines.sh",
       action: "spice_engines",
       href: "/tools?tab=run&action=spice_engines",
     },
@@ -597,8 +643,8 @@ export async function getSuiteStatus() {
       id: "lvs_deep",
       label: "Deep LVS (filter + VTL)",
       group: "Analysis",
-      ok: fs.existsSync(path.join(LEARN_ROOT, "sim/reports/lvs_deep_flowlab.json")),
-      detail: "Filtered CDL + well→VDD/VSS · match required · FILL/TAP abstract · DFF_X2 leftover",
+      ok: isCurrentReport(path.join(LEARN_ROOT, "sim/reports/lvs_deep_flowlab.json")),
+      detail: "Filtered CDL + well→VDD/VSS · match required · FILL/TAP abstract · current must-connect result",
       action: "lvs_deep",
       href: "/tools?tab=run&action=lvs_deep",
     },

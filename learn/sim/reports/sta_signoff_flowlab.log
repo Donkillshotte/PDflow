@@ -1,18 +1,64 @@
-# Committed fixture: matches sta_signoff_flowlab.json setup_violations=16.
-# Regenerate from a live STA cook; each data line ends with VIOLATED in parentheses.
--0.010 setup path 1 (VIOLATED)
--0.011 setup path 2 (VIOLATED)
--0.012 setup path 3 (VIOLATED)
--0.013 setup path 4 (VIOLATED)
--0.014 setup path 5 (VIOLATED)
--0.015 setup path 6 (VIOLATED)
--0.016 setup path 7 (VIOLATED)
--0.017 setup path 8 (VIOLATED)
--0.018 setup path 9 (VIOLATED)
--0.019 setup path 10 (VIOLATED)
--0.020 setup path 11 (VIOLATED)
--0.021 setup path 12 (VIOLATED)
--0.022 setup path 13 (VIOLATED)
--0.023 setup path 14 (VIOLATED)
--0.024 setup path 15 (VIOLATED)
--0.025 setup path 16 (VIOLATED)
+OpenSTA 2.7.0 f21d4a3878 Copyright (c) 2026, Parallax Software, Inc.
+License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>
+
+This is free software, and you are free to change and redistribute it
+under certain conditions; type `show_copying' for details.
+This program comes with ABSOLUTELY NO WARRANTY; for details type `show_warranty'.
+1
+1
+1
+wns max -0.15
+tns max -5.06
+worst slack max -0.15
+max_delay/setup group core_clock
+
+                                     Required  Actual
+Endpoint                               Delay   Delay   Slack
+------------------------------------------------------------
+dpath.b_reg.out[5]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.15 (VIOLATED)
+dpath.b_reg.out[4]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.15 (VIOLATED)
+dpath.b_reg.out[6]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.15 (VIOLATED)
+dpath.b_reg.out[9]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.15 (VIOLATED)
+dpath.b_reg.out[3]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.15 (VIOLATED)
+dpath.b_reg.out[1]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.a_reg.out[3]$_DFFE_PP_/D (DFF_X1)    0.42    0.57   -0.14 (VIOLATED)
+dpath.a_reg.out[7]$_DFFE_PP_/D (DFF_X1)    0.42    0.57   -0.14 (VIOLATED)
+dpath.b_reg.out[0]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.a_reg.out[6]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[8]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[2]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.b_reg.out[2]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.a_reg.out[0]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[13]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[4]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[1]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[5]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[9]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.b_reg.out[8]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.b_reg.out[12]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[11]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[10]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.b_reg.out[10]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.b_reg.out[11]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.b_reg.out[15]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.b_reg.out[14]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.b_reg.out[13]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.b_reg.out[7]$_DFFE_PP_/D (DFF_X1)    0.43    0.57   -0.14 (VIOLATED)
+dpath.a_reg.out[12]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[15]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.14 (VIOLATED)
+dpath.a_reg.out[14]$_DFFE_PP_/D (DFF_X1)    0.42    0.56   -0.13 (VIOLATED)
+resp_msg[15] (output)                   0.37    0.45   -0.08 (VIOLATED)
+resp_msg[14] (output)                   0.37    0.45   -0.08 (VIOLATED)
+resp_msg[12] (output)                   0.37    0.45   -0.08 (VIOLATED)
+resp_msg[13] (output)                   0.37    0.44   -0.07 (VIOLATED)
+resp_msg[11] (output)                   0.37    0.44   -0.07 (VIOLATED)
+resp_msg[8] (output)                    0.37    0.42   -0.05 (VIOLATED)
+resp_msg[10] (output)                   0.37    0.41   -0.04 (VIOLATED)
+resp_msg[9] (output)                    0.37    0.40   -0.03 (VIOLATED)
+resp_msg[6] (output)                    0.37    0.38   -0.01 (VIOLATED)
+resp_msg[7] (output)                    0.37    0.37   -0.01 (VIOLATED)
+resp_msg[5] (output)                    0.37    0.37    0.00 (VIOLATED)
+
+core_clock period_min = 0.61 fmax = 1649.66
+STA_SIGNOFF_DONE flowlab
+1

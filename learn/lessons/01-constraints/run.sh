@@ -4,7 +4,7 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Theory — SDC and config"
-  ui_note "Read: learn/lessons/01-constraints/README.md and golden-metrics.md (master table)."
+  ui_note "Read: learn/lessons/01-constraints/README.md and live-analysis.md (current inputs)."
   ui_print_file "Default SDC" "${TUTORIAL_SRC}/constraint.sdc"
   ui_print_file "Config" "${TUTORIAL_SRC}/config.mk"
   learn_make_hint synth floorplan place
@@ -31,7 +31,7 @@ EOF
     learn_make synth floorplan place
     learn_validate_stage place
     learn_grep_metric "$(learn_report 3_resizer.rpt)" "worst slack|period_min" || true
-    learn_golden
+    learn_live_analysis
     ui_note "With a 2.0 ns clock expect comfortable slack and fewer buffers vs default 0.46 ns."
   fi
   ui_pause

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdflow.local/schemas/action-registry.schema.json",
+  "title": "PDflow action registry manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "default_timeout_seconds", "actions"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "default_timeout_seconds": {"type": "integer", "minimum": 1},
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action_id",
+          "display_name",
+          "surface",
+          "command",
+          "timeout_seconds",
+          "required_tools",
+          "mutates"
+        ],
+        "properties": {
+          "action_id": {"type": "string", "minLength": 1},
+          "display_name": {"type": "string", "minLength": 1},
+          "surface": {"enum": ["product", "flow", "package", "lab", "tools", "generated"]},
+          "command": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "timeout_seconds": {"type": "integer", "minimum": 1},
+          "required_tools": {"type": "array", "items": {"type": "string"}},
+          "mutates": {"type": "boolean"},
+          "pythonpath": {"type": "boolean"},
+          "environment": {"type": "object", "additionalProperties": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

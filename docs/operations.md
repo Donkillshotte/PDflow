@@ -1,72 +1,86 @@
 # Operations
 
-One heavy job at a time. The wrapper uses `prlimit --as`.
-Never `FLOW_VARIANT` in `{flowlab, learn, base}`. Never Krylov on AES
-(~50–70k-R). Never restamp gold GCD Dynamic IR **45.298 mV**.
-Never touch `results/.../gcd/flowlab/` (baseline A).
+Use the local machine for reproducible, run-scoped analysis.
 
-## Environment
+PDflow's certified execution mode is native Linux host execution. Start every
+shell session with the native environment and verify the six required EDA
+tools before running a flow:
+
+```bash
+source scripts/native_eda_env.sh
+./scripts/verify_native_eda.sh
+```
 
 ```bash
 export PYTHONPATH=learn:learn/scripts
-# tuner: pip install -r learn/requirements-tune.txt   # optuna>=3.4,<4
+export PD_FLOW_RUN_DIR="$PWD/learn/sim/dse/live/manual-run"
+python3 learn/scripts/run_dse.py
 ```
 
-Cook entry: [`scripts/run_design_finish.sh`](../scripts/run_design_finish.sh)
-via [`learn/dse/cook.py`](../learn/dse/cook.py) (`cook_one`).
+Heavy wrappers use a 600-second default timeout. Set `PD_FLOW_TIMEOUT_S=600`
+or a larger value only when the selected workflow explicitly needs it; the
+process timeout must not be shorter than the solver timeout. Docker/cloud
+execution is not a substitute for the native product path.
 
-## Product commands
+## Analysis Workbench operations
+
+The Workbench is checkpoint-aware.  Select the design, PDK, stage, and
+candidate context first; the agent then resolves the native artifacts and
+evaluates the published check descriptors.  Opening a tab, inspector, report,
+or viewer is read-only and never starts a process.
+
+The UI's `Preview` action is equivalent to a read-only preflight of
+`POST /api/analysis-bundles/preview`.  It expands a bundle into concrete
+checks, prerequisites, native actions, resource limits, expected evidence,
+and downstream invalidations.  Only `Confirm & queue` submits work through
+the agent's single heavy-job queue.  The browser, Tauri shell, and CLI all use
+this same boundary; none of them constructs a shell command from UI input.
+
+Useful API examples (with the local agent already running) are:
 
 ```bash
-# Review: cover / improve / tune
-python3 learn/scripts/run_recipe_loop.py
-python3 learn/scripts/run_recipe_loop.py --dry-run
+curl -sS -H "Origin: http://127.0.0.1:43217" \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"bundle_id":"recommended","stage":"finish","variant":"flowlab"}' \
+  http://127.0.0.1:43217/api/analysis-bundles/preview
 
-# One recipe (title → id in knob_catalog.py)
-python3 learn/scripts/cook_recipe.py --design gcd --recipes place_sparse_setup
-
-# TPE, ≤8 finishes, serial
-python3 -u learn/scripts/run_tpe.py --design ibex --max-cooks 8
-python3 learn/scripts/run_tpe.py --design dynamic_node --dry-run
-
-# Registry
-# learn/sim/dse/campaign_experiments.jsonl
-python3 learn/scripts/record_experiment.py --help
+curl -sS http://127.0.0.1:43217/api/analysis-runs?limit=20
 ```
 
-Cheap-first slots: gcd → spi → ibex → aes → dynamic_node.
-spi is not admissible for tune.
+Treat `GAP`, `PARTIAL`, `PROXY`, and `NOT_RUN` as actionable diagnostic
+states, never as Product wins.  A completed native process can still have a
+failed requirement (for example negative WNS); inspect the four status
+dimensions and the report's input hashes before interpreting the result.
 
-## Tests
+For a FlowLab edit, create a candidate run first.  Candidate dependency
+closure is materialized atomically from the protected finish and subsequent
+analysis inputs must resolve to that candidate.  The finish hash must remain
+unchanged before and after the operation.  A candidate request referencing an
+unknown or unpersisted run is refused rather than creating an untracked
+workspace.
+
+## Failure semantics
+
+- `READY` means the current artifact was produced and validated.
+- `GAP` means an optional engine or required input is unavailable.
+- `FAIL` means the current tool ran and failed.
+- `REFUSED` means the request violates the current tool contract.
+
+`PROXY`, `PARTIAL`, and `GAP` are useful diagnostic outcomes but are never
+Product signoff. A native executable can be `READY` while its current run
+still returns `FAIL` because the design violates timing, DRC, LVS, IR, or
+another required check.
+
+Never convert `GAP` into a value by reading an older JSON or log. Keep the
+input paths and fingerprints in the current report.
+
+## Useful commands
 
 ```bash
-# Fast product suite (synthetic + gcd-scale + docs map). One at a time.
-python3 learn/scripts/test_dse_next.py
-
-# Lab DSE (controller / F4): do not mix with the suite above in one process
-python3 learn/scripts/test_dse.py
+./scripts/run_studio.sh
+./scripts/test_course.sh
+./scripts/test_all_phases.sh
+timeout 600s ./scripts/test_native_rtl_e2e.sh
+python3 learn/scripts/test_signoff_honesty.py
+python3 learn/scripts/test_lab_physics.py
 ```
-
-Live finish only at gcd-scale in the fast suite. One `test_dse.py` at a time.
-Live F4 last, and only when requested.
-
-## Refuse (expected)
-
-| Attempt | Outcome |
-|---|---|
-| `FLOW_VARIANT=flowlab` / `learn` / `base` | refused by wrapper |
-| floorplan recipe (`core_*`, `aspect_wide`) | `cook_one` refuse |
-| `cell_pad=2` (wall) | `cook_one` refuse |
-| `synth_hier` (wall) | cover skips; cook refuse |
-| `DIE_AREA` + `FLOORPLAN_DEF` (aes) | pin does not inject DIE |
-
-## ORFS variants
-
-Product name: `camp_{design}_{recipe}` or `camp_{design}_tpe_{12hex}`.
-TPE registry phase T1. `extra.tuner=tpe`. Do not clean `camp_*_base`.
-
-## Memory / leftovers
-
-Do not commit `learn/sim/dse/memory_flowlab_nl.jsonl`,
-`memory_camp_spi_dse.index.json`, `dse_camp_spi_dse.json`.
-`learn/sim/dse/tpe_*.db` is already in `.gitignore`.

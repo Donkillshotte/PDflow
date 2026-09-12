@@ -35,15 +35,26 @@ export function CommandPalette() {
   const [q, setQ] = useState("");
   const [targets, setTargets] = useState<OpenTarget[]>([]);
   const [display, setDisplay] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/open");
-    if (!res.ok) return;
-    const data = await res.json();
-    setTargets(data.targets ?? []);
-    setDisplay(data.display ?? null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/open");
+      if (!res.ok) return;
+      const data = await res.json();
+      setTargets(data.targets ?? []);
+      setDisplay(data.display ?? null);
+    } catch {
+      // The palette is auxiliary UI. Keep it open with an honest empty state
+      // if the catalog is unavailable instead of leaking a rejection.
+      setTargets([]);
+      setDisplay(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -213,7 +224,7 @@ export function CommandPalette() {
         </header>
         <ul className="cmd-list" role="listbox">
           {filtered.length === 0 && (
-            <li className="muted cmd-empty">No results</li>
+            <li className="muted cmd-empty">{loading ? "Loading targets…" : "No results"}</li>
           )}
           {filtered.map((t, i) => (
             <li key={t.id}>

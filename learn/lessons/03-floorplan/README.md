@@ -2,17 +2,19 @@
 
 The floorplan is the chip's **building**: walls (die), rooms (core), floor (rows), electrical system (PDN). Logic cells are **not** yet placed: if you look for NAND gates in the GUI, you are in lesson 04.
 
-On the GCD `learn` with `CORE_UTILIZATION=35` the log `2_1_floorplan.log` reports approximately:
+On the active GCD invocation with `CORE_UTILIZATION=35`, read the following
+values from `2_1_floorplan.log`:
 
-| Metric | Typical course value |
+| Metric | Current source |
 |---|---|
-| Die from utilization | 35%, aspect 1.0 |
-| Core area | **1712.5 µm²** |
-| Effective utilization | **0.367** |
-| Design area (cells) | ~629 µm² (~37% of core) |
-| Snapping origin | `(1.000, 1.000)` → `(1.140, 1.400)` (site grid) |
+| Die from utilization | Current floorplan log/config |
+| Core area | Current floorplan log |
+| Effective utilization | Current floorplan log |
+| Design area (cells) | Current floorplan log |
+| Snapping origin | Current floorplan log and site grid |
 
-These numbers are your **yardstick**. If you double utilization, the core must shrink.
+These live values are the evidence for this run. If you increase utilization,
+the core should shrink; verify the effect in a new invocation.
 
 ## Objectives
 
@@ -82,9 +84,9 @@ add_pdn_connect -layers {metal4 metal7}
 | strap M7 | backbone | thick pink bars |
 | `add_pdn_connect` | via stack between layers | visible when zooming crossings |
 
-Without PDN the cells have no legal power. Finish IR is several meshes
-(gold 45.298 mV, chip PDN, current_run I(t)). The ORFS PNG is one picture,
-not those numbers. Blind if the grid does not exist.
+Without PDN the cells have no legal power. Finish IR may contain several
+meshes (on-die, chip, and activity-driven). The ORFS PNG is one view; read the
+current report and mesh fingerprints before comparing values.
 
 `add_global_connection` connects instance `VDD`/`VSS` pins to power nets: that is why you do not hand-wire VDD on every NAND.
 

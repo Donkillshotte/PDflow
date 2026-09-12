@@ -24,9 +24,7 @@ type Step = {
 
 type Slot = {
   id: string;
-  clockNs: number;
-  baseWnsPs: number | null;
-  wins: number;
+  clockNs: number | null;
   cooks: number;
 };
 
@@ -39,10 +37,8 @@ export type StoryPayload = {
   pipeline: { ready: number; total: number; finishReady: boolean };
   signoff: { ok: boolean | null; passed: number; total: number; detail: string };
   ir: {
-    goldMv: number;
-    currentMv: number | null;
-    goldPresent: boolean;
-    currentPresent: boolean;
+    runMv: number | null;
+    present: boolean;
     detail: string;
   };
   staIr?: {
@@ -53,7 +49,7 @@ export type StoryPayload = {
     nGates: number | null;
     detail: string;
   };
-  product: { slots: Slot[]; wins: number; cooks: number; detail: string };
+  product: { slots: Slot[]; cooks: number; detail: string };
   course: { done: number; total: number; nextId: string | null; nextTitle: string | null };
 };
 
@@ -167,18 +163,18 @@ export function ProductStory({
           <article>
             <span>Dynamic IR</span>
             <strong>
-              {data.ir.currentPresent && data.ir.currentMv != null
-                ? `${Number(data.ir.currentMv).toFixed(3)} mV`
-                : `${data.ir.goldMv} mV`}
+              {data.ir.present && data.ir.runMv != null
+                ? `${Number(data.ir.runMv).toFixed(3)} mV`
+                : "—"}
             </strong>
             <em>{data.ir.detail}</em>
           </article>
           <article>
             <span>Product</span>
             <strong>
-              {data.product.wins} wins
+              {data.product.cooks} current run{data.product.cooks === 1 ? "" : "s"}
             </strong>
-            <em>{data.product.slots.map((s) => `${s.id} ${s.wins}`).join(" · ")}</em>
+            <em>{data.product.detail}</em>
           </article>
         </div>
       )}

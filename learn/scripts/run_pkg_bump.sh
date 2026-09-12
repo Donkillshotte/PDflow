@@ -4,6 +4,9 @@
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" pkg-bump bash "${BASH_SOURCE[0]}" "$@"
+fi
 VARIANT="${FLOW_VARIANT:-flowlab}"
 OUT="${ROOT}/learn/sim/reports/pkg_bump_${VARIANT}.json"
 CONFIG="${ROOT}/learn/system_pdn/default.json"

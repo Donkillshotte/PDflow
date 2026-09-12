@@ -1,4 +1,4 @@
-"""Shared product cook: official netlist, pinned die, place then maybe finish."""
+"""Shared product cook: current netlist, current geometry, place then finish."""
 from __future__ import annotations
 
 import json
@@ -22,16 +22,13 @@ REPO = Path(__file__).resolve().parents[2]
 LEARN = Path(__file__).resolve().parents[1]
 
 
-def base_netlist(design: str) -> Path:
+def current_netlist(design: str) -> Path:
     orfs = DESIGN_CATALOG.get(design, {}).get("orfs_design") or design
-    cand = [
-        REPO / "tools/OpenROAD-flow-scripts/flow/results/nangate45" / orfs / f"camp_{design}_base" / "1_2_yosys.v",
-        REPO / "tools/OpenROAD-flow-scripts/flow/results/nangate45" / orfs / "flowlab" / "1_2_yosys.v",
-    ]
-    for p in cand:
-        if p.is_file():
-            return p
-    raise FileNotFoundError(f"no official yosys netlist for {design}")
+    variant = os.environ.get("FLOW_VARIANT") or "flowlab"
+    path = REPO / "tools/OpenROAD-flow-scripts/flow/results/nangate45" / orfs / variant / "1_2_yosys.v"
+    if not path.is_file():
+        raise FileNotFoundError(f"no current yosys netlist for {design}/{variant}")
+    return path
 
 
 def base_finish_ns(design: str, clock_ns: float, log: ExperimentLog | None = None) -> float | None:
@@ -90,7 +87,7 @@ def pin_knobs(design: str, knobs: dict[str, str]) -> dict[str, str]:
     out.pop("CORE_UTILIZATION", None)
     out.pop("CORE_ASPECT_RATIO", None)
     if uses_floorplan_def(design):
-        # Official DEF already pins the die. DIE_AREA + DEF is illegal.
+        # The selected current DEF already pins the die. DIE_AREA + DEF is illegal.
         out.pop("DIE_AREA", None)
         out.pop("CORE_AREA", None)
     else:
@@ -157,7 +154,7 @@ def cook_one(
     if rids:
         resolved = resolve_many(rids, defaults)
         title = titles_of(rids)
-        var = variant or f"camp_{design}_{'_'.join(rids)}"
+        var = variant or f"live_{design}_{'_'.join(rids)}"
         fresh = needs_fresh_synth(rids)
         fp = None
     else:
@@ -182,7 +179,7 @@ def cook_one(
     if _variant_kept(log, var, phase):
         return {"ok": True, "skipped": True, "variant": var, "phase": phase, "exit_code": 0}
 
-    net = None if fresh else base_netlist(design)
+    net = None if fresh else current_netlist(design)
     base_ns = base_finish_ns(design, clock, log)
     print(
         json.dumps(
@@ -199,7 +196,7 @@ def cook_one(
     )
     ec_p, t_p = _run_wrapper(design, var, clock, "place", env, net)
     place_ns = _place_wns(design, var)
-    dec = decide(design=design, place_wns_ns=place_ns, baseline_finish_ns=base_ns)
+    dec = decide(design=design, place_wns_ns=place_ns, reference_finish_ns=base_ns)
     print(
         json.dumps(
             {"place_exit": ec_p, "place_s": round(t_p, 2), "place_wns_ns": place_ns, "policy": dec.to_dict()},
@@ -226,7 +223,7 @@ def cook_one(
         blob.setdefault("tuner", "tpe")
         if fp:
             blob["fingerprint"] = fp
-    how = "Fresh Yosys (synth knob)." if net is None else "Official yosys netlist."
+    how = "Fresh Yosys (synth knob)." if net is None else "Current mapped Yosys netlist."
     rec_cmd = [
         sys.executable,
         str(LEARN / "scripts" / "record_experiment.py"),

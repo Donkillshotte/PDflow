@@ -21,15 +21,15 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
   },
   {
     id: "setup_open_eco_io",
-    label: "leftover I/O (resp_msg[14])",
+    label: "leftover setup open · output endpoint",
     tone: "leftover",
-    needles: ["resp_msg[14]", "course output delay"],
+    needles: ["leftover setup open", "endpoint"],
   },
   {
     id: "must_connect_dff_x2",
-    label: "leftover must-connect 2 (DFF_X2)",
+    label: "leftover must-connect · current result",
     tone: "leftover",
-    needles: ["leftover must-connect", "DFF_X2"],
+    needles: ["leftover must-connect"],
   },
   {
     id: "via_flatten",
@@ -92,28 +92,16 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
     needles: ["Nangate45 only", "Different PDK"],
   },
   {
-    id: "gold_ir_locked",
-    label: "gold IR 45.298 locked",
-    tone: "locked",
-    needles: ["45.298"],
-  },
-  {
     id: "course_0_8",
     label: "course 0/8",
     tone: "locked",
     needles: ["0/8"],
   },
   {
-    id: "aes_row_locked",
-    label: "AES row locked",
-    tone: "locked",
-    needles: ["febe6804241c"],
-  },
-  {
     id: "antenna_300",
-    label: "antenna 300:1",
+    label: "antenna rule coverage",
     tone: "built",
-    needles: ["antenna 300:1"],
+    needles: ["antenna", "FreePDK45.lydrc"],
   },
   {
     id: "lvs_match",
@@ -171,15 +159,15 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
   },
   {
     id: "asap7_xyce_patch",
-    label: "ASAP7 Xyce level 72→107",
+    label: "ASAP7 Xyce layer patch",
     tone: "built",
-    needles: ["level 72→107", "leftover Xyce patch"],
+    needles: ["leftover Xyce patch", "Xyce"],
   },
   {
     id: "asap7_dummy_bump",
     label: "leftover ASAP7 dummy bump (not C4)",
     tone: "leftover",
-    needles: ["dummy 2×2 bump", "not JEDEC C4"],
+    needles: ["dummy 4×4 bump", "not JEDEC C4"],
   },
   {
     id: "asap7_sidecar_rdl",
@@ -197,7 +185,7 @@ export const LEFTOVER_CHIPS: LeftoverChipDef[] = [
     id: "asap7_chip_mesh",
     label: "leftover ASAP7 chip PDN mesh",
     tone: "leftover",
-    needles: ["tier B mesh", "not 45.298 mV"],
+    needles: ["tier B mesh", "comparison scope"],
   },
 ];
 

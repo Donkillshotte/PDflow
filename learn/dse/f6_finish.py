@@ -1,8 +1,7 @@
-"""F6: parse ORFS ``6_report.json`` and stamp finish QoR onto a Candidate.
+"""F6: parse the current ORFS ``6_report.json`` and stamp finish QoR.
 
-Never overwrites FLOW_VARIANT=flowlab. The heavy ``make finish`` is the
-existing ``scripts/run_dse_handoff_finish.sh`` wrapper; this module is the
-contract + ingest + optional launch.
+Finish output is run-scoped by ``FLOW_VARIANT`` and may be regenerated for a
+new live design. This module owns the contract, ingest, and optional launch.
 """
 
 from __future__ import annotations
@@ -25,11 +24,6 @@ from .contracts import (
 from .fingerprint import knobs_fp
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, tns_cost_from_tns_ns, wns_cost_from_slack_ns
-
-LOCKED_VARIANTS = frozenset({"flowlab", "learn"})
-
-BASELINE_6_REPORT_SHA = "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
-BASELINE_6_ODB_SHA = "f691539f60f2f66f025108163819b827df43670a660f24362368d0ce56e62594"
 
 _FINISH_KEYS = {
     "wns_setup_ns": "finish__timing__setup__ws",
@@ -63,14 +57,14 @@ def orfs_logs(variant: str, *, design: str = "gcd", platform: str = "nangate45")
     return repo_root() / "tools/OpenROAD-flow-scripts/flow/logs" / platform / design / variant
 
 
-def flowlab_baseline_paths() -> tuple[Path, Path]:
-    logs = orfs_logs("flowlab") / "6_report.json"
-    odb = repo_root() / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb"
+def finish_artifact_paths(variant: str = "flowlab", *, design: str = "gcd", platform: str = "nangate45") -> tuple[Path, Path]:
+    logs = orfs_logs(variant, design=design, platform=platform) / "6_report.json"
+    odb = repo_root() / f"tools/OpenROAD-flow-scripts/flow/results/{platform}/{design}/{variant}/6_final.odb"
     return logs, odb
 
 
-def flowlab_baseline_present() -> bool:
-    rep, odb = flowlab_baseline_paths()
+def finish_artifacts_present(variant: str = "flowlab", *, design: str = "gcd", platform: str = "nangate45") -> bool:
+    rep, odb = finish_artifact_paths(variant, design=design, platform=platform)
     return rep.is_file() and odb.is_file()
 
 
@@ -153,26 +147,6 @@ def qor_from_finish(blob: dict[str, Any]) -> QoR:
         fidelity="F6",
         note="ORFS make finish 6_report — not F5-lite",
     )
-
-
-def refuse_locked_variant(variant: str) -> None:
-    if variant in LOCKED_VARIANTS:
-        raise ValueError(f"REFUSED: FLOW_VARIANT={variant} is locked (baseline/course)")
-    if "aes" in str(variant).lower():
-        raise ValueError("REFUSED: F6 handoff is GCD-only")
-
-
-def assert_baseline_frozen() -> dict[str, str]:
-    """Refuse to continue if someone restamped flowlab finish artifacts."""
-    logs = orfs_logs("flowlab") / "6_report.json"
-    odb = repo_root() / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb"
-    got_rep = hash_file(logs)
-    got_odb = hash_file(odb)
-    if got_rep != BASELINE_6_REPORT_SHA:
-        raise RuntimeError(f"flowlab 6_report sha drifted: {got_rep}")
-    if got_odb != BASELINE_6_ODB_SHA:
-        raise RuntimeError(f"flowlab 6_final.odb sha drifted: {got_odb}")
-    return {"sha256_6_report": got_rep or "", "sha256_6_final_odb": got_odb or ""}
 
 
 def ingest_finish(
@@ -258,7 +232,7 @@ def ingest_finish(
     return cand
 
 
-def run_f6_handoff(
+def run_f6_current(
     netlist: Path | str,
     *,
     variant: str,
@@ -268,8 +242,7 @@ def run_f6_handoff(
     die_area: str | None = None,
     core_area: str | None = None,
 ) -> subprocess.CompletedProcess:
-    refuse_locked_variant(variant)
-    script = repo_root() / "scripts/run_dse_handoff_finish.sh"
+    script = repo_root() / "scripts/run_design_finish.sh"
     env = os.environ.copy()
     env["FLOW_VARIANT"] = variant
     env["SYNTH_NETLIST_FILES"] = str(Path(netlist).resolve())
@@ -302,18 +275,13 @@ def evaluate_f6(
     geometry_kind: str = "product",
     design_id: str = "gcd",
 ) -> Candidate:
-    """Ingest an existing finish, or launch handoff then ingest.
-
-    Reading ``flowlab`` logs is allowed (baseline A). Launching into
-    ``flowlab`` / ``learn`` is refused.
-    """
+    """Ingest an existing finish, or launch the current finish then ingest."""
     t0 = time.time()
     if launch:
-        refuse_locked_variant(variant)
         nl = netlist or (parent.artifacts or {}).get("mapped_v") or parent.netlist_fp
         if not nl:
             raise FileNotFoundError("F6 launch needs a mapped netlist")
-        proc = run_f6_handoff(nl, variant=variant)
+        proc = run_f6_current(nl, variant=variant)
         if proc.returncode != 0:
             fail = Candidate(
                 id=DesignMemory.new_id(),
@@ -328,7 +296,7 @@ def evaluate_f6(
                 qor=QoR(fidelity="F6"),
                 cost_s=time.time() - t0,
                 status="fail",
-                failure=f"handoff exit {proc.returncode}",
+                failure=f"current finish exit {proc.returncode}",
                 artifacts={"stderr": (proc.stderr or "")[-2000:], "flow_errors": 1},
                 finish_ready=False,
             )

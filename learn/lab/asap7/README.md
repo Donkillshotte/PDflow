@@ -30,8 +30,7 @@ CLUSTER_FLOPS=1 ./scripts/run_lab_asap7.sh finish
 # uart (slang.so leftover — wrapper uses Yosys when slang.so is missing)
 LAB_ASAP7_DESIGN=uart ./scripts/run_lab_asap7.sh finish
 
-# relaxed clock (tags the variant so it does not overwrite the 310 ps GDS)
-# 430 ps stayed open (WNS −23). 480 ps closed on this image (WNS +5.4).
+# relaxed clock; use a distinct variant for each invocation
 LAB_CLK_PS=480 ./scripts/run_lab_asap7.sh finish
 ```
 
@@ -53,10 +52,10 @@ Variant names are `lab_asap7_*`. `flowlab` / `learn` / `base` are refused.
 `riscv32i-mock-sram` is FakeRAM + a real core — not a gcd-scale e2e.
 AES stays refused without `ALLOW_HEAVY_ANALYSIS=1`.
 
-IR on this track is a new mesh. `comparable_to_gold_ir` is false.
-Gold Dynamic IR stays **45.298 mV** on Nangate `gcd/flowlab`.
+IR on this track belongs to its own mesh. It is comparable only within an
+invocation with matching mesh, geometry, library, and activity fingerprints.
 
-## Live runs (no gold stamp)
+## Live runs
 
 `learn/sim/reports/lab_asap7.json` is the last run. It is gitignored.
 `learn/sim/reports/lab_asap7_folio.json` lists every live `lab_asap7_*` GDS.
@@ -74,8 +73,7 @@ Dummy, not C4. Lumped RLC, not Touchstone / Ansys CPA. Never writes
 `6_final.odb`. Models live in `learn/lab/asap7/pkg/`.
 On-die chip PDN mesh (tier B: `write_pg_spice` + `pdn_transient.py`):
 `python3 learn/scripts/lab_asap7_chip_pdn.py` (or `run_lab_asap7_chip_pdn.sh`).
-Not tier C PKG. Not comparable to Nangate 45.298 mV. No `.chip_pdn_ir.ok`.
+This is a separate package tier and is not comparable to a Nangate45 result.
+No `.chip_pdn_ir.ok` is written by this exploratory track.
 
-See [`docs/asap7_research.md`](../../../docs/asap7_research.md).
-Close paths (three-layer kit, not leftover-free):
-[`docs/asap7_close_plan.md`](../../../docs/asap7_close_plan.md).
+See [`../../reference/live-analysis.md`](../../reference/live-analysis.md).

@@ -1,38 +1,32 @@
 """PDN search space — separate from ABC sequences and placer util.
 
 c_decap / pkg L stay on the pdn level. A re-solve names the extract
-(`finish` vs a candidate write_pg_spice id). It is not gold and not a new P&R.
+(`finish` vs a candidate write_pg_spice id). All comparisons are scoped to
+the live extract selected by the caller.
 """
 
 from __future__ import annotations
 
 from .memory import DesignMemory
 
-# Baseline (ingest gold) is pkg_l=2e-10, c_decap=50e-15, pkg_r=0.05.
-# Catalog points are *deltas* from that teacher.
+# Catalog points are explicit experiment inputs. They are not recorded results.
 PDN_CATALOG: list[dict] = [
     {"name": "decap_200f", "pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 200e-15},
     {"name": "pkg_l_100p", "pkg_r": 0.05, "pkg_l": 1e-10, "c_decap": 50e-15},
 ]
 
-# Static IR is DC ohmic drop. Decap / pkg L do not move it (live champ
-# stays 6.178 mV across gold knobs and decap_200f). pkg_r is its own
-# catalog — not flattened into PDN_CATALOG / next_pdn_spec.
+# Static IR is DC ohmic drop. Decap / pkg L do not move it in this model.
+# pkg_r is its own catalog — not flattened into PDN_CATALOG / next_pdn_spec.
 STATIC_PDN_CATALOG: list[dict] = [
     {"name": "pkg_r_25m", "pkg_r": 0.025, "pkg_l": 2e-10, "c_decap": 50e-15},
 ]
 
-# On-die static IR. Live pkg_r_25m on b7cc was Δ=+0.000 because solve_static
-# fixes ideal bump V sources. Denser bumps restamp the same ODB — not GPL,
-# not flattened into PDN_CATALOG / STATIC_PDN_CATALOG.
+# On-die static IR. Denser bumps use the current ODB and are not GPL changes.
 STATIC_MESH_CATALOG: list[dict] = [
     {"name": "bumps_80", "bump_dx": 80.0, "bump_dy": 80.0, "bump_size": 40.0, "bump_interval": 3},
 ]
 
-# On-die static IR after a null bump residual (GCD die ~40 µm: bump_dx 80
-# still n_v=5). Denser metal4 straps, same legalized ODB — pdngen -ripup,
-# not a new GPL, not flattened into PDN / STATIC_PDN / STATIC_MESH.
-# Pitch 28 is a no-op on this core (same n_r as 56); 8.0 adds M4 straps.
+# On-die static IR with denser metal4 straps and the current legalized ODB.
 STATIC_STRAP_CATALOG: list[dict] = [
     {
         "name": "m4_pitch_8",
@@ -43,14 +37,10 @@ STATIC_STRAP_CATALOG: list[dict] = [
     },
 ]
 
-# EM J = I/(w t). Pitch already moved IR; width is its own catalog — inherit
-# host m4_pitch so the residual is width-only. Not flattened into STATIC_STRAP.
+# EM J = I/(w t). Width is its own catalog and inherits the host pitch.
 EM_STRAP_CATALOG: list[dict] = [
     {"name": "m4_width_96", "m4_width": 0.96},
 ]
-
-GOLD_KNOBS = {"pkg_r": 0.05, "pkg_l": 2e-10, "c_decap": 50e-15}
-
 
 def _extract_id(knobs: dict) -> str:
     return str(knobs.get("extract_id") or "finish")
@@ -88,8 +78,10 @@ def next_static_pdn_spec(mem: DesignMemory, host) -> dict | None:
     k = host.knobs or {}
     eid = str(k.get("extract_id") or getattr(host, "id", "finish"))
     have = measured_pdn_keys(mem, extract_id=eid)
-    pkg_l = float(k.get("pkg_l") or GOLD_KNOBS["pkg_l"])
-    c_decap = float(k.get("c_decap") or GOLD_KNOBS["c_decap"])
+    if k.get("pkg_l") is None or k.get("c_decap") is None:
+        return None
+    pkg_l = float(k["pkg_l"])
+    c_decap = float(k["c_decap"])
     for spec in STATIC_PDN_CATALOG:
         out = {
             "name": spec["name"],
@@ -178,14 +170,14 @@ def next_winning_ir_pdn_spec(mem: DesignMemory, host) -> dict | None:
     k = host.knobs or {}
     eid = str(k.get("extract_id") or getattr(host, "id", "finish"))
     have = set(measured_pdn_keys(mem, extract_id=eid))
-    host_r = float(k.get("pkg_r") or GOLD_KNOBS["pkg_r"])
-    host_l = float(k.get("pkg_l") or GOLD_KNOBS["pkg_l"])
-    host_c = float(k.get("c_decap") or GOLD_KNOBS["c_decap"])
+    if any(k.get(key) is None for key in ("pkg_r", "pkg_l", "c_decap")):
+        return None
+    host_r = float(k["pkg_r"])
+    host_l = float(k["pkg_l"])
+    host_c = float(k["c_decap"])
     have.add((host_r, host_l, host_c))
-    gold_l = float(GOLD_KNOBS["pkg_l"])
-    gold_c = float(GOLD_KNOBS["c_decap"])
     for spec in PDN_CATALOG:
-        if abs(float(spec["pkg_l"]) - gold_l) > 1e-18:
+        if abs(float(spec["pkg_l"]) - host_l) > 1e-18:
             continue
         out = {
             "name": spec["name"],
@@ -197,7 +189,7 @@ def next_winning_ir_pdn_spec(mem: DesignMemory, host) -> dict | None:
         if key not in have:
             return out
     for spec in PDN_CATALOG:
-        if abs(float(spec["c_decap"]) - gold_c) > 1e-18:
+        if abs(float(spec["c_decap"]) - host_c) > 1e-18:
             continue
         out = {
             "name": spec["name"],

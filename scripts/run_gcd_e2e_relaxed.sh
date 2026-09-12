@@ -6,6 +6,12 @@
 #   ./scripts/run_gcd_e2e_relaxed.sh finish   # T2 RTL→GDS
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" "gcd-e2e-${1:-synth}" \
+    bash "${BASH_SOURCE[0]}" "$@"
+fi
+
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 TARGET="${1:-synth}"
 VARIANT="${FLOW_VARIANT:-e2e_relaxed}"

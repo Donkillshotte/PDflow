@@ -4,6 +4,7 @@ import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { collectStageResults } from "./results";
 import { preferredResultsVariant, resultsDir } from "./open";
+import { discoverStudioTools } from "./pdflowRegistry";
 
 export { LONG_ACTIONS };
 
@@ -29,6 +30,7 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   gridcheck: "floorplan",
   system_pdn: "finish",
   chip_pdn_ir: "finish",
+  power_grid_em: "finish",
   vyges_em_ir: "finish",
   dynamic_ir: "finish",
   power_chain: "finish",
@@ -70,6 +72,36 @@ export const STAGE_DEPS: Record<string, PipelineStage | null> = {
   route: "cts",
   finish: "route",
 };
+
+/** Native binaries required by legacy facade actions. The local agent is the
+ * preferred path, but these checks keep the compatibility route honest: a
+ * missing executable is a dependency GAP, never a failed pseudo-pass. */
+const ACTION_TOOL_DEPS: Record<string, string[]> = {
+  rtl_sim: ["iverilog"],
+  gate_sim: ["iverilog"],
+  gridcheck: ["openroad"],
+  activity_power: ["openroad"],
+  chip_pdn_ir: ["openroad"],
+  power_grid_em: ["openroad", "vyges_em_ir"],
+  dynamic_ir: ["opensta"],
+  vectorless: ["openroad"],
+  power_chain: ["iverilog", "openroad"],
+  klayout_drc: ["klayout"],
+  klayout_lvs: ["klayout"],
+  drc_signoff: ["klayout"],
+  sta_signoff: ["opensta"],
+  sta_ir_aware: ["opensta"],
+};
+
+function missingActionTools(action: string): string[] {
+  const registry = discoverStudioTools();
+  const ready = new Set(
+    registry.tools
+      .filter((tool) => tool.availability === "READY")
+      .map((tool) => tool.tool_id),
+  );
+  return (ACTION_TOOL_DEPS[action] ?? []).filter((tool) => !ready.has(tool));
+}
 
 export type JobRecord = {
   id: string;
@@ -384,7 +416,7 @@ export function evaluateLessonGates(input: {
         : !runOk
           ? "complete the Run step with a successful run"
           : artifactsOk
-            ? "artifacts present (previous run)"
+            ? "artifacts present (existing output)"
             : "run the phase successfully",
     },
     {
@@ -589,6 +621,17 @@ export function preflightAction(
       };
     }
   }
+
+  const missingTools = missingActionTools(action);
+  if (missingTools.length > 0) {
+    return {
+      ok: false,
+      code: "deps",
+      message: `Missing tool dependency: ${missingTools.join(", ")}.`,
+      missing: missingTools,
+    };
+  }
+
   if (action === "rtl_sim") {
     const rtl =
       variant === "flowlab"

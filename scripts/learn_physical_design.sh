@@ -13,6 +13,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${ROOT}/scripts/rg_compat.sh"
+source "${ROOT}/scripts/native_eda_env.sh"
 export LEARN_ROOT="${ROOT}/learn"
 export REPO_ROOT="${ROOT}"
 

@@ -2,6 +2,7 @@ import path from "path";
 
 const LAB_VARIANT_RE = /^lab_asap7_[a-z0-9][a-z0-9_+.]*[a-z0-9]$/;
 const COURSE_VARIANTS = new Set(["learn", "flowlab", "eco_scratch"]);
+const CANDIDATE_RUN_ID_RE = /^[A-Za-z0-9_.-]{8,100}$/;
 
 export const RESULTS_VARIANTS = COURSE_VARIANTS;
 
@@ -23,6 +24,14 @@ export function normalizeResultsVariant(variant: string): string {
     return v;
   }
   throw new Error(`REFUSED: unknown variant (${variant})`);
+}
+
+export function normalizeCandidateRunId(runId: string): string {
+  const value = runId.trim();
+  if (!CANDIDATE_RUN_ID_RE.test(value)) {
+    throw new Error(`REFUSED: invalid candidate run id (${runId})`);
+  }
+  return value;
 }
 
 export function assertUnder(baseDir: string, targetDir: string): string {

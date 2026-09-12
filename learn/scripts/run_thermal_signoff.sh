@@ -3,6 +3,9 @@
 # Not Ansys / not foundry. Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" thermal-signoff bash "${BASH_SOURCE[0]}" "$@"
+fi
 # shellcheck source=learn/lib/lab_tools.sh
 source "${ROOT}/learn/lib/lab_tools.sh"
 lab_tools_path "${ROOT}"

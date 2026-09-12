@@ -1,182 +1,93 @@
-# File formats — what to open, with which tool, what you learn
+# File formats
 
-Every course phase produces different files. This guide tells you **how to study them**.
+These files carry different parts of one live flow:
 
----
+| Format | Produced by | Used for |
+|---|---|---|
+| Verilog | RTL/Yosys | logic and mapped cells |
+| SDC | design constraints | clocks and I/O timing |
+| ODB | OpenROAD | physical database |
+| DEF | OpenROAD | geometry and connectivity interchange |
+| SPEF | OpenRCX | routed parasitics |
+| GDS | detailed route/export | layout and DRC |
+| CDL | netlist export | LVS |
+| SPICE | `write_pg_spice` | power-network solve |
+| VCD/SAIF | simulation/activity | switching evidence |
+| JSON | reports | machine-readable current status |
 
-## Verilog (`.v`)
+An artifact is meaningful only with its design, variant, run id, and source
+fingerprint. A JSON report may describe `READY`, `GAP`, `FAIL`, or `REFUSED`;
+the status is part of the data.
 
-| When | Example files |
-|---|---|
-| Pre-synth | `designs/src/gcd/gcd.v` |
-| Post-synth | `results/.../1_2_yosys.v` |
-| Post-route | `results/.../6_final.v` |
+For exercises, inspect the path printed by the current command and note the
+tool, input, output, and validation performed. Do not use a number from an
+unrelated report to fill a worksheet.
 
-**Tool:** text editor, `yosys -p "read_verilog ..."`, OpenROAD `read_verilog`
+## Format details
 
-**What you learn:** RTL hierarchy vs flat gate-level; standard cell names; clock/reset connections.
+### Verilog and SDC
 
-**Exercise:** count `DFF` in RTL vs `1_2_yosys.v`. `learn` reference: 35 `DFF_X1` in `synth_stat.txt`.
+The RTL Verilog is the functional source. Yosys emits a mapped netlist whose
+cell instances are consumed by the physical flow. The SDC supplies clocks,
+I/O delays, uncertainty, and exceptions. Timing observations are meaningful
+only when the netlist and SDC belong to the same invocation.
 
----
+### ODB, DEF, and GDS
 
-## SDC (`.sdc`)
+ODB is OpenROAD's database and is the input for the native GUI and the
+browser-safe layout viewer. DEF is a text interchange view of placement,
+routing, rows, pins, and special nets. GDS is the stream layout delivered to
+viewers or downstream mask tooling. A DEF export can be inspected without
+claiming that a GDS stream was generated.
 
-| Files | Use |
-|---|---|
-| `constraint.sdc` | User input |
-| `1_synth.sdc`, `3_place.sdc`, … | Propagated per phase |
+### SPEF and CDL
 
-**Tool:** editor, `sta`, OpenROAD `read_sdc`
+SPEF contains extracted parasitics for post-route timing. If OpenRCX is not
+available, the report must say that timing uses an estimate. CDL is a circuit
+netlist for LVS; it is not interchangeable with the timing netlist or with a
+power SPICE deck. A SPEF header begins with `*SPEF` and identifies the format
+before its name and capacitance sections.
 
-**Key commands to be able to explain aloud:**
-```tcl
-create_clock -name clk -period 0.46 [get_ports clk]
-set_input_delay  ...
-set_output_delay ...
-```
+### SPICE, VCD, and SAIF
 
-**Exercise:** change the period and recalculate input_delay manually.
+`write_pg_spice` describes the power network and its supply/current sinks.
+The dynamic solver consumes that mesh plus current events. VCD and SAIF carry
+activity evidence and are joined to physical instances only when the names
+and source fingerprints match. A missing activity source is a gap, not an
+all-zero waveform.
 
----
+### JSON reports
 
-## ODB (`.odb`)
+Reports should expose the action, status, run id, input fingerprints, output
+paths, and comparison scope. Numeric fields are measurements from the
+invocation that wrote the file. A report can contain a `GAP` for an optional
+engine while still carrying a valid measurement from an available backend.
 
-**Tool:** OpenROAD GUI (`gui_<stem>.odb`), `read_db` in Tcl
+## App integration
 
-**Contains:** tech, placed cells, routing (if phase ≥ route), timing graph
+Studio uses the format registry to select a tool target. The floorplan target
+opens an ODB/DEF pair; after a native save, the app checks the file metadata
+and reloads the current report. The package target uses its own sidecar and
+never overwrites the core finish database. This separation keeps native-tool
+edits, browser inspection, and report cards tied to the same live artifacts.
 
-**Why it matters:** every `.odb` snapshot is a "photograph" of the design at that phase.
+## Naming and containment
 
-**Sequence to open in a GUI session:**
-1. `1_synth.odb`
-2. `2_4_floorplan_pdn.odb`
-3. `3_5_place_dp.odb`
-4. `4_cts.odb`
-5. `5_2_route.odb`
-6. `6_final.odb`
+Stage artifacts use the ORFS stage prefix: `1_` for synthesis, `2_` for
+floorplan, `3_` for placement, `4_` for CTS, `5_` for route, and `6_` for
+finish. The variant directory is part of the path and is never supplied by
+an unchecked user string. Studio accepts one artifact name at a time and
+resolves it below the selected results directory.
 
-Note for each: instance count, presence of wires, presence of clock buffers.
+When a tool emits a sidecar, the report records the sidecar path and the
+protected source artifact. Sidecars are useful for package routing, analysis,
+or a scratch ECO, but they do not silently replace the core finish database.
+This makes it safe to inspect a package result while the die flow remains
+available in its own app panel.
 
----
+## Reading order
 
-## DEF (`.def`)
-
-**Tool:** text editor, KLayout, OpenROAD `read_def`
-
-**Contains:** components with coordinates, nets, routing (post-route)
-
-**Exercise:** open `6_final.def`, search for `COMPONENTS` and `NETS`. How large is it vs `.v`?
-
----
-
-## GRT guide (`route.guide`)
-
-**Tool:** text editor; GUI `gui_5_1_grt.odb`
-
-**Contains:** per net, corridors (layer + bounding box) — **not** GDS polylines.
-
-```bash
-head -40 results/nangate45/gcd/learn/route.guide
-wc -l   results/nangate45/gcd/learn/route.guide
-```
-
-On the GCD there are **thousands** of lines. Zero lines = GRT failed.
-
----
-
-## SPEF (`.spef`)
-
-**Tool:** editor, OpenSTA with `read_spef`
-
-**Contains:** RC parasitics for every net/node (resistance, capacitance). Units in header.
-
-**When:** post-extraction OpenRCX (finish). **Realistic** timing. Without SPEF you stay on `estimate_parasitics`.
-
-Real header from the `learn` run (`6_final.spef`, OpenROAD 26Q2):
-
-```
-*SPEF "ieee 1481-1999"
-*DESIGN "gcd"
-*VENDOR "The OpenROAD Project"
-*PROGRAM "OpenROAD"
-*VERSION "26Q2-1164-g08f67ee5ec"
-*T_UNIT 1 NS
-*C_UNIT 1 PF
-*R_UNIT 1 OHM
-*NAME_MAP
-*1 _000_
-...
-*D_NET *1 0.000304643
-```
-
-`*NAME_MAP` maps indices to net/pin names. `*D_NET <id> <lumped_cap>` opens a net;
-the numbers after are R/C of the model. You do not need to decode every line: you need to know
-that **it is RC**, and that STA after `read_spef` uses these values.
-
-**Exercise:** `head -20 results/.../6_final.spef` — verify `*SPEF` and `*DESIGN "gcd"`.
-Compare WNS place **+0.01**, CTS **−0.04**, GRT **−0.05**, finish **−0.04** (TNS −0.60)
-in `golden-metrics.md`.
-
----
-
-## GDS (`.gds`)
-
-**Tool:** KLayout, fab viewer
-
-**Contains:** mask-ready geometries
-
-**Batch verification:**
-```bash
-klayout -b -rd gds=results/.../6_final.gds -r check_script.rb
-```
-
----
-
-## Log (`.log`)
-
-**Path:** `logs/nangate45/gcd/learn/<step>.log`
-
-**How to read:**
-```bash
-rg -n 'ERROR|WARNING|Core area|slack|Utilization' logs/.../learn/*.log
-```
-
-**Rule:** the log is the *truth* of what the tool did. The report is the *summary*.
-
----
-
-## Report (`.rpt`, `.txt`)
-
-| Report | Phase |
-|---|---|
-| `synth_stat.txt` | synth |
-| `3_global_place.rpt` | place |
-| `3_resizer.rpt` | place |
-| `4_cts_final.rpt` | cts |
-| `5_route_drc.rpt` | route |
-| `6_finish.rpt` | finish |
-
-**Workbook exercise:** create an Excel/markdown table with WNS/TNS/area for 3 runs with different SDC.
-
----
-
-## Makefile / config.mk
-
-**config.mk** — parameters of **your** design (utilization, SDC path, variant)
-
-**platforms/nangate45/config.mk** — **PDK** parameters (layer, site, default density)
-
-**Conflict priority:** command line > design config > platform defaults
-
----
-
-## Mental map
-
-```
-You write:     Verilog + SDC + config.mk
-Yosys produces: .v gate-level + rtlil
-OpenROAD:      .odb (every phase) + .def + .spef + report
-KLayout:       .gds
-You learn:     log + GUI + report + SDC/config changes
-```
+Read the current JSON status first, then the artifact metadata, then the tool
+log. Use the viewer only after the path and revision are known. This order
+prevents a screenshot or a browser cache from becoming the basis of a timing,
+power, or signoff claim.

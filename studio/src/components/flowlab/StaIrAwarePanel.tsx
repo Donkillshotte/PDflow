@@ -87,7 +87,8 @@ export function StaIrAwarePanel({
           sta_signoff), then NLDM typical-V × (Vdd/V<sub>inst</sub>)<sup>α</sup> on
           ITerm-joined cells from the current_run map. Nets stay nominal. Not
           PrimeTime / Tempus. A MET overlay on ideal RC is not a WNS close.
-          Gold Dynamic IR 45.298 mV is another extract.
+          All values are taken from the selected invocation and its matching
+          current mesh.
         </p>
       </div>
       {err && <p className="sig-err">{err}</p>}

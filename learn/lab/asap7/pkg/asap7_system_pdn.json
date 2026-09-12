@@ -4,8 +4,30 @@
   "surface": "lab",
   "platform": "asap7",
   "product_win": false,
-  "comparable_to_gold_ir": false,
+  "comparison_scope": "ASAP7 compact package model; compare only within this invocation",
   "vdd": 0.70,
+  "package_interface": {
+    "bump_array": {
+      "master": "DUMMY_BUMP",
+      "rows": 4,
+      "columns": 4,
+      "origin_um": [0.8, 0.8],
+      "pitch_um": [1.8, 1.8],
+      "power_layer": "M9",
+      "signal_layer": "M9"
+    },
+    "power_nets": ["VDD"],
+    "ground_nets": ["VSS"],
+    "signal_nets": ["clk", "reset", "req_val", "resp_val"],
+    "bump_map": [
+      {"instance": "BUMP_0_0", "net": "VDD", "class": "power", "role": "supply"},
+      {"instance": "BUMP_0_1", "net": "VSS", "class": "ground", "role": "return"},
+      {"instance": "BUMP_0_3", "net": "clk", "class": "signal", "role": "clock"},
+      {"instance": "BUMP_1_3", "net": "reset", "class": "signal", "role": "control"},
+      {"instance": "BUMP_2_3", "net": "req_val", "class": "signal", "role": "request"},
+      {"instance": "BUMP_3_3", "net": "resp_val", "class": "signal", "role": "response"}
+    ]
+  },
   "vrm": {
     "v_nom": 0.70,
     "r_out": 0.020,
@@ -48,7 +70,7 @@
     "edge_ns": 2.0
   },
   "leftover": {
-    "c4": "dummy 2×2 bump LEF, not JEDEC C4",
+    "c4": "dummy 4×4 bump LEF, not JEDEC C4",
     "touchstone": "lumped RLC only; no board S-parameter",
     "cpa": "compact ladder, not Ansys CPA / foundry package model"
   }

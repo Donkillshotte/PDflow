@@ -30,8 +30,19 @@ else
   echo "==> Aligning OpenROAD-flow-scripts to tag ${ORFS_TAG}..."
   (
     cd "${ORFS}"
+    if [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then
+      echo "REFUSED: ${ORFS} has local changes; refusing to realign it" >&2
+      echo "Preserve the checkout or set PD_FLOW_ALLOW_ORFS_REALIGN=1 after backing it up." >&2
+      exit 2
+    fi
     git fetch --depth 1 --force origin "refs/tags/${ORFS_TAG}:refs/tags/${ORFS_TAG}"
-    git checkout --detach "${ORFS_TAG}"
+    if [[ "$(git rev-parse HEAD)" != "$(git rev-list -1 "${ORFS_TAG}")" ]]; then
+      if [[ "${PD_FLOW_ALLOW_ORFS_REALIGN:-0}" != "1" ]]; then
+        echo "REFUSED: ${ORFS} is not at ${ORFS_TAG}; set PD_FLOW_ALLOW_ORFS_REALIGN=1 explicitly to realign it" >&2
+        exit 2
+      fi
+      git checkout --detach "${ORFS_TAG}"
+    fi
   )
 fi
 
@@ -41,7 +52,18 @@ if [[ -n "${ORFS_COMMIT}" ]]; then
     if ! git cat-file -e "${ORFS_COMMIT}^{commit}" 2>/dev/null; then
       git fetch --depth 1 origin "${ORFS_COMMIT}"
     fi
-    git checkout --detach "${ORFS_COMMIT}"
+    if [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then
+      echo "REFUSED: ${ORFS} has local changes; refusing to switch commits" >&2
+      echo "Preserve the checkout or set PD_FLOW_ALLOW_ORFS_REALIGN=1 after backing it up." >&2
+      exit 2
+    fi
+    if [[ "$(git rev-parse HEAD)" != "${ORFS_COMMIT}" ]]; then
+      if [[ "${PD_FLOW_ALLOW_ORFS_REALIGN:-0}" != "1" ]]; then
+        echo "REFUSED: ${ORFS} is not at ${ORFS_COMMIT}; set PD_FLOW_ALLOW_ORFS_REALIGN=1 explicitly to realign it" >&2
+        exit 2
+      fi
+      git checkout --detach "${ORFS_COMMIT}"
+    fi
     [[ "$(git rev-parse HEAD)" == "${ORFS_COMMIT}" ]] || {
       echo "ERROR: ORFS commit verification failed" >&2
       exit 1

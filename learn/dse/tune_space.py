@@ -1,4 +1,4 @@
-"""TPE search space on the pinned official die. No Optuna import.
+"""TPE search space on the current DEF die. No Optuna import.
 
 CORE_UTILIZATION / CORE_ASPECT_RATIO / DIE_AREA are never sampled.
 """
@@ -120,7 +120,7 @@ def to_env(params: dict[str, Any], defaults: dict[str, float]) -> dict[str, str]
 
 
 def pin(design: str, env: dict[str, str]) -> dict[str, str]:
-    """Pin the official die. Strip util/aspect. Never DIE_AREA + FLOORPLAN_DEF."""
+    """Read the current die. Strip util/aspect. Never DIE_AREA + FLOORPLAN_DEF."""
     from .floorplan import uses_floorplan_def
 
     out = {k: str(v) for k, v in env.items() if k not in FORBIDDEN}
@@ -133,7 +133,7 @@ def pin(design: str, env: dict[str, str]) -> dict[str, str]:
         return out
     box = official_box(design)
     if box is None:
-        raise FileNotFoundError(f"no official DEF box for {design}")
+        raise FileNotFoundError(f"no current DEF box for {design}")
     out["DIE_AREA"] = box["DIE_AREA"]
     out["CORE_AREA"] = box["CORE_AREA"]
     return out
@@ -153,7 +153,7 @@ def fingerprint(params: dict[str, Any], defaults: dict[str, float]) -> str:
 
 
 def variant_name(design: str, params: dict[str, Any], defaults: dict[str, float]) -> str:
-    return f"camp_{design}_tpe_{fingerprint(params, defaults)}"
+    return f"live_{design}_tpe_{fingerprint(params, defaults)}"
 
 
 def knobs_from_extra(extra: dict[str, Any] | None) -> dict[str, str]:

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cancelJob } from "@/lib/run";
+import { cancelAgentJob } from "@/lib/agentRun";
 import { authorizeStudioMutation, rejectOversizedBody } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +17,16 @@ export async function POST(req: Request) {
   if (!body.jobId) {
     return NextResponse.json({ error: "jobId richiesto" }, { status: 400 });
   }
-  const ok = cancelJob(body.jobId);
-  return NextResponse.json({ ok, jobId: body.jobId });
+  const job = await cancelAgentJob(body.jobId);
+  if (!job) {
+    return NextResponse.json(
+      {
+        ok: false,
+        jobId: body.jobId,
+        error: "PDflow local agent could not find or cancel this job",
+      },
+      { status: 404 },
+    );
+  }
+  return NextResponse.json({ ok: true, jobId: body.jobId, job });
 }

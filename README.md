@@ -1,85 +1,55 @@
 # PDflow
 
-RTL → GDSII on OpenROAD / ORFS (Nangate45 / FreePDK45). Course, FlowLab, and
-DSE live in this repo. They are three surfaces. Wins are decided only in
-product code (`win_rule.py`).
+PDflow is a local RTL-to-GDS and power-integrity workspace built around
+OpenROAD/ORFS. It contains three deliberately separate surfaces:
 
-Three surfaces. Do not mix them.
-
-| Surface | What | Entry |
+| Surface | Purpose | Entry point |
 |---|---|---|
-| **Product** | Physical knobs, official netlist, fixed die, real finish | [docs/product.md](docs/product.md) |
-| **Lab** | e-graph, rewrite, IR F4, refine, DSE | [learn/dse/README.md](learn/dse/README.md) |
-| **Course / Studio** | Lessons, FlowLab, signoff actions | [learn/README.md](learn/README.md) · [studio/README.md](studio/README.md) |
+| Course / Studio | guided RTL → GDS learning and live signoff | [`learn/README.md`](learn/README.md), [`studio/README.md`](studio/README.md) |
+| Lab | multi-fidelity DSE, PDN and solver experiments | [`learn/dse/README.md`](learn/dse/README.md) |
+| Product | same-invocation design comparisons | [`learn/dse/product.md`](learn/dse/product.md) |
 
-Product win rule: [`learn/dse/win_rule.py`](learn/dse/win_rule.py).
-Operations: [`docs/operations.md`](docs/operations.md).
-Results: [`docs/results.md`](docs/results.md).
-Live tool status (WORKS / FAIL / GAP): [`learn/reference/suite-status.md`](learn/reference/suite-status.md).
-Agent rules: [`AGENTS.md`](AGENTS.md).
+## Live-data rule
 
-Educational stack, not a foundry deck. Signoff is `run_signoff_all.sh`
-(STA → DRC → LVS → power). DSE only proposes knobs. ECO propose is
-allowed on locked variants; apply writes finish artifacts on an unlocked
-copy and still requires `signoff_all`. License-gated leftovers
-(CCS liberty, StarRC, S-parameter, MCMM corners) are listed in
-[`learn/reference/gaps.md`](learn/reference/gaps.md).
+Reports are observations of the invocation that produced them. No committed
+campaign snapshot, frozen measurement, historical ledger, or fixed QoR value
+is used to label a current design. A comparison is valid only when the report
+declares a shared `run_id`, compatible artifact fingerprints, and an explicit
+`comparison_scope`.
+
+The contract is documented in
+[`learn/reference/live-analysis.md`](learn/reference/live-analysis.md).
 
 ## Quick start
 
 ```bash
-PD_FLOW_PROFILE=core EDA_JOBS=2 bash scripts/cloud_agent_install.sh
-./scripts/run_studio.sh          # http://127.0.0.1:43217
+./scripts/run_studio.sh                 # http://127.0.0.1:43217
+./scripts/learn_physical_design.sh --check
+export PYTHONPATH=learn:learn/scripts
+python3 learn/scripts/test_signoff_honesty.py
+python3 learn/scripts/test_lab_physics.py
 ```
 
-Headless GCD flow:
+For heavy local analysis, set `ALLOW_HEAVY_ANALYSIS=1` where required. The
+repository wrappers use a 600-second analysis timeout and keep every run in
+its own output directory. Missing optional engines are reported as `GAP`; no
+previous report is substituted.
 
-```bash
-./scripts/run_gcd_flow.sh
-```
+## Studio
 
-Fast honesty checks:
+Studio exposes FlowLab at `/flow`, the DSE lab at `/lab`, the package surface
+at `/pkg`, and tool actions at `/tools`. Each action returns a live job and
+report path. The UI reads those artifacts after the job completes and does not
+silently merge results from another invocation.
 
-```bash
-PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_signoff_honesty.py
-PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_lab_physics.py
-```
+See [`docs/README.md`](docs/README.md) for the repository map and
+[`docs/operations.md`](docs/operations.md) for local commands.
 
-Install profiles, versions, troubleshooting: [docs/install.md](docs/install.md).
+## Optional Symphony orchestration
 
-## Studio / FlowLab
-
-```bash
-./scripts/run_studio.sh
-# FlowLab: http://127.0.0.1:43217/flow
-```
-
-Monaco RTL editor, ORFS parameters, eight stages (RTL → finish),
-layout viewport, signoff that still lists open items. Locked `flowlab`
-setup is still open (WNS −0.02). The `eco_scratch` copy meets
-register-to-register timing; the remaining open item is course
-output delay on `resp_msg[14]`.
-Screenshots: [`studio/docs/images/flowlab/`](studio/docs/images/flowlab/).
-API and layout: [studio/README.md](studio/README.md).
-
-Extended signoff (gate sim, activity, chip/system PDN, thermal, PEX, CCS sidecar):
-[learn/reference/extended-flow.md](learn/reference/extended-flow.md).
-
-## Toolchain
-
-| Tool | Version |
-|---|---|
-| OpenROAD | 26Q2 |
-| OpenSTA | 3.1.0 |
-| ORFS / Yosys | 26Q2 / 0.63 |
-| KLayout | 0.30.11 |
-
-Also: ngspice, vyges-em-ir, optional HotSpot / Xyce / FasterCap.
-OSS matrix: [learn/reference/oss-integrations.md](learn/reference/oss-integrations.md).
-
-Tested on Ubuntu 24.04 (22.04 supported).
-
-## Documentation
-
-Index: [docs/README.md](docs/README.md) · architecture: [docs/architecture.md](docs/architecture.md) ·
-contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
+Symphony can dispatch opt-in GitHub issues to isolated Codex app-server
+workspaces. It is a coding-task coordinator; PDflow's local agent remains the
+only authority for native EDA, resources, artifacts, and signoff. Validate the
+contract with `./scripts/verify_symphony.sh`, then see
+[`docs/symphony-pdflow-integration.md`](docs/symphony-pdflow-integration.md)
+before starting the native launcher.

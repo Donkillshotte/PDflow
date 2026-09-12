@@ -92,12 +92,12 @@ def next_action(
     # a candidate that is confidently worse than the best finish already in memory.
     from .fidelity_policy import decide as policy_decide
 
-    baselines = [
+    references = [
         float(c.artifacts["finish_wns_ns"])
         for c in mem.all()
         if (c.artifacts or {}).get("finish_wns_ns") is not None
     ]
-    base_w = max(baselines) if baselines else None
+    base_w = max(references) if references else None
 
     if finish_shots_left > 0 and budget_s >= COST["finish"]:
         ranked: list[tuple[float, Candidate]] = []
@@ -111,7 +111,7 @@ def next_action(
             dec = policy_decide(
                 design=str(c.design_id),
                 place_wns_ns=None if place is None else float(place),
-                baseline_finish_ns=base_w,
+                reference_finish_ns=base_w,
             )
             if dec.action == "STOP":
                 return Action("reject", c.id, f"policy_stop_{dec.reason}", COST["reject"])

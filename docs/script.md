@@ -1,65 +1,19 @@
-# Scripts
+# Script catalogue
 
-Root wrappers. Catalog by surface: [`docs/script.md`](script.md).
-Repo index: [`docs/README.md`](README.md).
+Root launchers:
 
-## `scripts/` — install and launchers
-
-| Script | Surface | What |
-|---|---|---|
-| `01_install_openroad.sh` | infra | OpenROAD binaries |
-| `02_install_opensta.sh` | infra | OpenSTA from source |
-| `03_install_klayout.sh` | infra | KLayout |
-| `04_setup_orfs.sh` | infra | clone ORFS + yosys |
-| `cloud_agent_install.sh` | infra | `core` / `analysis` / `full` profile |
-| `cloud_agent_smoke.sh` | infra | versions |
-| `test_cloud_bootstrap.sh` | infra | static checks |
-| `run_design_finish.sh` | **product** | isolated `make finish`; refuses `flowlab`/`learn`/`base` |
-| `run_lab_asap7.sh` | **lab** | ASAP7 RTL→GDS (`lab_asap7_*`); WC die / Yosys defaults; not a product win |
-| `campaign_cook.sh` | product | campaign helper |
-| `p1_gcd_clock_sweep.sh` | product (historic P) | gcd clock sweep |
-| `p2_abc_speed.sh` | product (historic P) | ABC speed |
-| `p5_ibex_clock_sweep.sh` | product (historic P) | ibex sweep |
-| `q1_knob_sweep.sh` | product (historic Q) | knob sweep |
-| `q4_area_regime.sh` | product (historic Q) | area regime |
-| `learn_physical_design.sh` | course | lesson wrapper |
-| `run_studio.sh` | course | Studio Next.js |
-| `test_course.sh` | course | structure smoke |
-| `test_studio_api.sh` | course | Studio API |
-| `test_all_phases.sh` | course | exhaustive phases |
-| `run_gcd_flow.sh` | course / demo | RTL→GDS gcd |
-| `run_opensta_example.sh` | course | STA smoke |
-| `run_dse_gcd_cloud.sh` | lab | GCD DSE |
-| `run_dse_handoff_finish.sh` | lab | finish handoff |
-| `run_dynamic_ir_cloud.sh` | lab | Dynamic IR |
-| `run_gcd_finish_cloud.sh` | lab | GCD lab finish |
-| `run_gcd_e2e_relaxed.sh` | lab | relaxed e2e |
-| `run_aes_f4_cloud.sh` | lab | AES F4 (no Krylov) |
-| `run_aes_f5_lite_cloud.sh` | lab | AES F5-lite |
-
-## `learn/scripts/` — product
-
-```bash
-export PYTHONPATH=learn:learn/scripts
-python3 learn/scripts/run_recipe_loop.py --dry-run
-python3 learn/scripts/cook_recipe.py --design gcd --recipes place_sparse_setup
-python3 learn/scripts/run_tpe.py --design ibex --max-cooks 8
-python3 learn/scripts/record_experiment.py --help
-python3 learn/scripts/test_dse_next.py
-```
-
-Tuner: `pip install -r learn/requirements-tune.txt` (optuna≥3.4,<4).
-Optuna **only** in `run_tpe.py`.
-
-## `learn/scripts/` — lab / signoff
-
-| Group | Examples |
+| Script | Purpose |
 |---|---|
-| Lab DSE | `run_dse.py`, `test_dse.py`, `dse_f4_worker.py` |
-| PDN / IR | `pdn_dynamic.py`, `pdn_extract.py`, `pdn_solvers.py`, `run_dynamic_ir.sh` |
-| Signoff | `run_signoff_all.sh`, `run_sta_signoff.sh`, `run_sta_ir_aware.sh`, `run_drc_signoff.sh` |
-| Engine | `build_dpn_engine.sh` |
-| Lab PEX / CCS / LVS | `run_analytical_pex.py`, `char_nangate_ccs.py`, `run_lvs_deep.py`, `install_fastercap.sh` |
-| Lab ASAP7 | `run_asap7_e2e.py`, `lab_asap7_spec.py`, `lab_asap7_drc.py`, `lab_asap7_lvs.py`, `lab_asap7_mmmc.py`, `lab_asap7_pdk.py`, `lab_asap7_spice.py`, `lab_asap7_pkg.py`, `lab_asap7_chip_pdn.py`, `lab_asap7_pkg_rdl.tcl`, `run_lab_asap7_pdk.sh`, `run_lab_asap7_pkg.sh`, `run_lab_asap7_chip_pdn.sh`, `test_asap7_lab.py`, `test_asap7_e2e.py`, `fetch_asap7_sc6t.sh`, `fetch_asap7_libextras.sh`, `fetch_asap7_pdk.sh` |
+| `run_studio.sh` | start the local Studio app |
+| `run_design_finish.sh` | run an isolated design finish |
+| `run_dse_gcd_cloud.sh` | run the bounded DSE wrapper |
+| `run_dynamic_ir_cloud.sh` | run Dynamic IR with the heavy-analysis guard |
+| `run_aes_f4_cloud.sh` | run the AES F4 analysis wrapper |
+| `run_aes_f5_lite_cloud.sh` | run the AES F5-lite wrapper |
+| `learn_physical_design.sh` | launch course lessons |
+| `test_course.sh` | course structure and smoke tests |
+| `test_all_phases.sh` | phase and signoff checks |
 
-One heavy job. `pkill -f` forbidden: kill by PID.
+The `learn/scripts/` directory contains the DSE, PDN, signoff, package, and
+tool-matrix runners. Reports are written to the current run scope and include
+their input paths. See [`../learn/reference/live-analysis.md`](../learn/reference/live-analysis.md).

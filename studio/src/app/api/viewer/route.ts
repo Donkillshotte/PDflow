@@ -6,7 +6,7 @@ import { authorizeStudioMutation, rejectOversizedBody } from "@/lib/runAuth";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(viewerStatus());
+  return NextResponse.json(await viewerStatus());
 }
 
 export async function POST(req: Request) {
@@ -23,17 +23,19 @@ export async function POST(req: Request) {
     stage?: string;
     variant?: string;
     artifact?: string;
+    run_id?: string;
   };
   const action = body.action || "start";
   if (action === "stop") {
-    return NextResponse.json(stopViewer());
+    return NextResponse.json(await stopViewer());
   }
   if (action === "start") {
     const stage = body.stage || "cts";
     const variant = body.variant || preferredResultsVariant();
     try {
-      const result = startViewer(stage, variant, {
+      const result = await startViewer(stage, variant, {
         artifact: body.artifact,
+        runId: body.run_id,
       });
       return NextResponse.json(result, { status: result.ok ? 200 : 422 });
     } catch (e) {
@@ -53,5 +55,5 @@ export async function DELETE(req: Request) {
   if (tooLarge) {
     return tooLarge;
   }
-  return NextResponse.json(stopViewer());
+  return NextResponse.json(await stopViewer());
 }

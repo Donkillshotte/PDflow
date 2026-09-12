@@ -1092,7 +1092,7 @@ def run_f4_extract(ctx: dict) -> bool:
             n_r=(child.artifacts or {}).get("n_r"),
             droop_mv=child.qor.dynamic_ir_mv,
             em_j=(child.qor.em_j_a_m2),
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
         )
         return True
@@ -1161,7 +1161,7 @@ def run_f4_region_extract(ctx: dict) -> bool:
             region_bin=(child.artifacts or {}).get("region_bin"),
             n_r=(child.artifacts or {}).get("n_r"),
             droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
         )
         return True
@@ -1226,7 +1226,7 @@ def run_f4_pdn(ctx: dict) -> bool:
             extract_id=extract_id,
             droop_mv=child.qor.dynamic_ir_mv,
             em_j=child.qor.em_j_a_m2,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
         )
         return True
@@ -1275,9 +1275,22 @@ def _run_f4_solver_residual(
             (c for c in mem.by_level("pdn") if (c.knobs or {}).get("source") == "ingest_pdn"),
             None,
         )
+        live_spec = next(
+            (
+                dict(c.knobs or {})
+                for c in reversed(mem.by_level("pdn"))
+                if c.status == "ok"
+                and str((c.knobs or {}).get("extract_id") or "finish") == extract_id
+                and all((c.knobs or {}).get(k) is not None for k in ("pkg_r", "pkg_l", "c_decap"))
+            ),
+            None,
+        )
+        if live_spec is None:
+            return False
+        live_spec["name"] = spec_name
         child = ctx["evaluate_f4_pdn"](
             mem,
-            {"name": spec_name, **ctx["GOLD_KNOBS"]},
+            live_spec,
             variant=variant,
             design_id=ctx["design_id"],
             parent_id=(ext_hit["candidate"].id if ext_hit else (ingest.id if ingest else None)),
@@ -1301,7 +1314,7 @@ def _run_f4_solver_residual(
             extract_id=extract_id,
             droop_mv=child.qor.dynamic_ir_mv,
             em_j=child.qor.em_j_a_m2,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=reason,
             **extra,
@@ -1450,7 +1463,7 @@ def run_f4_host_extract(ctx: dict) -> bool:
             n_r=(child.artifacts or {}).get("n_r"),
             n_sta=(child.artifacts or {}).get("n_sta_inst"),
             droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=why,
         )
@@ -1516,7 +1529,7 @@ def run_f4_host_region(ctx: dict) -> bool:
             region_bin=(child.artifacts or {}).get("region_bin"),
             n_r=(child.artifacts or {}).get("n_r"),
             droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=why,
         )
@@ -1576,7 +1589,7 @@ def run_f4_scale(ctx: dict) -> bool:
             mem,
             variant=variant,
             design_id=ctx["design_id"],
-            baseline_power_w=base_p,
+            reference_power_w=base_p,
             spice=mesh["spice"] if use_ext else None,
             insts=mesh["insts"] if use_ext else None,
             extract_id=str(mesh["extract_id"]) if use_ext else "finish",
@@ -1599,7 +1612,7 @@ def run_f4_scale(ctx: dict) -> bool:
             sta_via=(child.knobs or {}).get("sta_via"),
             droop_mv=child.qor.dynamic_ir_mv,
             em_j=child.qor.em_j_a_m2,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
         )
         return True
@@ -1836,7 +1849,7 @@ def run_ir_steer(ctx: dict) -> bool:
             catalog=spec.get("name"),
             extract_id=eid,
             droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=steer_ir.get("reason"),
         )
@@ -1899,7 +1912,7 @@ def run_host_ir_steer(ctx: dict) -> bool:
             extract_id=eid,
             host_source=steer_hir.get("host_source"),
             droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=steer_hir.get("reason"),
         )
@@ -1941,7 +1954,7 @@ def run_f4_scale_win(ctx: dict) -> bool:
             mem,
             variant=ctx["variant"],
             design_id=ctx["design_id"],
-            baseline_power_w=base_p_w,
+            reference_power_w=base_p_w,
             pkg_r=float((win.knobs or {}).get("pkg_r") or 0.05),
             pkg_l=float((win.knobs or {}).get("pkg_l") or 2e-10),
             c_decap=float((win.knobs or {}).get("c_decap") or 50e-15),
@@ -1968,7 +1981,7 @@ def run_f4_scale_win(ctx: dict) -> bool:
             extract_id=eid_w,
             c_decap=(child.knobs or {}).get("c_decap"),
             droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=why,
         )
@@ -2023,7 +2036,7 @@ def run_ir_cell(ctx: dict) -> bool:
             n_changed=(child.artifacts or {}).get("n_changed"),
             wns_ns=(child.artifacts or {}).get("wns_ns"),
             area_um2=child.qor.area_um2,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=why,
         )
@@ -2078,7 +2091,7 @@ def run_ir_cell_extract(ctx: dict) -> bool:
             n_sta=(child.artifacts or {}).get("n_sta_inst"),
             droop_mv=child.qor.dynamic_ir_mv,
             residual_mv=(child.attr or {}).get("residual_mv"),
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=why,
         )
@@ -2138,7 +2151,7 @@ def run_ir_cell_pdn(ctx: dict) -> bool:
             catalog=spec_icp.get("name"),
             extract_id=eid_icp,
             droop_mv=child.qor.dynamic_ir_mv,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=steer_icp.get("reason"),
         )
@@ -2198,7 +2211,7 @@ def run_ir_cell_region(ctx: dict) -> bool:
             n_r=(child.artifacts or {}).get("n_r"),
             droop_mv=child.qor.dynamic_ir_mv,
             residual_mv=(child.attr or {}).get("residual_mv"),
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=steer_icr.get("reason"),
         )
@@ -2265,7 +2278,7 @@ def run_ir_cell_region_pdn(ctx: dict) -> bool:
             extract_id=eid_icrp,
             droop_mv=child.qor.dynamic_ir_mv,
             residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=steer_icrp.get("reason"),
         )

@@ -5,12 +5,12 @@
   "thermal": {
     "engine": "hotspot",
     "kind": "thermal_hotspot",
-    "t_max_c": 70.54000000000002,
-    "t_min_c": 45.01000000000005,
+    "t_max_c": 47.77000000000004,
+    "t_min_c": 45.0,
     "t_bound_c": 85.0,
-    "chip_ir_mv": 3.0944465142916933,
-    "chip_droop_mv": 28.2999414862346,
-    "combined_proxy_mv": 31.394388000526295,
+    "chip_ir_mv": 2.1126657155083883,
+    "chip_droop_mv": 19.453210291738408,
+    "combined_proxy_mv": 21.565876007246796,
     "note": "architecture compact model (UVA HotSpot), not foundry / not Ansys"
   },
   "evaluation": {
@@ -18,7 +18,7 @@
       {
         "id": "hotspot_tmax_c",
         "label": "HotSpot t_max (\u00b0C)",
-        "actual": 70.54000000000002,
+        "actual": 47.77000000000004,
         "target": 85.0,
         "ok": true,
         "note": "architecture compact model"
@@ -26,7 +26,7 @@
       {
         "id": "ir_droop_proxy_mv",
         "label": "Secondary IR+droop proxy (mV)",
-        "actual": 31.394388000526295,
+        "actual": 21.565876007246796,
         "target": 50.0,
         "ok": true,
         "note": "kept as a labeled secondary check; not the pass criterion"
@@ -35,5 +35,5 @@
     "ok": true
   },
   "ok": true,
-  "summary": "HotSpot t_max=70.54 \u00b0C \u00b7 IR+droop proxy 31.39 mV"
+  "summary": "HotSpot t_max=47.77 \u00b0C \u00b7 IR+droop proxy 21.57 mV"
 }

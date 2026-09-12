@@ -195,7 +195,7 @@ def solve_static(G, idx, order, currents, voltages, vdd, pkg_r=0.0):
 def solve_transient(G, idx, order, currents, voltages, vdd, pkg_r, pkg_l, c_decap, peak_factor, t_end, dt):
     n = G.shape[0]
     bump = [idx[nm] for nm in voltages if nm in idx]
-    # Memoryless L/Δt (no i_L). Gold dynamic_ir uses the BE companion in pdn_dynamic.py.
+    # Memoryless L/Δt (no i_L). reference dynamic_ir uses the BE companion in pdn_dynamic.py.
     r_series = max(pkg_r + (pkg_l / dt if pkg_l > 0 else 0.0), 1e-9)
     g_pad = 1.0 / r_series
     Gsoft = G.tolil()

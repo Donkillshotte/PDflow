@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { spawnSync } from "child_process";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { resultsDir } from "./open";
-import { normalizeRelativeArtifact, normalizeResultsVariant } from "./pathGuard";
+import { normalizeResultsVariant } from "./pathGuard";
+import { candidateOrfsRoot } from "./candidateWorkspace";
 import {
   PHASE_COMPARE,
   PHASE_GALLERY,
@@ -104,8 +104,8 @@ export const PHASE_LAYOUT: Record<LayoutPhaseId, LayoutPreviewConfig> = {
     odb: "6_final.odb",
     orfsReportPng: "final_ir_drop.webp.png",
     guiShot: "orfs_final_ir_drop.png",
-    label: "PKG · IR drop / system PDN",
-    layerHint: "Heatmap IR post-finish",
+    label: "PKG · finish layout / system PDN",
+    layerHint: "Current finish ODB · package metrics below",
   },
 };
 
@@ -120,8 +120,26 @@ export const PHYSICAL_LAYOUT_PHASES = new Set<LayoutPhaseId>([
   "pkg",
 ]);
 
-function reportsDir(variant: string) {
-  return path.join(FLOW(), "reports/nangate45/gcd", normalizeResultsVariant(variant));
+function resultsRoot(variant: string, runId?: string | null) {
+  const v = normalizeResultsVariant(variant);
+  if (runId) {
+    if (v !== "flowlab") throw new Error("REFUSED: candidates use the FlowLab variant");
+    return path.join(candidateOrfsRoot(runId), "results/nangate45/gcd/flowlab");
+  }
+  return resultsDir(v);
+}
+
+function reportsDir(variant: string, runId?: string | null) {
+  const v = normalizeResultsVariant(variant);
+  if (runId) {
+    if (v !== "flowlab") throw new Error("REFUSED: candidates use the FlowLab variant");
+    return path.join(candidateOrfsRoot(runId), "reports/nangate45/gcd/flowlab");
+  }
+  return path.join(
+    FLOW(),
+    v.startsWith("lab_asap7_") ? "reports/asap7/gcd" : "reports/nangate45/gcd",
+    v,
+  );
 }
 
 const GUI_SHOTS_DIR = () =>
@@ -148,10 +166,12 @@ function shotUrl(file: string) {
   return `/api/layout-preview/image?shot=${encodeURIComponent(file)}`;
 }
 
-function cacheAbs(variant: string, phaseId: LayoutPhaseId) {
+function cacheAbs(variant: string, phaseId: LayoutPhaseId, runId?: string | null) {
+  const root = runId
+    ? path.join(candidateOrfsRoot(runId), "previews")
+    : path.join(LEARN_ROOT, "sim/previews");
   return path.join(
-    LEARN_ROOT,
-    "sim/previews",
+    root,
     normalizeResultsVariant(variant),
     `${phaseId}.png`,
   );
@@ -160,90 +180,91 @@ function cacheAbs(variant: string, phaseId: LayoutPhaseId) {
 export function resolveLayoutImageAbs(
   phaseId: LayoutPhaseId,
   variant: string,
+  runId?: string | null,
 ): { abs: string; source: "cache" | "orfs" | "gui_shot" | "odb" } | null {
   variant = normalizeResultsVariant(variant);
   const cfg = PHASE_LAYOUT[phaseId];
-  // Pedagogical shots first: route must show metal spaghetti, not a blank iframe.
+  // A live ODB is authoritative. Never mask a saved native-tool edit with a
+  // pedagogical screenshot or an image generated from an older database.
+  // Synthesis ODBs intentionally have no die geometry; do not launch a native
+  // capture process for a 0×0 database just to produce a misleading image.
+  if (phaseId === "synth") return null;
+  if (cfg.odb) {
+    const odbAbs = path.join(resultsRoot(variant, runId), cfg.odb);
+    if (fs.existsSync(odbAbs)) {
+      const cached = cacheAbs(variant, phaseId, runId);
+      const odbMtime = fs.statSync(odbAbs).mtimeMs;
+      if (fs.existsSync(cached) && fs.statSync(cached).mtimeMs >= odbMtime) {
+        // The bytes are cached, but their authority is still the current ODB.
+        // Expose provenance rather than making the UI look like it selected a
+        // static screenshot.
+        return { abs: cached, source: "odb" };
+      }
+      // Package/System PDN is a read-only analysis surface, but it still
+      // needs a useful design canvas before its optional package-specific
+      // preview has been generated. Reuse the current finish preview only
+      // when it was generated from an ODB at least as new as this input;
+      // never fall back to a stale or pedagogical image.
+      if (phaseId === "pkg") {
+        const finishCached = cacheAbs(variant, "finish", runId);
+        if (
+          fs.existsSync(finishCached) &&
+          fs.statSync(finishCached).mtimeMs >= odbMtime
+        ) {
+          return { abs: finishCached, source: "odb" };
+        }
+      }
+      // Preview generation is an agent-owned job. Never spawn OpenROAD from a
+      // Next request: a page refresh must not create an unbounded native
+      // process outside the resource executor. The UI receives an explicit
+      // missing/stale state and POSTs a typed `layout_preview` job instead.
+      return null;
+    }
+  }
+  if (cfg.orfsReportPng) {
+    const orfs = path.join(reportsDir(variant, runId), cfg.orfsReportPng);
+    if (fs.existsSync(orfs)) {
+      return { abs: orfs, source: "orfs" };
+    }
+  }
+  const cached = cacheAbs(variant, phaseId, runId);
+  if (fs.existsSync(cached)) {
+    return { abs: cached, source: "cache" };
+  }
+  // Static shots are documentation fallback only, when no live ODB exists.
   if (cfg.guiShot) {
     const shot = guiShotAbs(cfg.guiShot);
     if (fs.existsSync(shot)) {
       return { abs: shot, source: "gui_shot" };
     }
   }
-  if (cfg.orfsReportPng) {
-    const orfs = path.join(reportsDir(variant), cfg.orfsReportPng);
-    if (fs.existsSync(orfs)) {
-      return { abs: orfs, source: "orfs" };
-    }
-  }
-  const cached = cacheAbs(variant, phaseId);
-  if (fs.existsSync(cached)) {
-    return { abs: cached, source: "cache" };
-  }
-  // Synth ODB has die 0×0 — inst-map looks like overlapping squares. Skip.
-  if (phaseId === "synth") return null;
-  if (cfg.odb) {
-    const odbAbs = path.join(resultsDir(variant), cfg.odb);
-    if (fs.existsSync(odbAbs)) {
-      const generated = generateLayoutFromOdb(phaseId, variant, cfg.odb);
-      if (generated && fs.existsSync(/*turbopackIgnore: true*/ generated)) {
-        return { abs: generated, source: "odb" };
-      }
-    }
-  }
   return null;
 }
 
-export function generateLayoutFromOdb(
+export function layoutPreviewMeta(
   phaseId: LayoutPhaseId,
   variant: string,
-  odbRel: string,
-): string | null {
-  variant = normalizeResultsVariant(variant);
-  const odbAbs = path.join(resultsDir(variant), normalizeRelativeArtifact(odbRel));
-  if (!fs.existsSync(odbAbs)) return null;
-
-  const outDir = path.join(LEARN_ROOT, "sim/previews", variant);
-  const outAbs = path.join(outDir, `${phaseId}.png`);
-  fs.mkdirSync(outDir, { recursive: true });
-
-  const tcl = path.join(LEARN_ROOT, "scripts/capture_gui_shots.tcl");
-  const r = spawnSync(
-    "openroad",
-    ["-no_init", "-no_splash", "-exit", tcl],
-    {
-      env: {
-        ...process.env,
-        ODB_FILE: odbAbs,
-        SHOT_DIR: outDir,
-        SHOT_STEM: phaseId,
-        DISPLAY: process.env.DISPLAY || ":1",
-      },
-      encoding: "utf8",
-      timeout: 120_000,
-      maxBuffer: 4 * 1024 * 1024,
-    },
-  );
-  const out = `${r.stdout || ""}\n${r.stderr || ""}`;
-  if (fs.existsSync(outAbs)) return outAbs;
-  if (out.includes("WROTE")) {
-    const m = out.match(/WROTE\s+(\S+)/);
-    if (m && fs.existsSync(m[1]!)) return m[1]!;
-  }
-  return null;
-}
-
-export function layoutPreviewMeta(phaseId: LayoutPhaseId, variant: string) {
+  runId?: string | null,
+) {
   variant = normalizeResultsVariant(variant);
   const cfg = PHASE_LAYOUT[phaseId];
-  const odbAbs = cfg.odb ? path.join(resultsDir(variant), cfg.odb) : null;
-  const image = resolveLayoutImageAbs(phaseId, variant);
+  const odbAbs = cfg.odb
+    ? path.join(resultsRoot(variant, runId), cfg.odb)
+    : null;
+  const odbExists = Boolean(odbAbs && fs.existsSync(odbAbs));
+  const odbStat = odbExists ? fs.statSync(odbAbs!) : null;
+  const image = resolveLayoutImageAbs(phaseId, variant, runId);
 
-  const gallery = (PHASE_GALLERY[phaseId] ?? [])
+  // Static gallery/compare shots are useful before a phase has run, but must
+  // not compete with the live database once the native tool has produced it.
+  // A candidate is an isolated workspace: showing finish screenshots while
+  // its checkpoint is absent would falsely imply that the candidate geometry
+  // exists. Keep the candidate view explicitly empty until it writes an ODB.
+  const gallery = (odbExists || runId ? [] : PHASE_GALLERY[phaseId] ?? [])
     .filter((s) => resolveNamedGuiShot(s.file))
     .map((s) => ({ ...s, url: shotUrl(s.file) }));
 
-  const compare = (PHASE_COMPARE[phaseId] ?? [])
+  const compare = (odbExists || runId ? [] : PHASE_COMPARE[phaseId] ?? [])
     .filter(
       (p) => resolveNamedGuiShot(p.left.file) && resolveNamedGuiShot(p.right.file),
     )
@@ -261,12 +282,28 @@ export function layoutPreviewMeta(phaseId: LayoutPhaseId, variant: string) {
   return {
     phaseId,
     variant,
+    runId: runId ?? null,
     label: cfg.label,
     layerHint: cfg.layerHint,
     inspectStage: cfg.inspectStage,
     odb: cfg.odb,
-    odbExists: Boolean(odbAbs && fs.existsSync(odbAbs)),
-    primaryShot: cfg.guiShot,
+    odbExists,
+    artifact: cfg.odb
+      ? {
+          path: cfg.odb,
+          relativePath: odbAbs
+            ? path.relative(REPO_ROOT, odbAbs).replace(/\\/g, "/")
+            : null,
+          exists: odbExists,
+          bytes: odbStat?.size ?? 0,
+          modifiedAt: odbStat?.mtime.toISOString() ?? null,
+          revision: odbStat ? `${Math.trunc(odbStat.mtimeMs)}:${odbStat.size}` : null,
+          runId: runId ?? null,
+          authority: runId ? "candidate" : "finish",
+          mutable: Boolean(runId),
+        }
+      : null,
+    primaryShot: odbExists ? null : cfg.guiShot,
     image: image
       ? {
           source: image.source,

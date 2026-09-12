@@ -9,10 +9,34 @@ export DISPLAY="${DISPLAY:-:1}"
 export QT_QPA_PLATFORM=xcb
 export QT_QPA_PLATFORMTHEME=gtk2
 mkdir -p "${SHOT_DIR}"
+GUI_PID_FILE="${TMPDIR:-/tmp}/pdflow-openroad-capture-${UID}.pid"
+
+owned_gui_pid() {
+  local pid cmdline
+  [[ -r "${GUI_PID_FILE}" ]] || return 0
+  read -r pid < "${GUI_PID_FILE}" || return 0
+  [[ "${pid}" =~ ^[1-9][0-9]*$ ]] || return 0
+  kill -0 "${pid}" 2>/dev/null || return 0
+  [[ -r "/proc/${pid}/cmdline" ]] || return 0
+  cmdline="$(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)"
+  [[ "${cmdline}" == *"openroad"* && "${cmdline}" == *"gui_session.tcl"* ]] || return 0
+  printf '%s\n' "${pid}"
+}
 
 kill_or() {
-  pkill -f '/usr/bin/openroad' 2>/dev/null || true
-  sleep 1
+  local pid
+  pid="$(owned_gui_pid)"
+  [[ -n "${pid}" ]] || return 0
+  kill -TERM -- "-${pid}" 2>/dev/null || kill -TERM "${pid}" 2>/dev/null || true
+  for _ in $(seq 1 30); do
+    kill -0 "${pid}" 2>/dev/null || break
+    sleep 0.1
+  done
+  if kill -0 "${pid}" 2>/dev/null; then
+    kill -KILL -- "-${pid}" 2>/dev/null || kill -KILL "${pid}" 2>/dev/null || true
+  fi
+  printf '0\n' > "${GUI_PID_FILE}"
+  sleep 0.2
 }
 
 wait_window() {
@@ -76,8 +100,8 @@ launch() {
   local odb="$1" view="$2"
   kill_or
   export ODB_FILE="${odb}" GUI_VIEW="${view}"
-  openroad -gui -no_splash -no_init "${TCL}" >/tmp/or-gui-session.log 2>&1 &
-  echo $! > /tmp/or-gui-session.pid
+  setsid openroad -gui -no_splash -no_init "${TCL}" >/tmp/or-gui-session.log 2>&1 &
+  printf '%s\n' "$!" > "${GUI_PID_FILE}"
   wait_window
   sleep 2.5
 }

@@ -4,7 +4,7 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Theory"
-  ui_note "Read: learn/lessons/06-routing/README.md, walkthrough-route.tcl.md, golden-metrics.md (GRT/DRC)."
+  ui_note "Read: learn/lessons/06-routing/README.md, walkthrough-route.tcl.md, live-analysis.md."
   learn_atlas "win_grt.png, win_route.png, 08_route_labeled.png, orfs_final_congestion.png"
   learn_make_hint route
   ui_pause
@@ -27,8 +27,8 @@ lesson_main() {
   ui_print_file "DRC report" "$(learn_report 5_route_drc.rpt)" 20
   ui_print_file "Global route report" "$(learn_report 5_global_route.rpt)" 30
   learn_grep_metric "$(learn_report 5_global_route.rpt)" "worst slack|setup violation" || true
-  learn_golden
-  ui_note "Reference: DRC wc -l = 0, GRT WNS -0.05 ns / 43 viol."
+  learn_live_analysis
+  ui_note "Use the current DRC and global-route reports above; route quality is invocation-specific."
   ui_pause
 
   ui_section "Exercise 6-D — Routing GUI"

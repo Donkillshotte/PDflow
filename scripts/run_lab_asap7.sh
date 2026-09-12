@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Lab-only ASAP7 RTL→GDS. Never writes Nangate flowlab/learn/base.
-# Never runs the course signoff orchestrator. Never restamps gold Dynamic IR 45.298 mV.
+# Never runs the course signoff orchestrator or imports another track's report.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" "lab-asap7-${1:-finish}" \
+    bash "${BASH_SOURCE[0]}" "$@"
+fi
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 TARGET="${1:-finish}"
 
@@ -19,6 +23,12 @@ TRACK="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["track"])' "
 CLUSTER="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["cluster"])' "${SPEC_JSON}")"
 CLK_PS="$(python3 -c 'import json,sys; v=json.loads(sys.argv[1])["clk_ps"]; print("" if v is None else v)' "${SPEC_JSON}")"
 
+if [[ -n "${LAB_ASAP7_VARIANT:-}" && "${LAB_ASAP7_VARIANT}" != "${VARIANT}" ]]; then
+  echo "REFUSED: requested LAB_ASAP7_VARIANT=${LAB_ASAP7_VARIANT} does not match the typed profile variant=${VARIANT}." >&2
+  echo "Choose the profile that produces the requested isolated result directory." >&2
+  exit 2
+fi
+
 LOCKED='^(flowlab|learn|base)$'
 if [[ "${VARIANT}" =~ ${LOCKED} ]]; then
   echo "REFUSED: FLOW_VARIANT=${VARIANT} is locked." >&2
@@ -31,6 +41,15 @@ fi
 if [[ "${VARIANT}" == *krylov* ]]; then
   echo "REFUSED: Krylov is not a lab ASAP7 variant." >&2
   exit 2
+fi
+
+if [[ "${TARGET}" == "finish" ]]; then
+  EXISTING_ROOT="${FLOW}/results/asap7/${NICKNAME}/${VARIANT}"
+  if [[ -e "${EXISTING_ROOT}/6_final.odb" || -e "${EXISTING_ROOT}/6_final.gds" ]]; then
+    echo "REFUSED: protected ASAP7 finish already exists at ${EXISTING_ROOT}." >&2
+    echo "Use a different typed experiment profile; an existing finish is never overwritten." >&2
+    exit 2
+  fi
 fi
 if [[ "${TRACK}" == "6" ]]; then
   echo "REFUSED: 6-track cook is fetch-gated in this pass (views not wired into ORFS make yet)." >&2
@@ -106,7 +125,7 @@ if [[ -n "${CLK_PS}" ]]; then
   MAKE_EXTRA+=( SDC_FILE="${SDC_FILE}" )
 fi
 
-AS_BYTES="${PDN_AS_BYTES:-8589934592}"
+AS_BYTES="${PDN_AS_BYTES:-6442450944}"
 CPU_S="${PDN_CPU_S:-1800}"
 
 echo "lab asap7 ${TARGET}: variant=${VARIANT} config=${CONFIG_REL} corner=${CORNER} vt=${VT} lib=${LIB_MODEL} track=${TRACK}"

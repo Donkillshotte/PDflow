@@ -87,7 +87,7 @@ def run_winning_ir_region_cell(ctx: dict) -> bool:
                     n_changed=(child.artifacts or {}).get("n_changed"),
                     wns_ns=(child.artifacts or {}).get("wns_ns"),
                     area_um2=child.qor.area_um2,
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_wirc,
                 )
@@ -138,7 +138,7 @@ def run_winning_ir_region_cell(ctx: dict) -> bool:
                     n_r=(child.artifacts or {}).get("n_r"),
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_mv=(child.attr or {}).get("residual_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_wirce,
                 )
@@ -200,7 +200,7 @@ def run_winning_ir_region_cell(ctx: dict) -> bool:
                     extract_id=eid_wircp,
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=steer_wircp.get("reason"),
                 )

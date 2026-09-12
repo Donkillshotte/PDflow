@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
 import time
 from pathlib import Path
@@ -14,6 +15,7 @@ SHOT = ROOT / "learn/reference/gui-shots"
 TCL = ROOT / "learn/scripts/gui_session.tcl"
 ENV = {**os.environ, "DISPLAY": DISPLAY, "QT_QPA_PLATFORM": "xcb",
        "XDG_RUNTIME_DIR": "/tmp/runtime-ubuntu"}
+GUI_PROCESS: subprocess.Popen[bytes] | None = None
 
 
 def run(cmd):
@@ -21,14 +23,30 @@ def run(cmd):
 
 
 def kill():
-    run(["pkill", "-x", "openroad"])
-    time.sleep(1)
+    global GUI_PROCESS
+    if GUI_PROCESS is None or GUI_PROCESS.poll() is not None:
+        GUI_PROCESS = None
+        return
+    try:
+        os.killpg(GUI_PROCESS.pid, signal.SIGTERM)
+        GUI_PROCESS.wait(timeout=3)
+    except (OSError, subprocess.TimeoutExpired):
+        try:
+            os.killpg(GUI_PROCESS.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        try:
+            GUI_PROCESS.wait(timeout=2)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    GUI_PROCESS = None
 
 
 def launch(odb):
+    global GUI_PROCESS
     kill()
     env = {**ENV, "ODB_FILE": str(odb), "GUI_VIEW": "all"}
-    subprocess.Popen(
+    GUI_PROCESS = subprocess.Popen(
         ["openroad", "-gui", "-no_splash", "-no_init", str(TCL)],
         env=env,
         stdout=open("/tmp/or-gui-session.log", "w"),

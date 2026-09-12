@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Linear solvers for the GCD PDN backward-Euler operator.
 
-Solver A — sparse LU (golden).
+Solver A — sparse LU (live).
 Solver B — smoothed-aggregation AMG V-cycle + CG (workhorse).
 The BE matrix A = G + C/Δt + g_eq is SPD. Package R+L uses a companion
 g_eq=1/(R+L/Δt) with inductor current i_L on the RHS (not memoryless L/Δt).
@@ -510,6 +510,9 @@ class NativeSolver:
             raise RuntimeError("dpn_setup failed")
         self._lib = lib
         self._h = h
+        self._A = Ac
+        self._kind = int(kind)
+        self._fallback = None
         self.n = n
         self.setup_s = float(lib.dpn_setup_s(h))
         self.n_levels = int(lib.dpn_n_levels(h))
@@ -522,6 +525,8 @@ class NativeSolver:
         self.backend = "native"
 
     def solve(self, b: np.ndarray, x0: np.ndarray | None = None) -> np.ndarray:
+        if self._fallback is not None:
+            return self._fallback.solve(b, x0=x0)
         b = np.ascontiguousarray(b, dtype=np.float64)
         x = np.zeros(self.n, dtype=np.float64)
         x0p = None
@@ -538,7 +543,23 @@ class NativeSolver:
             ctypes.byref(rel),
         )
         if rc != 0:
-            raise RuntimeError(f"dpn_solve rc={rc}")
+            # A native backend can reject an otherwise valid CSR system
+            # (for example because its preconditioner did not converge).
+            # Keep the solver role and the live matrix, but continue with the
+            # matching SciPy implementation instead of failing the whole
+            # current invocation or silently reusing an older result.
+            fallback_cls = {
+                0: PyDirectLU,
+                1: PySAAMG,
+                2: PyRASDD,
+                3: PyBicgSTAB,
+            }.get(self._kind)
+            if fallback_cls is None:
+                raise RuntimeError(f"dpn_solve rc={rc}")
+            self._fallback = fallback_cls(self._A)
+            self.backend = "python-fallback"
+            self.setup_s += float(getattr(self._fallback, "setup_s", 0.0))
+            return self._fallback.solve(b, x0=x0)
         return x
 
     def __del__(self):
@@ -913,7 +934,16 @@ class PyRASDD:
 
         x0 = np.zeros_like(b) if x0 is None else np.asarray(x0, dtype=np.float64)
         M = LinearOperator((self.n, self.n), matvec=self._apply, dtype=np.float64)
-        x, info = sp_gmres(self.A, b, x0=x0, M=M, restart=32, maxiter=256, atol=0.0, tol=1e-10)
+        # SciPy 1.11 and older call the relative tolerance ``tol`` while
+        # newer releases use the explicit ``rtol`` spelling.  Keep the
+        # solver contract stable across the local Python runtimes used by
+        # the desktop agent.
+        try:
+            x, info = sp_gmres(self.A, b, x0=x0, M=M, restart=32, maxiter=256, atol=0.0, rtol=1e-10)
+        except TypeError as exc:
+            if "rtol" not in str(exc) and "unexpected keyword" not in str(exc):
+                raise
+            x, info = sp_gmres(self.A, b, x0=x0, M=M, restart=32, maxiter=256, atol=0.0, tol=1e-10)
         self.last_iters = 0 if info == 0 else abs(int(info))
         return x
 
@@ -968,9 +998,13 @@ def _events_ct(events):
 
 
 def _tran_kwargs(n, events, dt, t_end, adaptive=False):
-    steps = max(2, int(np.ceil(t_end / dt)))
+    # The native transient API records the initial condition plus every
+    # accepted step.  Reserve that initial sample explicitly; under-sizing
+    # this buffer makes a valid native run return rc=-2 and needlessly forces
+    # the Python fallback on large meshes.
+    steps = max(3, int(np.ceil(t_end / dt)) + 1)
     if adaptive:
-        steps = max(steps, int(np.ceil(t_end / (dt / 128.0))) + 8)
+        steps = max(steps, int(np.ceil(t_end / (dt / 128.0))) + 9)
     Vw = np.zeros(n, dtype=np.float64)
     wt = np.zeros(steps, dtype=np.float64)
     wv = np.zeros(steps, dtype=np.float64)
@@ -1489,7 +1523,7 @@ def _descriptor_wave_args(p, vdd, t_end, dt):
 
 
 def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=None, solver_kind: int = 0):
-    """Native BE on Eẋ+Ax=u. Sparse-E gen API. solver_kind 0=SparseLU gold, 2=RAS, 3=BiCGSTAB. Never AMG."""
+    """Native BE on Eẋ+Ax=u. Sparse-E gen API. solver_kind 0=SparseLU reference, 2=RAS, 3=BiCGSTAB. Never AMG."""
     lib = _libdpn()
     if lib is None or not hasattr(lib, "dpn_timestep_descriptor"):
         return None
@@ -1506,7 +1540,7 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
             *_descriptor_common_args(p), *mid, int(solver_kind), *tail
         )
         if rc != 0:
-            print(f"dpn_timestep_descriptor_workhorse rc={rc}", file=sys.stderr)
+            print(f"dpn_timestep_descriptor_workhorse rc={rc}", file=_python_sys.stderr)
             return None
         label = "D_ras_schwarz_descriptor" if solver_kind == 2 else "E_bicgstab_descriptor"
         via = (
@@ -1525,7 +1559,7 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
     if use_gen:
         rc = lib.dpn_timestep_descriptor_gen(*_descriptor_common_args(p), *mid, *tail)
         if rc != 0:
-            print(f"dpn_timestep_descriptor_gen rc={rc}", file=sys.stderr)
+            print(f"dpn_timestep_descriptor_gen rc={rc}", file=_python_sys.stderr)
             return None
         out = _tran_result(
             p["kw"], p["n_die"], "N4_descriptor_be", None, 1, vdd, dt, t_end, "native", "native_desc"
@@ -1572,7 +1606,7 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
         ctypes.byref(kw["n_steps"]),
     )
     if rc != 0:
-        print(f"dpn_timestep_descriptor rc={rc}", file=sys.stderr)
+        print(f"dpn_timestep_descriptor rc={rc}", file=_python_sys.stderr)
         return None
     out = _tran_result(kw, p["n_die"], "N4_descriptor_be", None, 1, vdd, dt, t_end, "native", "native_desc")
     out["via"] = "descriptor BE VRM+pkg+die (libdpn SparseLU)"
@@ -1582,7 +1616,7 @@ def native_descriptor(sys, events, vdd: float, t_end: float, dt: float, leak=Non
 def native_descriptor_adaptive(
     sys, events, vdd: float, t_end: float, dt0: float, leak=None, atol: float = 1e-4, rtol: float = 0.01
 ):
-    """Adaptive Δt descriptor BE. LTE on voltage states. Not the fixed-Δt gold when L>0."""
+    """Adaptive Δt descriptor BE. LTE on voltage states. Not the fixed-Δt reference when L>0."""
     lib = _libdpn()
     if lib is None or not hasattr(lib, "dpn_timestep_descriptor_adaptive"):
         return None
@@ -1594,13 +1628,13 @@ def native_descriptor_adaptive(
         *_descriptor_common_args(p), *mid, float(atol), float(rtol), *tail
     )
     if rc != 0:
-        print(f"dpn_timestep_descriptor_adaptive rc={rc}", file=sys.stderr)
+        print(f"dpn_timestep_descriptor_adaptive rc={rc}", file=_python_sys.stderr)
         return None
     out = _tran_result(
         p["kw"], p["n_die"], "N4_descriptor_be_adaptive", None, 1, vdd, dt0, t_end, "native",
         "adaptive",
     )
-    out["via"] = "descriptor BE sparse-E adaptive Δt (libdpn SparseLU; not gold when L>0)"
+    out["via"] = "descriptor BE sparse-E adaptive Δt (libdpn SparseLU; not reference when L>0)"
     return out
 
 

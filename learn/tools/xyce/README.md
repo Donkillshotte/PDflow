@@ -1,13 +1,8 @@
-# Xyce (Sandia) local prefix
+# Xyce integration
 
-Not vendored (binary + MPI/OpenBLAS deps). Install:
+The Xyce helper is an optional current-run probe. It accepts a deck generated
+from the selected mesh and writes status, command, inputs, and outputs in the
+run scope. If the executable or model is absent it returns `GAP`.
 
-```bash
-./learn/scripts/install_xyce.sh
-```
-
-Puts `Xyce` in `learn/tools/xyce/bin`. `lab_tools.sh` prepends that path and
-`LD_LIBRARY_PATH`. Studio action `spice_engines` runs the existing N4 deck
-(`pdn_vrm.xyce_vrm_die_gold`). ngspice stays the System PDN engine.
-
-Do not restamp gold Dynamic IR 45.298 from Xyce numbers.
+It never imports an output from another run. Compare Xyce and another solver
+only when their current decks and mesh fingerprints match.

@@ -1,8 +1,104 @@
-# Installation
+# Native installation
 
-Full environment setup for Ubuntu 22.04 / 24.04. For day-to-day commands after install, see [operations.md](operations.md).
+PDflow is certified for a Linux-first, native-host deployment. The runtime
+does not use Docker as a substitute for the EDA toolchain: OpenROAD, OpenSTA,
+KLayout, Yosys, Icarus Verilog and ngspice are launched as host processes by
+the local agent. For day-to-day commands see [operations.md](operations.md).
 
-## Cloud Agent (recommended for a fast bootstrap)
+The tested host installation is recorded in
+[`config/pdflow/native_toolchain.json`](../config/pdflow/native_toolchain.json)
+and uses the user-owned prefix `~/.local/pdflow-eda`. The certified inventory
+currently contains OpenROAD 26Q3, OpenSTA 2.7.0, KLayout 0.30.0, Yosys 0.66,
+Icarus Verilog 13.0 and ngspice 47.
+
+After installing or rebuilding the tools, initialise the environment and run
+the native verification gate:
+
+```bash
+source scripts/native_eda_env.sh
+bash scripts/verify_native_eda.sh
+```
+
+The gate performs version probes plus real native smoke operations and ends
+with `NATIVE EDA TOOLCHAIN VERIFIED` on success.
+
+## Native source/build paths
+
+OpenROAD and its standalone OpenSTA/ODB Python binding can be rebuilt with
+the pinned source helpers:
+
+```bash
+source scripts/native_eda_env.sh
+bash scripts/build_native_openroad.sh
+bash scripts/build_native_openroad_odb.sh
+```
+
+The helpers install into `~/.local/pdflow-eda/native-openroad` and update no
+system package database. The remaining host tools may be installed by the
+distribution package manager or an audited user prefix; update the manifest
+when versions change and rerun the verification gate. Optional Xyce,
+FasterCap and HotSpot are repository-local lab adapters and do not replace a
+required core tool.
+
+## Desktop build
+
+The Tauri shell is also built natively. It bundles a local Next standalone
+server and starts both that server and the Python agent as local processes:
+
+```bash
+source scripts/native_eda_env.sh
+export PD_FLOW_NODE=/absolute/path/to/node
+source "$HOME/.cargo/env" 2>/dev/null || true
+cd studio/src-tauri
+../../scripts/run_resource_job.sh studio-tauri-build cargo tauri build
+```
+
+### Rootless native desktop build dependencies
+
+If the host already has the GTK/WebKit runtime but the `-dev` packages cannot
+be installed system-wide, prepare the user-owned native build sysroot once:
+
+```bash
+./scripts/bootstrap_native_build_sysroot.sh
+source scripts/native_eda_env.sh
+cd studio
+../scripts/run_resource_job.sh studio-tauri-build cargo tauri build
+```
+
+The bootstrap uses the existing Debian/Kali apt indexes, downloads packages to
+`~/.cache/pdflow-apt/`, and extracts them to
+`~/.local/pdflow-build-sysroot/`. It does not invoke `sudo`, modify the system
+package database, use Docker, or write into the repository. The resource
+runner detects this sysroot automatically through `PD_FLOW_BUILD_SYSROOT` and
+configures `pkg-config`, headers, linker paths, and the bounded `pkgconf`
+facade used by linuxdeploy. Override the locations explicitly when needed:
+
+```bash
+PD_FLOW_BUILD_SYSROOT=/absolute/sysroot \
+PD_FLOW_BUILD_SYSROOT_CACHE=/absolute/deb-cache \
+  ./scripts/bootstrap_native_build_sysroot.sh
+```
+
+The sysroot is a build input, not a replacement for the host GTK/WebKit
+runtime. The packaged application still runs with the native Linux runtime
+libraries installed on the target workstation.
+
+Set `PD_FLOW_REPO_ROOT` when launching a packaged binary against a checkout
+that is not the process working directory. See
+[`studio/src-tauri/README.md`](../studio/src-tauri/README.md).
+
+## Legacy installers and cloud bootstrap
+
+The older `scripts/01_install_openroad.sh` … `04_setup_orfs.sh` scripts are
+kept for controlled system-wide installations and are not the certified
+runtime path. They require `sudo`, must be reviewed before use, and should be
+followed by `verify_native_eda.sh`.
+
+The historical cloud bootstrap scripts remain for compatibility and static
+regression tests. They are not a substitute for the native-host acceptance
+gate required for Product, Package and Lab validation.
+
+## Cloud Agent (compatibility bootstrap)
 
 Default profile is **core** (RTL→GDS + Studio, without standalone OpenSTA or heavy DSE/AES/Krylov):
 
@@ -46,11 +142,13 @@ size and checksums before invoking `apt`. Deliberate upgrades must provide
 
 | Tool | Version | Source |
 |---|---|---|
-| [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) | 26Q2-1164-g08f67ee5ec | Precision Innovations `.deb` ([VaultLink](https://vaultlink.precisioninno.com/)) |
-| [OpenSTA](https://github.com/parallaxsw/OpenSTA) | 3.1.0 | built from source (with CUDD) |
+| [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) | 26Q3 (`a9147cf3`) | native source build |
+| [OpenSTA](https://github.com/parallaxsw/OpenSTA) | 2.7.0 | native source target from the OpenROAD tree |
 | [ORFS](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) | 26Q2 @ `036d106` | pinned tag commit |
-| [Yosys](https://github.com/YosysHQ/yosys) | 0.63 | submodule from ORFS |
-| [KLayout](https://www.klayout.de/) | 0.30.11 | official `.deb` |
+| [Yosys](https://github.com/YosysHQ/yosys) | 0.66 | native host binary |
+| Icarus Verilog | 13.0 | native host binary |
+| [KLayout](https://www.klayout.de/) | 0.30.0 | native host binary |
+| [ngspice](https://ngspice.sourceforge.io/) | 47 | native host binary |
 
 Also in the tree: ngspice, **vyges-em-ir** (v0.1.33), HotSpot, Xyce (optional), FasterCap (optional).
 OSS matrix: [learn/reference/oss-integrations.md](../learn/reference/oss-integrations.md).
@@ -67,16 +165,15 @@ tools/
 └── vyges-em-ir/             # Apache-2.0 binary (GitHub Releases)
 ```
 
-`openroad` and `klayout` install system-wide from `.deb` packages.
+The certified wrappers in `tools/native/bin` resolve the user-owned native
+prefix and keep executable paths explicit for the registry and local agent.
 
 ## Quick verification
 
 ```bash
-openroad -version
-sta -version
-yosys -V
-klayout -v
-./scripts/run_opensta_example.sh   # min/max timing smoke on Nangate45
+source scripts/native_eda_env.sh
+bash scripts/verify_native_eda.sh
+./scripts/run_opensta_example.sh   # native STA smoke on Nangate45
 ```
 
 ## Run the GCD reference flow
@@ -115,7 +212,7 @@ GUI (needs X11 / Desktop):
 
 ## Notes
 
-- Precision Innovations OpenROAD binaries include OpenSTA internally; standalone `sta` is for STA outside the flow.
+- The certified OpenROAD and OpenSTA binaries are native source-built executables; standalone `sta` is also used for STA outside the flow.
 - `run_gcd_flow.sh` passes `openroad`, `sta`, and `yosys` from `PATH` into ORFS.
 - `tcl-dev` is required for yosys Tcl integration (`-c` scripts in ORFS).
-- OpenROAD GUI (`openroad -gui`) needs Qt/X11; use Desktop on Cloud Agents or `Xvfb` headless.
+- OpenROAD GUI (`openroad -gui`) needs Qt/X11. The desktop shell opens it as an external native window and tracks recognized artifacts through the local agent.

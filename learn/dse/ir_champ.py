@@ -112,7 +112,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                     c_decap=spec_wir.get("c_decap"),
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_winning_ir_mv=(child.attr or {}).get("residual_vs_winning_ir_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=steer_wir.get("reason"),
                 )
@@ -149,7 +149,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                 mem,
                 variant=variant,
                 design_id=design_id,
-                baseline_power_w=base_p_c,
+                reference_power_w=base_p_c,
                 pkg_r=float((champ.knobs or {}).get("pkg_r") or 0.05),
                 pkg_l=float((champ.knobs or {}).get("pkg_l") or 2e-10),
                 c_decap=float((champ.knobs or {}).get("c_decap") or 50e-15),
@@ -198,7 +198,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                     sta_via=via_c,
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_iscale_win_mv=(child.attr or {}).get("residual_vs_iscale_win_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_sch,
                 )
@@ -245,7 +245,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                     n_changed=(child.artifacts or {}).get("n_changed"),
                     wns_ns=(child.artifacts or {}).get("wns_ns"),
                     area_um2=child.qor.area_um2,
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_icc,
                 )
@@ -292,7 +292,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                     n_sta=(child.artifacts or {}).get("n_sta_inst"),
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_mv=(child.attr or {}).get("residual_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_icce,
                 )
@@ -353,7 +353,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                     extract_id=eid_iccp,
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=steer_iccp.get("reason"),
                 )
@@ -400,7 +400,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                     n_changed=(child.artifacts or {}).get("n_changed"),
                     wns_ns=(child.artifacts or {}).get("wns_ns"),
                     area_um2=child.qor.area_um2,
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_iccc,
                 )
@@ -447,7 +447,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                     n_sta=(child.artifacts or {}).get("n_sta_inst"),
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_mv=(child.attr or {}).get("residual_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_iccce,
                 )
@@ -508,7 +508,7 @@ def run_ir_champ_family(ctx: dict) -> bool:
                     extract_id=eid_icccp,
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=steer_icccp.get("reason"),
                 )

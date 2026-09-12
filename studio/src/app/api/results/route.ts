@@ -9,9 +9,10 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const stage = url.searchParams.get("stage") ?? "synth";
   const variant = url.searchParams.get("variant") ?? preferredResultsVariant();
+  const runId = url.searchParams.get("run_id");
   try {
     return NextResponse.json(
-      collectStageResults(stage, normalizeResultsVariant(variant)),
+      collectStageResults(stage, normalizeResultsVariant(variant), runId),
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

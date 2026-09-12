@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Pay aes F5-lite (2 DRT iters, ideal clock, no CTS) into memory_aes.jsonl.
-
-Uses the 0.82 ns AES SDC. Does not run CTS, does not run Krylov, does not
-touch the 73k-R / 6.954 mV row.
-"""
+"""Run AES F5-lite in an isolated live directory."""
 
 from __future__ import annotations
 
@@ -18,6 +14,7 @@ sys.path.insert(0, str(REPO / "learn" / "scripts"))
 
 from heavy_analysis import require_heavy  # noqa: E402
 from dse.fidelity import evaluate_f5_drt  # noqa: E402
+from dse.live_paths import current_run_dir  # noqa: E402
 from dse.memory import DesignMemory  # noqa: E402
 
 
@@ -26,7 +23,8 @@ def main() -> int:
     if os.environ.get("AES_F5_ALLOW_CTS") == "1":
         print("REFUSED: AES F5-CTS is not part of this cloud shot")
         return 2
-    mem_path = REPO / "learn" / "sim" / "dse" / "memory_aes.jsonl"
+    run_dir = current_run_dir("aes")
+    mem_path = run_dir / "memory.jsonl"
     mem = DesignMemory(mem_path)
     f1 = None
     for c in reversed(list(mem.by_level("logic"))):
@@ -51,7 +49,7 @@ def main() -> int:
         f"clock={(f5.knobs or {}).get('clock')} cost={f5.cost_s:.1f}s "
         f"fail={f5.failure}"
     )
-    dest = REPO / "learn" / "sim" / "reports" / "dse_aes.json"
+    dest = run_dir / "report.json"
     report = json.loads(dest.read_text()) if dest.is_file() else {}
     report["f5_lite_id"] = f5.id
     report["f5_lite_status"] = f5.status

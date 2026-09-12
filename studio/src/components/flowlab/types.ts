@@ -26,7 +26,7 @@ export type StageStatus = {
   primary?: string;
 };
 
-export type RightTab = "log" | "artifacts" | "inspect";
+export type RightTab = "log" | "artifacts" | "inspect" | "checks" | "settings" | "signoff";
 
 export type StreamEvent =
   | { type: "start"; jobId: string; command: string; action: string }

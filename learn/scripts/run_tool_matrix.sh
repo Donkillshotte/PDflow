@@ -3,6 +3,14 @@
 # spice engines, vectorless/dynamic (if 6_final.odb exists).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" tool-matrix bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
+# Keep repository-local native lab tools (notably Xyce and FasterCap) visible
+# to every shell stage and to the Python capability summary below.
+source "${ROOT}/learn/lib/lab_tools.sh"
+lab_tools_path "${ROOT}"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 export FLOW_VARIANT="${VARIANT}"
 OUT="${ROOT}/learn/sim/reports/tool_matrix_${VARIANT}.json"
@@ -41,11 +49,15 @@ root = Path(${ROOT@Q})
 rep = root / "learn/sim/reports"
 variant = ${VARIANT@Q}
 
-def load(name):
-    p = rep / f"{name}_{variant}.json"
-    if not p.exists():
-        return {"ok": False, "missing": str(p)}
-    return json.loads(p.read_text())
+def load(name, suffix=None):
+    candidates = []
+    if suffix:
+        candidates.append(rep / f"{name}_{variant}_{suffix}.json")
+    candidates.append(rep / f"{name}_{variant}.json")
+    for p in candidates:
+        if p.exists():
+            return json.loads(p.read_text())
+    return {"ok": False, "missing": str(candidates[0])}
 
 parts = {
     "yosys_equiv": load("yosys_equiv"),
@@ -57,7 +69,9 @@ parts = {
     "spice_engines": load("spice_engines"),
     "vectorless": load("vectorless"),
     "vyges_em_ir": load("vyges_em_ir"),
-    "dynamic_ir": load("dynamic_ir"),
+    # Dynamic IR is intentionally current-run-only and uses the _direct
+    # filename.  Never fall back to a report from another variant/run.
+    "dynamic_ir": load("dynamic_ir", "direct"),
 }
 tools = {
     "yosys": {"status": "INTEGRATED", "bin": shutil.which("yosys"), "role": "synth + equiv + formal sat"},
@@ -71,26 +85,53 @@ tools = {
     "openrcx": {"status": "INTEGRATED", "bin": "openroad extract_parasitics", "role": "6_final.spef from finish"},
     "fastercap": {"status": "INTEGRATED" if (shutil.which("fastercap") or shutil.which("FasterCap") or (root / "learn/tools/fastercap/FasterCap").is_file()) else "MAPPED", "bin": shutil.which("fastercap") or shutil.which("FasterCap") or (str(root / "learn/tools/fastercap/FasterCap") if (root / "learn/tools/fastercap/FasterCap").is_file() else None), "role": "3D BEM 2-wire vs Sakurai–Tamaru"},
     "ccs_char": {"status": "INTEGRATED" if (rep / f"ccs_char_{variant}.json").is_file() else "GAP", "bin": str(root / "learn/scripts/char_nangate_ccs.py"), "role": "PTM CCS sidecar on GCD cells; official Nangate stays NLDM"},
-    "lvs_deep": {"status": "INTEGRATED", "bin": str(root / "learn/scripts/run_lvs_deep.py"), "role": "filtered CDL + well→VDD/VSS; transistor match; DFF_X2 leftover"},
+    "lvs_deep": {"status": "INTEGRATED", "bin": str(root / "learn/scripts/run_lvs_deep.py"), "role": "filtered CDL + well→VDD/VSS; transistor match; current must-connect result"},
     "raphael": {"status": "GAP", "bin": None, "role": "Synopsys commercial — not licensed"},
     "starrc": {"status": "GAP", "bin": None, "role": "Synopsys commercial — OpenRCX SPEF is the extract"},
     "open_pdks": {"status": "GAP", "bin": None, "role": "Sky130/gf180; this course is pinned Nangate45/FreePDK45"},
     "vyges_em_ir": {"status": "INTEGRATED", "bin": shutil.which("vyges-em-ir") or str(root / "tools/vyges-em-ir/vyges-em-ir"), "role": "CG + backward Euler on write_pg_spice mesh"},
-    "dynamic_ir": {"status": "INTEGRATED", "bin": str(root / "learn/scripts/pdn_dynamic.py"), "role": "per-ITerm PWL + Solver A LU gold + Solver B SA-AMG + shared-A scenarios"},
+    "dynamic_ir": {"status": "INTEGRATED", "bin": str(root / "learn/scripts/pdn_dynamic.py"), "role": "per-ITerm PWL + full-order LU + Solver B SA-AMG + same-run scenarios"},
 }
 odb = root / f"tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/{variant}/6_final.odb"
 skip_optional = set() if odb.exists() else {"vectorless", "vyges_em_ir", "dynamic_ir"}
-ok = all(v.get("ok") for k, v in parts.items() if k not in skip_optional)
+
+def valid_execution(report):
+    """Accept completed proxy evidence without promoting it to signoff."""
+    if report.get("ok") is True:
+        return True
+    return (
+        report.get("status") == "PROXY"
+        and report.get("execution_status") == "COMPLETED"
+        and report.get("evidence_status") == "PASS"
+        and report.get("product_signoff") is False
+    )
+
+execution_ok = all(
+    valid_execution(v) for k, v in parts.items() if k not in skip_optional
+)
+proxy_parts = [
+    k for k, v in parts.items()
+    if v.get("status") == "PROXY" and valid_execution(v)
+]
 out = {
-    "ok": ok,
+    "schema_version": 2,
+    "status": "PASS" if execution_ok else "FAIL",
+    "execution_status": "COMPLETED" if execution_ok else "FAILED",
+    "evidence_status": "PASS" if execution_ok else "GAP",
+    "requirement_status": "PROXY" if proxy_parts else ("PASS" if execution_ok else "FAIL"),
+    "signoff_status": "PROXY" if proxy_parts else ("PASS" if execution_ok else "FAIL"),
+    "product_signoff": False,
+    "ok": execution_ok,
     "kind": "tool_matrix",
     "variant": variant,
     "parts": {k: {"ok": v.get("ok"), "summary": v.get("summary")} for k, v in parts.items()},
     "tools": tools,
-    "summary": "tool matrix " + ("PASS" if ok else "CHECK"),
+    "proxy_parts": proxy_parts,
+    "summary": "tool matrix " + ("PASS" if execution_ok else "CHECK")
+        + (" · proxy evidence retained" if proxy_parts else ""),
 }
 Path(${OUT@Q}).write_text(json.dumps(out, indent=2) + "\n")
 print(out["summary"], "→", ${OUT@Q})
-raise SystemExit(0 if ok else 1)
+raise SystemExit(0 if execution_ok else 1)
 PY
 echo "TOOL_MATRIX_DONE ${VARIANT}"

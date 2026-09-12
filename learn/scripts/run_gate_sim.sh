@@ -4,6 +4,11 @@
 # Env: FLOW_VARIANT=flowlab|learn
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" gate-sim bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
+source "${ROOT}/scripts/rg_compat.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 NET="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/6_final.v"
 CELLS="${ROOT}/learn/platforms/nangate45/verilog/NangateOpenCellLibrary.v"

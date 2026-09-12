@@ -1,9 +1,8 @@
-"""Resumable outer DSE campaign: many inner ``run_controller`` passes, one JSONL.
+"""Bounded DSE loop for one live invocation.
 
-Not a DesignState. Not a flatten of ABC + util + PDN. Each inner run is the
-existing layered controller; this module only raises lifetime shot caps,
-reuses the same ``DesignMemory``, and stops when gated hypervolume (logic,
-area vs ``wns_cost``) stops growing.
+Each call receives an explicit run memory and all comparisons are scoped to
+that memory. It never loads a registry or freezes a reference point from a
+previous invocation.
 
 ``Candidate.pred`` is never a Pareto axis — ranking / tie-break only.
 """
@@ -90,7 +89,7 @@ def logic_hv_points(mem: DesignMemory, pred: dict[str, float] | None = None) -> 
 
 
 def suggest_ref(points: list[tuple[float, float]]) -> tuple[float, float] | None:
-    """Freeze a nadir worse than the first non-empty front. Never recompute later."""
+    """Derive a temporary nadir from the current invocation's points."""
     if not points:
         return None
     max_a = max(p[0] for p in points)
@@ -225,10 +224,12 @@ def run_campaign(
             "ref": None,
             "memory": str(path),
             "inners": [],
+            "comparison_scope": "same-live-invocation",
         }
 
-    if fresh:
-        _wipe(path)
+    # A campaign is an invocation boundary. Even when a caller reuses a
+    # pathname, its contents cannot leak into this run.
+    _wipe(path)
 
     mem0 = DesignMemory(path)
     pred0 = pred_costs(mem0) or None
@@ -322,4 +323,5 @@ def run_campaign(
         "ref": list(ref) if ref else None,
         "memory": str(path),
         "inners": inners,
+        "comparison_scope": "same-live-invocation",
     }

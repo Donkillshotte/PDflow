@@ -1,8 +1,9 @@
 """Standard F4 solver observation. Not a new DesignState.
 
-DirectLU (A) is the numerical reference. AMG/RAS/Krylov are accelerators
-and must carry ``abs_err_vs_reference_mv`` when A is known. Never treat a
-fast solver as truth.
+DirectLU (A) is the numerical reference for a single live solve group.
+AMG/RAS/Krylov are accelerators and may carry
+``abs_err_vs_reference_mv`` only when the caller supplies the DirectLU
+result from that same group. No external result is implied.
 """
 
 from __future__ import annotations
@@ -121,8 +122,8 @@ class SolveResult:
     activity_status: str = ACTIVITY_ABSENT
     activity_via: dict = field(default_factory=dict)
     convergence_status: str | None = None
-    gold: bool = False
-    gold_ref_mv: float | None = 45.298
+    comparison_role: str | None = None
+    reference_droop_mv: float | None = None
     extract: str | None = None
     mesh_fp: str | None = None
     via: str | None = None
@@ -167,7 +168,7 @@ def normalize_solve(
             kind = None
     solver = solver_s or kind
     droop = _droop_mv(p)
-    err = _f(p.get("abs_err_vs_A_mv") if p.get("abs_err_vs_A_mv") is not None else p.get("abs_err_vs_reference_mv"))
+    err = _f(p.get("abs_err_vs_reference_mv"))
     if err is None and reference_droop_mv is not None and droop is not None:
         err = abs(float(droop) - float(reference_droop_mv))
     rel = _f(p.get("relative_error"))
@@ -213,8 +214,16 @@ def normalize_solve(
         ),
         activity_via=_activity_via_with_scenario(t50, p, act),
         convergence_status=None if conv is None else str(conv),
-        gold=bool(p.get("gold") or False),
-        gold_ref_mv=_f(p.get("gold_ref_mv")) if p.get("gold_ref_mv") is not None else 45.298,
+        comparison_role=(
+            str(p.get("comparison_role"))
+            if p.get("comparison_role") is not None
+            else ("reference" if solver_role(solver, kind) == "reference" else None)
+        ),
+        reference_droop_mv=(
+            _f(p.get("reference_droop_mv"))
+            if p.get("reference_droop_mv") is not None
+            else _f(reference_droop_mv)
+        ),
         extract=None if p.get("extract") is None else str(p.get("extract")),
         mesh_fp=mesh_fp,
         via=None if p.get("via") is None else str(p.get("via")),
@@ -282,7 +291,7 @@ def from_dynamic_ir_report(report: dict) -> list[SolveResult]:
         "t50_via": activity.get("t50_via"),
         "cost_s": dyn.get("solver_step_s"),
         "extract": "finish",
-        "gold": False,
+        "comparison_role": "reference",
         "via": dyn.get("solver"),
     }
     if a_payload.get("static_ir_mv") is not None:

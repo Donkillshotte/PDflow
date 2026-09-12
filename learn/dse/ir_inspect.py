@@ -102,7 +102,7 @@ def run_inspect_loop(ctx: dict, spec: InspectLoop) -> bool:
                         n_r=(child.artifacts or {}).get("n_r"),
                         droop_mv=child.qor.dynamic_ir_mv,
                         residual_mv=(child.attr or {}).get("residual_mv"),
-                        gold=False,
+                        comparison_scope="same-live-extract",
                         status=child.status,
                         reason=steer.get("reason"),
                     )
@@ -154,7 +154,7 @@ def run_inspect_loop(ctx: dict, spec: InspectLoop) -> bool:
                         region=steer.get("region"),
                         droop_mv=child.qor.dynamic_ir_mv,
                         residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
-                        gold=False,
+                        comparison_scope="same-live-extract",
                         status=child.status,
                         reason=steer.get("reason"),
                     )

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fetch leftover-named ASAP7 CCS / CDL extras. Not a finish. Not Calibre LVS.
-# Does not vendor archives into git. Does not restamp gold 45.298 mV.
+# Does not vendor archives into git or alter another run's reports.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEST_CCS="${ROOT}/learn/lab/asap7/ccs"

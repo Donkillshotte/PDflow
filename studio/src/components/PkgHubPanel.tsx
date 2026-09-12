@@ -3,8 +3,37 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/ToastProvider";
+import type { PackageEvidence, PathLedger } from "@/lib/pdflowContracts";
+import { SystemPdnVisual } from "@/components/flowlab/SystemPdnVisual";
 
 type HookRow = { id: string; label: string; ok: boolean; detail: string };
+
+const EVIDENCE_STATUSES = new Set(["PASS", "FAIL", "WARN", "PARTIAL", "PROXY"]);
+
+type AgentReport = {
+  ok?: boolean;
+  status?: string;
+  evidence_status?: string;
+  signoff_status?: string;
+  reason?: string;
+};
+
+function hasCompletedEvidence(state: string, report?: AgentReport): boolean {
+  const status = String(report?.status || "").toUpperCase();
+  return (
+    state === "COMPLETED" &&
+    EVIDENCE_STATUSES.has(status) &&
+    report?.evidence_status !== "GAP"
+  );
+}
+
+function statusClass(status?: string) {
+  return status === "PASS"
+    ? "ok"
+    : status === "FAIL" || status === "GAP"
+      ? "bad"
+      : "warn";
+}
 
 export type SystemPreview = {
   summary?: string;
@@ -46,51 +75,70 @@ export function PkgHubPanel({
   const [systemReport, setSystemReport] = useState<SystemPreview | null>(initialSystem);
   const [thermalReport, setThermalReport] = useState<ThermalPreview | null>(initialThermal);
   const [pkgReport, setPkgReport] = useState<PkgPreview | null>(initialPkg);
+  const [evidence, setEvidence] = useState<PackageEvidence | null>(null);
+  const [pathLedger, setPathLedger] = useState<PathLedger | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const [suite, sys, thermal, pkg] = await Promise.all([
-      fetch("/api/suite").then((r) => r.json()),
-      fetch("/api/content?path=sim/reports/system_pdn_flowlab.json").then((r) =>
-        r.ok ? r.json() : null,
-      ),
-      fetch("/api/content?path=sim/reports/thermal_signoff_flowlab.json").then((r) =>
-        r.ok ? r.json() : null,
-      ),
-      fetch("/api/content?path=sim/reports/pkg_signoff_flowlab.json").then((r) =>
-        r.ok ? r.json() : null,
-      ),
-    ]);
-    const pkgHooks = (suite.hooks ?? []).filter((h: HookRow) =>
-      PKG_HOOKS.includes(h.id),
-    );
-    setHooks(pkgHooks);
-    if (sys?.content) {
-      try {
-        setSystemReport(JSON.parse(sys.content));
-      } catch {
-        setSystemReport(null);
+    setError(null);
+    try {
+      const [suite, evidenceResponse, ledgerResponse, sys, thermal, pkg] = await Promise.all([
+        fetch("/api/suite").then((r) => r.json()),
+        fetch("/api/package"),
+        fetch("/api/path-ledger"),
+        fetch("/api/content?path=sim/reports/system_pdn_flowlab.json").then((r) =>
+          r.ok ? r.json() : null,
+        ),
+        fetch("/api/content?path=sim/reports/thermal_signoff_flowlab.json").then((r) =>
+          r.ok ? r.json() : null,
+        ),
+        fetch("/api/content?path=sim/reports/pkg_signoff_flowlab.json").then((r) =>
+          r.ok ? r.json() : null,
+        ),
+      ]);
+      if (evidenceResponse.ok) {
+        setEvidence((await evidenceResponse.json()) as PackageEvidence);
       }
-    }
-    if (thermal?.content) {
-      try {
-        setThermalReport(JSON.parse(thermal.content));
-      } catch {
-        setThermalReport(null);
+      if (ledgerResponse.ok) {
+        setPathLedger((await ledgerResponse.json()) as PathLedger);
       }
-    }
-    if (pkg?.content) {
-      try {
-        setPkgReport(JSON.parse(pkg.content));
-      } catch {
-        setPkgReport(null);
+      const pkgHooks = (suite.hooks ?? []).filter((h: HookRow) =>
+        PKG_HOOKS.includes(h.id),
+      );
+      setHooks(pkgHooks);
+      if (sys?.content) {
+        try {
+          setSystemReport(JSON.parse(sys.content));
+        } catch {
+          setSystemReport(null);
+        }
       }
+      if (thermal?.content) {
+        try {
+          setThermalReport(JSON.parse(thermal.content));
+        } catch {
+          setThermalReport(null);
+        }
+      }
+      if (pkg?.content) {
+        try {
+          setPkgReport(JSON.parse(pkg.content));
+        } catch {
+          setPkgReport(null);
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Package evidence unavailable");
     }
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const systemStep = evidence?.steps.system_pdn;
+  const packageStatus = evidence?.status || "NOT_RUN";
 
   async function runAction(action: string, long: boolean) {
     if (busy) return;
@@ -100,6 +148,51 @@ export function PkgHubPanel({
     setBusy(action);
     const ac = new AbortController();
     try {
+      const agentStart = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          operation: "action",
+          variant: "flowlab",
+          mode: "view",
+        }),
+        signal: ac.signal,
+      });
+      if (agentStart.status !== 503) {
+        if (!agentStart.ok) {
+          const message = await agentStart.text();
+          throw new Error(message || "Agent rejected " + action);
+        }
+        let job = (await agentStart.json()) as {
+          job_id: string;
+          state: string;
+          reason?: string;
+          report?: AgentReport;
+        };
+        while (job.state === "QUEUED" || job.state === "RUNNING") {
+          await new Promise((resolve) => window.setTimeout(resolve, 500));
+          const jobResponse = await fetch(
+            "/api/jobs/" + encodeURIComponent(job.job_id),
+            { signal: ac.signal },
+          );
+          if (!jobResponse.ok) throw new Error("Agent job status unavailable");
+          job = (await jobResponse.json()) as typeof job;
+        }
+        const ok = job.state === "COMPLETED" && job.report?.ok === true;
+        const evidence = hasCompletedEvidence(job.state, job.report);
+        const status = String(job.report?.status || "").toUpperCase();
+        push(
+          ok
+            ? action + " completed"
+            : evidence
+              ? `${action} completed · ${status} evidence (not Product signoff)`
+              : job.reason || action + " " + job.state.toLowerCase(),
+          ok ? "ok" : evidence ? "info" : "bad",
+        );
+        await refresh();
+        return;
+      }
       const res = await fetch(
         `/api/run/stream?action=${encodeURIComponent(action)}&mode=flowlab`,
         { signal: ac.signal },
@@ -143,6 +236,24 @@ export function PkgHubPanel({
         </p>
       </header>
 
+      <div className="pkg-live-strip">
+        <span className={"pill " + statusClass(packageStatus)}>
+          PACKAGE {packageStatus}
+        </span>
+        <span className="muted">
+          Current finish snapshot · no historical baseline · read-only surface
+        </span>
+        <span className="pkg-provenance">
+          mesh {pathLedger?.mesh_id || "not available"}
+        </span>
+      </div>
+
+      {error && (
+        <p className="block-banner" role="alert">
+          Package evidence unavailable: {error}
+        </p>
+      )}
+
       <ul className="pkg-hook-list">
         {hooks.map((h) => (
           <li key={h.id} className={h.ok ? "pkg-hook-ok" : "pkg-hook-pending"}>
@@ -158,13 +269,24 @@ export function PkgHubPanel({
       <div className="pkg-report-grid">
         <article className="pkg-report-card">
           <h3>System PDN</h3>
-          {systemReport?.summary ? (
+          {systemStep?.summary || systemReport?.summary ? (
             <>
-              <p>{systemReport.summary}</p>
+              <p>{systemStep?.summary || systemReport?.summary}</p>
               <p className="pkg-metrics">
-                Droop {systemReport.transient?.droop_mv?.toFixed(2) ?? "—"} mV · Zmax{" "}
-                {systemReport.impedance?.z_max_mohm?.toFixed(2) ?? "—"} mΩ
+                <span className={"pill " + statusClass(systemStep?.status)}>
+                  {systemStep?.status || "LEGACY"}
+                </span>{" "}
+                Droop{" "}
+                {systemStep?.droop_mv?.toFixed(2) ??
+                  systemReport?.transient?.droop_mv?.toFixed(2) ??
+                  "—"}{" "}
+                mV · Zmax{" "}
+                {systemStep?.zmax_mohm?.toFixed(2) ??
+                  systemReport?.impedance?.z_max_mohm?.toFixed(2) ??
+                  "—"}{" "}
+                mΩ
               </p>
+              {systemStep?.reason && <p className="muted">{systemStep.reason}</p>}
             </>
           ) : (
             <p>Report missing — run System PDN here after four-pillar signoff.</p>
@@ -184,6 +306,27 @@ export function PkgHubPanel({
             <p>Reports missing — run thermal_signoff and pkg_signoff.</p>
           )}
         </article>
+      </div>
+
+      <SystemPdnVisual reportPath="sim/reports/system_pdn_flowlab.json" />
+
+      <div className="pkg-ledger-card">
+        <div>
+          <strong>Path / IR ledger</strong>
+          <p className="muted">
+            Timing and power evidence stay tied to the current finish and to
+            distinct mesh identities.
+          </p>
+        </div>
+        <div className="pkg-ledger-status">
+          <span className={"pill " + statusClass(pathLedger?.status)}>
+            {pathLedger?.status || "NOT_RUN"}
+          </span>
+          <span>
+            {pathLedger?.entries?.length || 0} paths ·{" "}
+            {pathLedger?.meshes?.length || 0} meshes
+          </span>
+        </div>
       </div>
 
       <p className="pkg-hub-links">

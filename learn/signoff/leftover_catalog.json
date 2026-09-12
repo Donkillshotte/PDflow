@@ -6,8 +6,6 @@
       "id": "setup_open_flowlab",
       "kind": "gated",
       "variant": "flowlab",
-      "report": "sim/reports/signoff_all_flowlab.json",
-      "json_pointer": "/setup_leftover",
       "suite_hooks": ["sta_signoff", "signoff_all"],
       "studio_surfaces": ["suite", "finish_signoff_matrix", "home_story"],
       "detail_needles": ["leftover setup open", "leftover no MCMM"]
@@ -16,21 +14,17 @@
       "id": "setup_open_eco_io",
       "kind": "gated",
       "variant": "eco_scratch",
-      "report": "sim/reports/signoff_all_eco_scratch.json",
-      "json_pointer": "/setup_leftover",
       "suite_hooks": ["eco", "signoff_all"],
       "studio_surfaces": ["finish_eco_panel", "variant_compare"],
-      "detail_needles": ["resp_msg[14]", "course output delay", "register-to-register MET"]
+      "detail_needles": ["leftover setup open", "endpoint"]
     },
     {
       "id": "must_connect_dff_x2",
       "kind": "gated",
       "variant": "both",
-      "report": "sim/reports/signoff_all_flowlab.json",
-      "json_pointer": "/leftover",
       "suite_hooks": ["lvs_signoff", "lvs_deep", "signoff_all"],
       "studio_surfaces": ["suite", "finish_signoff_matrix", "home_story"],
-      "detail_needles": ["leftover must-connect 2", "DFF_X2"]
+      "detail_needles": ["leftover must-connect"]
     },
     {
       "id": "via_flatten",
@@ -44,8 +38,6 @@
       "id": "no_mcmm",
       "kind": "gated",
       "variant": "both",
-      "report": "sim/reports/lib_corner_coverage.json",
-      "json_pointer": "/mcmm",
       "suite_hooks": ["sta_signoff", "signoff_all"],
       "studio_surfaces": ["suite", "finish_signoff_matrix", "home_story"],
       "detail_needles": ["leftover no MCMM", "typical.lib only"]
@@ -54,18 +46,14 @@
       "id": "no_density_erc",
       "kind": "gated",
       "variant": "both",
-      "report": "sim/reports/drc_deck_coverage.json",
-      "json_pointer": "/density",
       "suite_hooks": ["drc_signoff", "klayout_drc", "signoff_all"],
       "studio_surfaces": ["suite", "finish_signoff_matrix", "home_story"],
-      "detail_needles": ["leftover no density", "named ERC", "antenna 300:1"]
+      "detail_needles": ["leftover no density", "named ERC", "antenna"]
     },
     {
       "id": "em_checked_0",
       "kind": "gated",
       "variant": "both",
-      "report": "sim/reports/vyges_em_ir_flowlab.json",
-      "json_pointer": "/vyges/em_checked",
       "suite_hooks": ["vyges_em_ir"],
       "studio_surfaces": ["suite", "finish_signoff_matrix"],
       "detail_needles": ["em_checked 0", "no emlimit"]
@@ -74,8 +62,6 @@
       "id": "ir_meshes_incomparable",
       "kind": "gated",
       "variant": "both",
-      "report": "sim/reports/signoff_all_flowlab.json",
-      "json_pointer": "/ir_mesh_ledger/comparable",
       "suite_hooks": ["power_signoff", "signoff_all"],
       "studio_surfaces": ["suite", "finish_ir_ledger", "home_story"],
       "detail_needles": ["IR meshes not comparable"]
@@ -121,31 +107,6 @@
       "detail_needles": ["Nangate45 only", "Different PDK"]
     },
     {
-      "id": "gold_ir_locked",
-      "kind": "locked",
-      "variant": "both",
-      "report": "sim/reports/dynamic_ir_flowlab.json",
-      "suite_hooks": ["dynamic_ir"],
-      "studio_surfaces": ["suite", "lab"],
-      "detail_needles": ["45.298", "gold", "locked"]
-    },
-    {
-      "id": "course_0_8",
-      "kind": "locked",
-      "variant": "n/a",
-      "suite_hooks": [],
-      "studio_surfaces": ["course_progress"],
-      "detail_needles": ["0/8"]
-    },
-    {
-      "id": "aes_row_locked",
-      "kind": "locked",
-      "variant": "n/a",
-      "suite_hooks": [],
-      "studio_surfaces": ["product"],
-      "detail_needles": ["febe6804241c"]
-    },
-    {
       "id": "lvs_match",
       "kind": "built",
       "variant": "both",
@@ -177,9 +138,8 @@
       "id": "antenna_300",
       "kind": "built",
       "variant": "both",
-      "report": "sim/reports/drc_deck_coverage.json",
       "suite_hooks": ["drc_signoff", "klayout_drc"],
-      "detail_needles": ["antenna 300:1", "FreePDK45.lydrc"]
+      "detail_needles": ["antenna", "FreePDK45.lydrc"]
     },
     {
       "id": "ir_ledger",
@@ -193,13 +153,12 @@
       "kind": "built",
       "variant": "both",
       "suite_hooks": ["ccs_char"],
-      "detail_needles": ["PTM", "sidecar", "19"]
+      "detail_needles": ["PTM", "sidecar"]
     },
     {
       "id": "asap7_calibre_gated",
       "kind": "gated",
       "variant": "n/a",
-      "report": "sim/reports/lab_asap7_pdk.json",
       "suite_hooks": ["asap7_layer1", "asap7_drc", "asap7_lvs"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["leftover Calibre", "ASU encrypted tarball"]
@@ -208,7 +167,6 @@
       "id": "asap7_community_drc",
       "kind": "built",
       "variant": "n/a",
-      "report": "sim/reports/lab_asap7_drc.json",
       "suite_hooks": ["asap7_drc"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["community KLayout", "leftover Calibre"]
@@ -217,7 +175,6 @@
       "id": "asap7_cell_cdl_lvs",
       "kind": "built",
       "variant": "n/a",
-      "report": "sim/reports/lab_asap7_lvs.json",
       "suite_hooks": ["asap7_lvs"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["cell-vs-CDL", "leftover Calibre"]
@@ -226,16 +183,14 @@
       "id": "asap7_xyce_patch",
       "kind": "built",
       "variant": "n/a",
-      "report": "sim/reports/lab_asap7_spice.json",
       "suite_hooks": ["asap7_layer1"],
       "studio_surfaces": ["lab"],
-      "detail_needles": ["level 72→107", "leftover Xyce patch"]
+      "detail_needles": ["leftover Xyce patch"]
     },
     {
       "id": "asap7_dummy_bump",
       "kind": "gated",
       "variant": "n/a",
-      "report": "sim/reports/lab_asap7_pkg.json",
       "suite_hooks": ["asap7_pkg"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["dummy 2×2 bump", "not JEDEC C4"]
@@ -244,7 +199,6 @@
       "id": "asap7_sidecar_rdl",
       "kind": "gated",
       "variant": "n/a",
-      "report": "sim/reports/lab_asap7_pkg.json",
       "suite_hooks": ["asap7_pkg"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["sidecar rdl_route", "never write 6_final"]
@@ -253,7 +207,6 @@
       "id": "asap7_compact_pkg",
       "kind": "gated",
       "variant": "n/a",
-      "report": "sim/reports/lab_asap7_pkg.json",
       "suite_hooks": ["asap7_pkg"],
       "studio_surfaces": ["lab", "suite"],
       "detail_needles": ["compact VRM", "not Ansys CPA"]
@@ -262,10 +215,9 @@
       "id": "asap7_chip_mesh",
       "kind": "gated",
       "variant": "n/a",
-      "report": "sim/reports/lab_asap7_chip_pdn.json",
       "suite_hooks": ["asap7_chip_pdn"],
       "studio_surfaces": ["lab", "suite"],
-      "detail_needles": ["tier B mesh", "not 45.298 mV", "map::at patched"]
+      "detail_needles": ["tier B mesh", "comparison scope", "map::at patched"]
     }
   ],
   "home_compact_phrases": [

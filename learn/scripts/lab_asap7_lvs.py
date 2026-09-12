@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""ASAP7 cell-vs-CDL check. Not Calibre. Not a product win.
+"""ASAP7 cell-vs-CDL check. Not Calibre and not a product result.
 
 Compares GDS instance masters (KLayout) to .SUBCKT names in the fetched
-7.5T CDL. Expect <100%. Do not stamp .lvs.ok. Do not change the
-Nangate IR reference 45.298 mV.
+7.5T CDL. Do not stamp `.lvs.ok`; report the current coverage and gaps.
 """
 
 from __future__ import annotations
@@ -92,13 +91,27 @@ def main(argv: list[str] | None = None) -> int:
     if not cdl_paths:
         payload = {
             "ok": False,
-            "status": "GAP",
+            "status": "blocked",
+            "legacy_status": "GAP",
+            "tool_status": "blocked",
             "surface": "lab",
             "platform": "asap7",
+            "track": "asap7",
+            "mesh_id": "asap7_chip_tier_b",
+            "topology": "fs",
+            "oracle": "klayout_community",
+            "tool_id": "klayout_community",
+            "license_class": "GPL-2.0-or-later",
+            "honesty": "GAP",
+            "honesty_reason": "The public ASAP7 CDL input is not fetched; LVS cannot run.",
+            "ok_claim": False,
             "kind": "leftover_named_lvs",
             "calibre": False,
             "product_win": False,
+            "productWin": False,
+            "win_eligible": False,
             "comparable_to_gold_ir": False,
+            "comparison_scope": "independent ASAP7 LVS run",
             "variant": variant,
             "gds": str(gds) if gds.is_file() else None,
             "lvs_closed": False,
@@ -107,6 +120,25 @@ def main(argv: list[str] | None = None) -> int:
                 "calibre": "ASU tarball + Calibre 2017.3 not in this image",
                 "fetch": "learn/scripts/fetch_asap7_libextras.sh",
             },
+            "leftovers": [
+                {"id": "cdl_missing", "message": "Public ASAP7 CDL is not available in this run."},
+                {"id": "calibre_missing", "message": "No Calibre LVS deck/binary is available."},
+            ],
+            "pillars": {
+                "lvs": {
+                    "status": "blocked",
+                    "honesty": "GAP",
+                    "honesty_reason": "CDL input is missing.",
+                    "leftovers": [{"id": "cdl_missing", "message": "Public ASAP7 CDL is not available."}],
+                },
+                "thermal": {
+                    "status": "not_run",
+                    "honesty": "GAP",
+                    "honesty_reason": "Thermal is not part of the LVS check.",
+                    "leftovers": [{"id": "thermal_not_run", "message": "No thermal model ran."}],
+                },
+            },
+            "signoff_all": {"ok": False, "reason": "LVS GAP is not signoff."},
             "note": "CDL not fetched. Cell-vs-CDL GAP. Not Calibre. Not a product win.",
         }
         OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -118,20 +150,43 @@ def main(argv: list[str] | None = None) -> int:
         sub |= _subckts(p)
     top, cells = _gds_cells(gds)
     # Skip filler / tap / decap noise in the coverage numerator? Keep all,
-    # but report filler separately. Not a gold number.
+    # but report filler separately. It is a live observation.
     fillers = {c for c in cells if c.upper().startswith(("FILL", "TAP", "DECAP"))}
     logic = cells - fillers
     hit = logic & sub
     pct = (100.0 * len(hit) / len(logic)) if logic else 0.0
+    lvs_ok = gds.is_file() and bool(sub) and bool(cells)
+    legacy_status = "ran"
+    status = "pass" if lvs_ok else "blocked"
+    honesty = "PARTIAL" if lvs_ok else "GAP"
     payload = {
-        "ok": gds.is_file() and bool(sub) and bool(cells),
+        "ok": lvs_ok,
+        "status": status,
+        "legacy_status": legacy_status,
+        "tool_status": status,
         "surface": "lab",
         "platform": "asap7",
+        "track": "asap7",
+        "mesh_id": "asap7_chip_tier_b",
+        "topology": "fs",
+        "oracle": "klayout_community",
+        "tool_id": "klayout_community",
+        "license_class": "GPL-2.0-or-later",
+        "honesty": honesty,
+        "honesty_reason": (
+            "Community cell-vs-CDL coverage; not Calibre or foundry LVS."
+            if lvs_ok
+            else "LVS could not establish a complete current-run cell-vs-CDL input set."
+        ),
+        "ok_claim": False,
         "kind": "leftover_named_lvs",
         "calibre": False,
         "netgen": shutil.which("netgen") is not None or shutil.which("netgen-lvs") is not None,
         "product_win": False,
+        "productWin": False,
+        "win_eligible": False,
         "comparable_to_gold_ir": False,
+        "comparison_scope": "independent ASAP7 LVS run",
         "variant": variant,
         "gds": str(gds) if gds.is_file() else None,
         "gds_sha256": _sha256(gds) if gds.is_file() else None,
@@ -150,9 +205,28 @@ def main(argv: list[str] | None = None) -> int:
             "expect": "<100% device match (vibeic ~76% on RVT)",
             "stamp": "never write .lvs.ok for ASAP7",
         },
+        "leftovers": [
+            {"id": "calibre_missing", "message": "No Calibre LVS deck/binary is available."},
+            {"id": "community_coverage", "message": "Cell-vs-CDL coverage is not a foundry LVS claim."},
+        ],
+        "pillars": {
+            "lvs": {
+                "status": status,
+                "honesty": honesty,
+                "honesty_reason": "Community cell-vs-CDL coverage; not Calibre.",
+                "leftovers": [{"id": "calibre_missing", "message": "No Calibre LVS deck/binary is available."}],
+            },
+            "thermal": {
+                "status": "not_run",
+                "honesty": "GAP",
+                "honesty_reason": "Thermal is not part of the LVS check.",
+                "leftovers": [{"id": "thermal_not_run", "message": "No thermal model ran."}],
+            },
+        },
+        "signoff_all": {"ok": False, "reason": "Community LVS is leftover evidence, not signoff."},
         "note": (
             "Cell-vs-CDL. Not Calibre. Not a product win. "
-            "Live metrics only — no gold stamp."
+            "Live metrics only."
         ),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

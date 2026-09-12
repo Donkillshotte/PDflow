@@ -11,7 +11,7 @@ from .current_scenario import CurrentScenario, infer_scenario
 from .feasibility import constraint_dominates, feasibility_of, feasible_pareto
 from .layers import ADAPTERS
 from .memory import DesignMemory, Candidate
-from .metrics import QoR, pareto_front, dominates, qor_delta, baseline_delta_of, pareto_front_gated, dominates_with_fidelity
+from .metrics import QoR, pareto_front, dominates, qor_delta, reference_delta_of, pareto_front_gated, dominates_with_fidelity
 from .next_level import run_next_level
 from .resources import admit_solve
 from .solve_result import (
@@ -29,7 +29,7 @@ __all__ = [
     "dominates",
     "dominates_with_fidelity",
     "qor_delta",
-    "baseline_delta_of",
+    "reference_delta_of",
     "DesignMemory",
     "Candidate",
     "ADAPTERS",

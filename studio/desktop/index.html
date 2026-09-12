@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1118" />
+    <title>PDflow · starting local runtime</title>
+    <style>
+      :root { color-scheme: dark; font: 16px system-ui, sans-serif; background: #0b1118; color: #e8eef5; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; }
+      main { width: min(34rem, calc(100vw - 3rem)); padding: 2rem; border: 1px solid #26384a; border-radius: 1rem; background: #111c28; box-shadow: 0 1rem 4rem #0008; }
+      .eyebrow { color: #7bd7bc; letter-spacing: .12em; text-transform: uppercase; font-size: .72rem; }
+      h1 { margin: .5rem 0; font-size: 1.55rem; }
+      p { color: #aebdca; line-height: 1.55; }
+      .status { display: flex; gap: .6rem; align-items: center; color: #7bd7bc; }
+      .dot { width: .65rem; height: .65rem; border-radius: 50%; background: #e4aa5c; animation: pulse 1.2s infinite; }
+      @keyframes pulse { 50% { opacity: .35; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">PDflow desktop</div>
+      <h1>Starting the native local runtime</h1>
+      <p>The application is starting the local Next server and Python agent. The window will continue automatically.</p>
+      <div class="status"><span class="dot" aria-hidden="true"></span><span id="status">Waiting for localhost:43217…</span></div>
+    </main>
+    <script>
+      (() => {
+        const target = "http://127.0.0.1:43217/";
+        const status = document.getElementById("status");
+        let attempts = 0;
+        const probe = () => {
+          attempts += 1;
+          fetch(target, { cache: "no-store", mode: "no-cors" })
+            .then(() => window.location.replace(target))
+            .catch(() => {
+              if (status) status.textContent = `Waiting for localhost:43217… (${attempts})`;
+              window.setTimeout(probe, 400);
+            });
+        };
+        probe();
+      })();
+    </script>
+  </body>
+</html>

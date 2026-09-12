@@ -32,6 +32,7 @@ esac
 log() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
 log "Profile ${PROFILE}  EDA_JOBS=${EDA_JOBS}"
+# Nessun flow OpenROAD / AES / DSE / Krylov viene eseguito da questo bootstrap.
 log "No OpenROAD flow / AES / DSE / Krylov in this script."
 
 # ---------------------------------------------------------------------------

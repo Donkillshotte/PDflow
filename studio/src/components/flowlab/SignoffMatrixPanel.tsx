@@ -214,12 +214,12 @@ export function SignoffMatrixPanel({
       <div className="sig-matrix-head">
         <strong>GCD signoff matrix</strong>
         <p>
-          4 active pillars vs{" "}
-          <a href="/materials/reference/signoff-matrix.md">golden-gcd.json</a>
+          4 active pillars from the current run ·{" "}
+          <a href="/materials/reference/signoff-matrix.md">signoff contract</a>
           {data && (
             <>
               {" "}
-              · matrix is locked <code>{data.variant}</code>
+              · selected variant <code>{data.variant}</code>
               {copy ? (
                 <>
                   {" "}

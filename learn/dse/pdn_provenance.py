@@ -1,7 +1,7 @@
 """PDN comparisons are valid only on the same extract + geometry.
 
 The honest GCD win (DirectLU 6.075 → decap 4.156 mV) is the template:
-same n_r, same finish mesh, labeled not-gold. Catalog leftover meshes
+same n_r, same finish mesh, labeled not-reference. Catalog leftover meshes
 must not dominate a finish timing point.
 """
 

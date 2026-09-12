@@ -84,7 +84,7 @@ initialize_floorplan -utilization 35 -aspect_ratio 1.0 \
 **In GUI (`gui_2_1_floorplan.odb`):** zoom out → core rectangle inside die.
 
 Log often shows **IFP-0028**: origin is **snapped** to site grid
-(`(1.000, 1.000)` → `(1.140, 1.400)` on the gold run). This is not a bug: without snapping
+(`(x0, y0)` → `(x1, y1)` from the current DEF). This is not a bug: without snapping
 rows do not align to LEF sites. Note both points in notebook (LAB 03).
 
 ---

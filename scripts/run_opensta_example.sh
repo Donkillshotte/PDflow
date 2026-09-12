@@ -4,6 +4,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" opensta-example bash "${BASH_SOURCE[0]}" "$@"
+fi
 EXAMPLES="${ROOT}/tools/src/OpenSTA/examples"
 
 cd "${EXAMPLES}"

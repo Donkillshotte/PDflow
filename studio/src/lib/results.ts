@@ -3,6 +3,7 @@ import path from "path";
 import { REPO_ROOT } from "./course";
 import { digestOrfsLog, type LogDigest } from "./orfsLog";
 import { assertUnder, normalizeResultsVariant } from "./pathGuard";
+import { candidateOrfsRoot, candidateResultsRoot } from "./candidateWorkspace";
 
 export type ArtifactInfo = {
   name: string;
@@ -16,16 +17,14 @@ export type MetricHit = {
   label: string;
   value: string;
   source: string;
-  /** true when value matches course-expected mild timing (e.g. WNS −0.04) */
-  expected?: boolean;
 };
 
 export type StageResults = {
   stage: string;
   artifacts: ArtifactInfo[];
   metrics: MetricHit[];
-  goldenHints: { label: string; value: string }[];
   variant?: string;
+  runId?: string | null;
   logDigest?: LogDigest | null;
 };
 
@@ -40,27 +39,50 @@ const STAGE_LOG_GLOBS: Record<string, RegExp> = {
 
 const DEFAULT_VARIANT = "learn";
 
-function baseResults(variant = DEFAULT_VARIANT) {
+function resultsTree(variant: string): "nangate45" | "asap7" {
+  return variant.startsWith("lab_asap7_") ? "asap7" : "nangate45";
+}
+
+function baseResults(variant = DEFAULT_VARIANT, runId?: string | null) {
   const v = normalizeResultsVariant(variant);
+  if (runId) return candidateResultsRoot(runId);
   const root = path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
-    "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd",
+    "tools/OpenROAD-flow-scripts/flow/results",
+    resultsTree(v),
+    "gcd",
   );
   return assertUnder(root, path.join(root, v));
 }
-function baseReports(variant = DEFAULT_VARIANT) {
+function baseReports(variant = DEFAULT_VARIANT, runId?: string | null) {
   const v = normalizeResultsVariant(variant);
+  if (runId) {
+    return path.join(
+      candidateOrfsRoot(runId),
+      "reports/nangate45/gcd/flowlab",
+    );
+  }
   const root = path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
-    "tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd",
+    "tools/OpenROAD-flow-scripts/flow/reports",
+    resultsTree(v),
+    "gcd",
   );
   return assertUnder(root, path.join(root, v));
 }
-function baseLogs(variant = DEFAULT_VARIANT) {
+function baseLogs(variant = DEFAULT_VARIANT, runId?: string | null) {
   const v = normalizeResultsVariant(variant);
+  if (runId) {
+    return path.join(
+      candidateOrfsRoot(runId),
+      "logs/nangate45/gcd/flowlab",
+    );
+  }
   const root = path.join(
     /*turbopackIgnore: true*/ REPO_ROOT,
-    "tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd",
+    "tools/OpenROAD-flow-scripts/flow/logs",
+    resultsTree(v),
+    "gcd",
   );
   return assertUnder(root, path.join(root, v));
 }
@@ -92,37 +114,6 @@ const STAGE_ARTIFACTS: Record<string, string[]> = {
   list: [],
 };
 
-const STAGE_GOLDEN: Record<string, { label: string; value: string }[]> = {
-  synth: [
-    { label: "Cells", value: "496" },
-    { label: "Area", value: "628.824" },
-    { label: "DFF_X1", value: "35" },
-  ],
-  floorplan: [
-    { label: "Core area", value: "1712.5 µm²" },
-    { label: "Eff. util", value: "0.367" },
-  ],
-  place: [
-    { label: "worst slack", value: "+0.01 ns" },
-    { label: "period_min", value: "0.45 ns" },
-    { label: "Design area", value: "684 µm² / 40%" },
-  ],
-  cts: [
-    { label: "WNS", value: "−0.04 ns" },
-    { label: "Inserted buffers", value: "45" },
-    { label: "Util post", value: "48.3%" },
-  ],
-  route: [
-    { label: "DRC lines", value: "0" },
-    { label: "GRT WNS", value: "−0.05 ns" },
-  ],
-  finish: [
-    { label: "WNS", value: "−0.04 ns" },
-    { label: "TNS", value: "−0.60" },
-    { label: "period_min", value: "0.50 ns (~2011 MHz)" },
-  ],
-};
-
 function statFile(abs: string, name: string): ArtifactInfo {
   if (!fs.existsSync(abs)) {
     return { name, rel: name, exists: false, size: 0, mtime: null };
@@ -137,21 +128,6 @@ function statFile(abs: string, name: string): ArtifactInfo {
   };
 }
 
-function markExpected(hit: MetricHit): MetricHit {
-  const v = hit.value;
-  // Course golden: mild negative WNS/TNS and non-zero setup counts are expected on nangate45 GCD.
-  if (
-    /wns|worst slack|tns/i.test(v) &&
-    /-\s*0\.0[0-9]|−0\.0/.test(v)
-  ) {
-    return { ...hit, expected: true };
-  }
-  if (/setup violation count\s+[1-9]/i.test(v)) {
-    return { ...hit, expected: true };
-  }
-  return hit;
-}
-
 function grepFile(abs: string, patterns: RegExp[], limit = 8): MetricHit[] {
   if (!fs.existsSync(abs)) return [];
   const text = fs.readFileSync(abs, "utf8");
@@ -160,11 +136,11 @@ function grepFile(abs: string, patterns: RegExp[], limit = 8): MetricHit[] {
     for (const re of patterns) {
       if (re.test(line)) {
         hits.push(
-          markExpected({
-            label: re.source.slice(0, 40),
-            value: line.trim().slice(0, 160),
-            source: path.basename(abs),
-          }),
+            {
+              label: re.source.slice(0, 40),
+              value: line.trim().slice(0, 160),
+              source: path.basename(abs),
+            },
         );
       }
     }
@@ -176,10 +152,11 @@ function grepFile(abs: string, patterns: RegExp[], limit = 8): MetricHit[] {
 function collectStageLogDigest(
   stage: string,
   variant: string,
+  runId?: string | null,
 ): LogDigest | null {
   const re = STAGE_LOG_GLOBS[stage];
   if (!re) return null;
-  const dir = baseLogs(variant);
+  const dir = baseLogs(variant, runId);
   if (!fs.existsSync(dir)) return null;
   const files = fs
     .readdirSync(dir)
@@ -200,21 +177,22 @@ function collectStageLogDigest(
 export function collectStageResults(
   stage: string,
   variant: string = DEFAULT_VARIANT,
+  runId?: string | null,
 ): StageResults {
   variant = normalizeResultsVariant(variant);
   const names = STAGE_ARTIFACTS[stage] ?? [];
   const artifacts = names.map((n) => {
     // reports live under reports/ for some names
     if (n.endsWith(".rpt") || n === "synth_stat.txt") {
-      return statFile(path.join(baseReports(variant), n), n);
+      return statFile(path.join(baseReports(variant, runId), n), n);
     }
-    return statFile(path.join(baseResults(variant), n), n);
+    return statFile(path.join(baseResults(variant, runId), n), n);
   });
 
   const metrics: MetricHit[] = [];
   if (stage === "synth") {
     metrics.push(
-      ...grepFile(path.join(baseReports(variant), "synth_stat.txt"), [
+      ...grepFile(path.join(baseReports(variant, runId), "synth_stat.txt"), [
         /Number of cells/i,
         /Chip area/i,
         /DFF_X1/,
@@ -223,7 +201,7 @@ export function collectStageResults(
   }
   if (stage === "floorplan") {
     metrics.push(
-      ...grepFile(path.join(baseLogs(variant), "2_1_floorplan.log"), [
+      ...grepFile(path.join(baseLogs(variant, runId), "2_1_floorplan.log"), [
         /Core area/i,
         /Effective utilization/i,
         /Design area/i,
@@ -232,24 +210,24 @@ export function collectStageResults(
   }
   if (stage === "place") {
     metrics.push(
-      ...grepFile(path.join(baseReports(variant), "3_resizer.rpt"), [
+      ...grepFile(path.join(baseReports(variant, runId), "3_resizer.rpt"), [
         /worst slack/i,
         /period_min/i,
         /setup violation/i,
       ]),
-      ...grepFile(path.join(baseLogs(variant), "3_4_place_resized.log"), [
+      ...grepFile(path.join(baseLogs(variant, runId), "3_4_place_resized.log"), [
         /Design area/i,
       ]),
     );
   }
   if (stage === "cts") {
     metrics.push(
-      ...grepFile(path.join(baseReports(variant), "4_cts_final.rpt"), [
+      ...grepFile(path.join(baseReports(variant, runId), "4_cts_final.rpt"), [
         /worst slack/i,
         /setup violation/i,
         /skew/i,
       ]),
-      ...grepFile(path.join(baseLogs(variant), "4_1_cts.log"), [
+      ...grepFile(path.join(baseLogs(variant, runId), "4_1_cts.log"), [
         /Inserted/i,
         /DPL-0006/,
         /RSZ-0062/,
@@ -258,7 +236,7 @@ export function collectStageResults(
     );
   }
   if (stage === "route") {
-    const drc = path.join(baseReports(variant), "5_route_drc.rpt");
+    const drc = path.join(baseReports(variant, runId), "5_route_drc.rpt");
     if (fs.existsSync(drc)) {
       const lines = fs.readFileSync(drc, "utf8").split("\n").filter(Boolean).length;
       metrics.push({
@@ -268,7 +246,7 @@ export function collectStageResults(
       });
     }
     metrics.push(
-      ...grepFile(path.join(baseReports(variant), "5_global_route.rpt"), [
+      ...grepFile(path.join(baseReports(variant, runId), "5_global_route.rpt"), [
         /worst slack/i,
         /setup violation/i,
       ]),
@@ -276,7 +254,7 @@ export function collectStageResults(
   }
   if (stage === "finish") {
     metrics.push(
-      ...grepFile(path.join(baseReports(variant), "6_finish.rpt"), [
+      ...grepFile(path.join(baseReports(variant, runId), "6_finish.rpt"), [
         /wns max/i,
         /tns max/i,
         /period_min/i,
@@ -290,8 +268,8 @@ export function collectStageResults(
     stage,
     artifacts,
     metrics: metrics.slice(0, 12),
-    goldenHints: STAGE_GOLDEN[stage] ?? [],
     variant,
-    logDigest: collectStageLogDigest(stage, variant),
+    runId: runId ?? null,
+    logDigest: collectStageLogDigest(stage, variant, runId),
   };
 }

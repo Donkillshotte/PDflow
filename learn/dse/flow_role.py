@@ -9,14 +9,13 @@ knobs, ECO steps, or extracts. They must not:
 - skip `signoff_all` after an applied ECO
 
 The loop is: finish → (optional ECO propose/apply) → `signoff_all`.
-Wins stay in `win_rule.py`. Lab gold Dynamic IR stays 45.298 mV.
+Wins stay in `win_rule.py`; every variant is evaluated from its current artifacts.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-LOCKED_VARIANTS = frozenset({"flowlab", "learn", "base"})
 SIGNOFF_ORCHESTRATOR = "learn/scripts/run_signoff_all.sh"
 DSE_ENTRIES = (
     "learn/scripts/run_dse.py",
@@ -27,8 +26,12 @@ DSE_ENTRIES = (
 )
 
 
-def is_locked_variant(variant: str) -> bool:
-    return variant in LOCKED_VARIANTS
+def validate_variant(variant: str) -> str:
+    """Validate a live variant name without imposing an external target."""
+    value = str(variant or "").strip()
+    if not value or value in {".", ".."} or "/" in value or "\\" in value:
+        raise ValueError(f"invalid live FLOW_VARIANT={variant!r}")
+    return value
 
 
 def dse_mentions_signoff_all(root: Path) -> list[str]:

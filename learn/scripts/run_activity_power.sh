@@ -5,6 +5,11 @@
 # Env: FLOW_VARIANT=learn|flowlab (default flowlab — aligned with power_chain)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" activity-power bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
+source "${ROOT}/scripts/rg_compat.sh"
 # shellcheck source=learn/lib/power_vcd.sh
 source "${ROOT}/learn/lib/power_vcd.sh"
 
@@ -13,7 +18,7 @@ FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
 LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 ODB="${RES}/6_final.odb"
-SDC="${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc"
+SDC="${PD_FLOW_SDC_FILE:-${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc}"
 [[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} (variant=${VARIANT})"; exit 1; }
 
 OUT="${ROOT}/learn/sim/reports/activity_power_${VARIANT}.log"

@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Name the IR / EM meshes that power_signoff must not mix.
+"""Describe live IR/EM meshes without importing an external result.
 
-Gold Dynamic IR 45.298 mV is a locked reference_run. Chip PDN, current_run
-I(t), vyges-em-ir, and system PDN are other meshes. This script only
-reads existing reports. It does not restamp gold and does not invent
-an emlimit.
+Reports from different physical meshes are intentionally kept separate.
+Only solver results that point at the same live extract may be compared.
 """
 
 from __future__ import annotations
@@ -15,7 +13,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 REPORTS = ROOT / "learn/sim/reports"
-GOLD_MV = 45.298
 
 
 def _load(path: Path) -> dict | None:
@@ -36,116 +33,93 @@ def _mv(value, scale: float = 1.0) -> float | None:
         return None
 
 
-def build_ledger(variant: str = "flowlab") -> dict:
-    gold_path = REPORTS / f"dynamic_ir_{variant}.json"
-    gold = _load(gold_path)
-    if gold is None and variant != "flowlab":
-        gold_path = REPORTS / "dynamic_ir_flowlab.json"
-        gold = _load(gold_path)
-    current = _load(REPORTS / f"dynamic_ir_{variant}_direct.json")
-    chip = _load(REPORTS / f"pdn_chip_ir_{variant}.json")
-    system = _load(REPORTS / f"system_pdn_{variant}.json")
-    vyges = _load(REPORTS / f"vyges_em_ir_{variant}.json")
+def _report_name(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT)).replace("learn/", "", 1)
+    except ValueError:
+        return str(path)
 
+
+def _live_entry(*, ident: str, mesh: str, path: Path, static_mv: float | None,
+                dynamic_mv: float | None, comparison_scope: str, note: str,
+                **extra) -> dict:
+    return {
+        "id": ident,
+        "mesh": mesh,
+        "report": _report_name(path),
+        "static_mv": static_mv,
+        "dynamic_mv": dynamic_mv,
+        "comparison_scope": comparison_scope,
+        "em_checked": None,
+        "comparable_to": [],
+        "note": note,
+        **extra,
+    }
+
+
+def build_ledger(variant: str = "flowlab") -> dict:
+    dynamic_path = REPORTS / f"dynamic_ir_{variant}_direct.json"
+    chip_path = REPORTS / f"pdn_chip_ir_{variant}.json"
+    system_path = REPORTS / f"system_pdn_{variant}.json"
+    vyges_path = REPORTS / f"vyges_em_ir_{variant}.json"
+    dynamic = _load(dynamic_path)
+    chip = _load(chip_path)
+    system = _load(system_path)
+    vyges = _load(vyges_path)
     meshes: list[dict] = []
 
-    gold_mv = _mv((gold or {}).get("worst_droop_mv"))
-    if gold and gold_mv is not None:
-        meshes.append(
-            {
-                "id": "gold_dynamic_ir",
-                "mesh": "gold Dynamic IR reference_run",
-                "report": str(gold_path.relative_to(ROOT)).replace("learn/", "", 1)
-                if str(gold_path).startswith(str(ROOT / "learn"))
-                else f"sim/reports/{gold_path.name}",
-                "static_mv": None,
-                "dynamic_mv": gold_mv,
-                "gold": gold.get("gold") is True,
-                "em_checked": None,
-                "comparable_to": [],
-                "note": "LOCKED. Not current_run. Do not restamp.",
-            }
-        )
-
-    cur_mv = _mv((current or {}).get("worst_droop_mv"))
-    if cur_mv is None and current:
-        cur_mv = _mv(((current.get("dynamic") or {}).get("worst_droop")), 1e3)
-    cur_static = _mv(((current or {}).get("static") or {}).get("worst_ir_mv"))
-    if cur_static is None and current:
-        cur_static = _mv((current.get("static") or {}).get("worst_ir"), 1e3)
-    if current and cur_mv is not None:
-        meshes.append(
-            {
-                "id": "current_run_dynamic_ir",
-                "mesh": "current_run Dynamic IR I(t)",
-                "report": f"sim/reports/dynamic_ir_{variant}_direct.json",
-                "static_mv": cur_static,
-                "dynamic_mv": cur_mv,
-                "gold": False,
-                "em_checked": None,
-                "comparable_to": [],
-                "note": "I(t) mesh. Not gold 45.298. Not chip PDN.",
-            }
-        )
+    if dynamic:
+        win = dynamic.get("windowed") or {}
+        dyn_mv = _mv(win.get("worst_droop_mv"))
+        if dyn_mv is None:
+            dyn_mv = _mv((dynamic.get("dynamic") or {}).get("worst_droop"), 1e3)
+        static = dynamic.get("static") or {}
+        static_mv = _mv(static.get("worst_ir_mv"))
+        if static_mv is None:
+            static_mv = _mv(static.get("worst_ir"), 1e3)
+        meshes.append(_live_entry(
+            ident="dynamic_ir", mesh="live Dynamic IR I(t)", path=dynamic_path,
+            static_mv=static_mv, dynamic_mv=dyn_mv,
+            comparison_scope="same-live-extract",
+            note="Direct, AMG, RAS and Krylov results may be compared only within this extract.",
+        ))
 
     if chip:
-        static_mv = _mv((chip.get("static") or {}).get("worst_ir"), 1e3)
-        tran_mv = _mv((chip.get("transient") or {}).get("worst_droop"), 1e3)
-        meshes.append(
-            {
-                "id": "chip_pdn",
-                "mesh": "write_pg_spice chip PDN",
-                "report": f"sim/reports/pdn_chip_ir_{variant}.json",
-                "static_mv": static_mv,
-                "dynamic_mv": tran_mv,
-                "gold": False,
-                "em_checked": None,
-                "comparable_to": [],
-                "note": "Signoff power pillar uses this chip static + transient.",
-            }
-        )
+        meshes.append(_live_entry(
+            ident="chip_pdn", mesh="live write_pg_spice chip PDN", path=chip_path,
+            static_mv=_mv((chip.get("static") or {}).get("worst_ir"), 1e3),
+            dynamic_mv=_mv((chip.get("transient") or {}).get("worst_droop"), 1e3),
+            comparison_scope="distinct-live-mesh",
+            note="Chip mesh is a separate live artifact; do not combine it with Dynamic IR values.",
+        ))
 
     if vyges:
-        v = vyges.get("vyges") or {}
-        meshes.append(
-            {
-                "id": "vyges_em_ir",
-                "mesh": "vyges-em-ir (different mesh)",
-                "report": f"sim/reports/vyges_em_ir_{variant}.json",
-                "static_mv": _mv((v.get("worst_ir") or {}).get("drop"), 1e3),
-                "dynamic_mv": _mv((v.get("dynamic") or {}).get("drop"), 1e3),
-                "gold": False,
-                "em_checked": int(v.get("em_checked") or 0),
-                "comparable_to": [],
-                "note": "No foundry emlimit. em_checked stays 0.",
-            }
-        )
+        value = vyges.get("vyges") or {}
+        meshes.append(_live_entry(
+            ident="vyges_em_ir", mesh="live vyges-em-ir mesh", path=vyges_path,
+            static_mv=_mv((value.get("worst_ir") or {}).get("drop"), 1e3),
+            dynamic_mv=_mv((value.get("dynamic") or {}).get("drop"), 1e3),
+            comparison_scope="distinct-live-mesh",
+            em_checked=int(value.get("em_checked") or 0),
+            note="EM remains ungraded when the active process has no EM limit.",
+        ))
 
     if system:
-        meshes.append(
-            {
-                "id": "system_pdn",
-                "mesh": "lumped VRM→board→pkg→die",
-                "report": f"sim/reports/system_pdn_{variant}.json",
-                "static_mv": None,
-                "dynamic_mv": _mv((system.get("transient") or {}).get("droop_mv")),
-                "gold": False,
-                "em_checked": None,
-                "zmax_mohm": _mv((system.get("impedance") or {}).get("z_max_mohm")),
-                "comparable_to": [],
-                "note": "Package/board ladder. Not on-die mesh IR.",
-            }
-        )
+        meshes.append(_live_entry(
+            ident="system_pdn", mesh="live VRM-to-board-to-package-to-die ladder", path=system_path,
+            static_mv=None,
+            dynamic_mv=_mv((system.get("transient") or {}).get("droop_mv")),
+            comparison_scope="distinct-live-mesh",
+            zmax_mohm=_mv((system.get("impedance") or {}).get("z_max_mohm")),
+            note="Package/board ladder is not the on-die mesh.",
+        ))
 
     return {
-        "ok": True,
+        "ok": bool(meshes),
         "variant": variant,
-        "comparable": False,
-        "note": (
-            "These droop numbers are not interchangeable. "
-            "Gold stays 45.298 mV. EM has no emlimit."
-        ),
+        "comparison_scope": "same-live-extract only; distinct-live-mesh otherwise",
         "meshes": meshes,
+        "note": "Values are from this invocation's reports; no external reference is loaded.",
     }
 
 
@@ -153,9 +127,7 @@ def stamp(variant: str = "flowlab") -> dict:
     ledger = build_ledger(variant)
     out = REPORTS / f"power_signoff_{variant}.json"
     blob = _load(out) or {
-        "kind": "power_signoff",
-        "variant": variant,
-        "ok": None,
+        "kind": "power_signoff", "variant": variant, "ok": None,
         "summary": "power_signoff report missing — ledger only",
     }
     blob["ir_mesh_ledger"] = ledger
@@ -166,11 +138,11 @@ def stamp(variant: str = "flowlab") -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--variant", default="flowlab")
-    ap.add_argument("--stamp", action="store_true", help="write ir_mesh_ledger into power_signoff JSON")
+    ap.add_argument("--stamp", action="store_true", help="write the live mesh ledger into power_signoff JSON")
     args = ap.parse_args()
     ledger = stamp(args.variant) if args.stamp else build_ledger(args.variant)
     print(json.dumps(ledger, indent=2))
-    return 0
+    return 0 if ledger["ok"] else 1
 
 
 if __name__ == "__main__":

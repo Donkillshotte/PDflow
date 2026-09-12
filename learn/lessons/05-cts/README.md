@@ -2,17 +2,20 @@
 
 CTS is where the course **teaches debug**. If everything passes on the first try, trigger a failure (LAB part 4).
 
-On the GCD `learn` (util 35, SDC 0.46 ns) a real run produced:
+The CTS report and log are the only source of truth for the active GCD
+invocation. Use them to populate this table while running the lesson:
 
 | Stage | Core | Area istanze | Util | Note |
 |---|---|---|---|---|
-| DPL pre-repair CTS | 1712.5 µm² | 693 µm² | **40.5%** | clock buffers just inserted |
-| After `repair_timing` CTS | 1712.5 µm² | 828 µm² | **48.3%** | `Inserted 45 buffers`, **RSZ-0062** |
-| WNS CTS final | | | | **−0.04 ns**, 32 setup violations |
-| Setup skew | | | | ~**0.00 ns** (short tree) |
-| Finish (comparison) | | | | WNS **−0.04 ns**, TNS −0.60, fmax ~2.01 GHz |
+| DPL pre-repair CTS | current log | current log | current log | clock buffers just inserted |
+| After `repair_timing` CTS | current log | current log | current log | current buffer/diagnostic messages |
+| WNS CTS final | | | | current report, including setup violations |
+| Setup skew | | | | current clock-skew report |
+| Finish (same invocation only) | | | | current finish report, if available |
 
-This is not “timing closed”: RSZ-0062 says it **did not** repair everything. GCD is small enough to route anyway. On a large design here you would stop to rethink SDC/util.
+Use the current diagnostic messages to decide whether timing is closed. If
+repair remains incomplete, record the exact warning from this invocation;
+the next action depends on the active SDC and utilization.
 
 ## Objectives
 
@@ -60,10 +63,13 @@ If step 4 fails: `save_progress 4_1_error` → `gui_4_1_error.odb`.
 - **Latency** sink: delay from block pin `clk` → FF `CK`.
 - **Skew**: difference in latency. Setup eats worst-case skew; hold hates inverted skew.
 - **Ideal clock** (pre-CTS): STA pretends network latency = 0.
-- **Propagated clock** (post-CTS): delay of `CLKBUF*`. For this WNS can **worsen** from place (+0.01) to CTS (−0.04) even without signal wires.
+- **Propagated clock** (post-CTS): delay of `CLKBUF*`. WNS can change from
+  placement to CTS even before signal wires are extracted.
 - **NDR** `CTS_NDR_0`: wider rule on the clock. Inspector on net `clk` after route.
 
-A tree beats a star because the star has RC/slew unacceptable at a few dozen sinks (here 35 `DFF_X1` in synth, more bit-blast).
+A tree beats a star because the star has RC/slew unacceptable at a few dozen
+sinks. Count the current sequential cells in `synth_stat.txt` rather than
+assuming a fixed register count.
 
 ## Link to lessons 01 + 03 + 04
 
@@ -74,7 +80,9 @@ CTS inserts CLKBUF + more RSZ
 detailed_placement: util > 100% → DPL-0038
 ```
 
-On the healthy run you are at **48%** post-CTS. DPL-0038 appears when this column exceeds 100%. This is not an OpenROAD bug.
+Read the current utilization in the log. DPL-0038 appears when the active
+placement cannot legalize the requested cells; diagnose the current log rather
+than a stored percentage. This is not an OpenROAD bug.
 
 ## Metrics to note
 

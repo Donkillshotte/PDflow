@@ -19,29 +19,29 @@ def parse_equiv_log(log: str) -> bool:
 
 
 def equiv_rtl_pair(
-    gold: Path | str,
+    reference: Path | str,
     gate: Path | str,
     *,
     top: str = "gcd",
     timeout_s: float = 60.0,
 ) -> SemanticContract:
-    gold, gate = Path(gold), Path(gate)
-    if not gold.is_file() or not gate.is_file():
-        return SemanticContract(status="fail", vs=str(gold), log="missing_rtl")
+    reference, gate = Path(reference), Path(gate)
+    if not reference.is_file() or not gate.is_file():
+        return SemanticContract(status="fail", vs=str(reference), log="missing_rtl")
     script = f"""
-read_verilog {gold}
+read_verilog {reference}
 hierarchy -check -top {top}
 proc; flatten; opt_expr; opt_clean
-design -save gold_rtl
+design -save reference_rtl
 design -reset
 read_verilog {gate}
 hierarchy -check -top {top}
 proc; flatten; opt_expr; opt_clean
 design -save gate_rtl
 design -reset
-design -copy-from gold_rtl -as gold {top}
+design -copy-from reference_rtl -as reference {top}
 design -copy-from gate_rtl -as gate {top}
-equiv_make gold gate equiv
+equiv_make reference gate equiv
 hierarchy -top equiv
 equiv_simple
 equiv_induct
@@ -61,9 +61,9 @@ equiv_status
         ok = parse_equiv_log(log) and proc.returncode == 0
         return SemanticContract(
             status="pass" if ok else "fail",
-            vs=str(gold),
+            vs=str(reference),
             log=str(log_path),
             engine="yosys_equiv",
         )
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
-        return SemanticContract(status="unsupported", vs=str(gold), log=str(exc), engine="yosys_equiv")
+        return SemanticContract(status="unsupported", vs=str(reference), log=str(exc), engine="yosys_equiv")

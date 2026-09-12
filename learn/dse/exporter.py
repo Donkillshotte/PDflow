@@ -48,12 +48,12 @@ def mark_export(c: Candidate, netlist: Path | str | None = None) -> Candidate:
     kn = dict(c.knobs or {})
     if kn.get("scope") == "logic_cone" and kn.get("extract"):
         # Architecture rtl_rewrite of a cone, emitted as a whole-chip Yosys
-        # flatten, is still a *different* netlist — not a stitch into baseline.
+        # flatten, is still a *different* netlist — not a stitch into reference.
         c.attr = dict(c.attr or {})
         c.attr["export"] = "standalone_chip_not_stitched"
         c.finish_ready = False
-        c.rejection_reason = c.rejection_reason or "not_stitched_into_baseline"
-        hist.append({"stage": "export", "ok": False, "reason": "not_stitched_into_baseline"})
+        c.rejection_reason = c.rejection_reason or "not_stitched_into_reference"
+        hist.append({"stage": "export", "ok": False, "reason": "not_stitched_into_reference"})
         c.promotion_history = hist
         return c
     c.finish_ready = bool(

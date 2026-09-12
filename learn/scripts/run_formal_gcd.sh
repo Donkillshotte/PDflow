@@ -4,6 +4,10 @@
 # Uses sby + z3 if present; otherwise yosys sat -tempinduct.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" formal-gcd bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 RTL="${ROOT}/learn/flowlab/gcd.v"
 [[ -f "${RTL}" ]] || RTL="${ROOT}/tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v"

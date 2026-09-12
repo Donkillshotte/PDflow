@@ -116,7 +116,7 @@ ls -lh results/nangate45/gcd/learn/1_synth.odb
 
 If `1_synth.odb` is missing: log `logs/nangate45/gcd/learn/1_2_yosys.log`. Playbook synth section.
 
-Open `reports/nangate45/gcd/learn/synth_stat.txt` (or search `Printing statistics` in the Yosys log). Note: cell count, area. Compare with `learn/reference/golden-metrics.md` Synth row (496 / 628.824 / 35 DFF).
+Open `reports/nangate45/gcd/learn/synth_stat.txt` (or search `Printing statistics` in the Yosys log). Record cell count, area, and the report path from this invocation.
 
 ---
 

@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Pay a real aes F1 + F2-fast + F3 + budgeted GPL slice.
-
-Separate memory from GCD flowlab. Does not ingest gcd Dynamic IR, does not
-restamp gold 45.298 mV, does not invent dpath/ctrl, does not borrow the
-GCD 0.46 ns SDC. Writes learn/sim/dse/memory_aes.jsonl and
-learn/sim/reports/dse_aes.json.
-"""
+"""Run the AES F1–F4 slice in an isolated live directory."""
 
 from __future__ import annotations
 
@@ -30,6 +24,7 @@ from dse.fidelity import (  # noqa: E402
     liberty_path,
 )
 from dse.memory import DesignMemory  # noqa: E402
+from dse.live_paths import current_run_dir  # noqa: E402
 
 
 def _reuse(mem: DesignMemory, level: str, **want) -> object | None:
@@ -45,7 +40,8 @@ def _reuse(mem: DesignMemory, level: str, **want) -> object | None:
 def main() -> int:
     require_heavy("AES F1–F3/GPL slice")
     spec = resolve("aes")
-    mem_path = REPO / "learn" / "sim" / "dse" / "memory_aes.jsonl"
+    run_dir = current_run_dir("aes")
+    mem_path = run_dir / "memory.jsonl"
     mem = DesignMemory(mem_path)
     lib = liberty_path()
     knobs = {"name": "liberty_default", "abc_args": [], "abc_ops": [], "abc_script": "file"}
@@ -157,7 +153,7 @@ def main() -> int:
         "not": [
             "gcd dpath/ctrl",
             "gcd 0.46 ns SDC",
-            "gold 45.298 restamp",
+            "no cross-invocation value is used",
             "flattened cell+PDN vector",
         ],
         "memory": str(mem_path),
@@ -171,11 +167,8 @@ def main() -> int:
                 "f4_sdc": (f4.artifacts or {}).get("sdc"),
             }
         )
-    dest = REPO / "learn" / "sim" / "reports" / "dse_aes.json"
-    prior = json.loads(dest.read_text()) if dest.is_file() else {}
-    merged = dict(prior)
-    merged.update(report)
-    dest.write_text(json.dumps(merged, indent=2) + "\n")
+    dest = run_dir / "report.json"
+    dest.write_text(json.dumps(report, indent=2) + "\n")
     print(f"wrote {dest}")
     return 0 if report["ok"] else 1
 

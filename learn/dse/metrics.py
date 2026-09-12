@@ -164,17 +164,15 @@ def qor_delta(child: QoR, parent: QoR | None) -> dict[str, float]:
     return out
 
 
-def baseline_delta_of(attr: dict | None) -> dict:
+def reference_delta_of(attr: dict | None) -> dict:
     """QoR vs liberty_default stored on ``Candidate.attr``.
 
-    New rows use ``delta_vs_baseline``. Historical JSONL used ``delta``
-    for the same payload. ``Candidate.delta`` is a different field (vs parent)
-    and is never read here.
+    Only the explicit ``delta_vs_reference`` payload is accepted. The parent
+    delta on ``Candidate.delta`` has a different meaning and is never read
+    here; unscoped legacy payloads are intentionally ignored.
     """
     a = attr or {}
-    payload = a.get("delta_vs_baseline")
-    if payload is None:
-        payload = a.get("delta")
+    payload = a.get("delta_vs_reference")
     return dict(payload) if isinstance(payload, dict) else {}
 
 

@@ -1,7 +1,7 @@
 VERSION 5.8 ;
 # Educational scaled dummy bump for FlowLab GCD (~88.8 µm die).
 # Derived from OpenROAD test/Nangate45_io/dummy_pads.lef (BSD-3).
-# Not a JEDEC C4 / µbump. SIZE is scaled so a 2×2 array fits the die.
+# Not a JEDEC C4 / µbump. SIZE is scaled so the configured 4×4 array fits the die.
 # PIN PAD is on metal10 (OpenROAD rdl_route lab) and metal6 (GCD pin layer).
 
 UNITS
@@ -37,3 +37,19 @@ MACRO DUMMY_BUMP_M10
     END
   END PAD
 END DUMMY_BUMP_M10
+
+MACRO PKG_PAD
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  SIZE 2 BY 2 ;
+  SYMMETRY X Y R90 ;
+  PIN PAD
+    DIRECTION INOUT ;
+    PORT
+      LAYER metal10 ;
+        RECT 0.0 0.0 2.0 2.0 ;
+      LAYER metal6 ;
+        RECT 0.0 0.0 2.0 2.0 ;
+    END
+  END PAD
+END PKG_PAD

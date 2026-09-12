@@ -11,6 +11,7 @@ import {
   leftoverMustConnectDetail,
   leftoverSetupOpenDetail,
 } from "./signoff";
+import { isCurrentReport } from "./liveReports";
 
 export type LeftoverKind = "gated" | "built" | "locked" | "forbidden_retry";
 
@@ -100,7 +101,7 @@ function readSignoffReport(
 ): Record<string, unknown> | null {
   for (const variant of variants) {
     const p = path.join(LEARN_ROOT, "sim/reports", `${name}_${variant}.json`);
-    if (!fs.existsSync(p)) continue;
+    if (!isCurrentReport(p)) continue;
     try {
       return JSON.parse(fs.readFileSync(p, "utf8")) as Record<string, unknown>;
     } catch {
@@ -115,11 +116,28 @@ export function irMeshLedgerDetail(
 ): string | null {
   if (!report) return null;
   const ledger = report.ir_mesh_ledger as
-    | { comparable?: boolean; n_meshes?: number }
+    | {
+        comparable?: boolean;
+        n_meshes?: number;
+        comparison_scope?: string;
+        meshes?: { comparison_scope?: string }[];
+      }
     | undefined;
-  if (!ledger || ledger.comparable !== false) return null;
-  const n = Number(ledger.n_meshes ?? 0);
-  return n > 0 ? `IR meshes not comparable (${n} meshes)` : "IR meshes not comparable";
+  if (!ledger) return null;
+  const meshes = Array.isArray(ledger.meshes) ? ledger.meshes : [];
+  const distinct = meshes.filter((mesh) =>
+    String(mesh?.comparison_scope ?? "").includes("distinct-live-mesh"),
+  ).length;
+  const scope = String(ledger.comparison_scope ?? "");
+  const incomparable =
+    ledger.comparable === false ||
+    distinct > 0 ||
+    scope.includes("distinct-live-mesh");
+  if (!incomparable) return null;
+  const n = Number(ledger.n_meshes ?? meshes.length);
+  return n > 0
+    ? `IR meshes not comparable (${n} live meshes)`
+    : "IR meshes not comparable";
 }
 
 export function leftoverCompactFromReport(
@@ -153,7 +171,7 @@ export function staSignoffHookDetail(): string {
     const all = readSignoffReport("signoff_all", [variant]);
     const report = (sta ?? all) as Record<string, unknown> | null;
     if (!report) continue;
-    const bits = ["educational golden ≥ −0.04"];
+    const bits: string[] = [];
     const setup = leftoverSetupOpenDetail(sta ?? all);
     if (setup) bits.push(setup);
     const mcmm = leftoverMcmmDetail(sta ?? all);
@@ -161,7 +179,7 @@ export function staSignoffHookDetail(): string {
     if (bits.length > 1) return bits.join(" · ");
     if (typeof report.summary === "string") return report.summary;
   }
-  return "WNS/TNS vs golden-gcd · run_sta_signoff.sh";
+  return "WNS/TNS from current run · run_sta_signoff.sh";
 }
 
 export function drcSignoffHookDetail(): string {
@@ -206,7 +224,7 @@ export function powerSignoffHookDetail(): string {
     const all = readSignoffReport("signoff_all", [variant]);
     if (!pwr && !all) continue;
     let summary =
-      typeof pwr?.summary === "string" ? String(pwr.summary) : "chip IR · golden gate";
+      typeof pwr?.summary === "string" ? String(pwr.summary) : "chip IR · current-run gate";
     summary = summary.replace(/^Chip IR/, "chip IR");
     const mesh = irMeshLedgerDetail(all ?? pwr);
     if (mesh && !summary.includes("IR meshes not comparable")) {
@@ -214,7 +232,7 @@ export function powerSignoffHookDetail(): string {
     }
     return summary;
   }
-  return "chip IR · golden gate";
+  return "chip IR · current-run gate";
 }
 
 export function signoffAllHookDetail(): string {
@@ -242,7 +260,7 @@ export function lvsSignoffHookDetail(): string {
     bits.push("VIA_* flatten leftover");
     return bits.join(" · ");
   }
-  return "KLayout GDS vs filtered CDL · leftover must-connect 2 (DFF_X2) · VIA_* flatten leftover";
+  return "KLayout GDS vs filtered CDL · current must-connect result · VIA_* flatten leftover";
 }
 
 export function asap7CookHookDetail(): string {
@@ -333,7 +351,7 @@ export function asap7Layer1HookDetail(): string {
         patch?: string;
         wave?: { inverted?: boolean };
       };
-      bits.push(spice.patch === "level 72→107" ? "level 72→107" : "leftover Xyce patch");
+      bits.push(spice.patch ? String(spice.patch) : "leftover Xyce patch");
       bits.push(spice.wave?.inverted ? "inverter switched" : "inverter leftover");
     } else {
       bits.push("leftover Xyce patch");
@@ -349,17 +367,19 @@ export function asap7PkgHookDetail(): string {
   try {
     if (!fs.existsSync(p)) {
       return (
-        "dummy 2×2 bump · sidecar rdl_route · never write 6_final · " +
+        "dummy 4×4 bump · sidecar rdl_route · never write 6_final · " +
         "compact VRM not run · not JEDEC C4 · leftover no Touchstone · not Ansys CPA"
       );
     }
     const d = JSON.parse(fs.readFileSync(p, "utf8")) as {
       bump?: { package?: { n_bumps?: number } };
-      rdl?: { ok?: boolean; wrote_final?: boolean };
+      rdl?: { ok?: boolean; evidence_ok?: boolean; wrote_final?: boolean };
       system_pdn?: { ok?: boolean; vdd?: number; droop_mv?: number | null };
     };
     const n = d.bump?.package?.n_bumps ?? 4;
-    const rdl = d.rdl?.ok ? "sidecar rdl_route ran" : "sidecar rdl_route leftover";
+    const rdl = d.rdl?.evidence_ok || d.rdl?.ok
+      ? "sidecar rdl_route ran"
+      : "sidecar rdl_route leftover";
     const droop = d.system_pdn?.droop_mv;
     const vdd = d.system_pdn?.vdd ?? 0.7;
     const pdn =
@@ -368,12 +388,12 @@ export function asap7PkgHookDetail(): string {
         : `compact VRM ${vdd} V`;
     const wrote = d.rdl?.wrote_final === true ? "wrote 6_final" : "never write 6_final";
     return (
-      `dummy 2×2 bump (${n}) · ${rdl} · ${wrote} · ${pdn} · ` +
+      "dummy 4×4 bump · compact model N=" + n + " · " + rdl + " · " + wrote + " · " + pdn + " · " +
       "not JEDEC C4 · leftover no Touchstone · not Ansys CPA"
     );
   } catch {
     return (
-      "dummy 2×2 bump · sidecar rdl_route · never write 6_final · " +
+      "dummy 4×4 bump · sidecar rdl_route · never write 6_final · " +
       "compact VRM unreadable · not JEDEC C4 · leftover no Touchstone · not Ansys CPA"
     );
   }
@@ -385,7 +405,7 @@ export function asap7ChipPdnHookDetail(): string {
     if (!fs.existsSync(p)) {
       return (
         "write_pg_spice mesh · pdn_transient · tier B on-die · " +
-        "not tier C PKG · not comparable to 45.298 mV · no .chip_pdn_ir.ok"
+        "not tier C PKG · separate live scope · no .chip_pdn_ir.ok"
       );
     }
     const d = JSON.parse(fs.readFileSync(p, "utf8")) as {
@@ -404,13 +424,13 @@ export function asap7ChipPdnHookDetail(): string {
       tierA != null ? `6_report ${tierA.toFixed(2)} mV` : "6_report unreadable",
       tr != null ? `transient ${tr.toFixed(2)} mV` : "transient leftover",
       d.mesh_patch?.patched ? "map::at patched" : "mesh complete",
-      "not 45.298 mV",
+      "separate live scope",
     ];
     return bits.join(" · ");
   } catch {
     return (
       "write_pg_spice mesh · pdn_transient · tier B on-die · " +
-      "not tier C PKG · not comparable to 45.298 mV · no .chip_pdn_ir.ok"
+      "not tier C PKG · separate live scope · no .chip_pdn_ir.ok"
     );
   }
 }

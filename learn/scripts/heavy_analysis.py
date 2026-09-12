@@ -46,7 +46,7 @@ def refusal_for_heavy(reason: str) -> str:
     )
 
 
-def resolve_solve_timeout_s(requested: float = 90.0) -> float:
+def resolve_solve_timeout_s(requested: float = 600.0) -> float:
     """F4 worker wall-clock. PDN_SOLVE_TIMEOUT_S overrides when set."""
     raw = os.environ.get("PDN_SOLVE_TIMEOUT_S")
     if raw is not None and str(raw).strip() != "":

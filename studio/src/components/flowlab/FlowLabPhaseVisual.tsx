@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { FlowlabParams } from "./types";
 import { FlowLabLayoutCanvas } from "./FlowLabLayoutCanvas";
 import { RtlWaveformVisual } from "./RtlWaveformVisual";
+import type { VcdWaveform } from "@/lib/vcdWaveform";
 
 type Inspect = {
   odb: {
@@ -25,7 +26,6 @@ type Inspect = {
 
 type Results = {
   metrics: { label: string; value: string }[];
-  goldenHints: { label: string; value: string }[];
   artifacts: { name: string; exists: boolean; size: number }[];
 };
 
@@ -78,17 +78,14 @@ function Gauge({
 function StatBar({
   label,
   value,
-  golden,
   max,
 }: {
   label: string;
   value: number | null;
-  golden?: number;
   max: number;
 }) {
   const v = value ?? 0;
   const pct = Math.min(100, (v / max) * 100);
-  const gPct = golden ? Math.min(100, (golden / max) * 100) : null;
   return (
     <div className="fl-vis-bar">
       <div className="fl-vis-bar-head">
@@ -96,7 +93,6 @@ function StatBar({
         <strong>{value ?? "—"}</strong>
       </div>
       <div className="fl-vis-bar-track">
-        {gPct != null && <em style={{ left: `${gPct}%` }} title={`Golden ${golden}`} />}
         <i style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -140,7 +136,10 @@ export function FlowLabPhaseVisual({
   refreshKey,
   rtlLines,
   sim,
+  waveform,
   stageDone,
+  runId,
+  onCandidateCreated,
 }: {
   phaseId: string;
   stage: string;
@@ -149,11 +148,15 @@ export function FlowLabPhaseVisual({
   refreshKey: number;
   rtlLines: number;
   sim: { vcdExists: boolean; logExists: boolean };
+  waveform?: VcdWaveform | null;
   stageDone: boolean;
+  runId?: string | null;
+  onCandidateCreated?: (runId: string) => void;
 }) {
   const [inspect, setInspect] = useState<Inspect | null>(null);
   const [results, setResults] = useState<Results | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [meshStats, setMeshStats] = useState<{
     resistors?: number;
     current_sources?: number;
@@ -163,14 +166,30 @@ export function FlowLabPhaseVisual({
   const load = useCallback(async () => {
     if (phaseId === "rtl") return;
     setLoading(true);
+    const runQuery = runId ? `&run_id=${encodeURIComponent(runId)}` : "";
     try {
       const [ri, rr] = await Promise.all([
-        fetch(`/api/inspect?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}`),
-        fetch(`/api/results?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}`),
+        fetch(
+          `/api/inspections?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}${runQuery}`,
+        ),
+        fetch(
+          `/api/results?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}${runQuery}`,
+        ),
       ]);
-      setInspect(ri.ok ? await ri.json() : null);
+      setLoadError(null);
+      if (ri.ok) {
+        const inspectionBody = (await ri.json()) as { inspection?: Inspect | null };
+        setInspect(inspectionBody.inspection ?? null);
+      } else {
+        setInspect(null);
+        setLoadError(
+          ri.status === 503
+            ? "inspection cache is unavailable because the local agent is offline"
+            : `inspection snapshot unavailable (HTTP ${ri.status})`,
+        );
+      }
       setResults(rr.ok ? await rr.json() : null);
-      if (phaseId === "pdn") {
+      if (phaseId === "pdn" && !runId) {
         const rm = await fetch(
           `/api/content?path=${encodeURIComponent(`sim/spice/mesh_stats_${variant}.json`)}`,
         );
@@ -185,18 +204,29 @@ export function FlowLabPhaseVisual({
           setMeshStats(null);
         }
       }
+    } catch (e) {
+      setInspect(null);
+      setResults(null);
+      setMeshStats(null);
+      setLoadError(e instanceof Error ? e.message : "Live metrics unavailable");
     } finally {
       setLoading(false);
     }
-  }, [phaseId, stage, variant]);
+  }, [phaseId, runId, stage, variant]);
 
   useEffect(() => {
     void load();
   }, [load, refreshKey]);
 
-  const golden = Object.fromEntries(
-    (results?.goldenHints ?? []).map((g) => [g.label.toLowerCase(), parseNum(g.value)]),
-  );
+  useEffect(() => {
+    // Mesh statistics are generated for the canonical finish only. Never
+    // carry them into a candidate view, where they would look like evidence
+    // for an isolated workspace that has not produced its own mesh.
+    if (runId || phaseId !== "pdn") {
+      setMeshStats(null);
+    }
+  }, [phaseId, runId]);
+
   const cells = parseNum(inspect?.yosys?.cells);
   const area = parseNum(inspect?.yosys?.area);
   const wns = parseNum(inspect?.sta?.wns);
@@ -211,7 +241,19 @@ export function FlowLabPhaseVisual({
         </span>
       </div>
 
-      {phaseId === "rtl" && <RtlWaveformVisual rtlLines={rtlLines} sim={sim} />}
+      {loadError && (
+        <p className="muted fl-vis-load-error" role="status">
+          Live metrics unavailable: {loadError}
+        </p>
+      )}
+
+      {phaseId === "rtl" && (
+        <RtlWaveformVisual
+          rtlLines={rtlLines}
+          sim={sim}
+          initialWaveform={waveform}
+        />
+      )}
 
       {(phaseId === "synth" ||
         phaseId === "floorplan" ||
@@ -225,14 +267,16 @@ export function FlowLabPhaseVisual({
           variant={variant}
           refreshKey={refreshKey}
           stageDone={stageDone}
+          runId={runId}
+          onCandidateCreated={onCandidateCreated}
         />
       )}
 
       {phaseId === "synth" && (
         <div className="fl-vis-body fl-vis-synth fl-vis-stats-only">
-          <StatBar label="Yosys cells" value={cells} golden={golden.celle ?? golden.cells ?? undefined} max={600} />
-          <StatBar label="Area" value={area} golden={golden.area ?? undefined} max={700} />
-          <StatBar label="DFF_X1" value={parseNum(inspect?.yosys?.dff)} golden={golden.dff ?? undefined} max={50} />
+          <StatBar label="Yosys cells" value={cells} max={600} />
+          <StatBar label="Area" value={area} max={700} />
+          <StatBar label="DFF_X1" value={parseNum(inspect?.yosys?.dff)} max={50} />
           {inspect?.odb && (
             <p className="fl-vis-meta">
               ODB: {inspect.odb.instances} inst · {inspect.odb.nets} net

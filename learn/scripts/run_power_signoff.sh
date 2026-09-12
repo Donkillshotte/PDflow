@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Power signoff pillar: activity → chip IR → export + golden eval.
+# Power signoff pillar: activity → chip IR → export + live eval.
 # System PDN (VRM→board→pkg) is PKG, after this close (/pkg).
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" power-signoff bash "${BASH_SOURCE[0]}" "$@"
+fi
 VARIANT="${FLOW_VARIANT:-flowlab}"
 OUT="${ROOT}/learn/sim/reports/power_signoff_${VARIANT}.json"
 LOG="${ROOT}/learn/sim/reports/power_signoff_${VARIANT}.log"

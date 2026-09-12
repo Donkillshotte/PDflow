@@ -55,6 +55,7 @@ export const LayoutViewport = forwardRef<LayoutViewportHandle, Props>(
     const [nw, setNw] = useState(800);
     const [nh, setNh] = useState(600);
     const [ready, setReady] = useState(false);
+    const renderFrame = useRef<number | null>(null);
     const drag = useRef<{
       kind: "pan" | "wipe";
       x: number;
@@ -65,7 +66,20 @@ export const LayoutViewport = forwardRef<LayoutViewportHandle, Props>(
 
     const apply = useCallback((scale: number, tx: number, ty: number) => {
       transform.current = { scale, tx, ty };
-      setTick((n) => n + 1);
+      if (renderFrame.current !== null) return;
+      renderFrame.current = window.requestAnimationFrame(() => {
+        renderFrame.current = null;
+        setTick((n) => n + 1);
+      });
+    }, []);
+
+    useEffect(() => {
+      return () => {
+        if (renderFrame.current !== null) {
+          window.cancelAnimationFrame(renderFrame.current);
+          renderFrame.current = null;
+        }
+      };
     }, []);
 
     const fit = useCallback(() => {

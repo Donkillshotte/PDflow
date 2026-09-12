@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +26,7 @@ if str(_LEARN) not in sys.path:
     sys.path.insert(0, str(_LEARN))
 
 from dse.experiments import DESIGN_CATALOG, ExperimentLog  # noqa: E402
+from dse.live_paths import current_run_dir  # noqa: E402
 from dse.knob_catalog import RECIPES, config_mk_for, parse_config_defaults  # noqa: E402
 from dse.recipe_select import (  # noqa: E402
     CHEAP_FIRST,
@@ -367,6 +369,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = p.parse_args(argv)
 
+    run_dir = current_run_dir("product")
+    os.environ.setdefault("PD_FLOW_EXPERIMENT_LOG", str(run_dir / "experiments.jsonl"))
     log = ExperimentLog()
     if args.cover_all:
         jobs = cover_queue(log, args.designs)

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdflow.local/schemas/job.schema.json",
+  "title": "PDflow JobRecord",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["job_id", "tool_id", "operation", "state", "created_at", "run_id"],
+  "properties": {
+    "job_id": {"type": "string", "minLength": 8},
+    "tool_id": {"type": "string", "minLength": 1},
+    "action": {"type": ["string", "null"]},
+    "operation": {"type": "string", "minLength": 1},
+    "state": {"enum": ["QUEUED", "RUNNING", "COMPLETED", "FAILED", "CANCELLED", "GAP", "DIRTY", "ORPHANED"]},
+    "created_at": {"type": "string", "minLength": 1},
+    "started_at": {"type": "string"},
+    "finished_at": {"type": "string"},
+    "run_id": {"type": ["string", "null"]},
+    "command": {"type": "array", "items": {"type": "string"}},
+    "timeout_seconds": {"type": "integer", "minimum": 1},
+    "pid": {"type": "integer", "minimum": 1},
+    "code": {"type": ["integer", "null"]},
+    "reason": {"type": ["string", "null"]},
+    "report": {"type": "object"}
+  }
+}

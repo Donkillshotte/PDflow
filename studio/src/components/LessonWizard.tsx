@@ -303,9 +303,9 @@ export function LessonWizard({ lesson }: { lesson: LessonPayload }) {
             <header className="wizard-pane-head">
               <h2>Inspect the results</h2>
               <p>
-                Compare artifacts and metrics with{" "}
-                <Link href="/materials/reference/golden-metrics.md">
-                  golden-metrics
+                Inspect artifacts and metrics from the current invocation. Read{" "}
+                <Link href="/materials/reference/live-analysis.md">
+                  live-analysis
                 </Link>
                 {lesson.id === "07-finish" && (
                   <>

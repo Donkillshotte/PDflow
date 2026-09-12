@@ -1,7 +1,7 @@
 VERSION 5.8 ;
-# Educational scaled dummy bump for lab ASAP7 gcd (~8.8 µm die).
-# Not a JEDEC C4 / µbump. Not a product win. Do not restamp gold 45.298 mV.
-# PIN PAD is on M9 (power rdl_route) and M4 (signal rdl_route).
+# Educational scaled dummy bump for the optional ASAP7 package exercise.
+# This is a sidecar package model, not a foundry bump or course signoff input.
+# PIN PAD is on M9 (power RDL) and M4 (signal RDL).
 
 UNITS
   DATABASE MICRONS 1000 ;
@@ -22,3 +22,19 @@ MACRO DUMMY_BUMP
     END
   END PAD
 END DUMMY_BUMP
+
+MACRO PKG_PAD
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  SIZE 0.5 BY 0.5 ;
+  SYMMETRY X Y R90 ;
+  PIN PAD
+    DIRECTION INOUT ;
+    PORT
+      LAYER M9 ;
+        RECT 0.0 0.0 0.5 0.5 ;
+      LAYER M4 ;
+        RECT 0.0 0.0 0.5 0.5 ;
+    END
+  END PAD
+END PKG_PAD

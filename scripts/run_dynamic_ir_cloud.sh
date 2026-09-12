@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
-# GCD Dynamic IR, one extra solver per invocation, 8 GiB cap.
-# Solver A (DirectLU) always runs as the teacher. SOLVER selects B/D/C.
-# Does not run AES. Does not restamp gold. Skips VSS, electrothermal, extra I(t).
+# GCD Dynamic IR, one extra solver per invocation, 6 GiB address-space cap.
+# Solver A (DirectLU) always runs as the numerical reference. SOLVER selects B/D/C.
+# Does not run AES. Produces only the explicitly requested current analysis.
+# Skips VSS, electrothermal, and extra I(t) sources.
 #
 #   SOLVER=direct|amg|ras|krylov ./scripts/run_dynamic_ir_cloud.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" dynamic-ir-cloud \
+    bash "${BASH_SOURCE[0]}" "$@"
+fi
 source "${ROOT}/scripts/lib/heavy_analysis.sh"
 source "${ROOT}/learn/lib/power_vcd.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
@@ -42,7 +47,7 @@ case "${SOLVER}" in
   krylov) SKIP+=(--no-amg --no-ras) ;;
 esac
 
-AS_BYTES="${PDN_AS_BYTES:-8589934592}"
+AS_BYTES="${PDN_AS_BYTES:-6442450944}"
 CPU_S="${PDN_CPU_S:-180}"
 export PYTHONPATH="${ROOT}/learn:/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
 mkdir -p "${ROOT}/learn/sim/reports" "${RES}/pdn" /tmp/pd-flow-runs

@@ -3,6 +3,11 @@
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" klayout-lvs bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
+source "${ROOT}/scripts/rg_compat.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
@@ -49,6 +54,34 @@ LIB_CDL="${FLOW}/platforms/nangate45/cdl/NangateOpenCellLibrary.cdl"
 OBJ="${FLOW}/objects/nangate45/gcd/${VARIANT}"
 PREP_CDL="${OBJ}/6_final_lvs_filtered.cdl"
 mkdir -p "${OBJ}" "$(dirname "${LOG}")"
+
+# ORFS normally creates 6_final.cdl as a side effect of `make lvs`, but a
+# completed `finish` run is intentionally allowed to stop before that derived
+# artifact.  Generate it explicitly with the native OpenROAD binary so this
+# signoff command is reproducible from a clean RTL-to-GDS run.  The ODB is
+# opened read-only by this helper; only the derived CDL is written.
+if [[ ! -s "${DESIGN_CDL}" ]] || \
+   ! grep -qiE '^[[:space:]]*\.SUBCKT[[:space:]]+gcd([[:space:]]|$)' "${DESIGN_CDL}" 2>/dev/null || \
+   ! grep -qiE '^[[:space:]]*\.ENDS([[:space:]]|$)' "${DESIGN_CDL}" 2>/dev/null; then
+  FINAL_ODB="${RES}/6_final.odb"
+  FINAL_SDC="${RES}/6_final.sdc"
+  LIBERTY="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
+  [[ -s "${FINAL_ODB}" ]] || { echo "FAIL missing ${FINAL_ODB} — run finish first"; exit 1; }
+  [[ -s "${FINAL_SDC}" ]] || { echo "FAIL missing ${FINAL_SDC} — run finish first"; exit 1; }
+  [[ -s "${LIBERTY}" ]] || { echo "FAIL missing ${LIBERTY} — native PDK incomplete"; exit 1; }
+  [[ -s "${LIB_CDL}" ]] || { echo "FAIL missing ${LIB_CDL} — native PDK incomplete"; exit 1; }
+  CDL_LOG="${FLOW}/logs/nangate45/gcd/${VARIANT}/6_cdl.log"
+  echo "Generating missing design CDL with native OpenROAD → ${DESIGN_CDL}"
+  PD_FLOW_LVS_ODB="${FINAL_ODB}" \
+  PD_FLOW_LVS_SDC="${FINAL_SDC}" \
+  PD_FLOW_LVS_LIBERTY="${LIBERTY}" \
+  PD_FLOW_LVS_MASTERS="${LIB_CDL}" \
+  PD_FLOW_LVS_OUTPUT="${DESIGN_CDL}" \
+  timeout "${PD_FLOW_TOOL_TIMEOUT:-600}s" openroad -no_init -no_splash -exit \
+    "${ROOT}/learn/scripts/generate_lvs_cdl.tcl" \
+    2>&1 | tee "${CDL_LOG}"
+fi
+[[ -s "${DESIGN_CDL}" ]] || { echo "FAIL native CDL generation produced no ${DESIGN_CDL}"; exit 1; }
 python3 "${ROOT}/learn/scripts/prepare_lvs_netlist.py" \
   --design-cdl "${DESIGN_CDL}" \
   --library-cdl "${LIB_CDL}" \
@@ -57,6 +90,17 @@ python3 "${ROOT}/learn/scripts/prepare_lvs_netlist.py" \
   --out "${PREP_CDL}"
 
 cd "${FLOW}"
+KLAYOUT_REAL="$(command -v klayout 2>/dev/null || true)"
+if [[ -n "${KLAYOUT_REAL}" ]]; then
+  KLAYOUT_PREFIX="$(cd "$(dirname "${KLAYOUT_REAL}")/.." && pwd)"
+  RUBY_PATHS=()
+  for ruby_dir in "${KLAYOUT_PREFIX}/lib/x86_64-linux-gnu/ruby/3.2.0" "${KLAYOUT_PREFIX}/lib/ruby/3.2.0" "${KLAYOUT_PREFIX}/lib/ruby/vendor_ruby"; do
+    [[ -d "${ruby_dir}" ]] && RUBY_PATHS+=("${ruby_dir}")
+  done
+  if [[ "${#RUBY_PATHS[@]}" -gt 0 ]]; then
+    export RUBYLIB="$(IFS=:; echo "${RUBY_PATHS[*]}")${RUBYLIB:+:${RUBYLIB}}"
+  fi
+fi
 set +e
 # Direct KLayout compare on the prepared CDL (unused library cells dropped,
 # FILLCELL instances taken from DEF). ORFS make lvs concat is not used.
@@ -133,9 +177,9 @@ out = {
   "educational_note": (
       "KLayout compare on filtered CDL + DEF fillers + well→VDD/VSS. "
       "FILL/TAP/VIA are blank_circuit (empty Nangate CDL, no invented devices). "
-      "XNOR2/MUX2/NAND3-4/OAI22/AND3 flatten. Remaining must-connect is DFF_X2 "
-      "(Nangate split wells). Flatten-all before extract and flat extract "
-      "both fail the compare."
+      "XNOR2/MUX2/NAND3-4/OAI22/AND3 flatten. Any remaining must-connect "
+      "is reported from the current extracted layout/netlist. Flatten-all "
+      "before extract and flat extract both fail the compare."
   ),
   "summary": f"LVS {'PASS' if eq['lvs_pass'] else 'FAIL'} · errors {eq['lvs_errors']}",
   "artifacts": {"lvsdb": "${LVSDB}", "log": "${LOG}"},

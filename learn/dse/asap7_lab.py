@@ -1,12 +1,11 @@
 """Lab-only ASAP7 research kit.
 
-Not the course. Not the product campaign. Does not decide wins.
-Does not write nangate45/gcd/flowlab. Does not restamp gold 45.298 mV.
+Not the course or product campaign. It records measurements from the current
+ASAP7 variant and never compares them with a stored Nangate result.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import os
@@ -16,7 +15,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from dse.flow_role import LOCKED_VARIANTS, is_locked_variant
 
 REPO = Path(__file__).resolve().parents[2]
 ORFS_FLOW = REPO / "tools" / "OpenROAD-flow-scripts" / "flow"
@@ -56,13 +54,6 @@ STAGE_PREFIX = {
     "route": "5_",
     "finish": "6_",
 }
-
-GOLD_IR_REL = Path("learn/sim/reports/dynamic_ir_flowlab.json")
-GOLD_GDS_REL = Path("tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds")
-GOLD_RPT_REL = Path("tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/6_report.json")
-GOLD_IR_SHA = "938e122b1d25a3a4064134f0fa56a04357eb571d683ecedc67f089cf0dea850a"
-GOLD_GDS_SHA = "439f5eba0de2abd61d6c14328c8ac4d966dee085e9c51687b8ee09182244bcb3"
-GOLD_RPT_SHA = "5cba9a7a882a0420cfd6f3b121dc078244f86e79893963d3726ab53fb26bd543"
 
 HEAVY_DESIGNS = frozenset(
     {"aes", "aes-block", "aes_lvt", "aes-mbff", "cva6", "swerv_wrapper", "ibex", "jpeg", "jpeg_lvt"}
@@ -104,7 +95,7 @@ DESIGNS = {
 
 
 class LabAsap7Refuse(ValueError):
-    """Illegal lab ASAP7 combo or locked variant."""
+    """Illegal lab ASAP7 combination or unsafe variant."""
 
 
 @dataclass(frozen=True)
@@ -276,8 +267,6 @@ def validate(spec: LabAsap7Spec, *, root: Path | None = None, allow_heavy: bool 
     if spec.track not in TRACKS:
         raise LabAsap7Refuse(f"REFUSED: ASAP7_TRACK={spec.track}")
     variant = spec.variant
-    if is_locked_variant(variant) or variant in LOCKED_VARIANTS:
-        raise LabAsap7Refuse(f"REFUSED: FLOW_VARIANT={variant} is locked")
     if not variant.startswith(VARIANT_PREFIX):
         raise LabAsap7Refuse(f"REFUSED: lab variant must start with {VARIANT_PREFIX}")
     if "krylov" in variant.lower():
@@ -334,8 +323,6 @@ def normalize_lab_variant(variant: str) -> str:
     v = variant.strip()
     if not v.startswith(VARIANT_PREFIX):
         raise LabAsap7Refuse(f"REFUSED: variant must start with {VARIANT_PREFIX} ({variant})")
-    if is_locked_variant(v):
-        raise LabAsap7Refuse(f"REFUSED: locked variant {v}")
     if ".." in v or "/" in v or "\\" in v or ":" in v:
         raise LabAsap7Refuse(f"REFUSED: illegal path token in variant ({variant})")
     if not LAB_VARIANT_RE.match(v):
@@ -424,44 +411,25 @@ def result_dir_for_variant(variant: str, root: Path | None = None) -> Path | Non
         return None
 
 
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    h.update(path.read_bytes())
-    return h.hexdigest()
-
-
-def nangate_gold_status(root: Path | None = None) -> dict[str, Any]:
-    """Read-only gold check. Missing ORFS artifacts are a lock-absent warning."""
+def nangate_live_status(root: Path | None = None) -> dict[str, Any]:
+    """Report which current Nangate artifacts are available on disk."""
     root = root or REPO
-    ir = root / GOLD_IR_REL
-    gds = root / GOLD_GDS_REL
-    rpt = root / GOLD_RPT_REL
-    ir_ok = ir.is_file() and _sha256(ir) == GOLD_IR_SHA and "45.298" in ir.read_text()
-    gds_ok = (not gds.is_file()) or _sha256(gds) == GOLD_GDS_SHA
-    rpt_ok = (not rpt.is_file()) or _sha256(rpt) == GOLD_RPT_SHA
+    gds = root / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
+    rpt = root / "tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd/flowlab/6_report.json"
     return {
-        "ir_present": ir.is_file(),
+        "ir_present": (root / "learn/sim/reports/dynamic_ir_flowlab_direct.json").is_file(),
         "gds_present": gds.is_file(),
         "rpt_present": rpt.is_file(),
-        "ir_ok": ir_ok,
-        "gds_ok": gds_ok,
-        "rpt_ok": rpt_ok,
-        "nangate_lock_absent": not gds.is_file(),
-        "untouched": ir_ok and gds_ok and rpt_ok,
+        "ready": gds.is_file() and rpt.is_file(),
     }
 
 
-def assert_nangate_gold_untouched(root: Path | None = None, *, require_orfs: bool = False) -> dict[str, Any]:
-    st = nangate_gold_status(root)
-    if not st["ir_ok"]:
-        raise LabAsap7Refuse("REFUSED: Nangate gold IR missing or restamped")
-    if require_orfs and st["nangate_lock_absent"]:
-        raise LabAsap7Refuse("REFUSED: locked FlowLab GDS missing")
-    if not st["gds_ok"]:
-        raise LabAsap7Refuse("REFUSED: locked FlowLab GDS restamped")
-    if not st["rpt_ok"]:
-        raise LabAsap7Refuse("REFUSED: locked FlowLab 6_report restamped")
-    return st
+def assert_nangate_live_artifacts(root: Path | None = None, *, require_orfs: bool = False) -> dict[str, Any]:
+    """Validate presence of current artifacts without comparing to a snapshot."""
+    status = nangate_live_status(root)
+    if require_orfs and not status["ready"]:
+        raise LabAsap7Refuse("REFUSED: current Nangate finish artifacts are incomplete")
+    return status
 
 
 def _first_file(folder: Path, names: tuple[str, ...]) -> Path | None:
@@ -585,11 +553,11 @@ def closure_ladder(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]
     return by
 
 
-def flowlab_untouched(root: Path | None = None) -> bool:
-    """Locked Nangate FlowLab tree still exists and is not our write target."""
+def flowlab_finish_present(root: Path | None = None) -> bool:
+    """Return whether the current Nangate finish artifact is available."""
     root = root or REPO
-    locked = root / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
-    return locked.is_file()
+    finish = root / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
+    return finish.is_file()
 
 
 def _metrics(qor: dict) -> dict:
@@ -652,19 +620,19 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
     else:
         ok = bool(gds_live and int(exit_code) == 0)
     ledger = stage_ledger(spec, root)
-    gold = nangate_gold_status(root)
+    live = nangate_live_status(root)
     payload = {
         "ok": ok,
         "gds_live": gds_live,
         "stopped_at": stopped_at(ledger, gds_live=gds_live),
         "stages": ledger,
-        "nangate_lock_absent": gold["nangate_lock_absent"],
+        "nangate_live_ready": live["ready"],
         "surface": "lab",
         "platform": "asap7",
         "predictive": True,
         "manufacturable": False,
         "product_win": False,
-        "comparable_to_gold_ir": False,
+        "comparison_scope": "independent ASAP7 run; compare only with a matching live run",
         "variant": spec.variant,
         "design": spec.design,
         "nickname": spec.nickname,
@@ -700,7 +668,7 @@ def collect_report(spec: LabAsap7Spec, *, root: Path | None = None, extra: dict 
         "qor": metrics,
         "note": (
             "ASAP7 lab cook. Predictive FinFET. Not a product win. "
-            "Live metrics only — no gold stamp."
+            "Live metrics from this run."
         ),
     }
     if extra:
@@ -782,6 +750,7 @@ def scan_folio(root: Path | None = None) -> list[dict]:
                 "gds_bytes": gds.stat().st_size,
                 "gds_live": gds_live,
                 "stopped_at": stopped_at(ledger, gds_live=gds_live),
+                "comparison_scope": "independent ASAP7 run; compare only with a matching live run",
                 "stages": {k: {"done": v.get("done"), "artifact": v.get("artifact")} for k, v in ledger.items()},
             }
         )
@@ -796,7 +765,7 @@ def write_folio(root: Path | None = None) -> Path:
     dest.write_text(
         json.dumps(
             {
-                "note": "Live folio — last cook is lab_asap7.json. No gold stamp.",
+                "note": "Live folio — last cook is lab_asap7.json.",
                 "cooks": cooks,
                 "closure_ladder": closure_ladder(cooks),
                 "track6": {
@@ -856,9 +825,8 @@ def cook(
     root = root or REPO
     spec = validate(spec or spec_from_env(), root=root)
     extra: dict = {}
-    if not flowlab_untouched(root):
-        extra["nangate_lock_absent"] = True
     script = root / "scripts" / "run_lab_asap7.sh"
+    timeout_s = timeout_s if timeout_s is not None else int(os.environ.get("ASAP7_TIMEOUT_S", "600"))
     proc = subprocess.run(
         ["bash", str(script), target],
         cwd=str(root),

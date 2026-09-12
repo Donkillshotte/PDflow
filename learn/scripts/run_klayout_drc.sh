@@ -2,6 +2,10 @@
 # KLayout DRC on 6_final.gds (FreePDK45.lydrc) via ORFS make drc.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" klayout-drc bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 GDS="${FLOW}/results/nangate45/gcd/learn/6_final.gds"
 [[ -f "${GDS}" ]] || { echo "FAIL missing GDS — run finish first"; exit 1; }

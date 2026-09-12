@@ -53,7 +53,9 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 1
 fi
 src="${DEST}/src"
-rm -rf "${src}"
+if [[ -e "${src}" ]]; then
+  mv "${src}" "${DEST}/src.stale-${PPID}-$$"
+fi
 git clone --depth 1 --branch "v${VERSION}" https://github.com/vyges-tools/em-ir.git "${src}" >&2
 (cd "${src}" && cargo build --release >&2)
 install -m 755 "${src}/target/release/vyges-em-ir" "${BIN}"

@@ -2,7 +2,9 @@
 
 Bring open: README 05, `walkthrough-cts.tcl.md`, `gui-atlas.md` §5.7 and §9, CTS playbook.
 
-Parenthetical numbers are from a reference `learn` run (util 35, 0.46 ns). **Your** numbers may differ: note yours.
+All measurements in this lab must come from the current `learn` invocation.
+Do not use a stored run as a comparison target; note the active values in the
+workbook.
 
 ## Measurable objectives
 
@@ -56,7 +58,8 @@ rg -n 'DPL-0006|Inserted|RSZ-0062|worst slack' \
   reports/nangate45/gcd/learn/4_cts_final.rpt | head -40
 ```
 
-Reference: util 40.5% → 48.3%, `Inserted 45 buffers`, possible **RSZ-0062**, WNS −0.04.  
+Read current utilization, inserted buffers, WNS, and any **RSZ-0062** message
+from the active log/report.
 RSZ-0062 **is not** DPL-0038: placement is legal, timing is not.
 
 ---

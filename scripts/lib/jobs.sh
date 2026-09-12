@@ -8,7 +8,7 @@ fi
 if ! [[ "${EDA_JOBS}" =~ ^[0-9]+$ ]] || [[ "${EDA_JOBS}" -lt 1 ]]; then
   EDA_JOBS=2
 fi
-if [[ "${EDA_JOBS}" -gt 8 ]]; then
-  EDA_JOBS=8
+if [[ "${EDA_JOBS}" -gt 4 ]]; then
+  EDA_JOBS=4
 fi
 export EDA_JOBS

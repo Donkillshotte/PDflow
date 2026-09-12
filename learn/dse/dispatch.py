@@ -113,7 +113,7 @@ def run_next_refine(
             modules=steer.get("modules"),
             n_changed=(child.artifacts or {}).get("n_changed"),
             depth=depth,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=steer.get("reason"),
         )
@@ -154,7 +154,7 @@ def run_next_refine(
             droop_mv=child.qor.dynamic_ir_mv,
             residual_mv=(child.attr or {}).get("residual_mv"),
             depth=depth,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=why,
         )
@@ -207,7 +207,7 @@ def run_next_refine(
             droop_mv=child.qor.dynamic_ir_mv,
             residual_vs_host_win_mv=(child.attr or {}).get("residual_vs_host_win_mv"),
             depth=depth,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=steer.get("reason"),
         )
@@ -290,7 +290,7 @@ def run_next_refine(
             residual_vs_leftover2_pdn_mv=(child.attr or {}).get("residual_vs_leftover2_pdn_mv"),
             residual_vs_refine_pdn_mv=(child.attr or {}).get("residual_vs_refine_pdn_mv"),
             depth=depth,
-            gold=False,
+            comparison_scope="same-live-extract",
             status=child.status,
             reason=steer.get("reason"),
         )

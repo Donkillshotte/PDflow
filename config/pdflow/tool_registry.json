@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "platform": "linux",
+  "default_timeout_seconds": 600,
+  "tools": [
+    {
+      "tool_id": "openroad",
+      "display_name": "OpenROAD",
+      "required": true,
+      "description": "Physical design database viewer and batch engine.",
+      "version_probe": ["-version"],
+      "launch_profiles": ["gui"],
+      "report_parsers": [],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["gui", "batch", "inspect", "generate"],
+      "executable_env": ["OPENROAD_BIN", "OPENROAD_EXE"],
+      "executable_candidates": ["{repo}/tools/native/bin/openroad", "openroad", "{repo}/tools/openroad/bin/openroad"],
+      "commands": {
+        "gui": ["{executable}", "-gui", "-no_splash", "-db", "{artifact}"],
+        "web": ["{executable}", "-no_init", "-no_splash", "-web", "-web_port", "{web_port}", "-db", "{artifact}"]
+      },
+      "input_kinds": ["odb", "tcl"],
+      "output_kinds": ["odb", "def", "gds", "spef"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    },
+    {
+      "tool_id": "opensta",
+      "display_name": "OpenSTA",
+      "required": true,
+      "description": "Static timing analysis and path extraction.",
+      "version_probe": ["-version"],
+      "launch_profiles": ["batch"],
+      "report_parsers": ["json", "sta_log"],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["batch", "inspect", "signoff", "compare"],
+      "executable_env": ["OPENSTA_BIN", "OPENSTA_EXE"],
+      "executable_candidates": ["{repo}/tools/native/bin/sta", "sta", "opensta", "{repo}/tools/opensta/bin/sta"],
+      "commands": {
+        "batch": ["{executable}", "{script}"]
+      },
+      "input_kinds": ["verilog", "liberty", "sdc", "spef"],
+      "output_kinds": ["json", "log"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    },
+    {
+      "tool_id": "klayout",
+      "display_name": "KLayout",
+      "required": true,
+      "description": "Layout viewer, DRC and LVS frontend.",
+      "version_probe": ["-v"],
+      "launch_profiles": ["gui", "batch"],
+      "report_parsers": ["lyrdb", "lvs_log"],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["gui", "batch", "inspect", "signoff", "compare"],
+      "executable_env": ["KLAYOUT_BIN", "KLAYOUT_CMD"],
+      "executable_candidates": ["{repo}/tools/native/bin/klayout", "klayout"],
+      "commands": {
+        "gui": ["{executable}", "{artifact}"]
+      },
+      "input_kinds": ["gds", "oas", "lyrdb", "cdl"],
+      "output_kinds": ["lyrdb", "netlist", "log"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    },
+    {
+      "tool_id": "yosys",
+      "display_name": "Yosys / ABC",
+      "required": true,
+      "description": "RTL synthesis, equivalence and formal helper.",
+      "version_probe": ["-V"],
+      "launch_profiles": ["batch"],
+      "report_parsers": ["json", "verilog"],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["batch", "generate", "compare", "inspect"],
+      "executable_env": ["YOSYS_BIN", "YOSYS_EXE"],
+      "executable_candidates": ["{repo}/tools/native/bin/yosys", "yosys"],
+      "commands": {
+        "batch": ["{executable}", "-s", "{script}"]
+      },
+      "input_kinds": ["verilog", "tcl"],
+      "output_kinds": ["verilog", "json", "log"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    },
+    {
+      "tool_id": "iverilog",
+      "display_name": "Icarus Verilog",
+      "required": true,
+      "description": "RTL and gate-level simulation.",
+      "version_probe": ["-V"],
+      "launch_profiles": ["batch"],
+      "report_parsers": ["vcd", "simulation_log"],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["batch", "simulation", "inspect"],
+      "executable_env": ["IVERILOG_BIN", "IVERILOG"],
+      "executable_candidates": ["{repo}/tools/native/bin/iverilog", "iverilog"],
+      "commands": {
+        "batch": ["{executable}", "{args}"]
+      },
+      "input_kinds": ["verilog", "vcd"],
+      "output_kinds": ["vvp", "vcd", "log"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    },
+    {
+      "tool_id": "ngspice",
+      "display_name": "ngspice",
+      "required": true,
+      "description": "System PDN and circuit simulation backend.",
+      "version_probe": ["-v"],
+      "launch_profiles": ["batch"],
+      "report_parsers": ["raw", "spice_log"],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["batch", "simulation", "signoff", "compare"],
+      "executable_env": ["NGSPICE_BIN", "NGSPICE_EXE"],
+      "executable_candidates": ["{repo}/tools/native/bin/ngspice", "ngspice"],
+      "commands": {
+        "batch": ["{executable}", "-b", "{script}"]
+      },
+      "input_kinds": ["spice", "json"],
+      "output_kinds": ["raw", "log", "json"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    },
+    {
+      "tool_id": "xyce",
+      "display_name": "Xyce",
+      "required": false,
+      "description": "Optional parallel SPICE backend.",
+      "version_probe": ["-v"],
+      "launch_profiles": ["batch"],
+      "report_parsers": ["prn", "spice_log"],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["batch", "simulation", "compare"],
+      "executable_env": ["XYCE_BIN"],
+      "executable_candidates": [
+        "Xyce",
+        "xyce",
+        "{repo}/learn/tools/xyce/bin/Xyce"
+      ],
+      "commands": {
+        "batch": ["{executable}", "{script}"]
+      },
+      "input_kinds": ["spice"],
+      "output_kinds": ["prn", "log", "json"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    },
+    {
+      "tool_id": "fastercap",
+      "display_name": "FasterCap",
+      "required": false,
+      "description": "Optional capacitance extraction backend.",
+      "version_probe": ["--version"],
+      "version_probe_exit_codes": [64],
+      "launch_profiles": ["batch"],
+      "report_parsers": ["json"],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["batch", "extract", "compare"],
+      "executable_env": ["FASTERCAP_BIN"],
+      "executable_candidates": [
+        "fastercap",
+        "FasterCap",
+        "{repo}/learn/tools/fastercap/FasterCap"
+      ],
+      "commands": {
+        "batch": ["{executable}", "{script}"]
+      },
+      "input_kinds": ["geometry"],
+      "output_kinds": ["json", "log"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    },
+    {
+      "tool_id": "vyges_em_ir",
+      "display_name": "Vyges EM/IR",
+      "required": false,
+      "description": "Native open power-grid EM/IR proxy for the live PDNSim mesh.",
+      "version_probe": ["-V"],
+      "launch_profiles": ["batch"],
+      "report_parsers": ["json", "emir_log"],
+      "status_mapping": {"exit_0": "PROXY", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["batch", "inspect", "simulation", "compare"],
+      "executable_env": ["VYGES_EM_IR"],
+      "executable_candidates": ["{repo}/tools/vyges-em-ir/vyges-em-ir", "vyges-em-ir"],
+      "commands": {
+        "batch": ["{executable}", "run", "{job}", "--json", "-o", "{output}"]
+      },
+      "input_kinds": ["spice", "pdn"],
+      "output_kinds": ["json", "log"],
+      "timeout_seconds": 600,
+      "required_dependencies": ["openroad"]
+    },
+    {
+      "tool_id": "hotspot",
+      "display_name": "HotSpot",
+      "required": false,
+      "description": "Optional thermal lab backend.",
+      "version_probe": ["-h"],
+      "version_probe_exit_codes": [1],
+      "version_label": "UVA HotSpot 7 (native)",
+      "launch_profiles": ["batch"],
+      "report_parsers": ["json"],
+      "status_mapping": {"exit_0": "PASS", "missing_dependency": "GAP", "timeout": "FAIL"},
+      "capabilities": ["batch", "simulation", "compare"],
+      "executable_env": ["HOTSPOT_BIN"],
+      "executable_candidates": ["hotspot", "{repo}/learn/tools/hotspot/hotspot"],
+      "commands": {
+        "batch": ["{executable}", "{args}"]
+      },
+      "input_kinds": ["thermal"],
+      "output_kinds": ["json", "log"],
+      "timeout_seconds": 600,
+      "required_dependencies": []
+    }
+  ]
+}

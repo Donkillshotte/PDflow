@@ -9,9 +9,9 @@
     "l_pkg": 3e-10
   },
   "mesh": {
-    "path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
-    "v_sources": 15,
-    "r_elements": 5816
+    "path": "/home/kalishot/PDflow/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
+    "v_sources": 14,
+    "r_elements": 5195
   },
   "evaluation": {
     "checks": [
@@ -35,5 +35,5 @@
   },
   "ok": true,
   "educational_note": "GCD has synthetic BUMPS pattern (PSM-0073), not tapeout bump LEF",
-  "summary": "Bumps 14 \u00b7 mesh V=15 R=5816"
+  "summary": "Bumps 14 \u00b7 mesh V=14 R=5195"
 }

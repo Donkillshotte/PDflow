@@ -4,6 +4,11 @@
 # via SYNTH_NETLIST_FILES (gate-level DSE .v is copied to 1_2_yosys.v).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" dse-handoff-finish \
+    bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 VARIANT="${FLOW_VARIANT:-}"
 NETLIST="${SYNTH_NETLIST_FILES:-}"
@@ -37,7 +42,7 @@ ln -sfn "${TUTORIAL_SRC}" "${TUTORIAL_ORFS}"
 SDC="${TUTORIAL_SRC}/constraint.sdc"
 [[ -f "${SDC}" ]] || { echo "FAIL missing ${SDC}" >&2; exit 1; }
 
-AS_BYTES="${PDN_AS_BYTES:-8589934592}"
+AS_BYTES="${PDN_AS_BYTES:-6442450944}"
 CPU_S="${PDN_CPU_S:-900}"
 CORE_UTILIZATION="${CORE_UTILIZATION:-35}"
 

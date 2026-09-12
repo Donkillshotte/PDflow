@@ -2,6 +2,7 @@
 # Build libdpn.so (native PDN solvers) and run dpn_test.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/scripts/rg_compat.sh"
 # shellcheck source=../../scripts/lib/jobs.sh
 source "${ROOT}/scripts/lib/jobs.sh"
 SRC="${ROOT}/engine"

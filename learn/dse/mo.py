@@ -58,7 +58,7 @@ def extract_wns(mem: DesignMemory) -> dict[str, float]:
     return out
 
 
-def baseline_wns(mem: DesignMemory) -> float | None:
+def reference_wns(mem: DesignMemory) -> float | None:
     for c in mem.by_level("logic"):
         if c.status != "ok" or c.knobs.get("name") != "liberty_default":
             continue
@@ -76,7 +76,7 @@ def logic_mo_rows(
     """F1 logic rows joined with F3: (abc_ops, area, wns_cost, power_w).
 
     `cone=True` keeps only cone-ABC rows so the SSK-GP does not mix the
-    chip flatten-first teacher (409.108) with hier-then-flatten cone maps.
+    chip flatten-first teacher (the current-run area) with hier-then-flatten cone maps.
     `cone="dpath"|"ctrl"` keeps one named cone — do not mix FSM and dpath
     maps in the same kernel.
     """
@@ -98,7 +98,7 @@ def logic_mo_rows(
 
 def timing_bound(mem: DesignMemory, *, slack_ns: float | None = None) -> bool:
     """True when measured/attributed slack is a real timing deficit (not IR)."""
-    wns = baseline_wns(mem)
+    wns = reference_wns(mem)
     if wns is not None:
         return wns > 0.05  # WNS < −50 ps
     if slack_ns is not None:

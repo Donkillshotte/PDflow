@@ -2,7 +2,7 @@
 # Install Sandia Xyce into learn/tools/xyce.
 # Primary: vlsida-eda linux-64 community build (Xyce 7.4) + system MPICH/OpenBLAS shims.
 # Fallback: serial Trilinos+Xyce source (heavy).
-# Does not drop ngspice. Do not restamp gold Dynamic IR 45.298.
+# Does not drop ngspice. Do not restamp reference Dynamic IR the current-run value.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PREFIX="${XYCE_PREFIX:-${ROOT}/learn/tools/xyce}"

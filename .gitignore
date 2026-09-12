@@ -8,6 +8,16 @@ flow-runs/
 studio/node_modules/
 studio/.next/
 studio/out/
+# Tauri/Rust and embedded runtime build products.
+studio/src-tauri/target/
+studio/node-runtime/
+*.AppImage
+*.deb
+# Root-level Next output from local development commands.
+.next/
+out/
+# Generated local Monaco runtime copied from the pinned npm dependency.
+studio/public/monaco/
 
 # Local secrets and env
 .env
@@ -36,10 +46,13 @@ __pycache__/
 *.py[cod]
 
 # Demo transient output (not reproducible, not part of the repo)
-tran_demo_out/
+tran_demo_out*
 
 # Local tuner DB
 learn/sim/dse/tpe_*.db
+
+# PDflow desktop/local-agent runtime (run manifests, candidate copies, logs)
+.pdflow/
 
 # ASAP7 6-track fetch (up to 6.8G). Not a finish.
 learn/lab/asap7/sc6t/lef/
@@ -58,3 +71,9 @@ learn/lab/asap7/pdk/
 learn/sim/dse/memory_flowlab_nl.jsonl
 learn/sim/dse/memory_flowlab_nl.index.json
 learn/sim/dse/memory_camp_spi_dse.index.json
+learn/sim/dse/live_run_*.json
+
+# Local enterprise E2E evidence; keep reproducible fixtures under source
+# control and regenerate dated runs with the native test scripts.
+learn/sim/pex/enterprise-e2e*/
+learn/sim/thermal/enterprise-e2e*/

@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,7 @@ sys.path[:0] = [str(ROOT / "learn"), str(ROOT / "learn" / "scripts")]
 from dse.cook import cook_one
 from dse.experiments import DESIGN_CATALOG, ExperimentLog
 from dse.knob_catalog import config_mk_for, parse_config_defaults
+from dse.live_paths import current_run_dir
 from dse.tune_score import TuneOutcome, evaluate
 from dse.tune_space import (
     bounds,
@@ -80,9 +82,13 @@ def _dists(defaults, FloatDistribution, IntDistribution, CategoricalDistribution
 
 def _db_path(design: str) -> Path:
     raw = os.environ.get("TPE_DB_DIR")
-    base = Path(raw) if raw else (ROOT / "learn" / "sim" / "dse")
+    if raw:
+        base = Path(raw)
+    else:
+        log_path = os.environ.get("PD_FLOW_EXPERIMENT_LOG")
+        base = (Path(log_path).parent / "tpe") if log_path else current_run_dir("product") / "tpe"
     base.mkdir(parents=True, exist_ok=True)
-    return base / f"tpe_{design}.db"
+    return base / f"tpe_{design}_{uuid.uuid4().hex}.db"
 
 
 def _make_study(design: str, optuna, TPESampler, dists):
@@ -219,6 +225,8 @@ def run_tpe(
 ) -> dict[str, Any]:
     if design not in DESIGN_CATALOG:
         return {"ok": False, "error": f"unknown design {design}"}
+    run_dir = current_run_dir("product")
+    os.environ.setdefault("PD_FLOW_EXPERIMENT_LOG", str(run_dir / "experiments.jsonl"))
     prev = preview_tune(design)
     if dry_run:
         return {**prev, "decision": "tune" if prev.get("admissible") else "skip", "dry_run": True}

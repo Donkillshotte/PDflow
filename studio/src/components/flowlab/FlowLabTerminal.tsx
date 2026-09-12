@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { Copy, Download, Trash2 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import {
   collapseOrfsLines,
@@ -55,6 +55,59 @@ function renderDisplay(items: DisplayLine[]) {
       </div>
     );
   });
+}
+
+const LOG_ROW_HEIGHT = 20;
+const MAX_MOUNTED_LOG_ROWS = 200;
+
+function VirtualLog({
+  display,
+  logRef,
+}: {
+  display: DisplayLine[];
+  logRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(320);
+  const rowCount = display.length;
+  const visibleRows = Math.min(
+    MAX_MOUNTED_LOG_ROWS,
+    Math.max(1, Math.ceil(viewportHeight / LOG_ROW_HEIGHT) + 24),
+  );
+  const first = Math.max(
+    0,
+    Math.min(
+      Math.floor(scrollTop / LOG_ROW_HEIGHT) - 12,
+      Math.max(0, rowCount - visibleRows),
+    ),
+  );
+  const last = Math.min(rowCount, first + visibleRows);
+
+  useEffect(() => {
+    const element = logRef.current;
+    if (!element) return;
+    setScrollTop(element.scrollTop);
+    setViewportHeight(element.clientHeight || 320);
+  }, [display, logRef]);
+
+  return (
+    <div
+      className="fl-terminal-body"
+      ref={logRef}
+      aria-live="polite"
+      onScroll={(event) => {
+        setScrollTop(event.currentTarget.scrollTop);
+        setViewportHeight(event.currentTarget.clientHeight || 320);
+      }}
+    >
+      <div className="fl-log-virtual-spacer" style={{ height: first * LOG_ROW_HEIGHT }} />
+      {renderDisplay(display.slice(first, last))}
+      <div
+        className="fl-log-virtual-spacer"
+        style={{ height: Math.max(0, rowCount - last) * LOG_ROW_HEIGHT }}
+      />
+    </div>
+  );
 }
 
 export function FlowLabTerminal({
@@ -145,20 +198,15 @@ export function FlowLabTerminal({
             <ul>
               {digest.noteworthy.map((n) => (
                 <li key={n.code}>
-                  <code>{n.code}</code> ×{n.count} — expected on GCD nangate45 if WNS≈−0.04
+                  <code>{n.code}</code> ×{n.count} — review against the current run
                 </li>
               ))}
             </ul>
           )}
         </div>
       )}
-      <div
-        className="fl-terminal-body"
-        ref={logRef}
-        aria-live="polite"
-        data-empty={empty || undefined}
-      >
-        {empty ? (
+      {empty ? (
+        <div className="fl-terminal-body" ref={logRef} data-empty>
           <div className="fl-terminal-empty">
             <p>
               Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or Run phase to start.
@@ -168,14 +216,16 @@ export function FlowLabTerminal({
               highlighted as errors.
             </p>
           </div>
-        ) : running && !log ? (
+        </div>
+      ) : running && !log ? (
+        <div className="fl-terminal-body" ref={logRef} data-empty>
           <div className="fl-terminal-empty">
             <p className="fl-pulse">Connecting to stream…</p>
           </div>
-        ) : (
-          renderDisplay(display)
-        )}
-      </div>
+        </div>
+      ) : (
+        <VirtualLog display={display} logRef={logRef} />
+      )}
     </div>
   );
 }

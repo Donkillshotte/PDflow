@@ -15,7 +15,7 @@ not 3D FEM, not CFD, not a foundry package. Pads still G_amb to ambient.
 Lumped Rth·I²R is a comparison, not the restamp ΔT when the mesh solves.
 Skin depth is reported; Nangate metal1 is thinner than δ at the GCD clock
 so Rac/Rdc ≈ 1. Weakly coupled R(T) TRAN (Solver A on restamped G) lives in
-pdn_dynamic.electrothermal_timestep_be — not gold, not a sub-ps DAE. Never ML.
+pdn_dynamic.electrothermal_timestep_be — not reference, not a sub-ps DAE. Never ML.
 """
 
 from __future__ import annotations
@@ -948,7 +948,7 @@ def timestep_thermal_be(sys: dict, P, dt: float, t_end: float, *, T0=None, n_tra
     }
 
 
-def ngspice_thermal_1node_gold(g_amb: float, c_th: float, p_w: float, dt: float, t_end: float) -> dict:
+def ngspice_thermal_1node_reference(g_amb: float, c_th: float, p_w: float, dt: float, t_end: float) -> dict:
     """ngspice analogue: voltage=ΔT, current=P, R=1/G_amb, C=C_th."""
     import shutil
     import subprocess

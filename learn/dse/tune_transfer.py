@@ -66,7 +66,7 @@ def _bases(rows: list[Any]) -> dict[str, Any]:
         if clock is not None and f"{float(e.clock_ns):.3f}" != f"{float(clock):.3f}":
             continue
         variant = str(getattr(e, "variant", "") or "")
-        if design not in out or variant == f"camp_{design}_base":
+        if design not in out:
             out[design] = e
     return out
 

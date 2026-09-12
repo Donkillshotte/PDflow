@@ -4,13 +4,15 @@
   "pillars": {
     "timing": {
       "ok": true,
-      "summary": "STA WNS -0.02 ns \u00b7 TNS -0.14 \u00b7 viol 16 \u00b7 leftover setup open (WNS -0.02 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only)",
+      "summary": "STA WNS -0.15 ns \u00b7 TNS -5.06 \u00b7 viol 43 \u00b7 leftover setup open (WNS -0.15 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only)",
       "leftover": {
         "setup_open": true,
-        "wns_ns": -0.02,
-        "setup_violations": 16,
+        "wns_ns": -0.15,
+        "setup_violations": 43,
+        "note": "Current invocation reports a VIOLATED path at the active SDC clock. Do not hide.",
         "clock_ns": 0.46,
-        "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
+        "worst_endpoint": "dpath.b_reg.out[5]$_DFFE_PP_/D",
+        "wns_kind": "register"
       },
       "mcmm_leftover": {
         "mcmm": false,
@@ -36,39 +38,42 @@
     },
     "equivalence": {
       "ok": true,
-      "summary": "LVS PASS \u00b7 errors 0 \u00b7 leftover must-connect 2 (DFF_X2)",
+      "summary": "LVS PASS \u00b7 errors 0 \u00b7 leftover must-connect 8 (XOR2_X1)",
       "leftover": {
-        "must_connect": 2,
+        "must_connect": 8,
         "circuits": [
-          "DFF_X2"
+          "XOR2_X1"
         ],
         "note": "Nangate split wells. Compare still matches. Do not hide."
       }
     },
     "power": {
       "ok": true,
-      "summary": "Chip IR 1.05 mV \u00b7 transient 9.47 mV \u00b7 IR meshes not comparable",
+      "summary": "Chip IR 2.11 mV \u00b7 transient 19.45 mV \u00b7 IR meshes not comparable",
       "ir_mesh_ledger": {
-        "comparable": false,
-        "n_meshes": 5
+        "comparable": null,
+        "comparison_scope": "same-live-extract only; distinct-live-mesh otherwise",
+        "n_meshes": 4
       }
     }
   },
   "ok": true,
-  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok \u00b7 leftover must-connect 2 (DFF_X2) \u00b7 leftover setup open (WNS -0.02 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only) \u00b7 antenna 300:1 in FreePDK45.lydrc \u00b7 leftover no density / named ERC \u00b7 IR meshes not comparable",
+  "summary": "timing:ok \u00b7 geometry:ok \u00b7 equivalence:ok \u00b7 power:ok \u00b7 leftover must-connect 8 (XOR2_X1) \u00b7 leftover setup open (WNS -0.15 at 0.46 ns) \u00b7 leftover no MCMM (typical.lib only) \u00b7 antenna 300:1 in FreePDK45.lydrc \u00b7 leftover no density / named ERC \u00b7 IR meshes not comparable",
   "leftover": {
-    "must_connect": 2,
+    "must_connect": 8,
     "circuits": [
-      "DFF_X2"
+      "XOR2_X1"
     ],
     "note": "Nangate split wells. Compare still matches. Do not hide."
   },
   "setup_leftover": {
     "setup_open": true,
-    "wns_ns": -0.02,
-    "setup_violations": 16,
+    "wns_ns": -0.15,
+    "setup_violations": 43,
+    "note": "Current invocation reports a VIOLATED path at the active SDC clock. Do not hide.",
     "clock_ns": 0.46,
-    "note": "Educational golden allows WNS \u2265 -0.04. Path is still VIOLATED at the course 0.46 ns clock. Do not hide."
+    "worst_endpoint": "dpath.b_reg.out[5]$_DFFE_PP_/D",
+    "wns_kind": "register"
   },
   "mcmm_leftover": {
     "mcmm": false,
@@ -88,7 +93,26 @@
     "note": "Antenna is in FreePDK45.lydrc. Density and named ERC are not. Do not invent rules."
   },
   "ir_mesh_ledger": {
-    "comparable": false,
-    "n_meshes": 5
+    "comparable": null,
+    "comparison_scope": "same-live-extract only; distinct-live-mesh otherwise",
+    "n_meshes": 4,
+    "meshes": [
+      {
+        "id": "dynamic_ir",
+        "comparison_scope": "same-live-extract"
+      },
+      {
+        "id": "chip_pdn",
+        "comparison_scope": "distinct-live-mesh"
+      },
+      {
+        "id": "vyges_em_ir",
+        "comparison_scope": "distinct-live-mesh"
+      },
+      {
+        "id": "system_pdn",
+        "comparison_scope": "distinct-live-mesh"
+      }
+    ]
   }
 }

@@ -2,7 +2,8 @@
 
 Two scripts, two abstractions. Files: `flow/scripts/global_route.tcl`, `detail_route.tcl` (ORFS 26Q2).
 
-`learn` numbers: GRT worst slack **−0.05 ns** / 43 viol; DRC report typically **empty**; finish SPEF −0.04 / 38 viol.
+Read GRT slack/violations, DRC, and finish SPEF timing from the current
+invocation. DRC cleanliness and timing closure are separate live checks.
 
 ---
 

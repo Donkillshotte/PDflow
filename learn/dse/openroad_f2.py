@@ -7,7 +7,7 @@ F5-lite: legalize + GRT + `detailed_route` + OpenRCX `extract_parasitics`
 F5-CTS: same place, then `clock_tree_synthesis` + legalize + GRT + DRT +
   OpenRCX. Clock is propagated. Not `make finish`, not a replacement for F5-lite.
 PDN extract: `place_pins` + tapcell + pdngen + GPL + `detailed_placement`
-  + `write_pg_spice` — a *new* R-graph, not the finish mesh, not gold.
+  + `write_pg_spice` — a *new* R-graph, not the finish mesh, not an archived result.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import sys
 from pathlib import Path
 
 from .sta_f3 import parse_sta_power
@@ -59,19 +60,26 @@ _REGION_BIN = re.compile(
 )
 
 
-def _openroad_python_env() -> dict[str, str]:
-    """Return a child env with an optional embedded-Python stdlib prefix.
+def _odb_export_env() -> dict[str, str]:
+    """Build an environment for the native SWIG ODB exporter.
 
-    User-space OpenROAD packages may ship Python extensions without the full
-    stdlib.  ``OPENROAD_PYTHONPATH`` is deliberately applied only to the
-    embedded ``openroad -python`` child, so the host Python keeps its own
-    version-matched stdlib and NumPy ABI.
+    Current OpenROAD builds expose ODB through the Python extension; they do
+    not accept the historical ``openroad -python`` command-line form.  Use
+    the running, ABI-matched Python interpreter and explicitly add the
+    installed ``_odb.so`` directory instead of silently falling back to a
+    shell/help invocation.
     """
+
     env = os.environ.copy()
-    extra = env.get("OPENROAD_PYTHONPATH", "").strip()
-    if extra:
-        current = env.get("PYTHONPATH", "").strip()
-        env["PYTHONPATH"] = f"{extra}{os.pathsep}{current}" if current else extra
+    odb_dir = env.get("OPENROAD_ODB_PYTHONPATH", "").strip()
+    if not odb_dir:
+        prefix = Path(env.get("PD_FLOW_EDA_PREFIX", Path.home() / ".local" / "pdflow-eda"))
+        odb_dir = str(prefix / "native-openroad" / "python")
+    entries = [item for item in (odb_dir, env.get("PYTHONPATH", "")) if item]
+    env["PYTHONPATH"] = os.pathsep.join(entries)
+    # A foreign PYTHONHOME can select a different stdlib than the extension's
+    # interpreter.  The native environment already supplies its libraries.
+    env.pop("PYTHONHOME", None)
     return env
 
 
@@ -169,7 +177,7 @@ def evaluate_gpl(
     top: str = "gcd",
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
     x_dbu: float | None = None,
     y_dbu: float | None = None,
     region: str | None = None,
@@ -270,7 +278,7 @@ def evaluate_grt(
     sdc: Path | None = None,
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
     sdf_out: Path | None = None,
 ) -> dict:
     """Place pins + GPL + global_route. Routing-level F2. Not detailed route/F5."""
@@ -376,7 +384,7 @@ def evaluate_f5_drt(
     sdc: Path | None = None,
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
     spef_out: Path | None = None,
     droute_end_iter: int = 2,
 ) -> dict:
@@ -562,7 +570,7 @@ def evaluate_f5_cts(
     top: str = "gcd",
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 90.0,
+    timeout_s: float = 600.0,
     spef_out: Path | None = None,
     verilog_out: Path | None = None,
     droute_end_iter: int = 2,
@@ -713,13 +721,13 @@ def extract_pdn(
     util: float = 35.0,
     density: float = 0.55,
     pkg_r: float = 0.05,
-    timeout_s: float = 60.0,
+    timeout_s: float = 600.0,
     x_dbu: float | None = None,
     y_dbu: float | None = None,
     region: str | None = None,
     region_density: float | None = None,
 ) -> dict:
-    """Place + legalize + pdngen + write_pg_spice. Not finish, not gold.
+    """Place + legalize + pdngen + write_pg_spice. Not finish, not an archived result.
 
     GPL without detailed_placement leaves cells off M1 followpins and
     analyze_power_grid fails connectivity. Do not use -skip_io here —
@@ -730,12 +738,12 @@ def extract_pdn(
             "status": "GAP",
             "reason": "openroad/LEF/PDN tcl missing",
             "via": "openroad_pdn_extract",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
         }
     verilog = Path(verilog)
     out_dir = Path(out_dir)
     if not verilog.is_file():
-        return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_pdn_extract", "gold": False}
+        return {"status": "fail", "reason": f"missing {verilog}", "via": "openroad_pdn_extract", "comparison_scope": "same-live-extract"}
     out_dir.mkdir(parents=True, exist_ok=True)
     spice = out_dir / "pg_vdd_bumps.sp"
     odb = out_dir / "candidate.odb"
@@ -751,7 +759,7 @@ def extract_pdn(
             "status": "GAP",
             "reason": f"{top} SDC missing — not borrowing gcd 0.46 ns",
             "via": "openroad_pdn_extract",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
         }
     tcl = f"""
 set_thread_count 1
@@ -794,7 +802,7 @@ exit
             "status": "fail",
             "reason": f"PDN extract timeout {timeout_s}s",
             "via": "openroad_pdn_extract",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "cost_s": time.time() - t0,
         }
     log = (proc.stdout or "") + "\n" + (proc.stderr or "")
@@ -808,24 +816,24 @@ exit
             "status": "fail",
             "reason": err or "pdn_extract_failed",
             "via": "openroad_pdn_extract",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "cost_s": time.time() - t0,
             "log": str(logp),
         }
     try:
         exp = subprocess.run(
-            ["openroad", "-python", "-no_init", "-exit", str(EXPORT_INSTS), str(odb), str(insts)],
+            [sys.executable, str(EXPORT_INSTS), str(odb), str(insts)],
             capture_output=True,
             text=True,
             timeout=min(30.0, timeout_s),
-            env=_openroad_python_env(),
+            env=_odb_export_env(),
         )
     except subprocess.TimeoutExpired:
         return {
             "status": "fail",
             "reason": "inst map export timeout",
             "via": "openroad_pdn_extract",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "spice": str(spice),
             "cost_s": time.time() - t0,
         }
@@ -834,7 +842,7 @@ exit
             "status": "fail",
             "reason": (exp.stderr or exp.stdout or "inst map export failed")[-300:],
             "via": "openroad_pdn_extract",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "spice": str(spice),
             "cost_s": time.time() - t0,
         }
@@ -856,11 +864,11 @@ exit
         "legalize": "detailed_placement",
         "top": top,
         "sdc": str(sdc_path),
-        "gold": False,
+        "comparison_scope": "same-live-extract",
         "via": (
             "openroad write_pg_spice after place_pins+tapcell+pdngen+GPL+DP"
             + (" + IR-bin density cap" if blk else "")
-            + " — candidate mesh, not finish, not gold"
+            + " — candidate mesh, not finish, not an archived result"
         ),
         "cost_s": time.time() - t0,
         **_parse_region_bin(log),
@@ -886,10 +894,10 @@ def extract_pdn_bumps(
     bump_size: float = 40.0,
     bump_interval: int = 3,
     pkg_r: float = 0.05,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
     insts_src: Path | str | None = None,
 ) -> dict:
-    """Same legalized ODB, denser bump sources. Not a new GPL, not gold, not pkg_r.
+    """Same legalized ODB, denser bump sources. Not a new GPL, not an archived result, not pkg_r.
 
     write_pg_spice voltage sources are ideal; on-die static IR moves with bump
     pitch. Package R stays a worker-side Thevenin pad (static_ir_pkg_mv).
@@ -899,12 +907,12 @@ def extract_pdn_bumps(
             "status": "GAP",
             "reason": "openroad/LEF/PDN tcl missing",
             "via": "openroad_pdn_bumps",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
         }
     odb = Path(odb)
     out_dir = Path(out_dir)
     if not odb.is_file():
-        return {"status": "fail", "reason": f"missing {odb}", "via": "openroad_pdn_bumps", "gold": False}
+        return {"status": "fail", "reason": f"missing {odb}", "via": "openroad_pdn_bumps", "comparison_scope": "same-live-extract"}
     out_dir.mkdir(parents=True, exist_ok=True)
     spice = out_dir / "pg_vdd_bumps.sp"
     out_odb = out_dir / "candidate.odb"
@@ -940,7 +948,7 @@ exit
             "status": "fail",
             "reason": f"PDN bump extract timeout {timeout_s}s",
             "via": "openroad_pdn_bumps",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "cost_s": time.time() - t0,
         }
     log = (proc.stdout or "") + "\n" + (proc.stderr or "")
@@ -954,18 +962,18 @@ exit
             "status": "fail",
             "reason": err or "pdn_bump_extract_failed",
             "via": "openroad_pdn_bumps",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "cost_s": time.time() - t0,
             "log": str(logp),
         }
     if out_odb.is_file():
         try:
             exp = subprocess.run(
-                ["openroad", "-python", "-no_init", "-exit", str(EXPORT_INSTS), str(out_odb), str(insts)],
+                [sys.executable, str(EXPORT_INSTS), str(out_odb), str(insts)],
                 capture_output=True,
                 text=True,
                 timeout=min(30.0, timeout_s),
-                env=_openroad_python_env(),
+                env=_odb_export_env(),
             )
             if exp.returncode != 0 or not insts.is_file():
                 insts = Path(insts_src) if insts_src and Path(insts_src).is_file() else insts
@@ -979,7 +987,7 @@ exit
             "status": "fail",
             "reason": "inst map missing after bump restamp",
             "via": "openroad_pdn_bumps",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "spice": str(spice),
             "cost_s": time.time() - t0,
         }
@@ -998,10 +1006,10 @@ exit
         "bump_size": float(bump_size),
         "bump_interval": int(bump_interval),
         "legalize": "reuse_odb",
-        "gold": False,
+        "comparison_scope": "same-live-extract",
         "via": (
             f"openroad write_pg_spice bump_dx={bump_dx} on the static-IR champ ODB "
-            "— same place, not a new GPL, not decap, not gold"
+            "— same place, not a new GPL, not decap, not an archived result"
         ),
         "cost_s": time.time() - t0,
     }
@@ -1016,10 +1024,10 @@ def extract_pdn_straps(
     m7_pitch: float = 30.0,
     m7_width: float = 1.40,
     pkg_r: float = 0.05,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
     insts_src: Path | str | None = None,
 ) -> dict:
-    """Same legalized ODB, denser metal4 straps. Not a new GPL, not bumps, not gold.
+    """Same legalized ODB, denser metal4 straps. Not a new GPL, not bumps, not an archived result.
 
     ``pdngen -ripup`` then ``-reset`` rebuilds the grid. Bump pitch stays the
     champ 140 µm so the residual is metal4-only. metal1 followpins unchanged.
@@ -1029,12 +1037,12 @@ def extract_pdn_straps(
             "status": "GAP",
             "reason": "openroad/LEF/PDN tcl missing",
             "via": "openroad_pdn_straps",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
         }
     odb = Path(odb)
     out_dir = Path(out_dir)
     if not odb.is_file():
-        return {"status": "fail", "reason": f"missing {odb}", "via": "openroad_pdn_straps", "gold": False}
+        return {"status": "fail", "reason": f"missing {odb}", "via": "openroad_pdn_straps", "comparison_scope": "same-live-extract"}
     out_dir.mkdir(parents=True, exist_ok=True)
     spice = out_dir / "pg_vdd_bumps.sp"
     out_odb = out_dir / "candidate.odb"
@@ -1080,7 +1088,7 @@ exit
             "status": "fail",
             "reason": f"PDN strap extract timeout {timeout_s}s",
             "via": "openroad_pdn_straps",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "cost_s": time.time() - t0,
         }
     log = (proc.stdout or "") + "\n" + (proc.stderr or "")
@@ -1094,18 +1102,18 @@ exit
             "status": "fail",
             "reason": err or "pdn_strap_extract_failed",
             "via": "openroad_pdn_straps",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "cost_s": time.time() - t0,
             "log": str(logp),
         }
     if out_odb.is_file():
         try:
             exp = subprocess.run(
-                ["openroad", "-python", "-no_init", "-exit", str(EXPORT_INSTS), str(out_odb), str(insts)],
+                [sys.executable, str(EXPORT_INSTS), str(out_odb), str(insts)],
                 capture_output=True,
                 text=True,
                 timeout=min(30.0, timeout_s),
-                env=_openroad_python_env(),
+                env=_odb_export_env(),
             )
             if exp.returncode != 0 or not insts.is_file():
                 insts = Path(insts_src) if insts_src and Path(insts_src).is_file() else insts
@@ -1119,7 +1127,7 @@ exit
             "status": "fail",
             "reason": "inst map missing after strap restamp",
             "via": "openroad_pdn_straps",
-            "gold": False,
+            "comparison_scope": "same-live-extract",
             "spice": str(spice),
             "cost_s": time.time() - t0,
         }
@@ -1138,10 +1146,10 @@ exit
         "m7_pitch": float(m7_pitch),
         "m7_width": float(m7_width),
         "legalize": "reuse_odb",
-        "gold": False,
+        "comparison_scope": "same-live-extract",
         "via": (
             f"openroad pdngen -ripup metal4 pitch={m4_pitch} on the static-IR champ ODB "
-            "— same place, not bumps, not a new GPL, not gold"
+            "— same place, not bumps, not a new GPL, not an archived result"
         ),
         "cost_s": time.time() - t0,
     }

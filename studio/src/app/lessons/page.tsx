@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SurfaceRail } from "@/components/SurfaceRail";
 import { LESSONS, readProgress } from "@/lib/course";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +9,6 @@ export default function LessonsPage() {
 
   return (
     <main>
-      <SurfaceRail />
       <header className="page-head">
         <h1>Lessons</h1>
         <p>

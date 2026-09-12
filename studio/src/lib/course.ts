@@ -2,7 +2,9 @@ import fs from "fs";
 import path from "path";
 import { assertUnder } from "./pathGuard";
 
-export const REPO_ROOT = path.resolve(process.cwd(), "..");
+export const REPO_ROOT = process.env.PD_FLOW_REPO_ROOT
+  ? path.resolve(process.env.PD_FLOW_REPO_ROOT)
+  : path.resolve(process.cwd(), "..");
 export const LEARN_ROOT = path.join(REPO_ROOT, "learn");
 export const SCRIPTS_ROOT = path.join(REPO_ROOT, "scripts");
 

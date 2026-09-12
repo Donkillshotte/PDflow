@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdflow.local/schemas/artifact.schema.json",
+  "title": "PDflow ArtifactRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_id",
+    "kind",
+    "scope",
+    "variant",
+    "relative_path",
+    "content_hash",
+    "size",
+    "mtime_ns",
+    "revision",
+    "producer",
+    "run_id",
+    "authority",
+    "mutable"
+  ],
+  "properties": {
+    "artifact_id": {"type": "string", "minLength": 8},
+    "kind": {"type": "string", "minLength": 1},
+    "scope": {"enum": ["product", "flow", "package", "lab", "generated"]},
+    "variant": {"type": "string", "minLength": 1},
+    "relative_path": {"type": "string", "minLength": 1},
+    "content_hash": {"type": ["string", "null"]},
+    "size": {"type": "integer", "minimum": 0},
+    "mtime_ns": {"type": "integer", "minimum": 0},
+    "revision": {"type": "integer", "minimum": 0},
+    "producer": {"type": "string", "minLength": 1},
+    "run_id": {"type": ["string", "null"]},
+    "authority": {"enum": ["finish", "candidate", "generated", "source"]},
+    "mutable": {"type": "boolean"}
+  }
+}

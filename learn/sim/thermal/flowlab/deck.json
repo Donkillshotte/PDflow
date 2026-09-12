@@ -1,9 +1,9 @@
 {
-  "die_w_m": 4.4384999999999996e-05,
-  "die_h_m": 4.4384999999999996e-05,
+  "die_w_m": 4.193e-05,
+  "die_h_m": 4.193e-05,
   "n_blocks": 4,
-  "watts_total": 0.00817,
-  "watts_per_block": 0.0020425,
-  "flp": "/workspace/learn/sim/thermal/flowlab/gcd.flp",
-  "ptrace": "/workspace/learn/sim/thermal/flowlab/gcd.ptrace"
+  "watts_total": 0.000791,
+  "watts_per_block": 0.00019775,
+  "flp": "/home/kalishot/PDflow/learn/sim/thermal/flowlab/gcd.flp",
+  "ptrace": "/home/kalishot/PDflow/learn/sim/thermal/flowlab/gcd.ptrace"
 }

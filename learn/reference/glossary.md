@@ -140,7 +140,7 @@ Alphabetical reference. Return here during every lesson.
 
 **Power chain** — Studio sequence: `activity_power` → `chip_pdn_ir` → `system_pdn` → export (`run_power_chain.sh`). Guide: [spice-power-chain.md](./spice-power-chain.md).
 
-**period_min** — Minimum period (ns) for which STA, with *that* RC model, sees no negative WNS. fmax ≈ `1000 / period_min` MHz. At finish on the gold run is **0.50 ns** (~2011 MHz) vs SDC **0.46 ns** (~2174 MHz): target not closed.
+**period_min** — Minimum period (ns) for which STA, with *that* RC model, sees no negative WNS. fmax ≈ `1000 / period_min` MHz. Always read this from the current finish report; the repository does not prescribe a numeric result.
 
 **Placement** — Assign position (x,y) to every cell.
 
@@ -152,7 +152,10 @@ Alphabetical reference. Return here during every lesson.
 
 **Resizer (RSZ)** — OpenROAD tool that inserts buffers, upsizes, clones for timing.
 
-**RSZ-0062** — Warning: resizer **did not** repair all setup. On GCD `learn` appears at CTS (`Inserted 45`) and the flow **continues**. This is not area overflow: that is **DPL-0038**.
+**RSZ-0062** — Warning: the resizer did not repair all setup. If it appears
+in the current CTS log, inspect the active repair result and continue only
+when the current flow permits it. This is not area overflow: that is
+**DPL-0038**.
 
 **RTL** — Register Transfer Level; behavioral Verilog pre-synthesis.
 
@@ -204,7 +207,7 @@ Alphabetical reference. Return here during every lesson.
 
 **vyges-em-ir** — Apache-2.0 engine ([vyges-tools/em-ir](https://github.com/vyges-tools/em-ir)): static IR CG + backward-Euler transient on a `.pdn`. Integrated on GCD via `run_vyges_em_ir.sh`. Bootstrap and simultaneous-switch check — **not** the platform core.
 
-**Dynamic IR (I(t))** — Course engine (`pdn_dynamic.py`): I(t) per pin + **Solver A** (LU gold) + **Solver B** (SA-AMG) + scenario ranking on same A. This is not CCS nor VCD pin-accurate.
+**Dynamic IR (I(t))** — Course engine (`pdn_dynamic.py`): I(t) per pin + **Solver A** (DirectLU) + **Solver B** (SA-AMG) + scenario ranking on the same live operator. This is not CCS nor VCD pin-accurate.
 
 ---
 

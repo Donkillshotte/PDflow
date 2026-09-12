@@ -15,7 +15,6 @@ reports/*
 !reports/pdn_chip_ir_flowlab.json
 !reports/system_pdn_flowlab.json
 !reports/thermal_signoff_flowlab.json
-!reports/dynamic_ir_flowlab.json
 !reports/dynamic_ir_flowlab_direct.json
 !reports/vyges_em_ir_flowlab.json
 !reports/sta_ir_aware_flowlab.json
@@ -43,6 +42,7 @@ reports/dse_camp_spi_dse.json
 previews/
 dse/netlists/
 dse/extracts/
+dse/live/
 dse/tpe_*.db
 dse/arrivals/
 dse/sdf/

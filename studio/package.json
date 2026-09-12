@@ -7,11 +7,17 @@
     "npm": ">=10"
   },
   "scripts": {
-    "dev": "next dev -H 127.0.0.1 -p 43217",
-    "build": "next build",
+    "predev": "node scripts/prepare_monaco_assets.mjs",
+    "dev": "next dev --webpack -H 127.0.0.1 -p 43217",
+    "prebuild": "node scripts/prepare_monaco_assets.mjs",
+    "build": "../scripts/run_resource_job.sh studio-next-build ./node-runtime/node node_modules/next/dist/bin/next build --webpack",
+    "prestart": "node scripts/prepare_monaco_assets.mjs",
     "start": "next start -H 127.0.0.1 -p 43217",
     "lint": "eslint .",
-    "smoke": "npm run build"
+    "smoke": "npm run build",
+    "agent": "PYTHONPATH=../learn python3 -m pdflow_agent --repo-root ..",
+    "desktop:dev": "../scripts/run_resource_job.sh studio-tauri-dev bash -lc 'source ../scripts/native_eda_env.sh && exec cargo tauri dev'",
+    "desktop:build": "../scripts/run_resource_job.sh studio-tauri-build bash -lc 'source ../scripts/native_eda_env.sh && exec cargo tauri build'"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

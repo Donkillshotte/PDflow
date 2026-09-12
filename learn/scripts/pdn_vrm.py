@@ -2,7 +2,7 @@
 """Lumped VRM → package → die descriptor (N4).
 
 On a 0.46 ns GCD clock window a 47 µF VRM capacitor is a stiff voltage
-source — N3 (ideal Vsrc + bump R+L) is the right gold for that slice.
+source — N3 (ideal Vsrc + bump R+L) is the numerical reference for that slice.
 N4 is the coupled MNA of a VRM ladder + die node, for µs load-steps and
 for architecture (one descriptor, not a second ngspice-only world).
 
@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -382,7 +383,7 @@ def timestep_descriptor(sys: dict, i_die, dt: float, t_end: float, vdd: float, l
     }
 
 
-def ngspice_strap_rlc_gold(
+def ngspice_strap_rlc_reference(
     *,
     vdd=1.1,
     r_pkg=0.05,
@@ -480,7 +481,7 @@ quit
     }
 
 
-def ngspice_vrm_die_gold(*, vdd, r_vrm, l_vrm, c_vrm, r_pkg, l_pkg, c_die, i_peak, t50, dur, dt, t_end) -> dict:
+def ngspice_vrm_die_reference(*, vdd, r_vrm, l_vrm, c_vrm, r_pkg, l_pkg, c_die, i_peak, t50, dur, dt, t_end) -> dict:
     """ngspice gear maxord=1 vs compact VRM+die BE."""
     from pdn_current import triangle_above_leak
 
@@ -495,9 +496,17 @@ def ngspice_vrm_die_gold(*, vdd, r_vrm, l_vrm, c_vrm, r_pkg, l_pkg, c_die, i_pea
         vdd,
         events=[{"idx": 0, "t50_s": t50, "dur_s": dur, "i_pulse": i_peak, "i_leak": 0.0}],
     )
+    if not shutil.which("ngspice"):
+        return {
+            "ok": False,
+            "status": "GAP",
+            "reason": "ngspice is not installed in this environment",
+            "be_vmin": be["worst_voltage"],
+            "ngspice_vmin": None,
+        }
     t0 = max(t50 - 0.5 * dur, 0.0)
     t1 = t50 + 0.5 * dur
-    tmp = Path(tempfile.mkdtemp(prefix="dynir-n4-gold-"))
+    tmp = Path(tempfile.mkdtemp(prefix="dynir-n4-reference-"))
     sp_path = tmp / "n4.sp"
     dat_path = tmp / "n4.dat"
     sp_path.write_text(
@@ -568,7 +577,7 @@ def _read_vmin_wrdata(paths) -> float | None:
     return None
 
 
-def ngspice_coupled_l_gold(
+def ngspice_coupled_l_reference(
     *,
     vdd=1.1,
     r_pkg=0.05,
@@ -718,7 +727,7 @@ def write_xyce_rlc_deck(
     dt: float,
     t_end: float,
 ) -> str:
-    """Xyce-format TRAN deck: R/L/C/PWL/.TRAN/.PRINT. Same circuit as ngspice N4 gold."""
+    """Xyce-format TRAN deck: R/L/C/PWL/.TRAN/.PRINT. Same circuit as the ngspice N4 reference."""
     t0 = max(t50 - 0.5 * dur, 0.0)
     t1 = t50 + 0.5 * dur
     csv_path = path.with_suffix(".csv")
@@ -739,8 +748,8 @@ Iload nd 0 PWL(0 0 {t0:.6e} 0 {t50:.6e} {i_peak:.6e} {t1:.6e} 0 {t_end:.6e} 0)
     return text
 
 
-def xyce_vrm_die_gold(**kwargs) -> dict:
-    """Run the Xyce N4 deck if Xyce is in PATH; otherwise GAP with the deck as the contract."""
+def xyce_vrm_die_reference(**kwargs) -> dict:
+    """Run the current Xyce N4 deck if Xyce is in PATH; otherwise GAP with the deck as the contract."""
     from pdn_current import triangle_above_leak
 
     vdd = kwargs.get("vdd", 1.1)

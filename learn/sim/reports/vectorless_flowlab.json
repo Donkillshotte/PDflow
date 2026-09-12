@@ -6,28 +6,28 @@
   "vectorless": {
     "exists": true,
     "source": "vectorless global 0.5",
-    "total_w": 0.0049,
-    "i_avg_a": 0.004454545454545454,
-    "ir_straps_mv": 6.37,
-    "log": "/workspace/learn/sim/reports/power_vectorless_flowlab.log"
+    "total_w": 0.0044,
+    "i_avg_a": 0.004,
+    "ir_straps_mv": 5.46,
+    "log": "/home/kalishot/PDflow/learn/sim/reports/power_vectorless_flowlab.log"
   },
   "dynamic": {
     "exists": true,
-    "source": "vcd /workspace/learn/sim/gcd/gcd_gate.vcd scope tb_gcd_gate/dut",
-    "total_w": 0.000779,
-    "i_avg_a": 0.0007081818181818181,
-    "ir_straps_mv": 0.9859999999999999,
-    "log": "/workspace/learn/sim/reports/power_dynamic_flowlab.log"
+    "source": "vcd /home/kalishot/PDflow/learn/sim/gcd/gcd_gate.vcd scope tb_gcd_gate/dut",
+    "total_w": 0.000792,
+    "i_avg_a": 0.0007199999999999999,
+    "ir_straps_mv": 2.11,
+    "log": "/home/kalishot/PDflow/learn/sim/reports/power_dynamic_flowlab.log"
   },
   "design": {
-    "instances": 1160,
+    "instances": 1100,
     "sequential": 35
   },
   "envelope": {
-    "budget_a": 0.013363636363636362,
-    "spent_a": 0.013363636363636362,
-    "n": 622,
-    "n_skipped_fill": 538,
+    "budget_a": 0.012,
+    "spent_a": 0.012,
+    "n": 566,
+    "n_skipped_fill": 534,
     "p_combo": 0.5,
     "p_seq": 0.1,
     "p01_combo": 0.25,
@@ -35,57 +35,57 @@
     "crest": 3.0,
     "hottest": [
       {
-        "name": "_648_",
-        "cell": "OAI21_X4",
+        "name": "clone232",
+        "cell": "BUF_X16",
         "seq": false,
-        "i_a": 7.040159651662005e-05
+        "i_a": 0.00013228030650432987
       },
       {
-        "name": "_707_",
-        "cell": "AOI21_X4",
+        "name": "place140",
+        "cell": "BUF_X16",
         "seq": false,
-        "i_a": 6.227842539826394e-05
+        "i_a": 0.00012941393543133644
       },
       {
-        "name": "_856_",
+        "name": "_625_",
         "cell": "NAND4_X4",
         "seq": false,
-        "i_a": 6.224184983813804e-05
+        "i_a": 0.00011538455301269055
       },
       {
-        "name": "_602_",
-        "cell": "NAND2_X4",
+        "name": "_820_",
+        "cell": "NAND4_X4",
         "seq": false,
-        "i_a": 5.9554696746098424e-05
+        "i_a": 0.00010925502463533899
       },
       {
-        "name": "_693_",
-        "cell": "NAND2_X4",
+        "name": "_635_",
+        "cell": "NAND4_X4",
         "seq": false,
-        "i_a": 5.903932510577276e-05
+        "i_a": 0.00010911417878504108
       },
       {
-        "name": "_600_",
-        "cell": "NAND2_X4",
+        "name": "_809_",
+        "cell": "NAND4_X4",
         "seq": false,
-        "i_a": 5.8911306153336656e-05
+        "i_a": 0.00010240939055916715
       },
       {
-        "name": "_691_",
-        "cell": "NAND2_X4",
+        "name": "_802_",
+        "cell": "NAND4_X4",
         "seq": false,
-        "i_a": 5.8309478214651194e-05
+        "i_a": 9.308186696521563e-05
       },
       {
-        "name": "_688_",
-        "cell": "NAND2_X4",
+        "name": "clone224",
+        "cell": "BUF_X16",
         "seq": false,
-        "i_a": 5.7405172890648883e-05
+        "i_a": 9.217240985033992e-05
       }
     ]
   },
-  "ir_mesh_vectorless_mv": null,
-  "summary": "Vectorless P=0.0049 W \u00b7 I_avg=4.4545e-03 A \u00b7 dynamic P=0.000779 W \u00b7 source vcd /workspace/learn/sim/gcd/gcd_gate.vcd scope tb_gcd_gate/dut",
+  "ir_mesh_vectorless_mv": 35.21109549695445,
+  "summary": "Vectorless P=0.0044 W \u00b7 I_avg=4.0000e-03 A \u00b7 dynamic P=0.000792 W \u00b7 source vcd /home/kalishot/PDflow/learn/sim/gcd/gcd_gate.vcd scope tb_gcd_gate/dut",
   "references": [
     "Najm, Proc. IEEE 1994, power estimation / switching probability",
     "Kouroussis & Najm, DAC 2003, vectorless IR current constraints"

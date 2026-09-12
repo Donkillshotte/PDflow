@@ -14,7 +14,7 @@ This is the most important lesson in the course. If SDC is wrong, **all** physic
 1. This README
 2. `LAB.md` for this lesson (90–120 min)
 3. `learn/workbook/README.md` chapter A
-4. `learn/reference/golden-metrics.md` (master table)
+4. `learn/reference/live-analysis.md` (current-run contract)
 5. `learn/reference/gui-openroad.md` Charts section
 
 ## What is SDC?
@@ -108,14 +108,12 @@ So SDC **is not just timing**. It is an input to **floorplan**.
 
 Do not compare synth slack with finish slack as if they were the same metric.
 
-## Reference run (golden table)
+## Current-run worksheet
 
-File: `learn/reference/golden-metrics.md`.
-
-On course default (util 35, 0.46 ns) at **place** worst slack is **+0.01 ns** and
-`period_min` **0.45 ns**; at **finish** WNS **−0.04**, `period_min` **0.50 ns** (~2.01 GHz).
-SDC target ~2.17 GHz **is not** closed. LAB relaxed/tight sweep measures
-how much SDC shifts these numbers, not “whether make is green”.
+Record the SDC, stage, report path, WNS, TNS, and `period_min` from the
+invocation you just ran. Compare relaxed and tight experiments only when their
+run identities and input contracts are written down; the course provides no
+fixed expected metric.
 
 ## Exercises (summary — detail is in the LAB)
 

@@ -10,7 +10,7 @@ Studio. It does not replace official manuals: operational map for GCD/`learn`.
 | `-gui` | Qt layout viewer | `POST /api/open` · **Open GUI** button |
 | `-web -web_port N -db file.odb` | Web viewer (Leaflet + WebSocket) | `POST /api/viewer` · **Open Web Viewer** |
 | `-db file.odb` | Load ODB at startup | Viewer and Tcl sessions |
-| `-python` | Python `odb` API (DB) | `GET /api/inspect` → inst/net/die |
+| native Tcl DB API | OpenROAD ODB statistics | agent-owned `inspect_stage` → inst/net/die |
 | `-metrics file.json` | Flow metrics in JSON | useful in ORFS scripts / debug |
 | `-no_init -no_splash -exit` | Non-interactive batch | smoke, inspect, capture |
 | `gui::*` Tcl | fit, layer, highlight, save_image… | `learn/scripts/gui_session.tcl`, atlas |
@@ -109,7 +109,7 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 | **Magic** | PARTIAL | installed; tech `minimum` — no FreePDK45 |
 | **Netgen** | PARTIAL | `netgen-lvs`; LVS signoff = KLayout |
 | **EQY / sby** | MAPPED | Yosys `equiv_*` and `sat -tempinduct` |
-| **Xyce** | INTEGRATED | `install_xyce.sh` · N4 dual-solver gold · ngspice still covers System PDN |
+| **Xyce** | INTEGRATED | `install_xyce.sh` · N4 dual-solver current-run check · ngspice still covers System PDN |
 | **FasterCap / Raphael / StarRC** | MAPPED/GAP | OpenRCX + analytical PEX |
 | **open_pdks** | GAP | Sky130/gf180, not this course |
 | **Icarus** | INTEGRATED | `rtl_sim` (RTL VCD) + `gate_sim` (name-join VCD) |
@@ -124,7 +124,7 @@ See the matrix in [oss-integrations.md](./oss-integrations.md).
 |---|---|
 | `/api/open` | OpenROAD `-gui`, KLayout, deep-link **run**, **webviewer** |
 | `/api/viewer` | OpenROAD `-web` |
-| `/api/inspect` | OpenROAD `-python`, OpenSTA, Yosys |
+| `/api/inspect` | agent-owned OpenROAD, OpenSTA, Yosys native inspection |
 | `/api/suite` | collaborative hook matrix (toolchain → signoff) |
 | `/api/results` | ORFS results/reports/logs files |
 | `/api/run/stream` | ORFS make + `rtl_sim` / `gate_sim` / `vectorless` / `vyges_em_ir` / `dynamic_ir` / `yosys_equiv` / `formal_gcd` / `openrcx_report` / `analytical_pex` / `ccs_char` / `activity_power` / `chip_pdn_ir` / `system_pdn` / `power_chain` / `thermal_signoff` / `pkg_rdl` / `spice_engines` / `klayout_drc` |

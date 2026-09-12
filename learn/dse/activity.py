@@ -65,7 +65,7 @@ def _parse_saif(text: str, *, path: Path) -> dict:
         "n_inst": len(toggles),
         "n_toggle": n,
         "density": dens,
-        "not": "an invented VCD remap / gold restamp",
+        "not": "an invented VCD remap / reference restamp",
     }
 
 
@@ -97,7 +97,7 @@ def _parse_vcd(text: str, *, path: Path) -> dict:
         "n_inst": len(edges),
         "n_toggle": n,
         "density": dens,
-        "not": "an invented VCD remap / gold restamp",
+        "not": "an invented VCD remap / reference restamp",
     }
 
 

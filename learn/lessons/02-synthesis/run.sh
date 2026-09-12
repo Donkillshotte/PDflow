@@ -4,7 +4,7 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Theory"
-  ui_note "Read: learn/lessons/02-synthesis/README.md, walkthrough-synth.tcl.md, golden-metrics.md (Synth row)."
+  ui_note "Read: learn/lessons/02-synthesis/README.md, walkthrough-synth.tcl.md, live-analysis.md."
   learn_atlas "win_synth.png"
   learn_make_hint synth
   ui_pause
@@ -19,8 +19,8 @@ lesson_main() {
   ui_section "Exercise 2-B — Read the netlist"
   ui_print_file "Post-synth netlist" "$(learn_artifact 1_2_yosys.v)" 35
   ui_print_file "Synth statistics" "$(learn_report synth_stat.txt)" 30
-  learn_golden
-  ui_note "Reference synth_stat: 496 cells, 35 DFF_X1, area 628.824."
+  learn_live_analysis
+  ui_note "Read cell counts and area from the current synth_stat.txt; no stored synthesis result is a target."
   ui_pause
 
   ui_section "Exercise 2-C — Analyze Yosys log"

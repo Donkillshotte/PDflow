@@ -3,7 +3,7 @@
 The floorplan is pinned (die area, size, shape). A challenger that
 moved the die is not a product result.
 
-Historical P0–P7 §5 stays in eval_campaign.py.
+Comparisons are valid only when both records belong to the same invocation.
 """
 from __future__ import annotations
 

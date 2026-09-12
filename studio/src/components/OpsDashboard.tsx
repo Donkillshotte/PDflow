@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
+import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type PipelineRow = {
   stage: string;
@@ -51,10 +53,12 @@ export function OpsDashboard({
   refreshKey?: number;
   onOpenStage?: (stage: string) => void;
 }) {
+  const router = useRouter();
   const [data, setData] = useState<JobsPayload | null>(null);
   const [selected, setSelected] = useState<JobRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [forceUnlockOpen, setForceUnlockOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,8 +79,14 @@ export function OpsDashboard({
   }, [load, refreshKey]);
 
   async function forceUnlock() {
-    await fetch("/api/jobs?force=1", { method: "DELETE" });
-    await load();
+    setForceUnlockOpen(false);
+    try {
+      const response = await fetch("/api/jobs?force=1", { method: "DELETE" });
+      if (!response.ok) throw new Error(`Force unlock HTTP ${response.status}`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Force unlock failed");
+    }
   }
 
   function exportLog(job: JobRow) {
@@ -103,7 +113,7 @@ export function OpsDashboard({
             {loading ? "Refreshing…" : "Refresh"}
           </button>
           {data?.lock && (
-            <button type="button" className="btn-danger" onClick={forceUnlock}>
+            <button type="button" className="btn-danger" onClick={() => setForceUnlockOpen(true)}>
               Force unlock
             </button>
           )}
@@ -131,7 +141,7 @@ export function OpsDashboard({
               )}
               onClick={() => {
                 if (onOpenStage) onOpenStage(row.stage);
-                else window.location.href = `/tools?stage=${row.stage}&tab=results`;
+                else router.push(`/tools?stage=${row.stage}&tab=results`);
               }}
               title={`Open ${row.stage} dashboard`}
             >
@@ -225,6 +235,16 @@ export function OpsDashboard({
           <pre className="run-log">{selected.logTail || "(empty log)"}</pre>
         </aside>
       )}
+
+      <ConfirmDialog
+        open={forceUnlockOpen}
+        title="Force unlock the runtime?"
+        body="Use this only for a stale or orphaned lock after confirming that no native process is still running. It does not cancel a live job."
+        confirmLabel="Force unlock"
+        danger
+        onCancel={() => setForceUnlockOpen(false)}
+        onConfirm={() => void forceUnlock()}
+      />
     </div>
   );
 }

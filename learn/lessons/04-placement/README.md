@@ -14,20 +14,15 @@ Placement is the moment when the design **occupies space**. Before: cells in a p
 
 1. This README
 2. `walkthrough-global_place.tcl.md`
-3. `golden-metrics.md` Place / CTS DPL section line by line
+3. `live-analysis.md` and the current placement report line by line
 4. Atlas §5.5–5.6 (`win_place_gp.png` vs `win_place_dp.png`)
 5. `LAB.md` lesson 04
 
-## A reference `learn` run
+## Current-run worksheet
 
-| Stage | Area / util | Slack |
-|---|---|---|
-| Post-synth (in core) | ~629 µm² / 37% | (liberty) |
-| Post-resizer `3_4` | **684 µm² / 40%** | worst slack **+0.01 ns**, 0 setup viol |
-| `period_min` place | **0.45 ns** (~2240 MHz) | still **ideal clock** |
-| CTS after (lesson 05) | 828 µm² / **48.3%** | −0.04 ns, clock **propagated** |
-
-Resizer already ate ~55 µm² before CTS. The 45 buffers from lesson 05 start here, not from zero.
+Record area, utilization, wirelength, overflow, and timing from the current
+placement reports. Compare global and detailed placement only when both ODBs
+belong to the selected invocation.
 
 ## The mathematical problem (intuition)
 

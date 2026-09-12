@@ -68,19 +68,22 @@ Do not look for a “chip”: floorplan does not exist yet. Atlas: `gui-atlas.md
 
 ## Timing at this stage
 
-`sta` + liberty + netlist + SDC = delay **without wires**. Optimistic WNS or not comparable to finish (−0.04 ns SPEF on the reference run).
+`sta` + liberty + netlist + SDC = delay **without wires**. Treat its WNS as a
+stage-local live measurement; it is not directly comparable to a finish run
+with SPEF because the artifact contracts differ.
 
-## A reference `learn` run (`synth_stat.txt`)
+## Current `learn` run (`synth_stat.txt`)
 
-| Item | Value |
+| Item | Read from the current file |
 |---|---|
-| Cells | 496 |
-| Area | 628.824 |
-| `DFF_X1` | 35 (≈25% sequential area) |
-| `NAND2_X1` | 128 |
-| `CLKBUF_*` already in synth | 2 (not CTS) |
+| Cells | `Number of cells` |
+| Area | `Chip area` |
+| `DFF_X1` | Current sequential-cell count |
+| `NAND2_X1` | Current mapped-cell count |
+| `CLKBUF_*` already in synth | Current synthesis count, before CTS |
 
-Your numbers: same table in the notebook. If DFFs disappear, Yosys optimized away registers: **RTL bug** or wrong `current_design`.
+Record the values from this invocation in the notebook. If DFFs disappear,
+Yosys optimized away registers: **RTL bug** or wrong `current_design`.
 
 ## How to read `synth_stat.txt`
 
@@ -88,14 +91,14 @@ The file is a Yosys statistics dump. Look for:
 
 | Field | Why |
 |---|---|
-| `Number of cells` | 496 on the golden run — if 0, synth did not map |
-| `DFF_X1` | 35 — must match `rg -c 'DFF_'` on `.v` except aliases |
-| `Chip area` | 628.824 — liberty units, not floorplan µm² |
-| `CLKBUF_*` | 2 already in synth: **not** the CTS tree |
+| `Number of cells` | count in the current log; if 0, synth did not map |
+| `DFF_X1` | count in the current netlist, allowing aliases |
+| `Chip area` | current liberty units, not floorplan µm² |
+| `CLKBUF_*` | current synthesis count, not the CTS tree |
 
 `ABC_AREA=1` in `config.mk`: ABC minimizes **area**, not delay. You chase timing
-from placement onward. Do not be surprised if liberty-only slack from `sta` differs
-from finish SPEF (−0.04 ns). Table: `golden-metrics.md`.
+from placement onward. Liberty-only slack from `sta` can differ from finish
+SPEF because the current reports use different artifact contracts.
 
 ## Power & SPICE chain
 

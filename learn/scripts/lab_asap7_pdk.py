@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Inventory the fetched ASAP7 layer-1 PDK. Not Calibre. Not a product win.
+"""Inventory the fetched ASAP7 layer-1 PDK. Not Calibre or product signoff.
 
-Does not restamp 45.298. Never writes .lvs.ok.
+The report is current-run only and never writes `.lvs.ok`.
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def inventory(root: Path = ROOT) -> dict:
         "platform": "asap7",
         "kind": "layer1_pdk_inventory",
         "product_win": False,
-        "comparable_to_gold_ir": False,
+        "comparison_scope": "independent ASAP7 PDK run",
         "calibre": False,
         "calibre_ready": calibre_ready,
         "calibre_ran": False,
@@ -110,7 +110,7 @@ def inventory(root: Path = ROOT) -> dict:
             "stamp": "never write .lvs.ok for ASAP7",
         },
         "note": "Layer-1 public PDK inventory. Not Calibre unless calibre_ready. "
-        "Not a product win. Live metrics only — no gold stamp.",
+        "Not a product win. Live metrics only.",
     }
     return payload
 

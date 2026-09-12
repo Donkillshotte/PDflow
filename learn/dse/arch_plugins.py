@@ -56,7 +56,7 @@ def _identity(src: Path, dest: Path) -> dict:
         "extract": "gcd_subtractive",
         "kind": "architecture",
         "operator": "identity",
-        "note": "current handshake GCD — baseline architecture",
+        "note": "current handshake GCD — reference architecture",
         "finish_ready": False,
     }
 
@@ -89,7 +89,7 @@ def _register() -> None:
         latency="same",
         verify="yosys_equiv",
         generate=_identity,
-        note="baseline subtractive GCD",
+        note="reference subtractive GCD",
     )
     for name in EXTRACTS:
         PLUGINS[name] = ArchPlugin(

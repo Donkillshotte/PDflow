@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "description": "Explicit Product requirement policies. Null limits are intentionally GAP, never PASS.",
+  "profiles": {
+    "nangate45/gcd": {
+      "timing": {
+        "wns_ns_min": 0.0,
+        "tns_min": 0.0,
+        "setup_violations_max": 0,
+        "period_min_ns_min": 0.0
+      },
+      "geometry": {
+        "route_drc_violations_max": 0,
+        "gds_drc_violations_max": 0
+      },
+      "equivalence": {
+        "lvs_pass_required": true
+      },
+      "power": {
+        "chip_static_ir_mv_max": null,
+        "chip_transient_droop_mv_max": null,
+        "system_droop_mv_max": null,
+        "system_zmax_mohm_max": null,
+        "power_grid_em_limit_source": null
+      }
+    },
+    "asap7/gcd": {
+      "timing": {
+        "wns_ns_min": 0.0,
+        "tns_min": 0.0,
+        "setup_violations_max": 0,
+        "period_min_ns_min": 0.0
+      },
+      "geometry": {
+        "route_drc_violations_max": 0,
+        "gds_drc_violations_max": 0
+      },
+      "equivalence": {
+        "lvs_pass_required": true
+      },
+      "power": {
+        "chip_static_ir_mv_max": null,
+        "chip_transient_droop_mv_max": null,
+        "system_droop_mv_max": null,
+        "system_zmax_mohm_max": null,
+        "power_grid_em_limit_source": null
+      }
+    }
+  }
+}

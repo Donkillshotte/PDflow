@@ -1,15 +1,15 @@
-"""Append-only campaign experiment registry.
+"""Current-invocation experiment records.
 
-Criteria in experiment_campaign_plan.md §5 are frozen. This module records
-runs; it does not reinterpret wins. Locked FLOW_VARIANT names (flowlab /
-learn / base) cannot be appended as writable variants — historical GCD A
-is registered as camp_gcd_base with orfs_variant=flowlab.
+An ``ExperimentLog`` is isolated by default. Callers that need to share a
+comparison must pass one explicit path created for the same invocation; no
+external registry is opened implicitly.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 import uuid
 from dataclasses import asdict, dataclass, field, fields
@@ -17,17 +17,15 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[2]
-DEFAULT_PATH = REPO / "learn" / "sim" / "dse" / "campaign_experiments.jsonl"
-DEFAULT_LOG = DEFAULT_PATH
-PLAN_PATH = Path(__file__).resolve().parent / "experiment_campaign_plan.md"
-LOCKED_VARIANTS = frozenset({"flowlab", "learn", "base"})
+LIVE_ROOT = REPO / "learn" / "sim" / "dse" / "live"
+DEFAULT_PATH: Path | None = None
+DEFAULT_LOG: Path | None = None
 PLACE_WNS_GATE_NS = 0.0  # live funnel P2 (learn/dse/funnel.py)
 
 
 def plan_sha() -> str:
-    if not PLAN_PATH.is_file():
-        return ""
-    return hashlib.sha256(PLAN_PATH.read_bytes()).hexdigest()
+    """Return the current schema fingerprint, never a campaign-plan hash."""
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 PLAN_SHA = plan_sha()
@@ -68,16 +66,15 @@ DESIGN_CATALOG: dict[str, dict[str, Any]] = {
         "orfs_config": "dynamic_node",
         "orfs_design": "dynamic_node",
         "clk_port": "clk",
-        "note": "P0 keeps ORFS SWAP_ARITH_OPERATORS=1 (official recipe)",
+        "note": "P0 keeps ORFS SWAP_ARITH_OPERATORS=1 for the current recipe",
     },
 }
 
 
-def refuse_locked_variant(variant: str) -> None:
-    if variant in LOCKED_VARIANTS:
-        raise ValueError(f"REFUSED: FLOW_VARIANT={variant} is locked")
-    if "krylov" in str(variant).lower():
-        raise ValueError("REFUSED: Krylov is not a campaign finish variant")
+def validate_variant(variant: str) -> str:
+    from .flow_role import validate_variant as _validate
+
+    return _validate(variant)
 
 
 @dataclass
@@ -147,7 +144,8 @@ class Experiment:
 
 class ExperimentLog:
     def __init__(self, path: Path | None = None):
-        self.path = Path(path or DEFAULT_PATH)
+        selected = path or os.environ.get("PD_FLOW_EXPERIMENT_LOG")
+        self.path = Path(selected) if selected else LIVE_ROOT / f"experiments-{uuid.uuid4().hex}.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._rows: list[Experiment] = []
         if self.path.is_file():
@@ -175,7 +173,7 @@ class ExperimentLog:
         )
 
     def append(self, exp: Experiment) -> Experiment:
-        refuse_locked_variant(exp.variant)
+        validate_variant(exp.variant)
         if not exp.id:
             exp.id = uuid.uuid4().hex[:12]
         if not exp.created_at:
@@ -278,92 +276,3 @@ def enrich_power_from_logs(log: ExperimentLog, *, root: Path | None = None) -> i
     if n:
         log.rewrite()
     return n
-
-
-def seed_gcd_bakeoff(log: ExperimentLog | None = None, *, root: Path | None = None) -> list[str]:
-    """Register already-finished GCD A/Ainj/B/C/Bfix. Does not relaunch flowlab."""
-    log = log or ExperimentLog()
-    root = Path(root or REPO)
-    added: list[str] = []
-    rows = (
-        dict(
-            id="gcdp0base000",
-            phase="P0",
-            design="gcd",
-            clock_ns=0.46,
-            variant="camp_gcd_base",
-            role="base",
-            orfs_variant="flowlab",
-            orfs_design="gcd",
-            notes="Historical ORFS baseline A. Artifacts stay in flowlab/. Not relaunched.",
-            extra={"tag": "A", "core_utilization": 35},
-        ),
-        dict(
-            id="gcdp0ainj000",
-            phase="P0",
-            design="gcd",
-            clock_ns=0.46,
-            variant="camp_gcd_ainj",
-            role="ainj",
-            orfs_variant="flowlab_dse_ainj",
-            orfs_design="gcd",
-            netlist=str(root / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/1_2_yosys.v"),
-            notes="A-injected: A's 1_2_yosys.v recooked. Bit-identical to A.",
-            extra={"tag": "Ainj"},
-        ),
-        dict(
-            id="gcdp0small00",
-            phase="P0",
-            design="gcd",
-            clock_ns=0.46,
-            variant="camp_gcd_dse_small",
-            role="dse_small",
-            orfs_variant="flowlab_dse_small",
-            orfs_design="gcd",
-            netlist=str(root / "learn/sim/dse/netlists/54142494d890.v"),
-            proxy_wns_ns=-0.5215,
-            notes="DSE sub_twos_complement. Already finished in bake-off.",
-            extra={"tag": "B", "dse_id": "54142494d890"},
-        ),
-        dict(
-            id="gcdp0fast000",
-            phase="P0",
-            design="gcd",
-            clock_ns=0.46,
-            variant="camp_gcd_dse_fast",
-            role="dse_fast",
-            orfs_variant="flowlab_dse_fast",
-            orfs_design="gcd",
-            netlist=str(root / "learn/sim/dse/netlists/52e0ecacb19b.v"),
-            proxy_wns_ns=-0.1142,
-            notes="DSE orfs_abc_speed. Already finished in bake-off.",
-            extra={"tag": "C", "dse_id": "52e0ecacb19b"},
-        ),
-        dict(
-            id="gcdp0fixedb0",
-            phase="P0",
-            design="gcd",
-            clock_ns=0.46,
-            variant="camp_gcd_dse_fixedb",
-            role="dse_other",
-            orfs_variant="flowlab_dse_fixedb",
-            orfs_design="gcd",
-            netlist=str(root / "learn/sim/dse/netlists/54142494d890.v"),
-            proxy_wns_ns=-0.5215,
-            notes="Same B netlist on A's die. Control, not a product challenger.",
-            extra={"tag": "Bfix", "dse_id": "54142494d890", "geometry": "locked_A"},
-        ),
-    )
-    for kw in rows:
-        if log.has(kw["variant"], kw["phase"]):
-            continue
-        exp = Experiment(**kw)
-        fill_from_logs(exp, root=root)
-        if exp.finish_wns_ns is None:
-            exp.status = "missing_logs"
-            exp.notes = (exp.notes + " ").strip() + "6_report not on disk at seed time."
-        else:
-            exp.status = "done"
-        log.append(exp)
-        added.append(exp.variant)
-    return added

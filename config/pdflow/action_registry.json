@@ -1,0 +1,589 @@
+{
+  "schema_version": 1,
+  "default_timeout_seconds": 600,
+  "actions": [
+    {
+      "action_id": "synth",
+      "display_name": "FlowLab synthesis",
+      "surface": "flow",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_flowlab_stage.sh",
+        "synth"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [
+        "yosys"
+      ],
+      "mutates": false
+    },
+    {
+      "action_id": "floorplan",
+      "display_name": "FlowLab floorplan",
+      "surface": "flow",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_flowlab_stage.sh",
+        "floorplan"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [
+        "openroad"
+      ],
+      "mutates": false
+    },
+    {
+      "action_id": "place",
+      "display_name": "FlowLab placement",
+      "surface": "flow",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_flowlab_stage.sh",
+        "place"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [
+        "openroad"
+      ],
+      "mutates": false
+    },
+    {
+      "action_id": "cts",
+      "display_name": "FlowLab CTS",
+      "surface": "flow",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_flowlab_stage.sh",
+        "cts"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [
+        "openroad"
+      ],
+      "mutates": false
+    },
+    {
+      "action_id": "route",
+      "display_name": "FlowLab route",
+      "surface": "flow",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_flowlab_stage.sh",
+        "route"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [
+        "openroad"
+      ],
+      "mutates": false
+    },
+    {
+      "action_id": "finish",
+      "display_name": "FlowLab finish",
+      "surface": "flow",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_flowlab_stage.sh",
+        "finish"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [
+        "openroad"
+      ],
+      "mutates": false
+    },
+    {
+      "action_id": "check",
+      "display_name": "Verify toolchain",
+      "surface": "tools",
+      "command": ["bash", "{repo}/scripts/learn_physical_design.sh", "--check"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false
+    },
+    {
+      "action_id": "status",
+      "display_name": "Course status",
+      "surface": "tools",
+      "command": ["bash", "{repo}/scripts/learn_physical_design.sh", "--status"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false
+    },
+    {
+      "action_id": "list",
+      "display_name": "List course phases",
+      "surface": "tools",
+      "command": ["bash", "{repo}/scripts/learn_physical_design.sh", "--list"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false
+    },
+    {
+      "action_id": "test_course",
+      "display_name": "Course smoke test",
+      "surface": "tools",
+      "command": [
+        "bash",
+        "{repo}/scripts/test_course.sh"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false
+    },
+    {
+      "action_id": "rtl_sim",
+      "display_name": "RTL simulation",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_rtl_sim.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["iverilog"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "gate_sim",
+      "display_name": "Gate simulation",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_gate_sim.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["iverilog"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "gridcheck",
+      "display_name": "PDN gridcheck",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_gridcheck.sh", "pdn"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false
+    },
+    {
+      "action_id": "sta_checkpoint",
+      "display_name": "STA checkpoint analysis",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_sta_checkpoint.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["opensta"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "layout_preview",
+      "display_name": "Render live ODB preview",
+      "surface": "generated",
+      "command": ["bash", "{repo}/learn/scripts/run_layout_preview.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false
+    },
+    {
+      "action_id": "system_pdn",
+      "display_name": "System PDN",
+      "surface": "package",
+      "command": ["bash", "{repo}/learn/scripts/run_system_pdn.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["ngspice"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "chip_pdn_ir",
+      "display_name": "Chip IR mesh",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_chip_pdn_ir.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "activity_power",
+      "display_name": "Activity to power",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_activity_power.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false
+    },
+    {
+      "action_id": "vectorless",
+      "display_name": "Vectorless power",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_vectorless.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "dynamic_ir",
+      "display_name": "Dynamic IR",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_dynamic_ir.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad", "opensta"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "power_chain",
+      "display_name": "Power chain",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_power_chain.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "export_spice_lab",
+      "display_name": "Export SPICE lab",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/export_spice_lab.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false
+    },
+    {
+      "action_id": "sta_signoff",
+      "display_name": "STA signoff",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_sta_signoff.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["opensta"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "sta_ir_aware",
+      "display_name": "STA IR-aware",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_sta_ir_aware.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["opensta", "openroad"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "klayout_drc",
+      "display_name": "KLayout DRC",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_klayout_drc.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["klayout"],
+      "mutates": false
+    },
+    {
+      "action_id": "drc_signoff",
+      "display_name": "DRC signoff",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_drc_signoff.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad", "klayout"],
+      "mutates": false
+    },
+    {
+      "action_id": "klayout_lvs",
+      "display_name": "LVS signoff",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_klayout_lvs.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["klayout"],
+      "mutates": false
+    },
+    {
+      "action_id": "power_signoff",
+      "display_name": "Power signoff",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_power_signoff.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "signoff_all",
+      "display_name": "Product signoff",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_signoff_all.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad", "opensta", "klayout"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "thermal_signoff",
+      "display_name": "Thermal signoff",
+      "surface": "package",
+      "command": ["bash", "{repo}/learn/scripts/run_thermal_signoff.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "pkg_bump",
+      "display_name": "Package bump validation",
+      "surface": "package",
+      "command": ["bash", "{repo}/learn/scripts/run_pkg_bump.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "pkg_rdl",
+      "display_name": "Package RDL validation",
+      "surface": "package",
+      "command": ["bash", "{repo}/learn/scripts/run_pkg_rdl.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "pkg_signoff",
+      "display_name": "Package signoff",
+      "surface": "package",
+      "command": ["bash", "{repo}/learn/scripts/run_pkg_signoff.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "signoff_phase2",
+      "display_name": "Phase 2 signoff",
+      "surface": "package",
+      "command": ["bash", "{repo}/learn/scripts/run_signoff_phase2.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "yosys_equiv",
+      "display_name": "Yosys equivalence",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_yosys_equiv.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["yosys"],
+      "mutates": false
+    },
+    {
+      "action_id": "formal_gcd",
+      "display_name": "Formal GCD",
+      "surface": "product",
+      "command": ["bash", "{repo}/learn/scripts/run_formal_gcd.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["yosys"],
+      "mutates": false
+    },
+    {
+      "action_id": "openrcx_report",
+      "display_name": "OpenRCX report",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_openrcx_report.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad"],
+      "mutates": false
+    },
+    {
+      "action_id": "analytical_pex",
+      "display_name": "Analytical PEX",
+      "surface": "lab",
+      "command": ["python3", "{repo}/learn/scripts/run_analytical_pex.py"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "ccs_char",
+      "display_name": "CCS characterization",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/run_ccs_char.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "spice_engines",
+      "display_name": "SPICE engine matrix",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/run_spice_engines.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "power_grid_em",
+      "display_name": "Power-grid EM (native proxy)",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_vyges_em_ir.sh"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad", "vyges_em_ir"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "vyges_em_ir",
+      "display_name": "Vyges EM/IR",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/run_vyges_em_ir.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "tool_matrix",
+      "display_name": "Tool matrix",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/run_tool_matrix.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "dse",
+      "display_name": "Design-space exploration",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/run_dse.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "eco",
+      "display_name": "ECO proposal",
+      "surface": "flow",
+      "command": ["bash", "{repo}/learn/scripts/run_eco.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "eco_apply",
+      "display_name": "ECO apply on isolated scratch",
+      "surface": "flow",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_eco.sh"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true,
+      "environment": {
+        "FLOW_VARIANT": "eco_scratch",
+        "ECO_MODE": "apply"
+      }
+    },
+    {
+      "action_id": "eco_close",
+      "display_name": "ECO signoff on isolated scratch",
+      "surface": "product",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_signoff_all.sh"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [
+        "openroad",
+        "opensta",
+        "klayout"
+      ],
+      "mutates": false,
+      "pythonpath": true,
+      "environment": {
+        "FLOW_VARIANT": "eco_scratch",
+        "ECO_MODE": "close"
+      }
+    },
+    {
+      "action_id": "lvs_deep",
+      "display_name": "Deep LVS",
+      "surface": "product",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_lvs_deep.sh"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "layout_tools",
+      "display_name": "Layout tool probe",
+      "surface": "lab",
+      "command": [
+        "bash",
+        "{repo}/learn/scripts/run_layout_tools_probe.sh"
+      ],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "lab_asap7_pdk",
+      "display_name": "ASAP7 PDK lab",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/run_lab_asap7_pdk.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "lab_asap7_flow",
+      "display_name": "ASAP7 RTL to GDS",
+      "surface": "lab",
+      "command": ["bash", "{repo}/scripts/run_lab_asap7.sh", "finish"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad", "opensta", "yosys"],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "lab_asap7_pkg",
+      "display_name": "ASAP7 package lab",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/run_lab_asap7_pkg.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "lab_asap7_chip_pdn",
+      "display_name": "ASAP7 chip PDN lab",
+      "surface": "lab",
+      "command": ["bash", "{repo}/learn/scripts/run_lab_asap7_chip_pdn.sh"],
+      "timeout_seconds": 600,
+      "required_tools": [],
+      "mutates": false,
+      "pythonpath": true
+    },
+    {
+      "action_id": "inspect_stage",
+      "display_name": "Inspect physical design stage",
+      "surface": "generated",
+      "command": ["python3", "{repo}/learn/scripts/run_inspect_stage.py"],
+      "timeout_seconds": 600,
+      "required_tools": ["openroad", "opensta", "yosys"],
+      "mutates": false,
+      "pythonpath": true
+    }
+  ]
+}

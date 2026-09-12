@@ -19,9 +19,19 @@
 #   PEAK_FACTOR=8       # simultaneous-switch peak vs average current
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" chip-pdn-ir bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
+source "${ROOT}/scripts/rg_compat.sh"
 # shellcheck source=learn/lib/power_vcd.sh
 source "${ROOT}/learn/lib/power_vcd.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
+STAGE="${PD_FLOW_CHECKPOINT:-finish}"
+case "${STAGE}" in
+  place|cts|route|finish) ;;
+  *) echo "REFUSED: chip PDN is defined for place, cts, route and finish checkpoints (got ${STAGE})" >&2; exit 2 ;;
+esac
 ACTIVITY_TCL="$(power_activity_tcl "${ROOT}")"
 PKG_R="${PKG_R:-0.05}"
 PKG_L="${PKG_L:-2e-10}"
@@ -32,22 +42,67 @@ FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
 LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 ODB="${RES}/6_final.odb"
-SDC="${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc"
+SDC="${PD_FLOW_SDC_FILE:-${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc}"
+
+WORK_HOME="${PD_FLOW_WORK_HOME:-}"
+if [[ -n "${WORK_HOME}" ]]; then
+  RUN_ID="${PD_FLOW_CANDIDATE_RUN_ID:-}"
+  [[ "${RUN_ID}" =~ ^[A-Za-z0-9_.-]{8,100}$ ]] || {
+    echo "FAIL invalid FlowLab candidate run id" >&2
+    exit 1
+  }
+  EXPECTED_WORK_HOME="${ROOT}/.pdflow/runs/${RUN_ID}/candidate/orfs"
+  [[ "${WORK_HOME}" == "${EXPECTED_WORK_HOME}" && "${VARIANT}" == "flowlab" ]] || {
+    echo "FAIL candidate workspace is outside the requested run" >&2
+    exit 1
+  }
+  RES="${WORK_HOME}/results/nangate45/gcd/flowlab"
+  OUT_DIR="${WORK_HOME}/reports/nangate45/gcd/flowlab"
+  GENERATED_DEFAULT="${WORK_HOME}/generated/chip_pdn_ir/${STAGE}"
+else
+  OUT_DIR="${ROOT}/learn/sim/reports"
+  GENERATED_DEFAULT="${ROOT}/.pdflow/generated/${VARIANT}/${STAGE}/chip_pdn_ir"
+fi
+
+case "${STAGE}" in
+  place)
+    ODB="${RES}/3_place.odb"
+    [[ -f "${ODB}" ]] || ODB="${RES}/3_5_place_dp.odb"
+    ;;
+  cts)
+    ODB="${RES}/4_cts.odb"
+    [[ -f "${ODB}" ]] || ODB="${RES}/4_1_cts.odb"
+    ;;
+  route)
+    ODB="${RES}/5_2_route.odb"
+    [[ -f "${ODB}" ]] || ODB="${RES}/5_route.odb"
+    ;;
+  finish) ODB="${RES}/6_final.odb" ;;
+esac
 
 [[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB} — run finish first (variant=${VARIANT})"; exit 1; }
 [[ -f "${LIB}" ]] || { echo "FAIL missing liberty"; exit 1; }
 [[ -f "${SDC}" ]] || { echo "FAIL missing SDC"; exit 1; }
 
-OUT_DIR="${ROOT}/learn/sim/reports"
-mkdir -p "${OUT_DIR}" "${RES}/pdn"
-LOG="${OUT_DIR}/chip_pdn_ir_${VARIANT}.log"
-STAMP="${RES}/.chip_pdn_ir.ok"
-SPICE_BUMPS="${RES}/pdn/pg_vdd_bumps.sp"
-VOLT_BUMPS="${RES}/pdn/ir_bumps.csv"
-TRANSIENT_JSON="${OUT_DIR}/pdn_chip_ir_${VARIANT}.json"
-# Keep legacy filename for older UI/scripts
+GENERATED_ROOT="${PD_FLOW_GENERATED_ROOT:-${GENERATED_DEFAULT}}"
+GENERATED_ROOT="$(realpath -m -- "${GENERATED_ROOT}")"
+case "${GENERATED_ROOT}" in
+  "${ROOT}/.pdflow/"*|"${WORK_HOME}/generated/"*) ;;
+  *) echo "REFUSED: PD_FLOW_GENERATED_ROOT must remain repository/candidate scoped" >&2; exit 2 ;;
+esac
+REPORT_KEY="${VARIANT}"
+[[ "${STAGE}" == "finish" ]] || REPORT_KEY="${VARIANT}_${STAGE}"
+WORK="${GENERATED_ROOT}/mesh"
+mkdir -p "${OUT_DIR}" "${WORK}"
+LOG="${OUT_DIR}/chip_pdn_ir_${REPORT_KEY}.log"
+STAMP="${GENERATED_ROOT}/.chip_pdn_ir_${VARIANT}_${STAGE}.ok"
+SPICE_BUMPS="${WORK}/pg_vdd_bumps.sp"
+VOLT_BUMPS="${WORK}/ir_bumps.csv"
+TRANSIENT_JSON="${OUT_DIR}/pdn_chip_ir_${REPORT_KEY}.json"
+# Keep the legacy finish filename for older UI/scripts, but never create a
+# second ambiguous report for intermediate checkpoints.
 LEGACY_JSON="${OUT_DIR}/pdn_transient_${VARIANT}.json"
-TRANSIENT_WAVE="${OUT_DIR}/pdn_chip_ir_${VARIANT}.wave.csv"
+TRANSIENT_WAVE="${OUT_DIR}/pdn_chip_ir_${REPORT_KEY}.wave.csv"
 
 cd "${FLOW}"
 openroad -no_init -no_splash -exit <<EOF | tee "${LOG}"
@@ -97,7 +152,87 @@ python3 "${ROOT}/learn/scripts/pdn_transient.py" \
 
 rg -q 'PDN_TRANSIENT_DONE' "${LOG}"
 [[ -f "${TRANSIENT_JSON}" ]] || { echo "FAIL missing ${TRANSIENT_JSON}"; exit 1; }
-cp -f "${TRANSIENT_JSON}" "${LEGACY_JSON}"
+
+python3 - "${ROOT}" "${TRANSIENT_JSON}" "${ODB}" "${SPICE_BUMPS}" "${TRANSIENT_WAVE}" "${VARIANT}" "${STAGE}" "${PKG_R}" "${PKG_L}" "${C_DECAP}" "${PEAK_FACTOR}" <<'PY' | tee -a "${LOG}"
+import hashlib
+import json
+import os
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+root, report_path, odb_raw, spice_raw, wave_raw, variant, stage, pkg_r, pkg_l, c_decap, peak_factor = sys.argv[1:]
+root_path = Path(root).resolve()
+report_file = Path(report_path).resolve()
+odb = Path(odb_raw).resolve()
+spice = Path(spice_raw).resolve()
+wave = Path(wave_raw).resolve()
+
+def ref(path: Path) -> dict:
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return {
+        "relative_path": path.relative_to(root_path).as_posix(),
+        "content_hash": digest,
+        "size": path.stat().st_size,
+        "mtime_ns": path.stat().st_mtime_ns,
+    }
+
+data = json.loads(report_file.read_text(encoding="utf-8"))
+odb_ref = ref(odb)
+spice_ref = ref(spice)
+wave_ref = ref(wave) if wave.is_file() else None
+configuration_hash = hashlib.sha256(
+    "\n".join(
+        [
+            variant,
+            stage,
+            str(pkg_r),
+            str(pkg_l),
+            str(c_decap),
+            str(peak_factor),
+            odb_ref["content_hash"],
+            spice_ref["content_hash"],
+        ]
+    ).encode("utf-8")
+).hexdigest()
+data.update(
+    {
+        "schema_version": 2,
+        "status": "PROXY",
+        "ok": False,
+        "scope": "flow",
+        "variant": variant,
+        "stage": stage,
+        "evidence_class": "PRODUCT_INPUT" if stage == "finish" else "CHECKPOINT_EVIDENCE",
+        "execution_status": "COMPLETED",
+        "evidence_status": "PASS",
+        "requirement_status": "GAP",
+        "signoff_status": "PROXY",
+        "checkpoint_id": stage,
+        "checkpoint_artifact": odb_ref,
+        "input_artifacts": [odb_ref, spice_ref],
+        "input_artifact_refs": [odb_ref, spice_ref],
+        "output_artifacts": [item for item in [wave_ref] if item is not None],
+        "configuration_hash": configuration_hash,
+        "product_signoff": False,
+        "limitations": [
+            "open-chip PDN transient evidence; no qualified Product power limit is configured",
+            "package R/L are an explicit model, not extracted package signoff data",
+            "the report is valid evidence but cannot close Product signoff",
+        ],
+        "reason": "chip IR evidence completed; configure a qualified power requirement before Product signoff",
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+)
+temporary = report_file.with_name(f".{report_file.name}.{os.getpid()}.tmp")
+temporary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+os.replace(temporary, report_file)
+print("CHIP_PDN_REPORT", report_file)
+PY
+
+if [[ "${STAGE}" == "finish" ]]; then
+  cp -f "${TRANSIENT_JSON}" "${LEGACY_JSON}"
+fi
 
 python3 - <<PY | tee -a "${LOG}"
 import json
@@ -108,10 +243,11 @@ print("TRANSIENT_DROOP_mV", round(r["transient"]["worst_droop"]*1e3, 4))
 print("TRANSIENT_DROOP_PCT", round(r["transient"]["worst_droop_pct"], 4))
 PY
 
-python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${TRANSIENT_JSON}"
-date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
-echo "CHIP_PDN_IR_DONE ${VARIANT}" | tee -a "${LOG}"
-echo "OK chip PDN IR ${VARIANT}"
+STAMP_TMP="${STAMP}.$$"
+date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP_TMP}"
+mv -f "${STAMP_TMP}" "${STAMP}"
+echo "CHIP_PDN_IR_DONE ${VARIANT} ${STAGE}" | tee -a "${LOG}"
+echo "OK chip PDN IR evidence ${VARIANT}/${STAGE} · PROXY (not Product signoff)"
 echo "  static log: ${LOG}"
 echo "  spice:      ${SPICE_BUMPS}"
 echo "  report:     ${TRANSIENT_JSON}"

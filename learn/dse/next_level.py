@@ -7,12 +7,13 @@ loop. Live F6 launch is opt-in and never targets FLOW_VARIANT=flowlab.
 from __future__ import annotations
 
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Callable
 
 from .contracts import stamp_evidence
 from .equiv import equiv_rtl_pair
-from .f6_finish import assert_baseline_frozen, evaluate_f6, flowlab_baseline_present, ingest_finish, parse_place_dp, refuse_locked_variant
+from .f6_finish import evaluate_f6, parse_place_dp
 from .funnel import promote_or_reject
 from .memory import DesignMemory
 from .scheduler import Action, apply_rejection, next_action
@@ -25,43 +26,25 @@ def repo_root() -> Path:
 
 
 def default_nl_memory(variant: str = "flowlab") -> Path:
-    return repo_root() / "learn" / "sim" / "dse" / f"memory_{variant}_nl.jsonl"
-
-
-def seed_bakeoff(mem: DesignMemory) -> dict[str, Any]:
-    """Ingest existing A/B/C finish logs. Does not launch ORFS."""
-    if flowlab_baseline_present():
-        assert_baseline_frozen()
-    seeded = []
-    for variant, geom in (
-        ("flowlab", "product"),
-        ("flowlab_dse_small", "product"),
-        ("flowlab_dse_fast", "product"),
-    ):
-        logs = repo_root() / "tools/OpenROAD-flow-scripts/flow/logs/nangate45/gcd" / variant / "6_report.json"
-        if not logs.is_file():
-            continue
-        if any((c.knobs or {}).get("variant") == variant and c.fidelity == "F6" for c in mem.all()):
-            continue
-        c = ingest_finish(mem, variant=variant, parent=None, geometry_kind=geom)
-        if variant == "flowlab":
-            c.semantic_contract = {"status": "pass", "kind": "same_latency", "vs": "orfs_gcd_rtl", "engine": "baseline"}
-            mem.touch(c)
-        seeded.append(variant)
-    return {"seeded": seeded}
+    safe = "".join(ch for ch in str(variant) if ch.isalnum() or ch in "_-") or "flowlab"
+    return repo_root() / "learn" / "sim" / "dse" / "live" / safe / uuid.uuid4().hex / "next-level.jsonl"
 
 
 def make_live_runner(
     *,
     launch_finish: bool = False,
-    gold_rtl: Path | None = None,
+    reference_rtl: Path | None = None,
 ) -> Runner:
     """Real evaluators. Finish launch is opt-in; GNN/bandit are not consulted."""
-    gold = Path(gold_rtl) if gold_rtl else repo_root() / "learn/flowlab/gcd.v"
+    reference = Path(reference_rtl) if reference_rtl else repo_root() / "learn/flowlab/gcd.v"
 
     def runner(action: Action, mem: DesignMemory) -> dict:
         if action.kind == "generate":
-            return seed_bakeoff(mem)
+            return {
+                "ok": False,
+                "reason": "no candidates supplied by the current invocation",
+                "hint": "run the controller to generate live candidates",
+            }
         c = mem.get(action.candidate_id) if action.candidate_id else None
         if c is None:
             return {"ok": False, "reason": "missing_candidate"}
@@ -83,7 +66,7 @@ def make_live_runner(
                 }
                 mem.touch(c)
                 return {"semantic": c.semantic_contract}
-            sem = equiv_rtl_pair(gold, rtl)
+            sem = equiv_rtl_pair(reference, rtl)
             c.semantic_contract = sem.to_dict()
             mem.touch(c)
             return {"semantic": sem.to_dict()}
@@ -109,7 +92,6 @@ def make_live_runner(
             variant = str((c.knobs or {}).get("variant") or "flowlab_dse_nl")
             if not launch_finish:
                 return {"skipped": "finish_launch_disabled"}
-            refuse_locked_variant(variant)
             nl = (c.artifacts or {}).get("mapped_v") or c.netlist_fp
             child = evaluate_f6(mem, c, variant=variant, netlist=nl, launch=True)
             return {"id": child.id, "status": child.status}

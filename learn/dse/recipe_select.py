@@ -7,9 +7,9 @@ from typing import Any
 from .knob_catalog import RECIPES, by_id, resolve
 from .floorplan import FLOORPLAN_RECIPES
 
-# Already the default, or never a product win in campaign.
+# Already the default, or not an eligible product experiment.
 _NEVER = frozenset({"synth_area", "synth_delay"})
-# Default synth method: already the official netlist. Do not recook.
+# Default synth method: already the current mapped netlist. Do not recook.
 # hold_margin / place_notiming are improve-only until they take a win.
 SKIP_COVER = frozenset(
     {"synth_area", "hold_margin", "place_notiming", "cts_sparser", "repair_skip"}
@@ -26,7 +26,7 @@ DENSE = 0.55
 MANY_BUFFERS = 30
 MAX_PICK = 2
 
-# Combos of independent win axes on the *pinned* die. No floorplan recipes.
+# Combos of independent axes on the current die. No floorplan recipes.
 IMPROVE_COMBOS: tuple[tuple[str, ...], ...] = (
     ("place_denser", "repair_setup_margin"),
     ("place_denser", "repair_half_tns"),
@@ -252,7 +252,7 @@ def propose_improve(
     wns_ns: float | None = None,
     already: set[str] | None = None,
 ) -> list[list[str]]:
-    """If this slot has no product win, try the next physical experiment.
+    """If this invocation has no product win, try the next physical experiment.
 
     No design name. Floorplan parts drop when the die is locked.
     A very-closed die skips repair combos (measured no-ops) and tries
@@ -309,7 +309,7 @@ def propose_deepen(
 ) -> list[list[str]]:
     """Combine two winning physical axes that have not been cooked together.
 
-    Skips synth (keep the official netlist) and opposite knobs. Floorplan
+    Skips synth (keep the current mapped netlist) and opposite knobs. Floorplan
     parts drop when the die is locked. No design name.
     """
     ids: list[str] = []

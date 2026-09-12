@@ -4,7 +4,7 @@
 PYTHONPATH=/usr/lib/python3/dist-packages:...  (see dse.f4_oracle)
 Never writes dynamic_ir_*.json.
 
-Default paths are the FlowLab finish extract (gold teacher). Pass --spice /
+Default paths are the current FlowLab finish extract. Pass --spice /
 --insts for a *candidate* mesh. --no-sta skips finish arrivals (instance
 names on a flattened F1 netlist do not join).
 """
@@ -39,7 +39,6 @@ from pdn_transient import build_system, solve_static  # noqa: E402
 from heavy_analysis import check_krylov, check_large_mesh, check_rss_budget  # noqa: E402
 
 ORFS = _REPO / "tools/OpenROAD-flow-scripts/flow"
-GOLD_MV = 45.298
 
 
 def _paths(variant: str) -> dict[str, Path]:
@@ -62,7 +61,7 @@ def _em_compact(em: dict) -> dict:
         "n_with_j": em.get("n_with_j"),
         "dT_mesh_absmax_k": em.get("dT_mesh_absmax_k"),
         "i_absmax_a": em.get("i_absmax_a"),
-        "via": "pdn_em.em_thermal_snapshot on V_worst — not foundry TTF, not gold",
+        "via": "pdn_em.em_thermal_snapshot on V_worst — not foundry TTF",
     }
 
 
@@ -97,13 +96,13 @@ def main() -> int:
         "--extract-kind",
         default="finish",
         choices=("finish", "candidate"),
-        help="finish = gold teacher mesh; candidate = DSE write_pg_spice",
+        help="finish = current finish mesh; candidate = DSE write_pg_spice",
     )
     ap.add_argument(
         "--solver",
         default="direct",
         choices=("direct", "amg", "bicg", "ras", "krylov", "mor"),
-        help="PDN timestep: DirectLU (gold teacher), AMG, RAS, or rational Krylov/MOR. Not ABC.",
+        help="PDN timestep: DirectLU, AMG, RAS, or rational Krylov/MOR. Not ABC.",
     )
     args = ap.parse_args()
     t0 = time.time()
@@ -119,7 +118,6 @@ def main() -> int:
         print(json.dumps({
             "status": "GAP",
             "reason": (scen or {}).get("gap") or "CCS on Nangate45 is GAP (NLDM) — not inventing current tables",
-            "gold": False,
             "current_scenario": scen,
         }))
         return 0
@@ -132,10 +130,10 @@ def main() -> int:
     sta_p = None if args.no_sta else (Path(args.sta) if args.sta else (None if kind == "candidate" else defaults["sta"]))
     spef_p = None if args.no_spef or kind == "candidate" else (Path(args.spef) if args.spef else defaults["spef"])
     if not spice.is_file() or not insts_p.is_file():
-        print(json.dumps({"status": "GAP", "reason": "extract missing", "gold": False, "extract": kind}))
+        print(json.dumps({"status": "GAP", "reason": "extract missing", "extract": kind}))
         return 0
     if kind == "finish" and sta_p is not None and not sta_p.is_file():
-        print(json.dumps({"status": "GAP", "reason": "cached extract missing", "gold": False, "extract": kind}))
+        print(json.dumps({"status": "GAP", "reason": "current extract missing", "extract": kind}))
         return 0
     ext = extract_pdn(
         spice,
@@ -156,7 +154,6 @@ def main() -> int:
             "reason": heavy_msg,
             "n_r": n_r,
             "solver": solver_kind_pre,
-            "gold": False,
             "extract": kind,
         }))
         return 2
@@ -294,24 +291,23 @@ def main() -> int:
             em = {"status": "GAP", "reason": str(exc)[:200], "via": "em_thermal_snapshot"}
     if solver_kind == "krylov":
         via = (
-            "rational Krylov/MOR on candidate write_pg_spice — reduced-order residual, not gold"
+            "rational Krylov/MOR on candidate write_pg_spice — reduced-order residual"
             if kind == "candidate"
-            else "rational Krylov/MOR on cached write_pg_spice extract — reduced-order residual, not gold"
+            else "rational Krylov/MOR on current write_pg_spice extract — reduced-order residual"
         )
     else:
         via = (
-            "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen) — not finish, not gold"
+            "Solver A on candidate write_pg_spice (place_pins+GPL+DP+pdngen)"
             if kind == "candidate"
-            else "Solver A worker on cached write_pg_spice extract — not finish, not gold"
+            else "Solver A worker on current write_pg_spice extract"
         )
     note = (
-        "candidate PDN R-graph after legalized place; do not replace gold "
-        f"{GOLD_MV:.3f} mV"
+        "candidate PDN R-graph after legalized place; compare only with a run "
+        "using the same extract and scenario"
         if kind == "candidate"
         else (
-            "same PDN extract as the GCD gold run; "
-            "I(t) scale is F3 power ratio (spatial pattern unchanged); "
-            f"do not replace gold {GOLD_MV:.3f} mV"
+            "current PDN extract; I(t) scale is the F3 power ratio "
+            "for this invocation"
         )
     )
     print(
@@ -348,9 +344,6 @@ def main() -> int:
                 "m": mor_m,
                 "backend": dyn.get("backend"),
                 "timestep_loop": dyn.get("timestep_loop"),
-                "gold": False,
-                "gold_ref_mv": GOLD_MV,
-                "delta_vs_gold_mv": droop * 1e3 - GOLD_MV,
                 "extract": kind,
                 "em": em,
                 "via": via,

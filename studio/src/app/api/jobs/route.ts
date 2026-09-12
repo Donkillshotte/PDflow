@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { agentFetch, agentResponse } from "@/lib/agentClient";
 import {
   forceReleaseLock,
   getJob,
@@ -15,6 +16,10 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
   if (id) {
+    const remote = await agentFetch(
+      "/v1/jobs?id=" + encodeURIComponent(id),
+    );
+    if (remote) return NextResponse.json(remote);
     const job = getJob(id);
     if (!job) {
       return NextResponse.json({ error: "job not found" }, { status: 404 });
@@ -23,9 +28,35 @@ export async function GET(req: Request) {
   }
   return NextResponse.json({
     jobs: listJobs(Number(url.searchParams.get("limit") || 20)),
+    agent: await agentFetch("/v1/jobs"),
     lock: readLock(),
     pipeline: getPipelineStatus(),
   });
+}
+
+export async function POST(req: Request) {
+  const denied = authorizeStudioMutation(req, "submit PDflow agent job");
+  if (denied) return denied;
+  const tooLarge = rejectOversizedBody(req, 64 * 1024);
+  if (tooLarge) return tooLarge;
+  const payload = await req.json();
+  const remote = await agentResponse("/v1/jobs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!remote) {
+    return NextResponse.json(
+      { ok: false, state: "GAP", error: "PDflow local agent is not running" },
+      { status: 503 },
+    );
+  }
+  const body = await remote.json().catch(() => ({
+    ok: false,
+    state: "GAP",
+    error: "invalid response from PDflow local agent",
+  }));
+  return NextResponse.json(body, { status: remote.status });
 }
 
 export async function DELETE(req: Request) {

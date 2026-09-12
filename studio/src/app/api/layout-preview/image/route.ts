@@ -8,7 +8,6 @@ import {
   type LayoutPhaseId,
 } from "@/lib/layoutPreview";
 import { normalizeResultsVariant } from "@/lib/pathGuard";
-import { authorizeStudioMutation } from "@/lib/runAuth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -36,10 +35,10 @@ function sendFile(abs: string, extra: Record<string, string> = {}) {
 }
 
 export async function GET(req: Request) {
-  const denied = authorizeStudioMutation(req, "layout preview process");
-  if (denied) {
-    return denied;
-  }
+  // READ_ONLY_NO_PROCESS: serves an already-generated, path-validated image;
+  // it does not launch a process or mutate state, and <img> requests do not
+  // reliably include Origin/Referer headers. Generation remains protected
+  // by POST /api/layout-preview and is owned by the local agent.
   const url = new URL(req.url);
   const shot = url.searchParams.get("shot");
   if (shot) {
@@ -56,6 +55,7 @@ export async function GET(req: Request) {
 
   const phase = (url.searchParams.get("phase") || "place") as LayoutPhaseId;
   const variant = url.searchParams.get("variant") || "flowlab";
+  const runId = url.searchParams.get("run_id");
 
   if (!PHASES.has(phase)) {
     return NextResponse.json({ error: "invalid phase" }, { status: 400 });
@@ -63,7 +63,11 @@ export async function GET(req: Request) {
 
   let resolved;
   try {
-    resolved = resolveLayoutImageAbs(phase, normalizeResultsVariant(variant));
+    resolved = resolveLayoutImageAbs(
+      phase,
+      normalizeResultsVariant(variant),
+      runId,
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: message }, { status: 400 });

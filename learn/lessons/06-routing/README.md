@@ -2,14 +2,15 @@
 
 Routing is the step from “cells with pins” to “wires the fab can print”.
 
-On the GCD `learn` the timing **worsens** when wires become real:
+On the active GCD invocation, compare the stage-local timing evidence to see
+whether timing changes when wires become real:
 
 | Stage | worst slack max | setup viol | Comment |
 |---|---|---|---|
-| Detailed place | **+0.01 ns** | 0 | placement estimate, optimistic |
-| CTS final | **−0.04 ns** | 32 | propagated clock |
-| Global route | **−0.05 ns** | 43 | RC from **guide** |
-| Finish SPEF | **−0.04 ns** | 38 | extraction; TNS −0.60 |
+| Detailed place | current report | current report | placement estimate, optimistic |
+| CTS final | current report | current report | propagated clock |
+| Global route | current report | current report | RC from **guide** |
+| Finish SPEF | current report | current report | extraction; current TNS |
 
 Do not “adjust numbers by hand”: understand **why** the sign changes. GRT sees congestion and corridor length; SPEF sees geometric RC.
 

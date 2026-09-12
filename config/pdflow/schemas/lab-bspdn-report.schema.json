@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdflow.local/schemas/lab-bspdn-report.schema.json",
+  "title": "PDflow ASAP7 BSPDN Lab report",
+  "description": "Lab-only dual-axis report. It cannot represent Product signoff.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "report_id",
+    "run_id",
+    "scope",
+    "surface",
+    "platform",
+    "track",
+    "variant",
+    "status",
+    "ok",
+    "product_win",
+    "productWin",
+    "win_eligible",
+    "comparable_to_gold_ir",
+    "recipe_id",
+    "model_id",
+    "mesh_id",
+    "topology",
+    "oracle",
+    "honesty",
+    "honesty_reason",
+    "tool_id",
+    "license_class",
+    "mesh_fingerprint",
+    "mesh_fingerprint_inputs",
+    "leftovers",
+    "pillars",
+    "lab_admit",
+    "signoff_all"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "report_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "scope": {"const": "lab"},
+    "surface": {"enum": ["lab", "lab_asap7"]},
+    "platform": {"const": "asap7"},
+    "track": {"enum": ["asap7", "asap7_bspdn", "asap7_bpr"]},
+    "variant": {"type": "string", "pattern": "^lab_asap7_[a-z0-9][a-z0-9_+.]*[a-z0-9]$"},
+    "status": {"enum": ["pass", "fail", "blocked", "not_run"]},
+    "ok": {"type": "boolean"},
+    "product_win": {"const": false},
+    "productWin": {"const": false},
+    "win_eligible": {"const": false},
+    "comparable_to_gold_ir": {"const": false},
+    "recipe_id": {"type": "string", "minLength": 1},
+    "model_id": {"type": "string", "minLength": 1},
+    "mesh_id": {"type": "string", "pattern": "^asap7_bspdn_proxy_[a-z0-9][a-z0-9_]*$"},
+    "topology": {"const": "proxy"},
+    "oracle": {"const": "analytical"},
+    "honesty": {"enum": ["GAP", "PROXY", "PARTIAL"]},
+    "honesty_reason": {"type": "string", "minLength": 1},
+    "tool_id": {"type": "string", "minLength": 1},
+    "license_class": {"type": "string", "minLength": 1},
+    "mesh_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "mesh_fingerprint_inputs": {
+      "type": "object",
+      "required": ["rail_model_id", "via_model_id", "thermal_model_id"],
+      "properties": {
+        "rail_model_id": {"type": "string", "minLength": 1},
+        "via_model_id": {"type": "string", "minLength": 1},
+        "thermal_model_id": {"type": ["string", "null"]}
+      }
+    },
+    "leftovers": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/leftover"}},
+    "pillars": {
+      "type": "object",
+      "required": ["ir", "thermal"],
+      "properties": {
+        "ir": {"$ref": "#/$defs/irPillar"},
+        "thermal": {"$ref": "#/$defs/thermalPillar"}
+      }
+    },
+    "lab_admit": {
+      "type": "object",
+      "required": ["ok"],
+      "properties": {"ok": {"type": "boolean"}}
+    },
+    "signoff_all": {
+      "type": "object",
+      "required": ["ok"],
+      "properties": {"ok": {"const": false}}
+    },
+    "ok_claim": {"const": false},
+    "product_signoff": {"const": false},
+    "wrote_finish": {"const": false},
+    "finish_write": {"const": false},
+    "expected_mv": {"not": {}},
+    "gold_mv": {"not": {}}
+  },
+  "$defs": {
+    "leftover": {
+      "type": "object",
+      "required": ["id", "message"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1},
+        "count": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "pillarBase": {
+      "type": "object",
+      "required": ["status", "honesty", "honesty_reason", "leftovers"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "blocked", "not_run"]},
+        "honesty": {"enum": ["GAP", "PROXY", "PARTIAL"]},
+        "honesty_reason": {"type": "string", "minLength": 1},
+        "leftovers": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/leftover"}},
+        "tool_id": {"type": ["string", "null"]},
+        "license_class": {"type": ["string", "null"]}
+      }
+    },
+    "irPillar": {
+      "allOf": [
+        {"$ref": "#/$defs/pillarBase"},
+        {"properties": {"honesty": {"enum": ["PROXY", "PARTIAL"]}}}
+      ]
+    },
+    "thermalPillar": {
+      "allOf": [
+        {"$ref": "#/$defs/pillarBase"},
+        {"properties": {"honesty": {"enum": ["GAP", "PROXY", "PARTIAL"]}}}
+      ]
+    }
+  }
+}

@@ -3,6 +3,10 @@
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" drc-signoff bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 REPORTS="${FLOW}/reports/nangate45/gcd/${VARIANT}"
@@ -24,17 +28,25 @@ else
   echo "WARN route DRC report missing" | tee -a "${LOG}"
 fi
 
-echo "--- KLayout GDS DRC ---" | tee -a "${LOG}"
-cd "${FLOW}"
-make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \
-     FLOW_VARIANT="${VARIANT}" \
-     CORE_UTILIZATION="${CORE_UTILIZATION:-35}" \
-     OPENROAD_EXE="${OPENROAD_EXE:-openroad}" \
-     OPENSTA_EXE="${OPENSTA_EXE:-sta}" \
-     YOSYS_EXE="${YOSYS_EXE:-yosys}" \
-     drc 2>&1 | tee -a "${LOG}"
-
+echo "--- KLayout GDS DRC (current finish GDS) ---" | tee -a "${LOG}"
+LYDRC="${FLOW}/platforms/nangate45/drc/FreePDK45.lydrc"
 LYRDB="${REPORTS}/6_drc.lyrdb"
+KLAYOUT_BIN="${KLAYOUT_CMD:-klayout}"
+KLAYOUT_REAL="$(command -v "${KLAYOUT_BIN}" 2>/dev/null || true)"
+if [[ -z "${KLAYOUT_REAL}" || ! -f "${LYDRC}" ]]; then
+  echo "FAIL missing KLayout or DRC deck" | tee -a "${LOG}"
+  exit 1
+fi
+KLAYOUT_PREFIX="$(cd "$(dirname "${KLAYOUT_REAL}")/.." && pwd)"
+RUBY_PATHS=()
+for ruby_dir in "${KLAYOUT_PREFIX}/lib/x86_64-linux-gnu/ruby/3.2.0" "${KLAYOUT_PREFIX}/lib/ruby/3.2.0" "${KLAYOUT_PREFIX}/lib/ruby/vendor_ruby"; do
+  [[ -d "${ruby_dir}" ]] && RUBY_PATHS+=("${ruby_dir}")
+done
+if [[ "${#RUBY_PATHS[@]}" -gt 0 ]]; then
+  export RUBYLIB="$(IFS=:; echo "${RUBY_PATHS[*]}")${RUBYLIB:+:${RUBYLIB}}"
+fi
+"${KLAYOUT_REAL}" -b -rd "in_gds=${GDS}" -rd "report_file=${LYRDB}" -r "${LYDRC}" 2>&1 | tee -a "${LOG}"
+
 GDS_VIOL=0
 if [[ -f "${LYRDB}" ]]; then
   # KLayout lyrdb is XML; count violation items heuristically

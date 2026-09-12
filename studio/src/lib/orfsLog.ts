@@ -203,10 +203,3 @@ export function digestOrfsLog(text: string): LogDigest {
     summary,
   };
 }
-
-export function isExpectedTimingMetric(value: string): boolean {
-  // nangate45 GCD golden finish WNS ≈ −0.04; mild negatives are course-expected
-  const n = parseFloat(value.replace(/[^\d.-]/g, ""));
-  if (!Number.isFinite(n)) return false;
-  return n >= -0.15 && n < 0;
-}

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""ASAP7 setup/hold pair on one finished netlist. Lab only. Not a product win.
+"""ASAP7 setup/hold pair on one finished netlist. Lab-only current analysis.
 
 Hammer default: setup = SS / 0.63 V / 100 °C (our WC); hold = FF / 0.77 V (our BC).
-Same Verilog + SPEF + SDC. Two OpenSTA runs. Do not restamp 45.298.
+Same Verilog + SPEF + SDC. Two current OpenSTA runs with separate corners.
 """
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
         "platform": "asap7",
         "kind": "mmmc_pair",
         "product_win": False,
-        "comparable_to_gold_ir": False,
+        "comparison_scope": "independent ASAP7 MMMC run",
         "variant": variant,
         "design": design,
         "netlist": str(verilog),
@@ -133,11 +133,11 @@ def main(argv: list[str] | None = None) -> int:
         "by_variant": by_variant,
         "leftover": {
             "mmmc": "two serial OpenSTA runs, not a single MMMC session",
-            "smoke_sdc": "SDC period is the cook SDC, not a 310 ps gold",
+            "smoke_sdc": "SDC period is the cook SDC",
         },
         "note": (
             "Hammer-style setup WC + hold BC on one netlist. "
-            "Not a product win. Live metrics only — no gold stamp."
+            "Not a product win. Live metrics only."
         ),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

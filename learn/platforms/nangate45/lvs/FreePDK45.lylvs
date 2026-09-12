@@ -234,7 +234,7 @@ for pat in %w(pnand*_0 and2_dec_0 port_address* replica_bitcell_array)
   connect_explicit(pat, [ "BULK", "PWELL", "gnd" ])
 end
   
-# Split-well Nangate cells (XNOR2 / MUX2 / NAND3-4 / OAI22 / AND3) are
+# Split-well Nangate cells (XNOR2 / MUX2 / NAND3-4 / OAI21/22 / AND3) are
 # flattened after extract. DFF_X stays pinned: unpinning it breaks the
 # match; flattening it raised must-connect to 4 (NOR4). AND2/AND4 stay
 # pinned. Flattening AND/DFF/INV/BUF together inflated the count (2 → 190).
@@ -494,7 +494,7 @@ blank_circuit("FILLCELL*")
 blank_circuit("TAPCELL*")
 blank_circuit("VIA_*")
 
-# XNOR2 / MUX2 / NAND3-4 / OAI22 well ties are split. Flatten into gcd so
+# XNOR2 / MUX2 / NAND3-4 / OAI21/22 well ties are split. Flatten into gcd so
 # connect_global(nwell, VDD) / (pwell, VSS) can join them without a
 # leftover must-connect warning at top.
 netlist.flatten_circuit("XNOR2_X1")
@@ -523,6 +523,14 @@ netlist.flatten_circuit("OAI22_X2")
 schematic.flatten_circuit("OAI22_X2")
 netlist.flatten_circuit("OAI22_X4")
 schematic.flatten_circuit("OAI22_X4")
+netlist.flatten_circuit("OAI21_X1")
+schematic.flatten_circuit("OAI21_X1")
+netlist.flatten_circuit("OAI21_X2")
+schematic.flatten_circuit("OAI21_X2")
+netlist.flatten_circuit("OAI21_X4")
+schematic.flatten_circuit("OAI21_X4")
+netlist.flatten_circuit("INV_X2")
+schematic.flatten_circuit("INV_X2")
 netlist.flatten_circuit("AND3_X1")
 schematic.flatten_circuit("AND3_X1")
 netlist.flatten_circuit("AND3_X2")

@@ -96,7 +96,7 @@ def run_ir_solvers(ctx: dict) -> bool:
                     c_decap=spec_amgc["c_decap"],
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_direct_mv=(child.attr or {}).get("residual_vs_direct_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_amgc,
                 )
@@ -154,7 +154,7 @@ def run_ir_solvers(ctx: dict) -> bool:
                     c_decap=spec_rasc["c_decap"],
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_direct_mv=(child.attr or {}).get("residual_vs_direct_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=why_rasc,
                 )
@@ -212,7 +212,7 @@ def run_ir_solvers(ctx: dict) -> bool:
                     c_decap=spec_kryc["c_decap"],
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_direct_mv=(child.attr or {}).get("residual_vs_direct_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     m=(child.artifacts or {}).get("m"),
                     reason=why_kryc,
@@ -280,7 +280,7 @@ def run_ir_solvers(ctx: dict) -> bool:
                     static_ir_mv=child.qor.static_ir_mv,
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_static_champ_mv=(child.attr or {}).get("residual_vs_static_champ_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=steer_sir.get("reason"),
                 )
@@ -344,7 +344,7 @@ def run_ir_solvers(ctx: dict) -> bool:
                     static_ir_mv=child.qor.static_ir_mv,
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_static_champ_mv=(child.attr or {}).get("residual_vs_static_champ_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=steer_sm.get("reason"),
                 )
@@ -408,7 +408,7 @@ def run_ir_solvers(ctx: dict) -> bool:
                     static_ir_mv=child.qor.static_ir_mv,
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_static_champ_mv=(child.attr or {}).get("residual_vs_static_champ_mv"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=steer_st.get("reason"),
                 )
@@ -481,7 +481,7 @@ def run_ir_solvers(ctx: dict) -> bool:
                     droop_mv=child.qor.dynamic_ir_mv,
                     residual_vs_em_champ_j=(child.attr or {}).get("residual_vs_em_champ_j"),
                     residual_vs_strap_j=(child.attr or {}).get("residual_vs_strap_j"),
-                    gold=False,
+                    comparison_scope="same-live-extract",
                     status=child.status,
                     reason=steer_em.get("reason"),
                 )

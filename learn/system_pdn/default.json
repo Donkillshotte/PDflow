@@ -1,7 +1,35 @@
 {
+  "schema_version": 2,
   "name": "gcd_tutorial_system_pdn",
   "description": "Hierarchical system PDN: VRM → board → package → die load (GCD nangate45)",
   "vdd": 1.1,
+  "target": {
+    "rail_ripple_pct": 0.02,
+    "vrm_regulation_pct": 0.01,
+    "note": "Educational 2% rail-ripple / 1% VRM budget; replace with the board and regulator specification before product decisions."
+  },
+  "package_interface": {
+    "bump_array": {
+      "master": "DUMMY_BUMP",
+      "rows": 4,
+      "columns": 4,
+      "origin_um": [8.0, 8.0],
+      "pitch_um": [16.0, 16.0],
+      "power_layer": "metal10",
+      "signal_layer": "metal6"
+    },
+    "power_nets": ["VDD"],
+    "ground_nets": ["VSS"],
+    "signal_nets": ["clk", "reset", "req_val", "resp_val"],
+    "bump_map": [
+      {"instance": "BUMP_0_0", "net": "VDD", "class": "power", "role": "supply"},
+      {"instance": "BUMP_0_1", "net": "VSS", "class": "ground", "role": "return"},
+      {"instance": "BUMP_1_0", "net": "clk", "class": "signal", "role": "clock"},
+      {"instance": "BUMP_1_1", "net": "reset", "class": "signal", "role": "control"},
+      {"instance": "BUMP_2_0", "net": "req_val", "class": "signal", "role": "request"},
+      {"instance": "BUMP_2_1", "net": "resp_val", "class": "signal", "role": "response"}
+    ]
+  },
   "vrm": {
     "v_nom": 1.1,
     "r_out": 0.015,
@@ -41,6 +69,13 @@
     "t_stop": 200e-9,
     "i_idle_factor": 0.3,
     "i_peak_factor": 4.0,
-    "edge_ns": 2.0
+    "edge_ns": 2.0,
+    "delay_ns": 20.0,
+    "pulse_width_ns": 80.0,
+    "period_s": 1.0,
+    "method": "gear",
+    "maxord": 2,
+    "settling_band_pct": 1.0,
+    "max_wave_points": 240
   }
 }

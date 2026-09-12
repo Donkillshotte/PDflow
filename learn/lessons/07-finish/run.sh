@@ -4,7 +4,7 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Theory"
-  ui_note "Read: learn/lessons/07-finish/README.md, walkthrough-finish.tcl.md, golden-metrics.md (Finish)."
+  ui_note "Read: learn/lessons/07-finish/README.md, walkthrough-finish.tcl.md, live-analysis.md."
   learn_atlas "win_final.png, orfs_final_worst_path.png, orfs_final_ir_drop.png"
   learn_make_hint finish
   ui_pause
@@ -23,8 +23,8 @@ lesson_main() {
   ui_section "Exercise 7-C — Final report"
   ui_print_file "Finish report" "$(learn_report 6_finish.rpt)" 50
   learn_grep_metric "$(learn_report 6_finish.rpt)" "wns max|tns max|period_min|setup violation|setup skew" || true
-  learn_golden
-  ui_note "Reference: WNS -0.04, TNS -0.60, period_min 0.50 ns (~2.01 GHz) vs SDC 0.46 ns."
+  learn_live_analysis
+  ui_note "Use the current finish report above for WNS, TNS, period_min, and the active SDC contract."
   ui_warn "Green make finish does not mean timing closed at 2.17 GHz."
   ui_pause
 

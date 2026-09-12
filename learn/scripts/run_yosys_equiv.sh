@@ -3,6 +3,10 @@
 # Optionally records the ORFS mapped netlist 1_2_yosys.v if present (Nangate cells).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" yosys-equivalence bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 RTL="${ROOT}/learn/flowlab/gcd.v"
 [[ -f "${RTL}" ]] || RTL="${ROOT}/tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v"
@@ -19,9 +23,9 @@ design -save rtl
 synth -top gcd
 opt; clean
 design -save syn
-design -copy-from rtl -as gold gcd
+design -copy-from rtl -as rtl_ref gcd
 design -copy-from syn -as gate gcd
-equiv_make gold gate equiv
+equiv_make rtl_ref gate equiv
 hierarchy -top equiv
 equiv_simple
 equiv_induct

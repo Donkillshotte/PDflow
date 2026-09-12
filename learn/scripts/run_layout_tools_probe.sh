@@ -2,6 +2,10 @@
 # Probe Magic / Netgen / KLayout. Nangate45 signoff LVS remains KLayout.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" layout-tools-probe bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 JSON="${ROOT}/learn/sim/reports/layout_tools_${VARIANT}.json"
 GDS="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/6_final.gds"

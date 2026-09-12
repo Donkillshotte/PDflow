@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fetch ASAP7 layer-1 public PDK (asap7_pdk_r1p7) into learn/lab/asap7/pdk.
-# Gitignored. Not Calibre. Not a finish. Does not restamp gold 45.298 mV.
+# Gitignored. Not Calibre and not a finish. Writes only fetched current inputs.
 #
 # Optional: ASAP7_PDK_SRC=/path/to/asap7_pdk_r1p7
 # Optional: ASAP7_CALIBRE_SRC=/path/to/unpacked/ASU/calibre  (replaces placeholder)
@@ -25,8 +25,11 @@ if [[ ! -d "${SRC}/models" ]]; then
 fi
 
 # Copy the public tree, not .git. Placeholder calibre/ is expected.
-# cp -a is enough for a 9.5 MB PDK.
-rm -rf "${DEST}"
+# cp -a is enough for a 9.5 MB PDK. Preserve an existing fetched tree so a
+# failed refresh never destroys the last usable input set.
+if [[ -d "${DEST}" ]]; then
+  mv "${DEST}" "${DEST}.stale-${PPID}-$$"
+fi
 mkdir -p "${DEST}"
 shopt -s dotglob
 for item in "${SRC}"/*; do
@@ -41,7 +44,9 @@ if [[ -n "${ASAP7_CALIBRE_SRC:-}" ]]; then
     echo "FAIL: ASAP7_CALIBRE_SRC is not a directory: ${ASAP7_CALIBRE_SRC}" >&2
     exit 2
   fi
-  rm -rf "${DEST}/calibre"
+  if [[ -d "${DEST}/calibre" ]]; then
+    mv "${DEST}/calibre" "${DEST}/calibre.stale-${PPID}-$$"
+  fi
   mkdir -p "${DEST}/calibre"
   cp -a "${ASAP7_CALIBRE_SRC}/." "${DEST}/calibre/"
   echo "calibre overlay from ${ASAP7_CALIBRE_SRC}"
@@ -53,7 +58,7 @@ via learn/scripts/fetch_asap7_pdk.sh.
 
 Not a finish. Not Calibre unless ASAP7_CALIBRE_SRC replaced calibre/.
 Views under learn/lab/asap7/pdk/ are gitignored.
-Do not write .lvs.ok. Do not restamp gold 45.298 mV.
+Do not write .lvs.ok; report missing Calibre inputs as GAP.
 EOF
 
 n_pm="$(find "${DEST}/models" -name '*.pm' | wc -l | tr -d ' ')"

@@ -6,15 +6,15 @@ Architecture (what this file actually does — not a product claim):
   OpenROAD write_pg_spice  →  PDN graph (R mesh, bump V, I_avg)
   activity layer (STA arrival t50 in clock; VCD/SAIF name-join; else synthetic)
   current layer (triangle; CCS interpolator if tables+slew; ECSM |C dV/dt| if waveforms+c_load)
-  Solver A: direct backward-Euler + sparse LU (current_run; locked gold 45.298 is another mesh)
+  Solver A: direct backward-Euler + sparse LU on the current extract
   Solver B: SA-AMG + CG on the same SPD companion operator
   Solver C: rational Krylov MOR — RC on δv, or descriptor RLC on x=[v; i_L]
   Solver D: restricted additive Schwarz (graph partition, local LU, GMRES)
   Vmin(t) + V(x,y) heatmap at t_worst + OpenSTA path IR delay
   EM: J from RPERSQ·L/R; metal-graph ΔT; N1 R(T) + one-shot Solver A TRAN restamp
-      (not gold; thermal tau ≫ electrical Δt)
+      (thermal tau ≫ electrical Δt)
 
-Solver A is the golden oracle. Solver C with L>0 reduces Eẋ+Ax=u matching
+Solver A is the full-order numerical reference. Solver C with L>0 reduces Eẋ+Ax=u matching
 the BE companion (not an RC-only Gsoft screen). Ranking of extra I(t) stays A.
 
 The BE time loop and MOR live in libdpn. Python orchestrates extraction and I(t).
@@ -24,7 +24,7 @@ RTL VCD does not name gate pins — name-join only, no silent RTL→ITerm map.
 STA t50 uses report_arrival; I_avg is not rescaled from activity Hz.
 
 Prior art (concepts, not dependencies): OpenROAD PSM (frontend),
-EMSim split A/B, ESPSim SA-AMG, MATEX/Raptor MOR, Ginkgo, Xyce/ngspice gold.
+EMSim split A/B, ESPSim SA-AMG, MATEX/Raptor MOR, Ginkgo, Xyce/ngspice references.
 """
 
 from __future__ import annotations
@@ -101,7 +101,7 @@ from pdn_solvers import (  # noqa: E402
     droop_pct,
 )
 from pdn_transient import build_system, solve_static  # noqa: E402
-from pdn_vrm import assemble_n4_mesh, assemble_strap_rlc, load_vrm_cfg, ngspice_vrm_die_gold, timestep_descriptor  # noqa: E402
+from pdn_vrm import assemble_n4_mesh, assemble_strap_rlc, load_vrm_cfg, ngspice_vrm_die_reference, timestep_descriptor  # noqa: E402
 
 
 def viridis(t: float) -> str:
@@ -134,7 +134,7 @@ def assemble_be(G, idx, voltages, vdd, events, *, pkg_r, pkg_l, c_decap, dt, spe
     spef_c is extra interconnect C (Farads) on named spice nodes, added to
     lumped c_decap — not a replacement, and never taken from signal SPEF.
     c_couple is a list of (i, j, C) Faraday stamps (instance-pin C_rr and/or strap Cox).
-    When unset, A is bit-identical to the diagonal-C GCD gold path.
+    When unset, A is bit-identical to the diagonal-C path for this invocation.
     """
     n = G.shape[0]
     bump = []
@@ -388,11 +388,11 @@ def electrothermal_timestep_be(
     dt: float,
     t_end: float,
     spef_c=None,
-    gold_droop: float | None = None,
+    reference_droop: float | None = None,
     n_r_scaled: int = 0,
     r_scale_hot: float = 1.0,
 ) -> dict:
-    """One-shot R(T) restamp → Solver A TRAN. Does not replace gold.
+    """One-shot R(T) restamp → Solver A TRAN on the current extract.
 
     T is the metal-graph steady field from I_avg·Vdd + strap/via I²R (thermal
     tau ≫ electrical Δt, so this is self-heating, not pulse heating in one
@@ -429,14 +429,14 @@ def electrothermal_timestep_be(
     solver = DirectLU(sys_t["A"])
     dyn_t = timestep_be(sys_t, evs, solver, vdd, order, t_end)
     droop = float(dyn_t["worst_droop"])
-    delta_mv = None if gold_droop is None else (droop - float(gold_droop)) * 1e3
+    delta_mv = None if reference_droop is None else (droop - float(reference_droop)) * 1e3
     return {
         "status": "READY",
         "ok": True,
         "worst_droop_mv": droop * 1e3,
         "worst_time_ns": float(dyn_t["worst_time_s"]) * 1e9,
         "worst_node": dyn_t.get("worst_node"),
-        "delta_vs_A_mv": delta_mv,
+        "delta_vs_reference_mv": delta_mv,
         "n_r_scaled": int(n_r_scaled),
         "r_scale_hot": float(r_scale_hot),
         "backend": dyn_t.get("backend"),
@@ -449,8 +449,8 @@ def electrothermal_timestep_be(
             "Solver A TRAN — not a sub-ps DAE, not N1-only, not 3D CFD"
         ),
         "note": (
-            "Gold remains unrestamped Solver A. Thermal tau ≫ electrical Δt so T is "
-            "steady self-heating, not one-cycle pulse heating."
+            "Reference is the current-run Solver A. Thermal tau ≫ electrical Δt "
+            "so T is steady self-heating, not one-cycle pulse heating."
         ),
     }
 
@@ -484,7 +484,7 @@ def windowed_timestep_be(
     raw = windows_from_itot(wave_t, wave_itot, frac)
     wins = expand_windows(raw, pad_s, t_end)
     full_steps = int(dyn_full.get("steps") or 0)
-    gold_droop = float(dyn_full.get("worst_droop") or 0.0)
+    reference_droop = float(dyn_full.get("worst_droop") or 0.0)
     base = {
         "n_windows_raw": len(raw),
         "n_windows": len(wins),
@@ -508,7 +508,7 @@ def windowed_timestep_be(
             "status": "GAP",
             "collapsed_to_full": False,
             "steps": 0,
-            "abs_err_vs_A_mv": None,
+            "abs_err_vs_reference_mv": None,
             "via": "no I_tot window",
             "note": "I_tot never crossed the window threshold",
         }
@@ -524,9 +524,9 @@ def windowed_timestep_be(
             "status": "READY",
             "collapsed_to_full": True,
             "steps": full_steps,
-            "worst_droop_mv": gold_droop * 1e3,
+            "worst_droop_mv": reference_droop * 1e3,
             "worst_time_ns": float(dyn_full.get("worst_time_s") or 0.0) * 1e9,
-            "abs_err_vs_A_mv": 0.0,
+            "abs_err_vs_reference_mv": 0.0,
             "via": "one I_tot window covers the horizon — windowed BE is the full TRAN",
             "note": "not 100k-cycle screening; this run's I_tot already occupies [0, t_end]",
         }
@@ -563,7 +563,7 @@ def windowed_timestep_be(
             if r["worst_droop"] > worst_droop:
                 worst_droop = r["worst_droop"]
                 worst_t = t_abs
-        err_mv = abs(worst_droop - gold_droop) * 1e3
+        err_mv = abs(worst_droop - reference_droop) * 1e3
         return {
             **base,
             "status": "READY" if per and err_mv < 1.0 else ("PARTIAL" if per else "GAP"),
@@ -573,7 +573,7 @@ def windowed_timestep_be(
             "per_window": per,
             "worst_droop_mv": worst_droop * 1e3,
             "worst_time_ns": worst_t * 1e9,
-            "abs_err_vs_A_mv": err_mv,
+            "abs_err_vs_reference_mv": err_mv,
             "via": "isolated BE on I_tot windows; t50 shifted so each window starts at 0; UIC Vdd",
             "note": (
                 "valid when pkg L=0 or idle gaps ≫ L/R; not 100k-cycle screening"
@@ -587,16 +587,16 @@ def windowed_timestep_be(
             "status": "READY",
             "collapsed_to_full": True,
             "steps": full_steps,
-            "worst_droop_mv": gold_droop * 1e3,
+            "worst_droop_mv": reference_droop * 1e3,
             "worst_time_ns": float(dyn_full.get("worst_time_s") or 0.0) * 1e9,
-            "abs_err_vs_A_mv": 0.0,
+            "abs_err_vs_reference_mv": 0.0,
             "via": "I_tot window reaches t_end — prefix cut would be the full TRAN",
             "note": (
                 f"pkg L/R={lr*1e9:.2f} ns; isolated restart would drop i_L history"
             ),
         }
     r = timestep_be(sys, events, solver, vdd, order, t_cut, ccs_tables=ccs_tables, ecsm_tables=ecsm_tables)
-    err_mv = abs(r["worst_droop"] - gold_droop) * 1e3
+    err_mv = abs(r["worst_droop"] - reference_droop) * 1e3
     return {
         **base,
         "status": "READY" if err_mv < 1.0 else "PARTIAL",
@@ -606,7 +606,7 @@ def windowed_timestep_be(
         "t_cut_ns": t_cut * 1e9,
         "worst_droop_mv": r["worst_droop"] * 1e3,
         "worst_time_ns": r["worst_time_s"] * 1e9,
-        "abs_err_vs_A_mv": err_mv,
+        "abs_err_vs_reference_mv": err_mv,
         "via": "prefix BE [0, t_cut] preserving i_L; not isolated restart",
         "note": (
             f"pkg L/R={lr*1e9:.2f} ns vs horizon {t_end*1e9:.2f} ns — "
@@ -780,13 +780,13 @@ def run_return_rail(
     rail_c_geom: bool = False,
     vdd: float = 1.1,
 ) -> dict:
-    """VSS return-path TRAN. Same I(t) magnitude as VDD on paired sinks. Does not change VDD gold.
+    """VSS return-path TRAN. Same I(t) magnitude as VDD on paired sinks. Does not change the VDD run.
 
     Default: block-diagonal dual-rail MNA (no rail-to-rail C). UIC and pads are 0 V.
     Bounce = −Vmin (I DC convention: current from node to 0, same as PDNSim).
     rail_c_f>0 and/or rail_c_geom: also solve one coupled MNA with KCL
     (I leaves VDD, enters VSS). Instance-pin C_rr and overlapping-strap Cox are
-    independent opt-ins. Not the GCD clock gold.
+    independent opt-ins. It is a separate same-run scenario.
     """
     vdd_sinks = parse_pg_sinks(spice_vdd)
     vss_sinks = parse_pg_sinks(spice_vss)
@@ -972,7 +972,7 @@ def run_return_rail(
         "note": (
             "Coupled MNA: I leaves VDD and enters VSS. "
             "Instance-pin C_rr and/or overlapping-strap Cox. "
-            "Does not replace Solver A VDD gold."
+            "Does not replace the Solver A VDD result."
         ),
         "not": "GCD default / signal SPEF / LEF CPERSQDIST / foundry PEX",
     }
@@ -982,7 +982,7 @@ def run_return_rail(
             f" Cox={geom_json['c_sum_f']:.3e} F "
             f"({geom_json.get('n_lateral', 0)} lat + {geom_json.get('n_plate', 0)} plate)"
         )
-    out["note"] = paired["note"] + extra + " ready — VDD gold unchanged."
+    out["note"] = paired["note"] + extra + " ready — VDD result unchanged."
     return out
 
 
@@ -1013,8 +1013,8 @@ def platform_block(
         c_status = "PARTIAL"
         c_via = (
             mor.get("via")
-            or f"rational Krylov ODE, |A−C|={mor.get('abs_err_vs_A_mv')} mV "
-            "(basis does not yet replace full-order gold)"
+            or f"rational Krylov ODE, |reference−C|={mor.get('abs_err_vs_reference_mv')} mV "
+            "(basis does not yet replace the full-order result)"
         )
     elif scenarios:
         c_status = "PARTIAL"
@@ -1056,7 +1056,7 @@ def platform_block(
             "status": "GAP",
             "idea": "one LinearSolver API → CPU AMG / CPU Krylov / GPU AMG / GPU Krylov (Ginkgo)",
         },
-        "gold": {
+        "reference_engines": {
             "tiny": {"tool": "ngspice", "status": "READY", "scope": "1-node RC + 1-node series R+L companion + 2-node C_rr / strap Cox"},
             "medium": {
                 "tool": "Xyce",
@@ -1067,7 +1067,7 @@ def platform_block(
         "solvers": {
             "A_direct_be": {
                 "status": "READY",
-                "role": "golden reference",
+                "role": "same-run numerical reference",
                 "via": "(G + C/dt) Vnext = rhs · sparse LU",
                 "not": "product workhorse",
             },
@@ -1079,7 +1079,7 @@ def platform_block(
             },
             "C_rational_krylov_mor": {
                 "status": c_status,
-                "role": "multi-scenario reuse on the same PDN",
+                "role": "multi-scenario reuse on the same live PDN",
                 "via": c_via,
                 "killer_feature": "one reduced ODE, many current waveforms",
                 "m": None if not mor else mor.get("m"),
@@ -1097,7 +1097,7 @@ def platform_block(
                 "status": (vss or {}).get("status") or "GAP",
                 "role": "return-path TRAN on write_pg_spice VSS (block-diagonal default; C_rr / strap Cox opt-in)",
                 "via": (vss or {}).get("via") or "write_pg_spice -net VSS + Sink-for inst pair",
-                "not": "replacement of VDD gold; C_rr and strap Cox are not GCD default",
+                "not": "replacement of the VDD run; C_rr and strap Cox are not the default",
                 "meta": None if not vss else {k: v for k, v in vss.items() if k not in ("extract",)},
             },
         },
@@ -1310,7 +1310,7 @@ def _parse_wrdata_vmin(path: Path) -> float | None:
     return worst
 
 
-def ngspice_gold(
+def ngspice_reference(
     vdd: float = 1.1,
     r: float = 2.0,
     c: float = 50e-12,
@@ -1342,12 +1342,12 @@ def ngspice_gold(
 
     t0 = max(t50 - 0.5 * dur, 0.0)
     t1 = t50 + 0.5 * dur
-    tmp = Path(tempfile.mkdtemp(prefix="dynir-gold-"))
-    sp_path = tmp / "gold.sp"
-    dat_path = tmp / "gold.dat"
+    tmp = Path(tempfile.mkdtemp(prefix="dynir-reference-"))
+    sp_path = tmp / "reference.sp"
+    dat_path = tmp / "reference.dat"
     # OP first (no UIC): C starts at Vdd. wrdata is ASCII time, v(n).
     sp_path.write_text(
-        f"""* dynamic_ir 1-node gold (gear maxord=1 ≈ backward Euler)
+        f"""* dynamic_ir 1-node reference (gear maxord=1 ≈ backward Euler)
 Vpad pad 0 DC {vdd}
 R1 pad n {r}
 C1 n 0 {c}
@@ -1371,7 +1371,7 @@ quit
     blob = (log.stdout or "") + "\n" + (log.stderr or "")
     vmin_ng = _parse_wrdata_vmin(dat_path)
     if vmin_ng is None:
-        for extra in sorted(tmp.glob("gold.dat*")):
+        for extra in sorted(tmp.glob("reference.dat*")):
             vmin_ng = _parse_wrdata_vmin(extra)
             if vmin_ng is not None:
                 break
@@ -1406,7 +1406,7 @@ quit
     }
 
 
-def ngspice_rl_gold(
+def ngspice_rl_reference(
     vdd: float = 1.1,
     r: float = 0.05,
     l: float = 2e-10,
@@ -1437,11 +1437,11 @@ def ngspice_rl_gold(
 
     t0 = max(t50 - 0.5 * dur, 0.0)
     t1 = t50 + 0.5 * dur
-    tmp = Path(tempfile.mkdtemp(prefix="dynir-rl-gold-"))
-    sp_path = tmp / "gold_rl.sp"
-    dat_path = tmp / "gold_rl.dat"
+    tmp = Path(tempfile.mkdtemp(prefix="dynir-rl-reference-"))
+    sp_path = tmp / "reference_rl.sp"
+    dat_path = tmp / "reference_rl.dat"
     sp_path.write_text(
-        f"""* dynamic_ir 1-node series R+L gold (gear maxord=1 ≈ backward Euler)
+        f"""* dynamic_ir 1-node series R+L reference (gear maxord=1 ≈ backward Euler)
 Vpad pad 0 DC {vdd}
 R1 pad mid {r}
 L1 mid n {l}
@@ -1466,7 +1466,7 @@ quit
     blob = (log.stdout or "") + "\n" + (log.stderr or "")
     vmin_ng = _parse_wrdata_vmin(dat_path)
     if vmin_ng is None:
-        for extra in sorted(tmp.glob("gold_rl.dat*")):
+        for extra in sorted(tmp.glob("reference_rl.dat*")):
             vmin_ng = _parse_wrdata_vmin(extra)
             if vmin_ng is not None:
                 break
@@ -1496,7 +1496,7 @@ quit
     }
 
 
-def ngspice_rail_c_gold(
+def ngspice_rail_c_reference(
     vdd: float = 1.1,
     r: float = 1.0,
     c_die: float = 50e-15,
@@ -1536,7 +1536,7 @@ def ngspice_rail_c_gold(
     dat_v = tmp / "vdd.dat"
     dat_s = tmp / "vss.dat"
     sp_path.write_text(
-        f"""* rail-to-rail C gold (gear maxord=1 ≈ backward Euler)
+        f"""* rail-to-rail C reference (gear maxord=1 ≈ backward Euler)
 Vpad pad 0 DC {vdd}
 R1 pad n1 {r}
 R2 n2 0 {r}
@@ -1636,16 +1636,16 @@ def main() -> int:
     ap.add_argument("--vrm-cfg", type=Path, default=None, help="system_pdn JSON for lumped VRM")
     ap.add_argument("--lef", type=Path, default=None, help="tech LEF for metal WIDTH/THICKNESS/RPERSQ (EM J)")
     ap.add_argument("--spef", type=Path, default=None, help="SPEF PG *D_NET *CAP stamped by name-join (never mapped from signal nets)")
-    ap.add_argument("--spice-vss", type=Path, default=None, help="write_pg_spice VSS mesh; dual-rail return TRAN (does not change VDD gold)")
+    ap.add_argument("--spice-vss", type=Path, default=None, help="write_pg_spice VSS mesh; dual-rail return TRAN (does not change the VDD run)")
     ap.add_argument(
         "--on-die-l",
         action="store_true",
-        help="stamp Grover strap L+M as descriptor TRAN (not the GCD N3 gold; never AMG)",
+        help="stamp Grover strap L+M as descriptor TRAN (same-run scenario; never AMG)",
     )
     ap.add_argument(
         "--rail-c",
         action="store_true",
-        help="stamp instance-pin C_rr and solve coupled VDD+VSS MNA (not GCD gold)",
+        help="stamp instance-pin C_rr and solve coupled VDD+VSS MNA (same-run scenario)",
     )
     ap.add_argument(
         "--rail-c-f",
@@ -1656,12 +1656,12 @@ def main() -> int:
     ap.add_argument(
         "--rail-c-geom",
         action="store_true",
-        help="stamp overlapping-strap Cox (lateral + ILD plate) on coupled MNA (not GCD gold)",
+        help="stamp overlapping-strap Cox (lateral + ILD plate) on coupled MNA (same-run scenario)",
     )
     ap.add_argument(
         "--no-electrothermal",
         action="store_true",
-        help="skip R(T) restamped Solver A TRAN (N1 restamp still reported; gold unchanged either way)",
+        help="skip R(T) restamped Solver A TRAN (N1 restamp is still reported)",
     )
     args = ap.parse_args()
 
@@ -1853,7 +1853,7 @@ def main() -> int:
             "ok": err_mv < 5.0,
             "worst_droop_mv": dyn_b["worst_droop"] * 1e3,
             "worst_time_ns": dyn_b["worst_time_s"] * 1e9,
-            "abs_err_vs_A_mv": err_mv,
+            "abs_err_vs_reference_mv": err_mv,
             "rel_res_max": dyn_b["rel_res_max"],
             "n_levels": dyn_b["n_levels"],
             "setup_s": solver_b.setup_s,
@@ -1877,7 +1877,7 @@ def main() -> int:
             "ok": err_d < 5.0,
             "worst_droop_mv": dyn_d["worst_droop"] * 1e3,
             "worst_time_ns": dyn_d["worst_time_s"] * 1e9,
-            "abs_err_vs_A_mv": err_d,
+            "abs_err_vs_reference_mv": err_d,
             "rel_res_max": dyn_d["rel_res_max"],
             "n_levels": dyn_d["n_levels"],
             "setup_s": solver_d.setup_s,
@@ -1924,7 +1924,7 @@ def main() -> int:
             "ok": err_c < 5.0,
             "worst_droop_mv": dyn_c["worst_droop"] * 1e3,
             "worst_time_ns": dyn_c["worst_time_s"] * 1e9,
-            "abs_err_vs_A_mv": err_c,
+            "abs_err_vs_reference_mv": err_c,
             "rel_res_max": dyn_c.get("rel_res_max"),
             "m": getattr(mor, "m", dyn_c.get("m")),
             "setup_s": getattr(mor, "setup_s", dyn_c.get("solver_setup_s")),
@@ -1951,10 +1951,10 @@ def main() -> int:
             "ok": err_ad < 5.0,
             "worst_droop_mv": dyn_ad["worst_droop"] * 1e3,
             "worst_time_ns": dyn_ad["worst_time_s"] * 1e9,
-            "abs_err_vs_A_mv": err_ad,
+            "abs_err_vs_reference_mv": err_ad,
             "steps": dyn_ad["steps"],
             "timestep_loop": dyn_ad.get("timestep_loop"),
-            "via": "BE LTE ½|Δ²V|; g_eq(Δt)+i_L (different L discretization than fixed-Δt gold)",
+            "via": "BE LTE ½|Δ²V|; g_eq(Δt)+i_L (different L discretization than fixed-Δt reference)",
         }
 
     n4_meta = None
@@ -1991,7 +1991,7 @@ def main() -> int:
             "backend": dyn_n4.get("backend"),
             "timestep_loop": dyn_n4.get("timestep_loop"),
             "rel_res_max": dyn_n4.get("rel_res_max"),
-            "note": "N3 (ideal Vsrc) stays gold on this sub-ns window; 47 µF VRM is stiff here",
+            "note": "N3 (ideal Vsrc) is a same-run numerical reference on this sub-ns window; 47 µF VRM is stiff here",
             "r_vrm": float(vrm.get("r_out") or 0.015),
             "l_vrm": float(vrm.get("l_out") or 2e-9),
             "c_vrm": float(vrm.get("c_out") or 47e-6),
@@ -2174,7 +2174,7 @@ def main() -> int:
                 dt=dt,
                 t_end=t_end,
                 spef_c=(ext.get("spef") or {}).get("node_c"),
-                gold_droop=dyn["worst_droop"],
+                reference_droop=dyn["worst_droop"],
                 n_r_scaled=int(em.get("n_r_scaled") or 0),
                 r_scale_hot=float(em.get("r_scale_hot") or 1.0),
             )
@@ -2212,15 +2212,15 @@ def main() -> int:
     )
     write_heatmap_svg(pts, svg_path, vdd, title)
 
-    gold = None
-    gold_rl = None
-    gold_n4 = None
-    gold_rail_c = None
+    reference = None
+    reference_rl = None
+    reference_n4 = None
+    reference_rail_c = None
     if not args.skip_ngspice:
-        gold = ngspice_gold(vdd=vdd)
-        gold_rl = ngspice_rl_gold(vdd=vdd)
-        gold_rail_c = ngspice_rail_c_gold(vdd=vdd)
-        gold_n4 = ngspice_vrm_die_gold(
+        reference = ngspice_reference(vdd=vdd)
+        reference_rl = ngspice_rl_reference(vdd=vdd)
+        reference_rail_c = ngspice_rail_c_reference(vdd=vdd)
+        reference_n4 = ngspice_vrm_die_reference(
             vdd=vdd,
             r_vrm=0.015,
             l_vrm=2e-10,
@@ -2289,7 +2289,7 @@ def main() -> int:
             "collapsed_to_full": win_run.get("collapsed_to_full"),
             "steps": win_run.get("steps"),
             "full_steps": win_run.get("full_steps"),
-            "abs_err_vs_A_mv": win_run.get("abs_err_vs_A_mv"),
+            "abs_err_vs_reference_mv": win_run.get("abs_err_vs_reference_mv"),
             "via": win_run.get("via"),
             "note": win_run.get("note")
             or "high-I windows on this run's I_tot(t), not 100k-cycle screening",
@@ -2364,7 +2364,7 @@ def main() -> int:
             "id": 5,
             "name": "Transient solver",
             "status": "READY",
-            "via": "A LU gold + B SA-AMG + C descriptor RLC Krylov + D RAS Schwarz + native N4 descriptor BE",
+            "via": "A full-order LU + B SA-AMG + C descriptor RLC Krylov + D RAS Schwarz + native N4 descriptor BE",
         },
         {"id": 6, "name": "Analysis", "status": "PARTIAL", "via": em_via},
     ]
@@ -2387,17 +2387,17 @@ def main() -> int:
         vss=vss_meta,
     )
     amg_note = (
-        f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|A−B| {amg_meta['abs_err_vs_A_mv']:.3f} mV)"
+        f" · AMG {amg_meta['worst_droop_mv']:.3f} mV (|reference−B| {amg_meta['abs_err_vs_reference_mv']:.3f} mV)"
         if amg_meta
         else ""
     )
     mor_note = (
-        f" · MOR m={mor_meta['m']} {mor_meta['worst_droop_mv']:.3f} mV (|A−C| {mor_meta['abs_err_vs_A_mv']:.3f} mV)"
+        f" · MOR m={mor_meta['m']} {mor_meta['worst_droop_mv']:.3f} mV (|reference−C| {mor_meta['abs_err_vs_reference_mv']:.3f} mV)"
         if mor_meta
         else ""
     )
     ras_note = (
-        f" · RAS {ras_meta['worst_droop_mv']:.3f} mV (|A−D| {ras_meta['abs_err_vs_A_mv']:.3f} mV, ndom={ras_meta['n_levels']})"
+        f" · RAS {ras_meta['worst_droop_mv']:.3f} mV (|reference−D| {ras_meta['abs_err_vs_reference_mv']:.3f} mV, ndom={ras_meta['n_levels']})"
         if ras_meta
         else ""
     )
@@ -2415,8 +2415,8 @@ def main() -> int:
             else ""
         )
         + (
-            f" · R(T) TRAN {et['worst_droop_mv']:.3f} mV (Δ {et['delta_vs_A_mv']:+.4f} mV)"
-            if et.get("status") == "READY" and et.get("delta_vs_A_mv") is not None
+            f" · R(T) TRAN {et['worst_droop_mv']:.3f} mV (Δ {et['delta_vs_reference_mv']:+.4f} mV)"
+            if et.get("status") == "READY" and et.get("delta_vs_reference_mv") is not None
             else ""
         )
         if em.get("n_with_j")
@@ -2440,7 +2440,7 @@ def main() -> int:
                 f" · Cox {cg['c_sum_f']:.2e} F "
                 f"({cg.get('n_lateral', 0)} lat+{cg.get('n_plate', 0)} plate)"
             )
-    win_err = win_run.get("abs_err_vs_A_mv")
+    win_err = win_run.get("abs_err_vs_reference_mv")
     l3_note = (
         f" · L3 |A−W| {win_err:.3f} mV"
         if win_err is not None
@@ -2449,6 +2449,7 @@ def main() -> int:
     report = {
         "ok": True,
         "kind": "dynamic_ir",
+        "comparison_scope": "same-live-invocation",
         "engine": "studio-dynamic-ir",
         "architecture": [
             "OpenROAD write_pg_spice PDN (static R mesh) — frontend, not a PSM fork",
@@ -2459,7 +2460,7 @@ def main() -> int:
             "Solver C: rational Krylov — RC on δv, or descriptor RLC on x=[v; i_L] matching i_L",
             "Solver D: restricted additive Schwarz on the BE operator (graph partition, local LU, GMRES)",
             "N4: native descriptor BE on Eẋ+Ax=u (VRM + bump R+L + die mesh); SparseLU, not AMG",
-            "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; metal-graph thermal ΔT (straps+vias) + N1 R(T) + one-shot Solver A TRAN restamp (not gold); skin depth reported",
+            "EM: J=I/(w t) with w from RPERSQ·L/R; relative Black TTF; metal-graph thermal ΔT (straps+vias) + N1 R(T) + one-shot Solver A TRAN restamp; skin depth reported",
             "Native BE/MOR/RAS/N4 in libdpn (Index=int64); Python orchestrates extraction and I(t); CCS lagged I(V) when tables+slew",
             "V(x,y) heatmap at t_worst + OpenSTA path delay scaled by local Vmin (NLDM typical-V, not a second liberty)",
         ],
@@ -2476,12 +2477,12 @@ def main() -> int:
             "openroad": "physical frontend — ODB → PDN graph; do not fork PSM",
             "extract": "pdn_extract.write_pg_spice + tech LEF; SPEF PG C READY only when *CAP is stamped",
             "activity": "pdn_activity: OpenSTA report_arrival t50 (clock); VCD/SAIF name-join only; windowed BE",
-            "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, metal-graph ΔT (straps+vias) → R(T) N1 + Solver A TRAN restamp — not foundry hours, not gold",
+            "em": "pdn_em: J from RPERSQ·L/R, relative Black TTF, metal-graph ΔT (straps+vias) → R(T) N1 + Solver A TRAN restamp — not foundry hours",
             "emsim": "architectural split A (cell current → PWL) vs B (PDN TRAN) — not vendored, not run",
             "vyges_em_ir": "bootstrap + simultaneous-switch validation — not the core",
             "this_engine": "A DirectLU current_run + B SA-AMG + C descriptor RLC Krylov + D RAS + native N4 on write_pg_spice; triangle I(t) on NLDM",
-            "ngspice": "unit-test gold for BE on 1-node RC, 1-node series R+L, compact VRM+die, and 2-node C_rr / strap Cox",
-            "xyce": "GAP — future medium-scale gold, not the PDN-aware core",
+            "ngspice": "unit-test reference for BE on 1-node RC, 1-node series R+L, compact VRM+die, and 2-node C_rr / strap Cox",
+            "xyce": "GAP — future medium-scale reference, not the PDN-aware core",
         },
         "platform": plat,
         "emsim_split": {
@@ -2499,13 +2500,13 @@ def main() -> int:
                 "solver": "A_direct_be + B_sa_amg + C_rational_krylov_mor + D_ras_schwarz + N4_descriptor",
                 "replaces": "HSpice TRAN on Calibre DSPF",
                 "via": "Solver A LU current_run + B SA-AMG + C reduced ODE + D RAS Schwarz + native N4 on write_pg_spice",
-                "gold": "ngspice 1-node RC + series R+L companion + compact VRM+die + 2-node C_rr/Cox; A vs B vs C vs D on the chip mesh",
+                "reference": "ngspice 1-node RC + series R+L companion + compact VRM+die + 2-node C_rr/Cox; A vs B vs C vs D on the chip mesh",
             },
             "commercial_not_used": {
                 "VCS": "GAP — Icarus RTL VCD does not name gate ITerms",
                 "Calibre_xRC": "MAPPED — OpenROAD write_pg_spice (R mesh, not DSPF)",
                 "PrimeTime_PX": "MAPPED — I_avg in the SPICE mesh, not time-based cell power",
-                "HSpice": "MAPPED — ngspice gold only; B is Solver A BE",
+                "HSpice": "MAPPED — ngspice reference only; B is Solver A BE",
             },
         },
         "pipeline": pipeline,
@@ -2533,10 +2534,10 @@ def main() -> int:
             "ir_max_mv": hottest[0]["ir_mv"] if hottest else 0.0,
         },
         "waveform": str(wave_path),
-        "ngspice_gold": gold,
-        "ngspice_rl_gold": gold_rl,
-        "ngspice_n4_gold": gold_n4,
-        "ngspice_rail_c_gold": gold_rail_c,
+        "ngspice_reference": reference,
+        "ngspice_rl_reference": reference_rl,
+        "ngspice_n4_reference": reference_n4,
+        "ngspice_rail_c_reference": reference_rail_c,
         "extract": extract_report,
         "em": em,
         "solver_b": amg_meta,
@@ -2580,14 +2581,14 @@ def main() -> int:
     print(f"report → {out}")
     print(f"wave → {wave_path}")
     print(f"map → {svg_path}")
-    if gold:
-        print("ngspice_gold", gold)
-    if gold_rl:
-        print("ngspice_rl_gold", gold_rl)
-    if gold_n4:
-        print("ngspice_n4_gold", gold_n4)
-    if gold_rail_c:
-        print("ngspice_rail_c_gold", gold_rail_c)
+    if reference:
+        print("ngspice_reference", reference)
+    if reference_rl:
+        print("ngspice_rl_reference", reference_rl)
+    if reference_n4:
+        print("ngspice_n4_reference", reference_n4)
+    if reference_rail_c:
+        print("ngspice_rail_c_reference", reference_rail_c)
     if n4_meta:
         print("n4", {k: n4_meta[k] for k in n4_meta if k != "note"})
     if em.get("n_with_j"):
@@ -2604,7 +2605,7 @@ def main() -> int:
                 "n_vias": (em.get("thermal_mesh") or {}).get("n_vias"),
                 "rT_delta_ir_mv": em.get("rT_delta_ir_mv"),
                 "electrothermal": (em.get("electrothermal") or {}).get("status"),
-                "rT_tran_delta_mv": (em.get("electrothermal") or {}).get("delta_vs_A_mv"),
+                "rT_tran_delta_mv": (em.get("electrothermal") or {}).get("delta_vs_reference_mv"),
             },
         )
     if n_sta:
@@ -2616,7 +2617,7 @@ def main() -> int:
             "n_windows": win_run.get("n_windows"),
             "steps": win_run.get("steps"),
             "full_steps": win_run.get("full_steps"),
-            "abs_err_vs_A_mv": win_run.get("abs_err_vs_A_mv"),
+            "abs_err_vs_reference_mv": win_run.get("abs_err_vs_reference_mv"),
             "collapsed_to_full": win_run.get("collapsed_to_full"),
         },
     )

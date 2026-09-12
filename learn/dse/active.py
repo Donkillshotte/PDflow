@@ -6,8 +6,8 @@ F3→F5 residual + uncertainty:
   n<2 local pairs       → measure the other host  (reduce uncertainty)
 
 F4 IR residual (mesh / PDN knob / region):
-  large |catalog − gold-knob| → that PDN family on the region mesh
-  small |catalog − gold-knob| → unused pkg L on the candidate extract
+  large |catalog − reference-knob| → that PDN family on the region mesh
+  small |catalog − reference-knob| → unused pkg L on the candidate extract
 F4 host-region residual (this pair only, not the synth region residual):
   large |host-region − host| → winning PDN family on the host-region mesh
   after that / small residual → unused pkg L on the unconstrained host extract
@@ -233,7 +233,7 @@ def steer_from_residual(mem: DesignMemory) -> dict | None:
     return None
 
 
-# |catalog − gold-knob| ≥ 1 mV on the same extract → that PDN family works.
+# |catalog − reference-knob| ≥ 1 mV on the same extract → that PDN family works.
 KNOB_MV = 1.0
 
 
@@ -324,7 +324,7 @@ def steer_from_ir_residual(mem: DesignMemory) -> dict | None:
                 )
             else:
                 why = (
-                    f"F4 mesh residual {mesh.get('mean_residual_mv')} mV vs gold — "
+                    f"F4 mesh residual {mesh.get('mean_residual_mv')} mV vs reference — "
                     f"pay {spec['name']} on the candidate extract, not ABC"
                 )
             return {
@@ -396,7 +396,7 @@ def steer_from_host_ir_residual(mem: DesignMemory) -> dict | None:
                 "host_source": "f4_host_region_extract",
                 "reason": (
                     f"F4 host-region residual {float(mesh_r):+.3f} mV — "
-                    f"restamp {winning} on the host-region mesh, not gold rXY, not ABC"
+                    f"restamp {winning} on the host-region mesh, not reference rXY, not ABC"
                 ),
                 "host_region_residual_mv": float(mesh_r),
                 "knob_residual_mv": knob_r,
@@ -524,7 +524,7 @@ def iscale_parent(mem: DesignMemory):
 
 
 def winning_host_pdn(mem: DesignMemory):
-    """Lowest 1× droop among host extract / host-region / host-IR-steer. Not gold."""
+    """Lowest 1× droop among host extract / host-region / host-IR-steer. Not reference."""
     best = None
     best_mv = None
     for c in mem.by_level("pdn"):
@@ -547,7 +547,7 @@ def winning_ir_pdn(mem: DesignMemory):
 
     pkg_r / bump restamps stay off this ranking (same spice as the host).
     A pdngen -ripup strap extract is a new mesh — it may become the 1× champ.
-    winning_host_pdn stays host-only. Not gold.
+    winning_host_pdn stays host-only. Not reference.
     """
     best = winning_host_pdn(mem)
     best_mv = float(best.qor.dynamic_ir_mv) if best and best.qor.dynamic_ir_mv is not None else None
@@ -594,7 +594,7 @@ def winning_ir_pdn(mem: DesignMemory):
 
 
 def _ir_family_1x_member(c) -> bool:
-    """Host-extract / host-IR / IR-cell family. Not gold, not candidate-only."""
+    """Host-extract / host-IR / IR-cell family. Not reference, not candidate-only."""
     src = (c.knobs or {}).get("source")
     via = (c.attr or {}).get("via")
     if src in (
@@ -641,7 +641,7 @@ def _ir_family_1x_member(c) -> bool:
 
 
 def winning_static_pdn(mem: DesignMemory):
-    """Lowest 1× static_ir_mv on the IR/host family. Not gold, not winning_ir_pdn.
+    """Lowest 1× static_ir_mv on the IR/host family. Not reference, not winning_ir_pdn.
 
     Decap and pkg L do not move static IR (live champ stays 6.178 mV). Ties
     break toward the lower Dynamic IR point so pkg_r inherits champ L/C.
@@ -701,10 +701,10 @@ def steer_from_static_ir_residual(mem: DesignMemory) -> dict | None:
         "same_extract_as_winning_ir": same,
         "reason": (
             f"static IR {float(host.qor.static_ir_mv):.3f} mV on {src} — "
-            f"{spec['name']} pkg_r={spec['pkg_r']}{extra}, not Dynamic IR-steer, not gold"
+            f"{spec['name']} pkg_r={spec['pkg_r']}{extra}, not Dynamic IR-steer, not reference"
         ),
         "via": "active_f4_static_ir",
-        "not": "a flattened static+dynamic / decap / pkg L / gold vector",
+        "not": "a flattened static+dynamic / decap / pkg L / reference vector",
     }
 
 
@@ -751,7 +751,7 @@ def _odb_for_extract(mem: DesignMemory, eid: str) -> str | None:
 def steer_from_static_mesh_residual(mem: DesignMemory) -> dict | None:
     """Denser bumps on the static-IR champ ODB after a null pkg_r residual.
 
-    Not decap, not pkg L, not a new GPL, not gold.
+    Not decap, not pkg L, not a new GPL, not reference.
     """
     from .pdn_space import next_static_mesh_spec
 
@@ -782,10 +782,10 @@ def steer_from_static_mesh_residual(mem: DesignMemory) -> dict | None:
         "reason": (
             f"pkg_r residual {null['residual_mv']:+.3f} mV is null on-die — "
             f"{spec['name']} bump_dx={spec['bump_dx']} on {src} extract {eid}, "
-            "same place, not Dynamic IR-steer, not gold"
+            "same place, not Dynamic IR-steer, not reference"
         ),
         "via": "active_f4_static_mesh",
-        "not": "a flattened pkg_r+bump / decap / GPL / gold vector",
+        "not": "a flattened pkg_r+bump / decap / GPL / reference vector",
     }
 
 
@@ -809,7 +809,7 @@ def _null_bump_residual(mem: DesignMemory) -> dict | None:
 def steer_from_static_strap_residual(mem: DesignMemory) -> dict | None:
     """Denser metal4 straps on the static-IR champ ODB after a null bump residual.
 
-    Not bumps, not pkg_r, not decap, not a new GPL, not gold.
+    Not bumps, not pkg_r, not decap, not a new GPL, not reference.
     """
     from .pdn_space import next_static_strap_spec
 
@@ -840,10 +840,10 @@ def steer_from_static_strap_residual(mem: DesignMemory) -> dict | None:
         "reason": (
             f"bump residual {null['residual_mv']:+.3f} mV is null on-die — "
             f"{spec['name']} m4_pitch={spec['m4_pitch']} on {src} extract {eid}, "
-            "same place, not bumps, not Dynamic IR-steer, not gold"
+            "same place, not bumps, not Dynamic IR-steer, not reference"
         ),
         "via": "active_f4_static_straps",
-        "not": "a flattened bump+strap / pkg_r / decap / GPL / gold vector",
+        "not": "a flattened bump+strap / pkg_r / decap / GPL / reference vector",
     }
 
 
@@ -856,7 +856,7 @@ def strap_extract_host(mem: DesignMemory):
 
 
 def winning_em_pdn(mem: DesignMemory):
-    """Lowest 1× em_j_a_m2 on the IR/host family. Not gold, not I-scale."""
+    """Lowest 1× em_j_a_m2 on the IR/host family. Not reference, not I-scale."""
     best = None
     best_j = None
     for c in mem.by_level("pdn"):
@@ -876,7 +876,7 @@ def winning_em_pdn(mem: DesignMemory):
 
 
 def steer_from_em_width_residual(mem: DesignMemory) -> dict | None:
-    """Wider metal4 on the strap-pitch mesh. Not pitch, not decap, not gold.
+    """Wider metal4 on the strap-pitch mesh. Not pitch, not decap, not reference.
 
     Waits until the pitch catalog is consumed so the residual is width-only.
     """
@@ -909,10 +909,10 @@ def steer_from_em_width_residual(mem: DesignMemory) -> dict | None:
         "reason": (
             f"EM width on strap mesh {host.id} m4_pitch={spec['m4_pitch']} — "
             f"{spec['name']} m4_width={spec['m4_width']} (host width "
-            f"{(host.knobs or {}).get('m4_width')}), not pitch, not Dynamic IR-steer, not gold"
+            f"{(host.knobs or {}).get('m4_width')}), not pitch, not Dynamic IR-steer, not reference"
         ),
         "via": "active_f4_em_straps",
-        "not": "a flattened pitch+width / pkg_r / decap / GPL / gold vector",
+        "not": "a flattened pitch+width / pkg_r / decap / GPL / reference vector",
     }
 
 
@@ -920,7 +920,7 @@ NEW_RGRAPH_SOURCES = ("f4_static_strap_extract", "f4_em_strap_extract")
 
 
 def extract_is_new_rgraph(mem: DesignMemory, eid: str) -> bool:
-    """True when extract_id is a pdngen -ripup strap or EM-width mesh. Not gold."""
+    """True when extract_id is a pdngen -ripup strap or EM-width mesh. Not reference."""
     want = str(eid)
     if want in ("finish", ""):
         return False
@@ -938,7 +938,7 @@ def steer_from_winning_ir_catalog(mem: DesignMemory) -> dict | None:
     """Unused Dynamic IR catalog on a strap/EM winning_ir extract.
 
     Inherits host pkg_r (C then L). Not pitch, not width, not pkg_r, not
-    host/candidate IR-steer, not gold.
+    host/candidate IR-steer, not reference.
     """
     from .pdn_space import PDN_CATALOG, next_winning_ir_pdn_spec
 
@@ -969,10 +969,10 @@ def steer_from_winning_ir_catalog(mem: DesignMemory) -> dict | None:
         "reason": (
             f"winning_ir {src} {float(champ.qor.dynamic_ir_mv):.3f} mV extract {eid} "
             f"is a new R-graph — unused {spec['name']} ({axis}, inherit pkg_r="
-            f"{spec['pkg_r']}), not pitch, not width, not pkg_r catalog, not gold"
+            f"{spec['pkg_r']}), not pitch, not width, not pkg_r catalog, not reference"
         ),
         "via": "active_f4_winning_ir_pdn",
-        "not": "a flattened pitch+width+pkg_r+decap / host IR-steer / gold vector",
+        "not": "a flattened pitch+width+pkg_r+decap / host IR-steer / reference vector",
     }
 
 
@@ -1061,7 +1061,7 @@ def steer_from_ir_cell_residual(mem: DesignMemory) -> dict | None:
         "ir_cell_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_ir_cell_pdn",
-        "not": "a flattened cell+PDN vector / gold",
+        "not": "a flattened cell+PDN vector / reference",
     }
 
 
@@ -1098,7 +1098,7 @@ def steer_from_ir_cell_hotspot(mem: DesignMemory) -> dict | None:
         "reason": (
             f"IR-cell 1× bin {region or 'xy'} combo {combo:.2f} ≠ host {host_r} — "
             "seq-heavy: density cap on the sized netlist, not more combo size-up, "
-            "not gold rXY, not ABC"
+            "not reference rXY, not ABC"
         ),
         "via": "active_f4_ir_cell_region",
         "not": "host-region / a flattened cell+util vector",
@@ -1147,7 +1147,7 @@ def steer_from_ir_cell_region_residual(mem: DesignMemory) -> dict | None:
         "ir_cell_region_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_ir_cell_region_pdn",
-        "not": "a flattened cell+PDN vector / gold / host-region",
+        "not": "a flattened cell+PDN vector / reference / host-region",
     }
 
 
@@ -1260,7 +1260,7 @@ def steer_from_ir_cell_champ_residual(mem: DesignMemory) -> dict | None:
         "ir_cell_champ_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_ir_cell_champ_pdn",
-        "not": "a flattened cell+PDN vector / gold / first IR-cell extract",
+        "not": "a flattened cell+PDN vector / reference / first IR-cell extract",
     }
 
 
@@ -1393,7 +1393,7 @@ def steer_from_ir_cell_champ_cone_residual(mem: DesignMemory) -> dict | None:
         "ir_cell_champ_cone_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_ir_cell_champ_cone_pdn",
-        "not": "a flattened cell+PDN vector / gold / champ extract",
+        "not": "a flattened cell+PDN vector / reference / champ extract",
     }
 
 
@@ -1428,7 +1428,7 @@ def steer_from_ir_cell_champ_cone_hotspot(mem: DesignMemory) -> dict | None:
         "reason": (
             f"IR-cell-champ-cone 1× bin {region or 'xy'} combo {combo:.2f} ≠ champ {champ_r} — "
             "seq-heavy: density cap on the leftover-cone netlist, not more combo size-up, "
-            "not IR-cell-region rXY, not gold rXY, not ABC"
+            "not IR-cell-region rXY, not reference rXY, not ABC"
         ),
         "via": "active_f4_ir_cell_champ_cone_region",
         "not": "IR-cell-region / host-region / a flattened cell+util vector",
@@ -1489,7 +1489,7 @@ def steer_from_ir_cell_champ_cone_region_hotspot(mem: DesignMemory) -> dict | No
         "reason": (
             f"IR-cell-champ-cone-region 1× hotspot {region or 'xy'} combo {combo:.2f} ≠ cap {cap} — "
             "seq-heavy: density cap on the leftover-cone netlist, not more combo size-up, "
-            "not IR-cell-region rXY, not gold rXY, not ABC"
+            "not IR-cell-region rXY, not reference rXY, not ABC"
         ),
         "via": "active_f4_ir_cell_champ_cone_region",
         "not": "IR-cell-region / a flattened leftover-cone-region vector / more combo size-up",
@@ -1530,7 +1530,7 @@ def steer_from_ir_cell_champ_cone_region_residual(mem: DesignMemory) -> dict | N
         "ir_cell_champ_cone_region_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_ir_cell_champ_cone_region_pdn",
-        "not": "a flattened cell+PDN vector / gold / IR-cell-region / champ extract",
+        "not": "a flattened cell+PDN vector / reference / IR-cell-region / champ extract",
     }
 
 
@@ -1606,7 +1606,7 @@ def steer_from_winning_ir_hotspot(mem: DesignMemory) -> dict | None:
         "reason": (
             f"winning-IR 1× bin {region or 'xy'} combo {combo:.2f} ≠ leftover-cone / "
             f"IR-cell-region {ice_bin} — seq-heavy: density cap on the IR-cell netlist, "
-            "not leftover-cone rXY, not more combo size-up, not gold rXY, not ABC"
+            "not leftover-cone rXY, not more combo size-up, not reference rXY, not ABC"
         ),
         "via": "active_f4_winning_ir_region",
         "not": "leftover-cone-region / IR-cell-region / a flattened cell+util vector",
@@ -1668,7 +1668,7 @@ def steer_from_winning_ir_region_hotspot(mem: DesignMemory) -> dict | None:
             f"winning-IR-region 1× hotspot {region or 'xy'} combo {combo:.2f} ≠ cap {cap} — "
             "seq-heavy: density cap on the IR-cell netlist, not leftover-cone rXY, "
             "not more combo size-up, not IR-cell-region "
-            f"{ice_bin}, not gold rXY, not ABC"
+            f"{ice_bin}, not reference rXY, not ABC"
         ),
         "via": "active_f4_winning_ir_region",
         "not": "leftover-cone-region / IR-cell-region / a flattened winning-IR-region vector / more combo size-up",
@@ -1709,7 +1709,7 @@ def steer_from_winning_ir_region_residual(mem: DesignMemory) -> dict | None:
         "winning_ir_region_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_winning_ir_region_pdn",
-        "not": "a flattened cell+PDN vector / gold / leftover-cone-region / champ extract",
+        "not": "a flattened cell+PDN vector / reference / leftover-cone-region / champ extract",
     }
 
 
@@ -1816,7 +1816,7 @@ def steer_from_winning_ir_region_cell_residual(mem: DesignMemory) -> dict | None
         "winning_ir_region_cell_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_winning_ir_region_cell_pdn",
-        "not": "a flattened cell+PDN vector / gold / leftover-cone / champ extract",
+        "not": "a flattened cell+PDN vector / reference / leftover-cone / champ extract",
     }
 
 
@@ -1924,7 +1924,7 @@ def steer_from_winning_ir_region_cell_leftover_residual(mem: DesignMemory) -> di
         "winning_ir_region_cell_leftover_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_winning_ir_region_cell_leftover_pdn",
-        "not": "a flattened cell+PDN vector / gold / leftover-combo / leftover-cone",
+        "not": "a flattened cell+PDN vector / reference / leftover-combo / leftover-cone",
     }
 
 
@@ -2033,7 +2033,7 @@ def steer_from_winning_ir_region_cell_leftover2_residual(mem: DesignMemory) -> d
         "winning_ir_region_cell_leftover2_residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": "active_f4_winning_ir_region_cell_leftover2_pdn",
-        "not": "a flattened cell+PDN vector / gold / leftover leftover / leftover-combo / leftover-cone",
+        "not": "a flattened cell+PDN vector / reference / leftover leftover / leftover-combo / leftover-cone",
     }
 
 
@@ -2056,7 +2056,7 @@ def steer_from_winning_ir_region_cell_leftover2_catalog(mem: DesignMemory) -> di
     """Unused Dynamic IR catalog on leftover leftover leftover extract after winning family.
 
     Inherits leftover leftover leftover PDN pkg_r (C then L). Not winning_ir catalog,
-    not leftover leftover leftover leftover combo size-up, not pitch, not gold.
+    not leftover leftover leftover leftover combo size-up, not pitch, not reference.
     """
     from .pdn_space import PDN_CATALOG, next_winning_ir_pdn_spec
 
@@ -2088,8 +2088,8 @@ def steer_from_winning_ir_region_cell_leftover2_catalog(mem: DesignMemory) -> di
         "reason": (
             f"leftover leftover leftover {src} {float(host.qor.dynamic_ir_mv):.3f} mV extract {eid} "
             f"— unused {spec['name']} ({axis}, inherit pkg_r={spec['pkg_r']}), not winning_ir "
-            "catalog, not leftover leftover leftover leftover combo size-up, not pitch, not gold"
+            "catalog, not leftover leftover leftover leftover combo size-up, not pitch, not reference"
         ),
         "via": "active_f4_winning_ir_region_cell_leftover2_catalog",
-        "not": "winning_ir catalog / leftover leftover leftover leftover flatten / pitch / gold",
+        "not": "winning_ir catalog / leftover leftover leftover leftover flatten / pitch / reference",
     }

@@ -155,9 +155,9 @@ def pair_pg_rails(vdd_sinks: dict, vss_sinks: dict) -> dict:
         "via": "write_pg_spice '* Sink for inst/pin' on VDD and VSS (not RTL name-join)",
         "note": (
             "I_cell leaves VDD and enters VSS; default G is block-diagonal. "
-            "Instance-pin C_rr is opt-in (stamp_rail_to_rail_c), not GCD gold. "
+            "Instance-pin C_rr is opt-in (stamp_rail_to_rail_c), not GCD reference. "
             "Overlapping-strap Cox is a separate opt-in (stamp_overlap_cox). "
-            "VDD gold TRAN is unchanged."
+            "VDD reference TRAN is unchanged."
         ),
     }
 

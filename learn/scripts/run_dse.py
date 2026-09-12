@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import uuid
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -19,6 +20,13 @@ if str(_ROOT / "learn" / "scripts") not in sys.path:
 from dse.campaign import run_campaign  # noqa: E402
 from dse.controller import run_controller  # noqa: E402
 from heavy_analysis import require_heavy  # noqa: E402
+from dse.flow_role import validate_variant  # noqa: E402
+
+
+def live_memory_path(variant: str) -> Path:
+    """Allocate an isolated memory file for one invocation."""
+    safe = validate_variant(variant)
+    return _ROOT / "learn" / "sim" / "dse" / "live" / safe / uuid.uuid4().hex / "memory.jsonl"
 
 
 def main() -> int:
@@ -30,7 +38,7 @@ def main() -> int:
     ap.add_argument(
         "--fresh",
         action="store_true",
-        help="wipe the JSONL design memory before this run (default is resume)",
+        help="kept for compatibility; every invocation already receives isolated live memory",
     )
     ap.add_argument(
         "--campaign",
@@ -63,17 +71,16 @@ def main() -> int:
     )
     ap.add_argument("--finish-shots", type=int, default=int(os.environ.get("DSE_FINISH_SHOTS", "1")))
     args = ap.parse_args()
+    args.variant = validate_variant(args.variant)
     rtl_name = str(args.rtl or os.environ.get("DESIGN_ID") or "").lower()
     if "aes" in rtl_name:
         require_heavy("DSE on AES (not GCD FlowLab)")
     if args.next_level:
         if "aes" in str(args.variant).lower():
             require_heavy("DSE Next Level on AES (not GCD FlowLab)")
-        from dse.next_level import default_nl_memory, make_live_runner, run_next_level
+        from dse.next_level import make_live_runner, run_next_level
 
-        mem_path = default_nl_memory(args.variant)
-        if args.fresh and mem_path.is_file():
-            mem_path.unlink()
+        mem_path = live_memory_path(args.variant)
         wall = args.wall_s if args.wall_s is not None else max(float(args.budget_s), 30.0)
         report = run_next_level(
             memory_path=mem_path,
@@ -92,14 +99,14 @@ def main() -> int:
         wall = args.wall_s
         if wall is None:
             wall = float(args.campaign_inner) * float(args.budget_s)
-        mem_path = _ROOT / "learn" / "sim" / "dse" / f"memory_{args.variant}.jsonl"
+        mem_path = live_memory_path(args.variant)
         report = run_campaign(
             variant=args.variant,
             inner_budget_s=args.budget_s,
             f1_max_per_run=args.f1_max,
             rtl=args.rtl,
             memory_path=mem_path,
-            fresh=args.fresh or os.environ.get("DSE_FRESH") == "1",
+            fresh=True,
             wall_s=wall,
             hv_eps=args.hv_eps,
             max_inner=args.campaign_inner,
@@ -118,7 +125,8 @@ def main() -> int:
         budget_s=args.budget_s,
         f1_max=args.f1_max,
         rtl=args.rtl,
-        fresh=args.fresh or os.environ.get("DSE_FRESH") == "1",
+        memory_path=live_memory_path(args.variant),
+        fresh=True,
     )
     print("DSE_DONE")
     print(report["summary"])

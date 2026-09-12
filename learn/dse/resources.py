@@ -52,7 +52,7 @@ def admit_solve(
 
         if not solver_devices().get("cuda"):
             out["status"] = "GAP"
-            out["fallback_reason"] = "no CUDA device — not claiming a GPU solve, not gold"
+            out["fallback_reason"] = "no CUDA device — not claiming a GPU solve, not reference"
             out["reason"] = out["fallback_reason"]
             return out
         out["backend_actual"] = "cuda"

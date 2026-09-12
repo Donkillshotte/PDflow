@@ -2,30 +2,33 @@
   "kind": "power_signoff",
   "variant": "flowlab",
   "power": {
-    "chip_static_ir_mv": 1.0535620881952923,
-    "chip_transient_droop_mv": 9.473257892617104
+    "chip_static_ir_mv": 2.1126657155083883,
+    "chip_transient_droop_mv": 19.453210291738408
   },
   "evaluation": {
+    "basis": "live-run",
     "checks": [
       {
         "id": "chip_static_ir_mv",
         "label": "Chip static IR (mV)",
-        "actual": 1.0535620881952923,
-        "target": 15.0,
-        "ok": true
+        "actual": 2.1126657155083883,
+        "target": null,
+        "ok": true,
+        "note": "validated from the current run"
       },
       {
         "id": "chip_transient_droop_mv",
         "label": "Chip transient droop (mV)",
-        "actual": 9.473257892617104,
-        "target": 120.0,
-        "ok": true
+        "actual": 19.453210291738408,
+        "target": null,
+        "ok": true,
+        "note": "validated from the current run"
       }
     ],
     "ok": true
   },
   "ok": true,
-  "summary": "Chip IR 1.05 mV \u00b7 transient 9.47 mV",
+  "summary": "Chip IR 2.11 mV \u00b7 transient 19.45 mV",
   "steps": [
     "activity_power",
     "chip_pdn_ir",
@@ -34,65 +37,54 @@
   "ir_mesh_ledger": {
     "ok": true,
     "variant": "flowlab",
-    "comparable": false,
-    "note": "These droop numbers are not interchangeable. Gold stays 45.298 mV. EM has no emlimit.",
+    "comparison_scope": "same-live-extract only; distinct-live-mesh otherwise",
     "meshes": [
       {
-        "id": "gold_dynamic_ir",
-        "mesh": "gold Dynamic IR reference_run",
-        "report": "sim/reports/dynamic_ir_flowlab.json",
-        "static_mv": null,
-        "dynamic_mv": 45.298,
-        "gold": true,
-        "em_checked": null,
-        "comparable_to": [],
-        "note": "LOCKED. Not current_run. Do not restamp."
-      },
-      {
-        "id": "current_run_dynamic_ir",
-        "mesh": "current_run Dynamic IR I(t)",
+        "id": "dynamic_ir",
+        "mesh": "live Dynamic IR I(t)",
         "report": "sim/reports/dynamic_ir_flowlab_direct.json",
-        "static_mv": 1.0535620881952923,
-        "dynamic_mv": 5.172667969430833,
-        "gold": false,
+        "static_mv": 2.1126657155083883,
+        "dynamic_mv": 6.3695825697216435,
+        "comparison_scope": "same-live-extract",
         "em_checked": null,
         "comparable_to": [],
-        "note": "I(t) mesh. Not gold 45.298. Not chip PDN."
+        "note": "Direct, AMG, RAS and Krylov results may be compared only within this extract."
       },
       {
         "id": "chip_pdn",
-        "mesh": "write_pg_spice chip PDN",
+        "mesh": "live write_pg_spice chip PDN",
         "report": "sim/reports/pdn_chip_ir_flowlab.json",
-        "static_mv": 1.0535620881952923,
-        "dynamic_mv": 9.473257892617104,
-        "gold": false,
+        "static_mv": 2.1126657155083883,
+        "dynamic_mv": 19.453210291738408,
+        "comparison_scope": "distinct-live-mesh",
         "em_checked": null,
         "comparable_to": [],
-        "note": "Signoff power pillar uses this chip static + transient."
+        "note": "Chip mesh is a separate live artifact; do not combine it with Dynamic IR values."
       },
       {
         "id": "vyges_em_ir",
-        "mesh": "vyges-em-ir (different mesh)",
+        "mesh": "live vyges-em-ir mesh",
         "report": "sim/reports/vyges_em_ir_flowlab.json",
-        "static_mv": 15.102,
-        "dynamic_mv": 86.013,
-        "gold": false,
+        "static_mv": 2.121,
+        "dynamic_mv": 12.425,
+        "comparison_scope": "distinct-live-mesh",
         "em_checked": 0,
         "comparable_to": [],
-        "note": "No foundry emlimit. em_checked stays 0."
+        "note": "EM remains ungraded when the active process has no EM limit."
       },
       {
         "id": "system_pdn",
-        "mesh": "lumped VRM\u2192board\u2192pkg\u2192die",
+        "mesh": "live VRM-to-board-to-package-to-die ladder",
         "report": "sim/reports/system_pdn_flowlab.json",
         "static_mv": null,
-        "dynamic_mv": 6.025990000000148,
-        "gold": false,
+        "dynamic_mv": null,
+        "comparison_scope": "distinct-live-mesh",
         "em_checked": null,
-        "zmax_mohm": 9058.35944,
         "comparable_to": [],
-        "note": "Package/board ladder. Not on-die mesh IR."
+        "note": "Package/board ladder is not the on-die mesh.",
+        "zmax_mohm": null
       }
-    ]
+    ],
+    "note": "Values are from this invocation's reports; no external reference is loaded."
   }
 }

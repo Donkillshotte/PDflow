@@ -11,20 +11,47 @@
 #   I_DIE_AVG=0          # 0 = auto from activity_power / reports
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" system-pdn bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
+source "${ROOT}/scripts/rg_compat.sh"
 VARIANT="${FLOW_VARIANT:-learn}"
 CFG="${SYSTEM_PDN_CONFIG:-${ROOT}/learn/system_pdn/default.json}"
 I_DIE_AVG="${I_DIE_AVG:-0}"
 
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
-OUT_DIR="${ROOT}/learn/sim/reports"
-WORK="${RES}/system_pdn"
-LOG="${OUT_DIR}/system_pdn_${VARIANT}.log"
-REPORT="${OUT_DIR}/system_pdn_${VARIANT}.json"
-STAMP="${RES}/.system_pdn.ok"
+OUT_DIR="${PD_FLOW_SYSTEM_PDN_OUTPUT_DIR:-${ROOT}/learn/sim/reports}"
+WORK="${PD_FLOW_SYSTEM_PDN_WORK_DIR:-${RES}/system_pdn}"
+LOG="${PD_FLOW_SYSTEM_PDN_LOG:-${OUT_DIR}/system_pdn_${VARIANT}.log}"
+REPORT="${PD_FLOW_SYSTEM_PDN_REPORT:-${OUT_DIR}/system_pdn_${VARIANT}.json}"
+STAMP="${PD_FLOW_SYSTEM_PDN_STAMP:-${RES}/.system_pdn.ok}"
+HIER_RUN_DIR="${PD_FLOW_SYSTEM_PDN_RUN_DIR:-}"
+HIER_RUN_ID="${PD_FLOW_SYSTEM_PDN_RUN_ID:-}"
 
-mkdir -p "${OUT_DIR}" "${WORK}"
+mkdir -p "${OUT_DIR}" "${WORK}" "$(dirname "${REPORT}")" "$(dirname "${LOG}")"
 : > "${LOG}"
+
+if ! command -v ngspice >/dev/null 2>&1; then
+  python3 - <<PY
+import json
+from pathlib import Path
+out = {
+  "kind": "system_pdn",
+  "variant": "${VARIANT}",
+  "engine": "ngspice-hierarchical",
+  "ok": False,
+  "status": "GAP",
+  "reason": "ngspice is not installed; no hierarchical PDN measurement was executed",
+  "summary": "GAP System PDN · ngspice unavailable"
+}
+Path("${REPORT}").write_text(json.dumps(out, indent=2) + "\n")
+PY
+  rm -f "${STAMP}"
+  echo "SYSTEM_PDN_GAP ${VARIANT} · ngspice is not installed" | tee -a "${LOG}"
+  exit 2
+fi
 
 [[ -f "${CFG}" ]] || { echo "FAIL missing config ${CFG}"; exit 1; }
 
@@ -40,6 +67,13 @@ EXTRA=()
 if [[ "${I_DIE_AVG}" != "0" && -n "${I_DIE_AVG}" ]]; then
   EXTRA+=(--i-die "${I_DIE_AVG}")
 fi
+HIER_ARGS=()
+if [[ -n "${HIER_RUN_ID}" ]]; then
+  HIER_ARGS+=(--run-id "${HIER_RUN_ID}")
+fi
+if [[ -n "${HIER_RUN_DIR}" ]]; then
+  HIER_ARGS+=(--run-dir "${HIER_RUN_DIR}")
+fi
 
 python3 "${ROOT}/learn/scripts/system_pdn_hier.py" \
   --config "${CFG}" \
@@ -47,6 +81,7 @@ python3 "${ROOT}/learn/scripts/system_pdn_hier.py" \
   --report "${REPORT}" \
   --repo "${ROOT}" \
   --variant "${VARIANT}" \
+  "${HIER_ARGS[@]}" \
   "${EXTRA[@]}" \
   2>&1 | tee -a "${LOG}"
 
@@ -66,7 +101,9 @@ print("DOMAINS", ",".join(r["domains"]))
 PY
 
 python3 "${ROOT}/learn/scripts/signoff_require_ok.py" "${REPORT}"
-date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
+if [[ -n "${PD_FLOW_SYSTEM_PDN_STAMP:-}" || -z "${PD_FLOW_SYSTEM_PDN_REPORT:-}" ]]; then
+  date -u +%Y-%m-%dT%H:%M:%SZ > "${STAMP}"
+fi
 echo "SYSTEM_PDN_DONE ${VARIANT}" | tee -a "${LOG}"
 echo "OK System PDN hierarchical ${VARIANT}"
 echo "  log:    ${LOG}"

@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { spawn } from "child_process";
 import { REPO_ROOT, LEARN_ROOT } from "./course";
 import {
   assertUnder,
@@ -301,7 +300,7 @@ export function listOpenTargets(): {
   });
   targets.push({
     id: "dash-pkg",
-    label: "PKG · design package & System PDN",
+    label: "Package / PKG · design package & System PDN",
     kind: "dashboard",
     href: "/pkg",
     exists: true,
@@ -427,10 +426,10 @@ export function listOpenTargets(): {
     exists: true,
   });
   targets.push({
-    id: "golden",
-    label: "Golden metrics",
+    id: "live-analysis",
+    label: "Live analysis contract",
     kind: "doc",
-    href: "/materials/reference/golden-metrics.md",
+    href: "/materials/reference/live-analysis.md",
     exists: true,
   });
   targets.push({
@@ -564,84 +563,12 @@ export type LaunchResult = {
 
 export function launchExternal(target: OpenTarget): LaunchResult {
   const display = detectDisplay();
-  if (!target.absPath || !target.exists) {
-    return {
-      ok: false,
-      launched: false,
-      message: `Missing artifact: ${target.artifact ?? target.id}`,
-      command: target.command,
-      display,
-    };
-  }
-  if (!display) {
-    return {
-      ok: false,
-      launched: false,
-      message:
-        "No DISPLAY (open Desktop on cursor.com/agents). Command ready to copy.",
-      command: target.command,
-      display: null,
-    };
-  }
-
-  try {
-    if (target.kind === "klayout") {
-      const child = spawn("klayout", [target.absPath], {
-        env: { ...process.env, DISPLAY: display },
-        detached: true,
-        stdio: "ignore",
-      });
-      child.unref();
-      return {
-        ok: true,
-        launched: true,
-        message: `KLayout started on ${target.artifact}`,
-        command: target.command,
-        display,
-        pid: child.pid,
-      };
-    }
-
-    if (target.kind === "openroad") {
-      const tcl = path.join(LEARN_ROOT, "scripts/gui_session.tcl");
-      const args = fs.existsSync(tcl)
-        ? ["-gui", "-no_splash", "-no_init", tcl]
-        : ["-gui", "-no_splash"];
-      const child = spawn("openroad", args, {
-        env: {
-          ...process.env,
-          DISPLAY: display,
-          ODB_FILE: target.absPath,
-          GUI_VIEW: "all",
-        },
-        detached: true,
-        stdio: "ignore",
-        cwd: flowDir(),
-      });
-      child.unref();
-      return {
-        ok: true,
-        launched: true,
-        message: `OpenROAD GUI avviata su ${target.artifact} (Desktop)`,
-        command: target.command,
-        display,
-        pid: child.pid,
-      };
-    }
-
-    return {
-      ok: false,
-      launched: false,
-      message: "Target not launchable externally",
-      display,
-    };
-  } catch (e) {
-    return {
-      ok: false,
-      launched: false,
-      message: e instanceof Error ? e.message : String(e),
-      command: target.command,
-      display,
-    };
-  }
+  return {
+    ok: false,
+    launched: false,
+    message:
+      "Native tool launch must be delegated to the authenticated PDflow local agent",
+    command: target.command,
+    display,
+  };
 }

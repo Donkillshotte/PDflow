@@ -8,11 +8,53 @@ Live F4 stays last — one process, one heavy job.
 from __future__ import annotations
 
 import sys
+import os
+import subprocess
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT / "learn") not in sys.path:
     sys.path.insert(0, str(_ROOT / "learn"))
+
+
+def _resource_guarded() -> bool:
+    """Return true only when this test is inside the verified heavy-job cgroup."""
+
+    guard = _ROOT / "scripts" / "resource_guard.sh"
+    if not guard.is_file():
+        return False
+    return (
+        subprocess.run(
+            [str(guard)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+
+# This test intentionally exercises the live F4 worker and is commonly run
+# directly by developers.  Keep that entry point subject to the same cgroup,
+# timeout, log, and single-slot policy as the production DSE launcher.  The
+# environment flag only prevents an infinite re-exec loop; the guard itself
+# still validates the kernel cgroup path and cannot be bypassed by the flag.
+if not _resource_guarded() and os.environ.get("PD_FLOW_TEST_DSE_REEXEC") != "1":
+    child_env = os.environ.copy()
+    child_env["PD_FLOW_TEST_DSE_REEXEC"] = "1"
+    raise SystemExit(
+        subprocess.run(
+            [
+                str(_ROOT / "scripts" / "run_resource_job.sh"),
+                "test-dse",
+                sys.executable,
+                str(Path(__file__).resolve()),
+            ],
+            cwd=str(_ROOT),
+            env=child_env,
+            check=False,
+        ).returncode
+    )
 
 
 def check(ok: bool, msg: str) -> None:

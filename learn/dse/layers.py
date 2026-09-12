@@ -10,9 +10,9 @@ ADAPTERS: dict[str, dict] = {
     "extraction": {
         "via": "openroad write_pg_spice after place_pins+GPL+DP+pdngen, or ingest finish",
         "note": (
-            "candidate mesh is not gold; host extract is the attributed netlist "
+            "candidate mesh is a live artifact; host extract is the attributed netlist "
             "(not synth-only); host-region density-caps the host IR bin "
-            "(not gold rXY on synth); finish gold 45.298 mV stays unrestamped"
+            "(not an rXY estimate on synth); finish values stay scoped to the run"
         ),
     },
     "power": {
@@ -42,7 +42,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "surrogate": {
         "via": "dse.surrogate + dse.gnn + dse.active",
-        "note": "SSK-GP / F1→F2 residual / F3→F5-lite+local residual steers the next level / F4 IR residual steers PDN / F4 host-region residual vs unconstrained host / GNN readout — never Dynamic IR gold",
+        "note": "SSK-GP / F1→F2 residual / F3→F5-lite+local residual steers the next level / F4 IR residual steers PDN / F4 host-region residual vs unconstrained host / GNN readout — never Dynamic IR reference",
     },
     "active": {
         "via": "dse.active.steer_from_residual + steer_from_port_residual + steer_from_ir_residual + steer_from_host_ir_residual + steer_from_winning_ir_catalog + iscale_host + order_local_hosts",
@@ -66,7 +66,7 @@ ADAPTERS: dict[str, dict] = {
     },
     "solver": {
         "via": "dse.f4_oracle + dse_f4_worker (direct|amg|bicg|ras|krylov/MOR)",
-        "note": "DirectLU restamp on named extract; AMG, RAS, and rational Krylov/MOR are MF residuals on the candidate mesh and again on winning_ir_pdn (same DirectLU knobs; re-paid when the 1× extract moves to a new strap R-graph); unused Dynamic IR catalog (decap then pkg L, inherit host pkg_r) restamps that R-graph; leftover leftover leftover unused catalog (C then L, inherit leftover leftover leftover PDN pkg_r) restamps the leftover leftover leftover extract after winning family — not winning_ir catalog; static IR searches pkg_r then on-die bump pitch then metal4 straps; EM searches unused metal4 width on that pitch with a same-mesh strap-J residual (not flattened); GCD gold 45.298 mV unrestamped",
+        "note": "DirectLU and iterative solvers run on named current extracts; every residual comparison requires the same matrix, activity, geometry, and constraint fingerprints",
     },
     "physical_fast": {
         "via": "dse.netgraph",

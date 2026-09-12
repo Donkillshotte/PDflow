@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
-import { listJobs } from "./jobs";
+import { parseVcdWaveform } from "./vcdWaveform";
 
 export const FLOWLAB_VARIANT = "flowlab";
 export const FLOWLAB_DIR = path.join(LEARN_ROOT, "flowlab");
@@ -156,7 +156,7 @@ export function writeRtl(source: string) {
 export function resetRtl(): string {
   ensureFlowlabWorkspace();
   if (!fs.existsSync(UPSTREAM_RTL)) {
-    throw new Error("Missing golden RTL");
+    throw new Error("Missing upstream RTL");
   }
   fs.copyFileSync(UPSTREAM_RTL, FLOWLAB_RTL);
   return readRtl();
@@ -214,42 +214,15 @@ export function flowlabSimArtifacts() {
   const simDir = path.join(/*turbopackIgnore: true*/ LEARN_ROOT, "sim/gcd");
   const logPath = path.join(simDir, "sim.log");
   const vcdPath = path.join(simDir, "gcd.vcd");
+  const waveform = parseVcdWaveform(vcdPath);
   return {
     logPath: "learn/sim/gcd/sim.log",
     vcdPath: "learn/sim/gcd/gcd.vcd",
     logExists: fs.existsSync(logPath),
     vcdExists: fs.existsSync(vcdPath),
     vcdBytes: fs.existsSync(vcdPath) ? fs.statSync(vcdPath).size : 0,
+    waveform,
   };
-}
-
-export function flowlabPhaseHistory(limitPerPhase = 3) {
-  const jobs = listJobs(80);
-  const byAction = new Map<string, typeof jobs>();
-  for (const ph of FLOW_PHASES) {
-    byAction.set(
-      ph.action,
-      jobs.filter((j) => j.action === ph.action).slice(0, limitPerPhase),
-    );
-  }
-  for (const extra of [
-    "gridcheck",
-    "activity_power",
-    "vectorless",
-    "chip_pdn_ir",
-    "vyges_em_ir",
-    "dynamic_ir",
-    "power_chain",
-    "export_spice_lab",
-    "klayout_drc",
-    "system_pdn",
-  ]) {
-    byAction.set(
-      extra,
-      jobs.filter((j) => j.action === extra).slice(0, limitPerPhase),
-    );
-  }
-  return Object.fromEntries(byAction);
 }
 
 export function getFlowlabStatus() {
@@ -309,7 +282,6 @@ export function getFlowlabStatus() {
     params,
     stages,
     sim: flowlabSimArtifacts(),
-    phaseHistory: flowlabPhaseHistory(),
     resultsDir: `results/nangate45/gcd/${FLOWLAB_VARIANT}`,
   };
 }

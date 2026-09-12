@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { Activity, Box, Clock, Layers } from "lucide-react";
-import { isExpectedTimingMetric } from "@/lib/orfsLog";
 
 type Metric = {
   label: string;
   value: string;
   source: string;
-  expected?: boolean;
 };
 
 type Digest = {
@@ -25,11 +23,13 @@ export function FlowLabMetricsBar({
   variant,
   refreshKey,
   visible,
+  runId,
 }: {
   stage: string;
   variant: string;
   refreshKey: number;
   visible: boolean;
+  runId?: string | null;
 }) {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,13 +39,14 @@ export function FlowLabMetricsBar({
   const load = useCallback(async () => {
     if (!visible || stage === "rtl") return;
     setLoading(true);
+    const runQuery = runId ? `&run_id=${encodeURIComponent(runId)}` : "";
     try {
       const [resR, resI] = await Promise.all([
         fetch(
-          `/api/results?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}`,
+          `/api/results?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}${runQuery}`,
         ),
         fetch(
-          `/api/inspect?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}`,
+          `/api/inspections?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}${runQuery}`,
         ),
       ]);
       if (resR.ok) {
@@ -54,8 +55,13 @@ export function FlowLabMetricsBar({
         setDigest(data.logDigest ?? null);
       }
       if (resI.ok) {
-        const insp = await resI.json();
-        setWns(insp.sta?.wns ?? null);
+        const body = (await resI.json()) as {
+          inspection?: { sta?: { wns?: string | null } } | null;
+        };
+        const insp = body.inspection;
+        setWns(insp?.sta?.wns ?? null);
+      } else {
+        setWns(null);
       }
     } catch {
       setMetrics([]);
@@ -63,15 +69,13 @@ export function FlowLabMetricsBar({
     } finally {
       setLoading(false);
     }
-  }, [stage, variant, visible]);
+  }, [runId, stage, variant, visible]);
 
   useEffect(() => {
     void load();
   }, [load, refreshKey]);
 
   if (!visible || stage === "rtl") return null;
-
-  const wnsExpected = wns ? isExpectedTimingMetric(wns) : false;
 
   return (
     <div className="fl-metrics" aria-busy={loading}>
@@ -101,11 +105,11 @@ export function FlowLabMetricsBar({
         </div>
       )}
       {wns && (
-        <div className={clsx("fl-metric-card", wnsExpected ? "accent" : "accent")}>
+        <div className="fl-metric-card accent">
           <Clock size={16} aria-hidden />
           <div>
-            <span>WNS{wnsExpected ? " · expected" : ""}</span>
-            <strong className={clsx(!wnsExpected && wns.trim().startsWith("-") && "warn")}>
+            <span>WNS</span>
+            <strong className={clsx(wns.trim().startsWith("-") && "warn")}>
               {wns}
             </strong>
           </div>
@@ -121,16 +125,13 @@ export function FlowLabMetricsBar({
         </div>
       )}
       {metrics.map((m, i) => {
-        const scary =
-          !m.expected &&
-          (m.value.startsWith("-") || /violation count\s+[1-9]/i.test(m.value));
+        const scary = m.value.startsWith("-") || /violation count\s+[1-9]/i.test(m.value);
         return (
           <div key={`${m.source}-${m.label}-${i}`} className="fl-metric-card">
             <Activity size={16} aria-hidden />
             <div>
               <span>
                 {m.label}
-                {m.expected ? " · golden" : ""}
               </span>
               <strong className={clsx(scary && "warn")}>{m.value}</strong>
             </div>

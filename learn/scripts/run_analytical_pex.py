@@ -164,6 +164,16 @@ def run_fastercap(root: Path, variant: str) -> dict:
     proc = subprocess.run(cmd, cwd=deck_dir, capture_output=True, text=True, timeout=120)
     text = (proc.stdout or "") + "\n" + (proc.stderr or "")
     log.write_text(text)
+    if proc.returncode != 0:
+        return {
+            "ok": False,
+            "present": True,
+            "status": "GAP",
+            "bin": str(bin_path),
+            "rc": proc.returncode,
+            "log": str(log),
+            "note": "FasterCap binary is present but its native runtime is unavailable",
+        }
     # Matrix rows after "Capacitance matrix is:" — 3 conductors (gnd, a, b)
     nums = []
     grab = False
@@ -214,7 +224,7 @@ def main() -> int:
     fdm = fdm_two_trace(W, T, H, S, L_UM)
     fc = run_fastercap(root, variant)
     ok = geom["c_ground_fF"] > 0 and geom["c_couple_fF"] > 0 and fdm["c_couple_fF"] >= 0
-    if fc.get("present"):
+    if fc.get("present") and fc.get("status") == "READY":
         ok = ok and bool(fc.get("ok"))
     engine = "fastercap+sakurai+fdm2d" if fc.get("status") == "READY" else "sakurai_tamaru_1983+fdm2d"
     summary = (

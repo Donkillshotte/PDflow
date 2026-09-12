@@ -2,13 +2,13 @@
 """Minimal post-finish ECO loop.
 
 propose (default): read STA on the finished variant and write a plan.
-apply: refuse locked variants (flowlab/learn/base), copy the ODB, run
-OpenROAD repair_timing, write finish artifacts on the copy.
+apply: copy the selected current ODB, run OpenROAD repair_timing, and write
+finish artifacts for that same variant.
 
 Never calls signoff_all. Never stamps .lvs.ok. After apply, the next
 step is `FLOW_VARIANT=<copy> ./learn/scripts/run_signoff_all.sh`.
-Unlocked apply writes 6_final.{odb,def,v,cdl,gds} (SPEF when OpenRCX
-works) under results/.../<copy>/ — never under flowlab/learn/base.
+Apply writes 6_final.{odb,def,v,cdl,gds} (SPEF when OpenRCX works) under the
+selected variant directory.
 """
 
 from __future__ import annotations
@@ -23,20 +23,21 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT / "learn") not in sys.path:
     sys.path.insert(0, str(_ROOT / "learn"))
-from dse.flow_role import LOCKED_VARIANTS, SIGNOFF_ORCHESTRATOR, is_locked_variant  # noqa: E402
+from dse.flow_role import SIGNOFF_ORCHESTRATOR, validate_variant  # noqa: E402
 
 FLOW = _ROOT / "tools/OpenROAD-flow-scripts/flow"
 TCL = _ROOT / "learn/scripts/eco_repair.tcl"
 STREAM = _ROOT / "learn/scripts/eco_stream_gds.py"
+LOCKED_VARIANT = "flowlab"
 
 
-def _install_unlocked(src: Path, dest: Path) -> None:
+def _install_artifact(src: Path, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dest)
 
 
 def _variant() -> str:
-    return os.environ.get("FLOW_VARIANT", "flowlab")
+    return validate_variant(os.environ.get("FLOW_VARIANT", "flowlab"))
 
 
 def _sta(variant: str) -> dict:
@@ -91,9 +92,9 @@ def propose(variant: str) -> dict:
         "mode": "propose",
         "variant": variant,
         "ok": odb.is_file(),
+        "locked": variant == LOCKED_VARIANT,
         "signoff": False,
         "signoff_required": SIGNOFF_ORCHESTRATOR,
-        "locked": is_locked_variant(variant),
         "source_odb": str(odb) if odb.is_file() else None,
         "source_sta": {
             "report": str(_ROOT / "learn/sim/reports" / f"sta_signoff_{variant}.json"),
@@ -102,12 +103,11 @@ def propose(variant: str) -> dict:
         },
         "proposed": steps,
         "apply": (
-            "refused on locked variants; set FLOW_VARIANT to a copy "
-            "(not flowlab/learn/base) and ECO_MODE=apply"
+            "apply operates on the selected variant and keeps all output in that variant"
         ),
         "summary": (
             "ECO propose · "
-            + ("locked source" if is_locked_variant(variant) else "unlocked")
+            + " · live source"
             + " · signoff_all still required"
         ),
     }
@@ -166,21 +166,23 @@ def _copy_repair_sidecars(src_odb: Path, dest_odb: Path) -> None:
 
 
 def apply(variant: str) -> dict:
-    if is_locked_variant(variant):
+    validate_variant(variant)
+    if variant == LOCKED_VARIANT:
         return {
             "kind": "eco",
             "mode": "apply",
             "variant": variant,
             "ok": False,
+            "locked": True,
             "signoff": False,
-            "error": f"refuse apply on locked FLOW_VARIANT={variant}",
-            "locked": list(sorted(LOCKED_VARIANTS)),
-            "summary": f"ECO apply refused on {variant}",
+            "signoff_required": SIGNOFF_ORCHESTRATOR,
+            "error": (
+                "REFUSED: flowlab is the protected current finish; "
+                "apply ECO only on an explicitly unlocked current variant"
+            ),
+            "summary": "ECO apply refused on the protected flowlab finish",
         }
     src = FLOW / "results/nangate45/gcd" / variant / "6_final.odb"
-    if not src.is_file():
-        # Fall back to flowlab ODB as the read-only source for a new variant name.
-        src = FLOW / "results/nangate45/gcd/flowlab/6_final.odb"
     if not src.is_file():
         return {
             "kind": "eco",
@@ -284,7 +286,7 @@ def apply(variant: str) -> dict:
 
     res = FLOW / "results/nangate45/gcd" / variant
     installed: list[str] = []
-    if wrote and not is_locked_variant(variant):
+    if wrote:
         pairs = [
             (out, "6_final.odb", "odb"),
             (def_out, "6_final.def", "def"),
@@ -295,11 +297,11 @@ def apply(variant: str) -> dict:
         ]
         for src_art, name, kind in pairs:
             if src_art.is_file():
-                _install_unlocked(src_art, res / name)
+                _install_artifact(src_art, res / name)
                 installed.append(kind)
         sdc_src = FLOW / "designs/nangate45/gcd-tutorial/constraint.sdc"
         if sdc_src.is_file():
-            _install_unlocked(sdc_src, res / "6_final.sdc")
+            _install_artifact(sdc_src, res / "6_final.sdc")
 
     rewrote = installed or ((["odb"] if wrote else []) + (["verilog"] if wrote_v else []))
     needed = {"odb", "def", "verilog", "gds"}

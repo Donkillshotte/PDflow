@@ -2,6 +2,7 @@
 # Static checks for the Cloud Agent core bootstrap. No ORFS, no AES, no IR.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${ROOT}/scripts/rg_compat.sh"
 FAIL=0
 ok() { echo "OK  $*"; }
 bad() { echo "FAIL $*"; FAIL=1; }
@@ -86,9 +87,8 @@ rg -q 'prlimit --as=' "${ROOT}/scripts/run_dse_gcd_cloud.sh" \
 rg -q 'DSE_FRESH=1' "${ROOT}/scripts/run_dse_gcd_cloud.sh" && ok "GCD DSE refuses DSE_FRESH" || bad "GCD DSE missing DSE_FRESH refuse"
 rg -q 'run_dse_gcd_cloud' "${ROOT}/scripts/cloud_agent_install.sh" && bad "install invokes GCD DSE cloud" || ok "install does not run GCD DSE cloud"
 
-[ -x "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" ] || chmod +x "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py"
-rg -q 'cloud_agent_directlu' "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" && ok "ingest tags DirectLU candidate" || bad "ingest missing DirectLU tag"
-rg -q 'n_r == 73139' "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" && ok "ingest refuses 73k-R overwrite" || bad "ingest missing 73k-R refuse"
+[[ ! -e "${ROOT}/learn/scripts/ingest_aes_cloud_f4.py" ]] && ok "old AES ingester removed" || bad "old AES ingester remains"
+rg -q 'current_run_dir' "${ROOT}/learn/scripts/run_aes_f4.py" && ok "AES F4 is run-scoped" || bad "AES F4 is not run-scoped"
 rg -q 'AES_SLICE_SKIP_F4' "${ROOT}/learn/scripts/run_aes_slice.py" && ok "AES slice can skip F4" || bad "AES slice cannot skip F4"
 
 bash -n "${ROOT}/scripts/run_gcd_finish_cloud.sh" && ok "GCD finish cloud syntax" || bad "GCD finish cloud syntax"

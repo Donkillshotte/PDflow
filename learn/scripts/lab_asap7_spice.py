@@ -2,8 +2,7 @@
 """ASAP7 inverter on patched Xyce BSIM-CMG cards.
 
 HSpice ships level=72. Xyce 7.4 maps BSIM-CMG v107 to level=107.
-Tiny inverter only. Not AES. Does not change the Nangate IR
-reference 45.298 mV. Never writes .lvs.ok.
+Tiny inverter only. Not AES. Never writes .lvs.ok.
 """
 
 from __future__ import annotations
@@ -128,7 +127,7 @@ def run_spice(root: Path = ROOT) -> dict:
         "platform": "asap7",
         "kind": "leftover_xyce_inverter",
         "product_win": False,
-        "comparable_to_gold_ir": False,
+        "comparison_scope": "independent ASAP7 SPICE run",
         "calibre": False,
         "hspice_level": HSPICE_LEVEL,
         "xyce_level": XYCE_LEVEL,
@@ -142,7 +141,7 @@ def run_spice(root: Path = ROOT) -> dict:
             "stamp": "never write .lvs.ok for ASAP7",
         },
         "note": "ASAP7 Xyce inverter. Not a product win. "
-        "Live metrics only — no gold stamp.",
+        "Live metrics only.",
     }
     if not src.is_file():
         payload["error"] = "HSpice .pm missing; run fetch_asap7_pdk.sh"
@@ -155,7 +154,7 @@ def run_spice(root: Path = ROOT) -> dict:
     pm.write_text(patched)
     models = parse_models(raw)
     net.write_text(
-        f"""* ASAP7 inverter on patched Xyce cards. Not the Nangate 45.298 mV IR. Not AES.
+        f"""* ASAP7 inverter on patched Xyce cards. Separate current ASAP7 track; not AES.
 .include {pm}
 Vdd vdd 0 0.7
 Vin in 0 PULSE(0 0.7 50p 10p 10p 200p 500p)

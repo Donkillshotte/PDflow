@@ -4,7 +4,7 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Theory"
-  ui_note "Read: learn/lessons/04-placement/README.md and golden-metrics.md (Place row)."
+  ui_note "Read: learn/lessons/04-placement/README.md and live-analysis.md."
   learn_atlas "win_place_gp.png, win_place_dp.png, 04_place_gp_labeled.png"
   learn_make_hint place
   ui_pause
@@ -25,8 +25,8 @@ lesson_main() {
   ui_print_file "Resizer report" "$(learn_report 3_resizer.rpt)" 35
   learn_grep_metric "$(learn_report 3_resizer.rpt)" "worst slack|wns max|period_min|setup violation" || true
   learn_grep_metric "$(learn_log 3_4_place_resized.log)" "Design area" || true
-  learn_golden
-  ui_note "Reference: worst slack +0.01 ns, Design area 684 um^2 40%."
+  learn_live_analysis
+  ui_note "Use the current placement and resizer reports above as the only timing and area evidence."
   ui_pause
 
   ui_section "Exercise 4-D — GUI global vs detailed comparison"

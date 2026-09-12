@@ -14,7 +14,7 @@ Optimizers (each on its own level):
   physical     — F2-fast + budgeted GPL + AutoDMP catalog GPL + ingest + F0 proxy
   routing      — budgeted OpenROAD GRT + F5-lite DRT/OpenRCX + paid F5-CTS (not make finish)
   active       — F3→F5 residual + F4 IR residual loop (region decap, then unused pkg L)
-  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + unused Dynamic IR catalog on a strap/EM winning_ir extract + unused catalog on leftover leftover leftover extract after winning family + AMG/RAS/Krylov on winning_ir_pdn + static-IR pkg_r then on-die bump pitch then metal4 straps then EM width + I-scale of the attributed host (not gold)
+  pdn          — F4 ingest + candidate write_pg_spice + host extract + host-region density cap + host IR-steer + IR-cell extract residual + DirectLU/AMG/RAS/Krylov + unused Dynamic IR catalog on a strap/EM winning_ir extract + unused catalog on leftover leftover leftover extract after winning family + AMG/RAS/Krylov on winning_ir_pdn + static-IR pkg_r then on-die bump pitch then metal4 straps then EM width + I-scale of the attributed host (not reference)
 
 Acquisition ≈ expected improvement + information − compute − extrapolation risk.
 """
@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
 from .abc_space import CATALOG
@@ -69,12 +70,12 @@ from .fidelity import (
 )
 from .costs import estimated_cost_s
 from .fingerprint import knobs_fp
-from .f4_oracle import ir_run_labels, n_r_from_spice, spice_paths
+from .f4_oracle import live_run_labels, n_r_from_spice, spice_paths
 from .layers import adapter_status
 from .netgraph import is_gate_cell_netlist
 from .memory import Candidate, DesignMemory
 from .metrics import QoR, pareto_front, qor_delta
-from .mo import baseline_wns, timing_of
+from .mo import reference_wns, timing_of
 from .resources import admit_solve
 from .solve_result import stamp_f4_candidate
 from .stages import (
@@ -90,7 +91,7 @@ from .stages import (
     STAGES_STEER_GAP,
     run_stage,
 )
-from .pdn_space import GOLD_KNOBS, next_pdn_spec
+from .pdn_space import next_pdn_spec
 from .physical_space import gpl_density, propose_synthesis_f0
 from .planner import plan_search, rank_extracts, next_candidate_ids
 from .proposer import propose as propose_from_attr
@@ -337,7 +338,9 @@ def run_controller(
     spec = resolve(design_id)
     rtl = Path(rtl) if rtl else spec.rtl
     top = spec.top
-    mem_path = Path(memory_path) if memory_path else root / "learn" / "sim" / "dse" / f"memory_{variant}.jsonl"
+    mem_path = Path(memory_path) if memory_path else (
+        root / "learn" / "sim" / "dse" / "live" / variant / uuid.uuid4().hex / "memory.jsonl"
+    )
     if fresh and mem_path.is_file():
         mem_path.unlink()
         idx = mem_path.with_suffix(".index.json")
@@ -568,7 +571,7 @@ def run_controller(
     n_f1 = sum(1 for c in mem.all() if c.fidelity == "F1")
     n_arch = sum(1 for c in mem.by_level("architecture") if c.fidelity == "F1")
 
-    # Seed the logic baseline first so architecture ΔQoR has a teacher.
+    # Seed the logic reference first so architecture ΔQoR has a teacher.
     if not spec.f1_ready:
         step(
             "acquire",
@@ -584,7 +587,7 @@ def run_controller(
             "abc_script": "file",
         }
         if knobs_fp("logic", seed) not in mem.seen_knobs("logic"):
-            step("propose", level="logic", knobs=seed, fidelity="F1", why="baseline teacher")
+            step("propose", level="logic", knobs=seed, fidelity="F1", why="reference teacher")
             cand = evaluate_f1_abc(
                 rtl=rtl,
                 liberty=lib,
@@ -600,7 +603,7 @@ def run_controller(
                 "scope": focus.get("scope"),
                 "modules": focus.get("modules"),
                 "transform": "liberty_default",
-                "note": "F1 baseline; attribution is context from F4",
+                "note": "F1 reference; attribution is context from F4",
             }
             mem.touch(cand)
             n_f1 += 1
@@ -727,7 +730,7 @@ def run_controller(
         pred_wns = None
         if acq.get("mu_wns") is not None:
             pred_wns = {"mean": acq.get("mu_wns"), "std": acq.get("std_wns")}
-        pay, why = should_pay_f1(pred, best, pred_wns, baseline_wns(mem))
+        pay, why = should_pay_f1(pred, best, pred_wns, reference_wns(mem))
         step("propose", level="logic", knobs=knobs, fidelity="F1", pred=pred, pay=pay, why=why)
         if not pay:
             mem.add(
@@ -871,7 +874,6 @@ def run_controller(
         "evaluate_f4_static_straps": evaluate_f4_static_straps,
         "evaluate_f4_em_straps": evaluate_f4_em_straps,
         "evaluate_host_arrivals": evaluate_host_arrivals,
-        "GOLD_KNOBS": GOLD_KNOBS,
         "latest_ok_extract": latest_ok_extract,
         "latest_ok_host_extract": latest_ok_host_extract,
         "latest_host_arrivals": latest_host_arrivals,
@@ -977,7 +979,7 @@ def run_controller(
         "architecture": [
             "layered search: architecture ≠ logic ≠ synthesis ≠ physical ≠ routing ≠ PDN",
             "F0 SSK-GP area + RUDY-class congestion; not IR",
-            "F1 chip flatten-first (area teacher 409.108) · cone-local ABC on dpath and on ctrl when STA names the FSM",
+            "F1 chip flatten-first (area teacher the current-run area) · cone-local ABC on dpath and on ctrl when STA names the FSM",
             "synthesis F1 = ORFS abc_speed.script (ABC_AREA=0); abc_area stays F0-only; not abc_ops",
             "cell-local drive-up on the attributed OpenSTA worst path (module-scoped); not ABC",
             "IR-hotspot cell drive-up: I-scale-win xy → ODB inst_power_map join → module-scoped size-up — not STA path, not VCD",
@@ -994,16 +996,16 @@ def run_controller(
             "active learning: F3→F5-lite residual orders cell vs net host; F3→F5-local residual + uncertainty pick the next level",
             "F4 I-scale uses F3 power of the attributed host (port-steer/port-net/net/cell), not synth-only WNS-winner",
             "F3 host arrivals: report_arrival on that same host — t50 for I(t), not extract STA, not VCD",
-            "F4 host extract: write_pg_spice on the attributed netlist — not the synth F1 mesh, not gold",
-            "F4 host-region extract: density cap on the host IR bin — not gold rXY on synth F1, not more ABC",
-            "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not gold",
+            "F4 host extract: write_pg_spice on the attributed netlist — not the synth F1 mesh, not reference",
+            "F4 host-region extract: density cap on the host IR bin — not reference rXY on synth F1, not more ABC",
+            "F4 IR residual loop: winning family on the region mesh, then unused pkg L on the candidate — not ABC, not reference",
             "F4 host IR residual loop: winning family on the host-region mesh, then unused pkg L on the unconstrained host — not candidate IR-steer",
             "F4 I-scale-win: I(t)×P of the attributed host on the winning host PDN point after host IR-steer — not the unconstrained first I-scale",
             "F4 IR-cell extract: write_pg_spice on the ODB-joined size-up — residual vs host extract, not STA-only",
             "F4 IR-cell PDN: 1× residual restamps the winning family on the sized mesh — not a flattened cell+decap vector",
             "F4 IR-cell region: seq-heavy 1× bin ≠ host bin — density cap on the sized netlist, not more combo size-up",
             "F4 IR-cell-region PDN: large spatial residual restamps the winning family on the capped mesh — not host IR-steer",
-            "F4 winning-IR catalog: unused Dynamic IR (decap then pkg L, inherit host pkg_r) on a strap/EM R-graph — not pitch, not width, not host/candidate IR-steer, not gold",
+            "F4 winning-IR catalog: unused Dynamic IR (decap then pkg L, inherit host pkg_r) on a strap/EM R-graph — not pitch, not width, not host/candidate IR-steer, not reference",
             "F4 I-scale-champ: I(t)×P of the IR-cell host on winning_ir_pdn — not I-scale-win on the stale host-win mesh, not host arrivals",
             "F3 IR-cell-champ: I-scale-champ xy → ODB join on the champion extract → drive-up — re-paid when winning_ir extract moves, not the first ctrl IR-cell, not STA path",
             "F4 IR-cell-champ extract: write_pg_spice on the champ-sized netlist — residual vs IR-cell extract; re-paid per champ extract, not host",
@@ -1014,7 +1016,7 @@ def run_controller(
             "F4 IR-cell-champ-cone-region: leftover-cone 1× bin ≠ champ extract and seq-heavy — density cap on the leftover-cone netlist; re-paid when the residual hotspot leaves the capped bin, not more combo size-up, not IR-cell-region rXY",
             "F4 IR-cell-champ-cone-region PDN: |Δ| ≥ 1 mV restamps the winning family on that capped leftover mesh — re-paid on a new cone extract, not champ IR-steer",
             "F4 leftover-cone-region loop: inspect → density cap → |Δ| PDN → residual hotspot → next bin, up to 4 shots — not one-pass, not a flattened region vector",
-            "F4 winning-IR-region: winning-IR 1× bin ≠ leftover-cone / IR-cell-region and seq-heavy — density cap on the IR-cell netlist; re-paid when the residual hotspot leaves the capped bin, not leftover-cone rXY, not more combo size-up, not IR-cell-region rXY, not gold rXY",
+            "F4 winning-IR-region: winning-IR 1× bin ≠ leftover-cone / IR-cell-region and seq-heavy — density cap on the IR-cell netlist; re-paid when the residual hotspot leaves the capped bin, not leftover-cone rXY, not more combo size-up, not IR-cell-region rXY, not reference rXY",
             "F4 winning-IR-region PDN: |Δ| ≥ 1 mV restamps the winning family on that capped winning-IR mesh — re-paid on a new region extract, not leftover-cone-region PDN, not champ IR-steer",
             "F4 winning-IR-region loop: inspect → density cap → |Δ| PDN → residual hotspot → next bin ≠ IR-cell-region, up to 4 shots — not one-pass, not leftover-cone rXY, not a flattened region vector",
             "F3 winning-IR-region-cell: leftover combo cells on the region PDN join (minus IR-cell / champ / leftover-cone) — drive-up on the IR-cell netlist, not leftover-cone flatten, not more density cap",
@@ -1026,13 +1028,13 @@ def run_controller(
             "F3 leftover leftover leftover: leftover leftover leftover cells on the leftover leftover PDN join (minus leftover leftover / leftover-combo / IR-cell / champ / leftover-cone) — drive-up on the leftover leftover netlist, not leftover leftover flatten, not leftover-combo, not leftover-cone, not more density cap",
             "F4 leftover leftover leftover extract: write_pg_spice on that leftover leftover leftover netlist — residual vs the leftover leftover extract; re-paid per leftover leftover extract, not leftover-combo",
             "F4 leftover leftover leftover PDN: 1× residual restamps the winning family on that leftover leftover leftover mesh — re-paid on a new leftover leftover leftover extract, not leftover leftover PDN, not leftover-combo PDN, not leftover-cone PDN, not champ IR-steer",
-            "F4 leftover leftover leftover catalog: unused Dynamic IR (C then L, inherit leftover leftover leftover PDN pkg_r) on the leftover leftover leftover extract after winning family — not winning_ir catalog, not leftover leftover leftover leftover combo size-up, not pitch, not gold",
-            "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — re-paid when the 1× extract moves (strap mesh), not candidate AMG, not gold",
+            "F4 leftover leftover leftover catalog: unused Dynamic IR (C then L, inherit leftover leftover leftover PDN pkg_r) on the leftover leftover leftover extract after winning family — not winning_ir catalog, not leftover leftover leftover leftover combo size-up, not pitch, not reference",
+            "F4 AMG/RAS/Krylov-champ: MF solver residual on winning_ir_pdn with the same DirectLU knobs — re-paid when the 1× extract moves (strap mesh), not candidate AMG, not reference",
             "F4 static IR: winning_static_pdn is a separate 1× ranking; unused pkg_r (DC ohmic) — decap/pkg L do not move static, not Dynamic IR-steer",
-            "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not gold",
-            "F4 static straps: null bump residual (same n_v on this die) pays denser metal4 on the champ ODB — pdngen -ripup, not bumps, not gold",
-            "F4 EM width: after strap pitch, unused metal4 width searches J=I/(wt) on the same place — same-mesh residual vs strap J, mixed-mesh vs EM champ, not pitch, not decap, not gold",
-            "F4 ingest gold + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
+            "F4 static mesh: null pkg_r residual (ideal bump V) pays denser bumps on the champ ODB — same place, not a new GPL, not reference",
+            "F4 static straps: null bump residual (same n_v on this die) pays denser metal4 on the champ ODB — pdngen -ripup, not bumps, not reference",
+            "F4 EM width: after strap pitch, unused metal4 width searches J=I/(wt) on the same place — same-mesh residual vs strap J, mixed-mesh vs EM champ, not pitch, not decap, not reference",
+            "F4 ingest reference + candidate write_pg_spice + OpenSTA arrivals + DirectLU/AMG/RAS/Krylov + static IR",
             "IR combo on dpath → cone extracts then cone-local ABC; ctrl hops → ctrl-cone ABC, not leftover of dpath",
             "hierarchy chip→block→region→cone→cell→net; IR rXY → OpenROAD density cap on that bin → optional extract",
             "Pareto per level — EHVI acquires, it does not replace the front",
@@ -2328,7 +2330,7 @@ def run_controller(
             **front_gated,
             "note": "timing/power gated by fidelity; pred is tie-break only",
         },
-        **ir_run_labels(
+        **live_run_labels(
             {"worst_droop_mv": win_ir.qor.dynamic_ir_mv}
             if (win_ir := winning_ir_pdn(mem)) is not None and win_ir.qor.dynamic_ir_mv is not None
             else None
@@ -2361,7 +2363,7 @@ def _best_area(mem: DesignMemory, level: str) -> float | None:
 
 
 def _attach_delta(cand, mem: DesignMemory) -> None:
-    """Stamp attr.delta_vs_baseline (vs liberty_default). Does not touch Candidate.delta (vs parent)."""
+    """Stamp attr.delta_vs_reference (vs liberty_default). Does not touch Candidate.delta (vs parent)."""
     base = next(
         (
             c
@@ -2372,7 +2374,7 @@ def _attach_delta(cand, mem: DesignMemory) -> None:
     )
     if base and cand.qor.area_um2 is not None:
         cand.attr = dict(cand.attr or {})
-        cand.attr["delta_vs_baseline"] = {
+        cand.attr["delta_vs_reference"] = {
             **qor_delta(cand.qor, base.qor),
             "vs": base.id,
             "note": "transform+context → Δarea vs liberty_default (same chip, different RTL extract)",
@@ -2395,33 +2397,33 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
         if src == "f4_region_extract" and not ir:
             ir = (
                 f" · F4 region extract {c.qor.dynamic_ir_mv:.3f} mV "
-                f"bin={(c.artifacts or {}).get('region_bin')} n_r={(c.artifacts or {}).get('n_r')} (not gold)"
+                f"bin={(c.artifacts or {}).get('region_bin')} n_r={(c.artifacts or {}).get('n_r')} (current extract)"
             )
         if src == "f4_host_region_extract":
             ir = (
                 f" · F4 host-region extract {c.qor.dynamic_ir_mv:.3f} mV "
                 f"bin={(c.artifacts or {}).get('region_bin') or (c.knobs or {}).get('region')} "
-                f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
+                f"n_r={(c.artifacts or {}).get('n_r')} (current extract)"
             )
         if src == "f4_host_extract" and "host-region" not in ir:
             ir = (
                 f" · F4 host extract {c.qor.dynamic_ir_mv:.3f} mV "
-                f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
+                f"n_r={(c.artifacts or {}).get('n_r')} (current extract)"
             )
         elif src == "f4_candidate_extract" and "host extract" not in ir and "host-region" not in ir:
             ir = (
                 f" · F4 candidate extract {c.qor.dynamic_ir_mv:.3f} mV "
-                f"n_r={(c.artifacts or {}).get('n_r')} (not gold)"
+                f"n_r={(c.artifacts or {}).get('n_r')} (current extract)"
             )
         if src == "ingest_pdn" and not ir:
-            ir = f" · F4 ingest {c.qor.dynamic_ir_mv:.3f} mV (gold teacher, unrestamped)"
+            ir = f" · F4 ingest {c.qor.dynamic_ir_mv:.3f} mV (current report)"
     ras = ""
     for c in mem.by_level("pdn"):
         if c.status != "ok" or (c.knobs or {}).get("source") != "f4_solver_ras" or c.qor.dynamic_ir_mv is None:
             continue
         if (c.attr or {}).get("via") == "f4_solver_ras_champ":
             continue
-        ras = f" · RAS residual {c.qor.dynamic_ir_mv:.3f} mV (not gold)"
+        ras = f" · RAS residual {c.qor.dynamic_ir_mv:.3f} mV (current extract)"
         break
     kry = ""
     for c in mem.by_level("pdn"):
@@ -2429,21 +2431,21 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             continue
         if (c.attr or {}).get("via") == "f4_solver_krylov_champ":
             continue
-        kry = f" · Krylov/MOR residual {c.qor.dynamic_ir_mv:.3f} mV m={(c.artifacts or {}).get('m')} (not gold)"
+        kry = f" · Krylov/MOR residual {c.qor.dynamic_ir_mv:.3f} mV m={(c.artifacts or {}).get('m')} (not reference)"
         break
     amgc = ""
     for c in reversed(list(mem.by_level("pdn"))):
         if c.status == "ok" and (c.attr or {}).get("via") == "f4_solver_amg_champ" and c.qor.dynamic_ir_mv is not None:
             res = (c.attr or {}).get("residual_vs_direct_mv")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
-            amgc = f" · AMG-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} (not gold)"
+            amgc = f" · AMG-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} (not reference)"
             break
     rasc = ""
     for c in reversed(list(mem.by_level("pdn"))):
         if c.status == "ok" and (c.attr or {}).get("via") == "f4_solver_ras_champ" and c.qor.dynamic_ir_mv is not None:
             res = (c.attr or {}).get("residual_vs_direct_mv")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
-            rasc = f" · RAS-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} (not gold)"
+            rasc = f" · RAS-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} (not reference)"
             break
     kryc = ""
     for c in reversed(list(mem.by_level("pdn"))):
@@ -2451,7 +2453,7 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             res = (c.attr or {}).get("residual_vs_direct_mv")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             m = (c.artifacts or {}).get("m")
-            kryc = f" · Krylov-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} m={m} (not gold)"
+            kryc = f" · Krylov-champ {c.qor.dynamic_ir_mv:.3f} mV{extra} m={m} (not reference)"
             break
     sir = ""
     win_s = winning_static_pdn(mem)
@@ -2469,7 +2471,7 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             f"{cat} {float(smv):.3f} mV{extra}" if smv is not None else str(cat)
         )
     if sir_bits:
-        sir += " · static-IR " + "; ".join(sir_bits) + " (not gold)"
+        sir += " · static-IR " + "; ".join(sir_bits) + " (not reference)"
     sm_bits: list[str] = []
     for c in mem.by_level("pdn"):
         if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_static_mesh":
@@ -2482,7 +2484,7 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             f"{cat} {float(smv):.3f} mV{extra}" if smv is not None else str(cat)
         )
     if sm_bits:
-        sir += " · static-mesh " + "; ".join(sm_bits) + " (not gold)"
+        sir += " · static-mesh " + "; ".join(sm_bits) + " (not reference)"
     st_bits: list[str] = []
     for c in mem.by_level("pdn"):
         if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_static_straps":
@@ -2495,7 +2497,7 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             f"{cat} {float(smv):.3f} mV{extra}" if smv is not None else str(cat)
         )
     if st_bits:
-        sir += " · static-straps " + "; ".join(st_bits) + " (not gold)"
+        sir += " · static-straps " + "; ".join(st_bits) + " (not reference)"
     em_bits: list[str] = []
     for c in mem.by_level("pdn"):
         if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_em_straps":
@@ -2513,7 +2515,7 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             f"{cat} {float(ej):.3e} A/m²{extra}" if ej is not None else str(cat)
         )
     if em_bits:
-        sir += " · EM-width " + "; ".join(em_bits) + " (not gold)"
+        sir += " · EM-width " + "; ".join(em_bits) + " (not reference)"
     wir_bits: list[str] = []
     for c in mem.by_level("pdn"):
         if c.status != "ok" or (c.attr or {}).get("via") != "active_f4_winning_ir_pdn":
@@ -2526,7 +2528,7 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             f"{cat} {float(dmv):.3f} mV{extra}" if dmv is not None else str(cat)
         )
     if wir_bits:
-        sir += " · winning-IR catalog " + "; ".join(wir_bits) + " (not gold)"
+        sir += " · winning-IR catalog " + "; ".join(wir_bits) + " (not reference)"
     ctrlc = ""
     for c in mem.by_level("logic"):
         if c.status == "ok" and c.fidelity == "F1" and (c.knobs or {}).get("cone") == "ctrl" and c.qor.area_um2 is not None:
@@ -2608,9 +2610,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nr = (c.artifacts or {}).get("n_r")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             iccext = (
-                f" · IR-cell-champ extract {float(w):.3f} mV{extra} n_r={nr} (not gold)"
+                f" · IR-cell-champ extract {float(w):.3f} mV{extra} n_r={nr} (not reference)"
                 if w is not None
-                else f" · IR-cell-champ extract n_r={nr} (not gold)"
+                else f" · IR-cell-champ extract n_r={nr} (not reference)"
             )
             break
     icccext = ""
@@ -2621,9 +2623,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nr = (c.artifacts or {}).get("n_r")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             icccext = (
-                f" · IR-cell-champ-cone extract {float(w):.3f} mV{extra} n_r={nr} (not gold)"
+                f" · IR-cell-champ-cone extract {float(w):.3f} mV{extra} n_r={nr} (not reference)"
                 if w is not None
-                else f" · IR-cell-champ-cone extract n_r={nr} (not gold)"
+                else f" · IR-cell-champ-cone extract n_r={nr} (not reference)"
             )
             break
     iccpdn = ""
@@ -2664,9 +2666,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             bin_id = (c.knobs or {}).get("region") or (c.artifacts or {}).get("region_bin")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             icccreg = (
-                f" · IR-cell-champ-cone-region {float(w):.3f} mV{extra} bin={bin_id} (not gold)"
+                f" · IR-cell-champ-cone-region {float(w):.3f} mV{extra} bin={bin_id} (not reference)"
                 if w is not None
-                else f" · IR-cell-champ-cone-region bin={bin_id} (not gold)"
+                else f" · IR-cell-champ-cone-region bin={bin_id} (not reference)"
             )
             break
     icccrpdn = ""
@@ -2692,9 +2694,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             bin_id = (c.knobs or {}).get("region") or (c.artifacts or {}).get("region_bin")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             wirreg = (
-                f" · winning-IR-region {float(w):.3f} mV{extra} bin={bin_id} (not gold)"
+                f" · winning-IR-region {float(w):.3f} mV{extra} bin={bin_id} (not reference)"
                 if w is not None
-                else f" · winning-IR-region bin={bin_id} (not gold)"
+                else f" · winning-IR-region bin={bin_id} (not reference)"
             )
             break
     wirpdn = ""
@@ -2738,9 +2740,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nr = (c.artifacts or {}).get("n_r")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             wircext = (
-                f" · winning-IR-region-cell extract {float(w):.3f} mV{extra} n_r={nr} (not gold)"
+                f" · winning-IR-region-cell extract {float(w):.3f} mV{extra} n_r={nr} (not reference)"
                 if w is not None
-                else f" · winning-IR-region-cell extract n_r={nr} (not gold)"
+                else f" · winning-IR-region-cell extract n_r={nr} (not reference)"
             )
             break
     wircpdn = ""
@@ -2784,9 +2786,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nr = (c.artifacts or {}).get("n_r")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             wirclext = (
-                f" · winning-IR-region leftover leftover extract {float(w):.3f} mV{extra} n_r={nr} (not gold)"
+                f" · winning-IR-region leftover leftover extract {float(w):.3f} mV{extra} n_r={nr} (not reference)"
                 if w is not None
-                else f" · winning-IR-region leftover leftover extract n_r={nr} (not gold)"
+                else f" · winning-IR-region leftover leftover extract n_r={nr} (not reference)"
             )
             break
     wirclpdn = ""
@@ -2830,9 +2832,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nr = (c.artifacts or {}).get("n_r")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             wircl2ext = (
-                f" · leftover leftover leftover extract {float(w):.3f} mV{extra} n_r={nr} (not gold)"
+                f" · leftover leftover leftover extract {float(w):.3f} mV{extra} n_r={nr} (not reference)"
                 if w is not None
-                else f" · leftover leftover leftover extract n_r={nr} (not gold)"
+                else f" · leftover leftover leftover extract n_r={nr} (not reference)"
             )
             break
     wircl2pdn = ""
@@ -2873,9 +2875,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             nr = (c.artifacts or {}).get("n_r")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             ircext = (
-                f" · IR-cell extract {float(w):.3f} mV{extra} n_r={nr} (not gold)"
+                f" · IR-cell extract {float(w):.3f} mV{extra} n_r={nr} (not reference)"
                 if w is not None
-                else f" · IR-cell extract n_r={nr} (not gold)"
+                else f" · IR-cell extract n_r={nr} (not reference)"
             )
             break
     icpdn = ""
@@ -2897,9 +2899,9 @@ def _summary(mem: DesignMemory, front_logic: list[str], attr: dict, n_f1: int, n
             bin_id = (c.knobs or {}).get("region") or (c.artifacts or {}).get("region_bin")
             extra = f" Δ={float(res):+.3f}" if res is not None else ""
             icreg = (
-                f" · IR-cell-region {float(w):.3f} mV{extra} bin={bin_id} (not gold)"
+                f" · IR-cell-region {float(w):.3f} mV{extra} bin={bin_id} (not reference)"
                 if w is not None
-                else f" · IR-cell-region bin={bin_id} (not gold)"
+                else f" · IR-cell-region bin={bin_id} (not reference)"
             )
             break
     icrpdn = ""

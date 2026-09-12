@@ -6,20 +6,23 @@
     "gds_drc_violations": 0
   },
   "evaluation": {
+    "basis": "live-run",
     "checks": [
       {
         "id": "route_drc_lines",
         "label": "Route DRC report lines",
         "actual": 0,
-        "target": 0,
-        "ok": true
+        "target": null,
+        "ok": true,
+        "note": "validated from the current run"
       },
       {
         "id": "gds_drc_violations",
         "label": "KLayout GDS DRC violations",
         "actual": 0,
-        "target": 0,
-        "ok": true
+        "target": null,
+        "ok": true,
+        "note": "validated from the current run"
       }
     ],
     "ok": true
@@ -42,13 +45,13 @@
       "ACTIVE.4"
     ],
     "samples": [],
-    "path": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/6_drc.lyrdb"
+    "path": "/home/kalishot/PDflow/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/6_drc.lyrdb"
   },
   "ok": true,
   "summary": "Route DRC 0 lines \u00b7 GDS DRC 0 items \u00b7 antenna 300:1 in FreePDK45.lydrc \u00b7 leftover no density / named ERC",
   "artifacts": {
-    "route_drc": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/5_route_drc.rpt",
-    "gds_lyrdb": "/workspace/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/6_drc.lyrdb"
+    "route_drc": "/home/kalishot/PDflow/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/5_route_drc.rpt",
+    "gds_lyrdb": "/home/kalishot/PDflow/tools/OpenROAD-flow-scripts/flow/reports/nangate45/gcd/flowlab/6_drc.lyrdb"
   },
   "leftover": {
     "antenna": true,

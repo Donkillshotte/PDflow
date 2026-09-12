@@ -1,8 +1,8 @@
-"""Locked scene for A. CORE_UTILIZATION alone does not freeze the die."""
+"""Geometry helpers sourced from the selected live OpenROAD artifacts."""
 
 from __future__ import annotations
 
-import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -14,12 +14,21 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def geometry_a_path() -> Path:
-    return Path(__file__).with_name("geometry_a.json")
+def current_def_path(design: str = "gcd", variant: str | None = None) -> Path | None:
+    """Return the DEF produced by the selected invocation, if available."""
+    from .experiments import DESIGN_CATALOG
+
+    orfs = (DESIGN_CATALOG.get(design) or {}).get("orfs_design") or design
+    selected = variant or os.environ.get("FLOW_VARIANT") or "flowlab"
+    path = repo_root() / "tools/OpenROAD-flow-scripts/flow/results/nangate45" / orfs / selected / "6_final.def"
+    return path if path.is_file() else None
 
 
-def load_geometry_a() -> dict[str, Any]:
-    return json.loads(geometry_a_path().read_text())
+def load_current_geometry(design: str = "gcd", variant: str | None = None) -> dict[str, Any]:
+    path = current_def_path(design, variant)
+    if path is None:
+        raise FileNotFoundError(f"no current finish DEF for {design}/{variant or os.environ.get('FLOW_VARIANT') or 'flowlab'}")
+    return parse_def_geometry(path)
 
 
 def parse_def_geometry(path: Path | str) -> dict[str, Any]:
@@ -70,10 +79,11 @@ def parse_def_geometry(path: Path | str) -> dict[str, Any]:
     }
 
 
-def locked_contract_a() -> GeometryContract:
-    blob = load_geometry_a()
+def current_geometry_contract(design: str = "gcd", variant: str | None = None) -> GeometryContract:
+    """Build a geometry identity from the DEF of the current invocation."""
+    blob = load_current_geometry(design, variant)
     return GeometryContract(
-        kind="fixed",
+        kind="current",
         die_um2=float(blob["die_um2"]),
         core_um2=float(blob["core_um2"]),
         rows=int(blob["rows"]),
@@ -87,9 +97,9 @@ def locked_contract_a() -> GeometryContract:
     )
 
 
-def orfs_lock_env() -> dict[str, str]:
-    """Env for make: DIE_AREA/CORE_AREA set, CORE_UTILIZATION empty (mutex)."""
-    blob = load_geometry_a()
+def current_geometry_env(design: str = "gcd", variant: str | None = None) -> dict[str, str]:
+    """Return explicit geometry values from the selected current DEF."""
+    blob = load_current_geometry(design, variant)
     return {
         "DIE_AREA": str(blob["die_area"]),
         "CORE_AREA": str(blob["core_area"]),

@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
-# Isolated ORFS make finish for the multi-design campaign.
-# Never writes FLOW_VARIANT=flowlab|learn|base. AES finish is allowed;
-# AES Krylov is a different path and stays refused by admit_solve.
+# Isolated ORFS make finish for the selected live design variant.
+# Each invocation writes only its own result directory and current artifacts.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" "design-finish-${DESIGN:-gcd}" \
+    bash "${BASH_SOURCE[0]}" "$@"
+fi
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 DESIGN="${DESIGN:-gcd}"
 VARIANT="${FLOW_VARIANT:-}"
 TARGET="${1:-finish}"
 PLATFORM="${PLATFORM:-nangate45}"
 
-LOCKED='^(flowlab|learn|base)$'
 if [[ -z "${VARIANT}" ]]; then
-  echo "REFUSED: set FLOW_VARIANT (e.g. camp_gcd_clk055). flowlab/learn/base are locked." >&2
+  echo "REFUSED: set FLOW_VARIANT to a path-safe live variant name." >&2
   exit 2
 fi
-if [[ "${VARIANT}" =~ ${LOCKED} ]]; then
-  echo "REFUSED: FLOW_VARIANT=${VARIANT} is locked." >&2
+if [[ "${VARIANT}" == */* || "${VARIANT}" == *\\* || "${VARIANT}" == "." || "${VARIANT}" == ".." ]]; then
+  echo "REFUSED: FLOW_VARIANT=${VARIANT} is not path-safe." >&2
   exit 2
 fi
 if [[ "${VARIANT}" == *krylov* ]]; then
@@ -101,7 +103,7 @@ set_input_delay  [expr \$clk_period * \$clk_io_pct] -clock \$clk_name \$non_cloc
 set_output_delay [expr \$clk_period * \$clk_io_pct] -clock \$clk_name [all_outputs]
 EOF
 
-AS_BYTES="${PDN_AS_BYTES:-8589934592}"
+AS_BYTES="${PDN_AS_BYTES:-6442450944}"
 case "${DESIGN}" in
   aes|ibex) DEFAULT_CPU_S=7200 ;;
   dynamic_node) DEFAULT_CPU_S=3600 ;;
@@ -132,7 +134,7 @@ if [[ -n "${PLACE_DENSITY_LB_ADDON:-}" ]]; then
   MAKE_EXTRA+=( PLACE_DENSITY_LB_ADDON="${PLACE_DENSITY_LB_ADDON}" )
 fi
 # Design-agnostic optional knobs (floorplan / place / repair / CTS / synth).
-# Unset = keep the design's config.mk default. Never applied to locked variants.
+# Unset = keep the design's config.mk default.
 for _knob in \
   TNS_END_PERCENT SETUP_SLACK_MARGIN HOLD_SLACK_MARGIN \
   CELL_PAD_IN_SITES_GLOBAL_PLACEMENT CELL_PAD_IN_SITES_DETAIL_PLACEMENT \
@@ -148,7 +150,7 @@ fi
 if [[ -n "${DIE_AREA:-}" && -n "${CORE_AREA:-}" ]]; then
   # DIE_AREA and FLOORPLAN_DEF are mutually exclusive in OpenROAD.
   MAKE_EXTRA+=( DIE_AREA="${DIE_AREA}" CORE_AREA="${CORE_AREA}" CORE_UTILIZATION= FLOORPLAN_DEF= )
-  echo "campaign ${TARGET}: design=${DESIGN} variant=${VARIANT} locked DIE_AREA sdc=${SDC_NS}ns"
+  echo "live ${TARGET}: design=${DESIGN} variant=${VARIANT} DIE_AREA sdc=${SDC_NS}ns"
 elif [[ -n "${CORE_UTILIZATION:-}" ]]; then
   MAKE_EXTRA+=( CORE_UTILIZATION="${CORE_UTILIZATION}" )
   echo "campaign ${TARGET}: design=${DESIGN} variant=${VARIANT} util=${CORE_UTILIZATION} sdc=${SDC_NS}ns"

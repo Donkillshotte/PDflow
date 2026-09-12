@@ -3,7 +3,7 @@ lesson_main() {
   ui_lesson_header "00" "Introduction to the RTL→GDS flow" "45–60 min"
 
   ui_section "Theory"
-  ui_note "Read learn/lessons/00-intro/README.md, glossary.md and golden-metrics.md (what a 'reference run' is)."
+  ui_note "Read learn/lessons/00-intro/README.md, glossary.md and live-analysis.md (current-run provenance)."
   learn_atlas "win_anatomy_labeled.png"
   ui_pause "Press ENTER after reading the README (or immediately if already read)..."
 

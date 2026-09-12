@@ -4,7 +4,7 @@ lesson_main() {
   learn_orfs_env
 
   ui_section "Theory"
-  ui_note "Read: learn/lessons/05-cts/README.md, walkthrough-cts.tcl.md, golden-metrics.md (CTS rows)."
+  ui_note "Read: learn/lessons/05-cts/README.md, walkthrough-cts.tcl.md, live-analysis.md."
   learn_atlas "win_cts.png, orfs_cts_clock_tree.png"
   learn_make_hint cts
   ui_pause
@@ -29,8 +29,8 @@ lesson_main() {
   ui_print_file "CTS final report" "$(learn_report 4_cts_final.rpt)" 40
   learn_grep_metric "$(learn_log 4_1_cts.log)" "DPL-0006|Inserted|RSZ-0062" || true
   learn_grep_metric "$(learn_report 4_cts_final.rpt)" "worst slack|setup violation|setup skew" || true
-  learn_golden
-  ui_note "Reference: util 40.5%→48.3%, Inserted 45, WNS -0.04, possible RSZ-0062 (not DPL-0038)."
+  learn_live_analysis
+  ui_note "Use the current CTS log/report above to classify utilization, inserted buffers, WNS, and any RSZ/DPL message."
   ui_pause
 
   ui_section "Exercise 5-D — Clock Tree GUI"

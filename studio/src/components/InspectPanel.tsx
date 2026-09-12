@@ -2,68 +2,81 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
-
-type Inspect = {
-  stage: string;
-  odb: {
-    design: string;
-    instances: number;
-    nets: number;
-    dieDbu: { dx: number; dy: number };
-    artifact: string;
-  } | null;
-  sta: {
-    source: string;
-    wns?: string;
-    tns?: string;
-    worstSlack?: string;
-    paths: { endpoint: string; slack: string; status: string }[];
-    jsonPaths?: number;
-  } | null;
-  yosys: {
-    cells?: string;
-    area?: string;
-    dff?: string;
-    rawHits: string[];
-  } | null;
-  hooks: { id: string; label: string; detail: string }[];
-};
+import { isStageInspect, type StageInspect } from "@/lib/inspect";
 
 export function InspectPanel({
   stage,
   refreshKey,
   variant = "learn",
+  runId,
 }: {
   stage: string;
   refreshKey?: number;
   variant?: string;
+  runId?: string | null;
 }) {
   const { push } = useToast();
-  const [data, setData] = useState<Inspect | null>(null);
+  const [data, setData] = useState<StageInspect | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMode, setLoadingMode] = useState<"cache" | "recalculate" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerBusy, setViewerBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadingMode("recalculate");
     setError(null);
     try {
       const res = await fetch(
-        `/api/inspect?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}`,
+        `/api/inspect?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}${runId ? `&run_id=${encodeURIComponent(runId)}` : ""}`,
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const body = await res.json();
+      if (!isStageInspect(body)) throw new Error("agent returned an invalid inspection payload");
+      setData(body);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+      setLoadingMode(null);
     }
-  }, [stage, variant]);
+  }, [runId, stage, variant]);
+
+  const loadCached = useCallback(async () => {
+    setLoading(true);
+    setLoadingMode("cache");
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/inspections?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}${runId ? `&run_id=${encodeURIComponent(runId)}` : ""}`,
+        { cache: "no-store" },
+      );
+      const body = (await res.json().catch(() => ({}))) as {
+        inspection?: unknown;
+        reason?: string;
+      };
+      if (!res.ok) {
+        throw new Error(body.reason || `HTTP ${res.status}`);
+      }
+      setData(isStageInspect(body.inspection) ? body.inspection : null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setData(null);
+    } finally {
+      setLoading(false);
+      setLoadingMode(null);
+    }
+  }, [runId, stage, variant]);
 
   useEffect(() => {
-    void load();
-  }, [load, refreshKey]);
+    // Changing phase, run or artifact revision invalidates the displayed
+    // snapshot, but opening the inspector must remain a read-only UI action.
+    // Recalculate is the explicit user consent to start an EDA inspection job.
+    setData(null);
+    setError(null);
+    void loadCached();
+  }, [loadCached, refreshKey]);
 
   useEffect(() => {
     void fetch("/api/viewer")
@@ -80,7 +93,7 @@ export function InspectPanel({
       const res = await fetch("/api/viewer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start", stage, variant }),
+        body: JSON.stringify({ action: "start", stage, variant, run_id: runId ?? undefined }),
       });
       const body = await res.json();
       if (body.ok && body.url) {
@@ -93,19 +106,26 @@ export function InspectPanel({
       } else {
         push(body.message || "Viewer not started", "bad");
       }
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Viewer could not be started", "bad");
     } finally {
       setViewerBusy(false);
     }
   }
 
   async function stopWeb() {
-    await fetch("/api/viewer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "stop" }),
-    });
-    setViewerUrl(null);
-    push("Web viewer stopped", "info");
+    try {
+      const response = await fetch("/api/viewer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "stop" }),
+      });
+      if (!response.ok) throw new Error(`Viewer stop HTTP ${response.status}`);
+      setViewerUrl(null);
+      push("Web viewer stopped", "info");
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Viewer could not be stopped", "bad");
+    }
   }
 
   return (
@@ -114,7 +134,7 @@ export function InspectPanel({
         <h3>Inspection tool · {stage}</h3>
         <div className="lesson-actions">
           <button type="button" className="btn-ghost" onClick={load} disabled={loading}>
-            {loading ? "Analyzing…" : "Recalculate"}
+            {loadingMode === "recalculate" ? "Analyzing…" : "Recalculate"}
           </button>
           <button
             type="button"
@@ -138,7 +158,25 @@ export function InspectPanel({
       </div>
 
       {error && <p className="block-banner">{error}</p>}
-      {loading && !data && <p className="muted">Eseguo OpenROAD/OpenSTA/Yosys…</p>}
+      {loading && !data && (
+        <p className="muted">
+          {loadingMode === "cache"
+            ? "Reading the cached inspection snapshot…"
+            : "Running validated OpenROAD/OpenSTA/Yosys inspection…"}
+        </p>
+      )}
+      {!loading && !data && !error && (
+        <div className="inspect-empty-state">
+          <strong>No cached inspection snapshot</strong>
+          <p>Opening this panel never starts an EDA process. Use Recalculate to create a report for the selected phase and run.</p>
+        </div>
+      )}
+
+      {data?.status && data.status !== "PASS" && (
+        <p className="block-banner">
+          {data.status} · {data.reason || "This inspection is not a valid PASS result."}
+        </p>
+      )}
 
       {data?.odb && (
         <div className="metric-block">
@@ -202,11 +240,9 @@ export function InspectPanel({
           {data.sta.paths.length > 0 && (
             <>
               <p className="muted">
-              Finish golden on this GCD is WNS ≥ −0.04 ns. OpenSTA on locked
-              flowlab lists every negative-slack path (WNS −0.02 ns, 16 viol).
-              The eco_scratch copy is register-to-register MET; leftover is
-              course 20% output delay. Paths below are this variant&apos;s live
-              STA, not a wrapper crash.
+              These are the selected variant&apos;s live STA paths. Review the
+              current report and the path-level evidence before judging a
+              violation; the gate is driven by this report only.
               </p>
               <ul className="path-list">
                 {data.sta.paths.map((p) => (

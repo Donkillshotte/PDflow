@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# PDflow pkgconf facade for rootless native desktop builds.
+#
+# Compilation queries keep the build sysroot so C/Rust receives the correct
+# headers and link directories.  linuxdeploy's GTK plugin queries installation
+# variables (libdir, moduledir, cache paths) and must see host paths instead of
+# embedding the absolute sysroot path under AppDir.
+set -Eeuo pipefail
+
+SYSROOT="${PD_FLOW_BUILD_SYSROOT:-${HOME:-/home/kalishot}/.local/pdflow-build-sysroot}"
+REAL_PKGCONF="${PD_FLOW_REAL_PKGCONF:-${SYSROOT}/usr/bin/pkgconf}"
+
+if [[ ! -x "${REAL_PKGCONF}" ]]; then
+  echo "PDflow pkgconf wrapper: native pkgconf is missing: ${REAL_PKGCONF}" >&2
+  exit 127
+fi
+
+for argument in "$@"; do
+  if [[ "${argument}" == "--variable" || "${argument}" == --variable=* ]]; then
+    env -u PKG_CONFIG_SYSROOT_DIR "${REAL_PKGCONF}" "$@"
+    exit $?
+  fi
+done
+
+exec "${REAL_PKGCONF}" "$@"

@@ -71,7 +71,7 @@ const POWER_ACTIONS: SignoffAction[] = [
   {
     id: "power_signoff",
     label: "Power signoff",
-    hint: "activity → chip IR → export + golden",
+    hint: "activity → chip IR → export + current report",
     icon: Zap,
     long: true,
   },
@@ -88,7 +88,7 @@ const FINISH_ACTIONS: SignoffAction[] = [
   {
     id: "sta_signoff",
     label: "STA signoff",
-    hint: "WNS/TNS vs golden-metrics",
+    hint: "WNS/TNS from the current report",
     icon: Clock,
     long: false,
   },
@@ -271,7 +271,7 @@ export function FlowLabSignoff({
             <p>
               Docs{" "}
               <a href="/materials/reference/signoff-matrix.md">signoff-matrix</a> ·{" "}
-              <a href="/materials/reference/golden-metrics.md">golden-metrics</a>
+              <a href="/materials/reference/live-analysis.md">live-analysis</a>
             </p>
             <ActionGrid
               actions={FINISH_ACTIONS}

@@ -4,6 +4,9 @@
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" signoff-all bash "${BASH_SOURCE[0]}" "$@"
+fi
 VARIANT="${FLOW_VARIANT:-flowlab}"
 INCLUDE_PHASE2="${SIGNOFF_INCLUDE_PHASE2:-0}"
 LOG="${ROOT}/learn/sim/reports/signoff_all_${VARIANT}.log"

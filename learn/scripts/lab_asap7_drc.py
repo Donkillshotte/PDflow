@@ -2,7 +2,7 @@
 """ASAP7 community KLayout DRC. Not Calibre. Not a product win.
 
 Runs platforms/asap7/drc/asap7.lydrc (laurentc2). Leftover-named count.
-Never writes .drc.ok. Never restamps gold Dynamic IR 45.298 mV.
+Never writes .drc.ok. DRC results are scoped to the current ASAP7 run.
 """
 
 from __future__ import annotations
@@ -81,18 +81,40 @@ def main(argv: list[str] | None = None) -> int:
     counts = _count_rules(report)
     klayout_ok = ran and exit_code == 0
     drc_clean = counts["n_items"] == 0
+    legacy_status = payload_status
+    status = "pass" if klayout_ok else "blocked"
+    honesty = "PARTIAL" if ran else "GAP"
     payload = {
         "ok": klayout_ok and drc_clean,
         "klayout_ok": klayout_ok,
         "drc_clean": drc_clean,
-        "status": payload_status,
+        "status": status,
+        "legacy_status": legacy_status,
+        "tool_status": status,
         "surface": "lab",
         "platform": "asap7",
+        "track": "asap7",
+        "mesh_id": "asap7_chip_tier_b",
+        "topology": "fs",
+        "oracle": "klayout_community",
+        "tool_id": "klayout_community",
+        "license_class": "GPL-2.0-or-later",
+        "honesty": honesty,
+        "honesty_reason": (
+            "Community KLayout rules are evidence only; Calibre/foundry DRC "
+            "coverage is not present."
+            if ran
+            else "Community DRC did not run because a required input or tool is missing."
+        ),
+        "ok_claim": False,
         "kind": "leftover_named_drc",
         "calibre": False,
         "deck": "community laurentc2 asap7.lydrc",
         "product_win": False,
+        "productWin": False,
+        "win_eligible": False,
         "comparable_to_gold_ir": False,
+        "comparison_scope": "independent ASAP7 DRC run",
         "variant": variant,
         "gds": str(gds) if gds.is_file() else None,
         "report": str(report) if report.is_file() else None,
@@ -104,9 +126,30 @@ def main(argv: list[str] | None = None) -> int:
             "gate": "nonzero items are leftover-named, not a fail",
         },
         "reason": reason,
+        "leftovers": [
+            {"id": "calibre_missing", "message": "No Calibre deck/binary is part of this community run."},
+            {"id": "via_width_rules", "message": "Several via-width rules remain outside the community deck."},
+        ],
+        "pillars": {
+            "drc": {
+                "status": status,
+                "honesty": honesty,
+                "honesty_reason": "Community KLayout DRC; not Calibre.",
+                "leftovers": [
+                    {"id": "calibre_missing", "message": "No Calibre deck/binary is available."},
+                ],
+            },
+            "thermal": {
+                "status": "not_run",
+                "honesty": "GAP",
+                "honesty_reason": "Thermal is not part of the DRC check.",
+                "leftovers": [{"id": "thermal_not_run", "message": "No thermal model ran."}],
+            },
+        },
+        "signoff_all": {"ok": False, "reason": "Community DRC is leftover evidence, not signoff."},
         "note": (
             "Community KLayout DRC. Not Calibre. Not a product win. "
-            "Live metrics only — no gold stamp."
+            "Live metrics only."
         ),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

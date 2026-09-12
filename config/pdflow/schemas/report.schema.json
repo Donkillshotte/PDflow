@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdflow.local/schemas/report.schema.json",
+  "title": "PDflow ReportEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "run_id",
+    "scope",
+    "status",
+    "ok",
+    "input_artifacts",
+    "output_artifacts",
+    "comparison_scope"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "report_id": {"type": "string", "minLength": 8},
+    "run_id": {"type": ["string", "null"]},
+    "scope": {"enum": ["product", "flow", "package", "lab", "generated"]},
+    "status": {"enum": ["PASS", "FAIL", "WARN", "PARTIAL", "PROXY", "GAP", "NOT_RUN"]},
+    "ok": {"type": "boolean"},
+    "required_checks": {"type": "array", "items": {"type": "object"}},
+    "input_artifacts": {"type": "array", "items": {"type": "string"}},
+    "input_artifact_refs": {"type": "array", "items": {"type": "object"}},
+    "output_artifacts": {"type": "array", "items": {"type": "string"}},
+    "output_artifact_refs": {"type": "array", "items": {"type": "object"}},
+    "mesh_id": {"type": ["string", "null"]},
+    "oracle": {"type": ["string", "null"]},
+    "metrics": {"type": "object"},
+    "relative": {"type": "array", "items": {"type": "object"}},
+    "comparison_scope": {"enum": ["same-live-invocation", "not-comparable", "none"]},
+    "report_paths": {"type": "array", "items": {"type": "string"}},
+    "reason": {"type": ["string", "null"]},
+    "tool_versions": {"type": "object"},
+    "environment": {"type": "object"},
+    "job_id": {"type": ["string", "null"]},
+    "operation": {"type": ["string", "null"]},
+    "stale": {"type": "boolean"}
+  }
+}

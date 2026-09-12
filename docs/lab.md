@@ -1,95 +1,31 @@
 # Lab
 
-Does not decide product wins. Stays in the tree as the IR / e-graph /
-refine stack. Product index: [product.md](product.md).
-
-## What it is
-
-Multi-fidelity search: architecture → logic → synth → place → route → PDN.
-Dynamic IR is an OpenROAD/ODB oracle (`engine/` + `pdn_*.py`), not a neural
-voltage map. GNN / LLM proposers stay here.
-
-Executable plan (Phase 2 **closed**): [`PLAN.md`](../PLAN.md).
-F0–F6 stack: [`learn/reference/dse.md`](../learn/reference/dse.md).
-Native solvers: [`engine/README.md`](../engine/README.md).
-
-## Entry
-
-Studio Lab bench: `/lab` (`GET /api/lab`). Physics ledger and DSE launch
-compare live there. Product wins are `/product` (`GET /api/product`).
-FlowLab finish `#ir` is the GCD mesh ledger, not this bench.
+The lab contains multi-fidelity DSE, PDN extraction, solver comparison,
+thermal analysis, and optional PDK experiments. It reports observations; the
+product comparator remains separate.
 
 ```bash
 export PYTHONPATH=learn:learn/scripts
-python3 learn/scripts/run_dse.py --campaign --wall-s=180
-python3 learn/scripts/test_dse.py          # one file at a time; F4 last
+python3 learn/scripts/run_dse.py
 python3 learn/scripts/validate_lab_physics.py
-python3 learn/scripts/test_asap7_lab.py
-python3 learn/scripts/test_asap7_e2e.py   # live GDS (gcd knobs + uart); no ASAP7 gold
-# ASAP7 RTL→GDS (gcd-scale, not AES). Predictive. Not a product win.
-./scripts/run_lab_asap7.sh finish
+python3 learn/scripts/test_dse.py
 ```
 
-Cloud / IR:
+Each invocation gets a unique directory under
+`learn/sim/dse/live/`. Set `PD_FLOW_RUN_DIR` when several stages must share the
+same run. A solver comparison is allowed only when the matrix, mesh,
+activity, constraint, and geometry fingerprints agree.
 
-```bash
-./scripts/run_dse_gcd_cloud.sh
-./scripts/run_dynamic_ir_cloud.sh
-./scripts/run_gcd_finish_cloud.sh
-# AES F4/F5-lite: only with ALLOW_HEAVY_ANALYSIS=1 and never Krylov
-```
+Optional engines such as ngspice, Xyce, and FasterCap are detected at runtime.
+Unavailable engines remain explicit gaps. No lab output is copied into a
+product report without a compatible live contract.
 
-Build solver: `./learn/scripts/build_dpn_engine.sh`.
+ASAP7 is an independent exploratory track. It may produce live GDS and
+signoff evidence, but its PDK and geometry contract must not be mixed with a
+Nangate45 comparison.
 
-## Invariants (non-negotiable)
-
-- Lab ASAP7 RTL→GDS is a **separate** track (`lab_asap7_*`,
-  [`learn/lab/asap7/README.md`](../learn/lab/asap7/README.md)).
-  Predictive FinFET. Not a product win. IR is not comparable to
-  gold 45.298 mV. Live GDS only — no ASAP7 gold stamp.
-  `lab_asap7.json` is the last run and is not committed.
-  `lab_asap7_folio.json` lists every live GDS.
-  `lab_asap7_lvs.json` is cell-vs-CDL (not Calibre; still open).
-  `lab_asap7_mmmc.json` is setup WC / hold BC on one finish.
-  Close paths that remain open: [`asap7_close_plan.md`](asap7_close_plan.md).
-  End-to-end runner: `python3 learn/scripts/run_asap7_e2e.py`
-  (`--dry-run` on a fresh clone). Plan:
-  [`asap7_e2e_plan.md`](asap7_e2e_plan.md).
-  Layer 1 import: [`asap7_layer1_plan.md`](asap7_layer1_plan.md)
-  (`run_lab_asap7_pdk.sh`, inventory `lab_asap7_pdk.py`,
-  Xyce `lab_asap7_spice.py`). Calibre decks stay gated.
-- Gold GCD Dynamic IR **45.298 mV**: never restamped
-  (`learn/sim/reports/dynamic_ir_flowlab.json`).
-- Current FlowLab finish **5.173 mV** (worker `n_r` ~5816, finish SPEF t50) = `current_run`,
-  not `reference_run`.
-- AES `learn/sim/dse/memory_aes.jsonl` row `febe6804241c` stays intact.
-- `QoR.area_um2` = stdcell area, not die.
-- `Candidate`: `knobs` = action, `artifacts` = observation, `pred` = prediction.
-- `admit_solve` is the resource gate. DirectLU = numerical reference.
-- Do not flatten architecture + ABC + util + PDN into one vector.
-- `f1_pareto_parents` is F1-only. Do not replace it for F2-fast.
-- Do not `mem.touch` on cached F4 hits.
-
-## Lab tests (split D.1–D.5)
-
-`learn/scripts/test_dse.py` is the runner. Fixed order:
-
-| Module | What |
-|---|---|
-| `test_dse_metrics.py` | dominates / gated / HV |
-| `test_dse_memory.py` | JSONL / BOiLS / e-graph |
-| `test_dse_planner.py` | attribution / `plan_search` / F1 |
-| `test_dse_steer.py` | residual / F5 / IR leftover |
-| `test_dse_live_f4.py` | live F4, **last**, one job |
-
-Synthetic or gcd-scale. One `test_dse.py` at a time. Do not launch AES finish
-“just to see”.
-
-## Lab modules (`learn/dse` package)
-
-Controller / stage / acquire stay large on purpose (`PLAN.md`).
-Replaceable layers: `dse.layers.ADAPTERS`.
-
-Finish handoff vs ORFS: [`flow_vs_orfs_gcd.md`](../learn/dse/flow_vs_orfs_gcd.md),
-[`handoff_finish_bakeoff.md`](../learn/dse/handoff_finish_bakeoff.md).
-Baseline A (`FLOW_VARIANT=flowlab` on gcd) is not overwritten.
+The ASAP7+BSPDN Lab contract is documented in
+[`asap7_eval_contract.md`](asap7_eval_contract.md), with the implementation
+tracker at [`../bspdn/impl/BSPDN_IMPLEMENTATION_PLAN.md`](../bspdn/impl/BSPDN_IMPLEMENTATION_PLAN.md).
+Ladder B starts with the explicit `asap7_bspdn_proxy_m89` PROXY mesh; thermal
+GAP evidence is shown separately and never becomes Product signoff.

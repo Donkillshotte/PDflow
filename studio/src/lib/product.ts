@@ -1,15 +1,14 @@
 /**
- * Product surface snapshot. Wins stay in win_rule.py.
- * This module only reads the campaign registry and mirrors the published rule.
+ * Product surface snapshot for the current DSE invocation.
+ * Product UI is limited to the current invocation and explicit live pairs.
  */
-import { campaignComparisons, type ExperimentPair } from "./lab";
+import { liveComparisons, type ExperimentPair } from "./lab";
 import { getProductStory, type StorySlot } from "./story";
 
 export type ProductSnapshot = {
   title: string;
   lead: string;
   rule: string;
-  wins: number;
   cooks: number;
   detail: string;
   slots: StorySlot[];
@@ -21,13 +20,12 @@ export function getProductSnapshot(): ProductSnapshot {
   return {
     title: "Product",
     lead:
-      "Physical knobs on the official netlist, fixed die, real finish. DSE proposes knobs and does not run signoff_all. Wins stay in win_rule.py.",
+      "Current-invocation DSE measurements on the selected design. Cross-run product scoring is disabled until the controller emits an explicit same-run comparison.",
     rule:
-      "Same design, same clock, versus the slot base. Timing not worse than 5 ps and at least one of area / power / leakage / IR better by ≥10%, with none of the four worse by ≥10%. First close (WNS≥0) when the base is open, without worsening the four, is also a win. Moved die is wrong_die.",
-    wins: story.product.wins,
+      "Only comparisons explicitly emitted by the current DSE invocation are eligible. Missing comparison data is shown as unavailable.",
     cooks: story.product.cooks,
     detail: story.product.detail,
     slots: story.product.slots,
-    comparisons: campaignComparisons(),
+    comparisons: liveComparisons(),
   };
 }

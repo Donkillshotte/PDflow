@@ -3,6 +3,11 @@
 # RTL_FILE can point to learn/flowlab/gcd.v (FlowLab).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" rtl-sim bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
+source "${ROOT}/scripts/rg_compat.sh"
 RTL="${RTL_FILE:-${ROOT}/tools/OpenROAD-flow-scripts/flow/designs/src/gcd/gcd.v}"
 TB="${ROOT}/learn/sim/gcd/tb_gcd.v"
 OUTDIR="${ROOT}/learn/sim/gcd"

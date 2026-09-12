@@ -14,9 +14,7 @@ type Metric = {
   label: string;
   value: string;
   source: string;
-  expected?: boolean;
 };
-type Golden = { label: string; value: string };
 type LogDigest = {
   errors: number;
   warnings: number;
@@ -31,7 +29,6 @@ type Results = {
   stage: string;
   artifacts: Artifact[];
   metrics: Metric[];
-  goldenHints: Golden[];
   logDigest?: LogDigest | null;
 };
 
@@ -49,10 +46,12 @@ export function ResultsPanel({
   stage,
   refreshKey,
   variant = "learn",
+  runId,
 }: {
   stage: string;
   refreshKey?: number;
   variant?: string;
+  runId?: string | null;
 }) {
   const { push } = useToast();
   const [data, setData] = useState<Results | null>(null);
@@ -65,7 +64,7 @@ export function ResultsPanel({
     setError(null);
     try {
       const res = await fetch(
-        `/api/results?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}`,
+        `/api/results?stage=${encodeURIComponent(stage)}&variant=${encodeURIComponent(variant)}${runId ? `&run_id=${encodeURIComponent(runId)}` : ""}`,
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
@@ -74,7 +73,7 @@ export function ResultsPanel({
     } finally {
       setLoading(false);
     }
-  }, [stage, variant]);
+  }, [runId, stage, variant]);
 
   useEffect(() => {
     void load();
@@ -86,7 +85,7 @@ export function ResultsPanel({
       const res = await fetch("/api/open", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artifact: name, variant }),
+        body: JSON.stringify({ artifact: name, variant, run_id: runId ?? undefined }),
       });
       const body = await res.json();
       if (body.launched) {
@@ -97,6 +96,8 @@ export function ResultsPanel({
       } else {
         push(body.message || body.error || "Open failed", "bad");
       }
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Artifact could not be opened", "bad");
     } finally {
       setBusy(null);
     }
@@ -137,7 +138,7 @@ export function ResultsPanel({
       {total > 0 && (
         <>
           <p className="muted">
-            Artifacts: <strong>{ready}/{total}</strong> — Open ODB in OpenROAD o
+            Artifacts: <strong>{ready}/{total}</strong> — {runId ? "candidate workspace" : "finish workspace"} · Open ODB in OpenROAD o
             GDS in KLayout (Desktop).
           </p>
           <ul className="artifact-list">
@@ -188,9 +189,8 @@ export function ResultsPanel({
           {data.logDigest.noteworthy.length > 0 && (
             <p className="muted">
               Note: {data.logDigest.noteworthy.map((n) => n.code).join(", ")} —
-              on GCD nangate45 finish golden is WNS ≈ −0.04 ns; OpenSTA
-              signoff is WNS −0.02 ns with 16 setup paths. Neither is a
-              wrapper bug.
+              inspect the current-run report before deciding whether a warning
+              is actionable.
             </p>
           )}
         </div>
@@ -205,25 +205,7 @@ export function ResultsPanel({
                 <code>{m.source}</code>
                 <span>
                   {m.value}
-                  {m.expected ? " · expected (golden)" : ""}
                 </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {data.goldenHints.length > 0 && (
-        <div className="metric-block golden">
-          <h4>
-            Golden reference{" "}
-            <a href="/materials/reference/golden-metrics.md">open table</a>
-          </h4>
-          <ul className="metric-list">
-            {data.goldenHints.map((g) => (
-              <li key={g.label}>
-                <strong>{g.label}</strong>
-                <span>{g.value}</span>
               </li>
             ))}
           </ul>

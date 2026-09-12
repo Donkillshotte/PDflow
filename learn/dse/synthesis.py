@@ -1,6 +1,6 @@
 """Replaceable synthesis adapter.
 
-Logic F1 is Yosys ``abc -liberty`` / BOiLS ``abc_ops`` (teacher 409.108).
+Logic F1 is Yosys ``abc -liberty`` / BOiLS ``abc_ops`` (teacher the current-run area).
 Synthesis F1 is the ORFS delay recipe (``ABC_AREA=0`` → ``abc_speed.script``
 plus ``-D`` clock). Area-script (``ABC_AREA=1``) stays F0-only — same teacher
 family as liberty_default on this GCD.

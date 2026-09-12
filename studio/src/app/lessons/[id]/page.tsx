@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { LeftoverSuiteStrip } from "@/components/LeftoverSuiteStrip";
 import { LessonWizard } from "@/components/LessonWizard";
-import { SurfaceRail } from "@/components/SurfaceRail";
 
 type LessonPayload = {
   id: string;
@@ -44,7 +43,6 @@ export default function LessonDetailPage() {
   if (error) {
     return (
       <main>
-        <SurfaceRail />
         <header className="page-head">
           <h1>Error</h1>
           <p>{error}</p>
@@ -64,7 +62,6 @@ export default function LessonDetailPage() {
   if (!lesson) {
     return (
       <main>
-        <SurfaceRail />
         <header className="page-head">
           <h1 className="skeleton-line">Loading lesson…</h1>
           <p className="muted">Preparing guided path</p>
@@ -75,7 +72,6 @@ export default function LessonDetailPage() {
 
   return (
     <main>
-      <SurfaceRail />
       <header className="page-head">
         <div className="lesson-num">LESSON {lesson.num}</div>
         <h1>{lesson.title}</h1>
@@ -88,7 +84,7 @@ export default function LessonDetailPage() {
         </p>
         <p className="muted">
           Student pace stays 0/8 until you mark a lesson. Leftover named
-          (setup, DFF_X2, no MCMM, no density) stays on{" "}
+          (setup, connectivity, library corners, density) stays on{" "}
           <Link href="/flow?phase=finish#signoff">finish signoff</Link>, not
           on this guided path.
         </p>

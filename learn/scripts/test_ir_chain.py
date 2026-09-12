@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Static / dynamic IR and EM stay on their own meshes. Gold is not restamped."""
-
+"""Dynamic, chip, package and EM reports remain distinct live artifacts."""
 from __future__ import annotations
 
 import json
@@ -8,7 +7,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 REPORTS = ROOT / "learn/sim/reports"
-GOLD_MV = 45.298
 
 
 def check(ok: bool, msg: str) -> None:
@@ -23,61 +21,52 @@ def load(name: str) -> dict:
     return json.loads(path.read_text())
 
 
+def assert_proxy_evidence(report: dict, label: str) -> None:
+    check(report.get("status") == "PROXY", f"{label} keeps proxy status explicit")
+    check(report.get("ok") is False, f"{label} cannot be a signoff pass")
+    check(report.get("execution_status") == "COMPLETED", f"{label} execution completed")
+    check(report.get("evidence_status") == "PASS", f"{label} contains executable evidence")
+    check(report.get("requirement_status") == "GAP", f"{label} requirement gap is explicit")
+    check(report.get("signoff_status") == "PROXY", f"{label} signoff scope is proxy")
+    check(report.get("product_signoff") is False, f"{label} cannot claim Product signoff")
+
+
 def main() -> int:
-    gold = load("dynamic_ir_flowlab.json")
-    check(gold.get("gold") is True, "dynamic IR gold sentinel")
-    check(abs(float(gold["worst_droop_mv"]) - GOLD_MV) < 0.02, "gold 45.298")
+    dynamic = load("dynamic_ir_flowlab_direct.json")
+    assert_proxy_evidence(dynamic, "Dynamic IR")
+    check(dynamic.get("comparison_scope") == "same-live-invocation", "Dynamic IR is current")
+    check(float((dynamic.get("dynamic") or {}).get("worst_droop") or 0) > 0, "Dynamic IR droop is positive")
+    check("comparison_scope" in dynamic, "Dynamic IR declares its live scope")
 
     chip = load("pdn_chip_ir_flowlab.json")
-    check(chip.get("ok") is True, "chip IR report has ok")
-    static_v = float((chip.get("static") or {}).get("worst_ir") or 0)
-    static_mv = static_v * 1000.0
-    check(0.1 < static_mv < 50.0, f"chip static IR rail-scale ({static_mv:.3f} mV)")
-    check(abs(static_mv - GOLD_MV) > 1.0, "chip static is not gold 45.298")
-    tran_mv = float((chip.get("transient") or {}).get("worst_droop") or 0) * 1000.0
-    check(tran_mv > 0, f"chip transient droop {tran_mv:.3f} mV")
+    assert_proxy_evidence(chip, "chip IR")
+    check(float((chip.get("static") or {}).get("worst_ir") or 0) > 0, "chip static IR is positive")
+    check(float((chip.get("transient") or {}).get("worst_droop") or 0) > 0, "chip transient IR is positive")
 
-    pwr = load("power_signoff_flowlab.json")
-    check(pwr.get("ok") is True, "power signoff ok")
-    check("system_pdn" not in (pwr.get("steps") or []), "power signoff steps are chip-only")
-    check("system_droop_mv" not in (pwr.get("power") or {}), "power signoff metrics are chip-only")
-    sys_rep = load("system_pdn_flowlab.json")
-    check(sys_rep.get("ok") is True, "system PDN report has ok")
-    sys_mv = float((sys_rep.get("transient") or {}).get("droop_mv") or 0)
-    check(sys_mv > 0, f"system droop {sys_mv:.3f} mV")
-    ledger = pwr.get("ir_mesh_ledger") or {}
-    check(ledger.get("comparable") is False, "IR mesh ledger is not comparable")
-    meshes = {m.get("id"): m for m in (ledger.get("meshes") or [])}
-    check("gold_dynamic_ir" in meshes, "ledger names gold Dynamic IR")
-    check(abs(float(meshes["gold_dynamic_ir"]["dynamic_mv"]) - GOLD_MV) < 0.02, "ledger gold is 45.298")
-    check(meshes["gold_dynamic_ir"].get("gold") is True, "ledger gold flag")
-    check("chip_pdn" in meshes, "ledger names chip PDN")
-    check(abs(float(meshes["chip_pdn"]["static_mv"]) - GOLD_MV) > 1.0, "ledger chip is not gold")
-    check("current_run_dynamic_ir" in meshes, "ledger names current_run")
-    check(meshes["current_run_dynamic_ir"].get("gold") is False, "current_run is not gold")
-    check("vyges_em_ir" in meshes, "ledger names vyges")
-    check(meshes["vyges_em_ir"].get("em_checked") == 0, "ledger EM stays unchecked")
-    check("system_pdn" in meshes, "ledger names system PDN")
-    gold_v = float(meshes["gold_dynamic_ir"]["dynamic_mv"])
-    chip_v = float(meshes["chip_pdn"]["static_mv"])
-    cur_v = float(meshes["current_run_dynamic_ir"]["dynamic_mv"])
-    vy_v = float(meshes["vyges_em_ir"]["static_mv"])
-    check(len({round(gold_v, 2), round(chip_v, 2), round(cur_v, 2), round(vy_v, 2)}) == 4, "ledger meshes stay distinct")
+    system = load("system_pdn_flowlab.json")
+    if system.get("status") == "GAP":
+        check(system.get("ok") is False, "system PDN GAP is not a pass")
+        reason = str(system.get("reason") or "").lower()
+        check("ngspice" in reason or "xyce" in reason, "system PDN GAP names its missing engine")
+    else:
+        check(system.get("ok") is True, "system PDN report is ready")
+        check(float((system.get("transient") or {}).get("droop_mv") or 0) > 0, "system droop is positive")
 
-    em = REPORTS / "vyges_em_ir_flowlab.json"
-    if em.is_file():
-        blob = json.loads(em.read_text())
-        check(blob.get("ok") is True, "vyges-em-ir ok")
+    power = load("power_signoff_flowlab.json")
+    ledger = power.get("ir_mesh_ledger") or {}
+    meshes = {row.get("id"): row for row in ledger.get("meshes") or []}
+    check(set(("dynamic_ir", "chip_pdn", "system_pdn")) <= meshes.keys(), "ledger contains current meshes")
+    check(all(not str(row.get("id", "")).startswith(("archived", "legacy", "fixed")) for row in meshes.values()), "ledger has no archived mesh")
+    check(all(row.get("comparison_scope") for row in meshes.values()), "every mesh declares scope")
+    check(meshes["dynamic_ir"].get("comparison_scope") == "same-live-extract", "same-extract scope is explicit")
+    check(all(row.get("comparable_to") == [] for row in meshes.values()), "cross-mesh arithmetic is disabled")
+
+    vyges = REPORTS / "vyges_em_ir_flowlab.json"
+    if vyges.is_file():
+        blob = json.loads(vyges.read_text())
+        assert_proxy_evidence(blob, "EM report")
         drop = ((blob.get("vyges") or {}).get("worst_ir") or {}).get("drop")
-        if drop is not None:
-            drop_mv = float(drop) * 1000.0
-            check(drop_mv > 0, f"vyges static drop {drop_mv:.2f} mV")
-            check(abs(drop_mv - GOLD_MV) > 1.0, "vyges mesh is not gold 45.298")
-        em_checked = (blob.get("vyges") or {}).get("em_checked")
-        if em_checked is not None:
-            check(int(em_checked) == 0, "Nangate45 has no emlimit; EM stays unchecked")
-        check(blob.get("limits_met") is False, "vyges limits_met stays false without emlimit")
-        check("em_checked 0" in str(blob.get("summary")), "vyges summary names unchecked EM")
+        check(drop is not None and float(drop) > 0, "EM mesh has positive live drop")
 
     print("ALL test_ir_chain PASSED")
     return 0

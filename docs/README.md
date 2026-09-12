@@ -1,64 +1,37 @@
-# Documentation
+# Documentation map
 
-Single entry point. Frozen plans stay in their original files (`learn/dse/*.md`);
-this tree is for navigation. Do not rewrite I1–I5 or §5 P0–P7.
+PDflow is a live-analysis workspace. The primary rule is in
+[`../learn/reference/live-analysis.md`](../learn/reference/live-analysis.md):
+current results are derived from the current invocation only.
 
-## Three surfaces
+## Surfaces
 
-| Surface | What it is | Where wins are decided |
-|---|---|---|
-| **Product** | Physical knobs on the official netlist, fixed die, real finish | [`win_rule.py`](../learn/dse/win_rule.py) · [`product.md`](product.md) |
-| **Lab** | e-graph, Verilog rewrite, F4 IR, refine, GNN | [`learn/dse/README.md`](../learn/dse/README.md) (Lab section) |
-| **Course / Studio** | RTL→GDS lessons, FlowLab, GUI | [`learn/README.md`](../learn/README.md) · [`studio/README.md`](../studio/README.md) |
+- [`course.md`](course.md) — course and Studio workflow.
+- [`lab.md`](lab.md) — multi-fidelity DSE and physics experiments.
+- [`product.md`](product.md) — same-invocation product comparison contract.
+- [`operations.md`](operations.md) — local commands, timeouts, and failure
+  handling.
+- [`native-toolchain.md`](native-toolchain.md) — installed native host tools,
+  discovery, GUI launch, and rebuild procedure.
+- [`testing.md`](testing.md) — fast gates, native RTL-to-GDS acceptance, and
+  desktop/UI validation.
+- [`../learn/reference/resource-execution.md`](../learn/reference/resource-execution.md)
+  — cgroup limits, queueing, diagnostics, and non-destructive execution.
+- [`architecture.md`](architecture.md) — ownership and artifact flow.
+- [`symphony-pdflow-integration.md`](symphony-pdflow-integration.md) — isolated
+  coding-agent orchestration and the PDflow resource/artifact boundary.
+- [`script.md`](script.md) — launcher and script catalogue.
 
-Studio home (`/#story`, `GET /api/story`) lists the three surfaces.
-Course is `/lessons`, lab IR is `/lab`, product wins are `/product`.
-They stay separate contracts. Wins stay in `win_rule.py`. Do not
-restamp the locked gold IR report file; gold mV is not a suite pass
-criterion.
+## Learn materials
 
-## Reading order
+The lessons, GUI atlas, Tcl walkthroughs, workbook, and tool references live
+under [`../learn/`](../learn/). Start at [`../learn/README.md`](../learn/README.md).
 
-### Product
+## Studio routes
 
-1. [`product.md`](product.md) — constraints, win rule, cycle
-2. [`operations.md`](operations.md) — commands, tests, refuse rules
-3. [`results.md`](results.md) — honest results
-4. [`../learn/dse/tpe_plan.md`](../learn/dse/tpe_plan.md) — tuner (frozen before trials)
-5. [`../learn/dse/arch_review.md`](../learn/dse/arch_review.md) — after gcd/ibex/aes: walls and transfer
+- `/flow` — RTL-to-finish workbench.
+- `/lab` — current physics and DSE run.
+- `/pkg` — packaging and phase-two tools.
+- `/tools` — direct tool execution and live job output.
 
-### Lab
-
-1. [`lab.md`](lab.md)
-2. [`../PLAN.md`](../PLAN.md) — Phase 2 IR controller (closed)
-3. [`../learn/reference/dse.md`](../learn/reference/dse.md) — F0–F6 stack
-4. [`../engine/README.md`](../engine/README.md) — native solvers
-
-### Course / Studio
-
-1. [`course.md`](course.md)
-2. [`rtl_to_signoff.md`](rtl_to_signoff.md) — living campaign: leftover-free **stopped**, not achieved
-2b. [`rtl_to_signoff_close_plan.md`](rtl_to_signoff_close_plan.md) — leftover-named A–F landed (2026-09-04); next is maintain honesty / park gated leftovers (leftover-free stays stopped)
-3. [`../learn/README.md`](../learn/README.md) · [`../learn/CURRICULUM.md`](../learn/CURRICULUM.md)
-4. [`../studio/README.md`](../studio/README.md)
-
-## Repository map
-
-- [`install.md`](install.md) — environment setup, tool versions, GCD flow launcher
-- [`social-preview.md`](social-preview.md) — optional GitHub repository card image
-- [`architecture.md`](architecture.md) — directories, ownership, what not to move
-- [`script.md`](script.md) — wrappers in `scripts/` and `learn/scripts/`
-- [`plans.md`](plans.md) — frozen plan index
-- [`rtl_to_signoff.md`](rtl_to_signoff.md) — living RTL-to-signoff campaign (stopped)
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — how to contribute
-- [`../AGENTS.md`](../AGENTS.md) — operational rules for agents
-- [`../learn/reference/suite-status.md`](../learn/reference/suite-status.md) — live flow WORKS / FAIL / GAP table
-- [`../learn/reference/gaps.md`](../learn/reference/gaps.md) — license/PDK gated vs to-build
-- [`sky130_integration.md`](sky130_integration.md) — why the course stays Nangate45 (sky130 is a different PDK)
-- [`asap7_research.md`](asap7_research.md) — ASAP7 as Lab/FinFET research kit (not a course or product swap)
-- [`asap7_close_plan.md`](asap7_close_plan.md) — how the ASU/ORFS/Hammer kit is layered; leftover close paths (not leftover-free)
-- [`asap7_layer1_plan.md`](asap7_layer1_plan.md) — how to import the academic PDK (GitHub half vs ASU Calibre)
-
-## Product code
-
-Module map: [`learn/dse/README.md`](../learn/dse/README.md).
+Every route reads current reports and displays unavailable inputs explicitly.

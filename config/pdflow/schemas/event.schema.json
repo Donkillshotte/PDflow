@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdflow.local/schemas/event.schema.json",
+  "title": "PDflow Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "type", "timestamp", "payload"],
+  "properties": {
+    "event_id": {"type": "integer", "minimum": 1},
+    "type": {"type": "string", "minLength": 1},
+    "timestamp": {"type": "number"},
+    "payload": {"type": "object"}
+  }
+}

@@ -2,10 +2,10 @@
   "ok": true,
   "kind": "spice_engines",
   "ngspice_present": true,
-  "ngspice_version": "****** ** ngspice-42 : Circuit level simulation program ",
+  "ngspice_version": "****** ** ngspice-47 : Circuit level simulation program ",
   "ngspice_demo_ok": true,
   "xyce_present": true,
-  "xyce_bin": "/workspace/learn/tools/xyce/bin/Xyce",
+  "xyce_bin": "/home/kalishot/PDflow/learn/tools/xyce/bin/Xyce",
   "xyce_n4": {
     "ok": true,
     "status": "READY",
@@ -16,7 +16,7 @@
     "method": "Xyce TRAN vs descriptor BE VRM+die"
   },
   "xyce_status": "READY",
-  "role": "ngspice is the System PDN / chip-mesh engine; Xyce is the dual-solver N4 gold when installed",
+  "role": "ngspice is the System PDN / chip-mesh engine; Xyce is the dual-solver N4 reference when installed",
   "commercial_gap": null,
   "summary": "ngspice=ok Xyce=READY"
 }

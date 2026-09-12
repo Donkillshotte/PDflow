@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "install_mode": "native-host",
+  "platform": "linux-x86_64",
+  "prefix_env": "PD_FLOW_EDA_PREFIX",
+  "default_prefix": "~/.local/pdflow-eda",
+  "container_execution": false,
+  "runtime_policy": "native-process-only",
+  "install_prefix": "/home/kalishot/.local/pdflow-eda",
+  "tools": {
+    "openroad": {
+      "source": "https://github.com/The-OpenROAD-Project/OpenROAD",
+      "build": "Bazelisk GUI build from the native 26Q3 source checkout",
+      "required": true,
+      "source_ref": "26Q3",
+      "source_commit": "a9147cf3aebe65e058bb3fa89c1f9e524488dbb8",
+      "odb_schema_minor": 134,
+      "installed_version": "26Q3",
+      "installed_binary": "/home/kalishot/.local/pdflow-eda/native-openroad/openroad",
+      "native_odb_python": "/home/kalishot/.local/pdflow-eda/native-openroad/python",
+      "native_odb_binding": "src/odb:_odb.so"
+    },
+    "opensta": {
+      "source": "https://github.com/The-OpenROAD-Project/OpenROAD",
+      "build": "native OpenSTA target //src/sta:opensta built from the same 26Q3 checkout",
+      "required": true,
+      "source_ref": "26Q3",
+      "source_commit": "a9147cf3aebe65e058bb3fa89c1f9e524488dbb8",
+      "installed_version": "OpenSTA 2.7.0",
+      "installed_binary": "/home/kalishot/.local/pdflow-eda/native-openroad/bin/sta"
+    },
+    "klayout": {
+      "source": "https://www.klayout.de/build.html",
+      "build": "native Linux package extracted into the prefix",
+      "required": true,
+      "installed_version": "0.30.0"
+    },
+    "yosys": {
+      "source": "https://github.com/YosysHQ/yosys",
+      "build": "native Linux package extracted into the prefix",
+      "required": true,
+      "installed_version": "0.66"
+    },
+    "iverilog": {
+      "source": "https://github.com/steveicarus/iverilog",
+      "build": "native Linux package extracted into the prefix",
+      "required": true,
+      "installed_version": "13.0"
+    },
+    "ngspice": {
+      "source": "https://ngspice.sourceforge.io/download.html",
+      "build": "native Linux package extracted into the prefix",
+      "required": true,
+      "installed_version": "47"
+    }
+  }
+}

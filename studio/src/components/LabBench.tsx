@@ -19,10 +19,21 @@ type Pair = {
   design: string;
   clockNs: number;
   verdict: string;
-  versus: "base" | "previous";
-  base: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null };
+  versus: "same-invocation";
+  reference: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null };
   cook: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null };
   delta: { wnsPs: number | null; areaPct: number | null; powerPct: number | null; irPct: number | null };
+};
+
+type LabEvidence = {
+  status: "pass" | "fail" | "blocked" | "not_run";
+  honesty: "GAP" | "PROXY" | "PARTIAL";
+  honestyReason: string | null;
+  leftovers: { id: string; message: string; count?: number | null }[];
+  toolId: string | null;
+  licenseClass: string | null;
+  modelId?: string | null;
+  powermapKind?: "uniform" | "workload" | null;
 };
 
 type Shot = {
@@ -55,8 +66,7 @@ type Shot = {
 type LabSnap = {
   title: string;
   lead: string;
-  goldMv: number;
-  currentMv: number | null;
+  runMv: number | null;
   physics: {
     ok: boolean;
     nReady: number;
@@ -80,19 +90,21 @@ type LabSnap = {
   dse: { ok: boolean; summary: string; nCandidates: number } | null;
   launches?: Shot[];
   thisLaunch?: Shot | null;
-  prevLaunch?: Shot | null;
   asap7?: {
     ok: boolean;
+    status?: LabEvidence["status"];
+    honesty?: LabEvidence["honesty"];
+    honestyReason?: string | null;
+    leftovers?: LabEvidence["leftovers"];
     variant: string | null;
     design: string | null;
     corner: string | null;
     vt: string[];
     libModel: string | null;
     track: string | null;
+    laneTrack?: string | null;
     clkPs?: number | null;
     gds: string | null;
-    productWin: boolean;
-    comparableToGoldIr: boolean;
     leftover: Record<string, unknown> | null;
     stages?: unknown;
     stoppedAt?: string | null;
@@ -152,6 +164,21 @@ type LabSnap = {
       patched: boolean;
       leftover: string;
     } | null;
+    meshId?: string | null;
+    meshFingerprint?: string | null;
+    oracle?: string | null;
+    topology?: string | null;
+    scenario?: string | null;
+    toolId?: string | null;
+    licenseClass?: string | null;
+    productWin?: boolean;
+    winEligible?: boolean;
+    comparableToGoldIr?: boolean;
+    labAdmit?: boolean;
+    labAdmitReason?: string | null;
+    proxyReportPath?: string | null;
+    pillars?: { ir: LabEvidence; thermal: LabEvidence };
+    thermal?: LabEvidence;
     note: string | null;
   } | null;
 };
@@ -220,6 +247,36 @@ function ShotFace({ shot, label }: { shot: Shot | null; label: string }) {
   );
 }
 
+function EvidenceCell({ label, evidence }: { label: string; evidence?: LabEvidence }) {
+  const honesty = evidence?.honesty ?? "GAP";
+  const status = evidence?.status ?? "not_run";
+  return (
+    <div className={clsx("lb-evidence-cell", `is-${honesty.toLowerCase()}`)}>
+      <span>{label}</span>
+      <strong>{honesty}</strong>
+      <em>status · {status}</em>
+      {evidence?.honestyReason ? <p>{evidence.honestyReason}</p> : null}
+    </div>
+  );
+}
+
+function EvidenceLeftovers({ leftovers }: { leftovers?: LabEvidence["leftovers"] }) {
+  if (!leftovers?.length) {
+    return <p className="lb-evidence-empty">No named leftovers emitted by this report.</p>;
+  }
+  return (
+    <ul className="lb-evidence-leftovers" aria-label="ASAP7 named leftovers">
+      {leftovers.map((leftover, index) => (
+        <li key={`${leftover.id}-${index}`}>
+          <code>{leftover.id}</code>
+          <span>{leftover.message}</span>
+          {leftover.count != null ? <em>×{leftover.count}</em> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function LabBench({
   tone = "paper",
   onRun,
@@ -251,6 +308,8 @@ export function LabBench({
   const launches = data?.launches ?? [];
   const nGap = data?.physics?.gap?.length ?? 0;
   const folio = `${data?.physics?.nReady ?? "–"}/${data?.physics?.nChecks ?? "–"}`;
+  const asap7Ir = data?.asap7?.pillars?.ir;
+  const asap7Thermal = data?.asap7?.pillars?.thermal ?? data?.asap7?.thermal;
 
   return (
     <section className={clsx("lb-bench", tone === "dark" && "lb-bench-dark")} aria-label="Lab bench">
@@ -259,15 +318,15 @@ export function LabBench({
           <p className="lb-kicker">Lab physics {folio}</p>
           <h2>Rail-scale checks on finished cooks</h2>
           <p className="lb-lead">
-            {data?.lead ?? "Rail-scale checks on real finishes. Gold 45.298 mV stays a sentinel."}
+            {data?.lead ?? "Rail-scale checks on real finishes. Values come from the current run."}
           </p>
         </div>
         <div className="lb-rail-nums" aria-hidden>
           <span>
-            gold <em>{data?.goldMv ?? 45.298}</em>
+            live_run <em>{data?.runMv != null ? data.runMv.toFixed(3) : "—"}</em>
           </span>
           <span>
-            current_run <em>{data?.currentMv != null ? data.currentMv.toFixed(3) : "—"}</em>
+            same_mesh <em>{data?.runMv != null ? "yes" : "—"}</em>
           </span>
         </div>
       </header>
@@ -279,6 +338,25 @@ export function LabBench({
           <span>ASAP7 lab</span>
           <strong>{data?.asap7?.variant ?? "no lab_asap7 cook yet"}</strong>
         </header>
+        <div id="bspdn" className="lb-evidence" aria-label="ASAP7 BSPDN evidence axes">
+          <EvidenceCell label="IR claim class" evidence={asap7Ir} />
+          <EvidenceCell label="Thermal claim class" evidence={asap7Thermal} />
+          <div className={clsx("lb-evidence-cell", data?.asap7?.labAdmit ? "is-admit" : "is-blocked")}>
+            <span>Lab admission</span>
+            <strong>{data?.asap7?.labAdmit ? "PROXY-FIRST OK" : "NOT ADMITTED"}</strong>
+            <em>{data?.asap7?.labAdmitReason ?? "proxy BSPDN row not available"}</em>
+          </div>
+        </div>
+        <p className="lb-evidence-note">
+          Honesty is the primary badge; status is the tool outcome. Thermal is a separate pillar:
+          GAP/not-run is visible and may not be the sole PROXY-first blocker.
+        </p>
+        <div className="lb-evidence-meta">
+          <span>mesh <code>{data?.asap7?.meshId ?? "—"}</code></span>
+          <span>topology <code>{data?.asap7?.topology ?? "—"}</code></span>
+          <span>tool <code>{data?.asap7?.toolId ?? "—"}</code></span>
+          <span>license <code>{data?.asap7?.licenseClass ?? "—"}</code></span>
+        </div>
         <dl>
           <div>
             <dt>Corner / VT / lib</dt>
@@ -346,11 +424,11 @@ export function LabBench({
           </div>
           <div>
             <dt>Product win</dt>
-            <dd>no</dd>
+            <dd>{data?.asap7?.productWin === false ? "no" : "not eligible"}</dd>
           </div>
           <div>
-            <dt>vs 45.298 mV</dt>
-            <dd>not comparable</dd>
+            <dt>Comparison basis</dt>
+            <dd>matching live mesh only</dd>
           </div>
           <div>
             <dt>LVS vs CDL</dt>
@@ -390,7 +468,7 @@ export function LabBench({
             <dt>Xyce inverter</dt>
             <dd>
               {data?.asap7?.spice
-                ? `${data.asap7.spice.patch ?? "level 72→107"}${data.asap7.spice.inverted ? " · inverted" : " · leftover"}`
+                ? `${data.asap7.spice.patch ?? "current Xyce layer mapping unavailable"}${data.asap7.spice.inverted ? " · inverted" : " · leftover"}`
                 : "—"}
             </dd>
           </div>
@@ -424,7 +502,7 @@ export function LabBench({
             <dt>Chip mesh static</dt>
             <dd>
               {data?.asap7?.chipPdn?.meshStaticMv != null
-                ? `${data.asap7.chipPdn.meshStaticMv.toFixed(2)} mV · tier B · not 45.298 mV`
+                ? `${data.asap7.chipPdn.meshStaticMv.toFixed(2)} mV · tier B · current run`
                 : data?.asap7?.chipPdn
                   ? "chip mesh leftover · tier B"
                   : "—"}
@@ -441,6 +519,10 @@ export function LabBench({
             </dd>
           </div>
         </dl>
+        <div className="lb-evidence-leftover-box">
+          <h3>Named leftovers</h3>
+          <EvidenceLeftovers leftovers={data?.asap7?.leftovers} />
+        </div>
         {(data?.asap7?.folio?.length ?? 0) > 0 && (
           <ol className="lb-tape" aria-label="ASAP7 live runs">
             {(data?.asap7?.folio ?? []).map((row, i) => (
@@ -472,32 +554,35 @@ export function LabBench({
       </article>
 
       <div id="dse-compare" className="lb-faces">
-        <ShotFace shot={data?.prevLaunch ?? null} label="Previous run" />
-        <ShotFace shot={data?.thisLaunch ?? null} label="This launch" />
+        <ShotFace shot={data?.thisLaunch ?? null} label="Current invocation" />
         <aside className="lb-delta">
-          <h3>This launch vs the one before</h3>
+          <h3>Current DSE invocation</h3>
           <p className="lb-sub">
             {data?.thisLaunch?.compare?.note ??
-              "Every DSE cook appends a shot. ΔIR is not a product win across extracts."}
+              "The dashboard shows only the selected invocation. A delta is shown only when the current run emits an explicit same-run pair."}
           </p>
-          <ul>
-            <li>
-              <span>Δ candidates</span>
-              <b>{signed(data?.thisLaunch?.compare?.delta?.n_candidates ?? null, "")}</b>
-            </li>
-            <li>
-              <span>Δ winning IR</span>
-              <b>{signed(data?.thisLaunch?.compare?.delta?.winning_ir_pdn_mv ?? null, " mV")}</b>
-            </li>
-            <li>
-              <span>Δ static</span>
-              <b>{signed(data?.thisLaunch?.compare?.delta?.winning_static_mv ?? null, " mV")}</b>
-            </li>
-            <li>
-              <span>Δ IR-cell WNS</span>
-              <b>{signed(data?.thisLaunch?.compare?.delta?.ir_cell_champ_wns_ns ?? null, " ns")}</b>
-            </li>
-          </ul>
+          {data?.thisLaunch?.compare?.delta ? (
+            <ul>
+              <li>
+                <span>Δ candidates</span>
+                <b>{signed(data.thisLaunch.compare.delta.n_candidates, "")}</b>
+              </li>
+              <li>
+                <span>Δ winning IR</span>
+                <b>{signed(data.thisLaunch.compare.delta.winning_ir_pdn_mv, " mV")}</b>
+              </li>
+              <li>
+                <span>Δ static</span>
+                <b>{signed(data.thisLaunch.compare.delta.winning_static_mv, " mV")}</b>
+              </li>
+              <li>
+                <span>Δ IR-cell WNS</span>
+                <b>{signed(data.thisLaunch.compare.delta.ir_cell_champ_wns_ns, " ns")}</b>
+              </li>
+            </ul>
+          ) : (
+            <p className="lb-empty">No explicit same-run pair emitted.</p>
+          )}
           {launches.length > 0 && (
             <ol className="lb-tape">
               {launches
@@ -580,11 +665,11 @@ export function LabBench({
           ) : null}
           <p className="lb-foot">Extra delay is Σ(delay_ir − delay). α = 1.3. Not Tempus.</p>
 
-          <h3 className="lb-h-gap">Product wins</h3>
+          <h3 className="lb-h-gap">Product surface</h3>
           <p className="lb-sub">
-            Official netlist, fixed die, area/power/leakage/IR together. Decided
-            only on <Link href="/product">/product</Link> by{" "}
-            <code>win_rule.py</code>. This bench does not host that table.
+            Current-invocation measurements remain on this bench. Open{" "}
+            <Link href="/product">/product</Link> for the live product view;
+            no result is inferred from another invocation.
           </p>
         </div>
       </div>

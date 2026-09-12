@@ -3,13 +3,14 @@
 
 OpenROAD write_pg_spice + pdn_transient.py on lab_asap7_* finishes.
 Not System PDN (tier C: lab_asap7_pkg). Not cook PDNSim alone (tier A: 6_report).
-Never writes nangate45/gcd/flowlab. Never restamps gold Dynamic IR 45.298 mV.
+Never writes the Nangate finish tree. Results are current ASAP7 data.
 Never writes .chip_pdn_ir.ok.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -366,14 +367,49 @@ def main(argv: list[str] | None = None) -> int:
 
     payload = {
         "ok": ran_ok,
-        "status": "ran" if ran_ok else or_out.get("status", "GAP"),
+        "status": "pass" if ran_ok else "blocked" if or_out.get("status") == "GAP" else "fail",
+        "legacy_status": "ran" if ran_ok else or_out.get("status", "GAP"),
         "kind": "leftover_named_chip_pdn",
         "tier": "chip_mesh",
         "surface": "lab",
         "platform": "asap7",
+        "track": "asap7",
+        "mesh_id": "asap7_chip_tier_b",
+        "topology": "fs",
+        "oracle": "pdnsim_transient",
+        "honesty": "PARTIAL",
+        "honesty_reason": (
+            "Community ASAP7 on-die chip mesh from the current finish; this is "
+            "not a backside BM*/BPR extraction or foundry signoff."
+        ),
+        "ok_claim": False,
+        "product_signoff": False,
         "product_win": False,
+        "productWin": False,
+        "win_eligible": False,
         "comparable_to_gold_ir": False,
+        "comparison_scope": "independent ASAP7 chip run",
         "variant": variant,
+        "run_id": os.environ.get("PD_FLOW_RUN_ID") or variant,
+        "report_id": f"asap7-chip-pdn-{variant}",
+        "report_paths": ["learn/sim/reports/lab_asap7_chip_pdn.json"],
+        "ir_report_paths": ["learn/sim/reports/lab_asap7_chip_pdn.json"],
+        "results_dir": str(folder.relative_to(ROOT)),
+        "mesh_fingerprint": "sha256:" + hashlib.sha256(
+            json.dumps(
+                {
+                    "mesh_id": "asap7_chip_tier_b",
+                    "topology": "fs",
+                    "platform": "asap7",
+                    "variant": variant,
+                    "n_r": int(or_out.get("n_r") or 0),
+                    "n_sources": n_sources,
+                    "pdk": "asap7",
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
         "vdd": vdd,
         "corner": corner,
         "vt": vt,
@@ -402,14 +438,37 @@ def main(argv: list[str] | None = None) -> int:
         "transient": transient_blob,
         "transient_run": tr_out,
         "leftover": {
-            "gold_ir": "not comparable to Nangate 45.298 mV",
+            "comparison_scope": "independent ASAP7 chip mesh",
             "openroad_gap": "write_pg_spice map::at on ~9 µm die — mesh patched with BPin V + uniform ITerm I",
             "stamp": "no .chip_pdn_ir.ok",
         },
         "note": (
             "ASAP7 on-die chip PDN mesh (tier B). Not tier C PKG. Not a product win. "
-            "Live metrics only — no gold stamp."
+            "Live metrics only."
         ),
+        "pillars": {
+            "ir": {
+                "status": "pass" if ran_ok else "blocked" if or_out.get("status") == "GAP" else "fail",
+                "honesty": "PARTIAL",
+                "honesty_reason": "Community current-run ASAP7 chip mesh; no backside extraction.",
+                "leftovers": [
+                    {"id": "backside_geometry_unmodeled", "message": "No BM*/BPR backside geometry is present."},
+                    {"id": "foundry_signoff_missing", "message": "No foundry deck or Product signoff is available."},
+                ],
+            },
+            "thermal": {
+                "status": "not_run",
+                "honesty": "GAP",
+                "honesty_reason": "No compact thermal model is part of the chip mesh stamp.",
+                "leftovers": [{"id": "thermal_model_missing", "message": "Thermal evidence is not run."}],
+            },
+        },
+        "leftovers": [
+            {"id": "backside_geometry_unmodeled", "message": "No BM*/BPR backside geometry is present."},
+            {"id": "foundry_signoff_missing", "message": "No foundry deck or Product signoff is available."},
+            {"id": "thermal_model_missing", "message": "Thermal evidence is not run."},
+        ],
+        "signoff_all": {"ok": False, "reason": "ASAP7 Lab chip mesh is not Product signoff."},
     }
     _write_payload(payload)
 

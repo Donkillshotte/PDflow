@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# SPICE engines: ngspice INTEGRATED; Sandia Xyce probed and N4 gold if present.
+# SPICE engines: ngspice INTEGRATED; Sandia Xyce probed and N4 reference if present.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" spice-engines bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 # shellcheck source=learn/lib/lab_tools.sh
 source "${ROOT}/learn/lib/lab_tools.sh"
 lab_tools_path "${ROOT}"
@@ -35,11 +39,11 @@ python3 - <<PY
 import json, shutil, sys
 from pathlib import Path
 sys.path.insert(0, "${ROOT}/learn/scripts")
-from pdn_vrm import xyce_vrm_die_gold
+from pdn_vrm import xyce_vrm_die_reference
 xyce = shutil.which("xyce") or shutil.which("Xyce")
 n4 = {}
 if xyce:
-    n4 = xyce_vrm_die_gold()
+    n4 = xyce_vrm_die_reference()
 xyce_ready = bool(xyce) and n4.get("status") == "READY" and n4.get("ok") is True
 payload = {
   "ok": bool(${ng_ok}),
@@ -51,7 +55,7 @@ payload = {
   "xyce_bin": xyce,
   "xyce_n4": n4,
   "xyce_status": "READY" if xyce_ready else ("GAP" if not xyce else "WATCH"),
-  "role": "ngspice is the System PDN / chip-mesh engine; Xyce is the dual-solver N4 gold when installed",
+  "role": "ngspice is the System PDN / chip-mesh engine; Xyce is the dual-solver N4 reference when installed",
   "commercial_gap": None if xyce else "Sandia Xyce not installed — run learn/scripts/install_xyce.sh",
   "summary": "ngspice={0} Xyce={1}".format(
     "ok" if ${ng_ok} else "no",

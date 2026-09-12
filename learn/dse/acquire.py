@@ -225,7 +225,7 @@ def should_pay_f4_extract(
     }
     if all(w.id in have for w in winners):
         return False, "every F1 winner already has a candidate extract"
-    return True, "write_pg_spice on legalized GPL — new R-graph, not the finish mesh, not gold"
+    return True, "write_pg_spice on legalized GPL — new R-graph, not the finish mesh, not reference"
 
 
 def should_pay_f4_host_extract(
@@ -266,7 +266,7 @@ def should_pay_f4_host_extract(
         return False, "attributed host already has a write_pg_spice mesh"
     host_src = (host.knobs or {}).get("source") or (host.knobs or {}).get("name") or host.level
     return True, (
-        f"write_pg_spice on {host_src} — host R-graph, not the synth extract, not gold"
+        f"write_pg_spice on {host_src} — host R-graph, not the synth extract, not reference"
     )
 
 
@@ -296,7 +296,7 @@ def should_pay_f4_host_region(
     extract_max: int = 1,
     min_s: float = 12.0,
 ) -> tuple[bool, str]:
-    """Pay write_pg_spice under the host IR-bin density cap. Not gold rXY on synth."""
+    """Pay write_pg_spice under the host IR-bin density cap. Not reference rXY on synth."""
     if n_extract >= extract_max:
         return False, "host-region PDN extract already spent"
     if budget_left < min_s:
@@ -320,9 +320,9 @@ def should_pay_f4_host_region(
     mapped = (host.artifacts or {}).get("mapped_v") if host else None
     if not host or not mapped or not Path(mapped).is_file():
         return False, "attributed host has no mapped netlist for host-region extract"
-    gold_r = _ingest_region(mem)
-    if gold_r and region and str(region) == str(gold_r):
-        return False, f"host IR region {region} already matches the gold bin"
+    reference_r = _ingest_region(mem)
+    if reference_r and region and str(region) == str(reference_r):
+        return False, f"host IR region {region} already matches the reference bin"
     have = any(
         (c.knobs or {}).get("source") == "f4_host_region_extract" and c.status == "ok"
         for c in mem.by_level("pdn")
@@ -331,15 +331,15 @@ def should_pay_f4_host_region(
         return False, "attributed host already has a region-capped write_pg_spice"
     seq = float(hattr.get("seq_frac") or 0.0)
     tag = region or f"xy={float(x_dbu):.0f},{float(y_dbu):.0f}"
-    gold_tag = gold_r or "unjoined"
+    reference_tag = reference_r or "unjoined"
     if seq >= 0.5:
         return True, (
-            f"host IR bin {tag} ≠ gold {gold_tag}; seq_frac={seq:.2f} — "
+            f"host IR bin {tag} ≠ reference {reference_tag}; seq_frac={seq:.2f} — "
             "density cap on the host netlist, not more combo ABC on dpath"
         )
     return True, (
-        f"host IR bin {tag} ≠ gold {gold_tag} — density cap on the host netlist, "
-        "not gold-region on synth F1, not more combo ABC"
+        f"host IR bin {tag} ≠ reference {reference_tag} — density cap on the host netlist, "
+        "not reference-region on synth F1, not more combo ABC"
     )
 
 
@@ -365,7 +365,7 @@ def should_pay_f4_pdn(
     if next_pdn_spec(mem, extract_id=extract_id) is None:
         return False, "every PDN catalog point already has an F4 child on this extract"
     mesh = "candidate extract" if extract_id != "finish" else "cached finish extract"
-    return True, f"Solver A restamp on {mesh} — PDN knobs only, not gold"
+    return True, f"Solver A restamp on {mesh} — PDN knobs only, not reference"
 
 
 def should_pay_f4_scale(
@@ -658,7 +658,7 @@ def should_pay_f4_region_extract(
     x_dbu: float | None = None,
     y_dbu: float | None = None,
 ) -> tuple[bool, str]:
-    """Pay one write_pg_spice under the IR-bin density cap. Not gold."""
+    """Pay one write_pg_spice under the IR-bin density cap. Not reference."""
     if n_extract >= extract_max:
         return False, "region PDN extract already spent"
     if budget_left < min_s:
@@ -686,7 +686,7 @@ def should_pay_f4_region_extract(
     if have:
         return False, "already have a region-local extract"
     tag = region or f"xy={x_dbu:.0f},{y_dbu:.0f}"
-    return True, f"write_pg_spice under IR-bin density cap {tag} — new mesh, not gold"
+    return True, f"write_pg_spice under IR-bin density cap {tag} — new mesh, not reference"
 
 
 def should_pay_f5_drt(
@@ -826,7 +826,7 @@ def should_pay_f5_local(
         for c in mem.by_level("routing")
     )
     if not have_lite:
-        return False, "F5-lite on the F1 netlist is the baseline — local SPEF is the residual"
+        return False, "F5-lite on the F1 netlist is the reference — local SPEF is the residual"
     if f5_local_max <= 1 and any(
         (c.knobs or {}).get("source") == "f5_openroad_local" and c.status == "ok"
         for c in mem.by_level("routing")
@@ -862,7 +862,7 @@ def should_pay_f5_port(
         (c.knobs or {}).get("source") == "f5_openroad_drt_rcx" and c.status == "ok"
         for c in mem.by_level("routing")
     ):
-        return False, "F5-lite on the F1 netlist is the baseline — port SPEF is the residual"
+        return False, "F5-lite on the F1 netlist is the reference — port SPEF is the residual"
     if f5_port_max <= 1 and any(
         (c.knobs or {}).get("source") == "f5_openroad_local"
         and (c.knobs or {}).get("host_level") == "port"
@@ -941,7 +941,7 @@ def should_pay_ir_steer(
     if budget_left < min_s:
         return False, "wall budget would not cover IR-steered Solver A"
     if not steer or not steer.get("spec") or not steer.get("extract_id"):
-        return False, "no IR-residual-steered PDN action (need candidate vs gold or a catalog pair)"
+        return False, "no IR-residual-steered PDN action (need candidate vs reference or a catalog pair)"
     spec = steer["spec"]
     from .pdn_space import measured_pdn_keys
 
@@ -1021,7 +1021,7 @@ def should_pay_f4_amg(
     variant: str = "flowlab",
     extract_id: str = "finish",
 ) -> tuple[bool, str]:
-    """Pay one SA-AMG restamp on the named extract. Residual vs DirectLU, not gold."""
+    """Pay one SA-AMG restamp on the named extract. Residual vs DirectLU, not reference."""
     if n_amg >= amg_max:
         return False, "AMG F4 scout already spent"
     if budget_left < min_s:
@@ -1042,7 +1042,7 @@ def should_pay_f4_amg(
 
         if not available(variant):
             return False, "no cached finish extract for AMG residual"
-    return True, f"SA-AMG restamp on {extract_id} — MF solver residual, not gold"
+    return True, f"SA-AMG restamp on {extract_id} — MF solver residual, not reference"
 
 
 def should_pay_f1_synth(
@@ -1285,7 +1285,7 @@ def should_pay_ir_cell_champ_extract(
     ) or "unjoined"
     return True, (
         f"write_pg_spice on IR-cell-champ {mods} n={nch} — champ-sized netlist IR residual "
-        "vs IR-cell extract, not host extract, not gold, not ABC"
+        "vs IR-cell extract, not host extract, not reference, not ABC"
     )
 
 
@@ -1423,7 +1423,7 @@ def should_pay_ir_cell_champ_cone_extract(
     ) or "unjoined"
     return True, (
         f"write_pg_spice on IR-cell-champ-cone {mods} n={nch} — leftover-cone netlist IR residual "
-        "vs IR-cell-champ extract, not host extract, not gold, not ABC"
+        "vs IR-cell-champ extract, not host extract, not reference, not ABC"
     )
 
 
@@ -1508,7 +1508,7 @@ def should_pay_ir_cell_champ_cone_region(
         steer.get("reason")
         or (
             f"leftover-cone 1× hotspot {region} steers a region density cap — "
-            "not more combo size-up, not IR-cell-region, not gold"
+            "not more combo size-up, not IR-cell-region, not reference"
         )
     )
 
@@ -1651,7 +1651,7 @@ def should_pay_winning_ir_region(
         steer.get("reason")
         or (
             f"winning-IR 1× hotspot {region} steers a region density cap — "
-            "not leftover-cone-region, not more combo size-up, not gold"
+            "not leftover-cone-region, not more combo size-up, not reference"
         )
     )
 
@@ -1839,7 +1839,7 @@ def should_pay_winning_ir_region_cell_extract(
     ) or "unjoined"
     return True, (
         f"write_pg_spice on winning-IR-region-cell {mods} n={nch} — leftover-combo IR residual "
-        "vs winning-IR-region extract, not leftover-cone, not gold, not ABC"
+        "vs winning-IR-region extract, not leftover-cone, not reference, not ABC"
     )
 
 
@@ -1988,7 +1988,7 @@ def should_pay_winning_ir_region_cell_leftover_extract(
     ) or "unjoined"
     return True, (
         f"write_pg_spice on winning-IR-region-cell leftover {mods} n={nch} — leftover-combo leftover "
-        "IR residual vs leftover-combo extract, not leftover-cone, not gold, not ABC"
+        "IR residual vs leftover-combo extract, not leftover-cone, not reference, not ABC"
     )
 
 
@@ -2147,7 +2147,7 @@ def should_pay_winning_ir_region_cell_leftover2_extract(
     ) or "unjoined"
     return True, (
         f"write_pg_spice on leftover leftover leftover {mods} n={nch} — leftover leftover leftover "
-        "IR residual vs leftover leftover extract, not leftover-combo, not leftover-cone, not gold, not ABC"
+        "IR residual vs leftover leftover extract, not leftover-combo, not leftover-cone, not reference, not ABC"
     )
 
 
@@ -2194,7 +2194,7 @@ def should_pay_winning_ir_region_cell_leftover2_catalog(
     """Pay unused Dynamic IR catalog on leftover leftover leftover extract after winning family.
 
     Shot 1: unused C with leftover leftover leftover PDN pkg_r/L. Shot 2: unused pkg L
-    with leftover leftover leftover PDN pkg_r/C. Not winning_ir catalog, not pitch, not gold.
+    with leftover leftover leftover PDN pkg_r/C. Not winning_ir catalog, not pitch, not reference.
     """
     if n_steer >= steer_max:
         return False, "leftover leftover leftover Dynamic IR catalog spent (decap + unused pkg L)"
@@ -2229,7 +2229,7 @@ def should_pay_winning_ir_region_cell_leftover2_catalog(
         return False, "leftover leftover leftover catalog refuses a geometry restamp"
     eid = str(steer["extract_id"])
     if eid in ("finish", ""):
-        return False, "leftover leftover leftover catalog refuses the gold finish extract"
+        return False, "leftover leftover leftover catalog refuses the reference finish extract"
     from .active import winning_ir_region_cell_leftover2_extract_cand
 
     ice = winning_ir_region_cell_leftover2_extract_cand(mem)
@@ -2243,7 +2243,7 @@ def should_pay_winning_ir_region_cell_leftover2_catalog(
         return False, "that Dynamic IR point is already measured on the leftover leftover leftover extract"
     return True, str(
         steer.get("reason")
-        or "leftover leftover leftover unused Dynamic IR catalog — not winning_ir catalog, not pitch, not gold"
+        or "leftover leftover leftover unused Dynamic IR catalog — not winning_ir catalog, not pitch, not reference"
     )
 
 
@@ -2293,7 +2293,7 @@ def should_pay_ir_cell_extract(
     ) or "unjoined"
     return True, (
         f"write_pg_spice on IR-cell {mods} n={nch} — sized netlist IR residual "
-        "vs host extract, not gold, not ABC, not STA-only"
+        "vs host extract, not reference, not ABC, not STA-only"
     )
 
 
@@ -2535,7 +2535,7 @@ def should_pay_f4_ras(
 
         if not available(variant):
             return False, "no cached finish extract for RAS residual"
-    return True, f"RAS restamp on {extract_id} — domain-decomp MF residual, not gold"
+    return True, f"RAS restamp on {extract_id} — domain-decomp MF residual, not reference"
 
 
 def should_pay_f4_krylov(
@@ -2548,7 +2548,7 @@ def should_pay_f4_krylov(
     variant: str = "flowlab",
     extract_id: str = "finish",
 ) -> tuple[bool, str]:
-    """Pay one rational Krylov/MOR restamp after RAS. Residual vs DirectLU, not gold."""
+    """Pay one rational Krylov/MOR restamp after RAS. Residual vs DirectLU, not reference."""
     if n_krylov >= krylov_max:
         return False, "Krylov F4 scout already spent"
     if budget_left < min_s:
@@ -2574,7 +2574,7 @@ def should_pay_f4_krylov(
 
         if not available(variant):
             return False, "no cached finish extract for Krylov/MOR residual"
-    return True, f"rational Krylov/MOR restamp on {extract_id} — reduced-order residual, not gold"
+    return True, f"rational Krylov/MOR restamp on {extract_id} — reduced-order residual, not reference"
 
 
 def _solver_on_extract(mem: DesignMemory, source: str, extract_id: str) -> bool:
@@ -2616,7 +2616,7 @@ def champ_mf_target(
         return None, "", "no 1× IR champion to restamp with an MF solver"
     eid = str((champ.knobs or {}).get("extract_id") or champ.id)
     if eid in ("finish", ""):
-        return None, eid, "champion MF solver refuses the gold finish extract"
+        return None, eid, "champion MF solver refuses the reference finish extract"
     cand = latest_ok_extract(mem)
     if cand and str(cand.get("extract_id") or "") == eid:
         return None, eid, "champion mesh is already the candidate extract — MF residual already measured there"
@@ -2634,7 +2634,7 @@ def should_pay_f4_amg_champ(
     min_s: float = 6.0,
     variant: str = "flowlab",
 ) -> tuple[bool, str]:
-    """SA-AMG on winning_ir_pdn with the same DirectLU knobs. Not candidate AMG, not gold."""
+    """SA-AMG on winning_ir_pdn with the same DirectLU knobs. Not candidate AMG, not reference."""
     if n_amg >= amg_max:
         return False, "champion AMG shot already spent"
     if budget_left < min_s:
@@ -2647,7 +2647,7 @@ def should_pay_f4_amg_champ(
     src = (champ.knobs or {}).get("name") or (champ.attr or {}).get("via")
     return True, (
         f"SA-AMG on winning_ir_pdn {src} {float(champ.qor.dynamic_ir_mv):.3f} mV "
-        f"extract {eid} — same DirectLU knobs, not candidate AMG, not gold"
+        f"extract {eid} — same DirectLU knobs, not candidate AMG, not reference"
     )
 
 
@@ -2660,7 +2660,7 @@ def should_pay_f4_ras_champ(
     min_s: float = 8.0,
     variant: str = "flowlab",
 ) -> tuple[bool, str]:
-    """RAS on winning_ir_pdn after AMG on the same extract. Not candidate RAS, not gold."""
+    """RAS on winning_ir_pdn after AMG on the same extract. Not candidate RAS, not reference."""
     if n_ras >= ras_max:
         return False, "champion RAS shot already spent"
     if budget_left < min_s:
@@ -2675,7 +2675,7 @@ def should_pay_f4_ras_champ(
     src = (champ.knobs or {}).get("name") or (champ.attr or {}).get("via")
     return True, (
         f"RAS on winning_ir_pdn {src} {float(champ.qor.dynamic_ir_mv):.3f} mV "
-        f"extract {eid} — domain-decomp after champion AMG, not candidate RAS, not gold"
+        f"extract {eid} — domain-decomp after champion AMG, not candidate RAS, not reference"
     )
 
 
@@ -2688,7 +2688,7 @@ def should_pay_f4_krylov_champ(
     min_s: float = 10.0,
     variant: str = "flowlab",
 ) -> tuple[bool, str]:
-    """Krylov/MOR on winning_ir_pdn after RAS on the same extract. Not candidate Krylov, not gold."""
+    """Krylov/MOR on winning_ir_pdn after RAS on the same extract. Not candidate Krylov, not reference."""
     if n_krylov >= krylov_max:
         return False, "champion Krylov shot already spent"
     if budget_left < min_s:
@@ -2703,7 +2703,7 @@ def should_pay_f4_krylov_champ(
     src = (champ.knobs or {}).get("name") or (champ.attr or {}).get("via")
     return True, (
         f"Krylov/MOR on winning_ir_pdn {src} {float(champ.qor.dynamic_ir_mv):.3f} mV "
-        f"extract {eid} — reduced-order after champion RAS, not candidate Krylov, not gold"
+        f"extract {eid} — reduced-order after champion RAS, not candidate Krylov, not reference"
     )
 
 
@@ -2730,10 +2730,10 @@ def should_pay_static_ir_steer(
     if str(spec.get("name") or "") in {s["name"] for s in PDN_CATALOG}:
         return False, "static-IR steer refuses a Dynamic IR / decap / pkg L catalog point"
     if abs(float(spec.get("pkg_r") or 0.05) - 0.05) < 1e-12:
-        return False, "static-IR steer requires a pkg_r delta, not gold 50 mΩ"
+        return False, "static-IR steer requires a pkg_r delta, not reference 50 mΩ"
     eid = str(steer["extract_id"])
     if eid in ("finish", ""):
-        return False, "static-IR steer refuses the gold finish extract"
+        return False, "static-IR steer refuses the reference finish extract"
     have = measured_pdn_keys(mem, extract_id=eid)
     key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
     if key in have:
@@ -2742,7 +2742,7 @@ def should_pay_static_ir_steer(
 
     if not extract_on_disk(mem, eid) and not available(variant):
         return False, "static-IR champion extract is not on disk"
-    return True, str(steer.get("reason") or "static IR steers unused pkg_r — not decap, not gold")
+    return True, str(steer.get("reason") or "static IR steers unused pkg_r — not decap, not reference")
 
 
 def should_pay_static_mesh(
@@ -2774,11 +2774,11 @@ def should_pay_static_mesh(
         return False, "static-IR mesh requires a bump_dx delta, not a PDN restamp"
     eid = str(steer["extract_id"])
     if eid in ("finish", ""):
-        return False, "static-IR mesh refuses the gold finish extract"
+        return False, "static-IR mesh refuses the reference finish extract"
     odb = steer.get("odb")
     if not odb or not Path(odb).is_file():
         return False, "static-IR champion ODB is not on disk"
-    return True, str(steer.get("reason") or "static IR steers unused bump pitch — not pkg_r, not gold")
+    return True, str(steer.get("reason") or "static IR steers unused bump pitch — not pkg_r, not reference")
 
 
 def should_pay_static_straps(
@@ -2815,11 +2815,11 @@ def should_pay_static_straps(
         return False, "static-IR straps require an m4_pitch delta, not a bump restamp"
     eid = str(steer["extract_id"])
     if eid in ("finish", ""):
-        return False, "static-IR straps refuse the gold finish extract"
+        return False, "static-IR straps refuse the reference finish extract"
     odb = steer.get("odb")
     if not odb or not Path(odb).is_file():
         return False, "static-IR champion ODB is not on disk"
-    return True, str(steer.get("reason") or "static IR steers unused metal4 pitch — not bumps, not gold")
+    return True, str(steer.get("reason") or "static IR steers unused metal4 pitch — not bumps, not reference")
 
 
 def should_pay_em_straps(
@@ -2856,11 +2856,11 @@ def should_pay_em_straps(
         return False, "EM width requires an m4_width delta, not a pitch restamp"
     eid = str(steer["extract_id"])
     if eid in ("finish", ""):
-        return False, "EM width refuses the gold finish extract"
+        return False, "EM width refuses the reference finish extract"
     odb = steer.get("odb")
     if not odb or not Path(odb).is_file():
         return False, "EM strap host ODB is not on disk"
-    return True, str(steer.get("reason") or "EM steers unused metal4 width — not pitch, not gold")
+    return True, str(steer.get("reason") or "EM steers unused metal4 width — not pitch, not reference")
 
 
 def should_pay_winning_ir_catalog(
@@ -2876,7 +2876,7 @@ def should_pay_winning_ir_catalog(
     """Pay unused Dynamic IR catalog on a strap/EM winning_ir extract.
 
     Shot 1: unused C (decap) with host pkg_r/L. Shot 2: unused pkg L with
-    host pkg_r/C. Not pitch, not width, not static pkg_r, not gold.
+    host pkg_r/C. Not pitch, not width, not static pkg_r, not reference.
     """
     if n_steer >= steer_max:
         return False, "winning-IR Dynamic IR catalog spent (decap + unused pkg L)"
@@ -2909,7 +2909,7 @@ def should_pay_winning_ir_catalog(
         return False, "winning-IR catalog refuses a geometry restamp"
     eid = str(steer["extract_id"])
     if eid in ("finish", ""):
-        return False, "winning-IR catalog refuses the gold finish extract"
+        return False, "winning-IR catalog refuses the reference finish extract"
     from .active import extract_is_new_rgraph
 
     if not extract_is_new_rgraph(mem, eid):
@@ -2918,7 +2918,7 @@ def should_pay_winning_ir_catalog(
     key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
     if key in have:
         return False, "that Dynamic IR point is already measured on the winning-IR extract"
-    return True, str(steer.get("reason") or "winning_ir unused Dynamic IR catalog — not pitch, not gold")
+    return True, str(steer.get("reason") or "winning_ir unused Dynamic IR catalog — not pitch, not reference")
 
 
 def latest_ok_extract(mem: DesignMemory) -> dict | None:

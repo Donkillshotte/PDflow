@@ -360,7 +360,7 @@ def inspect_f4(cand, *, design_id: str | None = None) -> dict:
     attr["not"] = [
         "gcd dpath/ctrl leftover",
         "invented RTL→ITerm map",
-        "gold 45.298 restamp",
+        "reference the current-run value restamp",
         "flattened cell+PDN vector",
     ]
     attr["note"] = (

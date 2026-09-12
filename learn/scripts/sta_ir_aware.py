@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""IR-aware STA on the official GCD finish — NLDM path × per-cell V.
+"""Live IR-aware STA: finish path delay joined to the current IR map.
 
-Joins OpenSTA worst-path gate delays to ITerm voltages from the Dynamic IR
-map (current_run). Scales only gate delay: delay_ir = delay * (Vdd/V_inst)^α.
-Nets stay nominal. This is not a second liberty at Vmin, not CCS, not
-PrimeTime/Tempus voltage-aware STA, and it does not restamp gold 45.298 mV.
+This is an educational NLDM overlay, not foundry sign-off. It consumes the
+STA, SPICE and voltage-map artifacts supplied for the same invocation and
+does not load a reference map from another run.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,15 +20,7 @@ from pdn_extract import parse_pg_sinks
 
 VDD_DEFAULT = 1.1
 ALPHA_DEFAULT = 1.3
-GOLD_IR_MV = 45.298
-GOLD_MAP_NAME = "dynamic_ir_flowlab.map.csv"
 _REPO = Path(__file__).resolve().parents[2]
-
-
-def refuse_gold_map(map_csv: Path) -> None:
-    """Gold 45.298 mV map is a different extract. Do not scale STA from it."""
-    if map_csv.name == GOLD_MAP_NAME:
-        raise SystemExit("FAIL refuse: will not scale STA from locked gold Dynamic IR map")
 
 
 def _rel(path: Path) -> str:
@@ -41,15 +33,13 @@ def _rel(path: Path) -> str:
 def load_sta_path(sta_json: Path) -> dict | None:
     if not sta_json.is_file():
         return None
-    blob = json.loads(sta_json.read_text())
-    return blob.get("worst_path")
+    return json.loads(sta_json.read_text()).get("worst_path")
 
 
 def load_sta_instances(sta_json: Path) -> list[dict]:
     if not sta_json.is_file():
         return []
-    blob = json.loads(sta_json.read_text())
-    pins = blob.get("pins") or []
+    pins = json.loads(sta_json.read_text()).get("pins") or []
     seen: set[str] = set()
     out: list[dict] = []
     for p in pins:
@@ -57,14 +47,7 @@ def load_sta_instances(sta_json: Path) -> list[dict]:
         if not key or key in seen:
             continue
         seen.add(key)
-        out.append(
-            {
-                "inst": key,
-                "cell": p.get("cell"),
-                "pin": p.get("pin"),
-                "arrival_ns": p.get("rise_ns"),
-            }
-        )
+        out.append({"inst": key, "cell": p.get("cell"), "pin": p.get("pin"), "arrival_ns": p.get("rise_ns")})
     return out
 
 
@@ -109,39 +92,25 @@ def voltages_to_events(v_by_inst: dict[str, float]) -> tuple[list[dict], list[fl
     return events, vmin
 
 
-def cell_rows(
-    instances: list[dict],
-    v_by_inst: dict[str, float],
-    vdd: float,
-    path_keys: set[str],
-) -> list[dict]:
+def cell_rows(instances: list[dict], v_by_inst: dict[str, float], vdd: float, path_keys: set[str]) -> list[dict]:
     rows: list[dict] = []
     for inst in instances:
         key = inst["inst"]
         v = v_by_inst.get(key)
-        rows.append(
-            {
-                **inst,
-                "v_inst": v if v is not None else vdd,
-                "ir_mv": None if v is None else (vdd - v) * 1e3,
-                "joined": v is not None,
-                "on_worst_path": key in path_keys,
-            }
-        )
+        rows.append({
+            **inst,
+            "v_inst": v if v is not None else vdd,
+            "ir_mv": None if v is None else (vdd - v) * 1e3,
+            "joined": v is not None,
+            "on_worst_path": key in path_keys,
+        })
     rows.sort(key=lambda r: (-(r["ir_mv"] or -1.0), r["inst"]))
     return rows
 
 
-def build_report(
-    *,
-    sta_json: Path,
-    spice: Path,
-    map_csv: Path,
-    vdd: float = VDD_DEFAULT,
-    alpha: float = ALPHA_DEFAULT,
-    period_ns: float = 0.46,
-    variant: str = "flowlab",
-) -> dict:
+def build_report(*, sta_json: Path, spice: Path, map_csv: Path, vdd: float = VDD_DEFAULT,
+                 alpha: float = ALPHA_DEFAULT, period_ns: float = 0.46,
+                 variant: str = "flowlab") -> dict:
     path = load_sta_path(sta_json)
     instances = load_sta_instances(sta_json)
     v_by_inst = inst_voltages(spice, map_csv, vdd)
@@ -160,19 +129,14 @@ def build_report(
         "ok": timing.get("status") == "READY",
         "kind": "sta_ir_aware",
         "variant": variant,
+        "comparison_scope": "same live finish SPEF, SPICE and voltage map",
         "vdd": vdd,
         "alpha": alpha,
         "period_ns": period_ns,
         "model": timing.get("model"),
-        "not": [
-            "second liberty at Vmin",
-            "CCS / ECSM voltage-dependent delay",
-            "PrimeTime / Tempus IR-aware STA",
-            "foundry sign-off",
-            "gold Dynamic IR 45.298 mV restamp",
-        ],
-        "via": "OpenSTA worst max path × ITerm V from Dynamic IR map.csv + write_pg_spice sinks",
-        "gold_ir_mv": GOLD_IR_MV,
+        "not": ["second liberty at Vmin", "CCS/ECSM voltage-dependent delay",
+                "PrimeTime/Tempus voltage-aware STA", "foundry sign-off"],
+        "via": "OpenSTA worst path × ITerm V from the current Dynamic IR map and current write_pg_spice sinks",
         "sta": {
             "arrivals": _rel(sta_json),
             "path_status": path_meta.get("status"),
@@ -192,37 +156,24 @@ def build_report(
             "n_inst_ir": len(v_by_inst),
             "n_joined_cells": len(joined),
             "worst_cell_ir_mv": max((c["ir_mv"] or 0.0) for c in joined) if joined else None,
-            "mean_cell_ir_mv": (
-                sum(c["ir_mv"] or 0.0 for c in joined) / len(joined) if joined else None
-            ),
+            "mean_cell_ir_mv": sum(c["ir_mv"] or 0.0 for c in joined) / len(joined) if joined else None,
             "map": _rel(map_csv),
             "spice": _rel(spice),
         },
         "timing": timing,
         "path_gates": [
-            {
-                "inst": st.get("inst_key") or st.get("inst"),
-                "cell": st.get("cell"),
-                "pin": st.get("pin"),
-                "delay_ns": st.get("delay_ns"),
-                "delay_ir_ns": st.get("delay_ir_ns"),
-                "v_inst": st.get("v_inst"),
-                "ir_mv": None
-                if st.get("v_inst") is None
-                else (vdd - float(st["v_inst"])) * 1e3,
-                "joined": st.get("joined"),
-                "scale": st.get("scale"),
-            }
+            {"inst": st.get("inst_key") or st.get("inst"), "cell": st.get("cell"),
+             "pin": st.get("pin"), "delay_ns": st.get("delay_ns"),
+             "delay_ir_ns": st.get("delay_ir_ns"), "v_inst": st.get("v_inst"),
+             "ir_mv": None if st.get("v_inst") is None else (vdd - float(st["v_inst"])) * 1e3,
+             "joined": st.get("joined"), "scale": st.get("scale")}
             for st in path_meta.get("stages") or []
             if (st.get("kind") or "net") == "gate"
         ],
         "hottest_cells": joined[:12],
         "path_cells": path_cells,
-        "note": (
-            "Educational IR-aware STA: NLDM typical-V gate delay scaled by "
-            f"(Vdd/V_inst)^{alpha} on ITerm-joined instances. "
-            "Net delay stays unscaled. Do not mix with gold 45.298 mV."
-        ),
+        "note": ("Educational live IR-aware STA: NLDM typical-V gate delay scaled by "
+                  f"(Vdd/V_inst)^{alpha} on joined instances. Net delay stays unscaled."),
     }
 
 
@@ -241,34 +192,16 @@ def main() -> int:
         print(f"FAIL missing STA arrivals {args.sta}", file=sys.stderr)
         return 2
     if not args.spice.is_file() or not args.map_csv.is_file():
-        print(
-            f"FAIL need spice+map for per-cell V ({args.spice} {args.map_csv})",
-            file=sys.stderr,
-        )
+        print(f"FAIL need current spice+map ({args.spice} {args.map_csv})", file=sys.stderr)
         return 2
-    try:
-        refuse_gold_map(args.map_csv)
-    except SystemExit as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-    report = build_report(
-        sta_json=args.sta,
-        spice=args.spice,
-        map_csv=args.map_csv,
-        vdd=args.vdd,
-        alpha=args.alpha,
-        period_ns=args.period_ns,
-        variant=args.variant,
-    )
+    report = build_report(sta_json=args.sta, spice=args.spice, map_csv=args.map_csv,
+                          vdd=args.vdd, alpha=args.alpha, period_ns=args.period_ns,
+                          variant=args.variant)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + "\n")
     sta = report["sta"]
-    print(
-        f"STA_IR_AWARE_DONE slack={sta.get('slack_ns')} "
-        f"slack_ir={sta.get('slack_ir_ns')} "
-        f"joined={sta.get('n_joined')}/{sta.get('n_gates')} "
-        f"cells={report['ir']['n_joined_cells']}"
-    )
+    print(f"STA_IR_AWARE_DONE slack={sta.get('slack_ns')} slack_ir={sta.get('slack_ir_ns')} "
+          f"joined={sta.get('n_joined')}/{sta.get('n_gates')} cells={report['ir']['n_joined_cells']}")
     return 0 if report["ok"] else 1
 
 

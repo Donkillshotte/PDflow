@@ -5,6 +5,7 @@
 # Env: FLOW_VARIANT=learn|flowlab
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/scripts/rg_compat.sh"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 OUT="${ROOT}/learn/sim/spice"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"

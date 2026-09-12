@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Layer-1 ASAP7 path: fetch public PDK if missing, inventory, Xyce inverter.
-# Never stamps .lvs.ok. Does not change the Nangate IR reference 45.298 mV.
+# Never stamps .lvs.ok. Does not change any other design's artifacts.
 # Not a product win.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" lab-asap7-pdk bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 # shellcheck source=learn/lib/lab_tools.sh
 source "${ROOT}/learn/lib/lab_tools.sh"
 lab_tools_path "${ROOT}"

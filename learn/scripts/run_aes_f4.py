@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Pay aes write_pg_spice, then Solver A only if the mesh is bounded.
-
-Does not restamp gold 45.298, does not borrow the GCD SDC, does not flatten
-knobs. Writes into memory_aes.jsonl / dse_aes.json.
-"""
+"""Run the AES F4 extraction and solve in an isolated live directory."""
 
 from __future__ import annotations
 
@@ -24,6 +20,7 @@ from dse.designs import resolve  # noqa: E402
 from dse.f4_oracle import solve_f4  # noqa: E402
 from dse.fidelity import ensure_mapped_netlist, liberty_path  # noqa: E402
 from dse.inspect import inspect_and_choose  # noqa: E402
+from dse.live_paths import current_run_dir  # noqa: E402
 from dse.memory import Candidate, DesignMemory  # noqa: E402
 from dse.metrics import QoR  # noqa: E402
 from dse.openroad_f2 import extract_pdn  # noqa: E402
@@ -43,7 +40,8 @@ def _f1(mem: DesignMemory):
 def main() -> int:
     require_heavy("AES F4 extract / Krylov on a large spice mesh")
     spec = resolve("aes")
-    mem_path = REPO / "learn" / "sim" / "dse" / "memory_aes.jsonl"
+    run_dir = current_run_dir("aes")
+    mem_path = run_dir / "memory.jsonl"
     mem = DesignMemory(mem_path)
     f1 = _f1(mem)
     if f1 is None:
@@ -81,7 +79,7 @@ def main() -> int:
     else:
         cid = DesignMemory.new_id()
         extract_id = cid
-        out_dir = REPO / "learn" / "sim" / "dse" / "extracts" / cid
+        out_dir = run_dir / "extracts" / cid
         print(f"extract {cid} top={spec.top} sdc={spec.constraint}")
         ext = extract_pdn(
             Path(mapped),
@@ -131,7 +129,7 @@ def main() -> int:
         )
         print(
             f"solve {solver} status={dyn.get('status')} droop={dyn.get('worst_droop_mv')} "
-            f"gold={dyn.get('gold')} period_ns={spec.clk_period_ns} cost={dyn.get('cost_s')}"
+            f"reference={dyn.get('reference')} period_ns={spec.clk_period_ns} cost={dyn.get('cost_s')}"
         )
     elif spice_ok and solver_refuse:
         print(solver_refuse)
@@ -175,7 +173,7 @@ def main() -> int:
                 static_ir_mv=float(static_mv) if static_mv is not None else None,
                 dynamic_ir_mv=float(droop) if droop is not None else None,
                 fidelity="F4",
-                note="aes candidate write_pg_spice — not gold 45.298, not GCD SDC",
+                note="AES candidate write_pg_spice; measured only for this invocation",
             ),
             cost_s=float(ext.get("cost_s") or 0.0) + float(dyn.get("cost_s") or 0.0),
             artifacts=art,
@@ -189,7 +187,7 @@ def main() -> int:
     else:
         c = prior_static[-1]
     chosen = inspect_and_choose(mem, design_id="aes")
-    report_path = REPO / "learn" / "sim" / "reports" / "dse_aes.json"
+    report_path = run_dir / "report.json"
     report = json.loads(report_path.read_text()) if report_path.is_file() else {}
     report.update(
         {
@@ -218,7 +216,7 @@ def main() -> int:
             "not": [
                 "gcd dpath/ctrl",
                 "gcd 0.46 ns SDC",
-                "gold 45.298 restamp",
+            "no cross-invocation value is used",
                 "flattened cell+PDN vector",
             ],
         }

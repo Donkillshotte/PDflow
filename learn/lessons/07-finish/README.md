@@ -2,26 +2,28 @@
 
 Finish is not “a GDS button”. It is the **contract** with STA, LVS, and (in industry) the foundry.
 
-Numbers from a complete `learn` run (SDC 0.46 ns, util 35):
+Run the finish flow first, then record the numbers from its current reports:
 
 | Estimate | worst slack max | Other |
 |---|---|---|
-| Liberty / floorplan | +0.04 | wires ≈ 0 |
-| Place / resizer | +0.01 | 0 setup violations |
-| CTS | −0.04 | 32 viol, skew setup ~0 |
-| GRT | −0.05 | 43 viol |
-| **Finish SPEF** | **−0.04** | TNS **−0.60**, 38 viol, `period_min=0.50` → fmax **~2.01 GHz** |
-| **OpenSTA signoff** | **−0.02** | TNS **−0.14**, **16 viol** (`engine: opensta`). Not the finish report. |
+| Liberty / floorplan | current report | estimated wires |
+| Place / resizer | current report | placement timing |
+| CTS | current report | propagated clock |
+| GRT | current report | route violations |
+| **Finish SPEF** | current report | post-route parasitics |
+| **OpenSTA signoff** | current report | independent current check |
 
-The SDC period is 0.46 ns but `period_min` at ORFS finish is 0.50 ns: **you have not closed** 2.17 GHz, you closed ~2.01 GHz. OpenSTA signoff on the same SPEF lists every negative-slack path (16), not the finish-report 38. This is the narrative to put in the final project, not “make finish is green”.
+The SDC period and measured `period_min` must be read from the current
+reports. A green make target alone is not proof of timing closure; explain any
+negative paths and report counts from this invocation.
 
-Locked `flowlab` OpenSTA is still −0.02 / 16 viol (register-to-register open). The `eco_scratch` copy after post-finish ECO is register-to-register MET; leftover is −0.01 on `resp_msg[14]` (course `clk_io_pct` 0.2). Do not overwrite `gcd/flowlab/`. Do not rewrite the SDC to hide the I/O leftover.
+If an ECO copy is used, keep its artifacts in a separate run scope and report
+the current register/I/O timing contract. Do not rewrite the SDC to hide an
+I/O leftover.
 
-IR is not one number. The ORFS finish heatmap (`orfs_final_ir_drop.png`)
-is a PDNSim picture — not gold Dynamic IR **45.298 mV**, not chip PDN
-(1.05 / 9.47 mV), and not current_run I(t) (~6.08 mV). Those meshes are
-stamped in `power_signoff_*.json` (`comparable: false`). EM `em_checked`
-is 0 (no foundry `emlimit`). FlowLab finish shows the ledger at `#ir`.
+IR is not one number. The ORFS finish heatmap, chip mesh, and activity-driven
+mesh are separate current artifacts. Compare them only with matching
+fingerprints; the ledger at `#ir` shows scope and unavailable engines.
 
 Worst path overlay: `orfs_final_worst_path.png` (launch cyan, signal red, inst purple).
 
@@ -101,12 +103,11 @@ Registry and matrix: [`signoff-matrix.md`](../../reference/signoff-matrix.md).
 | Power | `power_signoff` | `run_power_signoff.sh` |
 | All | `signoff_all` | `run_signoff_all.sh` |
 
-FlowLab **finish** phase shows the matrix vs `golden-gcd.json`. LVS is a
+FlowLab **finish** phase shows the matrix from current reports. LVS is a
 KLayout compare (filtered CDL + well→VDD/VSS + FILL/TAP `blank_circuit`).
-Read the report, including remaining DFF_X2 must-connect warnings.
-Educational FreePDK45, not foundry LVS. Timing PASS against golden
-WNS ≥ −0.04 is not MET: leftover setup open stays named while WNS < 0
-at the course 0.46 ns clock.
+Read the report, including any current must-connect warnings.
+Educational FreePDK45, not foundry LVS. Timing status comes from the current
+constraint contract; an open setup path stays named.
 
 After signoff, ECO propose is allowed on `flowlab`. Apply only on an
 unlocked copy (`FLOW_VARIANT` not in flowlab/learn/base). Apply is two
@@ -116,10 +117,12 @@ no SPEF (GRT parasitics; SPEF in the same session is RSZ-0074).
 emits `_unconnected_` and LVS compare fails). Incremental GRT +
 `detailed_route` on each process. If TritonRoute
 cannot connect, apply restores the source `6_final` or keeps the
-size-up. After BufferMove, register-to-register is MET. Leftover WNS
-−0.01 is the course 20% output delay on `resp_msg[14]` — that cone is
-shared with R2R, so a further I/O size-up regresses the register path.
-Leftover is named. Then run
+size-up. After BufferMove, inspect the current report to determine whether
+register-to-register timing is MET. If an output path remains open, keep its
+live endpoint and WNS named in the signoff evidence; that cone may be shared
+with a register path, so an additional I/O size-up must be validated rather
+than assumed safe.
+Then run
 `FLOW_VARIANT=<copy> ./learn/scripts/run_signoff_all.sh`. DSE does not
 run that script. Never writes `gcd/flowlab/`.
 

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdflow.local/schemas/lab-registry-bspdn.schema.json",
+  "title": "PDflow Lab ASAP7 BSPDN registry row",
+  "description": "Studio /lab registry row; never a Product suite row.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "version",
+    "runId",
+    "surface",
+    "variant",
+    "design",
+    "pdk",
+    "ok",
+    "productWin",
+    "win_eligible",
+    "reportPaths",
+    "resultsDir",
+    "track"
+  ],
+  "properties": {
+    "version": {"type": "string", "minLength": 1},
+    "runId": {"type": "string", "minLength": 1},
+    "surface": {"enum": ["lab", "lab_asap7"]},
+    "variant": {"type": "string", "pattern": "^lab_asap7_[a-z0-9][a-z0-9_+.]*[a-z0-9]$"},
+    "design": {"type": "string", "minLength": 1},
+    "pdk": {"const": "asap7"},
+    "ok": {"type": "boolean"},
+    "productWin": {"const": false},
+    "product_win": {"const": false},
+    "win_eligible": {"const": false},
+    "comparable_to_gold_ir": {"const": false},
+    "reportPaths": {"type": "array", "items": {"type": "string"}},
+    "resultsDir": {
+      "type": "string",
+      "pattern": "^tools/OpenROAD-flow-scripts/flow/results/asap7/[^/]+/lab_asap7_[^/]+$"
+    },
+    "track": {"enum": ["asap7", "asap7_bspdn", "asap7_bpr", "asap7_pkg"]},
+    "ir_report_paths": {"type": "array", "items": {"type": "string"}},
+    "mesh_id": {
+      "type": "string",
+      "pattern": "^asap7_[a-z0-9][a-z0-9_.+-]*$",
+      "not": {"pattern": "_chip$"}
+    },
+    "oracle": {"type": "string", "minLength": 1},
+    "topology": {"type": "string", "minLength": 1},
+    "mesh_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "honesty": {"enum": ["GAP", "PROXY", "PARTIAL"]},
+    "honesty_reason": {"type": "string", "minLength": 1},
+    "tool_id": {"type": "string", "minLength": 1},
+    "license_class": {"type": "string", "minLength": 1}
+  }
+}

@@ -13,16 +13,14 @@ Open scripts in `flow/scripts/` while you read. GUI: black canvas, `gui-shots/wi
 
 ---
 
-## Statistics of a `learn` run (your `synth_stat.txt`)
+## Statistics of the current `learn` run (`synth_stat.txt`)
 
-Reference:
+Read the live `synth_stat.txt` produced by this invocation. Record total
+cells, area, sequential cells, mapped cell families, and pre-CTS clock buffers
+from the file; no stored run is a comparison target.
 
-- **496** cells, area **628.824** (liberty units)
-- **35** `DFF_X1` (25% of area is sequential)
-- many `NAND2_X1` (128) — ABC mapped aggressively to NAND
-- already **2** `CLKBUF_*` in synth (this is not the CTS tree)
-
-If your DFFs are 34 or 36: bit-blast / opt. If you see `DLATCH`, stop: RTL combinational bug.
+If the current DFF count is unexpected, inspect bit-blast/optimization and
+the active RTL. If you see `DLATCH`, stop: RTL combinational bug.
 
 ---
 
@@ -82,7 +80,8 @@ Die 0×0: `save_image` headless often does not write PNG. Normal.
 
 ## Timing at this stage
 
-`sta` + liberty + netlist + SDC = delay **without wires**. Do not compare that WNS with finish (−0.04 ns SPEF) as if they were the same metric.
+`sta` + liberty + netlist + SDC = delay **without wires**. Do not compare
+that stage-local WNS with finish SPEF timing as if they were the same metric.
 
 ---
 

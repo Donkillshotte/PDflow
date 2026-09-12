@@ -173,7 +173,7 @@ export const SPICE_ANALYSES = [
     id: "power_signoff",
     label: "Power signoff",
     produces: ["power_signoff_*.json"],
-    spice: "gate golden IR/droop/Zmax",
+    spice: "gate current IR/droop/Zmax report",
     doc: "/materials/reference/signoff-matrix.md",
     action: "power_signoff",
   },

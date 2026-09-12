@@ -1,7 +1,7 @@
-"""Product floorplan is pinned: same die area, size, and shape as the official run.
+"""Product floorplan identity comes from the selected live DEF.
 
-CORE_UTILIZATION / CORE_ASPECT_RATIO are not product knobs. Historical
-floorplan cooks stay in the log as lab measurements; they do not win.
+CORE_UTILIZATION / CORE_ASPECT_RATIO are not product knobs. A floorplan
+change is a geometry change and is not a same-die product comparison.
 """
 from __future__ import annotations
 
@@ -15,16 +15,15 @@ FLOORPLAN_RECIPES = frozenset({"core_tighter", "core_looser", "aspect_wide"})
 _AREA_FRAC = 0.02
 
 
-def official_def(design: str) -> Path | None:
+def official_def(design: str, variant: str | None = None) -> Path | None:
     from .experiments import DESIGN_CATALOG, REPO
+    import os
 
     orfs = (DESIGN_CATALOG.get(design) or {}).get("orfs_design") or design
     flow = REPO / "tools/OpenROAD-flow-scripts/flow/results/nangate45"
-    for variant in (f"camp_{design}_base", "flowlab"):
-        p = flow / orfs / variant / "6_final.def"
-        if p.is_file():
-            return p
-    return None
+    selected = variant or os.environ.get("FLOW_VARIANT") or "flowlab"
+    p = flow / orfs / selected / "6_final.def"
+    return p if p.is_file() else None
 
 
 def official_box(design: str) -> dict[str, str] | None:
@@ -34,14 +33,6 @@ def official_box(design: str) -> dict[str, str] | None:
         g = parse_def_geometry(p)
         die = g.get("die_area")
         core = g.get("core_area")
-        if die and core:
-            return {"DIE_AREA": str(die), "CORE_AREA": str(core)}
-    if design == "gcd":
-        from .geometry import load_geometry_a
-
-        blob = load_geometry_a()
-        die = blob.get("die_area")
-        core = blob.get("core_area")
         if die and core:
             return {"DIE_AREA": str(die), "CORE_AREA": str(core)}
     return None
@@ -107,7 +98,7 @@ def _aspect(obj: Any) -> float | None:
 
 
 def moves_floorplan(cand: Any, base: Any | None = None) -> bool:
-    """True if this row changed die area, size, or shape vs the slot base."""
+    """True if this row changed die area, size, or shape in its run scope."""
     rids = _recipe_ids(cand)
     if any(r in FLOORPLAN_RECIPES for r in rids):
         return True

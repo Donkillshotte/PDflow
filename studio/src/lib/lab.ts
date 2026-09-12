@@ -1,44 +1,36 @@
 /**
- * Lab bench snapshot: physics ledger + experiment-vs-experiment comparison.
- * Product wins stay in win_rule.py; this file only reads artifacts.
+ * Lab bench snapshot for the current invocation.
+ * No cross-invocation result is read here.
  */
 import fs from "fs";
 import path from "path";
 import { LEARN_ROOT } from "./course";
-import { IR_GOLD_MV, productVerdict, readCurrentRunDroopMv, type CampRow } from "./story";
-
-const SLOTS: { id: string; clockNs: number }[] = [
-  { id: "gcd", clockNs: 0.46 },
-  { id: "spi", clockNs: 1.0 },
-  { id: "ibex", clockNs: 2.2 },
-  { id: "aes", clockNs: 0.82 },
-  { id: "dynamic_node", clockNs: 6.0 },
-];
+import { currentDesignMtime, isCurrentAsap7Artifact, isCurrentRunArtifact } from "./liveReports";
+import { readLiveRunDroopMv } from "./story";
+import { evaluateLabAdmit, labPillarOf, type LabPillarEvidence } from "./labHonesty";
 
 function readJson(rel: string): Record<string, unknown> | null {
   const p = path.join(LEARN_ROOT, rel);
-  if (!fs.existsSync(p)) return null;
+  const labFinishDerived = new Set([
+    "lab_asap7.json",
+    "lab_asap7_folio.json",
+    "lab_asap7_pkg.json",
+    "lab_asap7_chip_pdn.json",
+    "lab_asap7_lvs.json",
+    "lab_asap7_mmmc.json",
+    "lab_asap7_drc.json",
+    "lab_asap7_thermal.json",
+  ]);
+  if (labFinishDerived.has(path.basename(p))) {
+    if (!isCurrentAsap7Artifact(p)) return null;
+  } else if (!isCurrentRunArtifact(p, "flowlab")) {
+    return null;
+  }
   try {
     return JSON.parse(fs.readFileSync(p, "utf8")) as Record<string, unknown>;
   } catch {
     return null;
   }
-}
-
-function readJsonl(rel: string): CampRow[] {
-  const p = path.join(LEARN_ROOT, rel);
-  if (!fs.existsSync(p)) return [];
-  const rows: CampRow[] = [];
-  for (const line of fs.readFileSync(p, "utf8").split("\n")) {
-    const t = line.trim();
-    if (!t) continue;
-    try {
-      rows.push(JSON.parse(t) as CampRow);
-    } catch {
-      /* skip */
-    }
-  }
-  return rows;
 }
 
 function n(v: unknown): number | null {
@@ -70,78 +62,17 @@ export type ExperimentPair = {
   design: string;
   clockNs: number;
   verdict: string;
-  base: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null; leak: number | null };
+  reference: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null; leak: number | null };
   cook: { id: string; variant?: string; wnsNs: number | null; irMv: number | null; area: number | null; power: number | null; leak: number | null; note?: string };
-  versus: "base" | "previous";
+  versus: "same-invocation";
   delta: AxisDelta;
 };
 
-function axis(cand: CampRow, base: CampRow): AxisDelta {
-  const dw =
-    cand.finish_wns_ns != null && base.finish_wns_ns != null
-      ? (Number(cand.finish_wns_ns) - Number(base.finish_wns_ns)) * 1000
-      : null;
-  const pct = (a: number | null | undefined, b: number | null | undefined) => {
-    if (a == null || b == null || Math.abs(Number(b)) < 1e-18) return null;
-    return ((Number(b) - Number(a)) / Math.abs(Number(b))) * 100;
-  };
-  return {
-    wnsPs: dw,
-    areaPct: pct(cand.stdcell_um2, base.stdcell_um2),
-    powerPct: pct(cand.power_w, base.power_w),
-    leakPct: pct(cand.leakage_w, base.leakage_w),
-    irPct: pct(cand.ir_drop_v, base.ir_drop_v),
-  };
-}
-
-function pairOf(design: string, clockNs: number, cook: CampRow, ref: CampRow, versus: "base" | "previous"): ExperimentPair {
-  return {
-    design,
-    clockNs,
-    verdict: productVerdict(cook, ref),
-    versus,
-    base: {
-      id: String(ref.id ?? ref.variant ?? "ref"),
-      variant: ref.variant,
-      wnsNs: n(ref.finish_wns_ns),
-      irMv: ref.ir_drop_v != null ? Number(ref.ir_drop_v) * 1e3 : null,
-      area: n(ref.stdcell_um2),
-      power: n(ref.power_w),
-      leak: n(ref.leakage_w),
-    },
-    cook: {
-      id: String(cook.id ?? cook.variant ?? "cook"),
-      variant: cook.variant,
-      wnsNs: n(cook.finish_wns_ns),
-      irMv: cook.ir_drop_v != null ? Number(cook.ir_drop_v) * 1e3 : null,
-      area: n(cook.stdcell_um2),
-      power: n(cook.power_w),
-      leak: n(cook.leakage_w),
-      note: cook.notes,
-    },
-    delta: axis(cook, ref),
-  };
-}
-
-export function campaignComparisons(rows = readJsonl("sim/dse/campaign_experiments.jsonl")): ExperimentPair[] {
-  const out: ExperimentPair[] = [];
-  for (const slot of SLOTS) {
-    const same = rows.filter(
-      (r) => r.design === slot.id && Math.abs(Number(r.clock_ns) - slot.clockNs) < 1e-6 && r.status === "done" && r.finish_wns_ns != null,
-    );
-    const base = same.find((r) => r.role === "base") ?? same[0];
-    const cooks = same
-      .filter((r) => r !== base && r.role !== "base")
-      .sort((a, b) => Number(a.created_at ?? 0) - Number(b.created_at ?? 0));
-    if (!base || !cooks.length) continue;
-    const latest = cooks[cooks.length - 1]!;
-    out.push(pairOf(slot.id, slot.clockNs, latest, base, "base"));
-    if (cooks.length >= 2) {
-      const prev = cooks[cooks.length - 2]!;
-      out.push(pairOf(slot.id, slot.clockNs, latest, prev, "previous"));
-    }
-  }
-  return out;
+export function liveComparisons(): ExperimentPair[] {
+  // A pair is returned only when the current report explicitly supplies one.
+  // The controller currently exposes a single live snapshot, so there is no
+  // implicit base or second invocation to compare against.
+  return [];
 }
 
 export type LaunchShot = {
@@ -209,21 +140,18 @@ function launchOf(row: Record<string, unknown>): LaunchShot {
 export function getLabSnapshot() {
   const physics =
     readJson("sim/dse/lab_physics_ledger.json") || readJson("sim/reports/lab_physics_flowlab.json");
-  const pairs = campaignComparisons();
-  const latest = pairs.filter((p) => p.versus === "base");
+  const pairs = liveComparisons();
   const dse = readJson("sim/reports/dse_flowlab.json");
   const staIr = readJson("sim/reports/sta_ir_aware_flowlab.json");
   const sta = (staIr?.sta ?? {}) as Record<string, unknown>;
   const staIrMesh = (staIr?.ir ?? {}) as Record<string, unknown>;
-  const rawLaunches = readJsonl("sim/dse/launch_compare.jsonl") as unknown as Record<string, unknown>[];
-  const launches = rawLaunches.map(launchOf);
+  const liveLaunch = readJson("sim/dse/live_run_flowlab.json");
+  const launches = liveLaunch ? [launchOf(liveLaunch)] : [];
   const thisLaunch = launches.length ? launches[launches.length - 1]! : null;
-  const prevLaunch = launches.length >= 2 ? launches[launches.length - 2]! : null;
   return {
     title: "Lab bench",
     lead: "Numbers that survive a rail-scale and same-mesh check. Not foundry correlation.",
-    goldMv: IR_GOLD_MV,
-    currentMv: readCurrentRunDroopMv("flowlab"),
+    runMv: readLiveRunDroopMv("flowlab"),
     physics: physics
       ? {
           ok: physics.ok === true,
@@ -254,10 +182,8 @@ export function getLabSnapshot() {
         }
       : null,
     comparisons: pairs,
-    latestBySlot: latest,
     launches,
     thisLaunch,
-    prevLaunch,
     asap7: readAsap7Lab(),
   };
 }
@@ -294,19 +220,169 @@ function readAsap7Folio(): Record<string, unknown>[] {
   return Array.isArray(cooks) ? (cooks as Record<string, unknown>[]) : [];
 }
 
+type Asap7ProxyReport = {
+  name: string;
+  report: Record<string, unknown>;
+};
+
+const ASAP7_PROXY_REPORT_RE = /^lab_asap7_bspdn_proxy(?:_[a-z0-9][a-z0-9_.+-]*)?\.json$/;
+const LAB_ASAP7_VARIANT_RE = /^lab_asap7_[a-z0-9][a-z0-9_+.]*[a-z0-9]$/;
+const ASAP7_PROXY_MESH_RE = /^asap7_bspdn_proxy_[a-z0-9][a-z0-9_.+-]*$/;
+
+function selfContainedProxyReport(report: Record<string, unknown>): boolean {
+  const createdAt = report.created_at;
+  const createdMs = typeof createdAt === "number" ? createdAt * 1000 : Date.parse(String(createdAt ?? ""));
+  return (
+    (report.surface === "lab" || report.surface === "lab_asap7") &&
+    report.platform === "asap7" &&
+    typeof report.variant === "string" &&
+    LAB_ASAP7_VARIANT_RE.test(report.variant) &&
+    typeof report.run_id === "string" &&
+    report.run_id.trim().length > 0 &&
+    Number.isFinite(createdMs) &&
+    typeof report.mesh_id === "string" &&
+    ASAP7_PROXY_MESH_RE.test(report.mesh_id) &&
+    report.product_win === false &&
+    report.productWin === false &&
+    report.comparable_to_gold_ir === false
+  );
+}
+
+function currentProxyReport(abs: string, report: Record<string, unknown>): boolean {
+  const variant = typeof report.variant === "string" ? report.variant : null;
+  const variantValid = variant == null || LAB_ASAP7_VARIANT_RE.test(variant);
+  if (variantValid && isCurrentAsap7Artifact(abs)) return true;
+  // If this variant has a physical finish, the finish mtime is authoritative;
+  // a self-contained proxy report cannot bypass a stale-result check.
+  if (variant && LAB_ASAP7_VARIANT_RE.test(variant) && currentDesignMtime(variant) != null) return false;
+  return selfContainedProxyReport(report);
+}
+
+/**
+ * Read only the allowlisted ASAP7 BSPDN proxy report family. The payload still
+ * has to pass the current-artifact check; a stale report never becomes a lab
+ * badge merely because its filename matches.
+ */
+function readAsap7ProxyReport(): Asap7ProxyReport | null {
+  const dir = path.join(LEARN_ROOT, "sim/reports");
+  let names: string[];
+  try {
+    names = fs
+      .readdirSync(dir)
+      .filter((name) => ASAP7_PROXY_REPORT_RE.test(name))
+      .sort();
+  } catch {
+    return null;
+  }
+  const current: { name: string; report: Record<string, unknown>; mtime: number }[] = [];
+  for (const name of names) {
+    const abs = path.join(dir, name);
+    try {
+      const report = JSON.parse(fs.readFileSync(abs, "utf8")) as Record<string, unknown>;
+      // A proxy-only run has no ORFS finish directory to anchor against. Its
+      // self-contained run id/timestamp and allowlisted mesh family are the
+      // freshness boundary; finished ASAP7 reports still use the stronger
+      // current-artifact check above.
+      if (!currentProxyReport(abs, report)) continue;
+      current.push({ name, report, mtime: fs.statSync(abs).mtimeMs });
+    } catch {
+      // A malformed candidate is simply not evidence.
+    }
+  }
+  current.sort((a, b) => a.mtime - b.mtime);
+  const latest = current[current.length - 1];
+  return latest ? { name: latest.name, report: latest.report } : null;
+}
+
+/**
+ * Project the current proxy report into the Lab-only /api/runs shape.
+ * Product and suite callers do not use this path; resultsDir is rechecked
+ * before it crosses the API boundary.
+ */
+export function getLabAsap7Runs() {
+  const proxy = readAsap7ProxyReport();
+  if (!proxy) return { runs: [], surface: "lab_asap7" as const };
+  const report = proxy.report;
+  const resultsDir = typeof report.results_dir === "string" ? report.results_dir : "";
+  if (!/^tools\/OpenROAD-flow-scripts\/flow\/results\/asap7\/[^/]+\/lab_asap7_[^/]+$/.test(resultsDir)) {
+    return { runs: [], surface: "lab_asap7" as const };
+  }
+  const reportPath = `sim/reports/${proxy.name}`;
+  return {
+    surface: "lab_asap7" as const,
+    runs: [
+      {
+        runId: report.run_id,
+        run_id: report.run_id,
+        surface: "lab_asap7",
+        variant: report.variant,
+        design: report.design ?? null,
+        pdk: "asap7",
+        track: report.track,
+        status: report.status,
+        ok: report.ok === true,
+        productWin: false,
+        product_win: false,
+        win_eligible: false,
+        comparable_to_gold_ir: false,
+        reportPaths: [reportPath],
+        resultsDir,
+        mesh_id: report.mesh_id,
+        mesh_fingerprint: report.mesh_fingerprint,
+        topology: report.topology,
+        oracle: report.oracle,
+        honesty: report.honesty,
+        honesty_reason: report.honesty_reason,
+        tool_id: report.tool_id,
+        license_class: report.license_class,
+        lab_admit: report.lab_admit,
+        pillars: report.pillars,
+      },
+    ],
+  };
+}
+
+function evidenceForUi(evidence: LabPillarEvidence) {
+  return {
+    status: evidence.status,
+    honesty: evidence.honesty,
+    honestyReason: evidence.honestyReason,
+    leftovers: evidence.leftovers,
+    toolId: evidence.toolId,
+    licenseClass: evidence.licenseClass,
+    modelId: evidence.modelId,
+    powermapKind: evidence.powermapKind,
+  };
+}
+
 function readAsap7Lab(): Record<string, unknown> | null {
   const raw = readJson("sim/reports/lab_asap7.json");
   const folio = readAsap7Folio();
-  if (!raw && !folio.length) return null;
-  const qor = asap7QorOf(raw);
+  const proxy = readAsap7ProxyReport();
+  const proxyReport = proxy?.report ?? null;
   const lvs = readJson("sim/reports/lab_asap7_lvs.json");
   const mmmc = readJson("sim/reports/lab_asap7_mmmc.json");
   const drc = readJson("sim/reports/lab_asap7_drc.json");
+  const thermal = readJson("sim/reports/lab_asap7_thermal.json");
   const folioBlob = readJson("sim/reports/lab_asap7_folio.json");
   const pdk = readJson("sim/reports/lab_asap7_pdk.json");
   const spice = readJson("sim/reports/lab_asap7_spice.json");
   const pkg = readJson("sim/reports/lab_asap7_pkg.json");
   const chipPdn = readJson("sim/reports/lab_asap7_chip_pdn.json");
+  if (!raw && !folio.length && !proxyReport && !thermal && !chipPdn) return null;
+  const irReport = proxyReport ?? raw ?? chipPdn;
+  const qor = asap7QorOf(proxyReport) ?? asap7QorOf(raw);
+  const irPillar = labPillarOf(irReport, "ir");
+  const thermalPillar = thermal
+    ? labPillarOf(thermal, "thermal", true)
+    : labPillarOf(proxyReport, "thermal");
+  const admissionInput = proxyReport
+    ? thermal
+      ? { ...proxyReport, thermal_report: thermal }
+      : proxyReport
+    : null;
+  const admission = evaluateLabAdmit(admissionInput);
+  const leftovers = irPillar.leftovers;
   const pkgBump = (pkg?.bump as Record<string, unknown>) || {};
   const pkgRdl = (pkg?.rdl as Record<string, unknown>) || {};
   const pkgPdn = (pkg?.system_pdn as Record<string, unknown>) || {};
@@ -315,17 +391,41 @@ function readAsap7Lab(): Record<string, unknown> | null {
   const setup = (mmmc?.setup as Record<string, unknown>) || {};
   const hold = (mmmc?.hold as Record<string, unknown>) || {};
   return {
-    ok: raw?.ok === true,
-    variant: raw?.variant ?? null,
-    design: raw?.design ?? null,
-    corner: raw?.corner ?? null,
-    vt: raw?.vt ?? [],
-    libModel: raw?.lib_model ?? null,
-    track: raw?.track ?? null,
-    clkPs: n(raw?.clk_ps),
+    // The root status is the IR tool outcome; PROXY stays on the honesty axis.
+    ok: irReport?.ok === true,
+    status: irPillar.status,
+    honesty: irPillar.honesty,
+    honestyReason: irPillar.honestyReason,
+    leftovers,
+    variant: proxyReport?.variant ?? raw?.variant ?? null,
+    design: proxyReport?.design ?? raw?.design ?? null,
+    corner: proxyReport?.corner ?? raw?.corner ?? null,
+    vt: proxyReport?.vt ?? raw?.vt ?? [],
+    libModel: proxyReport?.lib_model ?? raw?.lib_model ?? null,
+    track: proxyReport?.track ?? raw?.track ?? null,
+    laneTrack: proxyReport?.lane_track ?? proxyReport?.lane ?? null,
+    clkPs: n(proxyReport?.clk_ps ?? raw?.clk_ps),
     gds: raw?.gds ?? null,
+    surface: raw?.surface ?? proxyReport?.surface ?? "lab",
+    platform: raw?.platform ?? proxyReport?.platform ?? "asap7",
+    meshId: proxyReport?.mesh_id ?? null,
+    meshFingerprint: proxyReport?.mesh_fingerprint ?? null,
+    oracle: proxyReport?.oracle ?? null,
+    topology: proxyReport?.topology ?? null,
+    scenario: proxyReport?.scenario ?? null,
+    toolId: irPillar.toolId,
+    licenseClass: irPillar.licenseClass,
     productWin: false,
+    winEligible: false,
     comparableToGoldIr: false,
+    labAdmit: admission.ok,
+    labAdmitReason: admission.reason,
+    proxyReportPath: proxy?.name ? `sim/reports/${proxy.name}` : null,
+    pillars: {
+      ir: evidenceForUi(irPillar),
+      thermal: evidenceForUi(thermalPillar),
+    },
+    thermal: evidenceForUi(thermalPillar),
     leftover: raw?.leftover ?? null,
     stages: raw?.stages ?? null,
     stoppedAt: raw?.stopped_at ?? null,
@@ -373,7 +473,7 @@ function readAsap7Lab(): Record<string, unknown> | null {
     spice: spice
       ? {
           ok: spice.ok === true,
-          patch: spice.patch ?? "level 72→107",
+          patch: spice.patch ?? "current Xyce layer mapping unavailable",
           inverted: spiceWave.inverted === true,
           voutWhenVinHigh: n(spiceWave.vout_when_vin_high),
           voutWhenVinLow: n(spiceWave.vout_when_vin_low),
@@ -382,28 +482,33 @@ function readAsap7Lab(): Record<string, unknown> | null {
     pkg: pkg
       ? {
           ok: pkg.ok === true,
+          status: typeof pkg.status === "string" ? pkg.status : null,
           c4: pkg.c4 === true,
           touchstone: pkg.touchstone === true,
           nBumps: n(pkgBumpPkg.n_bumps),
-          rdlOk: pkgRdl.ok === true,
+          rdlOk: pkgRdl.evidence_ok === true || pkgRdl.ok === true,
           wroteFinal: pkgRdl.wrote_final === true,
           vdd: n(pkgPdn.vdd),
           droopMv: n(pkgPdn.droop_mv),
-          leftover: "dummy bump · sidecar RDL · compact VRM · not C4",
+          leftover: "dummy 4×4 bump · sidecar RDL · compact VRM · not C4",
         }
       : null,
     chipPdn: chipPdn
       ? {
           ok: chipPdn.ok === true,
+          status: typeof chipPdn.status === "string" ? chipPdn.status : null,
           tier: chipPdn.tier ?? "chip_mesh",
           pdnsim6ReportMv: n(chipPdn.pdnsim_6_report_mv),
           meshStaticMv: n(chipPdn.mesh_static_mv),
           meshTransientMv: n(chipPdn.mesh_transient_droop_mv),
           nR: n(chipPdn.n_r),
           patched: (chipPdn.mesh_patch as Record<string, unknown> | undefined)?.patched === true,
-          leftover: "tier B mesh · not tier C PKG · not 45.298 mV",
+          leftover: "tier B chip mesh · not tier C package mesh",
         }
       : null,
-    note: raw?.note ?? "Live ASAP7 folio. Predictive FinFET. Not a product win.",
+    note:
+      proxyReport?.note ??
+      raw?.note ??
+      "Live ASAP7 folio. Predictive FinFET. Not a product win.",
   };
 }

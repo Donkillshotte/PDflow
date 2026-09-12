@@ -312,8 +312,8 @@ export function DsePanel() {
         <>
           <p className="fl-dynir-summary">{report.summary}</p>
           <p className="muted">
-            Lab extracts only. Not gold Dynamic IR 45.298 mV and not the
-            signoff chip mesh. DSE does not run <code>signoff_all</code>.
+            Lab extracts only. Values come from the current DSE invocation and
+            are not substituted for the signoff chip mesh. DSE does not run <code>signoff_all</code>.
           </p>
           {(irChips(report).length > 0 ||
             report.n_ir_cell ||
@@ -588,7 +588,7 @@ function PdnTable({ rows }: { rows: Cand[] }) {
   if (!rows.length) return null;
   return (
     <div className="fl-dynir-group">
-      <span>PDN · candidate extract / DirectLU / AMG (not gold)</span>
+      <span>PDN · candidate extract / DirectLU / AMG (same live mesh)</span>
       <table className="fl-dynir-table">
         <thead>
           <tr>

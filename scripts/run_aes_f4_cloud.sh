@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# AES F4 on a Cloud Agent VM: DirectLU, raised timeout, 8 GiB address-space cap.
+# AES F4 on a local Linux host: DirectLU, raised timeout, 6 GiB address-space cap.
 # Uncapped solve_f4 recycled this 15 GiB pod. Krylov is refused by RSS budget.
 # Does not run during Cloud Agent install.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" aes-f4-cloud \
+    bash "${BASH_SOURCE[0]}" "$@"
+fi
 source "${ROOT}/scripts/lib/heavy_analysis.sh"
 require_heavy_analysis "AES F4 on Cloud Agent (DirectLU, not Krylov)" || exit 2
 
 export ALLOW_HEAVY_ANALYSIS=1
-export PDN_SOLVE_TIMEOUT_S="${PDN_SOLVE_TIMEOUT_S:-90}"
+export PDN_SOLVE_TIMEOUT_S="${PDN_SOLVE_TIMEOUT_S:-600}"
 export PYTHONPATH="${ROOT}/learn:${ROOT}/learn/scripts:/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
-AS_BYTES="${PDN_AS_BYTES:-8589934592}" # 8 GiB
+AS_BYTES="${PDN_AS_BYTES:-6442450944}" # 6 GiB
 CPU_S="${PDN_CPU_S:-120}"
 
 if [[ "${AES_F4_ALLOW_KRYLOV:-0}" == "1" ]]; then

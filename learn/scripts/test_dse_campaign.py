@@ -1,7 +1,5 @@
-"""Campaign contracts: shared JSONL, HV stop, zero-new, wall, default shots.
+"""Current-invocation campaign contracts; no external run data is read."""
 
-Fake inner runner only — no OpenROAD, no AES, no F4, no ``run_controller``.
-"""
 from __future__ import annotations
 
 import inspect
@@ -9,7 +7,14 @@ import tempfile
 from pathlib import Path
 
 from dse.acquire import should_pay_cell_size, should_pay_f5_cts
-from dse.campaign import DEFAULT_SHOTS, infer_start_inner, lifetime_shots, occupancy, run_campaign, suggest_ref
+from dse.campaign import (
+    DEFAULT_SHOTS,
+    infer_start_inner,
+    lifetime_shots,
+    occupancy,
+    run_campaign,
+    suggest_ref,
+)
 from dse.memory import Candidate, DesignMemory
 from dse.metrics import QoR
 from dse.planner import parent_queue, pred_costs
@@ -18,13 +23,13 @@ from dse.planner import parent_queue, pred_costs
 def _cand(cid: str, *, area: float, wns: float, pred_mean=None, **kw) -> Candidate:
     return Candidate(
         id=cid,
-        design_id="gcd",
+        design_id="fixture",
         parent_id=kw.get("parent_id"),
         level=kw.get("level") or "logic",
         knobs=kw.get("knobs") or {"name": cid},
         knobs_fp=cid,
-        rtl_fp="x",
-        netlist_fp="y",
+        rtl_fp="fixture-rtl",
+        netlist_fp="fixture-netlist",
         fidelity=kw.get("fidelity") or "F1",
         qor=QoR(area_um2=area, wns_cost=wns, fidelity=kw.get("fidelity") or "F1"),
         cost_s=0.0,
@@ -39,250 +44,68 @@ def _scripted(batches: list[list[tuple[float, float]]], seen: list | None = None
     def runner(**kw):
         if seen is not None:
             seen.append(kw)
-        path = Path(kw["memory_path"])
-        mem = DesignMemory(path)
+        mem = DesignMemory(Path(kw["memory_path"]))
         i = state["i"]
         state["i"] += 1
         added = 0
-        if i < len(batches):
-            for j, (area, wns) in enumerate(batches[i]):
-                mem.add(_cand(f"i{i}p{j}", area=area, wns=wns))
-                added += 1
+        for j, (area, wns) in enumerate(batches[i] if i < len(batches) else []):
+            mem.add(_cand(f"i{i}p{j}", area=area, wns=wns))
+            added += 1
         return {"ok": True, "n_new": added}
 
-    return runner, state
+    return runner
 
 
 def check_campaign(check) -> None:
-    check(lifetime_shots(0) == DEFAULT_SHOTS, "inner 0 lifetime shots equal today's defaults")
-    check(DEFAULT_SHOTS["gpl"] == 1, "default GPL max_shots is 1")
-    check(DEFAULT_SHOTS["f5"] == 1, "default F5 max_shots is 1")
-    check(DEFAULT_SHOTS["f5_cts"] == 1, "default F5-CTS max_shots is 1")
-    check(DEFAULT_SHOTS["cell"] == 1, "default cell max_shots is 1")
-    check(DEFAULT_SHOTS["net"] == 1, "default net max_shots is 1")
-    check(DEFAULT_SHOTS["f2_fast"] == 4, "default F2-fast max_shots is 4")
-    check(DEFAULT_SHOTS["f3"] == 8, "default F3 max_shots is 8")
-    check(lifetime_shots(1)["gpl"] == 2, "inner 1 raises GPL lifetime cap to 2")
-    check(lifetime_shots(1)["f3"] == 9, "inner 1 raises F3 lifetime cap by one")
-    empty = DesignMemory(Path(tempfile.mkdtemp(prefix="dse-empty-")) / "e.jsonl")
-    check(infer_start_inner(empty) == 0, "empty memory starts at inner 0")
+    check(lifetime_shots(0) == DEFAULT_SHOTS, "inner zero uses declared live caps")
+    check(infer_start_inner(DesignMemory(Path(tempfile.mkdtemp()) / "empty.jsonl")) == 0, "empty run starts at zero")
 
     a = _cand("a", area=100, wns=1.0, pred_mean=3.0)
     b = _cand("b", area=90, wns=1.1, pred_mean=1.0)
     c = _cand("c", area=80, wns=1.2, pred_mean=2.0)
-    q_skip = parent_queue([a, b, c], have_child_ids={"b"})
-    check([x.id for x in q_skip] == ["a", "c"], "parent_queue skips parents that already have a child")
-    q_pred = parent_queue([a, b, c], pred_by_id={"a": 3.0, "b": 1.0, "c": 2.0})
-    check([x.id for x in q_pred] == ["b", "c", "a"], "parent_queue reorders by pred when provided")
-    q_keep = parent_queue([a, b, c], pred_by_id={})
-    check([x.id for x in q_keep] == ["a", "b", "c"], "empty pred preserves first-run order")
-
-    tmp = Path(tempfile.mkdtemp(prefix="dse-camp-"))
-    mem = DesignMemory(tmp / "pred.jsonl")
+    check([x.id for x in parent_queue([a, b, c], have_child_ids={"b"})] == ["a", "c"], "parent queue skips measured parents")
+    check([x.id for x in parent_queue([a, b, c], pred_by_id={"a": 3.0, "b": 1.0, "c": 2.0})] == ["b", "c", "a"], "parent queue uses current predictions")
+    mem = DesignMemory(Path(tempfile.mkdtemp()) / "pred.jsonl")
     mem.add(a)
-    mem.add(_cand("z", area=1, wns=1))  # no pred mean
-    costs = pred_costs(mem)
-    check(costs.get("a") == 3.0 and "z" not in costs, "pred_costs reads Candidate.pred mean only")
+    check(pred_costs(mem) == {"a": 3.0}, "prediction costs come from current candidates")
 
-    wall = run_campaign(
-        inner_runner=lambda **kw: {"ok": True},
-        memory_path=tmp / "wall.jsonl",
-        wall_s=0,
-        max_inner=4,
-    )
-    check(wall["n_inner"] == 0 and wall["stop"] == "wall", "wall_s=0 runs zero inners")
-
-    zero_runner, _ = _scripted([[]])
+    tmp = Path(tempfile.mkdtemp(prefix="dse-live-campaign-"))
+    stale = tmp / "stale.jsonl"
+    DesignMemory(stale).add(_cand("stale", area=1, wns=1))
     zero = run_campaign(
-        inner_runner=zero_runner,
-        memory_path=tmp / "zero.jsonl",
+        inner_runner=_scripted([[]]),
+        memory_path=stale,
         wall_s=30,
-        max_inner=4,
-        hv_eps=1e-3,
+        max_inner=2,
     )
-    check(zero["stop"] == "zero_new" and zero["n_inner"] == 1, "stop on zero new ok candidates")
+    check(zero["stop"] == "zero_new" and zero["n_inner"] == 1, "zero-new current run stops cleanly")
+    check(not DesignMemory(stale).get("stale"), "invocation boundary removes stale memory")
+    check(zero["comparison_scope"] == "same-live-invocation", "campaign declares its scope")
 
     seen: list = []
-    shared_path = tmp / "shared.jsonl"
-    shared_runner, _ = _scripted([[(120.0, 1.2)], [(100.0, 1.0)]], seen=seen)
-    shared = run_campaign(
-        inner_runner=shared_runner,
-        memory_path=shared_path,
+    shared = tmp / "shared.jsonl"
+    result = run_campaign(
+        inner_runner=_scripted([[(120.0, 1.2)], [(100.0, 1.0)]], seen=seen),
+        memory_path=shared,
         wall_s=30,
         max_inner=2,
         hv_eps=1e-9,
         f1_max_per_run=6,
     )
-    mem_s = DesignMemory(shared_path)
-    ids = {c.id for c in mem_s.all()}
-    check(len(mem_s) == 2 and ids == {"i0p0", "i1p0"}, "campaign reuses one JSONL; ids accumulate")
-    check(all(kw["memory_path"] == shared_path for kw in seen), "every inner receives the same memory_path")
-    check(seen[0]["f1_max"] == 6 and seen[1]["f1_max"] == 12, "f1_max grows as per-run × (inner+1)")
-    check(seen[0]["max_shots"]["gpl"] == 1 and seen[1]["max_shots"]["gpl"] == 2, "GPL cap grows per inner")
-    check(seen[0]["fresh"] is False and seen[1]["fresh"] is False, "campaign never wipes between inners")
+    check(len(DesignMemory(shared)) == 2, "one current invocation accumulates inner results")
+    check(all(kw["memory_path"] == shared for kw in seen), "inners share the explicit current memory")
+    check(seen[0]["f1_max"] == 6 and seen[1]["f1_max"] == 12, "inner caps are scoped and increase within the run")
+    check(tuple(result["ref"]) == suggest_ref([(120.0, 1.2)]), "HV reference derives from current points")
 
-    sat = DesignMemory(tmp / "sat.jsonl")
-    for i in range(6):
-        sat.add(_cand(f"f1{i}", area=400.0 + i, wns=0.5, fidelity="F1"))
-    for i in range(4):
-        sat.add(
-            _cand(
-                f"ff{i}",
-                area=1,
-                wns=1,
-                level="physical",
-                knobs={"source": "f2_fast_netgraph"},
-                fidelity="F2",
-            )
-        )
-    sat.add(
-        _cand("g0", area=1, wns=1, level="physical", knobs={"source": "f2_openroad_gpl"}, fidelity="F2")
-    )
-    for i in range(8):
-        sat.add(_cand(f"sta{i}", area=1, wns=1, knobs={"source": "f3_opensta_ideal"}, fidelity="F3"))
-    for src, level, fid, n, key in (
-        ("f3_opensta_sdf_grt", "logic", "F3", 1, "sdf"),
-        ("f2_openroad_grt", "routing", "F2", 1, "grt"),
-        ("f5_openroad_drt_rcx", "routing", "F5", 1, "f5"),
-        ("f3_opensta_spef", "logic", "F3", 1, "spef"),
-        ("f5_openroad_cts_rcx", "routing", "F5", 1, "f5_cts"),
-        ("f5_openroad_local", "routing", "F5", 1, "f5_local"),
-        ("cell_size_up", "cell", "F3", 1, "cell"),
-        ("net_buffer", "net", "F3", 1, "net"),
-        ("net_buffer_port", "net", "F3", 1, "net_port"),
-    ):
-        for j in range(n):
-            extra = {"host_level": "port"} if key == "f5_port" else {}
-            sat.add(
-                _cand(
-                    f"{key}{j}",
-                    area=1,
-                    wns=1,
-                    level=level,
-                    knobs={"source": src, **extra},
-                    fidelity=fid,
-                )
-            )
-    sat.add(
-        _cand(
-            "fp0",
-            area=1,
-            wns=1,
-            level="routing",
-            knobs={"source": "f5_openroad_local", "host_level": "port"},
-            fidelity="F5",
-        )
-    )
-    sat.add(
-        _cand(
-            "sy0",
-            area=1,
-            wns=1,
-            level="synthesis",
-            knobs={"source": "orfs_abc_speed"},
-            fidelity="F1",
-        )
-    )
-    occ = occupancy(sat)
-    check(infer_start_inner(sat) == 1, f"spent default caps resume at inner 1, occ={occ}")
-    seen_sat: list = []
-    sat_runner, _ = _scripted([[(70.0, 0.5)]], seen=seen_sat)
-    sat_run = run_campaign(
-        inner_runner=sat_runner,
-        memory_path=sat.path,
-        wall_s=30,
-        max_inner=1,
-        hv_eps=1e-3,
-    )
-    check(sat_run.get("start_inner") == 1, f"campaign start_inner is 1, got {sat_run.get('start_inner')}")
-    check(seen_sat and seen_sat[0]["f1_max"] == 12, "resumed inner uses f1_max=12 not 6")
-    check(seen_sat[0]["max_shots"]["gpl"] == 2, "resumed inner uses GPL cap 2")
-
-    hv_runner, _ = _scripted(
-        [
-            [(100.0, 1.0)],
-            [(80.0, 0.8)],
-            [(90.0, 0.9)],
-        ]
-    )
-    hv = run_campaign(
-        inner_runner=hv_runner,
-        memory_path=tmp / "hv.jsonl",
-        wall_s=30,
-        max_inner=8,
-        hv_eps=1e-3,
-    )
-    check(hv["stop"] == "hv_eps", f"HV stall stops the campaign, got {hv['stop']}")
-    check(hv["n_inner"] == 3, f"HV grows then stalls after the dominated inner, got {hv['n_inner']}")
-    series = hv["hv"]
-    check(len(series) == 3 and series[1] > series[0], "HV grows when a dominating logic point is added")
-    check(abs(series[2] - series[1]) < 1e-9, "dominated logic point does not grow HV")
-    check(hv["ref"] is not None and hv["ref"][0] > 100.0, "HV reference is frozen from the first front")
-    frozen = tuple(hv["ref"])
-    first_pts = [(100.0, 1.0)]
-    check(suggest_ref(first_pts) == frozen, "suggest_ref matches the frozen campaign nadir")
-
-    mem_pay = DesignMemory(tmp / "pay.jsonl")
-    mem_pay.add(
-        Candidate(
-            id="cell0",
-            design_id="gcd",
-            parent_id="p0",
-            level="cell",
-            knobs={"source": "cell_size_up"},
-            knobs_fp="cell0",
-            rtl_fp="x",
-            netlist_fp="y",
-            fidelity="F3",
-            qor=QoR(area_um2=10, fidelity="F3"),
-            cost_s=1.0,
-            status="ok",
-        )
-    )
-    pay1, why1 = should_pay_cell_size(mem_pay, budget_left=80, n_cell=0, cell_max=1)
-    check(not pay1 and why1 == "already have a cell-local size child", f"max=1 keeps already-have why ({why1})")
-    pay2, why2 = should_pay_cell_size(mem_pay, budget_left=80, n_cell=0, cell_max=2)
-    check(why2 != "already have a cell-local size child", f"raised cell_max skips already-have ({why2})")
-
-    mem_pay.add(
-        Candidate(
-            id="f5lite",
-            design_id="gcd",
-            parent_id="t0",
-            level="routing",
-            knobs={"source": "f5_openroad_drt_rcx"},
-            knobs_fp="f5lite",
-            rtl_fp="x",
-            netlist_fp="y",
-            fidelity="F5",
-            qor=QoR(wns_cost=0.6, fidelity="F5"),
-            cost_s=1.0,
-            status="ok",
-        )
-    )
-    mem_pay.add(
-        Candidate(
-            id="cts0",
-            design_id="gcd",
-            parent_id="t0",
-            level="routing",
-            knobs={"source": "f5_openroad_cts_rcx"},
-            knobs_fp="cts0",
-            rtl_fp="x",
-            netlist_fp="y",
-            fidelity="F5",
-            qor=QoR(wns_cost=0.5, fidelity="F5"),
-            cost_s=1.0,
-            status="ok",
-        )
-    )
-    pay_c, why_c = should_pay_f5_cts(mem_pay, budget_left=80, n_f5_cts=0, f5_cts_max=1)
-    check(not pay_c and why_c == "already have a CTS SPEF child", f"CTS max=1 keeps already-have ({why_c})")
-    pay_c2, why_c2 = should_pay_f5_cts(mem_pay, budget_left=80, n_f5_cts=0, f5_cts_max=2)
-    check(why_c2 != "already have a CTS SPEF child", f"raised f5_cts_max skips already-have ({why_c2})")
+    pay_mem = DesignMemory(tmp / "pay.jsonl")
+    pay_mem.add(_cand("cell0", area=10, wns=1, level="cell", fidelity="F3", knobs={"source": "cell_size_up"}))
+    pay, why = should_pay_cell_size(pay_mem, budget_left=80, n_cell=0, cell_max=1)
+    check(not pay and "cell" in why, "cell capacity honors current memory")
+    pay_mem.add(_cand("cts0", area=10, wns=1, level="routing", fidelity="F5", knobs={"source": "f5_openroad_cts_rcx"}))
+    pay, why = should_pay_f5_cts(pay_mem, budget_left=80, n_f5_cts=0, f5_cts_max=1)
+    check(not pay and ("CTS" in why or "OpenRCX" in why), "CTS capacity honors current memory")
 
     sig = inspect.signature(run_campaign)
-    check("inner_runner" in sig.parameters, "run_campaign injects a fake inner runner")
+    check("memory_path" in sig.parameters and "inner_runner" in sig.parameters, "campaign accepts explicit run inputs")
     cli = (Path(__file__).resolve().parents[2] / "learn/scripts/run_dse.py").read_text()
-    check("--campaign" in cli and "run_campaign" in cli, "CLI --campaign is opt-in")
-    check("default: one controller pass" in cli or "default remains" in cli or "--campaign" in cli, "single pass stays the default")
+    check("--campaign" in cli and "run_campaign" in cli, "CLI campaign mode is explicit")

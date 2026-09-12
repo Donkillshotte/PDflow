@@ -120,9 +120,9 @@ export function EcoPanel({
           restores the source. A legal size-up may still leave setup open
           — leftover is named. Apply is two OpenROAD processes (SPEF
           size-up, then BufferMove without SPEF). A third clone or I/O
-          size-up on the shared NAND2_X2 cone regresses
-          register-to-register. Close is <code>signoff_all</code> on that
-          copy — ECO never skips it.
+         size-up can change the current timing result. Close is <code>signoff_all</code> on that
+         copy — ECO never skips it.
+          register-to-register MET/violated status is read from the current report.
         </p>
       </header>
       <ol className="fl-eco-loop" aria-label="ECO propose, apply, close">
@@ -180,8 +180,8 @@ export function EcoPanel({
             {closePillars ? ` · ${closePillars}` : ""}
             {close?.setup_leftover?.setup_open
               ? close.setup_leftover.wns_kind === "output"
-                ? ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns; register-to-register MET, leftover is course output delay; shared NAND2_X2 cone)`
-                : ` · leftover setup open (WNS ${close.setup_leftover.wns_ns} at ${close.setup_leftover.clock_ns ?? 0.46} ns)`
+                ? ` · leftover setup open (WNS ${close.setup_leftover.wns_ns}${close.setup_leftover.clock_ns != null ? ` at ${close.setup_leftover.clock_ns} ns` : ""}; ${close.setup_leftover.worst_endpoint ? `endpoint ${close.setup_leftover.worst_endpoint}; ` : ""}validate against the current constraint contract)`
+                : ` · leftover setup open (WNS ${close.setup_leftover.wns_ns}${close.setup_leftover.clock_ns != null ? ` at ${close.setup_leftover.clock_ns} ns` : ""})`
               : ""}
             {close?.leftover?.must_connect
               ? ` · leftover must-connect ${close.leftover.must_connect}${

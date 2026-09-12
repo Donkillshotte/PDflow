@@ -14,7 +14,7 @@ from __future__ import annotations
 from .arch_space import plan_dpath_extracts
 from .memory import DesignMemory
 from .metrics import pareto_front_gated
-from .mo import baseline_wns, extract_wns, timing_bound
+from .mo import reference_wns, extract_wns, timing_bound
 
 
 LEVELS = ("architecture", "logic", "synthesis", "cell", "net", "physical", "routing", "pdn")
@@ -25,7 +25,7 @@ def next_candidate_ids(
     level: str,
     pred: dict[str, float] | None = None,
 ) -> list[str]:
-    """Gated Pareto ids for the next parent on ``level``. Historical reports use ``pareto_front``."""
+    """Gated Pareto ids for the next parent on ``level``."""
     return pareto_front_gated(
         ((c.id, c.qor) for c in mem.by_level(level) if c.status == "ok"),
         pred=pred,
@@ -308,21 +308,21 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
     steps.append(
         {
             "level": "f4_amg",
-            "reason": "SA-AMG restamp on the named extract — MF solver residual vs DirectLU, not gold",
+            "reason": "SA-AMG restamp on the named extract — MF solver residual vs DirectLU, not reference",
             "scope": "chip",
         }
     )
     steps.append(
         {
             "level": "f4_ras",
-            "reason": "RAS restamp after AMG — domain-decomp MF residual vs DirectLU, not gold",
+            "reason": "RAS restamp after AMG — domain-decomp MF residual vs DirectLU, not reference",
             "scope": "chip",
         }
     )
     steps.append(
         {
             "level": "f4_krylov",
-            "reason": "rational Krylov/MOR restamp after RAS — reduced-order residual vs DirectLU, not gold",
+            "reason": "rational Krylov/MOR restamp after RAS — reduced-order residual vs DirectLU, not reference",
             "scope": "chip",
         }
     )
@@ -350,7 +350,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
                 "level": "f4_region_extract",
                 "reason": (
                     f"write_pg_spice under the {region or 'IR'} density cap — new R-graph, "
-                    "not the unconstrained extract, not gold"
+                    "not the unconstrained extract, not reference"
                 ),
                 "scope": "region",
                 "region": region,
@@ -362,12 +362,12 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "f4_extract",
             "reason": (
                 "write_pg_spice after place_pins+GPL+DP+pdngen on the F1 incumbent "
-                "— new R-graph, not the finish mesh, not gold"
+                "— new R-graph, not the finish mesh, not reference"
             ),
             "scope": "chip",
         }
     )
-    pdn_why = "Solver A restamp on the named extract (c_decap/pkg L) — not gold, not finish"
+    pdn_why = "Solver A restamp on the named extract (c_decap/pkg L) — not reference, not finish"
     if ir_up:
         pdn_why += "; scaled I(t) IR rose — keep PDN knobs off the ABC vector"
     steps.append({"level": "pdn", "reason": pdn_why, "scope": "chip"})
@@ -386,7 +386,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "f4_host_extract",
             "reason": (
                 "write_pg_spice on the attributed host netlist — host R-graph, "
-                "not the synth F1 extract, not gold"
+                "not the synth F1 extract, not reference"
             ),
             "scope": "net" if focus != "chip" else "chip",
         }
@@ -395,8 +395,8 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
         {
             "level": "f4_host_region",
             "reason": (
-                "host IR bin ≠ gold/candidate bin — write_pg_spice under a density "
-                "cap on the host netlist, not gold rXY on synth F1, not more ABC"
+                "host IR bin ≠ reference/candidate bin — write_pg_spice under a density "
+                "cap on the host netlist, not reference rXY on synth F1, not more ABC"
             ),
             "scope": "region",
         }
@@ -429,7 +429,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "reason": (
                 "F4 host-region residual loop: winning family on the host-region "
                 "mesh, then unused pkg L on the unconstrained host — not candidate "
-                "IR-steer, not gold rXY, not ABC"
+                "IR-steer, not reference rXY, not ABC"
             ),
             "scope": "region",
         }
@@ -461,7 +461,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "ir_cell_extract",
             "reason": (
                 "write_pg_spice on the IR-cell-sized netlist — residual vs the "
-                "unconstrained host extract, not STA-only, not gold, not ABC"
+                "unconstrained host extract, not STA-only, not reference, not ABC"
             ),
             "scope": "cell",
         }
@@ -481,7 +481,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "ir_cell_region",
             "reason": (
                 "IR-cell 1× hotspot bin ≠ host bin and seq-heavy — density cap "
-                "on the sized netlist, not more combo size-up, not gold rXY, not ABC"
+                "on the sized netlist, not more combo size-up, not reference rXY, not ABC"
             ),
             "scope": "region",
         }
@@ -502,7 +502,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "reason": (
                 "After a strap/EM R-graph becomes winning_ir_pdn, unused Dynamic IR "
                 "catalog (decap then pkg L, inherit host pkg_r) restamps that extract "
-                "— not pitch, not width, not host/candidate IR-steer, not gold"
+                "— not pitch, not width, not host/candidate IR-steer, not reference"
             ),
             "scope": "pdn",
         }
@@ -534,7 +534,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "reason": (
                 "write_pg_spice on the I-scale-champ sized netlist — residual "
                 "vs the IR-cell extract; re-paid when the champ size-up extract moves, "
-                "not host extract, not gold, not ABC"
+                "not host extract, not reference, not ABC"
             ),
             "scope": "cell",
         }
@@ -567,7 +567,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "reason": (
                 "write_pg_spice on the leftover-cone netlist — residual vs the "
                 "IR-cell-champ extract; re-paid when the leftover cone extract moves, "
-                "not host extract, not gold, not ABC"
+                "not host extract, not reference, not ABC"
             ),
             "scope": "cell",
         }
@@ -589,7 +589,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "reason": (
                 "leftover-cone 1× hotspot bin ≠ champ-extract bin and seq-heavy — "
                 "density cap on the leftover-cone netlist, not more combo size-up, "
-                "not IR-cell-region rXY, not gold rXY, not ABC"
+                "not IR-cell-region rXY, not reference rXY, not ABC"
             ),
             "scope": "region",
         }
@@ -612,7 +612,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
                 "winning-IR 1× hotspot bin ≠ leftover-cone / IR-cell-region and seq-heavy — "
                 "density cap on the IR-cell netlist; re-paid when the residual hotspot "
                 "leaves the capped bin, not leftover-cone rXY, not more combo size-up, "
-                "not IR-cell-region rXY, not gold rXY, not ABC"
+                "not IR-cell-region rXY, not reference rXY, not ABC"
             ),
             "scope": "region",
         }
@@ -645,7 +645,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "reason": (
                 "write_pg_spice on the winning-IR-region leftover-combo netlist — residual vs "
                 "the winning-IR-region extract, re-paid per region extract, not leftover-cone, "
-                "not gold"
+                "not reference"
             ),
             "scope": "pdn",
         }
@@ -681,7 +681,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
                 "level": f"winning_ir_region_cell{_suf}_extract",
                 "reason": (
                     f"write_pg_spice on the {_lab} netlist — residual vs the previous-depth extract, "
-                    "re-paid per previous extract, not leftover-cone, not gold"
+                    "re-paid per previous extract, not leftover-cone, not reference"
                 ),
                 "scope": "pdn",
             }
@@ -701,7 +701,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
                 "level": f"winning_ir_region_cell{_suf}_catalog",
                 "reason": (
                     f"unused Dynamic IR catalog (C then L, inherit {_lab} PDN pkg_r) after winning family "
-                    "when leftover is empty — not winning_ir catalog, not a deeper combo size-up, not pitch, not gold"
+                    "when leftover is empty — not winning_ir catalog, not a deeper combo size-up, not pitch, not reference"
                 ),
                 "scope": "pdn",
             }
@@ -711,7 +711,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "f4_amg_champ",
             "reason": (
                 "SA-AMG on winning_ir_pdn with the same DirectLU knobs — MF solver "
-                "residual, not candidate AMG, not gold"
+                "residual, not candidate AMG, not reference"
             ),
             "scope": "pdn",
         }
@@ -721,7 +721,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "f4_ras_champ",
             "reason": (
                 "RAS on winning_ir_pdn after champion AMG — domain-decomp residual "
-                "on the 1× champion mesh, not candidate RAS, not gold"
+                "on the 1× champion mesh, not candidate RAS, not reference"
             ),
             "scope": "pdn",
         }
@@ -731,7 +731,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "f4_krylov_champ",
             "reason": (
                 "Krylov/MOR on winning_ir_pdn after champion RAS — reduced-order "
-                "residual on the 1× champion mesh, not candidate Krylov, not gold"
+                "residual on the 1× champion mesh, not candidate Krylov, not reference"
             ),
             "scope": "pdn",
         }
@@ -741,7 +741,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "static_ir_steer",
             "reason": (
                 "Static IR 1× champion (not winning_ir_pdn) pays unused pkg_r — "
-                "decap/pkg L do not move DC drop, not Dynamic IR-steer, not gold"
+                "decap/pkg L do not move DC drop, not Dynamic IR-steer, not reference"
             ),
             "scope": "pdn",
         }
@@ -751,7 +751,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "static_mesh",
             "reason": (
                 "Null pkg_r residual (ideal bump V sources) pays denser bumps on "
-                "the static-IR champ ODB — same place, not a new GPL, not gold"
+                "the static-IR champ ODB — same place, not a new GPL, not reference"
             ),
             "scope": "pdn",
         }
@@ -761,7 +761,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "static_straps",
             "reason": (
                 "Null bump residual (same n_v on this die) pays denser metal4 "
-                "straps on the static-IR champ ODB — pdngen -ripup, not bumps, not gold"
+                "straps on the static-IR champ ODB — pdngen -ripup, not bumps, not reference"
             ),
             "scope": "pdn",
         }
@@ -771,7 +771,7 @@ def plan_search(attr: dict, mem: DesignMemory, *, f2_cong: float | None, design_
             "level": "em_straps",
             "reason": (
                 "After strap pitch is measured, unused metal4 width searches EM J "
-                "on the same place — width-only residual, not pitch, not gold"
+                "on the same place — width-only residual, not pitch, not reference"
             ),
             "scope": "pdn",
         }
@@ -798,7 +798,7 @@ def rank_extracts(extracts: list[str], mem: DesignMemory, *, combo: float) -> li
     seen = {c.knobs.get("extract") or c.knobs.get("name") for c in mem.by_level("architecture")}
     unseen = [e for e in prefer if e not in seen]
     timed = extract_wns(mem)
-    base = baseline_wns(mem)
+    base = reference_wns(mem)
 
     def key(e: str) -> tuple:
         w = timed.get(e)
@@ -823,7 +823,7 @@ def _ir_prefer(extracts: list[str], *, combo: float) -> list[str]:
 
 
 def _ir_rose(mem: DesignMemory) -> bool:
-    """True when a candidate F4 droop exceeds the ingested gold observation."""
+    """True when a candidate F4 droop exceeds the ingested reference observation."""
     ingest = None
     cand = None
     for c in mem.by_level("pdn"):

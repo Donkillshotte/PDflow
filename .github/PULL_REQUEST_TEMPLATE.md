@@ -27,6 +27,6 @@ If comparing finishes, report **area, power, leakage, and IR** together. State w
 ## Checklist
 
 - [ ] No `if design ==` in tuner/space/score/coordinator/transfer
-- [ ] No gold Dynamic IR **45.298 mV** restamp
+- [ ] No cross-invocation report or fixed QoR value is used
 - [ ] No writes to locked `flowlab` / `learn` product trees without explicit intent
 - [ ] Docs updated if entry points changed

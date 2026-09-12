@@ -7,7 +7,6 @@ type Mesh = {
   mesh?: string;
   static_mv?: number | null;
   dynamic_mv?: number | null;
-  gold?: boolean;
   em_checked?: number | null;
   note?: string;
 };
@@ -44,7 +43,7 @@ export function IrMeshLedger() {
         <p>
           {ledger.comparable
             ? "Meshes marked comparable."
-            : "These droop numbers are not interchangeable. Gold stays 45.298 mV."}
+            : "These entries come from distinct live extracts; compare only rows with the same extract fingerprint."}
         </p>
       </header>
       <table>
@@ -61,7 +60,6 @@ export function IrMeshLedger() {
             <tr key={m.id}>
               <td>
                 <code>{m.id}</code>
-                {m.gold ? " · LOCKED" : ""}
               </td>
               <td>{fmt(m.static_mv)}</td>
               <td>{fmt(m.dynamic_mv)}</td>

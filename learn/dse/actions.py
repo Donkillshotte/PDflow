@@ -11,7 +11,7 @@ Invariants preserved:
   - single shot per extract per stage; refusal strings match legacy intent
   - winning family first, then unused Dynamic IR catalog (C then L, inherit
     host pkg_r); pitch / width / bump / pkg_r never flatten in
-  - gold finish mesh is never restamped
+  - reference finish mesh is never restamped
 """
 
 from __future__ import annotations
@@ -207,7 +207,7 @@ def should_pay_refine_extract(
         return False, f"already have a {_label(depth)} write_pg_spice mesh on this extract"
     nch = (frame.cell.artifacts or {}).get("n_changed") or len(frame.cells)
     return True, (
-        f"write_pg_spice on {_label(depth)} n={nch} — IR residual vs the depth {depth - 1} extract, not gold, not ABC"
+        f"write_pg_spice on {_label(depth)} n={nch} — IR residual vs the depth {depth - 1} extract, not reference, not ABC"
     )
 
 
@@ -246,7 +246,7 @@ def steer_refine_pdn(mem: DesignMemory, depth: int) -> dict | None:
         "residual_mv": float(res),
         "knob_residual_mv": knob_r,
         "via": refine_pdn_via(depth),
-        "not": "a flattened cell+PDN vector / gold / previous depths",
+        "not": "a flattened cell+PDN vector / reference / previous depths",
     }
 
 
@@ -306,10 +306,10 @@ def steer_refine_catalog(mem: DesignMemory, depth: int) -> dict | None:
         "reason": (
             f"{_label(depth)} {src} {float(frame.pdn.qor.dynamic_ir_mv):.3f} mV extract {eid} — "
             f"unused {spec['name']} ({axis}, inherit pkg_r={spec['pkg_r']}), not winning_ir "
-            "catalog, not a deeper combo size-up, not pitch, not gold"
+            "catalog, not a deeper combo size-up, not pitch, not reference"
         ),
         "via": f"active_f4_winning_ir_region_cell{_suffix(depth)}_catalog",
-        "not": "winning_ir catalog / deeper flatten / pitch / gold",
+        "not": "winning_ir catalog / deeper flatten / pitch / reference",
     }
 
 
@@ -356,7 +356,7 @@ def should_pay_refine_catalog(
         return False, f"{_label(depth)} catalog refuses a geometry restamp"
     eid = str(steer["extract_id"])
     if eid in ("finish", ""):
-        return False, f"{_label(depth)} catalog refuses the gold finish extract"
+        return False, f"{_label(depth)} catalog refuses the reference finish extract"
     frame = _frame(mem, depth)
     if frame is None or frame.extract is None or frame.extract_id != eid:
         return False, f"{_label(depth)} catalog stays on its own extract"
@@ -364,4 +364,4 @@ def should_pay_refine_catalog(
     key = (float(spec["pkg_r"]), float(spec["pkg_l"]), float(spec["c_decap"]))
     if key in have:
         return False, f"that Dynamic IR point is already measured on the {_label(depth)} extract"
-    return True, str(steer.get("reason") or f"{_label(depth)} unused Dynamic IR catalog — not pitch, not gold")
+    return True, str(steer.get("reason") or f"{_label(depth)} unused Dynamic IR catalog — not pitch, not reference")

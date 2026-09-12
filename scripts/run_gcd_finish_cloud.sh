@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-# GCD FlowLab RTL→GDS (0.46 ns teacher) with an 8 GiB cap.
-# Restores 6_final.odb so Dynamic IR gold can run. Does not run AES or Krylov.
+# GCD FlowLab RTL→GDS with a 6 GiB address-space cap.
+# Restores 6_final.odb so the current Dynamic IR analysis can run.
+# Does not run AES or Krylov.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" gcd-finish \
+    bash "${BASH_SOURCE[0]}" "$@"
+fi
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 VARIANT="${FLOW_VARIANT:-flowlab}"
 if [[ "${VARIANT}" == *aes* ]] || [[ "${DESIGN_ID:-}" == *aes* ]]; then
@@ -15,7 +20,7 @@ mkdir -p "$(dirname "${TUTORIAL_ORFS}")"
 ln -sfn "${TUTORIAL_SRC}" "${TUTORIAL_ORFS}"
 SDC="${TUTORIAL_SRC}/constraint.sdc"
 [[ -f "${SDC}" ]] || { echo "FAIL missing ${SDC}" >&2; exit 1; }
-AS_BYTES="${PDN_AS_BYTES:-8589934592}"
+AS_BYTES="${PDN_AS_BYTES:-6442450944}"
 CPU_S="${PDN_CPU_S:-900}"
 echo "GCD finish cloud: variant=${VARIANT} sdc=0.46ns as=${AS_BYTES} cpu=${CPU_S}s"
 cd "${FLOW}"

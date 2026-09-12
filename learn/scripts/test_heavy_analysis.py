@@ -48,9 +48,9 @@ def main() -> int:
     check(check_large_mesh(73_000) is None, "73k allowed when opted in")
     check("ALLOW_HEAVY_ANALYSIS=1" in refusal_for_heavy("x"), "refusal names the flag")
 
-    check(resolve_solve_timeout_s(90.0) == 90.0, "timeout default 90")
+    check(resolve_solve_timeout_s() == 600.0, "timeout default 600 seconds")
     os.environ["PDN_SOLVE_TIMEOUT_S"] = "1800"
-    check(resolve_solve_timeout_s(90.0) == 1800.0, "PDN_SOLVE_TIMEOUT_S raises timeout")
+    check(resolve_solve_timeout_s() == 1800.0, "PDN_SOLVE_TIMEOUT_S raises timeout")
     os.environ.pop("PDN_SOLVE_TIMEOUT_S", None)
 
     os.environ["PDN_FAKE_RAM_BYTES"] = str(15 * (1 << 30))

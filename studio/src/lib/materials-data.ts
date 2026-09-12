@@ -9,6 +9,12 @@ export type MaterialLink = {
 
 export const MATERIALS: MaterialLink[] = [
   {
+    href: "/materials/reference/pdflow-agent.md",
+    title: "PDflow local agent",
+    group: "Architecture",
+    description: "Desktop runtime authority, registries, artifacts, runs, SSE and recovery.",
+  },
+  {
     href: "/materials/reference/oss-integrations.md",
     title: "OSS integrations",
     group: "Reference",
@@ -42,13 +48,13 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materials/reference/signoff-matrix.md",
     title: "Signoff matrix",
     group: "Reference",
-    description: "4 pillars STA/DRC/LVS/power · golden-gcd · gate PASS/FAIL.",
+    description: "4 pillars STA/DRC/LVS/power · current-run gate PASS/FAIL.",
   },
   {
-    href: "/materials/reference/golden-metrics.md",
-    title: "Golden metrics",
+    href: "/materials/reference/live-analysis.md",
+    title: "Live analysis",
     group: "Reference",
-    description: "WNS, period_min, area of the reference learn run.",
+    description: "How current-run metrics, scopes, and tool evidence are produced.",
   },
   {
     href: "/materials/reference/gui-atlas.md",
@@ -150,13 +156,13 @@ export const MATERIALS: MaterialLink[] = [
     href: "/materials/workbook/solutions.md",
     title: "Solutions",
     group: "Workbook",
-    description: "Compare after trying — numbers from the golden run.",
+    description: "Record and interpret measurements from the current run.",
   },
   {
     href: "/materials/workbook/final-project-template.md",
     title: "Final project",
     group: "Workbook",
-    description: "Lesson 07 delivery template with delta vs golden-metrics.",
+    description: "Lesson 07 delivery template with current-run evidence.",
   },
   {
     href: "/materials/CURRICULUM.md",

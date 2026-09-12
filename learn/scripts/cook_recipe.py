@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Cook one design-agnostic catalog recipe or a free knob vector.
 
-Does not rewrite Verilog. Reuses the official Yosys netlist of the same-clock
-base. Pins DIE_AREA/CORE_AREA from the official DEF. Floorplan catalog
-recipes are refused.
+Does not rewrite Verilog. Reuses the current Yosys netlist for the selected
+invocation. Reads DIE_AREA/CORE_AREA from the current DEF. Floorplan catalog
+recipes are refused by the product cook.
 
 Usage:
     PYTHONPATH=learn:learn/scripts python3 learn/scripts/cook_recipe.py \

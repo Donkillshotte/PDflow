@@ -4,7 +4,7 @@ F0  cheap analytical / SSK-GP / RUDY-class proxy
 F1  Yosys + ABC liberty map + equiv (logic or architecture RTL)
 F2  ingest OpenROAD place / GRT, F2-fast netgraph, budgeted OpenROAD GPL
 F3  OpenSTA on the *candidate* (ideal or GRT SDF) + ingest of signoff STA
-F4  Dynamic IR / EM ingest (Solver A gold stays 45.298 mV on the GCD)
+F4  Dynamic IR / EM ingest (Solver A reference stays the current-run value on the GCD)
 F5  budgeted detailed_route + OpenRCX SPEF (F5-lite ideal clock, or paid F5-CTS)
 """
 
@@ -120,16 +120,16 @@ def reports_dir(variant: str) -> Path:
 
 
 def dynamic_ir_current_path(variant: str) -> Path:
-    """Current_run I(t) only. Gold 45.298 mV stays dynamic_ir_flowlab.json."""
+    """Current I(t) report for the requested variant."""
     return reports_dir(variant) / f"dynamic_ir_{variant}_direct.json"
 
 
 def _current_run_ir(variant: str) -> dict:
-    """Layout I(t). Never the locked gold teacher."""
-    ir = _read_json(dynamic_ir_current_path(variant))
-    if not ir or ir.get("gold") is True:
+    """Read only a valid current-invocation I(t) report."""
+    report = _read_json(dynamic_ir_current_path(variant)) or {}
+    if report.get("comparison_scope") != "same-live-invocation":
         return {}
-    return ir
+    return report
 
 
 def orfs_logs(variant: str) -> Path:
@@ -188,7 +188,7 @@ def ingest_physical(variant: str, mem: DesignMemory, design_id: str = "gcd") -> 
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4" if ir else "F3",
-        note="ingested layout oracles — current_run I(t), not gold 45.298",
+        note="ingested layout observations — current-run I(t), scoped to this extract",
     )
     rtl = design_rtl(design_id)
     c = Candidate(
@@ -231,7 +231,7 @@ def ingest_pdn(variant: str, mem: DesignMemory, design_id: str = "gcd") -> Candi
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4",
-        note="PDN-level observation on current_run I(t); gold 45.298 is another extract",
+        note="PDN-level observation on current-run I(t); scope is this extract",
     )
     c = Candidate(
         id=DesignMemory.new_id(),
@@ -264,7 +264,7 @@ def evaluate_f4_pdn(
     sta: Path | str | None = None,
     timeout_s: float | None = None,
 ) -> Candidate | None:
-    """PDN-level restamp. Different c_decap/pkg L / solver; named extract. Not gold."""
+    """PDN-level restamp. Different c_decap/pkg L / solver; named extract. Not reference."""
     from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
 
@@ -315,7 +315,7 @@ def evaluate_f4_pdn(
         em_j_a_m2=em.get("j_absmax_a_m2"),
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         fidelity="F4",
-        note=dyn.get("note") or "Solver A restamp — not gold",
+        note=dyn.get("note") or "Solver A restamp — not reference",
     )
     c = Candidate(
         id=DesignMemory.new_id(),
@@ -333,7 +333,7 @@ def evaluate_f4_pdn(
         attr=attr,
         status="ok" if dyn.get("status") == "ok" else "fail",
         failure=dyn.get("reason") if dyn.get("status") != "ok" else None,
-        note=f"F4 PDN {spec.get('name')} on {extract_id} droop={dyn.get('worst_droop_mv')} — not gold",
+        note=f"F4 PDN {spec.get('name')} on {extract_id} droop={dyn.get('worst_droop_mv')} — not reference",
     )
     return mem.add(c)
 
@@ -351,7 +351,7 @@ def evaluate_f4_static_mesh(
     host=None,
     parent_extract_id: str = "",
 ) -> Candidate | None:
-    """Denser bump write_pg_spice on an existing ODB. Not a new GPL, not gold."""
+    """Denser bump write_pg_spice on an existing ODB. Not a new GPL, not reference."""
     from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn_bumps
@@ -423,7 +423,7 @@ def evaluate_f4_static_mesh(
         fidelity="F4",
         note=(
             f"static-IR bump mesh {spec.get('name')} n_v={ext.get('n_v')} "
-            f"static={ext.get('static_ir_mv')} — not finish, not gold"
+            f"static={ext.get('static_ir_mv')} — not finish, not reference"
         ),
     )
     ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
@@ -443,7 +443,7 @@ def evaluate_f4_static_mesh(
         attr=attr,
         status="ok" if ok else "fail",
         failure=ext.get("reason") if not ok else None,
-        note=f"F4 static mesh {spec.get('name')} on {parent_extract_id} — not gold",
+        note=f"F4 static mesh {spec.get('name')} on {parent_extract_id} — not reference",
     )
     return mem.add(c)
 
@@ -461,7 +461,7 @@ def evaluate_f4_static_straps(
     host=None,
     parent_extract_id: str = "",
 ) -> Candidate | None:
-    """Denser metal4 pdngen on an existing ODB. Not a new GPL, not bumps, not gold."""
+    """Denser metal4 pdngen on an existing ODB. Not a new GPL, not bumps, not reference."""
     from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn_straps
@@ -533,7 +533,7 @@ def evaluate_f4_static_straps(
         fidelity="F4",
         note=(
             f"static-IR metal4 straps {spec.get('name')} n_r={ext.get('n_r')} "
-            f"static={ext.get('static_ir_mv')} — not finish, not gold"
+            f"static={ext.get('static_ir_mv')} — not finish, not reference"
         ),
     )
     ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
@@ -553,7 +553,7 @@ def evaluate_f4_static_straps(
         attr=attr,
         status="ok" if ok else "fail",
         failure=ext.get("reason") if not ok else None,
-        note=f"F4 static straps {spec.get('name')} on {parent_extract_id} — not gold",
+        note=f"F4 static straps {spec.get('name')} on {parent_extract_id} — not reference",
     )
     return mem.add(c)
 
@@ -571,7 +571,7 @@ def evaluate_f4_em_straps(
     host=None,
     parent_extract_id: str = "",
 ) -> Candidate | None:
-    """Wider metal4 pdngen on the strap-pitch geometry. Not a new GPL, not pitch, not gold."""
+    """Wider metal4 pdngen on the strap-pitch geometry. Not a new GPL, not pitch, not reference."""
     from .attribute import attribute_dynamic_ir, ir_report_from_solve
     from .f4_oracle import solve_f4
     from .openroad_f2 import extract_pdn_straps
@@ -643,7 +643,7 @@ def evaluate_f4_em_straps(
         fidelity="F4",
         note=(
             f"EM metal4 width {spec.get('name')} n_r={ext.get('n_r')} "
-            f"J={em.get('j_absmax_a_m2')} — not finish, not gold"
+            f"J={em.get('j_absmax_a_m2')} — not finish, not reference"
         ),
     )
     ok = ext.get("status") == "ok" and (not dyn or dyn.get("status") == "ok")
@@ -663,7 +663,7 @@ def evaluate_f4_em_straps(
         attr=attr,
         status="ok" if ok else "fail",
         failure=ext.get("reason") if not ok else None,
-        note=f"F4 EM straps {spec.get('name')} on {parent_extract_id} — not gold",
+        note=f"F4 EM straps {spec.get('name')} on {parent_extract_id} — not reference",
     )
     return mem.add(c)
 
@@ -674,7 +674,7 @@ def evaluate_f4_scale(
     *,
     variant: str = "flowlab",
     design_id: str = "gcd",
-    baseline_power_w: float,
+    reference_power_w: float,
     pkg_r: float = 0.05,
     pkg_l: float = 2e-10,
     c_decap: float = 50e-15,
@@ -685,7 +685,7 @@ def evaluate_f4_scale(
     sta_via: str | None = None,
     source: str = "f4_iscale",
 ) -> Candidate | None:
-    """Named extract + PDN knobs; I(t) × (attributed host F3 power / baseline).
+    """Named extract + PDN knobs; I(t) × (attributed host F3 power / reference).
 
     Host is the hierarchical incumbent (port-steer / port-net / net / cell)
     when present — not a silent flatten to the synth WNS-winner. Not a VCD map.
@@ -697,9 +697,9 @@ def evaluate_f4_scale(
     from .mo import timing_of
 
     _wns, pwr = timing_of(mem, parent)
-    if pwr is None or baseline_power_w <= 0:
+    if pwr is None or reference_power_w <= 0:
         return None
-    scale = float(pwr) / float(baseline_power_w)
+    scale = float(pwr) / float(reference_power_w)
     host = parent.knobs.get("name") or parent.knobs.get("source") or parent.level
     knobs = {
         "name": f"iscale_{host}",
@@ -759,7 +759,7 @@ def evaluate_f4_scale(
         ttf_rel_inv=(1.0 / em["ttf_rel_min"]) if em.get("ttf_rel_min") else None,
         power_w=pwr,
         fidelity="F4",
-        note=f"I(t)×{scale:.3f} on {extract_id} — not gold, not a new VCD map",
+        note=f"I(t)×{scale:.3f} on {extract_id} — not reference, not a new VCD map",
     )
     inherit_parent_pd(q, parent.qor)
     if source == "f4_iscale_win":
@@ -896,7 +896,7 @@ def evaluate_f4_extract(
     variant: str = "flowlab",
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 60.0,
+    timeout_s: float = 600.0,
     pkg_r: float = 0.05,
     pkg_l: float = 2e-10,
     c_decap: float = 50e-15,
@@ -907,17 +907,17 @@ def evaluate_f4_extract(
     kind: str = "candidate",
     sta: Path | str | None = None,
 ) -> Candidate | None:
-    """New write_pg_spice after legalized place, then Solver A. Not finish, not gold.
+    """New write_pg_spice after legalized place, then Solver A. Not finish, not reference.
 
     kind=host extracts the attributed hierarchical netlist (port-steer/…).
-    That mesh is not the synth F1 extract and not gold.
-    kind=host_region density-caps the host IR bin (not gold rXY on synth F1).
+    That mesh is not the synth F1 extract and not reference.
+    kind=host_region density-caps the host IR bin (not reference rXY on synth F1).
     kind=ir_cell extracts the IR-hotspot sized netlist and residuals vs host extract.
-    kind=ir_cell_region density-caps the IR-cell 1× bin (not host rXY, not gold rXY).
+    kind=ir_cell_region density-caps the IR-cell 1× bin (not host rXY, not reference rXY).
     kind=ir_cell_champ extracts the I-scale-champ dpath-sized netlist and residuals vs IR-cell extract.
     kind=ir_cell_champ_cone extracts leftover-cone size-up and residuals vs the IR-cell-champ extract.
-    kind=ir_cell_champ_cone_region density-caps the leftover-cone 1× bin (not IR-cell-region rXY, not gold rXY).
-    kind=winning_ir_region density-caps the winning-IR 1× bin (not leftover-cone rXY, not IR-cell-region rXY, not gold rXY); re-pays when the residual hotspot leaves the capped bin.
+    kind=ir_cell_champ_cone_region density-caps the leftover-cone 1× bin (not IR-cell-region rXY, not reference rXY).
+    kind=winning_ir_region density-caps the winning-IR 1× bin (not leftover-cone rXY, not IR-cell-region rXY, not reference rXY); re-pays when the residual hotspot leaves the capped bin.
     kind=winning_ir_region_cell extracts leftover combo size-up on the IR-cell netlist (not leftover-cone) and residuals vs the winning-IR-region extract.
     kind=winning_ir_region_cell_leftover extracts leftover leftover size-up on the leftover-combo netlist (not leftover-combo flatten) and residuals vs the leftover-combo extract.
     kind=winning_ir_region_cell_leftover2 extracts leftover leftover leftover size-up on the leftover leftover netlist (not leftover leftover flatten) and residuals vs the leftover leftover extract.
@@ -1091,7 +1091,7 @@ def evaluate_f4_extract(
             insts=insts,
             extract_kind="candidate",
             sta=sta_p,
-            timeout_s=max(float(timeout_s), 90.0),
+            timeout_s=max(float(timeout_s), 600.0),
             n_r=int(n_r_ext) if n_r_ext is not None else n_r_from_spice(spice),
         )
         ext = {**ext, **{k: v for k, v in dyn.items() if k != "cost_s"}}
@@ -1226,7 +1226,7 @@ def evaluate_f4_extract(
         note=(
             f"{kind_note} write_pg_spice "
             f"n_r={ext.get('n_r')} droop={ext.get('worst_droop_mv')} "
-            "— not finish, not gold"
+            "— not finish, not reference"
         ),
     )
     inherit_parent_pd(q, parent.qor)
@@ -1382,7 +1382,7 @@ def _f1_yscript(
     equiv: bool = True,
     include_dirs: list[Path] | None = None,
 ) -> str:
-    """Chip F1 flattens first (area teacher 409.108). Cone F1 keeps hierarchy.
+    """Chip F1 flattens first (area recorded by the current extract). Cone F1 keeps hierarchy.
 
     Equiv is always on generic synth *before* liberty map — Nangate cells
     have no SAT model. Architecture extracts use flatten-first even when
@@ -1401,9 +1401,9 @@ design -save syn
 """
         if equiv:
             body += f"""
-design -copy-from rtl -as gold {top}
+design -copy-from rtl -as reference {top}
 design -copy-from syn -as gate {top}
-equiv_make gold gate equiv
+equiv_make reference gate equiv
 hierarchy -top equiv
 equiv_simple
 equiv_induct
@@ -1439,9 +1439,9 @@ design -save syn
 """
     if equiv:
         body += f"""
-design -copy-from rtl -as gold {top}
+design -copy-from rtl -as reference {top}
 design -copy-from syn -as gate {top}
-equiv_make gold gate equiv
+equiv_make reference gate equiv
 hierarchy -top equiv
 equiv_simple
 equiv_induct
@@ -1471,7 +1471,7 @@ def evaluate_f1_abc(
     mem: DesignMemory,
     design_id: str = "gcd",
     parent_id: str | None = None,
-    timeout_s: float = 60.0,
+    timeout_s: float = 600.0,
     level: str = "logic",
     top: str = "gcd",
 ) -> Candidate:
@@ -1599,7 +1599,7 @@ def evaluate_f1_synth(
     mem: DesignMemory,
     design_id: str = "gcd",
     parent_id: str | None = None,
-    timeout_s: float = 90.0,
+    timeout_s: float = 600.0,
     top: str = "gcd",
     knobs: dict | None = None,
 ) -> Candidate:
@@ -1632,7 +1632,7 @@ def ensure_mapped_netlist(
     rtl: Path,
     liberty: Path,
     top: str = "gcd",
-    timeout_s: float = 60.0,
+    timeout_s: float = 600.0,
 ) -> Candidate:
     """Resume-safe: re-map F1 rows that lack cells or were written without -noexpr."""
     existing = (cand.artifacts or {}).get("mapped_v")
@@ -1778,7 +1778,7 @@ def evaluate_f2_gpl(
     design_id: str = "gcd",
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
     extra_knobs: dict | None = None,
 ) -> Candidate | None:
     """Budgeted OpenROAD GPL on a gate-level F1 netlist. Not finish, not IR."""
@@ -2385,7 +2385,7 @@ def evaluate_f2_grt(
     design_id: str = "gcd",
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
 ) -> Candidate | None:
     """Routing-level F2: GRT after place_pins+GPL. Not detailed route, not F5."""
     mapped = (parent.artifacts or {}).get("mapped_v")
@@ -2524,7 +2524,7 @@ def evaluate_f5_drt(
     design_id: str = "gcd",
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
 ) -> Candidate | None:
     """F5-lite: detailed_route + OpenRCX SPEF. Not make finish. Clock ideal."""
     mapped = (parent.artifacts or {}).get("mapped_v")
@@ -2613,7 +2613,7 @@ def evaluate_f5_local(
     design_id: str = "gcd",
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 45.0,
+    timeout_s: float = 600.0,
 ) -> Candidate | None:
     """F5 OpenRCX SPEF on a cell/net netlist. Not the F1 F5-lite SPEF.
 
@@ -2711,7 +2711,7 @@ def evaluate_f5_cts(
     design_id: str = "gcd",
     util: float = 35.0,
     density: float = 0.55,
-    timeout_s: float = 90.0,
+    timeout_s: float = 600.0,
 ) -> Candidate | None:
     """F5-CTS: clock_tree_synthesis + DRT + OpenRCX. Not make finish.
 

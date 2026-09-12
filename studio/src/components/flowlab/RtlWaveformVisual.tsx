@@ -1,17 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-type VcdData = {
-  exists: boolean;
-  timescale: string;
-  maxTime: number;
-  signals: {
-    name: string;
-    width: number;
-    samples: { t: number; v: string }[];
-  }[];
-};
+import type { VcdWaveform } from "@/lib/vcdWaveform";
 
 function valHigh(v: string) {
   if (!v || v === "x" || v === "z") return 0.5;
@@ -34,11 +24,13 @@ const COLORS = ["#f0883e", "#58a6ff", "#3fb950", "#d29922", "#f85149", "#a371f7"
 export function RtlWaveformVisual({
   rtlLines,
   sim,
+  initialWaveform,
 }: {
   rtlLines: number;
   sim: { vcdExists: boolean; logExists: boolean };
+  initialWaveform?: VcdWaveform | null;
 }) {
-  const [vcd, setVcd] = useState<VcdData | null>(null);
+  const [vcd, setVcd] = useState<VcdWaveform | null>(initialWaveform ?? null);
   const [err, setErr] = useState(false);
   const [cursor, setCursor] = useState<number | null>(null);
   const [t0, setT0] = useState(0);
@@ -48,6 +40,14 @@ export function RtlWaveformVisual({
   useEffect(() => {
     if (!sim.vcdExists) {
       setVcd(null);
+      setErr(false);
+      return;
+    }
+    if (initialWaveform?.signals?.length) {
+      setVcd(initialWaveform);
+      setErr(false);
+      setT0(0);
+      setT1(initialWaveform.maxTime || 1);
       return;
     }
     void fetch("/api/vcd-waveform")
@@ -61,7 +61,7 @@ export function RtlWaveformVisual({
         }
       })
       .catch(() => setErr(true));
-  }, [sim.vcdExists]);
+  }, [sim.vcdExists, initialWaveform]);
 
   const lanes = vcd?.signals ?? [];
   const tMax = vcd?.maxTime || 1;

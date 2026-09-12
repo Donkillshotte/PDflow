@@ -14,7 +14,9 @@ if [[ ! -f "${SRC_ROOT}/FasterCap/CMakeLists.txt" ]]; then
 fi
 # wx 3.2 on Ubuntu 24; upstream CMake asks for 3.0.
 sed -i 's/--version=3.0/--version=3.2/' "${SRC_ROOT}/FasterCap/CMakeLists.txt" || true
-rm -rf "${SRC_ROOT}/build"
+if [[ -d "${SRC_ROOT}/build" ]]; then
+  mv "${SRC_ROOT}/build" "${SRC_ROOT}/build.stale-${PPID}-$$"
+fi
 mkdir -p "${SRC_ROOT}/build"
 WXINC="$(wx-config --version=3.2 --cxxflags 2>/dev/null || wx-config --cxxflags)"
 cmake -S "${SRC_ROOT}/FasterCap" -B "${SRC_ROOT}/build" \
@@ -23,7 +25,7 @@ cmake -S "${SRC_ROOT}/FasterCap" -B "${SRC_ROOT}/build" \
   -DwxWidgets_CONFIG_EXECUTABLE="$(command -v wx-config)" \
   -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc \
   -DCMAKE_CXX_FLAGS="${WXINC}"
-cmake --build "${SRC_ROOT}/build" -j"$(nproc)"
+cmake --build "${SRC_ROOT}/build" -j"${EDA_JOBS:-2}"
 install -m 0755 "${SRC_ROOT}/build/FasterCap" "${PREFIX}/FasterCap"
 echo "OK FasterCap → ${PREFIX}/FasterCap"
 "${PREFIX}/FasterCap" -bv

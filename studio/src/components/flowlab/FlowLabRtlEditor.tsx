@@ -3,7 +3,14 @@
 import dynamic from "next/dynamic";
 import { useCallback } from "react";
 
-const Monaco = dynamic(() => import("@monaco-editor/react"), {
+const Monaco = dynamic(async () => {
+  const monacoReact = await import("@monaco-editor/react");
+  // Keep the editor fully local for the Linux desktop and for offline browser
+  // development. The default Monaco loader points at jsDelivr, which is both
+  // unavailable in a packaged app and rejected by the application's CSP.
+  monacoReact.loader.config({ paths: { vs: "/monaco/vs" } });
+  return monacoReact.default;
+}, {
   ssr: false,
   loading: () => <div className="fl-editor-skeleton" aria-busy="true" />,
 });

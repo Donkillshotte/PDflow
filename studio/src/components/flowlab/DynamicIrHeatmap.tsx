@@ -12,7 +12,7 @@ type Level = {
   kind?: string;
   windows?: Window[];
   n_windows?: number;
-  abs_err_vs_A_mv?: number;
+  abs_err_vs_reference_mv?: number;
   collapsed_to_full?: boolean;
 };
 type Activity = {
@@ -63,7 +63,7 @@ type Em = {
   electrothermal?: {
     status?: string;
     worst_droop_mv?: number;
-    delta_vs_A_mv?: number | null;
+    delta_vs_reference_mv?: number | null;
     n_r_scaled?: number;
     r_scale_hot?: number;
   };
@@ -86,21 +86,21 @@ type Em = {
 type Ras = {
   ok?: boolean;
   worst_droop_mv?: number;
-  abs_err_vs_A_mv?: number;
+  abs_err_vs_reference_mv?: number;
   n_levels?: number;
   backend?: string;
 };
 type Amg = {
   ok?: boolean;
   worst_droop_mv?: number;
-  abs_err_vs_A_mv?: number;
+  abs_err_vs_reference_mv?: number;
   n_levels?: number;
   backend?: string;
 };
 type Mor = {
   ok?: boolean;
   worst_droop_mv?: number;
-  abs_err_vs_A_mv?: number;
+  abs_err_vs_reference_mv?: number;
   m?: number;
   backend?: string;
 };
@@ -132,14 +132,23 @@ type VssRail = {
 };
 type DynReport = {
   ok?: boolean;
+  status?: string;
+  reason?: string;
+  execution_status?: string;
+  evidence_status?: string;
+  requirement_status?: string;
+  signoff_status?: string;
+  stage?: string;
+  configuration_hash?: string;
   summary?: string;
   mode?: string;
   vdd?: number;
   dynamic?: { worst_droop?: number; worst_droop_pct?: number; worst_time_s?: number };
   static?: { worst_ir?: number };
   heatmap?: { taps?: number; ir_max_mv?: number; hottest?: Hottest[] };
-  ngspice_gold?: { ok?: boolean; abs_err_mv?: number } | null;
-  ngspice_rl_gold?: { ok?: boolean; abs_err_mv?: number } | null;
+  comparison_scope?: string;
+  ngspice_reference?: { ok?: boolean; abs_err_mv?: number } | null;
+  ngspice_rl_reference?: { ok?: boolean; abs_err_mv?: number } | null;
   sim_levels?: {
     L0_static?: Level;
     L1_vectorless_dynamic?: Level;
@@ -201,7 +210,7 @@ type DynReport = {
     };
   };
   activity_model?: Activity;
-  windowed?: { status?: string; abs_err_vs_A_mv?: number; n_windows?: number; steps?: number; full_steps?: number };
+  windowed?: { status?: string; abs_err_vs_reference_mv?: number; n_windows?: number; steps?: number; full_steps?: number };
 };
 
 function ChipList({
@@ -260,8 +269,8 @@ export function DynamicIrHeatmap({
   const droopMv = (report?.dynamic?.worst_droop ?? 0) * 1e3;
   const staticMv = (report?.static?.worst_ir ?? 0) * 1e3;
   const tNs = (report?.dynamic?.worst_time_s ?? 0) * 1e9;
-  const gold = report?.ngspice_gold;
-  const goldRl = report?.ngspice_rl_gold;
+  const reference = report?.ngspice_reference;
+  const referenceRl = report?.ngspice_rl_reference;
   const svgSrc = `/api/content?path=sim/reports/dynamic_ir_${variant}_direct.svg`;
   const levels = report?.sim_levels;
   const win = levels?.L3_windowed?.windows?.[0];
@@ -284,28 +293,39 @@ export function DynamicIrHeatmap({
   const l3 = levels?.L3_windowed;
   const pathT = timing?.path;
   const odl = report?.extract?.on_die_l;
+  const reportStatus = String(report?.status || "").toUpperCase();
+  const reportUnavailable =
+    missing ||
+    !report ||
+    reportStatus === "GAP" ||
+    reportStatus === "NOT_RUN";
 
   return (
     <section className="fl-dynir" id="ir" aria-label="Dynamic IR heatmap">
       <header className="fl-dynir-head">
         <strong>Dynamic IR · I(t) per pin</strong>
         <p>
-          current_run I(t) mesh. Path slack is the OpenSTA worst max path
-          with the finish SPEF (same parasitics as sta_signoff). A MET
-          overlay on ideal RC is not a WNS close. Gold reference_run is
-          45.298 mV on a different extract — do not mix them.{" "}
+          Current-run I(t) mesh. Path slack is the OpenSTA worst max path
+          with the finish SPEF (same parasitics as sta_signoff). Every solver
+          delta below is computed from this invocation and this mesh. An ideal
+          RC MET overlay is not a WNS close.{" "}
           <a href="/materials/reference/dynamic-ir.md">dynamic-ir</a>
         </p>
       </header>
-      {missing || !report?.ok ? (
+      {reportUnavailable ? (
         <p className="fl-dynir-empty">
-          current_run I(t) is not on disk (
-          <code>dynamic_ir_*_direct.json</code>). Gold 45.298 mV is{" "}
-          <code>dynamic_ir_flowlab.json</code> on another extract — do not
-          restamp.
+          {report?.reason ||
+            "Current-run I(t) is not available as validated evidence."} ( <code>dynamic_ir_*_direct.json</code> )
+          Run the selected design to populate the live report.
         </p>
       ) : (
         <>
+          {reportStatus && reportStatus !== "PASS" && (
+            <p className="fl-dynir-evidence-state" role="status">
+              {reportStatus} evidence · execution {report.execution_status ?? "COMPLETED"} ·
+              signoff {report.signoff_status ?? "NOT_RUN"}
+            </p>
+          )}
           <p className="fl-dynir-summary">{report.summary}</p>
           <dl className="fl-dynir-gauges">
             <div>
@@ -346,22 +366,22 @@ export function DynamicIrHeatmap({
             <summary>Solver / EM / activity (lab)</summary>
           <dl className="fl-dynir-gauges">
             <div>
-              <dt>ngspice gold</dt>
+              <dt>ngspice reference</dt>
               <dd>
-                {gold == null
+                {reference == null
                   ? "n/a"
-                  : gold.ok
-                    ? `PASS · ${gold.abs_err_mv?.toFixed(2) ?? "?"} mV`
-                    : `CHECK · ${gold.abs_err_mv?.toFixed(2) ?? "?"} mV`}
+                  : reference.ok
+                    ? `PASS · ${reference.abs_err_mv?.toFixed(2) ?? "?"} mV`
+                    : `CHECK · ${reference.abs_err_mv?.toFixed(2) ?? "?"} mV`}
               </dd>
             </div>
-            {goldRl && (
+            {referenceRl && (
               <div>
                 <dt>ngspice R+L</dt>
                 <dd>
-                  {goldRl.ok
-                    ? `PASS · ${goldRl.abs_err_mv?.toFixed(2) ?? "?"} mV`
-                    : `CHECK · ${goldRl.abs_err_mv?.toFixed(2) ?? "?"} mV`}
+                  {referenceRl.ok
+                    ? `PASS · ${referenceRl.abs_err_mv?.toFixed(2) ?? "?"} mV`
+                    : `CHECK · ${referenceRl.abs_err_mv?.toFixed(2) ?? "?"} mV`}
                 </dd>
               </div>
             )}
@@ -369,9 +389,9 @@ export function DynamicIrHeatmap({
               <div>
                 <dt>|A−B| AMG</dt>
                 <dd>
-                  {(amg.abs_err_vs_A_mv ?? 0) < 0.001
+                  {(amg.abs_err_vs_reference_mv ?? 0) < 0.001
                     ? "< 1 µV"
-                    : `${(amg.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
+                    : `${(amg.abs_err_vs_reference_mv ?? 0).toFixed(3)} mV`}
                   {amg.n_levels != null ? ` · L${amg.n_levels}` : ""}
                   {amg.backend ? ` · ${amg.backend}` : ""}
                 </dd>
@@ -381,9 +401,9 @@ export function DynamicIrHeatmap({
               <div>
                 <dt>|A−C| MOR</dt>
                 <dd>
-                  {(mor.abs_err_vs_A_mv ?? 0) < 0.001
+                  {(mor.abs_err_vs_reference_mv ?? 0) < 0.001
                     ? "< 1 µV"
-                    : `${(mor.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
+                    : `${(mor.abs_err_vs_reference_mv ?? 0).toFixed(3)} mV`}
                   {mor.m != null ? ` · m=${mor.m}` : ""}
                   {mor.backend ? ` · ${mor.backend}` : ""}
                 </dd>
@@ -393,9 +413,9 @@ export function DynamicIrHeatmap({
               <div>
                 <dt>|A−D| RAS</dt>
                 <dd>
-                  {(ras.abs_err_vs_A_mv ?? 0) < 0.001
+                  {(ras.abs_err_vs_reference_mv ?? 0) < 0.001
                     ? "< 1 µV"
-                    : `${(ras.abs_err_vs_A_mv ?? 0).toFixed(3)} mV`}
+                    : `${(ras.abs_err_vs_reference_mv ?? 0).toFixed(3)} mV`}
                   {ras.n_levels != null ? ` · ndom=${ras.n_levels}` : ""}
                   {ras.backend ? ` · ${ras.backend}` : ""}
                 </dd>
@@ -502,10 +522,10 @@ export function DynamicIrHeatmap({
                 <dt>R(T) TRAN</dt>
                 <dd>
                   {em.electrothermal.worst_droop_mv.toFixed(3)} mV
-                  {em.electrothermal.delta_vs_A_mv != null
-                    ? ` · Δ ${em.electrothermal.delta_vs_A_mv >= 0 ? "+" : ""}${em.electrothermal.delta_vs_A_mv.toFixed(4)} mV`
+                  {em.electrothermal.delta_vs_reference_mv != null
+                    ? ` · Δ ${em.electrothermal.delta_vs_reference_mv >= 0 ? "+" : ""}${em.electrothermal.delta_vs_reference_mv.toFixed(4)} mV`
                     : ""}
-                  {" · not gold"}
+                  {" · same-run reference"}
                 </dd>
               </div>
             ) : null}
@@ -559,13 +579,13 @@ export function DynamicIrHeatmap({
                 </dd>
               </div>
             ) : null}
-            {l3?.abs_err_vs_A_mv != null ? (
+            {l3?.abs_err_vs_reference_mv != null ? (
               <div>
                 <dt>|A−W| L3</dt>
                 <dd>
-                  {l3.abs_err_vs_A_mv < 0.001
+                  {l3.abs_err_vs_reference_mv < 0.001
                     ? "< 1 µV"
-                    : `${l3.abs_err_vs_A_mv.toFixed(3)} mV`}
+                    : `${l3.abs_err_vs_reference_mv.toFixed(3)} mV`}
                   {l3.n_windows != null ? ` · ${l3.n_windows} win` : ""}
                 </dd>
               </div>

@@ -20,7 +20,7 @@ lessons 03–07 are harder to debug.
 2. `learn/reference/glossary.md` — sections C, F, P, S, T (~20 min)
 3. `learn/reference/file-formats.md` (~20 min)
 4. `learn/reference/gui-openroad.md` — Startup section only (~10 min)
-5. `learn/reference/golden-metrics.md` — what a reference run is (~10 min)
+5. `learn/reference/live-analysis.md` — how to identify a current run (~10 min)
 6. `learn/lessons/00-intro/LAB.md` (~60 min practice)
 
 ## What “physical design” means
@@ -70,7 +70,7 @@ Without ORFS you would write 50 Tcl scripts. With ORFS you have targets like `ma
 | `flow/logs/.../learn/` | Detailed logs per step |
 | `flow/reports/.../learn/` | Timing, area, DRC reports |
 
-**Golden rule:** if you do not understand a result, open the **log** for that stage before the GUI.
+Evidence rule: if you do not understand a result, open the **current log** for that stage before the GUI.
 
 ## Tutorial design: GCD
 
@@ -109,7 +109,7 @@ Both are required. Files only = you do not “see” congestion. GUI only = you 
 - Change SDC and utilization together and not know who broke CTS
 - Only look at the GUI and ignore `DPL-0038` in the log
 - Use Preview instead of Desktop and think OpenROAD crashed
-- Believe green `make finish` = 2.17 GHz closed (check `period_min` in `golden-metrics.md`)
+- Treating a green `make finish` as complete signoff without reading the current reports
 
 Playbook: `learn/reference/debug-playbook.md`.
 

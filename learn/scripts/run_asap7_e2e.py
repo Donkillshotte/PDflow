@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Serial ASAP7 lab e2e runner. One heavy cook at a time. Not a product win.
 
-Resume: skip live GDS unless --force. Never writes nangate45/gcd/flowlab.
-Never restamps gold Dynamic IR 45.298 mV. Never launches AES by default.
+Resume: skip live GDS by default. A requested recook of a live finish is
+reported as a controlled refusal; no force flag can overwrite a finish.
+Runs only the selected ASAP7 variants.
+Never mixes this lab data with another design or platform. Never launches
+AES by default.
 """
 
 from __future__ import annotations
@@ -19,7 +22,7 @@ from dse.asap7_lab import (
     LabAsap7Refuse,
     LabAsap7Spec,
     VARIANT_PREFIX,
-    assert_nangate_gold_untouched,
+    assert_nangate_live_artifacts,
     ccs_ready,
     cdl_ready,
     collect_report,
@@ -80,7 +83,18 @@ def cook_one(spec: LabAsap7Spec, *, force: bool) -> dict:
     refuse = plan_refuse(spec, ROOT)
     if refuse:
         return {"variant": spec.variant, "action": "refuse", "reason": refuse, "ok": False}
-    if gds.is_file() and not force:
+    if gds.is_file():
+        if force:
+            return {
+                "variant": spec.variant,
+                "action": "refuse",
+                "reason": (
+                    "REFUSED: protected ASAP7 finish already exists; "
+                    "recook is never allowed. Select a new typed experiment profile."
+                ),
+                "ok": False,
+                "blocking": True,
+            }
         payload = collect_report(spec, root=ROOT)
         return {
             "variant": spec.variant,
@@ -223,15 +237,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--only", default="")
     parser.add_argument("--max-cooks", type=int, default=0, help="0 = no cap")
-    parser.add_argument("--force", action="store_true", help="Recook live GDS (still refuses locked names)")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Refuse instead of overwriting selected live GDS variants (compatibility flag)",
+    )
     parser.add_argument("--skip-analysis", action="store_true")
     args = parser.parse_args(argv)
 
-    gold = assert_nangate_gold_untouched(ROOT, require_orfs=False)
-    print(
-        f"nangate gold untouched={gold['untouched']} lock_absent={gold['nangate_lock_absent']}",
-        flush=True,
-    )
+    live = assert_nangate_live_artifacts(ROOT, require_orfs=False)
+    print(f"nangate current artifacts ready={live['ready']}", flush=True)
 
     specs = specs_from_only(args.only, ROOT) if args.only else all_plan_specs(ROOT)
     plan = planned_rows(ROOT)
@@ -241,13 +256,11 @@ def main(argv: list[str] | None = None) -> int:
             "dry_run": True,
             "surface": "lab",
             "product_win": False,
-            "comparable_to_gold_ir": False,
-            "nangate_lock_absent": gold["nangate_lock_absent"],
             "ccs_tc_ready": ccs_ready("TC", "RVT", ROOT),
             "ccs_wc_ready": ccs_ready("WC", "RVT", ROOT),
             "plan": plan,
             "n_plan": len(plan),
-            "note": "ASAP7 e2e dry-run. Live metrics only — no gold stamp.",
+            "note": "ASAP7 e2e dry-run. Live metrics only.",
         }
         print(json.dumps(payload, indent=2))
         return 0
@@ -295,17 +308,20 @@ def main(argv: list[str] | None = None) -> int:
     blob["analysis"] = analysis
     blob["e2e"] = {
         "product_win": False,
-        "comparable_to_gold_ir": False,
+        "comparison_scope": "matching live ASAP7 variants only",
         "results": results,
-        "nangate_lock_absent": gold["nangate_lock_absent"],
     }
     folio.write_text(json.dumps(blob, indent=2) + "\n")
-    gold2 = assert_nangate_gold_untouched(ROOT, require_orfs=False)
     print(
-        f"folio {folio} cooks={len(blob.get('cooks') or [])} gold_untouched={gold2['untouched']}",
+        f"folio {folio} cooks={len(blob.get('cooks') or [])}",
         flush=True,
     )
-    failed = [r for r in results if r.get("action") == "cook" and not r.get("ok")]
+    failed = [
+        r
+        for r in results
+        if (r.get("action") == "cook" and not r.get("ok"))
+        or r.get("blocking")
+    ]
     analysis_failed = _analysis_failed(analysis) if analysis else []
     if analysis_failed:
         print(f"analysis failed: {', '.join(analysis_failed)}", flush=True)

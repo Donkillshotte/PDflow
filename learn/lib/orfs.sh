@@ -4,6 +4,9 @@
 learn_orfs_env() {
   export LEARN_ROOT="${LEARN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
   export REPO_ROOT="${REPO_ROOT:-$(cd "${LEARN_ROOT}/.." && pwd)}"
+  if [[ -f "${REPO_ROOT}/scripts/native_eda_env.sh" ]]; then
+    source "${REPO_ROOT}/scripts/native_eda_env.sh"
+  fi
   export FLOW="${FLOW:-${REPO_ROOT}/tools/OpenROAD-flow-scripts/flow}"
   export TUTORIAL_SRC="${LEARN_ROOT}/designs/nangate45/gcd-tutorial"
   export TUTORIAL_ORFS="${FLOW}/designs/nangate45/gcd-tutorial"
@@ -74,8 +77,8 @@ make DESIGN_CONFIG=./designs/nangate45/gcd-tutorial/config.mk \\
      FLOW_VARIANT=learn CORE_UTILIZATION=35 ${tgt}"
 }
 
-learn_golden() {
-  ui_tip "Compare reports with learn/reference/golden-metrics.md (util 35, SDC 0.46 ns)."
+learn_live_analysis() {
+  ui_tip "Use the current report and learn/reference/live-analysis.md for provenance."
 }
 
 learn_atlas() {

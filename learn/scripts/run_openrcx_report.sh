@@ -2,6 +2,9 @@
 # OpenRCX / SPEF summary (StarRC-class role in this OSS flow).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" openrcx-report bash "${BASH_SOURCE[0]}" "$@"
+fi
 VARIANT="${FLOW_VARIANT:-flowlab}"
 SPEF="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/${VARIANT}/6_final.spef"
 RULES="${ROOT}/tools/OpenROAD-flow-scripts/flow/platforms/nangate45/rcx_patterns.rules"

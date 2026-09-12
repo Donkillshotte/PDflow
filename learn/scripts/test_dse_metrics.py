@@ -49,7 +49,7 @@ def check_metrics(check) -> None:
     check(abs(pwr["switching_power_w"] - 7.00e-06) < 1e-15, "parse switching")
     check(parse_sta_power("no table") == {}, "missing power table is empty, not invented")
     q_sta = merge_sta_into_qor(
-        QoR(area_um2=409.108, n_cells=248, fidelity="F3"),
+        QoR(area_um2=400.0, n_cells=248, fidelity="F3"),
         {"wns_ns": -0.52, "tns_ns": -2.1, **pwr},
     )
     check(q_sta.tns_cost == 2.1 and q_sta.leakage_w == 9.00e-07, "merge_sta stamps TNS and leakage")

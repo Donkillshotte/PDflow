@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import clsx from "clsx";
 import { LiveRunConsole } from "@/components/LiveRunConsole";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { OpsDashboard } from "@/components/OpsDashboard";
@@ -10,10 +11,9 @@ import { InspectPanel } from "@/components/InspectPanel";
 import { FlowLabLayoutCanvas } from "@/components/flowlab/FlowLabLayoutCanvas";
 import { LeftoverSuiteStrip } from "@/components/LeftoverSuiteStrip";
 import { SuiteHub } from "@/components/SuiteHub";
-import { SurfaceRail } from "@/components/SurfaceRail";
 import { useToast } from "@/components/ToastProvider";
 
-type Tool = { name: string; ok: boolean; detail: string };
+type Tool = { name: string; ok: boolean; detail: string; required?: boolean };
 type Status = {
   tools: Tool[];
   orfs: boolean;
@@ -21,7 +21,30 @@ type Status = {
   ready: boolean;
 };
 
+type RegistryTool = {
+  tool_id: string;
+  display_name: string;
+  required?: boolean;
+  capabilities?: string[];
+  required_dependencies?: string[];
+  availability?: string;
+  executable?: string | null;
+  version?: string | null;
+};
+
 const STAGES = ["synth", "floorplan", "place", "cts", "route", "finish"] as const;
+type ToolsTab = "suite" | "ops" | "run" | "results";
+
+function parseToolsTab(value: string | null): ToolsTab | null {
+  // `registry` was the public label used by the command palette and older
+  // deep links. Keep it as an additive alias for the internal `suite` tab so
+  // opening a registry link never silently falls back to Operations.
+  if (value === "registry") return "suite";
+  return value === "suite" || value === "ops" || value === "run" || value === "results"
+    ? value
+    : null;
+}
+
 const RUN_ACTIONS = new Set([
   "check",
   "status",
@@ -34,14 +57,24 @@ const RUN_ACTIONS = new Set([
   "chip_pdn_ir",
   "vyges_em_ir",
   "dynamic_ir",
+  "power_signoff",
   "power_chain",
   "activity_power",
   "vectorless",
+  "export_spice_lab",
   "klayout_drc",
   "sta_signoff",
   "sta_ir_aware",
   "drc_signoff",
   "klayout_lvs",
+  "signoff_all",
+  "eco",
+  "eco_apply",
+  "eco_close",
+  "thermal_signoff",
+  "pkg_rdl",
+  "pkg_signoff",
+  "signoff_phase2",
   "yosys_equiv",
   "formal_gcd",
   "openrcx_report",
@@ -62,27 +95,56 @@ export default function ToolsClient() {
   const router = useRouter();
   const { push } = useToast();
   const [status, setStatus] = useState<Status | null>(null);
-  const [stage, setStage] = useState("synth");
-  const [runAction, setRunAction] = useState("check");
-  const [tab, setTab] = useState<"ops" | "run" | "results">("ops");
+  const [stage, setStage] = useState(() => {
+    const requested = search.get("stage");
+    if (requested && (STAGES as readonly string[]).includes(requested)) return requested;
+    const action = search.get("action");
+    return action && (STAGES as readonly string[]).includes(action) ? action : "synth";
+  });
+  const [runAction, setRunAction] = useState(() => {
+    const requested = search.get("action");
+    return requested && RUN_ACTIONS.has(requested) ? requested : "check";
+  });
+  const [tab, setTab] = useState<ToolsTab>(() => {
+    const fromQuery = parseToolsTab(search.get("tab"));
+    if (fromQuery) return fromQuery;
+    return typeof window !== "undefined" && window.location.hash === "#suite"
+      ? "suite"
+      : "ops";
+  });
+  const [registry, setRegistry] = useState<RegistryTool[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [opsKey, setOpsKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [guiBusy, setGuiBusy] = useState(false);
-  const resultsRef = useRef<HTMLElement | null>(null);
-  const runRef = useRef<HTMLElement | null>(null);
-  const opsRef = useRef<HTMLElement | null>(null);
-  const suiteRef = useRef<HTMLElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/api/toolchain");
-      setStatus(await res.json());
+      const [toolchainResponse, registryResponse] = await Promise.all([
+        fetch("/api/toolchain", { cache: "no-store" }),
+        fetch("/api/registry", { cache: "no-store" }),
+      ]);
+      if (!toolchainResponse.ok) throw new Error(`HTTP ${toolchainResponse.status}`);
+      setStatus(await toolchainResponse.json());
+      if (registryResponse.ok) {
+        const data = (await registryResponse.json()) as { tools?: RegistryTool[] };
+        setRegistry(Array.isArray(data.tools) ? data.tools : []);
+      } else {
+        setRegistry([]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Toolchain status unavailable");
     } finally {
       setLoading(false);
     }
   }
+
+  const requiredMissing = (status?.tools ?? []).filter(
+    (tool) => tool.required !== false && !tool.ok,
+  ).length;
 
   useEffect(() => {
     void refresh();
@@ -90,7 +152,7 @@ export default function ToolsClient() {
 
   useEffect(() => {
     const s = search.get("stage");
-    const t = search.get("tab") as "ops" | "run" | "results" | null;
+    const t = parseToolsTab(search.get("tab"));
     const a = search.get("action");
     if (s && (STAGES as readonly string[]).includes(s)) setStage(s);
     if (a && RUN_ACTIONS.has(a)) {
@@ -100,24 +162,9 @@ export default function ToolsClient() {
     } else if (s && (STAGES as readonly string[]).includes(s)) {
       setRunAction(s);
     }
-    if (t === "ops" || t === "run" || t === "results") setTab(t);
+    if (t) setTab(t);
+    if (window.location.hash === "#suite" && !t) setTab("suite");
   }, [search]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#suite") {
-      window.setTimeout(() => {
-        suiteRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 80);
-      return;
-    }
-    const map = { ops: opsRef, run: runRef, results: resultsRef } as const;
-    const el = map[tab]?.current;
-    if (el) {
-      window.setTimeout(() => {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 80);
-    }
-  }, [tab, stage, runAction]);
 
   function goStage(next: string, nextTab: "ops" | "run" | "results" = "results") {
     setStage(next);
@@ -129,11 +176,26 @@ export default function ToolsClient() {
     );
   }
 
+  function selectTab(next: ToolsTab) {
+    setTab(next);
+    router.replace(
+      "/tools?stage=" +
+        encodeURIComponent(stage) +
+        "&tab=" +
+        next +
+        "&action=" +
+        encodeURIComponent(runAction),
+      { scroll: false },
+    );
+  }
+
   async function openDefaultGui() {
     setGuiBusy(true);
     try {
-      const catalog = await fetch("/api/open").then((r) => r.json());
-      const list = catalog.targets as {
+      const catalogResponse = await fetch("/api/open");
+      if (!catalogResponse.ok) throw new Error(`Open catalog HTTP ${catalogResponse.status}`);
+      const catalog = (await catalogResponse.json()) as { targets?: unknown };
+      const list = (Array.isArray(catalog.targets) ? catalog.targets : []) as {
         id: string;
         stage?: string;
         kind: string;
@@ -157,6 +219,8 @@ export default function ToolsClient() {
         await navigator.clipboard?.writeText(body.command).catch(() => undefined);
         push(body.message || "Command copied", "info");
       } else push(body.message || "Open failed", "bad");
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Open GUI failed", "bad");
     } finally {
       setGuiBusy(false);
     }
@@ -164,7 +228,6 @@ export default function ToolsClient() {
 
   return (
     <main className="studio-pro-page">
-      <SurfaceRail />
       <header className="studio-pro-banner">
         <div>
           <p className="studio-pro-eyebrow">OpenROAD Studio · Tools</p>
@@ -193,9 +256,11 @@ export default function ToolsClient() {
           {loading ? "Refreshing…" : "Refresh toolchain"}
         </button>
         {status?.ready ? (
-          <span className="pill ok">environment ready</span>
+          <span className="pill ok">native environment ready</span>
         ) : status ? (
-          <span className="pill bad">something missing</span>
+          <span className="pill bad">
+            {requiredMissing ? `${requiredMissing} required tool${requiredMissing === 1 ? "" : "s"} missing` : "environment needs attention"}
+          </span>
         ) : (
           <span className="pill">…</span>
         )}
@@ -208,6 +273,12 @@ export default function ToolsClient() {
           {guiBusy ? "Opening…" : `Open GUI · ${stage}`}
         </button>
       </div>
+
+      {error && (
+        <p className="block-banner" role="alert">
+          Toolchain status unavailable: {error}
+        </p>
+      )}
 
       <div className="stage-jump" role="navigation" aria-label="Go to phase">
         {STAGES.map((s) => (
@@ -223,90 +294,139 @@ export default function ToolsClient() {
         ))}
       </div>
 
-      <div className="tool-grid">
-        {(status?.tools ?? []).map((t) => (
-          <div key={t.name} className="tool-card">
-            <strong>
-              {t.name}{" "}
-              <span className={`pill ${t.ok ? "ok" : "bad"}`}>
-                {t.ok ? "ok" : "no"}
-              </span>
-            </strong>
-            <span>{t.detail}</span>
-          </div>
+      <div className="tools-tabs" role="tablist" aria-label="Tools workspace views">
+        {([
+          ["suite", "Registry"],
+          ["ops", "Operations"],
+          ["run", "Run"],
+          ["results", "Results"],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`tools-tab-${id}`}
+            aria-controls={`tools-panel-${id}`}
+            aria-selected={tab === id}
+            tabIndex={tab === id ? 0 : -1}
+            className={clsx("tools-tab", tab === id && "is-active")}
+            onClick={() => selectTab(id)}
+          >
+            {label}
+          </button>
         ))}
-        <div className="tool-card">
-          <strong>
-            ORFS{" "}
-            <span className={`pill ${status?.orfs ? "ok" : "bad"}`}>
-              {status?.orfs ? "ok" : "no"}
-            </span>
-          </strong>
-          <span>tools/OpenROAD-flow-scripts/flow</span>
-        </div>
-        <div className="tool-card">
-          <strong>
-            Tutorial GCD{" "}
-            <span className={`pill ${status?.tutorial ? "ok" : "bad"}`}>
-              {status?.tutorial ? "ok" : "no"}
-            </span>
-          </strong>
-          <span>learn/designs/nangate45/gcd-tutorial</span>
-        </div>
       </div>
 
-      <section
-        className="panel panel-pro"
-        style={{ marginBottom: "1.2rem" }}
-        ref={suiteRef}
-        id="suite"
-      >
-        <SuiteHub />
-      </section>
-
-      <section className="panel panel-pro" style={{ marginBottom: "1.2rem" }} ref={opsRef} id="ops">
-        <OpsDashboard
-          refreshKey={opsKey}
-          onOpenStage={(s) => goStage(s, "results")}
-        />
-      </section>
-
-      <section className="panel panel-pro" style={{ marginBottom: "1.2rem" }} ref={runRef} id="run">
-        <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>
-          Run · {runAction}
-        </h2>
-        <LiveRunConsole
-          defaultAction={runAction}
-          key={runAction}
-          onFinished={(_ok, action) => {
-            if ((STAGES as readonly string[]).includes(action)) {
-              goStage(action, "results");
-              setRefreshKey((k) => k + 1);
-            }
-            setOpsKey((k) => k + 1);
-          }}
-        />
-      </section>
-
-      <section className="panel panel-pro" ref={resultsRef} id="results">
-        {(STAGES as readonly string[]).includes(stage) && stage !== "rtl" && (
-          <div className="lesson-layout-panel" style={{ marginBottom: "1rem" }}>
-            <FlowLabLayoutCanvas
-              phaseId={
-                stage as "synth" | "floorplan" | "place" | "cts" | "route" | "finish"
-              }
-              variant="learn"
-              refreshKey={refreshKey}
-              stageDone
-            />
+      {tab === "suite" && (
+        <section className="panel panel-pro tools-view" id="tools-panel-suite" role="tabpanel" aria-labelledby="tools-tab-suite" tabIndex={0}>
+          <div className="tool-registry">
+            <div className="tool-registry-head">
+              <div>
+                <p className="studio-pro-eyebrow">Native registry</p>
+                <h2>Installed tools and capabilities</h2>
+                <p className="muted">
+                  Availability is probed by the local agent. Missing optional tools
+                  remain GAP and never become a signoff result.
+                </p>
+              </div>
+              <span className="pill">{loading ? "Loading…" : `${registry.length} registered`}</span>
+            </div>
+            <div className="tool-registry-scroll">
+              <table className="tool-registry-table">
+                <caption>PDflow native tool registry</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Tool</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Version</th>
+                    <th scope="col">Capabilities</th>
+                    <th scope="col">Dependencies</th>
+                    <th scope="col">Executable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registry.map((tool) => {
+                    const availability = tool.availability || "MISSING";
+                    const statusClass = availability === "READY"
+                      ? "ok"
+                      : availability === "UNVERIFIED" || tool.required === false
+                        ? "warn"
+                        : "bad";
+                    return (
+                      <tr key={tool.tool_id}>
+                        <th scope="row">
+                          <strong>{tool.display_name}</strong>
+                          <small>{tool.tool_id}</small>
+                        </th>
+                        <td><span className={clsx("pill", statusClass)}>{availability}</span></td>
+                        <td className="mono-hint">{tool.version || "—"}</td>
+                        <td>{(tool.capabilities || []).join(" · ") || "—"}</td>
+                        <td>{(tool.required_dependencies || []).join(" · ") || "none declared"}</td>
+                        <td><code>{tool.executable || "not found"}</code></td>
+                      </tr>
+                    );
+                  })}
+                  {loading && (
+                    <tr><td colSpan={6} className="muted">Probing native tools…</td></tr>
+                  )}
+                  {!loading && !registry.length && (
+                    <tr><td colSpan={6} className="muted">Registry unavailable — refresh after the local agent starts.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        )}
-        <ResultsPanel stage={stage} refreshKey={refreshKey} />
-      </section>
+          <div className="tools-suite-divider" aria-hidden="true" />
+          <SuiteHub />
+        </section>
+      )}
 
-      <section className="panel panel-pro" style={{ marginTop: "1.2rem" }} id="inspect">
-        <InspectPanel stage={stage} refreshKey={refreshKey} />
-      </section>
+      {tab === "ops" && (
+        <section className="panel panel-pro tools-view" id="tools-panel-ops" role="tabpanel" aria-labelledby="tools-tab-ops" tabIndex={0}>
+          <OpsDashboard
+            refreshKey={opsKey}
+            onOpenStage={(s) => goStage(s, "results")}
+          />
+        </section>
+      )}
+
+      {tab === "run" && (
+        <section className="panel panel-pro tools-view" id="tools-panel-run" role="tabpanel" aria-labelledby="tools-tab-run" tabIndex={0}>
+          <h2 className="tools-view-title">Run · {runAction}</h2>
+          <LiveRunConsole
+            defaultAction={runAction}
+            key={runAction}
+            onFinished={(_ok, action) => {
+              if ((STAGES as readonly string[]).includes(action)) {
+                goStage(action, "results");
+                setRefreshKey((k) => k + 1);
+              }
+              setOpsKey((k) => k + 1);
+            }}
+          />
+        </section>
+      )}
+
+      {tab === "results" && (
+        <section className="panel panel-pro tools-view" id="tools-panel-results" role="tabpanel" aria-labelledby="tools-tab-results" tabIndex={0}>
+          {(STAGES as readonly string[]).includes(stage) && stage !== "rtl" && (
+            <div className="lesson-layout-panel tools-layout-preview">
+              <FlowLabLayoutCanvas
+                phaseId={
+                  stage as "synth" | "floorplan" | "place" | "cts" | "route" | "finish"
+                }
+                variant="learn"
+                refreshKey={refreshKey}
+                stageDone
+              />
+            </div>
+          )}
+          <ResultsPanel stage={stage} refreshKey={refreshKey} />
+          <div className="tools-inspection">
+            <InspectPanel stage={stage} refreshKey={refreshKey} />
+          </div>
+        </section>
+      )}
     </main>
   );
 }

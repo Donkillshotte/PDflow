@@ -63,7 +63,7 @@ export async function PUT(req: Request) {
       rtl: rtl ?? readRtl(),
       params,
       message: body.resetRtl
-        ? "RTL restored from golden GCD"
+        ? "RTL restored from upstream GCD"
         : "FlowLab saved",
     });
   } catch (e) {

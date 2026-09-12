@@ -11,6 +11,7 @@ type Hook = {
   label: string;
   group: string;
   ok: boolean;
+  status?: "PASS" | "FAIL" | "WARN" | "PARTIAL" | "PROXY" | "GAP" | "NOT_RUN";
   detail: string;
   action?: string;
   href?: string;
@@ -106,15 +107,23 @@ export function SuiteHub() {
               .filter((h) => h.group === g)
               .map((h) => {
                 const state = hookVisualState(h.ok, h.leftover?.ids);
+                const status = h.status;
+                const softStatus = status === "WARN" || status === "PARTIAL" || status === "PROXY";
                 return (
-                <li key={h.id} className={clsx(h.ok ? "ok" : "bad", state === "leftover" && "leftover")}>
+                <li key={h.id} className={clsx(h.ok ? "ok" : softStatus ? "proxy" : "bad", state === "leftover" && "leftover")}>
                   <div>
                     <strong>{h.label}</strong>
                     <em>{h.detail}</em>
                     <LeftoverChips ids={h.leftover?.ids} detail={h.detail} compact />
                   </div>
                   <div className="suite-hook-actions">
-                    <StatusTone state={state} />
+                    {status ? (
+                      <span className={clsx("pill", status === "PASS" ? "ok" : softStatus ? "warn" : "bad")}>
+                        {status}
+                      </span>
+                    ) : (
+                      <StatusTone state={state} />
+                    )}
                     {h.href && (
                       <Link href={h.href} className="btn-ghost btn-tiny">
                         Open

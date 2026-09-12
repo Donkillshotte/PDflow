@@ -7,15 +7,20 @@
 # Gate VCD on matching names (OpenSTA read_vcd) when gcd_gate.vcd exists.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" vectorless bash "${BASH_SOURCE[0]}" "$@"
+fi
+source "${ROOT}/scripts/native_eda_env.sh"
 # shellcheck source=learn/lib/power_vcd.sh
 source "${ROOT}/learn/lib/power_vcd.sh"
+source "${ROOT}/learn/lib/openroad_python.sh"
 
 VARIANT="${FLOW_VARIANT:-flowlab}"
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 RES="${FLOW}/results/nangate45/gcd/${VARIANT}"
 LIB="${FLOW}/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib"
 ODB="${RES}/6_final.odb"
-SDC="${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc"
+SDC="${PD_FLOW_SDC_FILE:-${ROOT}/learn/designs/nangate45/gcd-tutorial/constraint.sdc}"
 OUT_DIR="${ROOT}/learn/sim/reports"
 SPICE="${RES}/pdn/pg_vdd_bumps.sp"
 INSTS="${RES}/pdn/inst_power_map.json"
@@ -23,12 +28,16 @@ mkdir -p "${OUT_DIR}" "${RES}/pdn"
 
 [[ -f "${ODB}" ]] || { echo "FAIL missing ${ODB}"; exit 1; }
 
-if [[ -n "${OPENROAD_PYTHONPATH:-}" ]]; then
-  PYTHONPATH="${OPENROAD_PYTHONPATH}${PYTHONPATH:+:${PYTHONPATH}}" \
-    openroad -python -no_init -exit \
+# The OpenROAD 26Q3 Bazel executable is intentionally CLI/Tcl-only.  Its ODB
+# SWIG extension is built natively from the matching source and is the
+# authoritative reader for this operation.  If a future build exposes the
+# embedded interpreter, keep that path available as an explicit optimization,
+# but never turn a missing binding into a synthetic result.
+if openroad_embedded_python_available; then
+  openroad_odb_python \
     "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}"
 else
-  openroad -python -no_init -exit \
+  openroad_odb_python \
     "${ROOT}/learn/scripts/export_odb_inst_power.py" "${ODB}" "${INSTS}"
 fi
 
@@ -39,7 +48,7 @@ run_mode() {
   POWER_MODE="${mode}"
   tcl="$(power_activity_tcl "${ROOT}")"
   cd "${FLOW}"
-  openroad -no_init -no_splash -exit <<EOF | tee "${log}"
+  env -u PYTHONHOME -u PYTHONPATH openroad -no_init -no_splash -exit <<EOF | tee "${log}"
 read_liberty ${LIB}
 read_db ${ODB}
 read_sdc ${SDC}

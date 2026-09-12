@@ -394,7 +394,7 @@ def main() -> int:
         "educational_note": (
             "PTM 45 nm re-characterization of GCD combinational cells. "
             "Not original Nangate CCS. Official typical.lib stays NLDM GAP. "
-            "Do not restamp gold Dynamic IR with this sidecar."
+            "Do not use this sidecar as a substitute for the current Dynamic IR extract."
         ),
         "summary": (
             f"PTM CCS {len(names)} cells / {sidecar_probe.get('n_ccs_tables')} tables · "

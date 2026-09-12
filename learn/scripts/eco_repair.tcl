@@ -23,6 +23,9 @@ if {[info exists ::env(ECO_RC)] && $::env(ECO_RC) != "" && [file exists $::env(E
 }
 
 # ECO_PHASE=sizeup|buffer|all (default all). Size-up needs SPEF.
+# ECO_PHASE=io or clone is intentionally not a third apply: those are
+# topology-specific operations that require a separate, explicitly scoped
+# candidate flow and must not be inferred by this timing-repair script.
 # BufferMove cannot: SPEF in the same OpenROAD session is RSZ-0074 even
 # after estimate_parasitics (live apply). Buffer runs in a fresh process
 # with no SPEF. Close is still signoff_all.
@@ -96,16 +99,10 @@ if {$eco_grt && [info commands global_route] != ""} {
   }
 }
 
-# The course SDC puts 20% of 0.46 ns on every I/O. OpenROAD then ranks
-# resp_msg[*] as WNS and spends the budget there. OpenSTA signoff WNS after
-# the two-process apply is register-to-register MET; leftover is
-# resp_msg[14]. Ignore output endpoints for this session only — the SDC
-# file is not rewritten.
-#
-# Do not add ECO_PHASE=io or clone as a third apply. resp_msg[14] shares
-# NAND2_X2 _647_ with R2R (NAND2_X4 _809_). OpenSTA R2R slack is ~3 ps.
-# Size-up of that cone, BUF_X1→BUF_X4 on output42, RSZ clone/split, and a
-# manual clone of _647_ all regress R2R. Leftover is SDC-gated.
+# The active SDC may constrain I/O endpoints, so the output side can be the
+# practical place to spend a small amount of slack. The current report is the
+# source of truth: keep this apply scoped to the named endpoint and do not
+# infer topology, cell names, or a repair target from unrelated artifacts.
 if {[info exists ::env(ECO_SETUP)] && $::env(ECO_SETUP) == "1"} {
   if {!$eco_grt} {
     puts "WARN ECO setup repair skipped — GRT not initialized"

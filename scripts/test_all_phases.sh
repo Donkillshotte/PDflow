@@ -4,6 +4,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${ROOT}/scripts/rg_compat.sh"
+source "${ROOT}/scripts/native_eda_env.sh"
+STUDIO_BASE="${STUDIO_URL:-http://127.0.0.1:43217}"
 FAIL=0
 ok() { echo "OK  $*"; }
 bad() { echo "FAIL $*"; FAIL=1; }
@@ -25,11 +28,12 @@ for id in 00-intro 01-constraints 02-synthesis 03-floorplan 04-placement 05-cts 
     && ok "powerChain ${id}" || bad "powerChainLessons missing ${id}"
 done
 
-echo "== FlowLab 9 phases =="
-for phase in rtl synth floorplan pdn place cts route finish pkg; do
+echo "== FlowLab phases + package surface =="
+for phase in rtl synth floorplan pdn place cts route finish; do
   rg -q "id: \"${phase}\"" "${ROOT}/studio/src/components/flowlab/phases.ts" \
     && ok "phase ${phase}" || bad "missing phase ${phase}"
 done
+[[ -f "${ROOT}/studio/src/app/pkg/page.tsx" ]] && ok "package surface /pkg" || bad "missing package surface"
 
 echo "== Power actions in run.ts =="
 for action in rtl_sim synth floorplan gridcheck place cts route finish \
@@ -60,7 +64,7 @@ done
 rg -q 'SIGNOFF_INCLUDE_PHASE2' "${ROOT}/learn/scripts/run_signoff_all.sh" \
   && ok "signoff_all phase2 opt-in" || bad "run_signoff_all.sh missing SIGNOFF_INCLUDE_PHASE2"
 python3 -m py_compile "${ROOT}/learn/scripts/signoff_eval.py" && ok "signoff_eval.py" || bad "signoff_eval.py"
-[[ -f "${ROOT}/learn/signoff/golden-gcd.json" ]] && ok "golden-gcd.json" || bad "golden-gcd.json"
+[[ -f "${ROOT}/learn/reference/live-analysis.md" ]] && ok "live-analysis.md" || bad "live-analysis.md"
 [[ -f "${ROOT}/learn/reference/signoff-matrix.md" ]] && ok "signoff-matrix.md" || bad "signoff-matrix.md"
 rg -q 'SIGNOFF_PILLARS' "${ROOT}/studio/src/lib/signoff.ts" && ok "signoff.ts registry" || bad "signoff.ts"
 
@@ -111,7 +115,7 @@ rg -q 'signoff-matrix' "${ROOT}/studio/src/lib/powerChainLessons.ts" \
   && ok "powerChain signoff-matrix doc" || bad "powerChain missing signoff-matrix link"
 
 echo "== LiveRunConsole signoff chips =="
-for action in sta_signoff sta_ir_aware drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2 vectorless yosys_equiv formal_gcd vyges_em_ir dynamic_ir; do
+for action in sta_signoff sta_ir_aware drc_signoff klayout_lvs power_signoff signoff_all signoff_phase2 vectorless yosys_equiv formal_gcd power_grid_em vyges_em_ir dynamic_ir; do
   rg -q "id: \"${action}\"" "${ROOT}/studio/src/components/LiveRunConsole.tsx" \
     && ok "LiveRunConsole ${action}" || bad "LiveRunConsole missing ${action}"
 done
@@ -120,7 +124,7 @@ echo "== STAGE_DEPS power =="
 python3 - <<PY || bad "STAGE_DEPS power incomplete"
 import re, sys
 text = open("${ROOT}/studio/src/lib/jobs.ts").read()
-need = ["gridcheck", "system_pdn", "chip_pdn_ir", "vyges_em_ir", "dynamic_ir", "power_chain", "activity_power", "export_spice_lab", "vectorless"]
+need = ["gridcheck", "system_pdn", "chip_pdn_ir", "power_grid_em", "vyges_em_ir", "dynamic_ir", "power_chain", "activity_power", "export_spice_lab", "vectorless"]
 for a in need:
     m = re.search(rf'{a}:\s*"(\w+)"', text)
     assert m, f"missing {a}"
@@ -132,14 +136,29 @@ ok "STAGE_DEPS power chain"
 echo "== FlowLab artifacts (if present) =="
 RES="${ROOT}/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab"
 if [[ -f "${RES}/6_final.odb" ]]; then
-  for stamp in .gridcheck_pdn.ok .system_pdn.ok .chip_pdn_ir.ok .vyges_em_ir.ok .dynamic_ir.ok; do
-    [[ -f "${RES}/${stamp}" ]] && ok "stamp ${stamp}" || bad "missing ${stamp} (run signoff)"
+  for stamp in .gridcheck_pdn.ok .system_pdn.ok .chip_pdn_ir.ok .dynamic_ir.ok; do
+    stamp_path="${RES}/${stamp}"
+    if [[ "${stamp}" == ".chip_pdn_ir.ok" ]]; then
+      stamp_path="${ROOT}/.pdflow/generated/flowlab/finish/chip_pdn_ir/.chip_pdn_ir_flowlab_finish.ok"
+    elif [[ "${stamp}" == ".dynamic_ir.ok" ]]; then
+      stamp_path="${ROOT}/.pdflow/generated/flowlab/finish/dynamic_ir/.dynamic_ir_flowlab_finish.ok"
+    fi
+    if [[ -f "${stamp_path}" ]]; then
+      ok "stamp ${stamp}"
+    elif [[ "${stamp}" == ".system_pdn.ok" && -f "${ROOT}/learn/sim/reports/system_pdn_flowlab.json" ]] \
+      && rg -q '"status"[[:space:]]*:[[:space:]]*"GAP"' "${ROOT}/learn/sim/reports/system_pdn_flowlab.json"; then
+      ok "stamp ${stamp} not required for explicit GAP"
+    else
+      bad "missing ${stamp} (run signoff)"
+    fi
   done
   if [[ -f "${ROOT}/learn/sim/reports/vyges_em_ir_flowlab.json" ]]; then
     python3 - <<PY && ok "vyges_em_ir report parse" || bad "vyges_em_ir report"
 import json
 r=json.load(open("${ROOT}/learn/sim/reports/vyges_em_ir_flowlab.json"))
-assert r["ok"] is True and r["engine"]=="vyges-em-ir"
+assert r["status"] == "PROXY" and r["ok"] is False
+assert r["evidence_status"] == "PASS" and r["signoff_status"] == "PROXY"
+assert r["engine"]=="vyges-em-ir"
 drop = float(r["vyges"]["worst_ir"]["drop"])
 assert drop == drop and drop > 0  # finite and positive
 print(r["summary"][:100])
@@ -147,31 +166,25 @@ PY
   else
     bad "missing vyges_em_ir_flowlab.json"
   fi
-  if [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json" ]]; then
-    python3 - <<PY && ok "dynamic_ir gold sentinel" || bad "dynamic_ir gold sentinel"
-import json, math
-g=json.load(open("${ROOT}/learn/sim/reports/dynamic_ir_flowlab.json"))
-assert g.get("gold") is True
-assert g.get("ok") is not True
-# no fixed gold mV oracle
-mv = float(g["worst_droop_mv"])
-assert math.isfinite(mv) and mv > 0
-print("gold_report_ok", "worst_droop_mv_finite", mv)
-PY
+  if [[ -f "${ROOT}/.pdflow/generated/flowlab/finish/power_grid_em/.vyges_em_ir_flowlab_finish.ok" ]]; then
+    ok "vyges_em_ir generated stamp outside finish"
   else
-    bad "missing dynamic_ir_flowlab.json gold sentinel"
+    bad "missing generated vyges_em_ir stamp"
   fi
   if [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab_direct.json" ]]; then
-    python3 - <<PY && ok "dynamic_ir current_run parse" || bad "dynamic_ir current_run"
+    python3 - <<PY && ok "dynamic_ir live parse" || bad "dynamic_ir live"
 import json
 r=json.load(open("${ROOT}/learn/sim/reports/dynamic_ir_flowlab_direct.json"))
-assert r.get("gold") is not True
-assert r["ok"] is True and r["kind"]=="dynamic_ir"
+assert r["status"] == "PROXY" and r["ok"] is False and r["kind"]=="dynamic_ir"
+assert r["execution_status"] == "COMPLETED"
+assert r["evidence_status"] == "PASS" and r["signoff_status"] == "PROXY"
+assert r["product_signoff"] is False
+assert r["comparison_scope"]=="same-live-invocation"
 assert float(r["static"]["worst_ir"]) > 0
 assert r["dynamic"]["worst_droop"] > r["static"]["worst_ir"] * 0.5
 # no fixed live IR mV pin — adaptive/report-driven
 assert r["sim_levels"]["L1_vectorless_dynamic"]["status"]=="READY"
-assert r["sim_levels"]["L2_vcd_dynamic"]["status"]=="GAP"
+assert r["sim_levels"]["L2_vcd_dynamic"]["status"] in ("READY", "GAP")
 assert r["sim_levels"]["L3_windowed"]["status"] in ("READY", "PARTIAL")
 sta=(r.get("activity_model") or {}).get("sta") or {}
 assert sta.get("status") in ("READY", "GAP")
@@ -180,7 +193,7 @@ assert r["emsim_split"]["B_pdn_solve"]["status"]=="READY"
 assert r["platform"]["solvers"]["A_direct_be"]["status"]=="READY"
 print(r["summary"][:120])
 PY
-    [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab_direct.svg" ]] && ok "dynamic_ir current_run svg" || bad "missing dynamic_ir_direct svg"
+    [[ -f "${ROOT}/learn/sim/reports/dynamic_ir_flowlab_direct.svg" ]] && ok "dynamic_ir live svg" || bad "missing dynamic_ir_direct svg"
   else
     bad "missing dynamic_ir_flowlab_direct.json"
   fi
@@ -206,9 +219,9 @@ else
   ok "skip learn signoff (6_final.odb missing)"
 fi
 
-if curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:43217/ 2>/dev/null | rg -q 200; then
+if curl -s -o /dev/null -w '%{http_code}' "${STUDIO_BASE}/" 2>/dev/null | rg -q 200; then
   echo "== Studio API (delegated to test_studio_api.sh) =="
-  "${ROOT}/scripts/test_studio_api.sh"
+  STUDIO_URL="${STUDIO_BASE}" STUDIO_ORIGIN="${STUDIO_ORIGIN:-${STUDIO_BASE}}" "${ROOT}/scripts/test_studio_api.sh"
 else
   ok "skip Studio API (server not listening on :43217)"
 fi

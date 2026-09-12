@@ -3,14 +3,19 @@
   "variant": "flowlab",
   "pillars": {
     "thermal": {
+      "status": "PASS",
       "ok": true,
-      "summary": "HotSpot t_max=70.54 \u00b0C \u00b7 IR+droop proxy 31.39 mV"
+      "summary": "HotSpot t_max=47.77 \u00b0C \u00b7 IR+droop proxy 21.57 mV"
     },
     "pkg": {
-      "ok": true,
-      "summary": "bump:ok \u00b7 rdl:ok \u00b7 system_pdn:ok"
+      "status": "PROXY",
+      "ok": false,
+      "summary": "bump:ok \u00b7 rdl:proxy \u00b7 system_pdn:ok \u00b7 manifest:PROXY"
     }
   },
-  "ok": true,
-  "summary": "thermal:ok \u00b7 pkg:ok"
+  "status": "PROXY",
+  "ok": false,
+  "evidence_ok": true,
+  "product_signoff": false,
+  "summary": "thermal:pass \u00b7 pkg:proxy"
 }

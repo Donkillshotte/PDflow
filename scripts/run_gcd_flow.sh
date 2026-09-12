@@ -5,6 +5,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! "${ROOT}/scripts/resource_guard.sh"; then
+  exec "${ROOT}/scripts/run_resource_job.sh" gcd-flow \
+    bash "${BASH_SOURCE[0]}" "$@"
+fi
 FLOW="${ROOT}/tools/OpenROAD-flow-scripts/flow"
 
 DESIGN_CONFIG="${DESIGN_CONFIG:-./designs/nangate45/gcd/config.mk}"

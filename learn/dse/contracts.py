@@ -75,7 +75,7 @@ class ConstraintContract:
 class GeometryContract:
     """Physical scene identity. IR/timing across dies must not mix."""
 
-    kind: str  # fixed | product
+    kind: str  # current | product
     die_um2: float | None = None
     core_um2: float | None = None
     rows: int | None = None
@@ -100,7 +100,7 @@ class GeometryContract:
     def compatible(self, other: "GeometryContract") -> bool:
         if self.kind != other.kind:
             return False
-        if self.kind == "fixed":
+        if self.kind in {"current", "fixed"}:
             if self.scene_hash and other.scene_hash:
                 return self.scene_hash == other.scene_hash
             return _close(self.die_um2, other.die_um2) and _close(self.core_um2, other.core_um2)

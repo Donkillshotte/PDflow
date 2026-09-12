@@ -3,6 +3,30 @@ import path from "path";
 import { LEARN_ROOT, REPO_ROOT } from "./course";
 import { resultsDir } from "./open";
 import { normalizeResultsVariant } from "./pathGuard";
+import { isCurrentReport } from "./liveReports";
+import type { LabHonesty, LabLeftover, LabToolStatus } from "./labHonesty";
+
+// Lab-only ASAP7/BSPDN admission is exported from the signoff boundary so
+// callers use the same dual-axis taxonomy without changing Product gates.
+export {
+  evaluateLabAdmit,
+  isAsap7BspdnProxyMesh,
+  isAsap7CandidateMesh,
+  isLabComparisonCompatible,
+  isSameMeshCompatible,
+  labComparisonCompatible,
+  labLeftoversOf,
+  labPillarOf,
+  labStatusOf,
+  sameMeshCompatible,
+  type LabAdmitEvaluation,
+  type LabHonesty,
+  type LabLeftover,
+  type LabMeshIdentity,
+  type LabPillarEvidence,
+  type LabPillarId,
+  type LabToolStatus,
+} from "./labHonesty";
 
 export type SignoffPillarId = "timing" | "geometry" | "equivalence" | "power" | "pkg" | "thermal";
 
@@ -32,7 +56,7 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
   {
     id: "timing",
     label: "Timing (STA)",
-    description: "WNS/TNS/period_min vs golden-metrics post-SPEF; typical.lib only (no MCMM); optional educational IR-aware overlay",
+    description: "WNS/TNS/period_min from the current post-SPEF run; typical.lib only (no MCMM); optional live IR-aware overlay",
     status: "active",
     orchestratorAction: "sta_signoff",
     checks: [
@@ -118,7 +142,6 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         action: "chip_pdn_ir",
         script: "learn/scripts/run_chip_pdn_ir.sh",
         reportRel: "sim/reports/pdn_chip_ir_{variant}.json",
-        stampRel: ".chip_pdn_ir.ok",
         long: true,
       },
       {
@@ -127,7 +150,6 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         action: "vyges_em_ir",
         script: "learn/scripts/run_vyges_em_ir.sh",
         reportRel: "sim/reports/vyges_em_ir_{variant}.json",
-        stampRel: ".vyges_em_ir.ok",
       },
       {
         id: "dynamic_ir",
@@ -135,7 +157,6 @@ export const SIGNOFF_PILLARS: SignoffPillarDef[] = [
         action: "dynamic_ir",
         script: "learn/scripts/run_dynamic_ir.sh",
         reportRel: "sim/reports/dynamic_ir_{variant}_direct.json",
-        stampRel: ".dynamic_ir.ok",
       },
       {
         id: "mesh_export",
@@ -240,17 +261,6 @@ export function reportPathForCheck(check: SignoffCheckDef, variant: string): str
   return path.join(LEARN_ROOT, check.reportRel.replace("{variant}", variant));
 }
 
-const GOLDEN_PATH = path.join(LEARN_ROOT, "signoff/golden-gcd.json");
-
-export function readGoldenGcd(): Record<string, unknown> | null {
-  try {
-    if (!fs.existsSync(GOLDEN_PATH)) return null;
-    return JSON.parse(fs.readFileSync(GOLDEN_PATH, "utf8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
 export type SignoffGate = {
   id: string;
   pillar: SignoffPillarId;
@@ -258,6 +268,11 @@ export type SignoffGate = {
   ok: boolean;
   detail?: string;
   action?: string;
+  /** Optional lab-only axes; Product signoff still consumes `ok` only. */
+  status?: LabToolStatus;
+  honesty?: LabHonesty;
+  honestyReason?: string;
+  leftovers?: LabLeftover[];
 };
 
 function pillarReportPath(pillarId: SignoffPillarId, variant: string): string {
@@ -343,7 +358,7 @@ export function readStaIrAware(variant = "flowlab"): StaIrAwareSummary | null {
   };
 }
 
-/** LVS leftover circuits named in must-connect messages (e.g. DFF_X2). */
+/** LVS leftover circuits named in the current must-connect messages. */
 export function leftoverCircuitsFromReport(
   report: Record<string, unknown> | null,
 ): string[] {
@@ -376,7 +391,7 @@ export function leftoverMustConnectDetail(
   return `leftover must-connect ${mc} (${named}, Nangate split wells)`;
 }
 
-/** Negative WNS at the course clock, even when golden WNS ≥ -0.04 still passes. */
+/** Negative WNS at the clock is reported as an explicit live leftover. */
 export function leftoverSetupOpenDetail(
   report: Record<string, unknown> | null,
 ): string | null {
@@ -396,15 +411,15 @@ export function leftoverSetupOpenDetail(
   const open =
     leftover?.setup_open === true || (Number.isFinite(wns) && wns < 0);
   if (!open) return null;
-  const clock = leftover?.clock_ns ?? 0.46;
+  const clock = leftover?.clock_ns;
   const named = Number.isFinite(wns)
-    ? `leftover setup open (WNS ${wns} at ${clock} ns)`
-    : `leftover setup open at ${clock} ns`;
+    ? `leftover setup open (WNS ${wns}${clock !== undefined ? ` at ${clock} ns` : ""})`
+    : `leftover setup open${clock !== undefined ? ` at ${clock} ns` : ""}`;
   if (leftover?.wns_kind === "output") {
     const pin = leftover.worst_endpoint ? ` on ${leftover.worst_endpoint}` : "";
-    return `${named}; register-to-register MET, leftover is course output delay${pin} (shared NAND2_X2 cone; clone/size-up regresses R2R)`;
+    return `${named}${pin}; register-to-register MET or violated status is reported separately; validate any ECO against the current constraint contract`;
   }
-  return `${named}; educational golden still ≥ -0.04`;
+  return `${named}; compare against the current run's constraint contract`;
 }
 
 /** Antenna is in FreePDK45.lydrc. Density and named ERC are not. */
@@ -488,17 +503,17 @@ export function appendSetupLeftover(detail: string, leftover: string | null): st
     return `${detail}; ${leftover.slice(leftover.indexOf("register-to-register MET"))}`;
   }
   if (
-    leftover.includes("educational golden still") &&
-    !detail.includes("educational golden still")
+    leftover.includes("current run's constraint contract") &&
+    !detail.includes("current run's constraint contract")
   ) {
-    return `${detail}; educational golden still ≥ -0.04`;
+    return `${detail}; current run's constraint contract applies`;
   }
   return detail;
 }
 
 function readJsonReport(abs: string): Record<string, unknown> | null {
   try {
-    if (!fs.existsSync(abs)) return null;
+    if (!isCurrentReport(abs)) return null;
     return JSON.parse(fs.readFileSync(abs, "utf8")) as Record<string, unknown>;
   } catch {
     return null;
@@ -513,8 +528,9 @@ function evaluateCheckGate(
   variant = normalizeResultsVariant(variant);
   const rel = check.reportRel.replace("{variant}", variant);
   const abs = path.join(LEARN_ROOT, rel);
-  const exists = fs.existsSync(abs);
-  const report = exists ? readJsonReport(abs) : null;
+  const current = isCurrentReport(abs);
+  const exists = current;
+  const report = current ? readJsonReport(abs) : null;
   let stampOk = true;
   if (check.stampRel) {
     stampOk = fs.existsSync(path.join(resultsDir(variant), check.stampRel));
@@ -583,7 +599,7 @@ export function evaluateSignoffGates(variant = "flowlab"): {
     };
 
     let detail = orchReport
-      ? (orchReport.summary as string) || (pillarOk ? "report ok" : "golden thresholds")
+      ? (orchReport.summary as string) || (pillarOk ? "report ok" : "live checks incomplete")
       : "report missing — run signoff";
     if (pillar.id === "timing" && orchReport) {
       detail = appendSetupLeftover(String(detail), leftoverSetupOpenDetail(orchReport));
@@ -610,9 +626,23 @@ export function evaluateSignoffGates(variant = "flowlab"): {
           ),
       );
     }
-    if (pillar.id === "power" && orchReport?.ir_mesh_ledger) {
-      detail += " · IR meshes not comparable (gold / chip / current_run / vyges / system)";
-    }
+   if (pillar.id === "power" && orchReport?.ir_mesh_ledger) {
+      const ledger = orchReport.ir_mesh_ledger as {
+        comparable?: boolean;
+        comparison_scope?: string;
+        meshes?: { comparison_scope?: string }[];
+      };
+      const distinct = (ledger.meshes ?? []).some((mesh) =>
+        String(mesh.comparison_scope ?? "").includes("distinct-live-mesh"),
+      );
+      if (
+        ledger.comparable === false ||
+        distinct ||
+        String(ledger.comparison_scope ?? "").includes("distinct-live-mesh")
+      ) {
+        detail += " · IR meshes not comparable";
+      }
+   }
     gates.push({
       id: pillar.id,
       pillar: pillar.id,
@@ -709,14 +739,14 @@ export function signoffMatrixForUi(variant = "flowlab") {
   variant = normalizeResultsVariant(variant);
   return {
     variant,
-    golden: readGoldenGcd(),
+    comparisonBasis: "same-run artifacts and constraints",
     pillars: SIGNOFF_PILLARS.map((p) => ({
       ...p,
       reportEval: readPillarReportEval(p.id, variant),
       checks: p.checks.map((c) => ({
         ...c,
         reportPath: c.reportRel.replace("{variant}", variant),
-        reportExists: fs.existsSync(reportPathForCheck(c, variant)),
+        reportExists: isCurrentReport(reportPathForCheck(c, variant)),
       })),
     })),
     plannedPillars: SIGNOFF_PLANNED_PILLARS.map((p) => ({
@@ -726,7 +756,7 @@ export function signoffMatrixForUi(variant = "flowlab") {
     orchestrator: {
       ...SIGNOFF_ORCHESTRATOR,
       reportPath: SIGNOFF_ORCHESTRATOR.reportRel.replace("{variant}", variant),
-      reportExists: fs.existsSync(
+      reportExists: isCurrentReport(
         path.join(LEARN_ROOT, SIGNOFF_ORCHESTRATOR.reportRel.replace("{variant}", variant)),
       ),
     },

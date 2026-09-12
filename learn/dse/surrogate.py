@@ -1,4 +1,4 @@
-"""Cross-stage residual predictors. Never physical truth.
+"""Cross-stage residual predictors for the active invocation. Never physical truth.
 
 F0 for F1 area:
   n>=2  — SSK-GP posterior (mean ± std) on the ABC sequence
@@ -7,6 +7,9 @@ F0 for F1 area:
 F1→F4 residual (RTLDistil-shaped):
   only when the same rtl_fp has both an F1 area and an F4 droop.
   With a single pair, uncertainty stays high — we do not invent IR from area.
+
+The candidate list is supplied by the caller's current run memory; this module
+does not open a registry or load persisted campaign data.
 """
 
 from __future__ import annotations
@@ -195,7 +198,7 @@ def predict_f4_from_f1(all_cands: list[Candidate]) -> dict:
         "pairs": len(pairs),
         "uncertainty": "high" if len(pairs) < 4 else "medium",
         "via": "RTLDistil-shaped residual (need ≥4 pairs to fit a slope)",
-        "not": "Dynamic IR gold / a neural voltage map",
+        "not": "Dynamic IR reference / a neural voltage map",
     }
 
 
@@ -427,41 +430,41 @@ def predict_power_from_f1(all_cands: list[Candidate]) -> dict:
 
 
 def residual_f4_mesh(all_cands: list[Candidate]) -> dict:
-    """Finish-gold droop vs candidate-extract DirectLU. Not a solver residual."""
-    gold = cand = None
+    """Finish-reference droop vs candidate-extract DirectLU. Not a solver residual."""
+    reference = cand = None
     cand_id = None
     for c in all_cands:
         if c.status != "ok" or c.qor.dynamic_ir_mv is None:
             continue
         src = (c.knobs or {}).get("source")
         if src == "ingest_pdn":
-            gold = float(c.qor.dynamic_ir_mv)
+            reference = float(c.qor.dynamic_ir_mv)
         elif src == "f4_candidate_extract":
             cand = float(c.qor.dynamic_ir_mv)
             cand_id = (c.knobs or {}).get("extract_id") or c.id
-    if gold is None or cand is None:
+    if reference is None or cand is None:
         return {
             "metric": "dynamic_ir_mv",
             "n": 0,
             "uncertainty": "high",
-            "via": "no finish-gold ↔ candidate-extract pair",
-            "not": "a solver residual or Dynamic IR gold restamp",
+            "via": "no finish-reference ↔ candidate-extract pair",
+            "not": "a solver residual or Dynamic IR reference restamp",
         }
     return {
         "metric": "dynamic_ir_mv",
-        "mean_residual_mv": cand - gold,
-        "gold_mv": gold,
+        "mean_residual_mv": cand - reference,
+        "reference_mv": reference,
         "candidate_mv": cand,
         "extract_id": cand_id,
         "n": 1,
         "uncertainty": "medium",
-        "via": "F4 candidate mesh vs finish gold — different R-graph, not a solver residual",
-        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+        "via": "F4 candidate mesh vs finish reference — different R-graph, not a solver residual",
+        "not": "Dynamic IR reference / a mixed ABC+PDN vector",
     }
 
 
 def residual_f4_knob(all_cands: list[Candidate]) -> dict:
-    """PDN catalog DirectLU vs gold-knob DirectLU on the same candidate extract."""
+    """PDN catalog DirectLU vs reference-knob DirectLU on the same candidate extract."""
     base: dict[str, float] = {}
     catalogs: list[dict] = []
     for c in all_cands:
@@ -498,8 +501,8 @@ def residual_f4_knob(all_cands: list[Candidate]) -> dict:
             "metric": "dynamic_ir_mv",
             "n": 0,
             "uncertainty": "high",
-            "via": "no PDN catalog ↔ gold-knob pair on the same extract",
-            "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+            "via": "no PDN catalog ↔ reference-knob pair on the same extract",
+            "not": "Dynamic IR reference / a mixed ABC+PDN vector",
         }
     rs = [p["residual_mv"] for p in pairs]
     mean_r = sum(rs) / len(rs)
@@ -511,13 +514,13 @@ def residual_f4_knob(all_cands: list[Candidate]) -> dict:
         "catalog": pairs[0]["catalog"],
         "extract_id": pairs[0]["extract_id"],
         "uncertainty": "medium" if len(pairs) < 2 else "low",
-        "via": "F4 PDN catalog vs gold knobs on the named candidate extract",
-        "not": "Dynamic IR gold / more ABC",
+        "via": "F4 PDN catalog vs reference knobs on the named candidate extract",
+        "not": "Dynamic IR reference / more ABC",
     }
 
 
 def residual_f4_region(all_cands: list[Candidate]) -> dict:
-    """IR-bin density-cap extract vs unconstrained candidate, gold knobs."""
+    """IR-bin density-cap extract vs unconstrained candidate, reference knobs."""
     cand = region = None
     region_id = None
     for c in all_cands:
@@ -535,7 +538,7 @@ def residual_f4_region(all_cands: list[Candidate]) -> dict:
             "n": 0,
             "uncertainty": "high",
             "via": "no region-extract ↔ candidate-extract pair",
-            "not": "Dynamic IR gold",
+            "not": "Dynamic IR reference",
         }
     return {
         "metric": "dynamic_ir_mv",
@@ -545,13 +548,13 @@ def residual_f4_region(all_cands: list[Candidate]) -> dict:
         "extract_id": region_id,
         "n": 1,
         "uncertainty": "medium",
-        "via": "F4 region mesh vs unconstrained candidate — density cap, not gold",
+        "via": "F4 region mesh vs unconstrained candidate — density cap, not reference",
         "not": "a solver residual or a mixed ABC+PDN vector",
     }
 
 
 def residual_f4_host_region(all_cands: list[Candidate]) -> dict:
-    """Host density-cap extract vs unconstrained host extract. Not gold rXY."""
+    """Host density-cap extract vs unconstrained host extract. Not reference rXY."""
     host = host_r = None
     host_bin = region_bin = None
     region_id = None
@@ -572,7 +575,7 @@ def residual_f4_host_region(all_cands: list[Candidate]) -> dict:
             "n": 0,
             "uncertainty": "high",
             "via": "no host-region-extract ↔ host-extract pair",
-            "not": "Dynamic IR gold / synth region extract",
+            "not": "Dynamic IR reference / synth region extract",
         }
     return {
         "metric": "dynamic_ir_mv",
@@ -584,13 +587,13 @@ def residual_f4_host_region(all_cands: list[Candidate]) -> dict:
         "extract_id": region_id,
         "n": 1,
         "uncertainty": "medium",
-        "via": "F4 host-region mesh vs unconstrained host — density cap, not gold rXY",
+        "via": "F4 host-region mesh vs unconstrained host — density cap, not reference rXY",
         "not": "a solver residual or a mixed ABC+PDN vector",
     }
 
 
 def residual_f4_static(all_cands: list[Candidate]) -> dict:
-    """Static IR champion vs Dynamic IR champion vs gold. Not a Dynamic IR copy."""
+    """Static IR champion vs Dynamic IR champion vs reference. Not a Dynamic IR copy."""
     from .active import winning_ir_pdn, winning_static_pdn
 
     by_level: dict[str, list[Candidate]] = {}
@@ -605,10 +608,10 @@ def residual_f4_static(all_cands: list[Candidate]) -> dict:
             return all_cands
 
     view = _View()
-    gold = None
+    reference = None
     for c in all_cands:
         if c.status == "ok" and (c.knobs or {}).get("source") == "ingest_pdn" and c.qor.static_ir_mv is not None:
-            gold = float(c.qor.static_ir_mv)
+            reference = float(c.qor.static_ir_mv)
             break
     # winning_* expect DesignMemory; call the ranking loops here instead.
     win_s = winning_static_pdn(view)  # type: ignore[arg-type]
@@ -619,7 +622,7 @@ def residual_f4_static(all_cands: list[Candidate]) -> dict:
             "n": 0,
             "uncertainty": "high",
             "via": "no 1× static-IR champion on the host/IR-cell family",
-            "not": "Dynamic IR gold / a decap restamp",
+            "not": "Dynamic IR reference / a decap restamp",
         }
     s_mv = float(win_s.qor.static_ir_mv)
     d_static = float(win_d.qor.static_ir_mv) if win_d and win_d.qor.static_ir_mv is not None else None
@@ -637,11 +640,11 @@ def residual_f4_static(all_cands: list[Candidate]) -> dict:
         "n": 1,
         "uncertainty": "medium",
         "via": "F4 static IR 1× ranking vs Dynamic IR champion — pkg_r axis, not decap",
-        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+        "not": "Dynamic IR reference / a mixed ABC+PDN vector",
     }
-    if gold is not None:
-        out["gold_static_mv"] = gold
-        out["static_vs_gold_mv"] = s_mv - gold
+    if reference is not None:
+        out["reference_static_mv"] = reference
+        out["static_vs_reference_mv"] = s_mv - reference
     if d_static is not None:
         out["static_vs_dynamic_champ_mv"] = s_mv - d_static
     return out
@@ -688,7 +691,7 @@ def residual_f4_static_mesh(all_cands: list[Candidate]) -> dict:
         "n": 1,
         "uncertainty": "medium",
         "via": "F4 on-die bump pitch vs static-IR champ — not pkg_r",
-        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+        "not": "Dynamic IR reference / a mixed ABC+PDN vector",
     }
     if s_mv is not None:
         out["winning_static_mv"] = s_mv
@@ -737,7 +740,7 @@ def residual_f4_static_straps(all_cands: list[Candidate]) -> dict:
         "n": 1,
         "uncertainty": "medium",
         "via": "F4 on-die metal4 pitch vs static-IR champ — not bumps",
-        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+        "not": "Dynamic IR reference / a mixed ABC+PDN vector",
     }
     if s_mv is not None:
         out["winning_static_mv"] = s_mv
@@ -791,7 +794,7 @@ def residual_f4_em(all_cands: list[Candidate]) -> dict:
         "n": 1,
         "uncertainty": "medium",
         "via": "F4 metal4 width vs strap-pitch J (same mesh) and EM champ — not a mixed-mesh-only residual",
-        "not": "Dynamic IR gold / a mixed ABC+PDN vector",
+        "not": "Dynamic IR reference / a mixed ABC+PDN vector",
     }
     if s_j is not None:
         out["strap_j"] = s_j

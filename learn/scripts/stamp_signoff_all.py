@@ -2,7 +2,7 @@
 """Write signoff_all JSON from existing pillar reports.
 
 Does not re-run STA / DRC / LVS / power. Names LVS leftover, leftover
-setup-open (WNS < 0 at the course clock), leftover no MCMM (typical.lib
+setup-open (WNS < 0 at the active SDC clock), leftover no MCMM (typical.lib
 only), leftover DRC-deck coverage, and the IR mesh ledger so a
 four-pillar PASS is not a leftover-free close.
 """
@@ -22,21 +22,47 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 
+def _current_design_mtime(variant: str) -> float | None:
+    result_dir = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd" / variant
+    mtimes = [
+        (result_dir / name).stat().st_mtime
+        for name in ("6_final.odb", "6_final.v", "6_final.spef", "6_final.gds")
+        if (result_dir / name).is_file()
+    ]
+    return max(mtimes) if mtimes else None
+
+
 def _load(name: str) -> dict | None:
     path = REPORTS / name
     if not path.is_file():
         return None
+    match = re.search(r"_(flowlab|learn)\.json$", name)
+    if match:
+        current = _current_design_mtime(match.group(1))
+        if current is not None and path.stat().st_mtime < current:
+            return None
     try:
         return json.loads(path.read_text())
     except json.JSONDecodeError:
         return None
 
 
-COURSE_CLOCK_NS = 0.46
+def _clock_from_sdc() -> float | None:
+    sdc = ROOT / "learn/designs/nangate45/gcd-tutorial/constraint.sdc"
+    if not sdc.is_file():
+        return None
+    match = re.search(r"^\s*set\s+clk_period\s+([0-9.eE+-]+)", sdc.read_text(errors="replace"), re.MULTILINE)
+    if not match:
+        return None
+    try:
+        value = float(match.group(1))
+    except ValueError:
+        return None
+    return value if value > 0 else None
 
 
 def leftover_from_sta(sta: dict | None) -> dict | None:
-    """Name a negative WNS even when the educational golden still passes."""
+    """Name a negative WNS from the selected invocation."""
     if not sta:
         return None
     timing = sta.get("timing") or {}
@@ -63,23 +89,24 @@ def leftover_from_sta(sta: dict | None) -> dict | None:
     if kind == "output":
         named = endpoint or "outputs"
         note = (
-            "Register-to-register is MET. Leftover is the course 20% output "
-            f"delay on {named}. Shared NAND2_X2 (_647_) also drives R2R; "
-            "size-up, BUF_X4, and clone of that cone regress R2R. "
-            "Educational golden allows WNS ≥ -0.04. Do not hide."
+            "The current invocation reports an output-path leftover while "
+            f"the endpoint is {named}. Register-to-register status is reported "
+            "separately; do not hide the active constraint result."
         )
     else:
         note = (
-            "Educational golden allows WNS ≥ -0.04. Path is still VIOLATED "
-            f"at the course {COURSE_CLOCK_NS} ns clock. Do not hide."
+            "Current invocation reports a VIOLATED path at the active SDC "
+            "clock. Do not hide."
         )
     leftover = {
         "setup_open": True,
         "wns_ns": wns,
         "setup_violations": viol,
-        "clock_ns": COURSE_CLOCK_NS,
         "note": note,
     }
+    clock = _clock_from_sdc()
+    if clock is not None:
+        leftover["clock_ns"] = clock
     if endpoint:
         leftover["worst_endpoint"] = endpoint
     if kind:
@@ -173,10 +200,12 @@ def leftover_setup_suffix(setup: dict | None) -> str:
     if not setup or not setup.get("setup_open"):
         return ""
     wns = setup.get("wns_ns")
-    clock = setup.get("clock_ns") or COURSE_CLOCK_NS
+    clock = setup.get("clock_ns")
     if wns is None:
-        return f" · leftover setup open at {clock} ns"
-    return f" · leftover setup open (WNS {wns} at {clock} ns)"
+        clock_bit = f" at {clock} ns" if clock is not None else ""
+        return f" · leftover setup open{clock_bit}"
+    clock_bit = f" at {clock} ns" if clock is not None else ""
+    return f" · leftover setup open (WNS {wns}{clock_bit})"
 
 
 def with_setup_leftover_summary(summary: str | None, setup: dict | None) -> str:
@@ -275,9 +304,14 @@ def build(variant: str = "flowlab") -> dict:
             if isinstance(ledger, dict):
                 row["ir_mesh_ledger"] = {
                     "comparable": ledger.get("comparable"),
+                    "comparison_scope": ledger.get("comparison_scope"),
                     "n_meshes": len(ledger.get("meshes") or []),
                 }
-                if ledger.get("comparable") is False:
+                if (
+                    ledger.get("comparable") is False
+                    or "distinct-live-mesh" in str(ledger.get("comparison_scope") or "")
+                    or any("distinct-live-mesh" in str(m.get("comparison_scope") or "") for m in ledger.get("meshes") or [])
+                ):
                     row["summary"] = f"{row['summary']} · IR meshes not comparable"
         pillars[kind] = row
 
@@ -287,13 +321,18 @@ def build(variant: str = "flowlab") -> dict:
         parts.append(f"leftover must-connect {leftover['must_connect']} ({cells})")
     if setup_leftover:
         wns = setup_leftover.get("wns_ns")
-        clock = setup_leftover.get("clock_ns") or COURSE_CLOCK_NS
-        parts.append(f"leftover setup open (WNS {wns} at {clock} ns)")
+        clock = setup_leftover.get("clock_ns")
+        clock_bit = f" at {clock} ns" if clock is not None else ""
+        parts.append(f"leftover setup open (WNS {wns}{clock_bit})")
     if mcmm_leftover:
         parts.append(leftover_mcmm_suffix(mcmm_leftover).lstrip(" · "))
     if deck_leftover:
         parts.append(leftover_deck_suffix(deck_leftover).lstrip(" · "))
-    if isinstance(ledger, dict) and ledger.get("comparable") is False:
+    if isinstance(ledger, dict) and (
+        ledger.get("comparable") is False
+        or "distinct-live-mesh" in str(ledger.get("comparison_scope") or "")
+        or any("distinct-live-mesh" in str(m.get("comparison_scope") or "") for m in ledger.get("meshes") or [])
+    ):
         parts.append("IR meshes not comparable")
 
     return {
@@ -309,7 +348,15 @@ def build(variant: str = "flowlab") -> dict:
         "ir_mesh_ledger": (
             {
                 "comparable": ledger.get("comparable"),
+                "comparison_scope": ledger.get("comparison_scope"),
                 "n_meshes": len(ledger.get("meshes") or []),
+                "meshes": [
+                    {
+                        "id": m.get("id"),
+                        "comparison_scope": m.get("comparison_scope"),
+                    }
+                    for m in ledger.get("meshes") or []
+                ],
             }
             if isinstance(ledger, dict)
             else None

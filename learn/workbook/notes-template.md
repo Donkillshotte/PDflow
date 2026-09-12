@@ -1,75 +1,46 @@
-# Personal notebook template
+# Current-run notes
 
-Copy this file to `my-notebook.md` and fill in during the course.
+## Invocation
 
----
+- Date/time:
+- Command:
+- `FLOW_VARIANT`:
+- `PD_FLOW_RUN_DIR`:
+- Run id:
 
-## Session ____
+## Stage record
 
-Date:
-Lesson:
-Duration:
-
-### Session objective
-
-
-### Commands run
-
-
-### GUI observations
-
-
-### Key values (paste from log/report)
-
-| Metric | Value |
-|---|---|
-| Core area | |
-| Utilization | |
-| WNS | |
-| TNS | |
-| Cell count | |
-
-### Problems / errors
-
-
-### What I understood today
-
-
-### Questions for later
-
-
----
-
-## SDC sweep table (exercise A2)
-
-| SDC file | clk_period | WNS post-place | Buffer count | Notes |
+| Stage | Input path | Output path | Status | Observation |
 |---|---|---|---|---|
-| relaxed | 2.0 | | | |
-| default | 0.46 | | | |
-| tight | 0.25 | | | |
+| synth | | | | |
+| floorplan | | | | |
+| place | | | | |
+| cts | | | | |
+| route | | | | |
+| finish | | | | |
 
----
+## Metrics from this invocation
 
-## Utilization sweep table (exercise B1)
-
-| CORE_UTILIZATION | Core area (µm²) | CTS OK? | Notes |
+| Metric | Value | Units | Source report |
 |---|---|---|---|
-| 25 | | | |
-| 35 | | | golden reference: 1712.5 |
-| 50 | | | |
+| cells | | | |
+| area | | | |
+| WNS | | | |
+| TNS | | | |
+| power | | | |
+| IR | | | |
 
----
+## Comparison
 
-## Comparison with golden-metrics.md (every lesson)
-
-| Stage | Metric | My value | Golden | Delta % |
+| Candidate A | Candidate B | Shared run id | Shared fingerprints | Result |
 |---|---|---|---|---|
-| Synth | cells | | 496 | |
-| Floorplan | core µm² | | 1712.5 | |
-| Place | WNS / period_min | | +0.01 / 0.45 | |
-| CTS | WNS / Inserted | | −0.04 / 45 | |
-| Route | DRC lines | | 0 | |
-| Finish | period_min / fmax | | 0.50 ns / ~2011 MHz | |
+| | | | | |
 
-Did I close the SDC target 0.46 ns (~2.17 GHz)? ______
-(on the golden run: no, fmax ~2.01 GHz)
+If a fingerprint or input is different, write `not comparable` and explain
+which contract differs.
+
+## Reflection
+
+- What changed?
+- Which tool produced the observation?
+- What would you rerun after installing a missing dependency?

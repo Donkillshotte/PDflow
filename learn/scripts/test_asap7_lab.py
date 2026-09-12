@@ -16,7 +16,7 @@ from dse.asap7_lab import (
     ccs_make_assignment,
     ccs_ready,
     default_plan_specs,
-    nangate_gold_status,
+    nangate_live_status,
     result_dir,
     scan_folio,
     spec_from_env,
@@ -46,7 +46,7 @@ def main() -> None:
     check(spec.variant == "lab_asap7_gcd_tc_rvt_nldm_7p5", spec.variant)
     check("flowlab" not in spec.variant, "variant is not flowlab")
     check(str(result_dir(spec, ROOT)).endswith("asap7/gcd/lab_asap7_gcd_tc_rvt_nldm_7p5"), "write path is asap7")
-    check("nangate45/gcd/flowlab" not in str(result_dir(spec, ROOT)), "does not write locked FlowLab")
+    check("nangate45/gcd/flowlab" not in str(result_dir(spec, ROOT)), "does not write Nangate FlowLab")
 
     for bad in (
         LabAsap7Spec(corner="XX"),
@@ -110,9 +110,12 @@ def main() -> None:
     check((ROOT / "learn/scripts/run_lab_asap7_chip_pdn.sh").is_file(), "ASAP7 chip PDN wrapper exists")
     chip_src = (ROOT / "learn/scripts/lab_asap7_chip_pdn.py").read_text()
     check('normalize_lab_variant' in (ROOT / "learn/scripts/lab_asap7_chip_pdn.py").read_text(), "chip PDN uses normalize_lab_variant")
-    check("Never writes nangate45" in chip_src or "nangate45" in chip_src, "chip PDN documents nangate refuse")
+    check(
+        "Never writes the Nangate finish tree" in chip_src or "Results are current ASAP7 data" in chip_src,
+        "chip PDN documents current-tree isolation",
+    )
     check("product_win" in chip_src and '"product_win": False' in chip_src, "chip PDN is not a product win")
-    check("comparable_to_gold_ir" in chip_src, "chip PDN names gold incomparability")
+    check("comparison_scope" in chip_src, "chip PDN declares its comparison scope")
     check("run_chip_pdn_ir.sh" not in chip_src, "chip PDN does not import Nangate shell")
     check((ROOT / "learn/lab/asap7/pkg/dummy_bump_gcd.lef").is_file(), "ASAP7 dummy bump LEF exists")
     pkg_cfg = json.loads((ROOT / "learn/lab/asap7/pkg/asap7_system_pdn.json").read_text())
@@ -132,7 +135,7 @@ def main() -> None:
     check("set clk_period 430" in sdc_txt, "SDC period is 430 ps")
     sdc.unlink()
     check("if design ==" not in text, "wrapper has no design-name branch")
-    check("Live metrics only" in (ROOT / "learn/dse/asap7_lab.py").read_text(), "lab report is live, not gold")
+    check("Live metrics" in (ROOT / "learn/dse/asap7_lab.py").read_text(), "lab report is live")
     check((ROOT / "learn/scripts/fetch_asap7_libextras.sh").is_file(), "CCS/CDL fetch script exists")
     check((ROOT / "learn/scripts/fetch_asap7_pdk.sh").is_file(), "layer-1 PDK fetch script exists")
     check((ROOT / "learn/scripts/lab_asap7_pdk.py").is_file(), "layer-1 PDK inventory script exists")
@@ -141,7 +144,7 @@ def main() -> None:
         pdk = json.loads(pdk_rpt.read_text())
         check(pdk.get("product_win") is False, "layer-1 inventory is not a product win")
         check(pdk.get("calibre_ran") is False, "layer-1 inventory did not run Calibre")
-        check(pdk.get("comparable_to_gold_ir") is False, "layer-1 inventory is not gold IR")
+        check("comparison_scope" in pdk, "layer-1 inventory declares comparison scope")
         check(pdk.get("n_pm", 0) >= 3, f"layer-1 inventory has HSpice cards ({pdk.get('n_pm')})")
         check(pdk.get("calibre_ready") is False, "layer-1 inventory does not claim Calibre decks")
         check(int(pdk.get("n_model") or 0) >= 8, f"layer-1 inventory parsed model cards ({pdk.get('n_model')})")
@@ -158,11 +161,11 @@ def main() -> None:
     if spice_rpt.is_file():
         spice = json.loads(spice_rpt.read_text())
         check(spice.get("product_win") is False, "layer-1 spice is not a product win")
-        check(spice.get("comparable_to_gold_ir") is False, "layer-1 spice is not gold IR")
+        check("comparison_scope" in spice, "layer-1 spice declares comparison scope")
         check(spice.get("patch") == "level 72→107", "layer-1 spice names the Xyce patch")
 
     env = {**os.environ, "FLOW_VARIANT": "flowlab", "PYTHONPATH": f"{ROOT}/learn:{ROOT}/learn/scripts"}
-    # Locked name cannot be forced: Python rebuilds the variant. Call wrapper with TRACK=6.
+    # Unsupported track is rejected before the wrapper touches any result tree.
     r = subprocess.run(
         ["bash", str(wrap), "finish"],
         cwd=str(ROOT),
@@ -172,20 +175,13 @@ def main() -> None:
     )
     check(r.returncode == 2 and "REFUSED" in (r.stderr + r.stdout), f"wrapper refuses 6T ({r.returncode})")
 
-    gold = ROOT / "learn/sim/reports/dynamic_ir_flowlab.json"
-    check(gold.is_file(), "gold IR report still on disk")
-    gold_st = nangate_gold_status(ROOT)
-    check(gold_st["ir_ok"] is True, "gold IR sha still intact")
-    locked = ROOT / "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.gds"
-    if locked.is_file():
-        check(gold_st["gds_ok"] is True, "locked FlowLab GDS sha unchanged")
-    else:
-        check(gold_st["nangate_lock_absent"] is True, "fresh clone names nangate lock absent")
+    live_st = nangate_live_status(ROOT)
+    check(set(live_st) == {"ir_present", "gds_present", "rpt_present", "ready"}, "live artifact status has no stale checks")
 
     src = (ROOT / "learn/dse/asap7_lab.py").read_text()
     check("CCS_OK" not in src, "dead CCS_OK constant is gone")
     check("stage_ledger" in src, "stage ledger helper exists")
-    check("nangate_lock_absent" in src, "nangate lock-absent is named")
+    check("nangate_live_status" in src, "Nangate status is live")
     check(len(default_plan_specs()) == 11, f"default plan has 11 static specs ({len(default_plan_specs())})")
     uart_r = uart_relaxed_spec(ROOT)
     check(uart_r.design == "uart" and uart_r.clk_ps is not None, "uart relaxed spec is tagged")
@@ -216,15 +212,15 @@ def main() -> None:
     payload = collect_report(spec, root=ROOT)
     check(payload.get("gds_live") is False or payload.get("gds_live") is True, "report has gds_live")
     check("stages" in payload, "report has stages")
-    check(payload.get("nangate_lock_absent") in {True, False}, "report names nangate_lock_absent")
+    check(payload.get("nangate_live_ready") in {True, False}, "report names live artifact readiness")
     check(payload["product_win"] is False, "report is not a product win")
-    check(payload["comparable_to_gold_ir"] is False, "IR not comparable to Nangate gold")
-    check("gold_ir_mv" not in payload, "report has no gold_ir_mv")
+    check("comparison_scope" in payload, "IR comparison scope is explicit")
+    check("comparison_scope" in payload, "report declares comparison scope")
     stamped = ROOT / "learn/sim/reports/lab_asap7.json"
     if stamped.is_file():
         live = json.loads(stamped.read_text())
         check(live.get("product_win") is False, "stamped report is not a product win")
-        check("gold_ir_mv" not in live, "stamped report has no gold_ir_mv")
+        check("comparison_scope" in live, "stamped report declares comparison scope")
         if live.get("ok"):
             check(live.get("gds"), "cooked report names GDS")
             check(live.get("qor", {}).get("wns_ps") is not None, "cooked report has WNS")
@@ -232,7 +228,7 @@ def main() -> None:
     if gds.is_file():
         rows = scan_folio(ROOT)
         check(any(r["variant"] == spec.variant for r in rows), "folio lists live default cook")
-        check(all("gold_ir_mv" not in r for r in rows), "folio has no gold_ir_mv")
+        check(all("comparison_scope" in r for r in rows), "folio rows declare comparison scope")
     print("ALL test_asap7_lab PASSED")
 
 

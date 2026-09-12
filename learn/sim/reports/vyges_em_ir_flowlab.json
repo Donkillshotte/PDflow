@@ -1,76 +1,131 @@
 {
-  "ok": true,
-  "kind": "vyges_em_ir",
-  "engine": "vyges-em-ir",
-  "license": "Apache-2.0",
-  "upstream": "https://github.com/vyges-tools/em-ir",
-  "version": "0.1.33",
-  "binary": "/workspace/tools/vyges-em-ir/vyges-em-ir",
-  "variant": "flowlab",
-  "spice": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
-  "job": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/vyges/gcd_flowlab.emir",
-  "pdn": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/vyges/gcd_flowlab.pdn",
-  "engine_json": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/vyges/vyges_engine.json",
   "adapter": {
-    "spice": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/pg_vdd_bumps.sp",
-    "vdd": 1.1,
-    "pads": 15,
-    "resistors": 5771,
-    "vias": 45,
-    "loads": 622,
-    "caps": 622,
-    "switches": 622,
-    "total_current_a": 0.007428198670000001,
-    "skipped_gnd_res": 0,
-    "dynamic": true,
     "c_decap_f": 5e-14,
+    "caps": 566,
+    "dynamic": true,
+    "loads": 566,
+    "pads": 14,
     "peak_factor": 8.0,
+    "resistors": 5153,
+    "skipped_gnd_res": 0,
+    "spice": "/home/kalishot/PDflow/.pdflow/generated/flowlab/finish/power_grid_em/vyges/pg_vdd_bumps.sp",
+    "switch_dur_ns": 0.08,
     "switch_t_ns": 1.0,
-    "switch_dur_ns": 0.08
-  },
-  "vyges": {
-    "report_path": "/workspace/tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pdn/vyges/vyges_engine.json",
-    "design": "gcd_flowlab",
+    "switches": 566,
+    "total_current_a": 0.0007199177720000007,
     "vdd": 1.1,
-    "nodes": 4438,
-    "worst_ir": {
-      "node": "Node_metal1_83890_50400",
-      "voltage": 1.084898,
-      "drop": 0.015102,
-      "drop_pct": 1.3729
-    },
-    "dynamic": {
-      "node": "ITermNode_metal1_85690_50400",
-      "voltage": 1.013987,
-      "drop": 0.086013,
-      "drop_pct": 7.8194,
-      "time_ns": 1.016
-    },
-    "ir_met": false,
-    "em_checked": 0,
-    "em_worst_ratio": 0.0,
-    "pi_met": false,
-    "em_violations": []
+    "vias": 42
   },
-  "compare": {
-    "pdn_transient_static_ir_v": 0.015167211271880587,
-    "pdn_transient_static_ir_pct": 1.3788373883527805,
-    "pdn_transient_droop_v": 0.13824352902447767,
-    "vyges_static_ir_v": 0.015102,
-    "vyges_static_ir_pct": 1.3729,
-    "vyges_dynamic_droop_v": 0.086013,
-    "vyges_dynamic_droop_pct": 7.8194,
-    "static_ir_ratio_vyges_over_pdn_transient": 0.99570051008642
+  "binary": "/home/kalishot/PDflow/tools/vyges-em-ir/vyges-em-ir",
+  "check_id": "power_grid_em",
+  "checkpoint": "finish",
+  "checkpoint_artifact": {
+    "content_hash": "f2ad599960ae51066ebf68f428e599377e153c2f386d5676b76dd0dd211b798d",
+    "kind": "odb",
+    "mtime_ns": 1788854365760678146,
+    "relative_path": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb",
+    "size": 1252656
   },
+  "configuration_hash": "9c8c7b2dd843c4883475eb51d44fdaf40b11085404379535d107ca62530ac764",
+  "engine": "vyges-em-ir",
+  "engine_json": "/home/kalishot/PDflow/.pdflow/generated/flowlab/finish/power_grid_em/vyges/vyges_engine.json",
+  "evidence_class": "PROXY",
+  "evidence_status": "PASS",
+  "execution_status": "COMPLETED",
+  "generated_at": "2026-09-12T10:21:57Z",
+  "input_artifacts": [
+    {
+      "content_hash": "f2ad599960ae51066ebf68f428e599377e153c2f386d5676b76dd0dd211b798d",
+      "kind": "odb",
+      "mtime_ns": 1788854365760678146,
+      "relative_path": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb",
+      "size": 1252656
+    },
+    {
+      "content_hash": "7fdb828218dc508041e8919af2f6a7df3a137622c949c177e48b3f1620e34751",
+      "kind": "spice",
+      "mtime_ns": 1789208416709578059,
+      "relative_path": ".pdflow/generated/flowlab/finish/power_grid_em/vyges/pg_vdd_bumps.sp",
+      "size": 409280
+    }
+  ],
+  "job": "/home/kalishot/PDflow/.pdflow/generated/flowlab/finish/power_grid_em/vyges/gcd_flowlab.emir",
+  "kind": "vyges_em_ir",
+  "license": "Apache-2.0",
+  "limitations": [
+    "No qualified foundry current-density limit is configured; EM cannot receive PASS.",
+    "The engine reports EM coverage as zero for this open mesh; IR is an educational bound only.",
+    "The dynamic result is a simultaneous-switch upper bound, not a RedHawk signoff substitute."
+  ],
   "limits": {
-    "simultaneous_switch": true,
-    "timestep_not_user_set": true,
     "no_waveform_export": true,
     "not_tapeout_signoff": true,
+    "note": "Dynamic IR is a worst-case simultaneous-switch upper bound. Not correlated as a RedHawk drop-in. Static IR uses the same write_pg_spice mesh as pdn_transient.py.",
     "pads_are_ideal_vdd": true,
-    "note": "Dynamic IR is a worst-case simultaneous-switch upper bound. Not correlated as a RedHawk drop-in. Static IR uses the same write_pg_spice mesh as pdn_transient.py."
+    "simultaneous_switch": true,
+    "timestep_not_user_set": true
   },
-  "summary": "static IR 15.102 mV (1.373%) \u00b7 dynamic droop 86.013 mV (7.819%) @ 1.016 ns \u00b7 nodes 4438 \u00b7 em_checked 0 (no foundry emlimit) \u00b7 ir_met false (educational 5% bound, not tapeout)",
-  "generated_at": "2026-09-03T08:26:58Z",
-  "limits_met": false
+  "limits_met": false,
+  "metrics": {
+    "dynamic_droop_pct": 1.1303,
+    "dynamic_droop_v": 0.012433,
+    "em_checked": 0,
+    "nodes": 3955,
+    "static_ir_pct": 0.1933,
+    "static_ir_v": 0.002126
+  },
+  "ok": false,
+  "pdn": "/home/kalishot/PDflow/.pdflow/generated/flowlab/finish/power_grid_em/vyges/gcd_flowlab.pdn",
+  "product_signoff": false,
+  "product_win": false,
+  "reason": "PROXY evidence only: IR bound is educational and qualified power-grid EM limits are unavailable.",
+  "requirement_status": "GAP",
+  "requirements": {
+    "ir_bound": {
+      "limit_pct": "5.0",
+      "status": "PASS"
+    },
+    "power_grid_em": {
+      "em_checked": 0,
+      "reason": "No qualified foundry current-density limit is configured.",
+      "status": "GAP"
+    }
+  },
+  "schema_version": 2,
+  "scope": "flow",
+  "signoff_status": "PROXY",
+  "spice": "/home/kalishot/PDflow/.pdflow/generated/flowlab/finish/power_grid_em/vyges/pg_vdd_bumps.sp",
+  "status": "PROXY",
+  "summary": "static IR 2.126 mV (0.193%) \u00b7 dynamic droop 12.433 mV (1.130%) @ 1.016 ns \u00b7 nodes 3955 \u00b7 em_checked 0 (no foundry emlimit)",
+  "tool_versions": {
+    "openroad": "26Q3",
+    "vyges-em-ir": "vyges-em-ir 0.1.33 (42ebf75)"
+  },
+  "upstream": "https://github.com/vyges-tools/em-ir",
+  "variant": "flowlab",
+  "version": "vyges-em-ir 0.1.33 (42ebf75)",
+  "vyges": {
+    "design": "gcd_flowlab",
+    "dynamic": {
+      "drop": 0.012433,
+      "drop_pct": 1.1303,
+      "node": "Node_metal1_76250_44800",
+      "time_ns": 1.016,
+      "voltage": 1.087567
+    },
+    "em_checked": 0,
+    "em_violations": [],
+    "em_worst_ratio": 0.0,
+    "ir_met": true,
+    "nodes": 3955,
+    "pi_met": true,
+    "report_path": "/home/kalishot/PDflow/.pdflow/generated/flowlab/finish/power_grid_em/vyges/vyges_engine.json",
+    "vdd": 1.1,
+    "worst_ir": {
+      "drop": 0.002126,
+      "drop_pct": 0.1933,
+      "node": "Node_metal1_81580_44800",
+      "voltage": 1.097874
+    }
+  }
 }

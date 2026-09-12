@@ -1,83 +1,55 @@
 # AGENTS
 
-Operational rules for anyone touching this repo. Product law lives in
-[`learn/dse/product.md`](learn/dse/product.md). Index: [`docs/README.md`](docs/README.md).
+These rules keep every result attributable to the design and tools that
+produced it.
 
-## Three surfaces
+## Scope
 
-1. **Product** — physical knobs, official netlist, fixed die, real finish.
-   Win = `learn/dse/win_rule.py`. Cycle: cover → improve → tune.
-2. **Lab** — e-graph, rewrite, F4, refine, GNN. Does not decide wins.
-3. **Course / Studio / FlowLab** — teaching. `FLOW_VARIANT=learn` and
-   `flowlab` are **locked**.
+- Treat every analysis as a fresh invocation.
+- Store transient DSE data below `learn/sim/dse/live/<design>/<run-id>/` or an
+  explicit `PD_FLOW_RUN_DIR` supplied by the caller.
+- A comparison requires the same `run_id`, design, clock/constraint contract,
+  geometry fingerprint, netlist fingerprint, mesh fingerprint, and activity
+  scenario. Otherwise mark it unavailable.
+- Reports must carry `comparison_scope`; use `same-live-invocation` for a
+  comparison made inside one run.
+- Missing tools or inputs produce `GAP`, `FAIL`, or `REFUSED`; never read an
+  older report to make a green result.
 
-Do not mix the three. Do not promote a lab result to a product win.
+## Safety
 
-## Forbidden
+- Run one heavy EDA job at a time. Heavy wrappers default to 600 seconds and
+  must keep their subprocess timeout aligned with that value.
+- Never use `pkill -f`; terminate a known PID only.
+- Do not overwrite a run directory while another job is active.
+- Keep source RTL, generated netlists, reports, and logs attributable to the
+  current run.
 
-- `if design ==` in tuner, space, score, coordinator, or transfer. Ranges are
-  offsets on `config.mk` defaults.
-- `FLOW_VARIANT` in `{flowlab, learn, base}`. The wrapper must refuse.
-- Krylov / MOR on AES (~50–70k-R).
-- Restamping gold GCD Dynamic IR **45.298 mV**.
-- Overwriting `results/.../gcd/flowlab/` or `learn/sim/dse/memory_aes.jsonl`
-  row `febe6804241c`.
-- TPE on spi @ 1 ns.
-- Bayesian finish surrogate below ~40 per-design finishes
-  (`next_iteration_plan.md` §7).
-- New proposers (LLM / RL / GNN / white-box) as product.
-- `pkill -f`. Kill by PID only.
-- Committing leftovers: `memory_flowlab_nl.jsonl`,
-  `memory_camp_spi_dse.index.json`, `dse_camp_spi_dse.json`.
+## Product and lab
 
-## One job
+- Product evaluation uses the official design contract and compares base and
+  challenger artifacts emitted by the same invocation.
+- Lab DSE proposes experiments; it does not turn a solver result into a
+  product verdict.
+- Physical changes that alter die geometry must be labelled as a geometry
+  change, not treated as an apples-to-apples QoR improvement.
+- `Candidate.knobs` records the action, `artifacts` the observation, `pred`
+  the prediction, and `delta` only a declared compatible delta.
 
-One heavy cook at a time. Wrapper uses `prlimit --as`.
-TPE is ask → `cook_one` → tell, serial. Do not precompute 4 trials.
-
-## Tests
-
-```bash
-PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_dse_next.py
-```
-
-Fast suite: synthetic or gcd-scale. One `test_dse.py` at a time.
-Live F4 last. Do not launch AES finish “just to see”.
-
-## Documentation
-
-- Index: `docs/README.md`. Tree: `docs/architecture.md`.
-  Lab: `docs/lab.md`. Course: `docs/course.md`.
-  Scripts: `docs/script.md`. Plans: `docs/plans.md`.
-- Frozen plans are not rewritten after data (`tpe_plan.md`,
-  `product.md`, `arch_review.md` §4–§6, I1–I5, §5 P0–P7).
-- Human recipe titles, not `camp_*_tpe_*` hashes.
-- Always report area, power, leakage, IR together. Honest win/lose.
-- Contributing: `CONTRIBUTING.md`.
-
-## Branch
-
-`cursor/` prefix, agent-assigned suffix. Do not leave product work on `main`.
-No force-push. Do not merge on your own.
-
-## Origin
-
-Origin repo: use `origin` (not `gh`) for forge CLI.
-Create/update PRs with the agent PR tool.
-
-## Cursor Cloud specific instructions
-
-Do **not** launch computer-use / browser GUI subagents. Do **not**
-launch video-review subagents. Do **not** send progress videos or
-screen recordings unless the user explicitly asks for a demo.
-
-Validate with tests, logs, report JSON, `curl` against Studio, optional
-headless screenshots, and (when needed) `GET /api/suite`. Preferred
-gates:
+## Verification
 
 ```bash
-PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_signoff_honesty.py
-PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_lab_physics.py
+export PYTHONPATH=learn:learn/scripts
+python3 learn/scripts/test_dse.py
+python3 learn/scripts/test_signoff_honesty.py
+python3 learn/scripts/test_lab_physics.py
+./scripts/test_course.sh
+./scripts/test_all_phases.sh
 ```
 
-Live suite status: [`learn/reference/suite-status.md`](learn/reference/suite-status.md).
+Changes to Studio should also be checked with `npm run lint` and
+`npm run build` from `studio/`.
+
+When Symphony integration files change, also run
+`./scripts/verify_symphony.sh` and
+`PYTHONPATH=learn:learn/scripts python3 learn/scripts/test_symphony_workflow.py`.

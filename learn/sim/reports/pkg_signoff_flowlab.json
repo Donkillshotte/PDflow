@@ -1,22 +1,1222 @@
 {
   "kind": "pkg_signoff",
   "variant": "flowlab",
-  "status": "proxy",
+  "status": "PROXY",
+  "evidence_ok": true,
+  "product_signoff": false,
   "steps": {
     "pkg_bump": {
       "ok": true,
-      "summary": "Bumps 14 \u00b7 mesh V=15 R=5816"
+      "summary": "Bumps 14 \u00b7 mesh V=14 R=5195"
     },
     "pkg_rdl": {
       "ok": true,
-      "status": "READY",
-      "summary": "RDL READY \u00b7 executed=True \u00b7 bumps=4 \u00b7 wires=36 \u00b7 dummy LEF, not C4"
+      "evidence_ok": true,
+      "status": "PROXY",
+      "summary": "RDL PROXY \u00b7 executed=True \u00b7 bumps=16 \u00b7 wires=89 \u00b7 dummy LEF, not C4"
     },
     "system_pdn": {
       "ok": true,
-      "summary": "System PDN \u00b7 die droop 6.27 mV (0.57%) \u00b7 Zmax 9058.36 m\u03a9 @ 2.239e+08 Hz \u00b7 Iavg 2.082 mA"
+      "status": "WARN",
+      "summary": "System PDN \u00b7 die droop 2.14 mV (0.19%) \u00b7 Zmax 9043.82 m\u03a9 @ 2.239e+08 Hz \u00b7 Iavg 0.719 mA \u00b7 WARN",
+      "droop_mv": 2.141359999999981,
+      "zmax_mohm": 9043.819382233869
+    },
+    "package_manifest": {
+      "ok": true,
+      "evidence_ok": true,
+      "status": "PROXY",
+      "summary": "PKG PROXY \u00b7 bumps 6 configured/16 observed \u00b7 RDL 6/6 nets \u00b7 System droop 2.14 mV",
+      "report": "learn/sim/reports/pkg_manifest_flowlab.json",
+      "manifest": true
     }
   },
+  "manifest": {
+    "schema_version": 2,
+    "kind": "package_manifest",
+    "scope": "package",
+    "variant": "flowlab",
+    "design": "gcd",
+    "checkpoint": {
+      "stage": "finish",
+      "result_dir": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab",
+      "finish_immutable": true,
+      "ready": true
+    },
+    "status": "PROXY",
+    "evidence_ok": true,
+    "product_signoff": false,
+    "comparison_scope": "same-live-invocation",
+    "oracle": "current-finish-snapshot",
+    "interface": {
+      "die": {
+        "lower_left_um": [
+          0.0,
+          0.0
+        ],
+        "upper_right_um": [
+          41.93,
+          41.93
+        ],
+        "width_um": 41.93,
+        "height_um": 41.93
+      },
+      "database_units_per_micron": 2000.0,
+      "ports": [
+        {
+          "name": "clk",
+          "net": "clk",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[0]",
+          "net": "req_msg[0]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[10]",
+          "net": "req_msg[10]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[11]",
+          "net": "req_msg[11]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[12]",
+          "net": "req_msg[12]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[13]",
+          "net": "req_msg[13]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[14]",
+          "net": "req_msg[14]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[15]",
+          "net": "req_msg[15]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[16]",
+          "net": "req_msg[16]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[17]",
+          "net": "req_msg[17]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[18]",
+          "net": "req_msg[18]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[19]",
+          "net": "req_msg[19]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[1]",
+          "net": "req_msg[1]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[20]",
+          "net": "req_msg[20]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[21]",
+          "net": "req_msg[21]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[22]",
+          "net": "req_msg[22]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[23]",
+          "net": "req_msg[23]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[24]",
+          "net": "req_msg[24]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[25]",
+          "net": "req_msg[25]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[26]",
+          "net": "req_msg[26]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[27]",
+          "net": "req_msg[27]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[28]",
+          "net": "req_msg[28]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[29]",
+          "net": "req_msg[29]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[2]",
+          "net": "req_msg[2]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[30]",
+          "net": "req_msg[30]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[31]",
+          "net": "req_msg[31]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[3]",
+          "net": "req_msg[3]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[4]",
+          "net": "req_msg[4]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[5]",
+          "net": "req_msg[5]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "req_msg[6]",
+          "net": "req_msg[6]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[7]",
+          "net": "req_msg[7]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[8]",
+          "net": "req_msg[8]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_msg[9]",
+          "net": "req_msg[9]",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_rdy",
+          "net": "req_rdy",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "req_val",
+          "net": "req_val",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "reset",
+          "net": "reset",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "resp_msg[0]",
+          "net": "resp_msg[0]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[10]",
+          "net": "resp_msg[10]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[11]",
+          "net": "resp_msg[11]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[12]",
+          "net": "resp_msg[12]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[13]",
+          "net": "resp_msg[13]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[14]",
+          "net": "resp_msg[14]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[15]",
+          "net": "resp_msg[15]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "resp_msg[1]",
+          "net": "resp_msg[1]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[2]",
+          "net": "resp_msg[2]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[3]",
+          "net": "resp_msg[3]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[4]",
+          "net": "resp_msg[4]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[5]",
+          "net": "resp_msg[5]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal6"
+          ]
+        },
+        {
+          "name": "resp_msg[6]",
+          "net": "resp_msg[6]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "resp_msg[7]",
+          "net": "resp_msg[7]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "resp_msg[8]",
+          "net": "resp_msg[8]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "resp_msg[9]",
+          "net": "resp_msg[9]",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "resp_rdy",
+          "net": "resp_rdy",
+          "direction": "INPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        },
+        {
+          "name": "resp_val",
+          "net": "resp_val",
+          "direction": "OUTPUT",
+          "use": "SIGNAL",
+          "layers": [
+            "metal5"
+          ]
+        }
+      ],
+      "port_count": 54,
+      "power_nets_from_def": [],
+      "specialnet_nets": [
+        "VDD",
+        "VSS"
+      ],
+      "signal_port_count": 54,
+      "package_nets": [
+        "VDD",
+        "VSS",
+        "clk",
+        "req_val",
+        "reset",
+        "resp_val"
+      ],
+      "boundary_nets": [
+        "VDD",
+        "VSS",
+        "clk",
+        "req_msg[0]",
+        "req_msg[10]",
+        "req_msg[11]",
+        "req_msg[12]",
+        "req_msg[13]",
+        "req_msg[14]",
+        "req_msg[15]",
+        "req_msg[16]",
+        "req_msg[17]",
+        "req_msg[18]",
+        "req_msg[19]",
+        "req_msg[1]",
+        "req_msg[20]",
+        "req_msg[21]",
+        "req_msg[22]",
+        "req_msg[23]",
+        "req_msg[24]",
+        "req_msg[25]",
+        "req_msg[26]",
+        "req_msg[27]",
+        "req_msg[28]",
+        "req_msg[29]",
+        "req_msg[2]",
+        "req_msg[30]",
+        "req_msg[31]",
+        "req_msg[3]",
+        "req_msg[4]",
+        "req_msg[5]",
+        "req_msg[6]",
+        "req_msg[7]",
+        "req_msg[8]",
+        "req_msg[9]",
+        "req_rdy",
+        "req_val",
+        "reset",
+        "resp_msg[0]",
+        "resp_msg[10]",
+        "resp_msg[11]",
+        "resp_msg[12]",
+        "resp_msg[13]",
+        "resp_msg[14]",
+        "resp_msg[15]",
+        "resp_msg[1]",
+        "resp_msg[2]",
+        "resp_msg[3]",
+        "resp_msg[4]",
+        "resp_msg[5]",
+        "resp_msg[6]",
+        "resp_msg[7]",
+        "resp_msg[8]",
+        "resp_msg[9]",
+        "resp_rdy",
+        "resp_val"
+      ],
+      "missing_package_nets": []
+    },
+    "bump_array": {
+      "master": "DUMMY_BUMP",
+      "rows": 4,
+      "columns": 4,
+      "origin_um": [
+        8.0,
+        8.0
+      ],
+      "pitch_um": [
+        16.0,
+        16.0
+      ],
+      "configured_count": 6,
+      "observed_component_count": 16,
+      "configured_observed_count": 6,
+      "mapping_complete": true,
+      "coordinate_bounds_ok": true,
+      "assigned_count": 6,
+      "unassigned_instances": [
+        "BUMP_0_2",
+        "BUMP_0_3",
+        "BUMP_1_2",
+        "BUMP_1_3",
+        "BUMP_2_2",
+        "BUMP_2_3",
+        "BUMP_3_0",
+        "BUMP_3_1",
+        "BUMP_3_2",
+        "BUMP_3_3"
+      ],
+      "map": [
+        {
+          "instance": "BUMP_0_0",
+          "row": 0,
+          "column": 0,
+          "x_um": 8.0,
+          "y_um": 8.0,
+          "master": "DUMMY_BUMP",
+          "net": "VDD",
+          "configured_net": "VDD",
+          "observed_net": "VDD",
+          "class": "power",
+          "role": "supply",
+          "assigned": true,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_0_1",
+          "row": 0,
+          "column": 1,
+          "x_um": 8.0,
+          "y_um": 24.0,
+          "master": "DUMMY_BUMP",
+          "net": "VSS",
+          "configured_net": "VSS",
+          "observed_net": "VSS",
+          "class": "ground",
+          "role": "return",
+          "assigned": true,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_0_2",
+          "row": 0,
+          "column": 2,
+          "x_um": 8.0,
+          "y_um": 40.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_0_3",
+          "row": 0,
+          "column": 3,
+          "x_um": 8.0,
+          "y_um": 56.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_1_0",
+          "row": 1,
+          "column": 0,
+          "x_um": 24.0,
+          "y_um": 8.0,
+          "master": "DUMMY_BUMP",
+          "net": "clk",
+          "configured_net": "clk",
+          "observed_net": "clk",
+          "class": "signal",
+          "role": "clock",
+          "assigned": true,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_1_1",
+          "row": 1,
+          "column": 1,
+          "x_um": 24.0,
+          "y_um": 24.0,
+          "master": "DUMMY_BUMP",
+          "net": "reset",
+          "configured_net": "reset",
+          "observed_net": "reset",
+          "class": "signal",
+          "role": "control",
+          "assigned": true,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_1_2",
+          "row": 1,
+          "column": 2,
+          "x_um": 24.0,
+          "y_um": 40.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_1_3",
+          "row": 1,
+          "column": 3,
+          "x_um": 24.0,
+          "y_um": 56.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_2_0",
+          "row": 2,
+          "column": 0,
+          "x_um": 40.0,
+          "y_um": 8.0,
+          "master": "DUMMY_BUMP",
+          "net": "req_val",
+          "configured_net": "req_val",
+          "observed_net": "req_val",
+          "class": "signal",
+          "role": "request",
+          "assigned": true,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_2_1",
+          "row": 2,
+          "column": 1,
+          "x_um": 40.0,
+          "y_um": 24.0,
+          "master": "DUMMY_BUMP",
+          "net": "resp_val",
+          "configured_net": "resp_val",
+          "observed_net": "resp_val",
+          "class": "signal",
+          "role": "response",
+          "assigned": true,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_2_2",
+          "row": 2,
+          "column": 2,
+          "x_um": 40.0,
+          "y_um": 40.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_2_3",
+          "row": 2,
+          "column": 3,
+          "x_um": 40.0,
+          "y_um": 56.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_3_0",
+          "row": 3,
+          "column": 0,
+          "x_um": 56.0,
+          "y_um": 8.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_3_1",
+          "row": 3,
+          "column": 1,
+          "x_um": 56.0,
+          "y_um": 24.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_3_2",
+          "row": 3,
+          "column": 2,
+          "x_um": 56.0,
+          "y_um": 40.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        },
+        {
+          "instance": "BUMP_3_3",
+          "row": 3,
+          "column": 3,
+          "x_um": 56.0,
+          "y_um": 56.0,
+          "master": "DUMMY_BUMP",
+          "net": null,
+          "configured_net": null,
+          "observed_net": null,
+          "class": "signal",
+          "role": null,
+          "assigned": false,
+          "observed": true
+        }
+      ]
+    },
+    "rdl": {
+      "input_odb": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb",
+      "sidecar_odb": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pkg_rdl_sidecar/rdl.odb",
+      "sidecar_def": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pkg_rdl_sidecar/rdl.def",
+      "ready": true,
+      "layers": [
+        "metal10",
+        "metal6"
+      ],
+      "route_segments": 89,
+      "route_length_um_est": 393.46,
+      "required_nets": [
+        "VDD",
+        "VSS",
+        "clk",
+        "req_val",
+        "reset",
+        "resp_val"
+      ],
+      "routed_nets": [
+        "VDD",
+        "VSS",
+        "clk",
+        "req_val",
+        "reset",
+        "resp_val"
+      ],
+      "missing_nets": [],
+      "mapped_nets": [
+        "VDD",
+        "VSS",
+        "clk",
+        "req_val",
+        "reset",
+        "resp_val"
+      ],
+      "conflicts": [],
+      "nets": [
+        {
+          "net": "VDD",
+          "bump_instances": [
+            "BUMP_0_0"
+          ],
+          "route_layers": [
+            "metal10"
+          ],
+          "route_segments": 8,
+          "route_length_um_est": 119.98,
+          "routed": true,
+          "use": "POWER"
+        },
+        {
+          "net": "VSS",
+          "bump_instances": [
+            "BUMP_0_1"
+          ],
+          "route_layers": [
+            "metal10"
+          ],
+          "route_segments": 5,
+          "route_length_um_est": 43.51,
+          "routed": true,
+          "use": "GROUND"
+        },
+        {
+          "net": "clk",
+          "bump_instances": [
+            "BUMP_1_0"
+          ],
+          "route_layers": [
+            "metal6"
+          ],
+          "route_segments": 27,
+          "route_length_um_est": 51.27,
+          "routed": true,
+          "use": "SIGNAL"
+        },
+        {
+          "net": "req_val",
+          "bump_instances": [
+            "BUMP_2_0"
+          ],
+          "route_layers": [
+            "metal6"
+          ],
+          "route_segments": 15,
+          "route_length_um_est": 70.86,
+          "routed": true,
+          "use": "SIGNAL"
+        },
+        {
+          "net": "reset",
+          "bump_instances": [
+            "BUMP_1_1"
+          ],
+          "route_layers": [
+            "metal6"
+          ],
+          "route_segments": 9,
+          "route_length_um_est": 36.82,
+          "routed": true,
+          "use": "SIGNAL"
+        },
+        {
+          "net": "resp_val",
+          "bump_instances": [
+            "BUMP_2_1"
+          ],
+          "route_layers": [
+            "metal6"
+          ],
+          "route_segments": 25,
+          "route_length_um_est": 71.02,
+          "routed": true,
+          "use": "SIGNAL"
+        }
+      ]
+    },
+    "electrical_model": {
+      "vdd": 1.1,
+      "n_supply_bumps": 14,
+      "mapped_power_bumps": 1,
+      "mapped_ground_bumps": 1,
+      "sparse_breakout": true,
+      "r_bump_ohm": 0.005,
+      "l_bump_h": 5e-11,
+      "r_pkg_ohm": 0.04,
+      "l_pkg_h": 3e-10,
+      "c_pkg_f": 2e-10,
+      "effective_supply_r_ohm": 0.040357142857142855,
+      "effective_supply_l_h": 3.0357142857142856e-10,
+      "series_resonance_hz_est": 645913983.2991626,
+      "model_kind": "lumped-vrm-board-package-die",
+      "qualification": "educational compact model; no board S-parameter"
+    },
+    "system_pdn": {
+      "report": "learn/sim/reports/system_pdn_flowlab.json",
+      "ok": true,
+      "engine": "ngspice-hierarchical",
+      "i_die_avg_a": 0.000719090909090909,
+      "droop_mv": 2.141359999999981,
+      "droop_pct": 0.19466909090908918,
+      "z_max_mohm": 9043.819382233869,
+      "f_at_zmax_hz": 223872114.0,
+      "z_target_mohm": 50.0,
+      "pass_target": false
+    },
+    "checks": [
+      {
+        "id": "finish_checkpoint",
+        "label": "Finish ODB + DEF",
+        "status": "PASS",
+        "ok": true,
+        "required": true,
+        "detail": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab"
+      },
+      {
+        "id": "package_model",
+        "label": "Versioned package model",
+        "status": "PASS",
+        "ok": true,
+        "required": true,
+        "detail": "learn/system_pdn/default.json"
+      },
+      {
+        "id": "finish_interface_nets",
+        "label": "Configured package nets present in finish boundary",
+        "status": "PASS",
+        "ok": true,
+        "required": true,
+        "detail": "6/6 configured nets found in finish PINS/SPECIALNETS",
+        "missing_nets": []
+      },
+      {
+        "id": "bump_map_unique",
+        "label": "Unique bump assignment",
+        "status": "PASS",
+        "ok": true,
+        "required": true,
+        "detail": "6 configured \u00b7 power 1 \u00b7 ground 1 \u00b7 signal 4"
+      },
+      {
+        "id": "bump_map_observed",
+        "label": "Configured bumps observed and net-matched",
+        "status": "PASS",
+        "ok": true,
+        "required": true,
+        "detail": "6/6 configured bumps observed with expected nets",
+        "coordinates_ok": true
+      },
+      {
+        "id": "power_return_pair",
+        "label": "Power / return mapping",
+        "status": "PASS",
+        "ok": true,
+        "required": true,
+        "detail": "VDD/VSS are assigned to distinct bump instances"
+      },
+      {
+        "id": "rdl_net_coverage",
+        "label": "RDL route coverage per net",
+        "status": "PROXY",
+        "ok": true,
+        "evidence_ok": true,
+        "required": true,
+        "detail": "6/6 required nets routed",
+        "routed_nets": [
+          "VDD",
+          "VSS",
+          "clk",
+          "req_val",
+          "reset",
+          "resp_val"
+        ],
+        "missing_nets": []
+      },
+      {
+        "id": "system_pdn_live",
+        "label": "Live System PDN",
+        "status": "PASS",
+        "ok": true,
+        "required": true,
+        "detail": "learn/sim/reports/system_pdn_flowlab.json"
+      },
+      {
+        "id": "product_boundary",
+        "label": "Product signoff boundary",
+        "status": "PROXY",
+        "ok": false,
+        "required": false,
+        "detail": "Dummy bump/RDL and compact ladder cannot close Product signoff"
+      }
+    ],
+    "provenance": {
+      "input_fingerprint": "1da123bc36c611a15ccb231d388e40d45d2e1e76b51b1e8c891d115bbc5374f5",
+      "artifacts": [
+        {
+          "role": "finish_odb",
+          "path": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.odb",
+          "exists": true,
+          "bytes": 1252656,
+          "sha256": "f2ad599960ae51066ebf68f428e599377e153c2f386d5676b76dd0dd211b798d",
+          "authority": "finish"
+        },
+        {
+          "role": "finish_def",
+          "path": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.def",
+          "exists": true,
+          "bytes": 385737,
+          "sha256": "ae0e28fbb20795d8fbe47899d7c4868966819a201c4d8a943f4f85e98668b413",
+          "authority": "finish"
+        },
+        {
+          "role": "finish_spef",
+          "path": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/6_final.spef",
+          "exists": true,
+          "bytes": 392871,
+          "sha256": "589fde0505c638ffdfbcff32c268b097009af0a0968abd6b7967300f86c6052c",
+          "authority": "finish"
+        },
+        {
+          "role": "package_config",
+          "path": "learn/system_pdn/default.json",
+          "exists": true,
+          "bytes": 2265,
+          "sha256": "075c25e0b7c3d5ac2537ad2e6e66e0d4b28033e79566f1110b01fc6bec9ca363",
+          "authority": "source"
+        },
+        {
+          "role": "bump_lef",
+          "path": "learn/platforms/nangate45/pkg/dummy_bump_gcd.lef",
+          "exists": true,
+          "bytes": 1104,
+          "sha256": "4b9d8d842f144c4b015481650ad0ffe4abf2eace1ea976b1605ddbc978cf486c",
+          "authority": "source"
+        },
+        {
+          "role": "rdl_script",
+          "path": "learn/scripts/pkg_rdl_sidecar.tcl",
+          "exists": true,
+          "bytes": 2303,
+          "sha256": "148b43ab3bc78963c46b8de57e920c3718726679ea73d7c6da7d9487ce94fd1b",
+          "authority": "source"
+        },
+        {
+          "role": "rdl_odb",
+          "path": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pkg_rdl_sidecar/rdl.odb",
+          "exists": true,
+          "bytes": 1265454,
+          "sha256": "51cd033c4b1bc7da1f979138100f74679cc789079c3ee742fe6a12ce8ef915d1",
+          "authority": "generated"
+        },
+        {
+          "role": "rdl_def",
+          "path": "tools/OpenROAD-flow-scripts/flow/results/nangate45/gcd/flowlab/pkg_rdl_sidecar/rdl.def",
+          "exists": true,
+          "bytes": 378828,
+          "sha256": "f8cb5e6b10966c9328e8994b45d7356a4bf938d44a164fce1cee7bfd249ca130",
+          "authority": "generated"
+        },
+        {
+          "role": "system_pdn_report",
+          "path": "learn/sim/reports/system_pdn_flowlab.json",
+          "exists": true,
+          "bytes": 101858,
+          "sha256": "7acbba78b74b2b50b02cbef95180febb1af95ee5bb54a292e2d6e8581e9264c2",
+          "authority": "generated"
+        }
+      ]
+    },
+    "limits": {
+      "bump_model": "dummy LEF; not JEDEC C4 or foundry bump qualification",
+      "rdl_model": "OpenROAD rdl_route sidecar; not a tapeout redistribution stack",
+      "system_model": "lumped RLC ladder; not Touchstone/Ansys CPA",
+      "signoff": "package evidence never creates a Product badge"
+    },
+    "summary": "PKG PROXY \u00b7 bumps 6 configured/16 observed \u00b7 RDL 6/6 nets \u00b7 System droop 2.14 mV"
+  },
+  "manifest_path": "learn/sim/reports/pkg_manifest_flowlab.json",
   "evaluation": {
     "checks": [
       {
@@ -42,8 +1242,9 @@
         "ok": true
       }
     ],
-    "ok": true
+    "ok": false,
+    "evidence_ok": true
   },
-  "ok": true,
-  "summary": "bump:ok \u00b7 rdl:ok \u00b7 system_pdn:ok"
+  "ok": false,
+  "summary": "bump:ok \u00b7 rdl:proxy \u00b7 system_pdn:ok \u00b7 manifest:PROXY"
 }

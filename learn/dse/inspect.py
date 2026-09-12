@@ -34,7 +34,7 @@ def inspect_and_choose(mem: DesignMemory, *, design_id: str, persist: bool = Tru
             "status": "GAP",
             "reason": "no paid F4 for this design",
             "design_id": spec.id,
-            "not": ["gcd leftover", "gold 45.298 restamp"],
+            "not": ["gcd leftover", "reference the current-run value restamp"],
         }
     attr = inspect_f4(cand, design_id=spec.id)
     if persist:
