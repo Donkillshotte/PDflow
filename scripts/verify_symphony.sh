@@ -9,6 +9,7 @@ CODEX_BIN="${PD_FLOW_CODEX_BIN:-$(command -v codex || true)}"
 SYMPHONY_BIN="${PD_FLOW_SYMPHONY_BIN:-$(command -v symphony || true)}"
 REQUIRE_RUNTIME=0
 REQUIRE_LUNA_MAX=0
+REQUIRE_GITHUB_AUTH=0
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --require-runtime)
@@ -19,8 +20,12 @@ while [[ "$#" -gt 0 ]]; do
       REQUIRE_LUNA_MAX=1
       shift
       ;;
+    --require-github-auth)
+      REQUIRE_GITHUB_AUTH=1
+      shift
+      ;;
     *)
-      echo "usage: $0 [--require-runtime] [--require-luna-max]" >&2
+      echo "usage: $0 [--require-runtime] [--require-luna-max] [--require-github-auth]" >&2
       exit 2
       ;;
   esac
@@ -68,6 +73,46 @@ PY
     exit 1
   fi
   echo "Codex model configuration: READY (gpt-5.6-luna / max)"
+fi
+
+if [[ "${REQUIRE_GITHUB_AUTH}" == "1" ]]; then
+  if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+    echo "GitHub tracker authentication: GAP (GITHUB_TOKEN is not set)" >&2
+    exit 1
+  fi
+  command -v curl >/dev/null 2>&1 || {
+    echo "GitHub tracker authentication: GAP (curl is unavailable)" >&2
+    exit 1
+  }
+  GITHUB_API_URL="${PD_FLOW_SYMPHONY_API_URL:-https://api.github.com}"
+  case "${GITHUB_API_URL}" in
+    https://*) ;;
+    *)
+      echo "GitHub tracker authentication: GAP (API URL must use HTTPS)" >&2
+      exit 1
+      ;;
+  esac
+  github_request() {
+    local endpoint="$1"
+    local response
+    if ! response="$(printf 'Authorization: Bearer %s\nAccept: application/vnd.github+json\nX-GitHub-Api-Version: 2022-11-28\n' "${GITHUB_TOKEN}" | \
+      curl --silent --show-error --connect-timeout 5 --max-time 15 \
+        --proto '=https' --tlsv1.2 --header @- \
+        --output /dev/null --write-out '%{http_code}' \
+        "${GITHUB_API_URL}${endpoint}" 2>/dev/null)"; then
+      return 1
+    fi
+    [[ "${response}" == "200" ]]
+  }
+  if ! github_request "/user"; then
+    echo "GitHub tracker authentication: GAP (token rejected or API unreachable)" >&2
+    exit 1
+  fi
+  if ! github_request "/repos/Donkillshotte/PDflow"; then
+    echo "GitHub tracker repository access: GAP (cannot read Donkillshotte/PDflow)" >&2
+    exit 1
+  fi
+  echo "GitHub tracker authentication: READY (user and repository readable)"
 fi
 
 if [[ -x "${SYMPHONY_BIN}" ]]; then

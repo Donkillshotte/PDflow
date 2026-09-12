@@ -85,6 +85,11 @@ if ! git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "PD_FLOW_REPO_ROOT must point to a Git checkout: ${REPO_ROOT}" >&2
   exit 2
 fi
+if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+  echo "GITHUB_TOKEN is required before starting Symphony; no process was started." >&2
+  echo "Run the documented secure authentication step, then retry." >&2
+  exit 2
+fi
 
 # Keep the acknowledgement check after all read-only preflight checks so a
 # missing workflow, binary, Codex runtime, or Git checkout is reported as the

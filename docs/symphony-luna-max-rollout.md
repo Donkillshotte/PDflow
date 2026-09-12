@@ -157,7 +157,7 @@ export PD_FLOW_REPO_ROOT=/home/kalishot/PDflow
 export PD_FLOW_SYMPHONY_BIN=/home/kalishot/.local/bin/symphony
 export PD_FLOW_CODEX_BIN=/home/kalishot/.local/bin/codex
 
-./scripts/verify_symphony.sh --require-runtime --require-luna-max
+./scripts/verify_symphony.sh --require-runtime --require-luna-max --require-github-auth
 ./scripts/run_symphony.sh --ack-preview
 ~~~
 

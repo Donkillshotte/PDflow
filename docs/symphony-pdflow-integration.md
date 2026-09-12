@@ -173,7 +173,7 @@ From the PDflow repository:
 cd /home/kalishot/PDflow
 export PD_FLOW_SYMPHONY_BIN=/home/kalishot/.local/bin/symphony
 export GITHUB_TOKEN='set-this-outside-the-repository'
-./scripts/verify_symphony.sh --require-runtime
+./scripts/verify_symphony.sh --require-runtime --require-github-auth
 ./scripts/run_symphony.sh --ack-preview
 ```
 
@@ -378,7 +378,9 @@ Run:
 
 Expected result: workflow valid, Codex app-server `READY`, Symphony runtime
 `READY` or an explicit executable `GAP`. No tracker call, agent, workspace, or
-EDA process is started.
+EDA process is started. For an authenticated preflight, add
+`--require-github-auth`; that option performs only the read-only `/user` and
+repository checks and never creates or edits an issue.
 
 ### Gate 1: one documentation issue
 
