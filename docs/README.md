@@ -6,6 +6,8 @@ current results are derived from the current invocation only.
 
 ## Surfaces
 
+- [symphony-luna-max-rollout.md](symphony-luna-max-rollout.md) — Symphony
+  setup, Luna/max model contract, agent topology, rollout gates, and canary.
 - [`installer.md`](installer.md) — one-command native Linux installation,
   launcher, resource policy, troubleshooting, and repository boundaries.
 - [`course.md`](course.md) — course and Studio workflow.

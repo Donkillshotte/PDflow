@@ -8,14 +8,23 @@ WORKFLOW="${PD_FLOW_SYMPHONY_WORKFLOW:-${ROOT}/WORKFLOW.md}"
 CODEX_BIN="${PD_FLOW_CODEX_BIN:-$(command -v codex || true)}"
 SYMPHONY_BIN="${PD_FLOW_SYMPHONY_BIN:-$(command -v symphony || true)}"
 REQUIRE_RUNTIME=0
-if [[ "${1:-}" == "--require-runtime" ]]; then
-  REQUIRE_RUNTIME=1
-  shift
-fi
-if [[ "$#" -gt 0 ]]; then
-  echo "usage: $0 [--require-runtime]" >&2
-  exit 2
-fi
+REQUIRE_LUNA_MAX=0
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --require-runtime)
+      REQUIRE_RUNTIME=1
+      shift
+      ;;
+    --require-luna-max)
+      REQUIRE_LUNA_MAX=1
+      shift
+      ;;
+    *)
+      echo "usage: $0 [--require-runtime] [--require-luna-max]" >&2
+      exit 2
+      ;;
+  esac
+done
 
 PYTHONPATH="${ROOT}/learn${PYTHONPATH:+:${PYTHONPATH}}" \
   python3 "${ROOT}/learn/scripts/validate_symphony_workflow.py" \
@@ -26,6 +35,40 @@ if [[ ! -x "${CODEX_BIN}" ]] || ! "${CODEX_BIN}" app-server --help >/dev/null 2>
   exit 1
 fi
 echo "Codex app-server runtime: READY"
+
+if [[ "${REQUIRE_LUNA_MAX}" == "1" ]]; then
+  CODEX_CONFIG="${PD_FLOW_CODEX_CONFIG:-${CODEX_HOME:-${HOME}/.codex}/config.toml}"
+  read_codex_setting() {
+    python3 - "${CODEX_CONFIG}" "$1" <<'PY'
+import sys
+import tomllib
+
+path, key = sys.argv[1:]
+try:
+    with open(path, "rb") as handle:
+        config = tomllib.load(handle)
+except (OSError, tomllib.TOMLDecodeError):
+    raise SystemExit(1)
+value = config.get(key)
+if not isinstance(value, str) or not value.strip():
+    raise SystemExit(1)
+print(value.strip())
+PY
+  }
+  if ! CODEX_MODEL="$(read_codex_setting model 2>/dev/null)"; then
+    echo "Codex model configuration: GAP (missing model in ${CODEX_CONFIG})" >&2
+    exit 1
+  fi
+  if ! CODEX_REASONING="$(read_codex_setting model_reasoning_effort 2>/dev/null)"; then
+    echo "Codex reasoning configuration: GAP (missing model_reasoning_effort in ${CODEX_CONFIG})" >&2
+    exit 1
+  fi
+  if [[ "${CODEX_MODEL}" != "gpt-5.6-luna" || "${CODEX_REASONING}" != "max" ]]; then
+    echo "Codex model configuration: GAP (expected gpt-5.6-luna with max reasoning; found ${CODEX_MODEL}/${CODEX_REASONING})" >&2
+    exit 1
+  fi
+  echo "Codex model configuration: READY (gpt-5.6-luna / max)"
+fi
 
 if [[ -x "${SYMPHONY_BIN}" ]]; then
   symphony_help="$("${SYMPHONY_BIN}" --help 2>&1 || true)"

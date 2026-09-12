@@ -3,6 +3,12 @@
 Status: integration contract and launcher implemented; the Symphony runtime
 remains an explicit, operator-installed dependency.
 
+The staged Luna/max rollout and the current verification boundary are tracked
+in [symphony-luna-max-rollout.md](symphony-luna-max-rollout.md). The current
+host has verified the native runtime and Codex app-server preflight; a live
+GitHub issue canary remains a separate gate requiring an operator-provided,
+host-local credential.
+
 This document defines how PDflow can use Symphony to dispatch several coding
 tasks to Codex agents without creating a second EDA scheduler or weakening the
 resource and artifact guarantees already implemented by PDflow.
